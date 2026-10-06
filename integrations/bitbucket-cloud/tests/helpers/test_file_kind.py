@@ -10,12 +10,12 @@ from bitbucket_cloud.helpers.file_kind import (
     MAX_LISTING_DEPTH,
     build_file_filter,
     build_listing_root,
-    filename_matches,
+    escape_bbql_string,
     has_main_branch,
     process_file_patterns,
     repository_matches,
-    validate_file_match,
 )
+from bitbucket_cloud.helpers.utils import filename_matches, validate_file_match
 from integration import BitbucketFilePattern
 from port_ocean.exceptions.core import OceanAbortException
 from typing import Any, AsyncGenerator, Dict, Iterator, List, Mapping, Optional
@@ -402,7 +402,7 @@ async def test_ingests_dotfiles() -> None:
 
 
 @pytest.mark.asyncio
-async def test_emits_todays_keys_only() -> None:
+async def test_emitted_object_has_no_top_level_path_key() -> None:
     """No top-level `path` key: includedFiles resolves from the repository root."""
     client = FakeClient(
         repositories=[repository("repo")],
@@ -457,7 +457,7 @@ async def test_listing_failure_aborts_after_healthy_repositories_yield() -> None
     assert [result["metadata"]["path"] for result in results] == ["README.md"]
     # every failure is preserved, not just the first
     cause = abort.value.__cause__
-    assert isinstance(cause, ExceptionGroup)
+    assert isinstance(cause, ExceptionGroup)  # noqa: F821
     assert list(cause.exceptions) == [failure]
 
 
@@ -529,7 +529,7 @@ async def test_failure_in_one_batch_does_not_stop_later_batches() -> None:
     assert "1 of 3 repositories" in str(abort.value)
     # every failure is preserved, not just the first
     cause = abort.value.__cause__
-    assert isinstance(cause, ExceptionGroup)
+    assert isinstance(cause, ExceptionGroup)  # noqa: F821
     assert list(cause.exceptions) == [failure]
 
 
@@ -875,11 +875,16 @@ async def test_a_suffix_lookalike_is_not_discovered() -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_file_whose_content_cannot_be_read_is_skipped() -> None:
-    """The listing said the file is there, so null content is a failure, not a value.
+async def test_a_file_whose_content_cannot_be_read_aborts_the_kind() -> None:
+    """The listing proved the file exists at this immutable commit, so a failed read
+    is a failure, not an absence. Omitting the entity would not protect it: the resync
+    would complete and reconciliation would delete it.
 
-    Emitting the entity with null content would overwrite a good entity in Port with
-    an empty one.
+    The cost, measured here: stream_async_iterators_tasks fails fast, so the sibling
+    file being fetched in the same page is cancelled and this repository contributes
+    nothing. Other repositories still yield - see
+    test_listing_failure_aborts_after_healthy_repositories_yield. Nothing is deleted
+    either way, which is the point.
     """
     client = FakeClient(
         repositories=[repository("repo")],
@@ -887,11 +892,36 @@ async def test_a_file_whose_content_cannot_be_read_is_skipped() -> None:
         contents={"port.yml": None},
     )
 
-    results = await discover(
-        client,
-        BitbucketFilePattern(
-            path="/", filenames=["port.yml", "other.yml"], skipParsing=True
-        ),
-    )
+    with patch("bitbucket_cloud.helpers.file_kind.init_client", return_value=client):
+        results: List[Dict[str, Any]] = []
+        with pytest.raises(OceanAbortException):
+            async for batch in process_file_patterns(
+                BitbucketFilePattern(
+                    path="/", filenames=["port.yml", "other.yml"], skipParsing=True
+                ),
+                {},
+            ):
+                results.extend(batch)
 
-    assert [result["metadata"]["path"] for result in results] == ["other.yml"]
+    assert results == []
+
+
+@pytest.mark.parametrize(
+    "filename, expected",
+    [
+        ("port.yml", 'path~"port.yml"'),
+        # Unescaped, this is HTTP 500 for the whole repository (measured). Escaped,
+        # Bitbucket answers 200 and matches the quote literally.
+        ('po"rt.yml', 'path~"po\\"rt.yml"'),
+        ("back\\slash.yml", 'path~"back\\\\slash.yml"'),
+    ],
+)
+def test_configured_filenames_are_escaped_into_the_filter(
+    filename: str, expected: str
+) -> None:
+    assert build_file_filter([filename]) == f'type="commit_file" AND ({expected})'
+
+
+def test_escape_bbql_string_escapes_the_backslash_before_the_quote() -> None:
+    """Order matters: quote-first would double-escape the backslash it just added."""
+    assert escape_bbql_string('a\\"b') == 'a\\\\\\"b'

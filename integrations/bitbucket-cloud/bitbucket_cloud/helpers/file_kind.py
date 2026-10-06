@@ -1,5 +1,4 @@
 import asyncio
-import fnmatch
 from functools import partial
 from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator
@@ -14,13 +13,16 @@ from port_ocean.utils.async_iterators import (
 from initialize_client import init_client
 from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.folder import get_parts_before_wildcard
+from bitbucket_cloud.helpers.utils import (
+    matches_configured_file,
+    normalize_directory_path,
+)
 from bitbucket_cloud.helpers.file_kind_live_event import (
     FileObject,
     check_and_load_file_prefix,
     parse_file,
 )
 
-GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
 COMMIT_FILE_TYPE = "commit_file"
 SKIPPED_REPOSITORY_EXAMPLES = 5
 
@@ -37,13 +39,16 @@ MAX_LISTING_DEPTH = 10000
 REPOSITORY_FIELDS = "+values.commit.repository.mainbranch.name"
 
 
-def normalize_directory_path(path: str) -> str:
-    """Strip leading and trailing slashes so path variants match equivalently.
+def escape_bbql_string(value: str) -> str:
+    """Escape a value for a double-quoted BBQL string literal.
 
-    ``hello/world``, ``/hello/world``, ``/hello/world/``, and ``hello/world/``
-    all normalize to ``hello/world``. Root ``/`` and empty become ``""``.
+    The selector accepts free text, and an unescaped quote malforms the whole query,
+    which costs the entire repository rather than the one filename. Measured
+    2026-10-06 against a public workspace: `path~"RE"ADME"` answers HTTP 500 with an
+    HTML body, `path~"RE\"ADME"` and `path~"a\\b"` both answer 200 and match
+    literally.
     """
-    return path.strip("/")
+    return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def build_file_filter(filenames: List[str]) -> str:
@@ -52,7 +57,9 @@ def build_file_filter(filenames: List[str]) -> str:
     One query serves every configured filename. ``path~`` is a *contains* match, so
     results are still narrowed by ``validate_file_match``.
     """
-    path_clauses = " OR ".join(f'path~"{filename}"' for filename in filenames)
+    path_clauses = " OR ".join(
+        f'path~"{escape_bbql_string(filename)}"' for filename in filenames
+    )
     return f'type="{COMMIT_FILE_TYPE}" AND ({path_clauses})'
 
 
@@ -64,13 +71,15 @@ def build_listing_root(path: str) -> str:
     return "/".join(get_parts_before_wildcard(normalize_directory_path(path)))
 
 
-def repository_matches(repo: Dict[str, Any], configured: List[str]) -> bool:
+def repository_matches(
+    repo: Dict[str, Any], configured_repositories: List[str]
+) -> bool:
     """Match a repository against the configured ``repos`` list.
 
     The code search path matched the slug case-insensitively; display names and their
     hyphenated form are accepted too, so no configured value stops matching.
     """
-    if not configured:
+    if not configured_repositories:
         return True
 
     name = repo["name"]
@@ -79,7 +88,7 @@ def repository_matches(repo: Dict[str, Any], configured: List[str]) -> bool:
         name.lower(),
         name.replace(" ", "-").lower(),
     }
-    return any(value.lower() in candidates for value in configured)
+    return any(value.lower() in candidates for value in configured_repositories)
 
 
 def has_main_branch(repo: Dict[str, Any]) -> bool:
@@ -87,25 +96,17 @@ def has_main_branch(repo: Dict[str, Any]) -> bool:
     return bool(repo.get("mainbranch"))
 
 
-def log_skipped_repositories(skipped: List[str]) -> None:
-    if not skipped:
+def log_skipped_repositories(skipped_repositories: List[str]) -> None:
+    if not skipped_repositories:
         return
 
-    examples = ", ".join(skipped[:SKIPPED_REPOSITORY_EXAMPLES])
-    if len(skipped) > SKIPPED_REPOSITORY_EXAMPLES:
-        examples = (
-            f"{examples}, ... (+{len(skipped) - SKIPPED_REPOSITORY_EXAMPLES} more)"
-        )
+    examples = ", ".join(skipped_repositories[:SKIPPED_REPOSITORY_EXAMPLES])
+    if len(skipped_repositories) > SKIPPED_REPOSITORY_EXAMPLES:
+        remaining = len(skipped_repositories) - SKIPPED_REPOSITORY_EXAMPLES
+        examples = f"{examples}, ... (+{remaining} more)"
     logger.info(
-        f"Skipping {len(skipped)} repositories without a main branch during file "
-        f"discovery (examples: {examples})"
-    )
-
-
-def matches_configured_file(file_path: str, file_pattern: BitbucketFilePattern) -> bool:
-    return any(
-        validate_file_match(file_path, filename, file_pattern.path)
-        for filename in file_pattern.filenames
+        f"Skipping {len(skipped_repositories)} repositories without a main branch "
+        f"during file discovery (examples: {examples})"
     )
 
 
@@ -136,7 +137,7 @@ async def process_file_patterns(
     # across all of them. The inner bound is shared, so it caps the whole kind.
     repository_semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOSITORIES)
     file_semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_FILE_FETCHES)
-    skipped: List[str] = []
+    skipped_repositories: List[str] = []
     failures: List[Exception] = []
     batch: List[Dict[str, Any]] = []
     walked = 0
@@ -153,7 +154,7 @@ async def process_file_patterns(
                 continue
 
             if not has_main_branch(repo):
-                skipped.append(repo["slug"])
+                skipped_repositories.append(repo["slug"])
                 continue
 
             tasks.append(
@@ -188,18 +189,20 @@ async def process_file_patterns(
                 if len(batch) >= FILE_BATCH_SIZE:
                     yield batch
                     batch = []
-        except ExceptionGroup as error:
+        except ExceptionGroup as error:  # noqa: F821
             failures.extend(error.exceptions)
 
     if batch:
         yield batch
 
-    log_skipped_repositories(skipped)
+    log_skipped_repositories(skipped_repositories)
 
     if failures:
         raise OceanAbortException(
             f"File discovery failed for {len(failures)} of {walked} repositories"
-        ) from ExceptionGroup("File discovery failures", failures)
+        ) from ExceptionGroup(  # noqa: F821
+            "File discovery failures", failures
+        )
 
     if not walked:
         logger.warning("No repositories matched for file discovery")
@@ -247,7 +250,9 @@ async def process_repository_files(
                     continue
 
                 file_path = entry["path"]
-                if not matches_configured_file(file_path, file_pattern):
+                if not matches_configured_file(
+                    file_path, file_pattern.filenames, file_pattern.path
+                ):
                     logger.debug(
                         f"Skipping file {file_path} as it doesn't match expected patterns"
                     )
@@ -283,6 +288,13 @@ async def process_repository_files(
 
             async for file_results in stream_async_iterators_tasks(*tasks):
                 yield [file_results]
+    # What reaches here: HTTPStatusError for any status but an accepted 404;
+    # httpx.HTTPError for transport faults, which _send_api_request re-raises;
+    # json.JSONDecodeError, which it does not catch, from a non-JSON listing body;
+    # KeyError if an entry or repo lacks a field the q filter should have guaranteed;
+    # and anything raised fetching or parsing one file. The catch stays broad on
+    # purpose - it only attaches the repository and re-raises, and a narrower tuple
+    # would let an unlisted type through with no slug in the log.
     except Exception as error:
         logger.error(
             f"File discovery failed for repository {repo_slug} on branch {branch}: "
@@ -318,11 +330,12 @@ async def retrieve_file_content(
     logger.info(f"Retrieving contents for file: {file_path}")
     file_content = await client.get_repository_files(repo_slug, commit_hash, file_path)
     if file_content is None:
-        logger.warning(
-            f"Skipping {repo_slug}/{file_path} at {commit_hash[:12]}: the listing "
-            "returned it but its content could not be read"
+        # Omitting it would not protect the entity: the resync completes and
+        # reconciliation deletes it. Failing the repository is what preserves it.
+        raise RuntimeError(
+            f"{repo_slug}/{file_path} was listed at {commit_hash[:12]} but its "
+            "content could not be read"
         )
-        return
 
     parent_directory = Path(file_path).parent
     if not skip_parsing:
@@ -347,29 +360,3 @@ async def retrieve_file_content(
             branch,
         )
     yield dict(result)
-
-
-def filename_matches(file_path: str, filename: str) -> bool:
-    """Match a configured filename against the tail of a repository-relative path.
-
-    ``endswith`` on its own accepts ``airport.yml`` for a configured ``port.yml``, so
-    the match has to land on a path boundary. A configured value that already carries
-    directories, ``conf/README.md``, still matches at that boundary.
-    """
-    return file_path == filename or file_path.endswith(f"/{filename}")
-
-
-def validate_file_match(file_path: str, filename: str, expected_path: str) -> bool:
-    """Validate if the file path and filename match the expected patterns."""
-    if not filename_matches(file_path, filename):
-        return False
-
-    if (not expected_path or expected_path == "/") and file_path == filename:
-        return True
-
-    if expected_path in GLOBAL_PATHS:
-        expected_path = "*/"
-
-    dir_path = normalize_directory_path(file_path[: -len(filename)])
-    expected_path = normalize_directory_path(expected_path)
-    return fnmatch.fnmatch(dir_path, expected_path)

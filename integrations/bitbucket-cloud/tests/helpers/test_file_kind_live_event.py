@@ -1,13 +1,16 @@
 import pytest
+from loguru import logger
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any, List, AsyncGenerator
 
+from bitbucket_cloud.helpers.utils import matches_configured_file
 from bitbucket_cloud.helpers.file_kind_live_event import (
     extract_hash_from_payload,
     determine_action,
     check_single_path,
     check_and_load_file_prefix,
     process_file_changes,
+    process_file_value,
 )
 
 # Test data
@@ -71,14 +74,20 @@ async def test_check_single_path() -> None:
     # Test exact filename match
     assert check_single_path("path/to/test.txt", ["test.txt"], "path/to")
 
-    # Test wildcard match
-    assert check_single_path("path/to/test.txt", ["*.txt"], "path/to")
+    # Wildcards are not supported, and never were on the resync walk
+    assert not check_single_path("path/to/test.txt", ["*.txt"], "path/to")
 
     # Test no match
     assert not check_single_path("path/to/test.txt", ["other.txt"], "path/to")
 
-    # Test empty filenames list (should match any filename)
-    assert check_single_path("path/to/test.txt", [], "path/to")
+    # No filenames means no files, as the selector documents and the walk behaves
+    assert not check_single_path("path/to/test.txt", [], "path/to")
+
+    # A suffix lookalike is not a match
+    assert not check_single_path("path/to/airport.yml", ["port.yml"], "path/to")
+
+    # A configured value carrying directories matches at the boundary
+    assert check_single_path("a/conf/README.md", ["conf/README.md"], "a")
 
     # Test empty config path (should match any path)
     assert check_single_path("path/to/test.txt", ["test.txt"], "")
@@ -204,7 +213,7 @@ async def test_process_file_changes() -> None:
 
         # Mock selector
         mock_selector = MagicMock()
-        mock_selector.files.filenames = ["*.txt"]
+        mock_selector.files.filenames = ["test.txt"]
         mock_selector.files.path = "*"
 
         # Test payload
@@ -224,7 +233,7 @@ async def test_process_file_changes() -> None:
         mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat_yaml
 
         # Update the selector to match the YAML file
-        mock_selector.files.filenames = ["*.yaml"]
+        mock_selector.files.filenames = ["test.yaml"]
 
         updated, deleted = await process_file_changes(
             "test-repo",
@@ -238,3 +247,91 @@ async def test_process_file_changes() -> None:
         assert len(updated) > 0
         assert len(deleted) == 0
         assert mock_webhook_client.get_repository_files.called
+
+
+@pytest.mark.asyncio
+async def test_push_and_resync_agree_on_the_same_filenames_selector() -> None:
+    """One `files` selector, one answer. These disagreed before: the walk matched the
+    whole path against a path-boundary suffix, the push handler fnmatched the basename.
+    """
+    cases = [
+        ("port.yml", ["port.yml"], "/"),
+        ("charts/app/port.yml", ["port.yml"], "charts/*"),
+        ("airport.yml", ["port.yml"], "*/"),
+        ("test.yaml", ["*.yaml"], "*"),
+        ("a/conf/README.md", ["conf/README.md"], "a"),
+        ("port.yml", [], "/"),
+    ]
+    for file_path, filenames, configured_path in cases:
+        assert check_single_path(file_path, filenames, configured_path) is (
+            matches_configured_file(file_path, filenames, configured_path)
+        ), f"{file_path} / {filenames} / {configured_path}"
+
+
+@pytest.mark.asyncio
+async def test_push_skips_a_file_whose_content_cannot_be_read() -> None:
+    """get_repository_files returns None for a file Bitbucket does not have. Upserting
+    it would replace a good entity in Port with one whose content is null."""
+    diff_stat: Dict[str, Any] = {
+        "new": {"path": ".nvmrc"},
+        "old": {"path": ".nvmrc"},
+        "status": "modified",
+        "commit": {"hash": "new_hash"},
+    }
+
+    async def mock_retrieve_diff_stat(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [diff_stat]
+
+    mock_webhook_client = AsyncMock()
+    mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
+    mock_webhook_client.get_repository_files.return_value = None
+
+    mock_selector = MagicMock()
+    mock_selector.files.filenames = [".nvmrc"]
+    mock_selector.files.path = "/"
+
+    with patch("bitbucket_cloud.helpers.file_kind_live_event.init_client") as mock_init:
+        mock_init.return_value = AsyncMock()
+        updated, deleted = await process_file_changes(
+            "test-repo",
+            [SAMPLE_CHANGE],
+            mock_selector,
+            False,
+            mock_webhook_client,
+            {"repository": {"name": "test-repo"}},
+        )
+
+    assert updated == []
+    assert deleted == []
+
+
+@pytest.mark.asyncio
+async def test_nested_file_reference_resolves_to_null_when_unreadable() -> None:
+    """A file:// value inside a parsed file, on both the walk and the push path.
+
+    Without the None guard the missing file reaches parse_file, which reports it as
+    "Error parsing file" - an error about the wrong thing, naming neither the file nor
+    the repository.
+    """
+    records: list[tuple[str, str]] = []
+    sink_id = logger.add(
+        lambda record: records.append(
+            (record.record["level"].name, record.record["message"])
+        ),
+        level="WARNING",
+    )
+    client = AsyncMock()
+    client.get_repository_files.return_value = None
+    try:
+        result = await process_file_value(
+            "file://missing.json", "conf", "test-repo", "abc123def456", client
+        )
+    finally:
+        logger.remove(sink_id)
+
+    assert result is None
+    assert [level for level, _ in records] == ["WARNING"]
+    assert "conf/missing.json" in records[0][1]
+    assert "test-repo" in records[0][1]
