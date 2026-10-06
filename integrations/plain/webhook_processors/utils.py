@@ -77,9 +77,30 @@ def _thread_assignee(body: dict[str, Any]) -> dict[str, Any] | None:
     return assignee
 
 
+def _assignee_kind(assignee: dict[str, Any]) -> str | None:
+    """Return ``User``, ``MachineUser``, ``System``, or ``None`` if unknown."""
+    for key in ("__typename", "type"):
+        raw = assignee.get(key)
+        if not isinstance(raw, str) or not raw:
+            continue
+        if raw in {"User", "MachineUser", "System"}:
+            return raw
+        # GraphQL MachineUser.type enum sometimes appears on assignee objects.
+        if raw in {"API_USER", "AI_AGENT"}:
+            return "MachineUser"
+        if raw == "UNKNOWN":
+            return None
+    return None
+
+
 def assignee_user_id(body: dict[str, Any]) -> str | None:
     assignee = _thread_assignee(body)
     if assignee is None:
+        return None
+    kind = _assignee_kind(assignee)
+    if kind == "User":
+        return entity_id(assignee)
+    if kind in {"MachineUser", "System"}:
         return None
     # Webhook User includes email; MachineUser and System do not.
     if "email" not in assignee:
@@ -91,13 +112,23 @@ def assignee_machine_user_id(body: dict[str, Any]) -> str | None:
     assignee = _thread_assignee(body)
     if assignee is None:
         return None
-    # ThreadAssignee is User | MachineUser | System ({id} only).
-    # Users have email; System is id-only. Machine users have profile fields.
+    kind = _assignee_kind(assignee)
+    if kind == "MachineUser":
+        return entity_id(assignee)
+    if kind in {"User", "System"}:
+        return None
+    # Plain webhook ThreadAssignee: user (has email), machineUser (profile
+    # fields, no email), or System ({id} only). Prefer type/__typename above.
     if "email" in assignee:
         return None
-    if "fullName" not in assignee and "publicName" not in assignee:
-        return None
-    return entity_id(assignee)
+    if "fullName" in assignee or "publicName" in assignee:
+        return entity_id(assignee)
+    assignee_id = entity_id(assignee)
+    # Plain machine-user ids are prefixed ``mu_``; System assignees are id-only
+    # without that prefix in practice.
+    if assignee_id and assignee_id.startswith("mu_"):
+        return assignee_id
+    return None
 
 
 def timeline_entry_refs(body: dict[str, Any]) -> tuple[str | None, str | None]:

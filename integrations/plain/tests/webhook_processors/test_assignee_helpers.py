@@ -21,9 +21,19 @@ def test_assignee_user_id_requires_email() -> None:
         is None
     )
     assert assignee_user_id({"thread": {"assignee": {"id": "sys_1"}}}) is None
+    assert (
+        assignee_user_id({"thread": {"assignee": {"__typename": "User", "id": "us_2"}}})
+        == "us_2"
+    )
+    assert (
+        assignee_user_id(
+            {"thread": {"assignee": {"__typename": "MachineUser", "id": "mu_1"}}}
+        )
+        is None
+    )
 
 
-def test_assignee_machine_user_id_requires_profile_fields() -> None:
+def test_assignee_machine_user_id_detects_typed_and_shaped_payloads() -> None:
     assert (
         assignee_machine_user_id(
             {"thread": {"assignee": {"id": "mu_1", "fullName": "Bot"}}}
@@ -36,8 +46,37 @@ def test_assignee_machine_user_id_requires_profile_fields() -> None:
         )
         == "mu_1"
     )
-    # System assignees are id-only; must not be treated as machine users.
+    assert (
+        assignee_machine_user_id(
+            {"thread": {"assignee": {"__typename": "MachineUser", "id": "mu_typed"}}}
+        )
+        == "mu_typed"
+    )
+    assert (
+        assignee_machine_user_id(
+            {"thread": {"assignee": {"type": "MachineUser", "id": "mu_typed2"}}}
+        )
+        == "mu_typed2"
+    )
+    assert (
+        assignee_machine_user_id(
+            {"thread": {"assignee": {"type": "API_USER", "id": "mu_api"}}}
+        )
+        == "mu_api"
+    )
+    # Plain machine-user ids are mu_* even when the payload is id-only.
+    assert (
+        assignee_machine_user_id({"thread": {"assignee": {"id": "mu_only"}}})
+        == "mu_only"
+    )
+    # System assignees are id-only without the mu_ prefix.
     assert assignee_machine_user_id({"thread": {"assignee": {"id": "sys_1"}}}) is None
+    assert (
+        assignee_machine_user_id(
+            {"thread": {"assignee": {"__typename": "System", "id": "sys_1"}}}
+        )
+        is None
+    )
     assert (
         assignee_machine_user_id(
             {

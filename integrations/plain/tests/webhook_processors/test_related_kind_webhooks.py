@@ -134,7 +134,16 @@ async def test_user_from_assignment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_machine_user_from_assignment() -> None:
+@pytest.mark.parametrize(
+    "assignee",
+    [
+        {"id": "mu_1", "fullName": "Support Bot"},
+        {"__typename": "MachineUser", "id": "mu_1"},
+        {"type": "MachineUser", "id": "mu_1"},
+        {"id": "mu_1"},
+    ],
+)
+async def test_machine_user_from_assignment(assignee: dict[str, str]) -> None:
     processor = MachineUserWebhookProcessor(
         event=_event(
             {
@@ -142,10 +151,7 @@ async def test_machine_user_from_assignment() -> None:
                 "payload": {
                     "thread": {
                         "id": "th_1",
-                        "assignee": {
-                            "id": "mu_1",
-                            "fullName": "Support Bot",
-                        },
+                        "assignee": assignee,
                     }
                 },
             }
