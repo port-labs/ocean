@@ -43,6 +43,9 @@ async def test_simulate_principal_policy_returns_decisions() -> None:
     session._iam.simulate_principal_policy.assert_awaited()
     kwargs = session._iam.simulate_principal_policy.await_args.kwargs
     assert kwargs["ContextEntries"][0]["ContextKeyValues"] == ["eu-west-1"]
+    session._iam.get_context_keys_for_principal_policy.assert_awaited_once_with(
+        PolicySourceArn="arn:aws:iam::111122223333:role/PortOceanReadRole",
+    )
 
 
 @pytest.mark.asyncio

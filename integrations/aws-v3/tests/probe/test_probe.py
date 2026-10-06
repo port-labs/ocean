@@ -180,16 +180,22 @@ async def test_probe_marks_missing_simulate_iam_as_unknown(
         patch(
             "aws.probe.probe.get_allowed_regions",
             new_callable=AsyncMock,
-            return_value=["us-east-1"],
-        ),
+            return_value=["us-east-1", "eu-west-1"],
+        ) as get_allowed_regions,
     ):
         # Act
         await AwsPermissionProbe(probe_context).run()
 
     # Assert
     assert probe_context.status is ProbeStatus.IN_PROGRESS
+    assert len(probe_context.checks) == 1
     assert probe_context.checks[0].status is ProbeCheckStatus.UNKNOWN
     assert probe_context.checks[0].message == MISSING_SIMULATE_PERMISSIONS_MESSAGE
+    assert probe_context.checks[0].scopes == {
+        "account": "111122223333",
+        "region": "*",
+    }
+    get_allowed_regions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -278,3 +284,60 @@ async def test_probe_unmapped_kind_is_unknown(probe_context: ProbeContext) -> No
     # Assert
     assert probe_context.checks[0].status is ProbeCheckStatus.UNKNOWN
     assert "No permission mapping" in (probe_context.checks[0].message or "")
+
+
+@pytest.mark.asyncio
+async def test_probe_fails_kinds_for_accounts_that_cannot_be_assumed(
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    probe_context.available_kinds = ["AWS::EC2::Instance", "AWS::S3::Bucket"]
+    session = make_session(account_id="111122223333")
+    assume_error = (
+        "Failed to assume role: An error occurred (AccessDenied) when calling the "
+        "AssumeRole operation: User is not authorized to perform: sts:AssumeRole "
+        "on resource: arn:aws:iam::449957914654:role/AWSIntegrationRole"
+    )
+
+    with (
+        patch(
+            "aws.probe.probe.initialize_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.clear_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.get_all_account_sessions",
+            return_value=_accounts(({"Id": "111122223333", "Name": "A"}, session)),
+        ),
+        patch(
+            "aws.probe.probe.get_inaccessible_accounts",
+            return_value={"449957914654": assume_error},
+        ),
+        patch(
+            "aws.probe.probe.get_allowed_regions",
+            new_callable=AsyncMock,
+            return_value=["us-east-1"],
+        ),
+    ):
+        # Act
+        await AwsPermissionProbe(probe_context).run()
+
+    # Assert
+    inaccessible = [
+        check
+        for check in probe_context.checks
+        if check.scopes.get("account") == "449957914654"
+    ]
+    assert {check.kind for check in inaccessible} == {
+        "AWS::EC2::Instance",
+        "AWS::S3::Bucket",
+    }
+    assert all(check.status is ProbeCheckStatus.FAILURE for check in inaccessible)
+    assert all(check.message == assume_error for check in inaccessible)
+    assert all(
+        check.scopes == {"account": "449957914654", "region": "*"}
+        for check in inaccessible
+    )

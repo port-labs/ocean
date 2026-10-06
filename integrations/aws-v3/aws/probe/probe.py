@@ -8,6 +8,7 @@ from aws.auth.session_factory import (
     AccountInfo,
     clear_aws_account_sessions,
     get_all_account_sessions,
+    get_inaccessible_accounts,
     initialize_aws_account_sessions,
 )
 from aws.auth.utils import AWSSessionError
@@ -20,6 +21,7 @@ from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
 
 _MAX_CONCURRENT_ACCOUNTS = 5
 _MAX_CONCURRENT_REGIONS = 10
+_UNREACHABLE_REGION = "*"
 
 
 class AwsPermissionProbe:
@@ -56,18 +58,7 @@ class AwsPermissionProbe:
             await self.context.fail("No AWS accounts were accessible.")
             return
 
-        account_scopes = await self._collect_account_scopes(accounts)
-        if account_scopes is None:
-            return
-
-        scopes, sessions_by_account, policy_arns = account_scopes
-
-        checks = await self.context.add_scopes(*scopes)
-        checks_by_scope: dict[tuple[str, str], list[ProbeCheck]] = defaultdict(list)
-        for check in checks:
-            account_id = str(check.scopes["account"])
-            region = str(check.scopes["region"])
-            checks_by_scope[(account_id, region)].append(check)
+        await self._fail_inaccessible_accounts()
 
         action_names = sorted(
             {
@@ -77,8 +68,33 @@ class AwsPermissionProbe:
             }
         )
 
+        account_scopes = await self._collect_account_scopes(accounts, action_names)
+        if account_scopes is None:
+            return
+
+        scopes, sessions_by_account, policy_arns, collapsed_outcomes = account_scopes
+
+        checks = await self.context.add_scopes(*scopes)
+        checks_by_scope: dict[tuple[str, str], list[ProbeCheck]] = defaultdict(list)
+        for check in checks:
+            account_id = str(check.scopes["account"])
+            region = str(check.scopes["region"])
+            checks_by_scope[(account_id, region)].append(check)
+
         async def probe_account(account_id: str, session: AioSession) -> None:
             async with self._account_semaphore:
+                collapsed = collapsed_outcomes.get(account_id)
+                if collapsed is not None:
+                    await self._probe_scope(
+                        session,
+                        _UNREACHABLE_REGION,
+                        policy_arns[account_id],
+                        action_names,
+                        checks_by_scope[(account_id, _UNREACHABLE_REGION)],
+                        collapsed,
+                    )
+                    return
+
                 region_tasks = [
                     self._probe_scope(
                         session,
@@ -102,10 +118,20 @@ class AwsPermissionProbe:
     async def _collect_account_scopes(
         self,
         accounts: list[tuple[AccountInfo, AioSession]],
-    ) -> tuple[list[dict[str, str | int]], dict[str, AioSession], dict[str, str]] | None:
+        action_names: list[str],
+    ) -> (
+        tuple[
+            list[dict[str, str | int]],
+            dict[str, AioSession],
+            dict[str, str],
+            dict[str, SimulateOutcome],
+        ]
+        | None
+    ):
         scopes: list[dict[str, str | int]] = []
         sessions_by_account: dict[str, AioSession] = {}
         policy_arns: dict[str, str] = {}
+        collapsed_outcomes: dict[str, SimulateOutcome] = {}
 
         for account, session in accounts:
             account_id = account["Id"]
@@ -123,6 +149,20 @@ class AwsPermissionProbe:
                 return None
 
             sessions_by_account[account_id] = session
+            if action_names:
+                outcome = await simulate_principal_policy(
+                    session,
+                    policy_arns[account_id],
+                    action_names,
+                    _UNREACHABLE_REGION,
+                )
+                if outcome.missing_simulate_permission:
+                    collapsed_outcomes[account_id] = outcome
+                    scopes.append(
+                        {"account": account_id, "region": _UNREACHABLE_REGION}
+                    )
+                    continue
+
             regions = await get_allowed_regions(
                 session, AWSResourceSelector(query="true")
             )
@@ -134,7 +174,23 @@ class AwsPermissionProbe:
             for region in regions:
                 scopes.append({"account": account_id, "region": region})
 
-        return scopes, sessions_by_account, policy_arns
+        return scopes, sessions_by_account, policy_arns, collapsed_outcomes
+
+    async def _fail_inaccessible_accounts(self) -> None:
+        inaccessible = get_inaccessible_accounts()
+        if not inaccessible:
+            return
+
+        checks = await self.context.add_scopes(
+            *(
+                {"account": account_id, "region": _UNREACHABLE_REGION}
+                for account_id in inaccessible
+            )
+        )
+        for check in checks:
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = inaccessible[str(check.scopes["account"])]
+        await self.context.update_progress()
 
     async def _probe_scope(
         self,
