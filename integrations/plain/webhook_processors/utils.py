@@ -49,18 +49,22 @@ def customer_id_from_payload(
 
 
 def discussion_id_from_payload(body: dict[str, Any]) -> str | None:
-    return entity_id(body.get("discussion"))
+    # Schema events nest ``discussion.id``; some approval payloads use
+    # a top-level ``discussionId`` string instead.
+    return entity_id(body.get("discussion")) or entity_id(body.get("discussionId"))
 
 
 def discussion_thread_id(body: dict[str, Any]) -> str | None:
     discussion = body.get("discussion")
     if isinstance(discussion, dict):
-        return entity_id(discussion.get("threadId"))
-    return None
+        nested = entity_id(discussion.get("threadId"))
+        if nested:
+            return nested
+    return entity_id(body.get("threadId"))
 
 
 def discussion_message_id(body: dict[str, Any]) -> str | None:
-    return entity_id(body.get("message"))
+    return entity_id(body.get("message")) or entity_id(body.get("messageId"))
 
 
 def tenant_id_from_payload(body: dict[str, Any]) -> str | None:

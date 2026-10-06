@@ -310,6 +310,40 @@ async def test_thread_message_ignores_entries_without_text() -> None:
 
 
 @pytest.mark.asyncio
+async def test_discussion_tool_call_approval_accepts_top_level_discussion_id() -> None:
+    processor = DiscussionWebhookProcessor(
+        event=_event(
+            {
+                "type": "discussion.tool_call_approval_resolved",
+                "payload": {
+                    "discussionId": "disc_1",
+                    "approvalId": "apr_1",
+                    "status": "APPROVED",
+                },
+            }
+        )
+    )
+    with patch(
+        "webhook_processors.discussion_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_discussion = AsyncMock(
+            return_value={
+                "id": "disc_1",
+                "threadId": "th_1",
+                "agentStatus": "IDLE",
+            }
+        )
+        result = await processor.handle_event(
+            processor.event.payload,
+            _resource_config(ObjectKind.DISCUSSION),
+        )
+
+    assert result.updated_raw_results[0]["id"] == "disc_1"
+    client.get_discussion.assert_awaited_once_with("disc_1")
+
+
+@pytest.mark.asyncio
 async def test_discussion_and_message_webhooks() -> None:
     discussion_processor = DiscussionWebhookProcessor(
         event=_event(
