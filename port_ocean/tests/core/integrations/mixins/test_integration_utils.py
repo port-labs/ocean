@@ -1162,21 +1162,6 @@ class TestProcessingModes:
         mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_is_live_event_payload_logging_disabled_by_default(self) -> None:
-        with patch(
-            "port_ocean.core.integrations.mixins.utils.ocean"
-        ) as mock_ocean_context:
-            mock_ocean_context.config.live_events.payload_logging_enabled = False
-            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
-                return_value=[]
-            )
-
-            result = await is_live_event_payload_logging_enabled()
-
-        assert result is False
-        mock_ocean_context.port_client.get_organization_feature_flags.assert_not_called()
-
-    @pytest.mark.asyncio
     async def test_is_redis_live_events_enabled_when_org_not_blocked(self) -> None:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"

@@ -173,7 +173,7 @@ def build_live_event_timestamp_log_fields(
     headers: Mapping[str, str],
     *,
     trace_id: str,
-    payload_logging_enabled: bool,
+    log_full_payload: bool,
     webhook_path: str | None = None,
     extra_identifiers: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -186,7 +186,7 @@ def build_live_event_timestamp_log_fields(
     if webhook_path is not None:
         fields["webhook_path"] = webhook_path
 
-    if payload_logging_enabled:
+    if log_full_payload:
         fields["headers"] = sanitize_headers_for_logging(headers)
         fields.update(build_added_to_queue_payload_log_fields(payload))
         if extra_identifiers:

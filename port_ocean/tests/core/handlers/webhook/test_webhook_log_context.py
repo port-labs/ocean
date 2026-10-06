@@ -88,7 +88,7 @@ def test_build_live_event_timestamp_log_fields_finish_has_no_payload() -> None:
         {"secret": "data"},
         {"authorization": "secret"},
         trace_id="trace",
-        payload_logging_enabled=True,
+        log_full_payload=True,
         webhook_path="/webhook",
     )
     assert fields == {"trace_id": "trace"}

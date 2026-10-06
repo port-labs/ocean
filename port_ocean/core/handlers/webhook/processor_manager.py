@@ -140,10 +140,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
         ] = []
         try:
-            payload_logging_enabled = await is_live_event_payload_logging_enabled()
-            event.configure_live_event_logging(
-                payload_logging_enabled, webhook_path=path
-            )
+            event.webhook_path = path
+            event.log_full_payload = await is_live_event_payload_logging_enabled()
             with logger.contextualize(
                 worker=worker_id,
                 webhook_path=path,
@@ -414,7 +412,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 webhook_event = await WebhookEvent.from_request(request)
                 # Never call Port on the HTTP ingest path; full payload logging is
                 # resolved in the worker when processing starts.
-                webhook_event.configure_live_event_logging(False, webhook_path=path)
+                webhook_event.webhook_path = path
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
                 if ocean.config.events_debug_logging:
                     self._log_webhook_event(webhook_event)

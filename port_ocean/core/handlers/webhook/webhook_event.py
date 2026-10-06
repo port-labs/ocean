@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import Request
 from loguru import logger
 
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_log_context import (
     build_live_event_timestamp_log_fields,
@@ -90,9 +91,9 @@ class WebhookEvent(LiveEvent):
         self._original_request = original_request
         self.group_id = group_id
         self.created_at = created_at or datetime.now(timezone.utc)
-        self._payload_logging_enabled = False
-        self._webhook_path: str | None = None
-        self._extra_log_identifiers: dict[str, Any] | None = None
+        self.webhook_path: str | None = None
+        self.log_full_payload: bool = False
+        self.live_event_log_identifiers: dict[str, Any] | None = None
 
     @classmethod
     async def from_request(cls, request: Request) -> "WebhookEvent":
@@ -129,41 +130,37 @@ class WebhookEvent(LiveEvent):
             original_request=self._original_request,
             created_at=self.created_at,
         )
-        cloned._payload_logging_enabled = self._payload_logging_enabled
-        cloned._webhook_path = self._webhook_path
-        cloned._extra_log_identifiers = (
-            dict(self._extra_log_identifiers) if self._extra_log_identifiers else None
+        cloned.webhook_path = self.webhook_path
+        cloned.log_full_payload = self.log_full_payload
+        cloned.live_event_log_identifiers = (
+            dict(self.live_event_log_identifiers)
+            if self.live_event_log_identifiers
+            else None
         )
         return cloned
-
-    def configure_live_event_logging(
-        self,
-        payload_logging_enabled: bool,
-        webhook_path: str | None = None,
-    ) -> None:
-        self._payload_logging_enabled = payload_logging_enabled
-        if webhook_path is not None:
-            self._webhook_path = webhook_path
 
     def merge_live_event_log_identifiers(self, identifiers: dict[str, Any]) -> None:
         if not identifiers:
             return
-        if self._extra_log_identifiers is None:
-            self._extra_log_identifiers = {}
-        self._extra_log_identifiers.update(identifiers)
+        if self.live_event_log_identifiers is None:
+            self.live_event_log_identifiers = {}
+        self.live_event_log_identifiers.update(identifiers)
 
     def set_timestamp(
         self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
+        log_full_payload = (
+            ocean.config.live_events.payload_logging_enabled and self.log_full_payload
+        )
         log_fields = build_live_event_timestamp_log_fields(
             timestamp.value,
             self.payload,
             self.headers,
             trace_id=self.trace_id,
-            payload_logging_enabled=self._payload_logging_enabled,
-            webhook_path=self._webhook_path,
-            extra_identifiers=self._extra_log_identifiers,
+            log_full_payload=log_full_payload,
+            webhook_path=self.webhook_path,
+            extra_identifiers=self.live_event_log_identifiers,
         )
         super().set_timestamp(
             timestamp,
