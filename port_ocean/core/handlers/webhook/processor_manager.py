@@ -412,10 +412,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             """Handle incoming webhook requests for a specific path."""
             try:
                 webhook_event = await WebhookEvent.from_request(request)
-                payload_logging_enabled = await is_live_event_payload_logging_enabled()
-                webhook_event.configure_live_event_logging(
-                    payload_logging_enabled, webhook_path=path
-                )
+                # Never call Port on the HTTP ingest path; full payload logging is
+                # resolved in the worker when processing starts.
+                webhook_event.configure_live_event_logging(False, webhook_path=path)
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
                 if ocean.config.events_debug_logging:
                     self._log_webhook_event(webhook_event)

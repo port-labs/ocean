@@ -65,3 +65,29 @@ async def test_is_organization_blocked_returns_false_when_field_missing(
     result = await mocked_org_mixin.is_organization_blocked()
 
     assert result is False
+
+
+async def test_get_organization_does_not_cache_failed_responses(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_response = mock_client.get.return_value
+    mock_response.status_code = 503
+    mock_response.is_success = False
+    mock_response.json.return_value = {"error": "unavailable"}
+
+    await mocked_org_mixin.get_organization_feature_flags(
+        should_raise=False, should_log=False
+    )
+    assert mock_client.get.call_count == 1
+
+    _set_organization_response(
+        mocked_org_mixin,
+        {"id": "org-123", "featureFlags": ["aa"], "isBlocked": False},
+    )
+    mock_response.is_success = True
+
+    result = await mocked_org_mixin.get_organization_feature_flags()
+
+    assert result == ["aa"]
+    assert mock_client.get.call_count == 2

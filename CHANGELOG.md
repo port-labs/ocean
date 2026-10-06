@@ -12,7 +12,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
+<<<<<<< HEAD
 - Always restore the previous event context when an event raises, so a failed action run no longer leaves a dead context behind that makes every later run on that worker fail with "Port app config is not set".
+=======
+- Add opt-in live-event payload logging requiring both integration setting `OCEAN__LIVE_EVENTS__PAYLOAD_LOGGING_ENABLED` (default `false`) and organization feature flag `LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED`. When the integration setting is off, Port feature flags are not fetched. Event start logs use compact searchable identifiers by default; finish logs never include payloads or headers.
+>>>>>>> 4f6f89c19 (fix(core): require both gates for live-event payload logging (task_tmhivk))
 
 
 ## 0.53.3 (2026-10-05)
