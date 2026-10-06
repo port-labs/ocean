@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, mock_open, patch
 from port_ocean.ocean import Ocean
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.exceptions.identity_propagation import DuplicateOAuthProviderError
+from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 
 @pytest.fixture
@@ -164,6 +166,49 @@ class TestInitializeAppRoutes:
             for call in mock_ocean.fast_api_app.include_router.call_args_list
         ]
         assert prefixes[-1] == "/my-prefix/v1/oauth-broker"
+
+
+class TestRegisterOAuthProvider:
+    def _provider(self) -> OAuth2Provider:
+        return OAuth2Provider(
+            target="example-integration",
+            authorize_url="https://idp.example.com/oauth/authorize",
+            token_url="https://idp.example.com/oauth/token",
+            client_id="id",
+            client_secret="secret",
+            scopes="read",
+        )
+
+    def test_ignores_registration_when_identity_propagation_disabled(
+        self, mock_ocean: Ocean
+    ) -> None:
+        mock_ocean.config.identity_propagation.enabled = False
+        mock_ocean.oauth_provider = None
+        context = PortOceanContext(mock_ocean)
+
+        context.register_oauth_provider(self._provider())
+
+        assert mock_ocean.oauth_provider is None
+
+    def test_registers_provider_when_identity_propagation_enabled(
+        self, mock_ocean: Ocean
+    ) -> None:
+        mock_ocean.config.identity_propagation.enabled = True
+        mock_ocean.oauth_provider = None
+        context = PortOceanContext(mock_ocean)
+        provider = self._provider()
+
+        context.register_oauth_provider(provider)
+
+        assert mock_ocean.oauth_provider is provider
+
+    def test_rejects_a_second_provider(self, mock_ocean: Ocean) -> None:
+        mock_ocean.config.identity_propagation.enabled = True
+        mock_ocean.oauth_provider = self._provider()
+        context = PortOceanContext(mock_ocean)
+
+        with pytest.raises(DuplicateOAuthProviderError):
+            context.register_oauth_provider(self._provider())
 
 
 # base_url property tests

@@ -4,6 +4,8 @@ MESSAGE_ECHOED_STATUS_LABEL = "Message echoed"
 TRIGGERING_TASK_STATUS_LABEL = "Triggering task"
 TASK_RUNNING_STATUS_LABEL = "Task running"
 
+LINK_URL = "https://img.randme.me/"
+
 TASK_STATUS_LABELS = {
     "success": "Task succeeded",
     "failed": "Task failed",

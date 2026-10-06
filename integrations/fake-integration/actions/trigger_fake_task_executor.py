@@ -3,7 +3,11 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from actions.abstract_fake_executor import AbstractFakeExecutor
-from actions.constants import TASK_RUNNING_STATUS_LABEL, TRIGGERING_TASK_STATUS_LABEL
+from actions.constants import (
+    LINK_URL,
+    TASK_RUNNING_STATUS_LABEL,
+    TRIGGERING_TASK_STATUS_LABEL,
+)
 from actions.exceptions import MissingExecutionPropertyError, TriggerFakeTaskError
 from actions.utils import build_external_id
 from fake_org_data.fake_client import trigger_fake_task
@@ -41,7 +45,7 @@ class TriggerFakeTaskExecutor(AbstractFakeExecutor):
             )
 
         external_id = build_external_id(str(task["id"]))
-        link = task.get("link") or f"/fake-tasks/{task['id']}"
+        link = LINK_URL
         await ocean.port_client.update_run_started(
             run,
             link,
