@@ -7,6 +7,7 @@ from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from pydantic.v1 import BaseModel, ValidationError, validator
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
+from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.exceptions import (
     GitlabSetMergeRequestCommentReactionError,
     MissingExecutionPropertyError,
@@ -77,16 +78,20 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
             run.execution_properties
         )
 
-        if inputs.removeReaction:
-            message = await self._remove_reaction(run, inputs)
-            award_id = None
-        else:
-            message, award_id = await self._add_reaction(run, inputs)
+        async with self._api_client_for_run(run) as api_client:
+            if inputs.removeReaction:
+                message = await self._remove_reaction(run, inputs, api_client)
+                award_id = None
+            else:
+                message, award_id = await self._add_reaction(run, inputs, api_client)
 
         await self._report_success(run, inputs, message, award_id)
 
     async def _add_reaction(
-        self, run: IntegrationRun, inputs: SetMergeRequestCommentReactionInput
+        self,
+        run: IntegrationRun,
+        inputs: SetMergeRequestCommentReactionInput,
+        api_client: GitLabClient,
     ) -> tuple[str, str]:
         await ocean.port_client.post_run_log(
             run,
@@ -96,7 +101,7 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
         try:
-            award = await self.client.award_merge_request_note_emoji(
+            award = await api_client.award_merge_request_note_emoji(
                 inputs.project, inputs.mergeRequestIid, inputs.noteId, inputs.name
             )
         except httpx.HTTPStatusError as error:
@@ -119,7 +124,10 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
         return message, str(award_id)
 
     async def _remove_reaction(
-        self, run: IntegrationRun, inputs: SetMergeRequestCommentReactionInput
+        self,
+        run: IntegrationRun,
+        inputs: SetMergeRequestCommentReactionInput,
+        api_client: GitLabClient,
     ) -> str:
         await ocean.port_client.post_run_log(
             run,
@@ -129,8 +137,8 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
         try:
-            award_id = await self._find_award_id(inputs)
-            await self.client.revoke_merge_request_note_award_emoji(
+            award_id = await self._find_award_id(inputs, api_client)
+            await api_client.revoke_merge_request_note_award_emoji(
                 inputs.project, inputs.mergeRequestIid, inputs.noteId, award_id
             )
         except httpx.HTTPStatusError as error:
@@ -144,10 +152,12 @@ class SetMergeRequestCommentReactionExecutor(AbstractGitlabExecutor):
             f"{inputs.noteId})"
         )
 
-    async def _find_award_id(self, inputs: SetMergeRequestCommentReactionInput) -> int:
+    async def _find_award_id(
+        self, inputs: SetMergeRequestCommentReactionInput, api_client: GitLabClient
+    ) -> int:
         # GitLab revokes a reaction by award ID, but the action receives the emoji
         # name, so we look up the award whose name matches to get its ID.
-        awards = await self.client.list_merge_request_note_award_emojis(
+        awards = await api_client.list_merge_request_note_award_emojis(
             inputs.project, inputs.mergeRequestIid, inputs.noteId
         )
         if awards is None:

@@ -4,6 +4,7 @@ from typing import Any, Callable, cast
 from loguru import logger
 
 from github.actions.registry import register_actions_executors
+from github.oauth.registry import register_oauth_provider
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -1467,3 +1468,4 @@ register_live_events_webhooks()
 
 # Register actions executors
 register_actions_executors()
+register_oauth_provider()

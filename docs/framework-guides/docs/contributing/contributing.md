@@ -29,6 +29,10 @@ Add a release intent file (changeset) alongside your code changes:
 
 - Integration: `integrations/<name>/.ocean-release/<unique-name>.yaml`
 - Ocean core: `.ocean-release/core/<unique-name>.yaml`
+- Combined core + integration PR: `.ocean-release/core/<unique-name>.yaml` is enough for CI when
+  the integration only changes because of core. The integration still bumps later when ocean is
+  applied to all integrations. If the PR also has integration-specific work, add
+  `integrations/<name>/.ocean-release/` for that work only and do not repeat the core changelog.
 
 ```yaml
 bump: patch

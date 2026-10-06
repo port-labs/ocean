@@ -49,3 +49,6 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
                 )
             )
             return self.cached_installation_token
+
+    async def get_authenticated_actor(self) -> str:
+        return await self.app_auth.get_authenticated_actor()
