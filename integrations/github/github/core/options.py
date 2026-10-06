@@ -29,6 +29,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
     updated_since: NotRequired[Optional[datetime]]
+    cursor_field: NotRequired[str]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):

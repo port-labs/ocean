@@ -164,7 +164,9 @@ async def test_resync_folders_skips_inaccessible_organizations(
                 ]
 
     assert batches == [[{"id": "1"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_folder])
+    pattern_builder.build.assert_awaited_once_with(
+        [allowed_folder], updated_since=None, cursor_field="pushed_at"
+    )
 
 
 @pytest.mark.asyncio
@@ -214,7 +216,9 @@ async def test_resync_files_skips_inaccessible_organizations(
                 batches = [batch async for batch in github_main.resync_files("file")]
 
     assert batches == [[{"path": "a.yml"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_file], updated_since=None)
+    pattern_builder.build.assert_awaited_once_with(
+        [allowed_file], updated_since=None, cursor_field="pushed_at"
+    )
 
 
 @pytest.mark.asyncio

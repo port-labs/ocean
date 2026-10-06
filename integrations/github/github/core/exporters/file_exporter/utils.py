@@ -176,19 +176,27 @@ class FilePatternMappingBuilder:
         self.repo_type = repo_type
 
     async def build(
-        self, files: List["GithubFilePattern"], updated_since: Optional[datetime] = None
+        self,
+        files: List["GithubFilePattern"],
+        updated_since: Optional[datetime] = None,
+        cursor_field: str = "updated_at",
     ) -> List[ListFileSearchOptions]:
         """Build file search options from patterns.
         Supports both incremental and full sync modes.
         If updated_since is provided (incremental), only repos modified since timestamp are included.
         If updated_since is None (full sync), all repos are included.
+
+        Args:
+            files: File patterns to match against repositories
+            updated_since: Optional cursor for incremental sync
+            cursor_field: Which field to use for filtering ("updated_at" or "pushed_at")
         """
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         repo_selector = CompositeRepositorySelector(
-            self.repo_type, updated_since=updated_since
+            self.repo_type, updated_since=updated_since, cursor_field=cursor_field
         )
 
         for file_sel in files:
