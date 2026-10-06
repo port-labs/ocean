@@ -373,3 +373,54 @@ async def test_polling_marks_resync_failed_when_background_task_fails(
     assert resync_state_updater.update_after_resync.call_args_list[-1].args[0] == (
         IntegrationStateStatus.Failed
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("resync_on_start", "expected_resync_calls"),
+    [(True, 1), (False, 0)],
+)
+async def test_polling_resyncs_on_start_when_integration_state_watermark_is_empty(
+    monkeypatch: pytest.MonkeyPatch,
+    resync_on_start: bool,
+    expected_resync_calls: int,
+) -> None:
+    """
+    A fresh process stores "" in last_integration_state_updated_at. With no
+    pending resync request, the first poll must follow resync_on_start, and a
+    later poll must not resync again only because that flag is still true.
+    """
+    port_client = MagicMock()
+    port_client.get_integration_resync_request = AsyncMock(return_value={})
+
+    app = SimpleNamespace(
+        port_client=port_client,
+        resync_state_updater=SimpleNamespace(
+            last_integration_state_updated_at="",
+            last_resync_request_updated_at=None,
+        ),
+    )
+    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
+    monkeypatch.setattr(
+        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
+    )
+
+    listener = PollingEventListener(
+        events={"on_resync": AsyncMock(return_value=True)},
+        event_listener_config=PollingEventListenerSettings(
+            type=EventListenerType.POLLING,
+            resync_on_start=resync_on_start,
+        ),
+    )
+    resync_mock = AsyncMock()
+    monkeypatch.setattr(listener, "_resync", resync_mock)
+
+    await listener._start()
+    await sleep(0)
+
+    assert resync_mock.call_count == expected_resync_calls
+    if resync_on_start:
+        assert app.resync_state_updater.last_integration_state_updated_at
+    else:
+        assert app.resync_state_updater.last_integration_state_updated_at == ""

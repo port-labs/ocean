@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 from asyncio import Task
 from traceback import format_exception
 from typing import Any, Literal
@@ -53,11 +54,18 @@ class PollingEventListener(BaseEventListener):
         self._current_resync_task: Task[Any] | None = None
 
     def should_resync(self) -> bool:
+        """
+        Honor ``resync_on_start`` when this process has no integration-state watermark.
+
+        ``ResyncStateUpdater`` initializes that watermark to an empty string, not
+        ``None``. Both count as uninitialized. A timestamp recorded once the
+        startup resync begins must not cause later polls to resync again.
+        """
         _last_updated_at = (
             ocean.app.resync_state_updater.last_integration_state_updated_at
         )
 
-        if _last_updated_at is None:
+        if not _last_updated_at:
             return self.event_listener_config.resync_on_start
 
         return False
@@ -180,12 +188,18 @@ class PollingEventListener(BaseEventListener):
         else:
             logger.info("First polling iteration, resyncing")
 
-        ocean.app.resync_state_updater.last_integration_state_updated_at = (
-            resync_request_updated_at
-        )
         if resync_request_updated_at:
+            ocean.app.resync_state_updater.last_integration_state_updated_at = (
+                resync_request_updated_at
+            )
             ocean.app.resync_state_updater.last_resync_request_updated_at = (
                 resync_request_updated_at
+            )
+        else:
+            # should_resync() treats an empty watermark as "not started". Writing
+            # "" back here would make every later poll resync again.
+            ocean.app.resync_state_updater.last_integration_state_updated_at = (
+                datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
             )
 
         running_task = asyncio.create_task(self._run_resync_task())
