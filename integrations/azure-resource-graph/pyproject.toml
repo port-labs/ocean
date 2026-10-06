@@ -11,7 +11,7 @@ azure-identity = "^1.25.0"
 azure-mgmt-subscription = "^3.1.1"
 azure-mgmt-resource = "^23.3.0"
 azure-mgmt-resourcegraph = "^8.0.0"
-aiohttp = "^3.13.4"
+aiohttp = "^3.14.3"
 azure-core = "^1.39.0"
 
 [tool.poetry.group.dev.dependencies]
