@@ -29,12 +29,10 @@ class SimulateOutcome:
 async def _get_context_entries(
     iam: IAMClient,
     policy_source_arn: str,
-    action_names: list[str],
     region: str,
 ) -> list[ContextEntryTypeDef]:
     context_keys_response = await iam.get_context_keys_for_principal_policy(
         PolicySourceArn=policy_source_arn,
-        ActionNames=action_names,  # type: ignore[call-arg]
     )
 
     return [
@@ -68,7 +66,7 @@ async def simulate_principal_policy(
             }
 
             context_entries = await _get_context_entries(
-                iam, policy_source_arn, action_names, region
+                iam, policy_source_arn, region
             )
             if context_entries:
                 kwargs["ContextEntries"] = context_entries
