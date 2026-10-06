@@ -3,7 +3,15 @@ from typing import Sequence, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from httpx import HTTPStatusError
 
+from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.enrichments.included_files.enricher import (
+    IncludedFilesEnricher,
+)
+from bitbucket_cloud.enrichments.included_files.strategies import (
+    FileIncludedFilesStrategy,
+)
 from bitbucket_cloud.enrichments.included_files.fetcher import (
     IncludedFileFetchKey,
     IncludedFilesFetcher,
@@ -231,3 +239,64 @@ class TestFileIncludedFilesStrategy:
             resolve_included_file_path("docs/service.md", base_path=ctx.base_path)
             == "docs/service.md"
         )
+
+
+class TestIncludedFilesAgainstTheClientContract:
+    """`__includedFiles` holds null for a file Bitbucket does not have, not "".
+
+    Driven through the real client's 404 path, so the assertion is about the contract
+    get_repository_files hands back rather than about a stubbed return value.
+    """
+
+    @staticmethod
+    def _client_that_404s() -> BitbucketClient:
+        client = BitbucketClient(
+            workspace="test_workspace",
+            host="https://api.bitbucket.org/2.0",
+            username="test_user",
+            app_password="test_password",
+        )
+        not_found = MagicMock()
+        not_found.raise_for_status.side_effect = HTTPStatusError(
+            "404", request=MagicMock(), response=MagicMock(status_code=404)
+        )
+        client.client = MagicMock()
+        client.client.request = AsyncMock(return_value=not_found)
+        client.client.headers = {}
+        return client
+
+    @pytest.mark.asyncio
+    async def test_fetcher_returns_none_for_a_missing_file(self) -> None:
+        fetcher = IncludedFilesFetcher(client=self._client_that_404s())
+        key = IncludedFileFetchKey(
+            workspace="test_workspace",
+            repo_slug="repo",
+            repo_name="Repo",
+            branch="main",
+            file_path="gone.md",
+        )
+
+        assert await fetcher.get(key) is None
+
+    @pytest.mark.asyncio
+    async def test_enricher_attaches_null_for_a_missing_file(self) -> None:
+        enricher = IncludedFilesEnricher(
+            client=self._client_that_404s(),
+            strategy=FileIncludedFilesStrategy(included_files=["gone.md"]),
+        )
+        entities = [
+            {
+                "content": "",
+                "metadata": {"path": "port.yml"},
+                "repo": {
+                    "slug": "repo",
+                    "name": "Repo",
+                    "mainbranch": {"name": "main"},
+                },
+                "branch": "main",
+            }
+        ]
+
+        enriched = await enricher.enrich_batch(entities)
+
+        assert enriched[0]["__includedFiles"] == {"gone.md": None}

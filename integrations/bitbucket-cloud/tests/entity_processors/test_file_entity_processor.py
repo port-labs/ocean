@@ -1,5 +1,7 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
+from httpx import HTTPStatusError
+from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
 
 MOCK_PORT_OCEAN_CONTEXT = AsyncMock()
@@ -115,3 +117,39 @@ async def test_file_entity_processor_search_missing_folder_commit() -> None:
         mock_client.get_repository_files.assert_called_once_with(
             "test-repo", "main", "src/config.json"
         )
+
+
+@pytest.mark.asyncio
+async def test_file_entity_processor_search_returns_none_on_missing_file() -> None:
+    """A file:// property stays null when Bitbucket does not have the file.
+
+    Driven through the real client's 404 path rather than a stubbed return value,
+    because the contract under test is the one get_repository_files hands back.
+    """
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        username="test_user",
+        app_password="test_password",
+    )
+    not_found = MagicMock()
+    not_found.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=MagicMock(), response=MagicMock(status_code=404)
+    )
+
+    with (
+        patch.object(
+            client.client, "request", new_callable=AsyncMock, return_value=not_found
+        ),
+        patch(
+            "bitbucket_cloud.entity_processors.file_entity_processor.init_client",
+            return_value=client,
+        ),
+    ):
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
+        result = await processor._search(
+            {"repo": {"name": "test-repo", "mainbranch": {"name": "main"}}},
+            "file://gone.yml",
+        )
+
+    assert result is None

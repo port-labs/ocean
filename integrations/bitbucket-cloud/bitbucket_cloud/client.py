@@ -1,5 +1,6 @@
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPError, HTTPStatusError, Response
+from httpx import HTTPError, HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
@@ -102,7 +103,11 @@ class BitbucketClient:
             response.raise_for_status()
             return response if return_full_response else response.json()
         except HTTPStatusError as e:
-            if e.response.status_code == 404 and not raise_on_missing:
+            if e.response.status_code == HTTPStatus.NOT_FOUND:
+                if raise_on_missing:
+                    # The caller asked to handle this case and logs it with the
+                    # context that makes it readable.
+                    raise
                 logger.warning(
                     f"Requested resource not found: {url}; message: {str(e)}"
                 )
@@ -162,6 +167,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        raise_on_missing: bool = False,
     ) -> Any:
         """Send file-specific API request with dedicated file rate limiter."""
         if hasattr(self.auth, "file_token_manager") and self.auth.file_token_manager:
@@ -173,6 +179,7 @@ class BitbucketClient:
                     params=params,
                     method=method,
                     return_full_response=return_full_response,
+                    raise_on_missing=raise_on_missing,
                 )
         else:
             # No file token manager means single token or basic auth - just make the request
@@ -181,6 +188,7 @@ class BitbucketClient:
                 params=params,
                 method=method,
                 return_full_response=return_full_response,
+                raise_on_missing=raise_on_missing,
             )
         return response
 
@@ -289,15 +297,23 @@ class BitbucketClient:
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
 
-    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
-        """Get the content of a file."""
-        response = await self._send_file_api_request_with_rate_limiter(
-            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
-            method="GET",
-            return_full_response=True,
-        )
-        if not isinstance(response, Response):
-            logger.warning(f"File not found: {repo}/{branch}/{path}")
-            return ""
+    async def get_repository_files(
+        self, repo: str, branch: str, path: str
+    ) -> Optional[str]:
+        """Get the content of a file, or None when Bitbucket does not have it."""
+        try:
+            response = await self._send_file_api_request_with_rate_limiter(
+                f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+                method="GET",
+                return_full_response=True,
+                raise_on_missing=True,
+            )
+        except HTTPStatusError as error:
+            if error.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"File {path} not found in repository {repo} at ref {branch}"
+            )
+            return None
         logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
         return response.text

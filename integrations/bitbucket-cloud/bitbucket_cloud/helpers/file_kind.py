@@ -3,7 +3,7 @@ import fnmatch
 from http import HTTPStatus
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Any, AsyncGenerator
+from typing import Dict, List, Any, AsyncGenerator, Optional
 from httpx import HTTPStatusError
 from loguru import logger
 from integration import BitbucketFilePattern
@@ -23,15 +23,44 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 )
 
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
-MAX_CONCURRENT_REPOSITORIES = 10
-MAX_CONCURRENT_FILE_FETCHES = 20
-FILE_BATCH_SIZE = 100
+COMMIT_FILE_TYPE = "commit_file"
 SKIPPED_REPOSITORY_EXAMPLES = 5
 
-MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
+# Bitbucket Cloud publishes hourly quotas and no concurrency figure at all
+# (support.atlassian.com/bitbucket-cloud/docs/api-request-limits, read 2026-10-06:
+# raw file requests 5,000/hour, repository data access 1,000-10,000/hour, "a one-hour
+# rolling window", nothing on simultaneous connections). The quotas are already
+# enforced by RollingWindowLimiter from BitbucketRateLimiterConfig (980) and
+# BitbucketFileRateLimiterConfig (4,980) in helpers/utils.py, so these two bounds exist
+# to cap in-flight requests and resident file content, not to stay inside a quota.
+# 10 repositories matches the Ocean baseline for the same work (github/main.py:151
+# MAX_CONCURRENT_REPOS = 10); the 20 file fetches are shared across every repository
+# being walked, so a wide workspace cannot multiply the per-repository fan-out.
+MAX_CONCURRENT_REPOSITORIES = 10
+MAX_CONCURRENT_FILE_FETCHES = 20
 
-# The Source API returns only the listing root's immediate entries unless max_depth is set.
+# Entities per yield; each yield is one Port upsert and one jq process-pool spin-up.
+# Chosen to match client.PAGE_SIZE so one listing page flushes as one batch. No API
+# limit applies.
+FILE_BATCH_SIZE = 100
+
+# Ours, not Bitbucket's - the Source API serves a file of any size. This is the Ocean
+# file-kind convention, carried from
+# github/core/exporters/file_exporter/utils.py:40, and bounds what a single entity can
+# pull into memory and send to Port.
+MAX_FILE_SIZE = 1024 * 1024
+
+# The Source API returns only the listing root's immediate entries unless max_depth is
+# set; the spec documents the default of 1 and no maximum. 10000 stands in for "every
+# level" and was measured accepted, HTTP 200, on 2026-10-03.
 MAX_LISTING_DEPTH = 10000
+
+# One level answers whether the root is listable at all, which is all the probe asks.
+ROOT_PROBE_DEPTH = 1
+
+# A credential that cannot read the workspace fails every remaining repository the same
+# way, so there is nothing to learn from walking them.
+WALK_STOPPING_STATUSES = frozenset({HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN})
 
 # The listing does not return commit.repository at all unless it is requested. The
 # branch name itself is already known from the repositories listing; this expansion
@@ -48,9 +77,6 @@ def normalize_directory_path(path: str) -> str:
     all normalize to ``hello/world``. Root ``/`` and empty become ``""``.
     """
     return path.strip("/")
-
-
-COMMIT_FILE_TYPE = "commit_file"
 
 
 def build_file_filter(filenames: List[str]) -> str:
@@ -106,6 +132,22 @@ def log_skipped_repositories(skipped: List[str]) -> None:
     logger.info(
         f"Skipping {len(skipped)} repositories without a main branch during file "
         f"discovery (examples: {examples})"
+    )
+
+
+def stops_the_walk(error: BaseException) -> bool:
+    """Whether a repository's failure means the remaining repositories are pointless.
+
+    The failures that reach here are the listing's ``HTTPStatusError`` (the file kind
+    asks for 404s to be raised), httpx transport errors, and anything raised while
+    fetching or parsing one file. Only a credential rejection is workspace-wide:
+    401 means the credential is bad and 403 means it lacks the scope or is blocked, and
+    neither changes for the next repository. A 404 is already handled where it is
+    raised, and a 429 has been retried by the transport before it gets here.
+    """
+    return (
+        isinstance(error, HTTPStatusError)
+        and error.response.status_code in WALK_STOPPING_STATUSES
     )
 
 
@@ -197,6 +239,16 @@ async def process_file_patterns(
                     batch = []
         except ExceptionGroup as error:
             failures.extend(error.exceptions)
+            if stopping := [
+                exception for exception in error.exceptions if stops_the_walk(exception)
+            ]:
+                logger.error(
+                    f"Stopping file discovery after {len(stopping)} of {walked} "
+                    f"repositories failed authorization. The credential cannot read "
+                    f"this workspace, so the repositories still to come would fail "
+                    f"the same way. First failure: {stopping[0]}"
+                )
+                break
 
     if batch:
         yield batch
@@ -236,10 +288,6 @@ async def process_repository_files(
         listing_root,
         max_depth=MAX_LISTING_DEPTH,
         params={"q": file_filter, "fields": REPOSITORY_FIELDS},
-        # Bitbucket answers 404 for an absent path, an unreadable repository, a bad
-        # branch and a bad slug alike. Repositories without a main branch are already
-        # excluded, so swallowing it would delete this repository's file entities
-        # silently. Raise, and disambiguate the one ambiguous case below.
         raise_on_missing=True,
     )
     try:
@@ -278,6 +326,7 @@ async def process_repository_files(
                             repo,
                             branch,
                             file_pattern.skip_parsing,
+                            client,
                         ),
                     )
                 )
@@ -293,71 +342,62 @@ async def process_repository_files(
                 yielded_any = True
                 yield [file_results]
     except HTTPStatusError as error:
-        if await _listing_not_found_means_absent_path(
-            error, client, repo_slug, branch, listing_root, yielded_any
-        ):
+        # Bitbucket answers 404 for an absent directory, an unreadable repository, a
+        # bad branch and a bad slug alike, and the difference decides whether
+        # reconciliation deletes this repository's file entities. Only one case is
+        # ambiguous: a 404 on a configured sub-path before anything was yielded.
+        # Reading the root resolves it, at the cost of one extra call per repository.
+        sub_path_may_be_absent = (
+            error.response.status_code == HTTPStatus.NOT_FOUND
+            and bool(listing_root)
+            and not yielded_any
+        )
+        if sub_path_may_be_absent:
+            if await read_repository_root(client, repo_slug, branch) is None:
+                logger.error(
+                    f"File discovery failed for repository {repo_slug}: neither "
+                    f"'{listing_root}' nor the repository root could be listed on "
+                    f"branch {branch}, so the repository, the branch or the "
+                    f"credential's access to it is the problem, not the configured "
+                    f"path"
+                )
+                raise
             logger.info(
-                f"Configured path '{listing_root}' is absent in {repo_slug}, "
-                "treating as no matching files"
+                f"Configured path '{listing_root}' is absent in repository "
+                f"{repo_slug}, treating as no matching files"
             )
             return
+        logger.error(
+            f"File discovery failed for repository {repo_slug} on branch {branch}: "
+            f"{error}"
+        )
+        raise
+    except Exception as error:
+        logger.error(
+            f"File discovery failed for repository {repo_slug} on branch {branch}: "
+            f"{error}"
+        )
         raise
 
 
-async def _listing_not_found_means_absent_path(
-    error: HTTPStatusError,
-    client: BitbucketClient,
-    repo_slug: str,
-    branch: str,
-    listing_root: str,
-    yielded_any: bool,
-) -> bool:
-    """Decide whether a failed listing means "no such directory" or a real failure.
-
-    Bitbucket answers 404 for an absent directory, an unreadable repository, a bad
-    branch and a bad slug alike, and the difference decides whether reconciliation
-    deletes this repository's file entities. Only one case is genuinely ambiguous:
-    a 404 on a configured sub-path before anything was yielded. Reading the root
-    resolves it, at the cost of one extra call per repository.
-    """
-    if error.response.status_code != HTTPStatus.NOT_FOUND:
-        return False
-
-    if not listing_root:
-        # Nothing under the root could be legitimately missing.
-        return False
-
-    if yielded_any:
-        # Files already came back, so the path existed and this 404 is something else.
-        return False
-
-    return await _repository_root_is_readable(client, repo_slug, branch)
-
-
-async def _repository_root_is_readable(
+async def read_repository_root(
     client: BitbucketClient, repo_slug: str, branch: str
-) -> bool:
-    """Read the repository root, to tell an absent sub-path from an unreadable repo.
+) -> Optional[List[Dict[str, Any]]]:
+    """Read the repository root listing, or None when the root itself is a 404.
 
-    A 404 on the root means the repository, branch or credential is the problem. Any
-    other failure is not evidence either way and is left to the caller to surface.
+    The caller decides what that means. Any status other than 404 is not evidence
+    either way and is left to the caller to surface.
     """
     try:
-        async for _ in client.get_directory_contents(
-            repo_slug, branch, "", max_depth=1, raise_on_missing=True
+        async for entries in client.get_directory_contents(
+            repo_slug, branch, "", max_depth=ROOT_PROBE_DEPTH, raise_on_missing=True
         ):
-            break
+            return entries
     except HTTPStatusError as probe_error:
-        status = probe_error.response.status_code
-        if status != HTTPStatus.NOT_FOUND:
+        if probe_error.response.status_code != HTTPStatus.NOT_FOUND:
             raise
-        logger.warning(
-            f"Root listing of {repo_slug} on branch {branch} returned 404 - the "
-            "repository, the branch or the credential's access to it is the problem, "
-            "not the configured path"
-        )
-        return False
-    return True
+        return None
+    return []
 
 
 async def retrieve_file_content(
@@ -365,6 +405,7 @@ async def retrieve_file_content(
     repo: Dict[str, Any],
     branch: str,
     skip_parsing: bool,
+    client: BitbucketClient,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Retrieve the content of a single file from Bitbucket.
@@ -374,6 +415,7 @@ async def retrieve_file_content(
         repo (Dict[str, Any]): The repository the file was listed from
         branch (str): The repository's main branch
         skip_parsing (bool): Return the raw content instead of parsing it
+        client (BitbucketClient): The client the repository was listed with
 
     Yields:
         Dict[str, Any]: Dictionary containing the file content and metadata
@@ -383,10 +425,14 @@ async def retrieve_file_content(
     commit_hash = file_entry["commit"]["hash"]
 
     logger.info(f"Retrieving contents for file: {file_path}")
-    bitbucket_client = init_client()
-    file_content = await bitbucket_client.get_repository_files(
-        repo_slug, commit_hash, file_path
-    )
+    file_content = await client.get_repository_files(repo_slug, commit_hash, file_path)
+    if file_content is None:
+        logger.warning(
+            f"Skipping {repo_slug}/{file_path} at {commit_hash[:12]}: the listing "
+            "returned it but its content could not be read"
+        )
+        return
+
     parent_directory = Path(file_path).parent
     if not skip_parsing:
         file_content = parse_file(file_content, file_path)
@@ -412,9 +458,19 @@ async def retrieve_file_content(
     yield dict(result)
 
 
+def filename_matches(file_path: str, filename: str) -> bool:
+    """Match a configured filename against the tail of a repository-relative path.
+
+    ``endswith`` on its own accepts ``airport.yml`` for a configured ``port.yml``, so
+    the match has to land on a path boundary. A configured value that already carries
+    directories, ``conf/README.md``, still matches at that boundary.
+    """
+    return file_path == filename or file_path.endswith(f"/{filename}")
+
+
 def validate_file_match(file_path: str, filename: str, expected_path: str) -> bool:
     """Validate if the file path and filename match the expected patterns."""
-    if not file_path.endswith(filename):
+    if not filename_matches(file_path, filename):
         return False
 
     if (not expected_path or expected_path == "/") and file_path == filename:

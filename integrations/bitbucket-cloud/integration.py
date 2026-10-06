@@ -129,7 +129,7 @@ class BitbucketFilePattern(BaseModel):
         default_factory=list,
         alias="filenames",
         title="File Names",
-        description="List of filenames or patterns to search for within the specified path (e.g. ['config.yml', '*.yaml']). Required — if empty, no file search will be performed",
+        description="List of filenames to sync within the specified path (e.g. ['port.yml', 'Dockerfile']). A filename matches a file whose path ends with it at a path boundary, so 'conf/README.md' is accepted; wildcards are not supported. Required - if empty, no files are discovered",
     )
 
 

@@ -10,14 +10,17 @@ from bitbucket_cloud.helpers.file_kind import (
     MAX_LISTING_DEPTH,
     build_file_filter,
     build_listing_root,
+    filename_matches,
     has_main_branch,
     process_file_patterns,
+    read_repository_root,
     repository_matches,
     validate_file_match,
 )
+from bitbucket_cloud.client import BitbucketClient
 from integration import BitbucketFilePattern
 from port_ocean.exceptions.core import OceanAbortException
-from typing import Any, AsyncGenerator, Dict, Iterator, List, Optional
+from typing import Any, AsyncGenerator, Dict, Iterator, List, Mapping, Optional, cast
 
 
 def repository(
@@ -47,14 +50,14 @@ class FakeClient:
         self,
         repositories: List[Dict[str, Any]],
         listings: Dict[str, List[List[Dict[str, Any]]]],
-        contents: Optional[Dict[str, str]] = None,
+        contents: Optional[Mapping[str, Optional[str]]] = None,
         listing_errors: Optional[Dict[str, Exception]] = None,
         errors_by_path: Optional[Dict[str, Exception]] = None,
         repository_batches: Optional[List[List[Dict[str, Any]]]] = None,
     ) -> None:
         self._repository_batches = repository_batches or [repositories]
         self._listings = listings
-        self._contents = contents or {}
+        self._contents: Mapping[str, Optional[str]] = contents or {}
         self._listing_errors = listing_errors or {}
         self._errors_by_path = errors_by_path or {}
         self.repository_calls: List[Optional[Dict[str, Any]]] = []
@@ -100,7 +103,9 @@ class FakeClient:
         for batch in self._listings.get(repo_slug, []):
             yield batch
 
-    async def get_repository_files(self, repo: str, branch: str, path: str) -> str:
+    async def get_repository_files(
+        self, repo: str, branch: str, path: str
+    ) -> Optional[str]:
         self.content_calls.append((repo, branch, path))
         self.in_flight_content += 1
         self.max_in_flight_content = max(
@@ -115,6 +120,11 @@ class FakeClient:
     @property
     def listed_slugs(self) -> List[str]:
         return [call["repo_slug"] for call in self.listing_calls]
+
+
+def as_client(client: FakeClient) -> BitbucketClient:
+    """FakeClient implements the signatures the helpers call, not the whole class."""
+    return cast(BitbucketClient, client)
 
 
 async def discover(
@@ -724,3 +734,207 @@ async def test_root_listing_404_aborts_without_probing() -> None:
                 pass
 
     assert [call["path"] for call in client.listing_calls] == [""]
+
+
+def status_error(status_code: int) -> HTTPStatusError:
+    request = Request("GET", "https://api.bitbucket.org/2.0/x")
+    return HTTPStatusError(
+        str(status_code),
+        request=request,
+        response=Response(status_code, request=request),
+    )
+
+
+@pytest.fixture
+def error_messages() -> Iterator[List[str]]:
+    """Collect ERROR-level loguru records, for the same reason as warning_messages."""
+    messages: List[str] = []
+    sink_id = logger.add(lambda record: messages.append(str(record)), level="ERROR")
+    try:
+        yield messages
+    finally:
+        logger.remove(sink_id)
+
+
+@pytest.mark.asyncio
+async def test_failure_log_names_the_repository(
+    error_messages: List[str],
+) -> None:
+    """The framework logs "iterator 7 failed" - an index. An operator needs the slug."""
+    client = FakeClient(
+        repositories=[repository("broken")],
+        listings={},
+        listing_errors={"broken": status_error(500)},
+    )
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client", return_value=client):
+        with pytest.raises(OceanAbortException):
+            async for _ in process_file_patterns(
+                BitbucketFilePattern(path="/", filenames=["README.md"]), {}
+            ):
+                pass
+
+    assert any(
+        "File discovery failed for repository broken on branch main" in message
+        for message in error_messages
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [401, 403])
+async def test_credential_failure_stops_the_walk(status_code: int) -> None:
+    """A credential the workspace rejects fails every repository the same way, so the
+    remaining pages are not worth walking."""
+    client = FakeClient(
+        repositories=[],
+        repository_batches=[[repository("first")], [repository("second")]],
+        listings={},
+        listing_errors={"first": status_error(status_code)},
+    )
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client", return_value=client):
+        with pytest.raises(OceanAbortException):
+            async for _ in process_file_patterns(
+                BitbucketFilePattern(path="/", filenames=["README.md"]), {}
+            ):
+                pass
+
+    assert client.listed_slugs == ["first"]
+
+
+@pytest.mark.asyncio
+async def test_a_server_error_does_not_stop_the_walk() -> None:
+    """Only a credential rejection is workspace-wide; one bad repository is not."""
+    client = FakeClient(
+        repositories=[],
+        repository_batches=[[repository("first")], [repository("second")]],
+        listings={"second": [[listing_entry("README.md")]]},
+        listing_errors={"first": status_error(500)},
+    )
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client", return_value=client):
+        results: List[Dict[str, Any]] = []
+        with pytest.raises(OceanAbortException):
+            async for batch in process_file_patterns(
+                BitbucketFilePattern(path="/", filenames=["README.md"]), {}
+            ):
+                results.extend(batch)
+
+    assert client.listed_slugs == ["first", "second"]
+    assert [result["metadata"]["path"] for result in results] == ["README.md"]
+
+
+@pytest.mark.asyncio
+async def test_absent_configured_path_logs_no_error(
+    error_messages: List[str],
+) -> None:
+    """A repository that simply has no such directory is routine, not an error."""
+    client = FakeClient(
+        repositories=[repository("repo-a")],
+        listings={"repo-a": [[]]},
+        errors_by_path={"charts": not_found()},
+    )
+
+    await discover(
+        client, BitbucketFilePattern(path="charts/*", filenames=["port.yml"])
+    )
+
+    assert error_messages == []
+
+
+@pytest.mark.asyncio
+async def test_read_repository_root_distinguishes_absent_from_unreadable() -> None:
+    """None means the root itself 404s. [] means it read fine and is empty."""
+    readable = FakeClient(
+        repositories=[repository("repo-a")], listings={"repo-a": [[listing_entry("x")]]}
+    )
+    unreadable = FakeClient(
+        repositories=[repository("repo-a")],
+        listings={},
+        errors_by_path={"": not_found()},
+    )
+    empty = FakeClient(repositories=[repository("repo-a")], listings={})
+
+    assert await read_repository_root(as_client(readable), "repo-a", "main") == [
+        listing_entry("x")
+    ]
+    assert await read_repository_root(as_client(unreadable), "repo-a", "main") is None
+    assert await read_repository_root(as_client(empty), "repo-a", "main") == []
+
+
+@pytest.mark.asyncio
+async def test_read_repository_root_propagates_non_404() -> None:
+    """A 500 is not evidence either way, so the caller must see it."""
+    client = FakeClient(
+        repositories=[repository("repo-a")],
+        listings={},
+        errors_by_path={"": status_error(500)},
+    )
+
+    with pytest.raises(HTTPStatusError):
+        await read_repository_root(as_client(client), "repo-a", "main")
+
+
+@pytest.mark.parametrize(
+    "file_path, filename, matches",
+    [
+        ("port.yml", "port.yml", True),
+        ("charts/app/port.yml", "port.yml", True),
+        ("airport.yml", "port.yml", False),
+        ("charts/airport.yml", "port.yml", False),
+        ("buyorbid/conf/README.md", "conf/README.md", True),
+        ("myconf/README.md", "conf/README.md", False),
+        # An extension is not a filename. `endswith` accepted one by accident, which
+        # is the same accident that accepted airport.yml.
+        ("port.yml", ".yml", False),
+        ("charts/port.yml", ".yml", False),
+    ],
+)
+def test_filename_matches_on_a_path_boundary(
+    file_path: str, filename: str, matches: bool
+) -> None:
+    """endswith alone accepts airport.yml for a configured port.yml."""
+    assert filename_matches(file_path, filename) is matches
+
+
+@pytest.mark.asyncio
+async def test_a_suffix_lookalike_is_not_discovered() -> None:
+    """The boundary rule reaches discovery, not just the predicate.
+
+    The default ``*/`` path is what makes this visible: it normalizes to ``*``, which
+    fnmatch accepts for the ``air`` left over after stripping ``port.yml``, so the path
+    half of the check cannot catch the lookalike.
+    """
+    client = FakeClient(
+        repositories=[repository("repo")],
+        listings={"repo": [[listing_entry("airport.yml"), listing_entry("port.yml")]]},
+    )
+
+    results = await discover(
+        client, BitbucketFilePattern(path="*/", filenames=["port.yml"])
+    )
+
+    assert [result["metadata"]["path"] for result in results] == ["port.yml"]
+
+
+@pytest.mark.asyncio
+async def test_a_file_whose_content_cannot_be_read_is_skipped() -> None:
+    """The listing said the file is there, so null content is a failure, not a value.
+
+    Emitting the entity with null content would overwrite a good entity in Port with
+    an empty one.
+    """
+    client = FakeClient(
+        repositories=[repository("repo")],
+        listings={"repo": [[listing_entry("port.yml"), listing_entry("other.yml")]]},
+        contents={"port.yml": None},
+    )
+
+    results = await discover(
+        client,
+        BitbucketFilePattern(
+            path="/", filenames=["port.yml", "other.yml"], skipParsing=True
+        ),
+    )
+
+    assert [result["metadata"]["path"] for result in results] == ["other.yml"]
