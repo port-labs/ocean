@@ -143,11 +143,13 @@ class AwsPermissionProbe:
         policy_source_arn: str,
         action_names: list[str],
         checks: list[ProbeCheck],
+        outcome: SimulateOutcome | None = None,
     ) -> None:
         async with self._region_semaphore:
-            outcome = await simulate_principal_policy(
-                session, policy_source_arn, action_names, region
-            )
+            if outcome is None:
+                outcome = await simulate_principal_policy(
+                    session, policy_source_arn, action_names, region
+                )
             for check in checks:
                 self._resolve_check(check, outcome)
             await self.context.update_progress()
