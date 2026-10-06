@@ -327,6 +327,146 @@ async def test_discussion_and_message_webhooks() -> None:
 
 
 @pytest.mark.asyncio
+async def test_thread_message_webhook_deletes_done_when_excluded() -> None:
+    from integration import ThreadMessageResourceConfig, ThreadSelector
+
+    processor = ThreadMessageWebhookProcessor(
+        event=_event(
+            {
+                "type": "thread.email_received",
+                "payload": {
+                    "thread": {"id": "th_1", "customer": {"id": "c_1"}},
+                    "email": {"timelineEntryId": "tl_1"},
+                },
+            }
+        )
+    )
+    resource = ThreadMessageResourceConfig(
+        kind=ObjectKind.THREAD_MESSAGE,
+        selector=ThreadSelector(query="true", excludeDoneThreads=True),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".id",
+                    blueprint='"plainThreadMessage"',
+                    icon=None,
+                    team=None,
+                    properties={},
+                )
+            ),
+            itemsToParse=None,
+        ),
+    )
+    with patch(
+        "webhook_processors.thread_message_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_timeline_entry = AsyncMock(
+            return_value={"id": "tl_1", "threadId": "th_1", "llmText": "Hello"}
+        )
+        client.get_thread = AsyncMock(return_value={"id": "th_1", "status": "DONE"})
+        result = await processor.handle_event(processor.event.payload, resource)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results[0]["id"] == "tl_1"
+    client.get_thread.assert_awaited_once_with("th_1")
+
+
+@pytest.mark.asyncio
+async def test_discussion_webhook_deletes_done_when_excluded() -> None:
+    from integration import DiscussionResourceConfig, DiscussionSelector
+
+    processor = DiscussionWebhookProcessor(
+        event=_event(
+            {
+                "type": "discussion.discussion_created",
+                "payload": {"discussion": {"id": "disc_1", "threadId": "th_1"}},
+            }
+        )
+    )
+    resource = DiscussionResourceConfig(
+        kind=ObjectKind.DISCUSSION,
+        selector=DiscussionSelector(
+            query="true", excludeDoneThreads=True, excludeAiDiscussions=False
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".title",
+                    blueprint='"plainDiscussion"',
+                    icon=None,
+                    team=None,
+                    properties={},
+                )
+            ),
+            itemsToParse=None,
+        ),
+    )
+    with patch(
+        "webhook_processors.discussion_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_discussion = AsyncMock(
+            return_value={"id": "disc_1", "threadId": "th_1", "title": "Slack"}
+        )
+        client.get_thread = AsyncMock(return_value={"id": "th_1", "status": "DONE"})
+        result = await processor.handle_event(processor.event.payload, resource)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results[0]["id"] == "disc_1"
+    client.get_thread.assert_awaited_once_with("th_1")
+
+
+@pytest.mark.asyncio
+async def test_discussion_message_webhook_deletes_done_when_excluded() -> None:
+    from integration import DiscussionMessageResourceConfig, DiscussionSelector
+
+    processor = DiscussionMessageWebhookProcessor(
+        event=_event(
+            {
+                "type": "discussion.message_created",
+                "payload": {
+                    "discussion": {"id": "disc_1", "threadId": "th_1"},
+                    "message": {"id": "dm_1"},
+                },
+            }
+        )
+    )
+    resource = DiscussionMessageResourceConfig(
+        kind=ObjectKind.DISCUSSION_MESSAGE,
+        selector=DiscussionSelector(
+            query="true", excludeDoneThreads=True, excludeAiDiscussions=False
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".id",
+                    blueprint='"plainDiscussionMessage"',
+                    icon=None,
+                    team=None,
+                    properties={},
+                )
+            ),
+            itemsToParse=None,
+        ),
+    )
+    with patch(
+        "webhook_processors.discussion_message_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_thread = AsyncMock(return_value={"id": "th_1", "status": "DONE"})
+        result = await processor.handle_event(processor.event.payload, resource)
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results[0]["id"] == "dm_1"
+    client.get_thread.assert_awaited_once_with("th_1")
+    client.get_discussion_message.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_discussion_webhook_deletes_ai_when_excluded() -> None:
     from integration import DiscussionResourceConfig, DiscussionSelector
 

@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Honor excludeDoneThreads in thread-message, discussion, and discussion-message live handlers so DONE parent threads are not recreated via related entities

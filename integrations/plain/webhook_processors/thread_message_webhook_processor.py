@@ -17,6 +17,7 @@ from webhook_processors.plain_abstract_webhook_processor import (
 )
 from webhook_processors.utils import (
     event_payload,
+    is_excluded_done_thread,
     is_timeline_removed,
     timeline_entry_refs,
 )
@@ -65,6 +66,22 @@ class ThreadMessageWebhookProcessor(PlainAbstractWebhookProcessor):
                     updated_raw_results=[], deleted_raw_results=[]
                 )
             raise
+
+        thread_id = entry.get("threadId")
+        if await is_excluded_done_thread(
+            client,
+            resource_config,
+            thread_id if isinstance(thread_id, str) else None,
+        ):
+            logger.info(
+                "Plain thread message {} belongs to a DONE thread and "
+                "excludeDoneThreads is set; deleting",
+                entry_id,
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[entry],
+            )
 
         logger.info("Upserting Plain thread message {}", entry_id)
         return WebhookEventRawResults(

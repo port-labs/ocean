@@ -14,7 +14,11 @@ from plain.utils import ObjectKind, is_ai_discussion
 from webhook_processors.plain_abstract_webhook_processor import (
     PlainAbstractWebhookProcessor,
 )
-from webhook_processors.utils import discussion_id_from_payload, event_payload
+from webhook_processors.utils import (
+    discussion_id_from_payload,
+    event_payload,
+    is_excluded_done_thread,
+)
 
 
 class DiscussionWebhookProcessor(PlainAbstractWebhookProcessor):
@@ -44,6 +48,21 @@ class DiscussionWebhookProcessor(PlainAbstractWebhookProcessor):
             logger.info(
                 "Plain discussion {} is an AI/agent session and "
                 "excludeAiDiscussions is set; deleting",
+                discussion_id,
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[discussion]
+            )
+
+        thread_id = discussion.get("threadId")
+        if await is_excluded_done_thread(
+            client,
+            resource_config,
+            thread_id if isinstance(thread_id, str) else None,
+        ):
+            logger.info(
+                "Plain discussion {} belongs to a DONE thread and "
+                "excludeDoneThreads is set; deleting",
                 discussion_id,
             )
             return WebhookEventRawResults(

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload
+
+from plain.client import PlainClient
 
 
 def event_type(payload: EventPayload) -> str:
@@ -120,3 +123,17 @@ def timeline_entry_refs(body: dict[str, Any]) -> tuple[str | None, str | None]:
 
 def is_timeline_removed(body: dict[str, Any]) -> bool:
     return body.get("changeType") == "REMOVED"
+
+
+async def is_excluded_done_thread(
+    client: PlainClient,
+    resource_config: ResourceConfig,
+    thread_id: str | None,
+) -> bool:
+    """True when excludeDoneThreads is set and the parent thread status is DONE."""
+    if not thread_id:
+        return False
+    if not bool(getattr(resource_config.selector, "exclude_done_threads", False)):
+        return False
+    thread = await client.get_thread(thread_id)
+    return thread.get("status") == "DONE"
