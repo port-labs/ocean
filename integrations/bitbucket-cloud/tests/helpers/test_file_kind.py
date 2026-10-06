@@ -13,14 +13,12 @@ from bitbucket_cloud.helpers.file_kind import (
     filename_matches,
     has_main_branch,
     process_file_patterns,
-    read_repository_root,
     repository_matches,
     validate_file_match,
 )
-from bitbucket_cloud.client import BitbucketClient
 from integration import BitbucketFilePattern
 from port_ocean.exceptions.core import OceanAbortException
-from typing import Any, AsyncGenerator, Dict, Iterator, List, Mapping, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Iterator, List, Mapping, Optional
 
 
 def repository(
@@ -120,11 +118,6 @@ class FakeClient:
     @property
     def listed_slugs(self) -> List[str]:
         return [call["repo_slug"] for call in self.listing_calls]
-
-
-def as_client(client: FakeClient) -> BitbucketClient:
-    """FakeClient implements the signatures the helpers call, not the whole class."""
-    return cast(BitbucketClient, client)
 
 
 async def discover(
@@ -558,36 +551,30 @@ async def test_repository_filter_reaches_the_repositories_call() -> None:
 
 
 @pytest.mark.asyncio
-async def test_root_listing_treats_a_404_as_a_failure() -> None:
-    """Nothing can be legitimately missing at the root, so a 404 must not pass as empty."""
+@pytest.mark.parametrize(
+    "path, listed, raises_on_404",
+    [
+        # Nothing can be legitimately missing at the root, so a 404 must not pass as
+        # empty - that is what let reconciliation delete the kind's entities.
+        ("*/", "port.yml", True),
+        ("/", "port.yml", True),
+        # A configured directory may genuinely not exist, which is the common case.
+        ("charts/*", "charts/app/port.yml", False),
+    ],
+)
+async def test_only_a_root_listing_404_is_a_failure(
+    path: str, listed: str, raises_on_404: bool
+) -> None:
     client = FakeClient(
         repositories=[repository("repo-a")],
-        listings={"repo-a": [[listing_entry("port.yml")]]},
+        listings={"repo-a": [[listing_entry(listed)]]},
     )
 
-    await discover(client, BitbucketFilePattern(filenames=["port.yml"]))
+    await discover(client, BitbucketFilePattern(path=path, filenames=["port.yml"]))
 
-    assert [call["raise_on_missing"] for call in client.listing_calls] == [True]
-
-
-@pytest.mark.asyncio
-async def test_sub_path_listing_also_raises_and_is_disambiguated_by_a_root_probe() -> (
-    None
-):
-    """A configured directory may genuinely not exist - but so may read access, and
-    Bitbucket answers 404 for both. The listing always raises now; the root probe
-    decides which it was."""
-    client = FakeClient(
-        repositories=[repository("repo-a")],
-        listings={"repo-a": [[listing_entry("charts/app/port.yml")]]},
-    )
-
-    await discover(
-        client,
-        BitbucketFilePattern(path="charts/*", filenames=["port.yml"]),
-    )
-
-    assert [call["raise_on_missing"] for call in client.listing_calls] == [True]
+    assert [call["raise_on_missing"] for call in client.listing_calls] == [
+        raises_on_404
+    ]
 
 
 @pytest.mark.asyncio
@@ -694,31 +681,31 @@ async def test_absent_configured_path_is_not_a_failure() -> None:
     )
 
     assert results == []
-    assert [call["path"] for call in client.listing_calls] == ["charts", ""]
+    assert [call["path"] for call in client.listing_calls] == ["charts"]
 
 
 @pytest.mark.asyncio
-async def test_unreadable_repository_aborts_instead_of_reporting_no_files() -> None:
-    """Bitbucket answers 404 for no-permission too. That must not look like an empty
-    repository, or reconciliation deletes this repository's file entities."""
+async def test_lost_access_to_one_repository_with_a_sub_path_is_not_detected() -> None:
+    """The accepted gap. Bitbucket answers 404 for no-permission as well as for an
+    absent directory, so with a sub-path configured the two are indistinguishable and
+    this repository's file entities can be deleted. Separating them costs one request
+    for every repository that does not have the path, which is most of them."""
     client = FakeClient(
         repositories=[repository("repo-a")],
         listings={},
-        errors_by_path={"charts": not_found(), "": not_found()},
+        errors_by_path={"charts": not_found()},
     )
 
-    with patch("bitbucket_cloud.helpers.file_kind.init_client", return_value=client):
-        with pytest.raises(OceanAbortException):
-            async for _ in process_file_patterns(
-                BitbucketFilePattern(path="charts/*", filenames=["port.yml"]), {}
-            ):
-                pass
+    results = await discover(
+        client, BitbucketFilePattern(path="charts/*", filenames=["port.yml"])
+    )
 
-    assert [call["path"] for call in client.listing_calls] == ["charts", ""]
+    assert results == []
+    assert [call["path"] for call in client.listing_calls] == ["charts"]
 
 
 @pytest.mark.asyncio
-async def test_root_listing_404_aborts_without_probing() -> None:
+async def test_root_listing_404_is_a_failure() -> None:
     """With no configured sub-path, nothing could legitimately be absent."""
     client = FakeClient(
         repositories=[repository("repo-a")],
@@ -781,30 +768,33 @@ async def test_failure_log_names_the_repository(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status_code", [401, 403])
-async def test_credential_failure_stops_the_walk(status_code: int) -> None:
-    """A credential the workspace rejects fails every repository the same way, so the
-    remaining pages are not worth walking."""
+@pytest.mark.parametrize("status_code", [401, 403, 500])
+async def test_no_status_short_circuits_the_walk(status_code: int) -> None:
+    """Not even a 401. Under MultiTokenAuth it is one token out of a rotating pool,
+    not the workspace, so abandoning the walk would strand the repositories the other
+    tokens can still read."""
     client = FakeClient(
         repositories=[],
         repository_batches=[[repository("first")], [repository("second")]],
-        listings={},
+        listings={"second": [[listing_entry("README.md")]]},
         listing_errors={"first": status_error(status_code)},
     )
 
     with patch("bitbucket_cloud.helpers.file_kind.init_client", return_value=client):
+        results: List[Dict[str, Any]] = []
         with pytest.raises(OceanAbortException):
-            async for _ in process_file_patterns(
+            async for batch in process_file_patterns(
                 BitbucketFilePattern(path="/", filenames=["README.md"]), {}
             ):
-                pass
+                results.extend(batch)
 
-    assert client.listed_slugs == ["first"]
+    assert client.listed_slugs == ["first", "second"]
+    assert [result["metadata"]["path"] for result in results] == ["README.md"]
 
 
 @pytest.mark.asyncio
 async def test_a_server_error_does_not_stop_the_walk() -> None:
-    """Only a credential rejection is workspace-wide; one bad repository is not."""
+    """One bad repository must not cost the healthy ones still to come."""
     client = FakeClient(
         repositories=[],
         repository_batches=[[repository("first")], [repository("second")]],
@@ -840,39 +830,6 @@ async def test_absent_configured_path_logs_no_error(
     )
 
     assert error_messages == []
-
-
-@pytest.mark.asyncio
-async def test_read_repository_root_distinguishes_absent_from_unreadable() -> None:
-    """None means the root itself 404s. [] means it read fine and is empty."""
-    readable = FakeClient(
-        repositories=[repository("repo-a")], listings={"repo-a": [[listing_entry("x")]]}
-    )
-    unreadable = FakeClient(
-        repositories=[repository("repo-a")],
-        listings={},
-        errors_by_path={"": not_found()},
-    )
-    empty = FakeClient(repositories=[repository("repo-a")], listings={})
-
-    assert await read_repository_root(as_client(readable), "repo-a", "main") == [
-        listing_entry("x")
-    ]
-    assert await read_repository_root(as_client(unreadable), "repo-a", "main") is None
-    assert await read_repository_root(as_client(empty), "repo-a", "main") == []
-
-
-@pytest.mark.asyncio
-async def test_read_repository_root_propagates_non_404() -> None:
-    """A 500 is not evidence either way, so the caller must see it."""
-    client = FakeClient(
-        repositories=[repository("repo-a")],
-        listings={},
-        errors_by_path={"": status_error(500)},
-    )
-
-    with pytest.raises(HTTPStatusError):
-        await read_repository_root(as_client(client), "repo-a", "main")
 
 
 @pytest.mark.parametrize(
