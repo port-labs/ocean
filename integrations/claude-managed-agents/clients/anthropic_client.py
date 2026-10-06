@@ -285,6 +285,11 @@ class AnthropicClient:
         vault = await self._client.beta.vaults.retrieve(vault_id)
         return vault.to_dict(mode="json")
 
+    async def archive_agent(self, agent_id: str) -> dict[str, Any]:
+        logger.info(f"Archiving Claude agent '{agent_id}'")
+        agent = await self._client.beta.agents.archive(agent_id)
+        return agent.to_dict(mode="json")
+
     async def create_agent(
         self,
         name: str,
