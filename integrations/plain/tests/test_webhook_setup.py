@@ -46,6 +46,33 @@ async def test_on_start_registers_when_enabled() -> None:
         ocean.app.config.event_listener.type = original_listener
 
 
+async def test_register_webhook_target_does_not_fail_without_permissions() -> None:
+    from port_ocean.exceptions.core import OceanAbortException
+
+    mock_ocean = MagicMock()
+    mock_ocean.app.base_url = "https://example.com"
+    client = MagicMock()
+    client.ensure_webhook_target = AsyncMock(
+        side_effect=OceanAbortException(
+            'The Plain API key is missing the "webhookTarget:create" permission'
+        )
+    )
+
+    with (
+        patch("plain.webhook_setup.ocean", mock_ocean),
+        patch("plain.webhook_setup.PlainClient", return_value=client),
+        patch("plain.webhook_setup.logger") as log,
+    ):
+        from plain.webhook_setup import register_webhook_target
+
+        await register_webhook_target()
+
+    log.warning.assert_called_once()
+    message = log.warning.call_args.args[0]
+    assert "manually" in message
+    assert log.warning.call_args.args[2] == f"https://example.com{WEBHOOK_PATH_SUFFIX}"
+
+
 async def test_ensure_webhook_target_creates_when_missing() -> None:
     client = make_client()
     client.paginate_connection = MagicMock(  # type: ignore[method-assign]

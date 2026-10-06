@@ -39,7 +39,7 @@ For local runs, set the same values as environment variables, for example `OCEAN
 
 ## Live events
 
-Set `enableLiveEvents: true`, configure `OCEAN__BASE_URL`, and optionally `webhookSecret`. On start the integration creates or updates a Plain webhook target (needs `webhookTarget:create` / `webhookTarget:edit` / `webhookTarget:read`).
+Set `enableLiveEvents: true`, configure `OCEAN__BASE_URL`, and optionally `webhookSecret`. On start the integration creates or updates a Plain webhook target (needs `webhookTarget:create` / `webhookTarget:edit` / `webhookTarget:read`). If the API key cannot create the target, startup still succeeds and inbound events on `{OCEAN__BASE_URL}/integration/webhook` are processed — create the webhook target in Plain yourself.
 
 | Kind | Live-event source |
 |------|-------------------|
