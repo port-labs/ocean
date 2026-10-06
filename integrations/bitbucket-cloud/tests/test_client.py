@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator, AsyncGenerator
-from bitbucket_cloud.client import BitbucketClient, PULL_REQUEST_PAGE_SIZE
+from bitbucket_cloud.client import BitbucketClient, PAGE_SIZE, PULL_REQUEST_PAGE_SIZE
 from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
@@ -531,3 +531,88 @@ async def test_get_pull_requests_multiple_states(mock_client: BitbucketClient) -
             )
 
             assert mock_paginated.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_paginated_request_keeps_page_size_when_caller_passes_params(
+    mock_client: BitbucketClient,
+) -> None:
+    """A caller's params are added to pagelen, not substituted for it.
+
+    Every kind that lists repositories passes a params dict, so a guard that only
+    applies the page size when params is None never fires and Bitbucket's default
+    pagelen of 10 applies instead of 100.
+    """
+    async with event_context("test_event"):
+        with patch.object(mock_client, "_send_api_request") as mock_request:
+            mock_request.return_value = {"values": []}
+            async for _ in mock_client._fetch_paginated_api_with_rate_limiter(
+                "https://api.bitbucket.org/2.0/repositories/test_workspace",
+                params={"role": "member"},
+            ):
+                pass
+
+            mock_request.assert_called_once_with(
+                "https://api.bitbucket.org/2.0/repositories/test_workspace",
+                params={"pagelen": PAGE_SIZE, "role": "member"},
+                method="GET",
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_directory_contents_merges_caller_params(
+    mock_client: BitbucketClient,
+) -> None:
+    """A caller's params are added to max_depth and pagelen, not substituted for them."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield []
+
+            mock_paginated.return_value = mock_generator()
+            async for _ in mock_client.get_directory_contents(
+                "test-repo",
+                "main",
+                "",
+                10000,
+                params={"q": 'type="commit_file"'},
+            ):
+                pass
+
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
+                params={
+                    "q": 'type="commit_file"',
+                    "max_depth": 10000,
+                    "pagelen": PAGE_SIZE,
+                },
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_directory_contents_keeps_its_own_max_depth(
+    mock_client: BitbucketClient,
+) -> None:
+    """The named parameter goes last, so the signature cannot lie about the depth."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield []
+
+            mock_paginated.return_value = mock_generator()
+            async for _ in mock_client.get_directory_contents(
+                "test-repo",
+                "main",
+                "",
+                10000,
+                params={"max_depth": 1},
+            ):
+                pass
+
+            assert mock_paginated.call_args.kwargs["params"]["max_depth"] == 10000
