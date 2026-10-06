@@ -35,7 +35,10 @@ from port_ocean.core.handlers.queue import LocalQueue
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
-from port_ocean.core.integrations.mixins.utils import is_redis_live_events_enabled
+from port_ocean.core.integrations.mixins.utils import (
+    is_live_event_payload_logging_enabled,
+    is_redis_live_events_enabled,
+)
 from port_ocean.consumers.live_events_stream_key import (
     resolve_live_events_stream_key_from_base_url,
 )
@@ -137,6 +140,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
         ] = []
         try:
+            payload_logging_enabled = await is_live_event_payload_logging_enabled()
+            event.configure_live_event_logging(
+                payload_logging_enabled, webhook_path=path
+            )
             with logger.contextualize(
                 worker=worker_id,
                 webhook_path=path,
@@ -283,6 +290,11 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         """Process a single event with a specific processor"""
         try:
             logger.debug("Start processing queued webhook")
+            extra_identifiers = processor.get_live_event_log_identifiers(
+                processor.event.payload, processor.event.headers
+            )
+            if extra_identifiers:
+                processor.event.merge_live_event_log_identifiers(extra_identifiers)
             processor.event.set_timestamp(LiveEventTimestamp.StartedProcessing)
 
             webhook_event_raw_results = await self._execute_processor(
@@ -400,6 +412,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             """Handle incoming webhook requests for a specific path."""
             try:
                 webhook_event = await WebhookEvent.from_request(request)
+                payload_logging_enabled = await is_live_event_payload_logging_enabled()
+                webhook_event.configure_live_event_logging(
+                    payload_logging_enabled, webhook_path=path
+                )
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
                 if ocean.config.events_debug_logging:
                     self._log_webhook_event(webhook_event)

@@ -12,6 +12,21 @@ class TestLiveEventsRedisSettingsValidation:
         assert settings.stream_maintenance_worker_enabled is True
         assert settings.stream_ttl_seconds == 2_592_000
 
+    def test_payload_logging_enabled_from_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from port_ocean.config.settings import IntegrationConfiguration
+
+        monkeypatch.setenv("OCEAN__LIVE_EVENTS__PAYLOAD_LOGGING_ENABLED", "true")
+        monkeypatch.setenv("OCEAN__PORT__CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("OCEAN__PORT__CLIENT_SECRET", "test-client-secret")
+        monkeypatch.setenv("OCEAN__INTEGRATION__TYPE", "test")
+        monkeypatch.setenv("OCEAN__INTEGRATION__IDENTIFIER", "test-id")
+
+        config = IntegrationConfiguration()
+
+        assert config.live_events.payload_logging_enabled is True
+
     def test_is_redis_stream_consumer_enabled_from_env(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

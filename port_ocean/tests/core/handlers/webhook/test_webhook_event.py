@@ -86,6 +86,8 @@ def test_clone_createsExactCopy(
         headers=sample_headers,
         original_request=None,
     )
+    original.configure_live_event_logging(True, webhook_path="/webhook")
+    original.merge_live_event_log_identifiers({"custom": "id"})
 
     cloned = original.clone()
 
@@ -93,7 +95,10 @@ def test_clone_createsExactCopy(
     assert cloned.payload == original.payload
     assert cloned.headers == original.headers
     assert cloned._original_request == original._original_request
-    assert cloned is not original  # Verify it's a new instance
+    assert cloned is not original
+    assert cloned._payload_logging_enabled is True
+    assert cloned._webhook_path == "/webhook"
+    assert cloned._extra_log_identifiers == {"custom": "id"}
 
 
 def test_setTimestamp_setsTimestampCorrectly(
@@ -117,13 +122,14 @@ def test_setTimestamp_setsTimestampCorrectly(
 def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     sample_payload: EventPayload, sample_headers: EventHeaders
 ) -> None:
-    """Added To Queue logs headers and payload on a single entry."""
+    """Added To Queue logs compact identifiers when payload logging is disabled."""
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload=sample_payload,
         headers=sample_headers,
         original_request=None,
     )
+    event.configure_live_event_logging(False, webhook_path="/webhook")
 
     queue: Queue[LogRecord] = Queue()
     queue_handler = QueueHandler(queue)
@@ -146,43 +152,34 @@ def test_setTimestamp_logsTraceIdAtTopLevelExtra(
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Added To Queue"
-    assert extra["payload"] == sample_payload
-    assert extra["headers"] == sample_headers
+    assert extra["webhook_path"] == "/webhook"
+    assert "payload" not in extra
+    assert "headers" not in extra
     assert "payload_b64" not in extra
     assert extra.get("extra") is None
 
 
-def test_setTimestamp_addedToQueue_base64EncodesOversizedPayload() -> None:
+def test_setTimestamp_addedToQueue_logsFullPayloadWhenEnabled() -> None:
     payload = {f"key_{index}": {"nested": index} for index in range(250)}
-    headers = {"x-github-event": "pull_request"}
+    headers = {
+        "x-github-event": "pull_request",
+        "authorization": "secret",
+    }
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload=payload,
         headers=headers,
         original_request=None,
     )
+    event.configure_live_event_logging(True, webhook_path="/webhook")
 
-    queue: Queue[LogRecord] = Queue()
-    queue_handler = QueueHandler(queue)
-    logger_id = logger.add(
-        queue_handler,
-        level="DEBUG",
-        format="{message}",
-        diagnose=False,
-        enqueue=True,
-    )
-    try:
-        event.set_timestamp(LiveEventTimestamp.AddedToQueue)
-        logger.complete()
-        record = queue.get()
-        assert queue.empty()
-    finally:
-        logger.remove(logger_id)
-
-    extra = _serialize_record(record)["extra"]
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.AddedToQueue)
 
     assert extra["trace_id"] == "test-trace-id"
-    assert extra["headers"] == headers
+    headers_logged = extra["headers"]
+    assert isinstance(headers_logged, dict)
+    assert headers_logged["x-github-event"] == "pull_request"
+    assert headers_logged["authorization"] == "[REDACTED]"
     assert "payload" not in extra
     assert "payload_b64" in extra
 
@@ -211,7 +208,7 @@ def _capture_set_timestamp_extra(
     return extra
 
 
-def test_setTimestamp_startedProcessing_logsNestedPayloadForSmallPayload(
+def test_setTimestamp_startedProcessing_logsCompactIdentifiersByDefault(
     sample_payload: EventPayload, sample_headers: EventHeaders
 ) -> None:
     event = WebhookEvent(
@@ -220,43 +217,88 @@ def test_setTimestamp_startedProcessing_logsNestedPayloadForSmallPayload(
         headers=sample_headers,
         original_request=None,
     )
+    event.configure_live_event_logging(False, webhook_path="/webhook")
 
     extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Started Processing"
-    assert extra["payload"] == sample_payload
-    assert extra["headers"] == sample_headers
+    assert extra["webhook_path"] == "/webhook"
+    assert "payload" not in extra
+    assert "headers" not in extra
     assert "payload_b64" not in extra
 
 
-def test_setTimestamp_startedProcessing_base64EncodesOversizedPayload() -> None:
-    payload = {f"key_{index}": {"nested": index} for index in range(250)}
-    headers = {"x-github-event": "pull_request"}
+def test_setTimestamp_startedProcessing_logsGithubIdentifiers() -> None:
+    payload = {
+        "action": "opened",
+        "ref": "refs/heads/main",
+        "repository": {"full_name": "org/repo"},
+        "organization": {"login": "org"},
+        "pull_request": {"number": 42},
+        "large_field": "should-not-appear",
+    }
+    headers = {
+        "x-github-event": "pull_request",
+        "x-github-delivery": "delivery-id",
+        "x-hub-signature-256": "sha256=secret",
+    }
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload=payload,
         headers=headers,
         original_request=None,
     )
+    event.configure_live_event_logging(False, webhook_path="/webhook")
 
     extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
-    assert extra["trace_id"] == "test-trace-id"
-    assert extra["headers"] == headers
-    assert "payload" not in extra
-    assert "payload_b64" in extra
+    assert extra["headers"] == {
+        "x-github-event": "pull_request",
+        "x-github-delivery": "delivery-id",
+    }
+    assert extra["payload"] == {
+        "action": "opened",
+        "ref": "refs/heads/main",
+        "repository": {"full_name": "org/repo"},
+        "organization": {"login": "org"},
+        "pull_request": {"number": 42},
+    }
 
 
-def test_setTimestamp_finishedProcessing_base64EncodesOversizedPayload() -> None:
-    payload = {f"key_{index}": {"nested": index} for index in range(250)}
-    headers = {"x-github-event": "pull_request"}
+def test_setTimestamp_startedProcessing_logsFullPayloadWhenEnabled() -> None:
+    payload = {"action": "opened", "secret": "value"}
+    headers = {
+        "x-github-event": "pull_request",
+        "authorization": "Bearer secret",
+    }
     event = WebhookEvent(
         trace_id="test-trace-id",
         payload=payload,
         headers=headers,
         original_request=None,
     )
+    event.configure_live_event_logging(True)
+
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
+
+    assert extra["payload"] == payload
+    headers_logged = extra["headers"]
+    assert isinstance(headers_logged, dict)
+    assert headers_logged["x-github-event"] == "pull_request"
+    assert headers_logged["authorization"] == "[REDACTED]"
+
+
+def test_setTimestamp_finishedProcessing_neverLogsPayloadOrHeaders() -> None:
+    payload = {f"key_{index}": {"nested": index} for index in range(250)}
+    headers = {"x-github-event": "pull_request", "authorization": "secret"}
+    event = WebhookEvent(
+        trace_id="test-trace-id",
+        payload=payload,
+        headers=headers,
+        original_request=None,
+    )
+    event.configure_live_event_logging(True, webhook_path="/webhook")
 
     extra = _capture_set_timestamp_extra(
         event, LiveEventTimestamp.FinishedProcessingSuccessfully
@@ -264,9 +306,9 @@ def test_setTimestamp_finishedProcessing_base64EncodesOversizedPayload() -> None
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Finished Processing Successfully"
-    assert extra["headers"] == headers
+    assert "headers" not in extra
     assert "payload" not in extra
-    assert "payload_b64" in extra
+    assert "payload_b64" not in extra
 
 
 class TestWebhookRequestAdapter:

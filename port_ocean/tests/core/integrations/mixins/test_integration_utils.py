@@ -24,6 +24,7 @@ from port_ocean.core.integrations.mixins.utils import (
     handle_items_to_parse,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
+    is_live_event_payload_logging_enabled,
     is_redis_live_events_enabled,
     resync_error_handling,
     resync_function_wrapper,
@@ -1108,6 +1109,53 @@ class TestProcessingModes:
             "Failed to check lakehouse feature flags"
             in mock_bound.warning.call_args.args[0]
         )
+
+    @pytest.mark.asyncio
+    async def test_is_live_event_payload_logging_enabled_from_org_feature_flag(
+        self,
+    ) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.payload_logging_enabled = False
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED]
+            )
+
+            result = await is_live_event_payload_logging_enabled()
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_is_live_event_payload_logging_enabled_from_integration_setting(
+        self,
+    ) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.payload_logging_enabled = True
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[]
+            )
+
+            result = await is_live_event_payload_logging_enabled()
+
+        assert result is True
+        mock_ocean_context.port_client.get_organization_feature_flags.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_is_live_event_payload_logging_disabled_by_default(self) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.payload_logging_enabled = False
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[]
+            )
+
+            result = await is_live_event_payload_logging_enabled()
+
+        assert result is False
 
     @pytest.mark.asyncio
     async def test_is_redis_live_events_enabled_when_org_not_blocked(self) -> None:

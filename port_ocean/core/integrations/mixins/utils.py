@@ -167,6 +167,29 @@ async def is_dsp_mode_enabled() -> bool:
         return False
 
 
+async def is_live_event_payload_logging_enabled() -> bool:
+    """Return whether full live-event payload logging is enabled.
+
+    Opt-in only: integration setting ``OCEAN__LIVE_EVENTS__PAYLOAD_LOGGING_ENABLED``
+    (default false) or organization feature flag ``LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED``.
+    """
+    try:
+        if ocean.config.live_events.payload_logging_enabled:
+            return True
+        flags = await ocean.port_client.get_organization_feature_flags(
+            should_raise=False,
+            should_log=False,
+        )
+        return (
+            IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED in flags
+        )
+    except Exception as e:
+        logger.bind(local_only=True).warning(
+            f"Failed to check live event payload logging settings, assuming disabled: {e}"
+        )
+        return False
+
+
 async def is_redis_live_events_enabled() -> bool:
     """Check if live events should be consumed from a Redis stream.
 

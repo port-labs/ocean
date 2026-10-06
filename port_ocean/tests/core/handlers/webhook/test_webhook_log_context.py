@@ -3,7 +3,11 @@ import json
 
 from port_ocean.core.handlers.webhook.webhook_log_context import (
     build_added_to_queue_payload_log_fields,
+    build_live_event_timestamp_log_fields,
     count_flat_attributes,
+    extract_payload_identifiers,
+    is_sensitive_header_name,
+    sanitize_headers_for_logging,
 )
 
 
@@ -43,3 +47,48 @@ def test_build_added_to_queue_payload_log_fields_uses_base64_for_large_payload()
     assert "payload" not in fields
     decoded = json.loads(base64.b64decode(fields["payload_b64"]))
     assert decoded == payload
+
+
+def test_is_sensitive_header_name_detects_auth_and_signature() -> None:
+    assert is_sensitive_header_name("Authorization")
+    assert is_sensitive_header_name("x-hub-signature-256")
+    assert not is_sensitive_header_name("x-github-event")
+
+
+def test_sanitize_headers_for_logging_redacts_sensitive_headers() -> None:
+    sanitized = sanitize_headers_for_logging(
+        {
+            "x-github-event": "push",
+            "authorization": "Bearer secret",
+            "x-hub-signature-256": "sha256=abc",
+        }
+    )
+    assert sanitized["x-github-event"] == "push"
+    assert sanitized["authorization"] == "[REDACTED]"
+    assert sanitized["x-hub-signature-256"] == "[REDACTED]"
+
+
+def test_extract_payload_identifiers_returns_nested_github_fields() -> None:
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": "org/repo"},
+        "pull_request": {"number": 1},
+        "unused": "value",
+    }
+    assert extract_payload_identifiers(payload) == {
+        "action": "opened",
+        "repository": {"full_name": "org/repo"},
+        "pull_request": {"number": 1},
+    }
+
+
+def test_build_live_event_timestamp_log_fields_finish_has_no_payload() -> None:
+    fields = build_live_event_timestamp_log_fields(
+        "Finished Processing Successfully",
+        {"secret": "data"},
+        {"authorization": "secret"},
+        trace_id="trace",
+        payload_logging_enabled=True,
+        webhook_path="/webhook",
+    )
+    assert fields == {"trace_id": "trace"}
