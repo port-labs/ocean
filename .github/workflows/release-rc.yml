@@ -324,7 +324,13 @@ jobs:
     name: Build RC integration images
     runs-on: ubuntu-latest
     needs: [validate-inputs, prepare-matrix, publish-core-rc]
+    # always() is required so this job still runs when publish-core-rc is skipped
+    # (no port_ocean/ changes — integration-only RC). Without it, GHA skips the job
+    # even when the rest of the expression would be true.
     if: |
+      always() &&
+      needs.validate-inputs.result == 'success' &&
+      needs.prepare-matrix.result == 'success' &&
       needs.prepare-matrix.outputs.matrix != '[]' &&
       (needs.publish-core-rc.result == 'success' || needs.publish-core-rc.result == 'skipped')
     permissions:
