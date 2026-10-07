@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.4 (2026-10-07)
+
+
+### Bug Fixes
+
+- Always restore the previous event context when an event raises, so a failed action run no longer leaves a dead context behind that makes every later run on that worker fail with "Port app config is not set".
+
+
 ## 0.53.3 (2026-10-05)
 
 
