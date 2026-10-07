@@ -2,7 +2,7 @@ name: Sync dev specs (PR)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "integrations/**/.port/spec.json"
 
