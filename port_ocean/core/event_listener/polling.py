@@ -51,22 +51,10 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._current_resync_task: Task[Any] | None = None
-        # Separate from request/integration watermarks. Those move when a resync
-        # updates Port state and must not be used to decide whether startup ran.
         self._startup_resync_attempted = False
-        # Captured before startup lifecycle updates. None means "not captured".
-        # An empty string is a real captured baseline and must not fall through
-        # to a newer integration-state timestamp.
         self._startup_request_baseline: str | None = None
 
-    def should_resync(self) -> bool:
-        """
-        Honor ``resync_on_start`` once, when this process has no integration-state watermark.
-
-        ``ResyncStateUpdater`` initializes that watermark to an empty string, not
-        ``None``. Both count as uninitialized. A later poll must not resync again
-        just because the watermark is still empty.
-        """
+    def should_resync_on_start(self) -> bool:
         if self._startup_resync_attempted:
             return False
 
@@ -136,7 +124,7 @@ class PollingEventListener(BaseEventListener):
         Returns:
             A tuple of (should_resync, resync_request_updated_at).
         """
-        if self.should_resync():
+        if self.should_resync_on_start():
             return True, ""
 
         try:
@@ -213,9 +201,6 @@ class PollingEventListener(BaseEventListener):
                 resync_request_updated_at
             )
         else:
-            # Startup resync. Remember that it ran without moving either watermark.
-            # A synthetic "now" (or the timestamp lifecycle writes afterwards) would
-            # become the request baseline and drop a request that arrived mid-run.
             self._startup_resync_attempted = True
             if self._startup_request_baseline is None:
                 current_watermark = (
