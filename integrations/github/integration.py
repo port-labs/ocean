@@ -462,6 +462,11 @@ class GithubMcpSelector(Selector):
 
 
 class GithubMcpResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
+        "pat": ("repo",),
+        "app": ("contents",),
+    }
+
     kind: Literal[ObjectKind.MCP] = Field(
         title="Github MCP Server",
         description="MCP server (mcp.json/.mcp.json) resource kind.",
