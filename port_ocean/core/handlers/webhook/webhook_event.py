@@ -7,7 +7,6 @@ from uuid import uuid4
 from fastapi import Request
 from loguru import logger
 
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_log_context import (
     build_live_event_timestamp_log_fields,
@@ -150,25 +149,28 @@ class WebhookEvent(LiveEvent):
         self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
-        log_full_payload = (
-            ocean.config.live_events.payload_logging_enabled and self.log_full_payload
-        )
         log_fields = build_live_event_timestamp_log_fields(
             timestamp.value,
             self.payload,
             self.headers,
             trace_id=self.trace_id,
-            log_full_payload=log_full_payload,
+            log_full_payload=self.log_full_payload,
             webhook_path=self.webhook_path,
             extra_identifiers=self.live_event_log_identifiers,
         )
-        super().set_timestamp(
-            timestamp,
-            params={
-                **log_fields,
-                **(params or {}),
-            },
+        log_params = {
+            **log_fields,
+            **(params or {}),
+        }
+        bound_logger = logger.bind(
+            **log_params,
+            timestamp_type=timestamp.value,
         )
+        if self.log_full_payload:
+            bound_logger.debug(f"Event {timestamp.value}")
+        else:
+            bound_logger.info(f"Event {timestamp.value}")
+        self._timestamp = timestamp
 
 
 class WebhookEventRawResults:

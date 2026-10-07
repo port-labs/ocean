@@ -116,6 +116,22 @@ def test_build_live_event_timestamp_log_fields_compact_uses_extra_identifiers_on
     assert "secret" not in fields["payload"]
 
 
+def test_build_live_event_timestamp_log_fields_masks_full_payload() -> None:
+    payload = {
+        "action": "opened",
+        "token": "AKIAIOSFODNN7EXAMPLE",
+    }
+    fields = build_live_event_timestamp_log_fields(
+        "Started Processing",
+        payload,
+        {"x-github-event": "push"},
+        trace_id="trace",
+        log_full_payload=True,
+        webhook_path="/webhook",
+    )
+    assert fields["payload"]["token"] == "[REDACTED]"
+
+
 def test_build_live_event_timestamp_log_fields_finish_has_no_payload() -> None:
     fields = build_live_event_timestamp_log_fields(
         "Finished Processing Successfully",

@@ -1,8 +1,9 @@
+import logging
+
 import pytest
 from logging import LogRecord
 from logging.handlers import QueueHandler
 from queue import Queue
-from unittest.mock import patch
 
 from fastapi import Request
 from loguru import logger
@@ -133,9 +134,10 @@ def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     )
     event.webhook_path = "/webhook"
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = False
-        extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.AddedToQueue)
+    record, extra = _capture_set_timestamp_record(
+        event, LiveEventTimestamp.AddedToQueue
+    )
+    assert record.levelno == logging.INFO
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Added To Queue"
@@ -161,9 +163,10 @@ def test_setTimestamp_addedToQueue_logsFullPayloadWhenBothGatesOn() -> None:
     event.webhook_path = "/webhook"
     event.log_full_payload = True
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = True
-        extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.AddedToQueue)
+    record, extra = _capture_set_timestamp_record(
+        event, LiveEventTimestamp.AddedToQueue
+    )
+    assert record.levelno == logging.DEBUG
 
     assert extra["trace_id"] == "test-trace-id"
     headers_logged = extra["headers"]
@@ -186,11 +189,10 @@ def test_setTimestamp_configOnFeatureFlagOff_logsCompactOnly() -> None:
     event.webhook_path = "/webhook"
     event.log_full_payload = False
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = True
-        extra = _capture_set_timestamp_extra(
-            event, LiveEventTimestamp.StartedProcessing
-        )
+    record, extra = _capture_set_timestamp_record(
+        event, LiveEventTimestamp.StartedProcessing
+    )
+    assert record.levelno == logging.INFO
 
     assert extra["timestamp_type"] == "Started Processing"
     assert "payload" not in extra
@@ -198,9 +200,9 @@ def test_setTimestamp_configOnFeatureFlagOff_logsCompactOnly() -> None:
     assert "payload_b64" not in extra
 
 
-def _capture_set_timestamp_extra(
+def _capture_set_timestamp_record(
     event: WebhookEvent, timestamp: LiveEventTimestamp
-) -> dict[str, object]:
+) -> tuple[LogRecord, dict[str, object]]:
     queue: Queue[LogRecord] = Queue()
     queue_handler = QueueHandler(queue)
     logger_id = logger.add(
@@ -219,6 +221,13 @@ def _capture_set_timestamp_extra(
         logger.remove(logger_id)
 
     extra: dict[str, object] = _serialize_record(record)["extra"]
+    return record, extra
+
+
+def _capture_set_timestamp_extra(
+    event: WebhookEvent, timestamp: LiveEventTimestamp
+) -> dict[str, object]:
+    _, extra = _capture_set_timestamp_record(event, timestamp)
     return extra
 
 
@@ -233,11 +242,7 @@ def test_setTimestamp_startedProcessing_logsCompactIdentifiersByDefault(
     )
     event.webhook_path = "/webhook"
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = False
-        extra = _capture_set_timestamp_extra(
-            event, LiveEventTimestamp.StartedProcessing
-        )
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Started Processing"
@@ -263,11 +268,7 @@ def test_setTimestamp_startedProcessing_logsProcessorSuppliedIdentifiers() -> No
     event.webhook_path = "/webhook"
     event.merge_live_event_log_identifiers({"action": "opened", "repo": "org/repo"})
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = False
-        extra = _capture_set_timestamp_extra(
-            event, LiveEventTimestamp.StartedProcessing
-        )
+    extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
     assert extra["headers"] == {
         "x-github-event": "pull_request",
@@ -290,11 +291,10 @@ def test_setTimestamp_startedProcessing_logsFullPayloadWhenBothGatesOn() -> None
     )
     event.log_full_payload = True
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = True
-        extra = _capture_set_timestamp_extra(
-            event, LiveEventTimestamp.StartedProcessing
-        )
+    record, extra = _capture_set_timestamp_record(
+        event, LiveEventTimestamp.StartedProcessing
+    )
+    assert record.levelno == logging.DEBUG
 
     assert extra["payload"] == payload
     headers_logged = extra["headers"]
@@ -315,11 +315,10 @@ def test_setTimestamp_finishedProcessing_neverLogsPayloadOrHeaders() -> None:
     event.webhook_path = "/webhook"
     event.log_full_payload = True
 
-    with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
-        mock_ocean.config.live_events.payload_logging_enabled = True
-        extra = _capture_set_timestamp_extra(
-            event, LiveEventTimestamp.FinishedProcessingSuccessfully
-        )
+    record, extra = _capture_set_timestamp_record(
+        event, LiveEventTimestamp.FinishedProcessingSuccessfully
+    )
+    assert record.levelno == logging.DEBUG
 
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Finished Processing Successfully"

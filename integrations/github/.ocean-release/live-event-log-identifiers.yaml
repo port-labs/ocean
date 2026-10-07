@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Supply GitHub-specific compact live-event log identifiers via get_live_event_log_identifiers on webhook processors when dual-gated payload logging is enabled in Ocean core.

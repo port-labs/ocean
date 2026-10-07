@@ -652,10 +652,6 @@ async def test_handle_webhook_calls_log_webhook_event_when_events_debug_logging_
 
     with (
         patch("port_ocean.core.handlers.webhook.processor_manager.ocean") as mock_ocean,
-        patch(
-            "port_ocean.core.handlers.webhook.webhook_event.ocean",
-            mock_ocean,
-        ),
         patch.object(
             processor_manager,
             "_log_webhook_event",
@@ -663,7 +659,6 @@ async def test_handle_webhook_calls_log_webhook_event_when_events_debug_logging_
         ) as mock_log_webhook_event,
     ):
         mock_ocean.config.events_debug_logging = True
-        mock_ocean.config.live_events.payload_logging_enabled = False
         client = TestClient(app)
         response = client.post(
             test_path,
@@ -690,10 +685,6 @@ async def test_handle_webhook_does_not_call_log_webhook_event_when_events_debug_
 
     with (
         patch("port_ocean.core.handlers.webhook.processor_manager.ocean") as mock_ocean,
-        patch(
-            "port_ocean.core.handlers.webhook.webhook_event.ocean",
-            mock_ocean,
-        ),
         patch.object(
             processor_manager,
             "_log_webhook_event",
@@ -701,7 +692,6 @@ async def test_handle_webhook_does_not_call_log_webhook_event_when_events_debug_
         ) as mock_log_webhook_event,
     ):
         mock_ocean.config.events_debug_logging = False
-        mock_ocean.config.live_events.payload_logging_enabled = False
         client = TestClient(app)
         response = client.post(
             test_path,

@@ -4,6 +4,8 @@ import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from port_ocean.log.sensetive import sensitive_log_filter
+
 # Stay below typical log-backend attribute caps after nested JSON is flattened.
 _MAX_FLAT_PAYLOAD_ATTRIBUTES = 200
 # Cap JSON size before base64 so the encoded field stays within common log value limits.
@@ -178,7 +180,8 @@ def build_live_event_timestamp_log_fields(
 
     if log_full_payload:
         fields["headers"] = sanitize_headers_for_logging(headers)
-        fields.update(build_added_to_queue_payload_log_fields(payload))
+        masked_payload = sensitive_log_filter.mask_object(payload, full_hide=True)
+        fields.update(build_added_to_queue_payload_log_fields(masked_payload))
         if extra_identifiers:
             fields["event_identifiers"] = extra_identifiers
         return fields
