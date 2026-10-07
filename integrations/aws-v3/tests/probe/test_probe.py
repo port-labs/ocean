@@ -386,9 +386,7 @@ async def test_probe_continues_when_one_account_identity_fails(
         await AwsPermissionProbe(probe_context).run()
 
     # Assert
-    by_account = {
-        str(check.scopes["account"]): check for check in probe_context.checks
-    }
+    by_account = {str(check.scopes["account"]): check for check in probe_context.checks}
     assert by_account["111122223333"].status is ProbeCheckStatus.SUCCESS
     assert by_account["111122223333"].scopes == {
         "account": "111122223333",
@@ -441,9 +439,7 @@ async def test_probe_continues_when_one_account_region_discovery_fails(
         await AwsPermissionProbe(probe_context).run()
 
     # Assert
-    by_account = {
-        str(check.scopes["account"]): check for check in probe_context.checks
-    }
+    by_account = {str(check.scopes["account"]): check for check in probe_context.checks}
     assert by_account["111122223333"].status is ProbeCheckStatus.SUCCESS
     assert by_account["222233334444"].status is ProbeCheckStatus.FAILURE
     assert by_account["222233334444"].scopes == {
