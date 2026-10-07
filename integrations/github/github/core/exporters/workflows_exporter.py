@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, cast, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -11,6 +12,27 @@ from github.helpers.utils import enrich_with_repository, enrich_with_organizatio
 
 
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
+    async def has_workflow_changes_since(
+        self, organization: str, repo_name: str, cursor: datetime | None
+    ) -> bool:
+        """Check if repo has commits touching .github/workflows since cursor."""
+        if not cursor:
+            return True
+
+        since_date = cursor.isoformat()
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
+        params = {"path": ".github/workflows", "since": since_date, "per_page": 1}
+
+        async for commits_page in self.client.send_paginated_request(url, params):
+            commits = (
+                commits_page
+                if isinstance(commits_page, list)
+                else commits_page.get("items", [])
+            )
+            return bool(commits)
+
+        return False
+
     async def get_resource[ExporterOptionsT: SingleWorkflowOptions](
         self, options: ExporterOptionsT
     ) -> Optional[RAW_ITEM]:

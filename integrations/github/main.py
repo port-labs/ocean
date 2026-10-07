@@ -433,24 +433,26 @@ async def resync_packages(
                 yield packages
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW)
 @ocean.on_resync(ObjectKind.WORKFLOW)
 @_resync_per_authenticator
 async def resync_workflows(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all workflows for specified Github repositories"""
+    """Resync all workflows with incremental filtering on .github/workflows changes."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    fetch_errors: list[Exception] = []
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
             org_name = org["login"]
-            repo_exporter = RestRepositoryExporter(rest_client)
             workflow_exporter = RestWorkflowExporter(rest_client)
-
+            repo_exporter = RestRepositoryExporter(rest_client)
             repo_options = ListRepositoryOptions(
                 organization=org_name,
                 organization_type=org["type"],
@@ -459,21 +461,60 @@ async def resync_workflows(
                 exclude_archived=config.selector.exclude_archived,
             )
 
+            all_repos = []
             async for repositories in repo_exporter.get_paginated_resources(
                 options=repo_options
             ):
-                tasks = []
-                for repo in repositories:
-                    tasks.append(
-                        workflow_exporter.get_paginated_resources(
-                            options=ListWorkflowOptions(
-                                organization=org_name, repo_name=repo["name"]
+                all_repos.extend(repositories)
+
+            if sync_cursor:
+                repos_to_sync = []
+                for repo in all_repos:
+                    try:
+                        has_changes = (
+                            await workflow_exporter.has_workflow_changes_since(
+                                org_name, repo["name"], sync_cursor
                             )
                         )
-                    )
+                        if has_changes:
+                            repos_to_sync.append(repo)
+                    except Exception as e:
+                        fetch_errors.append(e)
+                        logger.error(
+                            f"Failed to check workflow changes for {org_name}/{repo['name']}",
+                            extra={"error": str(e)},
+                        )
+                if not repos_to_sync:
+                    continue
+            else:
+                repos_to_sync = all_repos
 
-                async for workflows in stream_async_iterators_tasks(*tasks):
-                    yield workflows
+            logger.info(
+                f"Syncing {org_name} workflows "
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
+            )
+
+            tasks = [
+                workflow_exporter.get_paginated_resources(
+                    options=ListWorkflowOptions(
+                        organization=org_name, repo_name=repo["name"]
+                    )
+                )
+                for repo in repos_to_sync
+            ]
+
+            async for workflows in stream_async_iterators_tasks(*tasks):
+                yield workflows
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_incremental_resync(ObjectKind.WORKFLOW_RUN)
