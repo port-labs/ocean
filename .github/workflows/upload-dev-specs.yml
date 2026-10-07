@@ -5,11 +5,18 @@ on:
     branches:
       - dev-specs
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — compare against S3 and print diffs without uploading"
+        required: false
+        type: boolean
+        default: true
 
 # Serialize uploads so concurrent pushes cannot clobber each other's index.json
 # or overwrite a newer PR's latest spec objects with an older full upload.
+# Dry runs use a separate group so they do not block real uploads.
 concurrency:
-  group: upload-dev-specs
+  group: upload-dev-specs${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '-dry' || '' }}
   cancel-in-progress: false
 
 permissions:
@@ -21,13 +28,13 @@ env:
 
 jobs:
   upload-dev-specs:
-    name: Upload changed specs to dev S3
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'Dry-run compare specs to dev S3' || 'Upload changed specs to dev S3' }}
     runs-on: ubuntu-latest
     # Branch deletion emits a push with deleted=true and a zero SHA; skip it.
     # The recreate push (or workflow_dispatch) performs the intended upload.
     if: github.event_name != 'push' || github.event.deleted != true
     steps:
-      - name: Check out dev-specs
+      - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -67,9 +74,14 @@ jobs:
             cat changed_specs.txt
           fi
 
-      - name: Upload changed specs to dev S3
+      - name: Upload or dry-run compare specs to dev S3
         if: steps.changed.outputs.has_changes == 'true'
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
         run: |
           set -euo pipefail
           chmod +x scripts/ci/upload_dev_specs.sh
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "::notice::DRY RUN — comparing local specs to s3://${AWS_S3_BUCKET}/ (no writes)"
+          fi
           scripts/ci/upload_dev_specs.sh changed_specs.txt
