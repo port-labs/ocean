@@ -254,6 +254,62 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_directory_contents_keeps_its_defaults_when_the_caller_passes_params(
+    mock_client: BitbucketClient,
+) -> None:
+    """A caller supplying a query must not lose the page size or the depth limit."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield [{"type": "commit_file", "path": "README.md", "size": 22}]
+
+            mock_paginated.return_value = mock_generator()
+            async for _ in mock_client.get_directory_contents(
+                "test-repo", "main", "", 10000, params={"q": 'type="commit_file"'}
+            ):
+                pass
+
+            sent = mock_paginated.call_args.kwargs["params"]
+            assert sent["pagelen"] == 100
+            assert sent["max_depth"] == 10000
+            assert sent["q"] == 'type="commit_file"'
+
+
+@pytest.mark.asyncio
+async def test_paginated_request_keeps_page_size_when_the_caller_passes_params() -> (
+    None
+):
+    """Every kind that lists repositories passes a params dict, which must keep pagelen."""
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token="token1",
+    )
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "_send_api_request", new_callable=AsyncMock
+            ) as mock_request,
+            patch.object(client, "_update_authorization_header"),
+        ):
+            mock_request.return_value = {"values": [{"slug": "repo-1"}], "next": None}
+
+            async for _ in client._fetch_paginated_api_with_rate_limiter(
+                f"{client.base_url}/repositories/test_workspace",
+                params={"role": "member"},
+            ):
+                pass
+
+            sent = mock_request.call_args.kwargs["params"]
+            assert sent["pagelen"] == 100
+            assert sent["role"] == "member"
+
+
+@pytest.mark.asyncio
 async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
