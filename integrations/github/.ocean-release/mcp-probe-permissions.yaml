@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Include the MCP kind in GitHub test-connection (probe) permission checks
