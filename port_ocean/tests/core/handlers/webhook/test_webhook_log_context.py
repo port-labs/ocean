@@ -132,13 +132,28 @@ def test_build_live_event_timestamp_log_fields_masks_full_payload() -> None:
     assert fields["payload"]["token"] == "[REDACTED]"
 
 
-def test_build_live_event_timestamp_log_fields_finish_has_no_payload() -> None:
-    fields = build_live_event_timestamp_log_fields(
+def test_build_live_event_timestamp_log_fields_finish_follows_same_rules_as_start() -> (
+    None
+):
+    fields_compact = build_live_event_timestamp_log_fields(
         "Finished Processing Successfully",
         {"secret": "data"},
-        {"authorization": "secret"},
+        {"x-github-event": "push", "authorization": "secret"},
+        trace_id="trace",
+        log_full_payload=False,
+        webhook_path="/webhook",
+        extra_identifiers={"action": "opened"},
+    )
+    assert fields_compact["payload"] == {"action": "opened"}
+    assert fields_compact["headers"] == {"x-github-event": "push"}
+
+    fields_full = build_live_event_timestamp_log_fields(
+        "Finished Processing With Error",
+        {"token": "AKIAIOSFODNN7EXAMPLE"},
+        {"authorization": "Bearer secret"},
         trace_id="trace",
         log_full_payload=True,
         webhook_path="/webhook",
     )
-    assert fields == {"trace_id": "trace"}
+    assert fields_full["headers"]["authorization"] == "[REDACTED]"
+    assert fields_full["payload"]["token"] == "[REDACTED]"

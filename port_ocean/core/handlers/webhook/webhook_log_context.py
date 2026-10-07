@@ -151,14 +151,6 @@ def extract_compact_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return compact
 
 
-_FINISH_TIMESTAMP_VALUES = frozenset(
-    {
-        "Finished Processing Successfully",
-        "Finished Processing With Error",
-    }
-)
-
-
 def build_live_event_timestamp_log_fields(
     timestamp_value: str,
     payload: dict[str, Any],
@@ -171,9 +163,6 @@ def build_live_event_timestamp_log_fields(
 ) -> dict[str, Any]:
     """Build structured fields for Event * timestamp log lines."""
     fields: dict[str, Any] = {"trace_id": trace_id}
-
-    if timestamp_value in _FINISH_TIMESTAMP_VALUES:
-        return fields
 
     if webhook_path is not None:
         fields["webhook_path"] = webhook_path

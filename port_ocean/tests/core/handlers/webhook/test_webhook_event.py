@@ -303,7 +303,7 @@ def test_setTimestamp_startedProcessing_logsFullPayloadWhenBothGatesOn() -> None
     assert headers_logged["authorization"] == "[REDACTED]"
 
 
-def test_setTimestamp_finishedProcessing_neverLogsPayloadOrHeaders() -> None:
+def test_setTimestamp_finishedProcessing_follows_same_gating_as_started() -> None:
     payload = {f"key_{index}": {"nested": index} for index in range(250)}
     headers = {"x-github-event": "pull_request", "authorization": "secret"}
     event = WebhookEvent(
@@ -319,12 +319,21 @@ def test_setTimestamp_finishedProcessing_neverLogsPayloadOrHeaders() -> None:
         event, LiveEventTimestamp.FinishedProcessingSuccessfully
     )
     assert record.levelno == logging.DEBUG
-
-    assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Finished Processing Successfully"
-    assert "headers" not in extra
+    headers_logged = extra["headers"]
+    assert isinstance(headers_logged, dict)
+    assert headers_logged["authorization"] == "[REDACTED]"
     assert "payload" not in extra
-    assert "payload_b64" not in extra
+    assert "payload_b64" in extra
+
+    event.log_full_payload = False
+    event.merge_live_event_log_identifiers({"kind": "issue"})
+    record_compact, extra_compact = _capture_set_timestamp_record(
+        event, LiveEventTimestamp.FinishedProcessingWithError
+    )
+    assert record_compact.levelno == logging.INFO
+    assert extra_compact["payload"] == {"kind": "issue"}
+    assert extra_compact["headers"] == {"x-github-event": "pull_request"}
 
 
 class TestWebhookRequestAdapter:
