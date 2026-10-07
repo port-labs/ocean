@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Always restore the previous event context when an event raises, so a failed action run no longer leaves a dead context behind that makes every later run on that worker fail with "Port app config is not set".
