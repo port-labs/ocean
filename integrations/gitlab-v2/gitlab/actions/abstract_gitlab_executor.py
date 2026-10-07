@@ -1,5 +1,11 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from gitlab.clients.client_factory import create_gitlab_client
+from gitlab.clients.gitlab_client import GitLabClient
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
+from port_ocean.identity_propagation.token_exchanger import resolve_user_token
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -29,3 +35,22 @@ class AbstractGitlabExecutor(AbstractExecutor):
             return 0
 
         return info.seconds_until_reset
+
+    @asynccontextmanager
+    async def _api_client_for_run(
+        self, run: IntegrationRun
+    ) -> AsyncIterator[GitLabClient]:
+        user_token = await resolve_user_token(run)
+        if user_token:
+            host = str(ocean.integration_config["gitlab_host"]).rstrip("/")
+            api_client = GitLabClient(host, user_token)
+
+            # Do not fall back to the integration OAuth token on 401 — that would
+            # execute the action as the integration instead of the user.
+            api_client.rest._auth_client.disable_token_refresh()
+            try:
+                yield api_client
+            finally:
+                await api_client.rest._client.aclose()
+        else:
+            yield self.client

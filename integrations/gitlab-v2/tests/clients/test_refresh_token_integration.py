@@ -196,3 +196,40 @@ class TestTokenRefreshIntegration:
             assert client.token == "test-token"  # Token should remain unchanged
             mock_request.assert_called_once()
             mock_get_refreshed_token.assert_not_called()  # Refresh should not be needed
+
+    async def test_identity_propagated_client_does_not_refresh_to_integration_token(
+        self,
+    ) -> None:
+        """A 401 with a user token must not fall back to the integration OAuth token."""
+        client = HTTPBaseClient(
+            "https://gitlab.example.com",
+            "user-token",
+            endpoint="api/v4",
+        )
+        client._auth_client.disable_token_refresh()
+        mock_401_response = MagicMock()
+        mock_401_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Unauthorized", request=MagicMock(), response=MagicMock(status_code=401)
+        )
+
+        with (
+            patch.object(
+                client._client, "request", AsyncMock(return_value=mock_401_response)
+            ) as mock_request,
+            patch.object(
+                type(client._auth_client),
+                "external_access_token",
+                new_callable=lambda: property(lambda self: "integration-oauth-token"),
+            ),
+        ):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await client.send_api_request("GET", "projects")
+
+            assert exc_info.value.response.status_code == 401
+            assert client.token == "user-token"
+            assert client._auth_client.token == "user-token"
+            mock_request.assert_called_once()
+            assert (
+                mock_request.call_args.kwargs["headers"]["Authorization"]
+                == "Bearer user-token"
+            )

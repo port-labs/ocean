@@ -58,6 +58,22 @@
       "type": "url",
       "default": "https://gitlab.com",
       "description": "The host of the Gitlab instance. If not specified, the default will be https://gitlab.com."
+    },
+    {
+      "name": "identityOauthClientId",
+      "title": "Identity propagation OAuth client ID",
+      "description": "Client ID of the GitLab OAuth app used so workflow actions run as the triggering user. Authorize and token URLs are derived from gitlabHost. Set the callback to {OCEAN__BASE_URL}/v1/oauth-broker/callback.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "identityOauthClientSecret",
+      "title": "Identity propagation OAuth client secret",
+      "description": "Client secret of the GitLab OAuth app used so workflow actions run as the triggering user.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
     }
   ],
   "saas": {
@@ -237,6 +253,48 @@
           "title": "Reviewer IDs",
           "type": "array",
           "description": "GitLab user IDs to set as reviewers. An empty array unassigns all reviewers. Example: [3, 4]"
+        }
+      ]
+    },
+    {
+      "name": "set_merge_request_comment_reaction",
+      "icon": "GitLab",
+      "description": "Add or remove a reaction on a merge request comment",
+      "inputs": [
+        {
+          "name": "project",
+          "title": "Project",
+          "type": "string",
+          "description": "GitLab project path (e.g., \"my-group/my-project\") or numeric ID",
+          "required": true
+        },
+        {
+          "name": "mergeRequestIid",
+          "title": "Merge request IID",
+          "type": "string",
+          "description": "Internal merge request ID (the number in !42)",
+          "required": true
+        },
+        {
+          "name": "noteId",
+          "title": "Comment ID",
+          "type": "string",
+          "description": "ID of the merge request note (comment) to react to",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Reaction name",
+          "type": "string",
+          "description": "GitLab emoji name without colons (for example, thumbsup)",
+          "required": true
+        },
+        {
+          "name": "removeReaction",
+          "title": "Remove reaction",
+          "type": "boolean",
+          "description": "When true, removes the reaction instead of adding it",
+          "default": false
         }
       ]
     }

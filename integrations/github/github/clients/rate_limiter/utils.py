@@ -34,7 +34,7 @@ class RateLimitInfo:
 
     @property
     def seconds_until_reset(self) -> int:
-        return max(0, self.reset_time - int(time.time()))
+        return max(1, self.reset_time - int(time.time()))
 
     @property
     def utilization_percentage(self) -> float:

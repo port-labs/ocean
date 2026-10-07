@@ -25,6 +25,9 @@ mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
                 id
                 name
             }
+            delegate {
+                id
+            }
         }
     }
 }

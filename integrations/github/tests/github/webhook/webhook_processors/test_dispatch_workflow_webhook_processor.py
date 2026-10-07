@@ -70,19 +70,24 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
-def mock_port_client() -> Generator[MagicMock, None, None]:
-    client = MagicMock()
-    client.find_run_by_external_id = AsyncMock(
-        return_value=make_run({"reportWorkflowStatus": True})
-    )
-    client.is_run_in_progress = MagicMock(return_value=True)
-    client.report_run_completed = AsyncMock()
+def mock_ocean() -> Generator[MagicMock, None, None]:
     with patch(
         "github.webhook.webhook_processors.workflow_run."
         "dispatch_workflow_webhook_processor.ocean"
-    ) as mock_ocean:
-        mock_ocean.port_client = client
-        yield client
+    ) as ocean:
+        ocean.port_client = MagicMock()
+        ocean.port_client.find_run_by_external_id = AsyncMock(
+            return_value=make_run({"reportWorkflowStatus": True})
+        )
+        ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+        ocean.port_client.report_run_completed = AsyncMock()
+        ocean.config.identity_propagation.enabled = False
+        yield ocean
+
+
+@pytest.fixture
+def mock_port_client(mock_ocean: MagicMock) -> MagicMock:
+    return mock_ocean.port_client
 
 
 @pytest.fixture
@@ -90,6 +95,21 @@ def processor(
     mock_webhook_event: WebhookEvent,
 ) -> DispatchWorkflowWebhookProcessor:
     return DispatchWorkflowWebhookProcessor(event=mock_webhook_event)
+
+
+def _completed_workflow_event(actor_login: str) -> WebhookEvent:
+    return WebhookEvent(
+        trace_id="test-trace-id",
+        headers={"x-github-event": "workflow_run"},
+        payload={
+            "action": "completed",
+            "workflow_run": {
+                **WORKFLOW_RUN,
+                "status": "completed",
+                "actor": {"login": actor_login},
+            },
+        },
+    )
 
 
 def test_status_labels_are_two_words_max() -> None:
@@ -176,3 +196,45 @@ class TestDispatchWorkflowWebhookProcessor:
         await processor.handle_event(make_payload("success"), resource_config)
 
         mock_port_client.report_run_completed.assert_not_awaited()
+
+    async def test_processes_event_when_actor_matches_integration(
+        self,
+        mock_ocean: MagicMock,
+    ) -> None:
+        event = _completed_workflow_event("port-bot[bot]")
+        processor = DispatchWorkflowWebhookProcessor(event=event)
+
+        with patch(
+            "github.webhook.webhook_processors.workflow_run."
+            "dispatch_workflow_webhook_processor.get_auth_provider",
+            return_value=MagicMock(
+                get_integration_actor=AsyncMock(return_value="port-bot[bot]")
+            ),
+        ):
+            assert await processor._should_process_event(event) is True
+
+    async def test_skips_event_when_actor_mismatches_without_idp(
+        self,
+        mock_ocean: MagicMock,
+    ) -> None:
+        event = _completed_workflow_event("some-user")
+        processor = DispatchWorkflowWebhookProcessor(event=event)
+
+        with patch(
+            "github.webhook.webhook_processors.workflow_run."
+            "dispatch_workflow_webhook_processor.get_auth_provider",
+            return_value=MagicMock(
+                get_integration_actor=AsyncMock(return_value="port-bot[bot]")
+            ),
+        ):
+            assert await processor._should_process_event(event) is False
+
+    async def test_processes_user_actor_when_identity_propagation_enabled(
+        self,
+        mock_ocean: MagicMock,
+    ) -> None:
+        mock_ocean.config.identity_propagation.enabled = True
+        event = _completed_workflow_event("some-user")
+        processor = DispatchWorkflowWebhookProcessor(event=event)
+
+        assert await processor._should_process_event(event) is True

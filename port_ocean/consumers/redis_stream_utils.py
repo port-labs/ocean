@@ -1,6 +1,6 @@
 import asyncio
-from collections.abc import Awaitable
-from typing import Any, cast
+from collections.abc import Iterator
+from typing import Any
 
 from loguru import logger
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -21,6 +21,23 @@ _REDIS_CONNECTION_ERRORS = (
 def is_redis_connection_error(error: BaseException) -> bool:
     """Return True when the error indicates Redis is unreachable or disconnected."""
     return isinstance(error, _REDIS_CONNECTION_ERRORS)
+
+
+def iter_xreadgroup_streams(response: Any) -> Iterator[tuple[Any, list[Any]]]:
+    """Yield ``(stream, messages)`` from an XREADGROUP reply.
+
+    redis-py 8 keeps the legacy list shape by default
+    (``[[stream, [(id, fields), ...]]]``). Unified responses
+    (``legacy_responses=False``) return a dict keyed by stream. Both are
+    accepted so a protocol or response-shape change does not break the read
+    loop.
+    """
+    if not response:
+        return
+
+    streams = response.items() if isinstance(response, dict) else response
+    for stream_name, messages in streams:
+        yield stream_name, list(messages or [])
 
 
 def is_missing_stream_or_group_error(error: Exception) -> bool:
@@ -145,10 +162,7 @@ async def _eval_lua_script(
     Redis runs each EVAL script as a single atomic unit, so partial updates cannot
     leave entries half-processed if another client or failure interleaves.
     """
-    return await cast(
-        Awaitable[Any],
-        redis.eval(script, len(keys), *keys, *args),
-    )
+    return await redis.eval(script, len(keys), *keys, *args)
 
 
 async def ack_and_finalize_stream_entry(

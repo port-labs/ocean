@@ -1,6 +1,6 @@
 """Unit tests for BaseIntegration.run_probe."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -18,18 +18,26 @@ def integration() -> BaseIntegration:
 
 
 @pytest.mark.asyncio
-async def test_run_probe_raises_when_listener_is_not_registered(
+async def test_run_probe_marks_unsupported_mode_as_internal_failure(
     integration: BaseIntegration,
 ) -> None:
     # Arrange
     integration.event_strategy.on_probe = None
 
     # Act / Assert
-    with pytest.raises(
-        ModeNotSupportedException,
-        match="github does not support probe mode",
+    with (
+        patch.object(
+            ProbeContext, "fail_internal", new_callable=AsyncMock
+        ) as mock_fail_internal,
+        pytest.raises(
+            ModeNotSupportedException,
+            match="github does not support probe mode",
+        ),
     ):
         await integration.run_probe("probe-123", ProbeConfig())
+
+    mock_fail_internal.assert_called_once()
+    assert "github does not support probe mode" in mock_fail_internal.call_args.args[0]
 
 
 @patch(
@@ -65,7 +73,7 @@ async def test_run_probe_finalizes_listener_context(
     return_value=["repository"],
 )
 @pytest.mark.asyncio
-async def test_run_probe_marks_context_failed_when_listener_raises(
+async def test_run_probe_marks_context_internal_failure_when_listener_raises(
     mock_get_port_app_config_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
@@ -74,16 +82,16 @@ async def test_run_probe_marks_context_failed_when_listener_raises(
 
     async def on_probe(context: ProbeContext) -> ProbeContext:
         captured_context.append(context)
-        raise RuntimeError("probe failed")
+        raise RuntimeError("probe crashed")
 
     integration.event_strategy.on_probe = on_probe
     config = ProbeConfig(kinds=["repository"])
 
     # Act / Assert
-    with pytest.raises(RuntimeError, match="probe failed"):
+    with pytest.raises(RuntimeError, match="probe crashed"):
         await integration.run_probe("probe-123", config)
 
-    assert captured_context[0].status == ProbeStatus.FAILED
+    assert captured_context[0].status == ProbeStatus.INTERNAL_FAILURE
     assert captured_context[0].ended_at is not None
 
 
@@ -113,4 +121,33 @@ async def test_run_probe_raises_when_context_is_failed(
         await integration.run_probe("probe-123", config)
 
     assert captured_context[0].status == ProbeStatus.FAILED
+    assert captured_context[0].message == message
+
+
+@patch(
+    "port_ocean.core.probe.context.get_port_app_config_kinds",
+    return_value=["repository"],
+)
+@pytest.mark.asyncio
+async def test_run_probe_raises_when_context_is_internal_failure(
+    mock_get_port_app_config_kinds: MagicMock,
+    integration: BaseIntegration,
+) -> None:
+    # Arrange
+    captured_context: list[ProbeContext] = []
+    message = "Unhandled probe error"
+
+    async def on_probe(context: ProbeContext) -> ProbeContext:
+        captured_context.append(context)
+        await context.fail_internal(message)
+        return context
+
+    integration.event_strategy.on_probe = on_probe
+    config = ProbeConfig(kinds=["repository"])
+
+    # Act / Assert
+    with pytest.raises(ProbeFailedError, match=message):
+        await integration.run_probe("probe-123", config)
+
+    assert captured_context[0].status == ProbeStatus.INTERNAL_FAILURE
     assert captured_context[0].message == message

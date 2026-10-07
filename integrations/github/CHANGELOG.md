@@ -7,6 +7,118 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.17.3 (2026-10-07)
+
+
+### Improvements
+
+- Include the MCP kind in GitHub test-connection (probe) permission checks
+
+
+## 6.17.2 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 6.17.1 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 6.17.0 (2026-10-04)
+
+
+### Features
+
+- Added identity propagation for GitHub actions. The integration registers its own OAuth app (identityOauthClientId/identityOauthClientSecret) so actions can run as the triggering user. Workflow dispatch completion tracking matches user-triggered runs, and external custom property actions keep using the GitHub App installation token because `/orgs/{org}/properties/installations/values` requires installation permissions. User OAuth tokens also get per-credential rate-limit scopes so one user's quota exhaustion no longer stalls other users or the integration PAT.
+
+
+## 6.16.6 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
+## 6.16.5 (2026-10-04)
+
+
+### Bug Fixes
+
+- Fix GitHub 403 tree-fetch handling to preserve entities during outages (PORT-18430). Raise GitHubTreeFetchError on 403 permission errors to signal reconciliation guard and prevent entity deletion during API outages.
+
+
+## 6.16.4 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 6.16.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 6.16.2 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 6.16.1 (2026-09-30)
+
+
+### Improvements
+
+- Added workflow node outputs (issueNumber, issueId, issueUrl) to the create_issue action
+
+
+## 6.16.0 (2026-09-29)
+
+
+### Features
+
+- Enabled test connection so Port can run connection health probes for this integration.
+
+
+## 6.15.3 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 6.15.2 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 6.15.1 (2026-09-27)
+
+
+### Bug Fixes
+
+- Ensure GitHub rate limiter waits at least 1s after reset to avoid burning retries with sleep(0)
+
+
 ## 6.15.0 (2026-09-24)
 
 

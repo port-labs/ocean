@@ -7,6 +7,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.20.7 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.20.6 (2026-10-06)
+
+
+### Bug Fixes
+
+- Bumped aiohttp to ^3.14.3 to fix CVE-2026-69244 (GHSA-cq5v-8q36-5273)
+
+
+## 0.20.5 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 0.20.4 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
+## 0.20.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 0.20.2 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 0.20.1 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 0.20.0 (2026-09-30)
+
+
+### Features
+
+- Added update_pull_request_labels action to add a label to Azure DevOps pull requests
+
+
+## 0.19.0 (2026-09-29)
+
+
+### Features
+
+- Add identity propagation for Azure DevOps actions so API calls run as the triggering user when enabled.
+
+
+## 0.18.2 (2026-09-29)
+
+
+### Improvements
+
+- Added build relation to release-deployment default mapping
+
+
+## 0.18.1 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.18.0 (2026-09-28)
+
+
+### Features
+
+- Added optional enrichWithCommits and enrichWithReviewDiscussion selectors on pull-request to attach raw Azure DevOps commits and threads during resync and live events
+
+
+## 0.17.7 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
 ## 0.17.6 (2026-09-23)
 
 

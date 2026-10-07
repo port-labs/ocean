@@ -206,7 +206,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
 
     async for pull_requests in resync.iter_pull_requests(
-        ACTIVE_PULL_REQUEST_SEARCH_CRITERIA
+        ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
+        enrich_with_commits=selector.enrich_with_commits,
+        enrich_with_review_discussion=selector.enrich_with_review_discussion,
     ):
         logger.info(f"Resyncing {len(pull_requests)} active pull_requests")
         yield pull_requests
@@ -215,7 +217,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         selector.min_time_datetime
     ):
         async for pull_requests in resync.iter_pull_requests(
-            search_filter, selector.max_results
+            search_filter,
+            selector.max_results,
+            enrich_with_commits=selector.enrich_with_commits,
+            enrich_with_review_discussion=selector.enrich_with_review_discussion,
         ):
             logger.info(
                 f"Resyncing {len(pull_requests)} abandoned/completed pull_requests"

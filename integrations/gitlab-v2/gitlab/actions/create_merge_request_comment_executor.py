@@ -77,16 +77,17 @@ class CreateMergeRequestCommentExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
 
-        try:
-            note = await self.client.create_merge_request_note(
-                inputs.project, inputs.mergeRequestIid, inputs.body
-            )
-        except httpx.HTTPStatusError as error:
-            raise GitlabCreateMergeRequestCommentError.from_response(
-                error.response,
-                f"Could not create comment on merge request !{inputs.mergeRequestIid} "
-                f"in project '{inputs.project}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                note = await api_client.create_merge_request_note(
+                    inputs.project, inputs.mergeRequestIid, inputs.body
+                )
+            except httpx.HTTPStatusError as error:
+                raise GitlabCreateMergeRequestCommentError.from_response(
+                    error.response,
+                    f"Could not create comment on merge request !{inputs.mergeRequestIid} "
+                    f"in project '{inputs.project}'",
+                )
 
         note_id = note.get("id") if note else None
         if note_id is None:
