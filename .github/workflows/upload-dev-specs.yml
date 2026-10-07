@@ -6,6 +6,12 @@ on:
       - dev-specs
   workflow_dispatch:
 
+# Serialize uploads so concurrent pushes cannot clobber each other's index.json
+# or overwrite a newer PR's latest spec objects with an older full upload.
+concurrency:
+  group: upload-dev-specs
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
