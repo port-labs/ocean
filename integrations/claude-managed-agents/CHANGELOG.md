@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.1 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.4.0 (2026-10-06)
+
+
+### Features
+
+- Added an archive_agent action that permanently archives a Claude managed agent, making it read-only and preventing new sessions from referencing it
+
+
 ## 0.3.5 (2026-10-05)
 
 

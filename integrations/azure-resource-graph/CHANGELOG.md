@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.225-beta (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.2.224-beta (2026-10-06)
+
+
+### Bug Fixes
+
+- Bumped aiohttp to ^3.14.3 to fix CVE-2026-69244 (GHSA-cq5v-8q36-5273)
+
+
 ## 0.2.223-beta (2026-10-05)
 
 
