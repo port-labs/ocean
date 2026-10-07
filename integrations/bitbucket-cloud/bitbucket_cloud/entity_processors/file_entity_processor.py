@@ -15,9 +15,15 @@ class FileEntityProcessor(JQEntityProcessor):
         """Helper method to fetch and process file content."""
         try:
             bitbucket_client = init_client()
-            return await bitbucket_client.get_repository_files(
+            content = await bitbucket_client.get_repository_files(
                 repo_slug, ref, file_path
             )
+            if content is None:
+                logger.warning(
+                    f"Bitbucket returned no content for {file_path} in repository "
+                    f"{repo_slug}, resolving the reference to null"
+                )
+            return content
         except Exception as e:
             logger.error(
                 f"Failed to get file content for {file_path} in repository {repo_slug} in branch {ref}: {e}"

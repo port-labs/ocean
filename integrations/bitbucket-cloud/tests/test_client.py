@@ -310,6 +310,72 @@ async def test_paginated_request_keeps_page_size_when_the_caller_passes_params()
 
 
 @pytest.mark.asyncio
+async def test_get_repository_files_returns_none_when_bitbucket_has_no_content(
+    mock_client: BitbucketClient,
+) -> None:
+    """A file Bitbucket cannot return is None, not an empty string and not a crash."""
+    response = MagicMock()
+    response.status_code = 404
+    error = HTTPStatusError("404 Not Found", request=MagicMock(), response=response)
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_file_api_request_with_rate_limiter",
+            new_callable=AsyncMock,
+            side_effect=error,
+        ):
+            assert (
+                await mock_client.get_repository_files(
+                    "test-repo", "main", "CODEOWNERS"
+                )
+                is None
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_reraises_anything_other_than_a_404(
+    mock_client: BitbucketClient,
+) -> None:
+    """Only absence is tolerated; an auth or server failure must surface."""
+    response = MagicMock()
+    response.status_code = 403
+    error = HTTPStatusError("403 Forbidden", request=MagicMock(), response=response)
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_file_api_request_with_rate_limiter",
+            new_callable=AsyncMock,
+            side_effect=error,
+        ):
+            with pytest.raises(HTTPStatusError):
+                await mock_client.get_repository_files("test-repo", "main", "x.yaml")
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_swallows_a_404_by_default_and_raises_on_request(
+    mock_client: BitbucketClient,
+) -> None:
+    """Every existing caller keeps today's behaviour; only an opt-in sees the error."""
+    response = MagicMock()
+    response.status_code = 404
+    response.raise_for_status.side_effect = HTTPStatusError(
+        "404 Not Found", request=MagicMock(), response=response
+    )
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client.client, "request", new_callable=AsyncMock, return_value=response
+        ):
+            assert await mock_client._send_api_request("https://example/x") == {}
+            with pytest.raises(HTTPStatusError):
+                await mock_client._send_api_request(
+                    "https://example/x", raise_on_missing=True
+                )
+
+
+@pytest.mark.asyncio
 async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
