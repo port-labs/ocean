@@ -1,0 +1,75 @@
+name: Upload dev specs to S3
+
+on:
+  push:
+    branches:
+      - dev-specs
+  workflow_dispatch:
+
+# Serialize uploads so concurrent pushes cannot clobber each other's index.json
+# or overwrite a newer PR's latest spec objects with an older full upload.
+concurrency:
+  group: upload-dev-specs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Prefer repo variable when set; default matches the shared dev registry bucket.
+  AWS_S3_BUCKET: ${{ vars.DEV_AWS_S3_BUCKET || 'ocean-registry-dev-01' }}
+
+jobs:
+  upload-dev-specs:
+    name: Upload changed specs to dev S3
+    runs-on: ubuntu-latest
+    # Branch deletion emits a push with deleted=true and a zero SHA; skip it.
+    # The recreate push (or workflow_dispatch) performs the intended upload.
+    if: github.event_name != 'push' || github.event.deleted != true
+    steps:
+      - name: Check out dev-specs
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Determine changed specs
+        id: changed
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            find integrations -path '*/.port/spec.json' | sort > changed_specs.txt
+          else
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.sha }}"
+            if [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+              find integrations -path '*/.port/spec.json' | sort > changed_specs.txt
+            else
+              git diff --name-only --diff-filter=ACMR "${BEFORE}" "${AFTER}" -- \
+                'integrations/*/.port/spec.json' \
+                > changed_specs.txt || true
+            fi
+          fi
+
+          if [ ! -s changed_specs.txt ]; then
+            echo "has_changes=false" >> "${GITHUB_OUTPUT}"
+            echo "No changed integration specs."
+          else
+            echo "has_changes=true" >> "${GITHUB_OUTPUT}"
+            echo "Changed specs:"
+            cat changed_specs.txt
+          fi
+
+      - name: Upload changed specs to dev S3
+        if: steps.changed.outputs.has_changes == 'true'
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/upload_dev_specs.sh
+          scripts/ci/upload_dev_specs.sh changed_specs.txt

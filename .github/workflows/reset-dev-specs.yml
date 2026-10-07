@@ -1,0 +1,45 @@
+name: Reset dev specs from main
+
+on:
+  workflow_dispatch:
+
+# Manual recovery: delete `dev-specs` and recreate it from `main`.
+# The first push uses before=0000… so upload-dev-specs.yml re-uploads every
+# spec.json to the dev S3 bucket (same path as a brand-new branch).
+permissions:
+  contents: write
+
+jobs:
+  reset-dev-specs:
+    name: Recreate dev-specs from main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+
+      - name: Delete and recreate dev-specs from main
+        run: |
+          set -euo pipefail
+          BRANCH=dev-specs
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            git push origin --delete "${BRANCH}"
+            echo "Deleted origin/${BRANCH}"
+          else
+            echo "origin/${BRANCH} did not exist; nothing to delete"
+          fi
+
+          # Drop any leftover local ref, then recreate from main and push.
+          # A new-branch push has before=0000… → upload-dev-specs does a full upload.
+          git branch -D "${BRANCH}" 2>/dev/null || true
+          git branch "${BRANCH}" origin/main
+          git push -u origin "${BRANCH}"
+          echo "Recreated origin/${BRANCH} from origin/main"
