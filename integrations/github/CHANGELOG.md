@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.17.3 (2026-10-07)
+
+
+### Improvements
+
+- Include the MCP kind in GitHub test-connection (probe) permission checks
+
+
 ## 6.17.2 (2026-10-07)
 
 
