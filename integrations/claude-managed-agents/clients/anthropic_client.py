@@ -294,21 +294,8 @@ class AnthropicClient:
         self,
         agent_id: str,
         version: int,
-        name: str | None = None,
-        model: str | None = None,
-        system: str | None = None,
-        extra: dict[str, Any] | None = None,
+        payload: dict[str, Any],
     ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            k: v for k, v in (extra or {}).items() if v is not None
-        }
-        if name:
-            payload["name"] = name
-        if model:
-            payload["model"] = model
-        if system:
-            payload["system"] = system
-
         logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
         agent = await self._client.beta.agents.update(
             agent_id, version=version, **payload

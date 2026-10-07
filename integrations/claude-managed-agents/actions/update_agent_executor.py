@@ -24,18 +24,30 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
-        if self.name == "":
-            self.name = None
-        if self.model == "":
-            self.model = None
-        if self.systemPrompt == "":
-            self.systemPrompt = None
+        self.name = self.name or None
+        self.model = self.model or None
+        self.systemPrompt = self.systemPrompt or None
 
         if not any([self.name, self.model, self.systemPrompt, self.config]):
             raise ValueError(
                 "at least one of name, model, systemPrompt, or config must be provided"
             )
         return self
+
+    def to_request_payload(self) -> dict[str, Any]:
+        """Return only the fields that should be sent to the Anthropic API.
+
+        Omits agentId (routing key, not an API field), drops None/empty values,
+        and maps systemPrompt → system to match the API field name.
+        """
+        rename = {"systemPrompt": "system"}
+        return {
+            rename.get(field, field): value
+            for field, value in self.model_dump(
+                exclude={"agentId"}, exclude_none=True
+            ).items()
+            if value
+        }
 
 
 class UpdateAgentExecutor(AbstractAnthropicExecutor):
@@ -84,10 +96,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
             agent = await self.client.update_agent(
                 agent_id,
                 version=version,
-                name=inputs.name,
-                model=inputs.model,
-                system=inputs.systemPrompt,
-                extra=inputs.config,
+                payload=inputs.to_request_payload(),
             )
         except Exception as error:
             raise ActionExecutionError(
