@@ -5,8 +5,9 @@ from port_ocean.core.handlers.webhook.webhook_log_context import (
     build_added_to_queue_payload_log_fields,
     build_live_event_timestamp_log_fields,
     count_flat_attributes,
-    extract_payload_identifiers,
+    extract_compact_headers,
     is_sensitive_header_name,
+    pick_nested_fields,
     sanitize_headers_for_logging,
 )
 
@@ -68,18 +69,51 @@ def test_sanitize_headers_for_logging_redacts_sensitive_headers() -> None:
     assert sanitized["x-hub-signature-256"] == "[REDACTED]"
 
 
-def test_extract_payload_identifiers_returns_nested_github_fields() -> None:
+def test_pick_nested_fields_copies_dot_paths() -> None:
     payload = {
         "action": "opened",
         "repository": {"full_name": "org/repo"},
-        "pull_request": {"number": 1},
         "unused": "value",
     }
-    assert extract_payload_identifiers(payload) == {
+    assert pick_nested_fields(payload, ("action", "repository.full_name")) == {
         "action": "opened",
         "repository": {"full_name": "org/repo"},
-        "pull_request": {"number": 1},
     }
+
+
+def test_extract_compact_headers_uses_generic_delivery_and_event_patterns() -> None:
+    headers = {
+        "x-github-event": "pull_request",
+        "x-github-delivery": "delivery-id",
+        "x-atlassian-webhook-identifier": "123",
+        "x-custom-vendor-event": "created",
+        "authorization": "secret",
+        "content-type": "application/json",
+    }
+    compact = extract_compact_headers(headers)
+    assert compact == {
+        "x-github-event": "pull_request",
+        "x-github-delivery": "delivery-id",
+        "x-atlassian-webhook-identifier": "123",
+        "x-custom-vendor-event": "created",
+    }
+
+
+def test_build_live_event_timestamp_log_fields_compact_uses_extra_identifiers_only() -> (
+    None
+):
+    fields = build_live_event_timestamp_log_fields(
+        "Started Processing",
+        {"secret": "data", "action": "opened"},
+        {"x-github-event": "push"},
+        trace_id="trace",
+        log_full_payload=False,
+        webhook_path="/webhook",
+        extra_identifiers={"action": "opened"},
+    )
+    assert fields["headers"] == {"x-github-event": "push"}
+    assert fields["payload"] == {"action": "opened"}
+    assert "secret" not in fields["payload"]
 
 
 def test_build_live_event_timestamp_log_fields_finish_has_no_payload() -> None:

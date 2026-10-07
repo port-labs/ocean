@@ -193,11 +193,9 @@ def test_setTimestamp_configOnFeatureFlagOff_logsCompactOnly() -> None:
         )
 
     assert extra["timestamp_type"] == "Started Processing"
-    assert "payload" in extra
-    assert extra["payload"] == {"action": "opened"}
-    assert "headers" in extra
+    assert "payload" not in extra
+    assert extra["headers"] == {"x-github-event": "pull_request"}
     assert "payload_b64" not in extra
-    assert extra["payload"].get("secret") is None
 
 
 def _capture_set_timestamp_extra(
@@ -249,15 +247,8 @@ def test_setTimestamp_startedProcessing_logsCompactIdentifiersByDefault(
     assert "payload_b64" not in extra
 
 
-def test_setTimestamp_startedProcessing_logsGithubIdentifiers() -> None:
-    payload = {
-        "action": "opened",
-        "ref": "refs/heads/main",
-        "repository": {"full_name": "org/repo"},
-        "organization": {"login": "org"},
-        "pull_request": {"number": 42},
-        "large_field": "should-not-appear",
-    }
+def test_setTimestamp_startedProcessing_logsProcessorSuppliedIdentifiers() -> None:
+    payload = {"action": "opened", "large_field": "should-not-appear"}
     headers = {
         "x-github-event": "pull_request",
         "x-github-delivery": "delivery-id",
@@ -270,6 +261,7 @@ def test_setTimestamp_startedProcessing_logsGithubIdentifiers() -> None:
         original_request=None,
     )
     event.webhook_path = "/webhook"
+    event.merge_live_event_log_identifiers({"action": "opened", "repo": "org/repo"})
 
     with patch("port_ocean.core.handlers.webhook.webhook_event.ocean") as mock_ocean:
         mock_ocean.config.live_events.payload_logging_enabled = False
@@ -281,13 +273,7 @@ def test_setTimestamp_startedProcessing_logsGithubIdentifiers() -> None:
         "x-github-event": "pull_request",
         "x-github-delivery": "delivery-id",
     }
-    assert extra["payload"] == {
-        "action": "opened",
-        "ref": "refs/heads/main",
-        "repository": {"full_name": "org/repo"},
-        "organization": {"login": "org"},
-        "pull_request": {"number": 42},
-    }
+    assert extra["payload"] == {"action": "opened", "repo": "org/repo"}
 
 
 def test_setTimestamp_startedProcessing_logsFullPayloadWhenBothGatesOn() -> None:

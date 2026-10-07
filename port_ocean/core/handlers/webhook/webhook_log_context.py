@@ -1,38 +1,13 @@
 import base64
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 # Stay below typical log-backend attribute caps after nested JSON is flattened.
 _MAX_FLAT_PAYLOAD_ATTRIBUTES = 200
 # Cap JSON size before base64 so the encoded field stays within common log value limits.
 _MAX_BASE64_PAYLOAD_JSON_UTF8_BYTES = 120 * 1024
-
-_COMPACT_HEADER_NAMES = frozenset(
-    {
-        "x-github-event",
-        "x-github-delivery",
-        "x-atlassian-webhook-identifier",
-        "x-gitlab-event",
-        "x-gitlab-webhook-uuid",
-        "x-hook-uuid",
-        "x-request-id",
-    }
-)
-
-_PAYLOAD_IDENTIFIER_PATHS = (
-    "action",
-    "number",
-    "ref",
-    "webhookEvent",
-    "repository.full_name",
-    "organization.login",
-    "pull_request.number",
-    "issue.number",
-    "issue.key",
-    "workflow_run.id",
-)
 
 _SENSITIVE_HEADER_NAME_PATTERN = re.compile(
     r"(authorization|auth|signature|token|secret|cookie|api[-_]?key|password|credential)",
@@ -142,19 +117,34 @@ def _set_nested_value(target: dict[str, Any], path: str, value: Any) -> None:
     current[parts[-1]] = value
 
 
-def extract_payload_identifiers(payload: dict[str, Any]) -> dict[str, Any]:
+def pick_nested_fields(payload: dict[str, Any], paths: Iterable[str]) -> dict[str, Any]:
+    """Copy selected dot-path fields from a payload (for integration log identifiers)."""
     identifiers: dict[str, Any] = {}
-    for path in _PAYLOAD_IDENTIFIER_PATHS:
+    for path in paths:
         value = _get_nested_value(payload, path)
         if value is not None and value != "":
             _set_nested_value(identifiers, path, value)
     return identifiers
 
 
+def _is_generic_delivery_or_event_header(header_name: str) -> bool:
+    lower = header_name.lower()
+    if is_sensitive_header_name(header_name):
+        return False
+    if lower == "x-request-id":
+        return True
+    if not lower.startswith("x-"):
+        return False
+    if lower.endswith("-event") or lower.endswith("-delivery"):
+        return True
+    return "webhook-identifier" in lower or lower.endswith("-webhook-uuid")
+
+
 def extract_compact_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    """Include delivery/event style headers without integration-specific allowlists."""
     compact: dict[str, str] = {}
     for key, value in headers.items():
-        if key.lower() in _COMPACT_HEADER_NAMES and not is_sensitive_header_name(key):
+        if _is_generic_delivery_or_event_header(key):
             compact[key] = value
     return compact
 
@@ -197,10 +187,7 @@ def build_live_event_timestamp_log_fields(
     if compact_headers:
         fields["headers"] = compact_headers
 
-    compact_payload = extract_payload_identifiers(payload)
     if extra_identifiers:
-        compact_payload = {**compact_payload, **extra_identifiers}
-    if compact_payload:
-        fields["payload"] = compact_payload
+        fields["payload"] = extra_identifiers
 
     return fields
