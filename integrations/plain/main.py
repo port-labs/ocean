@@ -1,11 +1,8 @@
-from typing import Any
-
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import ExampleKind
 from plain.client import PlainClient
 from plain.utils import ObjectKind
 from plain.webhook_setup import register_webhook_target
@@ -40,24 +37,6 @@ def _exclude_ai_discussions() -> bool:
     return bool(
         getattr(resource.resource_config.selector, "exclude_ai_discussions", False)
     )
-
-
-@ocean.on_resync(ExampleKind.EXAMPLE_KIND)
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    if kind == ExampleKind.EXAMPLE_KIND:
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x %2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
-
-    return []
 
 
 @ocean.on_resync(ObjectKind.COMPANY)
@@ -107,7 +86,7 @@ async def on_resync_customers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.THREAD)
 async def on_resync_threads(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else None
     client = PlainClient()
     async for threads in client.get_threads(statuses):
         logger.info(f"Received thread batch with {len(threads)} threads")
@@ -116,7 +95,7 @@ async def on_resync_threads(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.THREAD_MESSAGE)
 async def on_resync_thread_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else None
     client = PlainClient()
     async for messages in client.get_thread_messages(statuses):
         logger.info(f"Received thread message batch with {len(messages)} messages")
@@ -125,7 +104,7 @@ async def on_resync_thread_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.DISCUSSION)
 async def on_resync_discussions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else None
     client = PlainClient()
     exclude_ai = _exclude_ai_discussions()
     async for discussions in client.get_discussions(
@@ -137,7 +116,7 @@ async def on_resync_discussions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.DISCUSSION_MESSAGE)
 async def on_resync_discussion_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else []
+    statuses = OPEN_THREAD_STATUSES if _exclude_done_threads() else None
     client = PlainClient()
     exclude_ai = _exclude_ai_discussions()
     async for messages in client.get_discussion_messages(

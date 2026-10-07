@@ -197,3 +197,20 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     assert _apply(mappings["thread"]["properties"]["productArea"], machine_thread) == (
         ""
     )
+
+
+def test_mappings_handle_null_lists() -> None:
+    mappings = _mappings()
+    customer_no_tenants = {"tenantMemberships": None}
+    assert (
+        _apply(mappings["customer"]["relations"]["tenants"], customer_no_tenants) == []
+    )
+
+    thread_no_labels = {"labels": None}
+    assert _apply(mappings["thread"]["properties"]["labels"], thread_no_labels) == []
+
+    thread_no_fields = {"threadFields": None}
+    assert _apply(mappings["thread"]["properties"]["fields"], thread_no_fields) == ""
+    assert (
+        _apply(mappings["thread"]["properties"]["productArea"], thread_no_fields) == ""
+    )

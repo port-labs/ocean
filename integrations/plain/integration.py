@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Literal
 
 from plain.utils import ObjectKind
@@ -10,17 +9,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.v1 import Field
-
-
-class ExampleKind(StrEnum):
-    EXAMPLE_KIND = "example-kind"
-
-
-class ExampleKindResourceConfig(ResourceConfig):
-    kind: Literal[ExampleKind.EXAMPLE_KIND] = Field(
-        description="Example kind for plain",
-        title="Example Kind",
-    )
 
 
 class CompanyResourceConfig(ResourceConfig):
@@ -142,8 +130,7 @@ class DiscussionMessageResourceConfig(ResourceConfig):
 
 class PlainPortAppConfig(PortAppConfig):
     resources: list[
-        ExampleKindResourceConfig
-        | CompanyResourceConfig
+        CompanyResourceConfig
         | TenantResourceConfig
         | UserResourceConfig
         | MachineUserResourceConfig

@@ -188,7 +188,7 @@ async def test_resync_thread_messages_requests_every_status_when_flag_is_false()
         async with resource_context(_message_resource(False)):
             await collect_pages(on_resync_thread_messages("thread-message"))
 
-    assert seen["statuses"] == []
+    assert seen["statuses"] is None
 
 
 async def test_resync_thread_messages_reads_exclude_flag_without_local_config_class() -> (

@@ -135,8 +135,33 @@ async def test_resync_threads_yields_batches() -> None:
             batches = await collect_pages(on_resync_threads("thread"))
 
     assert batches == expected
-    assert seen["statuses"] == []
+    assert seen["statuses"] is None
     assert batches[0][0]["assignedTo"]["__typename"] == "MachineUser"
+
+
+async def test_resync_threads_honors_thread_status_filter_when_exclude_done_is_false() -> (
+    None
+):
+    seen: dict[str, Any] = {}
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+    ) -> Any:
+        seen["variables"] = variables
+        yield []
+
+    client = make_client({"thread_status_filter": "TODO, SNOOZED"})
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+
+    with patch("main.PlainClient", return_value=client):
+        assert on_resync_threads is not None
+        async with resource_context(_thread_resource(False)):
+            await collect_pages(on_resync_threads("thread"))
+
+    assert seen["variables"] == {"filters": {"statuses": ["TODO", "SNOOZED"]}}
 
 
 async def test_resync_threads_excludes_done_when_mapping_flag_is_set() -> None:

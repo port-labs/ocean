@@ -411,7 +411,7 @@ async def test_resync_reads_exclude_flag_without_local_config_class(
         async with resource_context(config):
             await collect_pages(handler(kind))
 
-    assert seen["statuses"] == []
+    assert seen["statuses"] is None
 
 
 @pytest.mark.parametrize(

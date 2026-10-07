@@ -78,7 +78,7 @@ resources:
             updatedAt: .updatedAt.iso8601
           relations:
             company: .company.id
-            tenants: "[.tenantMemberships.edges[].node.tenant.id]"
+            tenants: "[.tenantMemberships.edges[]?.node.tenant.id]"
   - kind: thread
     selector:
       query: "true"
@@ -97,9 +97,9 @@ resources:
             priority: .priority
             tier: .tier.name
             assigneeType: .assignedTo.__typename
-            labels: "[.labels[].labelType.name]"
+            labels: "[.labels[]?.labelType.name]"
             productArea: '([.threadFields[]? | select(.key == "product_area") | .stringValue] | first) // ""'
-            fields: '[.threadFields[] | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
+            fields: '[.threadFields[]? | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
             createdAt: .createdAt.iso8601
             updatedAt: .updatedAt.iso8601
           relations:
