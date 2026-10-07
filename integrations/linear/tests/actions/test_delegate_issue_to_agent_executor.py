@@ -5,9 +5,23 @@ import pytest
 from linear.actions.delegate_issue_to_agent_executor import (
     DelegateIssueToAgentExecutor,
 )
-from linear.core.mutations.issue.types import IssueUpdateMutationPayload
-from linear.actions.exceptions import MissingExecutionPropertyError
+from linear.core.mutations.issue.types import (
+    IssueUpdateMutationPayload,
+    MutationIssue,
+)
+from linear.actions.exceptions import LinearActionError, MissingExecutionPropertyError
 from tests.actions.conftest import create_executor, make_run
+
+
+def delegated_issue(delegate_id: str | None) -> MutationIssue:
+    return MutationIssue.model_validate(
+        {
+            "id": "issue-1",
+            "identifier": "ENG-1",
+            "url": "https://linear.app/test/issue/ENG-1",
+            "delegate": {"id": delegate_id} if delegate_id else None,
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -19,6 +33,7 @@ class TestDelegateIssueToAgentExecutor:
         mock_issue_mutations: MagicMock,
     ) -> None:
         executor = create_executor(DelegateIssueToAgentExecutor, mock_linear_client)
+        mock_issue_mutations.update_issue.return_value = delegated_issue("agent-1")
         run = make_run(
             "delegate_issue_to_agent",
             {"issueId": "ENG-1", "delegateId": "agent-1"},
@@ -53,6 +68,37 @@ class TestDelegateIssueToAgentExecutor:
             message="Delegated issue ENG-1 to agent agent-1",
             status_label="Issue delegated",
         )
+
+    @pytest.mark.parametrize("returned_delegate_id", [None, "agent-2"])
+    async def test_fails_when_linear_did_not_set_the_delegate(
+        self,
+        returned_delegate_id: str | None,
+        mock_port_client: MagicMock,
+        mock_linear_client: MagicMock,
+        mock_issue_mutations: MagicMock,
+    ) -> None:
+        executor = create_executor(DelegateIssueToAgentExecutor, mock_linear_client)
+        mock_issue_mutations.update_issue.return_value = delegated_issue(
+            returned_delegate_id
+        )
+        run = make_run(
+            "delegate_issue_to_agent",
+            {"issueId": "ENG-1", "delegateId": "agent-1"},
+        )
+        with (
+            patch(
+                "linear.actions.delegate_issue_to_agent_executor.ocean"
+            ) as mock_ocean,
+            patch(
+                "linear.actions.delegate_issue_to_agent_executor.IssueMutations",
+                return_value=mock_issue_mutations,
+            ),
+        ):
+            mock_ocean.port_client = mock_port_client
+            with pytest.raises(LinearActionError, match="not to agent agent-1"):
+                await executor.execute(run)
+
+        mock_port_client.report_run_completed.assert_not_awaited()
 
     async def test_missing_delegate_id(
         self, mock_port_client: MagicMock, mock_linear_client: MagicMock
