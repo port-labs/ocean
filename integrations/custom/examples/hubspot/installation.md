@@ -43,7 +43,7 @@ helm upgrade --install port-ocean-hubspot port-labs/port-ocean -n port-ocean --c
 
 # HubSpot Integration Installation Guide
 
-This guide will help you set up the HubSpot integration using Port Ocean's Ocean Custom integration with proper cursor-based pagination.
+This guide will help you set up the HubSpot integration using Port Ocean's Custom Ocean Integration with proper cursor-based pagination.
 
 ## Prerequisites
 
@@ -400,7 +400,7 @@ helm uninstall port-ocean-hubspot
 - [HubSpot CRM API Reference](https://developers.hubspot.com/docs/api/crm/understanding-the-crm)
 - [HubSpot Pagination Guide](https://developers.hubspot.com/docs/api/crm/search#pagination)
 - [Port Ocean Documentation](https://docs.getport.io/build-your-software-catalog/custom-integration/ocean)
-- [Ocean Custom Integration](https://docs.getport.io/build-your-software-catalog/custom-integration/custom)
+- [Custom Ocean Integration](https://docs.getport.io/build-your-software-catalog/custom-integration/custom)
 
 ## Support
 
@@ -412,4 +412,3 @@ For issues or questions:
 ---
 
 **Pro Tip**: Start with a small `limit` value (e.g., 10) when testing to verify pagination works correctly, then increase to 100 for production use.
-
