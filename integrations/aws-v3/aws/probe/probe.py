@@ -185,7 +185,7 @@ class AwsPermissionProbe:
             *(
                 {"account": account_id, "region": _UNREACHABLE_REGION}
                 for account_id in inaccessible
-            )
+            )  # type: ignore[arg-type]
         )
         for check in checks:
             check.status = ProbeCheckStatus.FAILURE

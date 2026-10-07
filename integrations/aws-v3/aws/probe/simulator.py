@@ -65,9 +65,7 @@ async def simulate_principal_policy(
                 "ActionNames": action_names,
             }
 
-            context_entries = await _get_context_entries(
-                iam, policy_source_arn, region
-            )
+            context_entries = await _get_context_entries(iam, policy_source_arn, region)
             if context_entries:
                 kwargs["ContextEntries"] = context_entries
 

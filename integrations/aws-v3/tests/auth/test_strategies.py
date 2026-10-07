@@ -231,7 +231,9 @@ class TestMultiAccountHealthCheckMixin:
                 "arn:aws:iam::123456789012:role/test-role"
             )
             assert result is None
-            assert strategy.inaccessible_accounts["123456789012"] == "Assume role failed"
+            assert (
+                strategy.inaccessible_accounts["123456789012"] == "Assume role failed"
+            )
 
     @pytest.mark.asyncio
     async def test_healthcheck_success(
