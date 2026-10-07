@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 from asyncio import Task
 from traceback import format_exception
 from typing import Any, Literal
@@ -52,15 +51,25 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._current_resync_task: Task[Any] | None = None
+        # Separate from request/integration watermarks. Those move when a resync
+        # updates Port state and must not be used to decide whether startup ran.
+        self._startup_resync_attempted = False
+        # Captured before startup lifecycle updates. None means "not captured".
+        # An empty string is a real captured baseline and must not fall through
+        # to a newer integration-state timestamp.
+        self._startup_request_baseline: str | None = None
 
     def should_resync(self) -> bool:
         """
-        Honor ``resync_on_start`` when this process has no integration-state watermark.
+        Honor ``resync_on_start`` once, when this process has no integration-state watermark.
 
         ``ResyncStateUpdater`` initializes that watermark to an empty string, not
-        ``None``. Both count as uninitialized. A timestamp recorded once the
-        startup resync begins must not cause later polls to resync again.
+        ``None``. Both count as uninitialized. A later poll must not resync again
+        just because the watermark is still empty.
         """
+        if self._startup_resync_attempted:
+            return False
+
         _last_updated_at = (
             ocean.app.resync_state_updater.last_integration_state_updated_at
         )
@@ -79,6 +88,10 @@ class PollingEventListener(BaseEventListener):
         stored yet, the integration-state timestamp is used as the first baseline so
         old resync requests are not replayed after a regular polling resync.
 
+        A startup resync freezes that baseline before lifecycle updates run.
+        `update_before_resync` / `update_after_resync` advance the integration-state
+        watermark and must not hide a request that arrived while startup was running.
+
         `last_resync_request_updated_at` is treated as a watermark for resync-request
         events and is not reset by integration-change based resyncs. This intentionally
         ignores replayed or stale request timestamps (incoming <= stored).
@@ -95,10 +108,14 @@ class PollingEventListener(BaseEventListener):
         except ValueError:
             return False
 
-        baseline_updated_at = (
-            last_processed_resync_request_updated_at
-            or ocean.app.resync_state_updater.last_integration_state_updated_at
-        )
+        if last_processed_resync_request_updated_at:
+            baseline_updated_at = last_processed_resync_request_updated_at
+        elif self._startup_request_baseline is not None:
+            baseline_updated_at = self._startup_request_baseline
+        else:
+            baseline_updated_at = (
+                ocean.app.resync_state_updater.last_integration_state_updated_at
+            )
 
         if not baseline_updated_at:
             return True
@@ -196,11 +213,15 @@ class PollingEventListener(BaseEventListener):
                 resync_request_updated_at
             )
         else:
-            # should_resync() treats an empty watermark as "not started". Writing
-            # "" back here would make every later poll resync again.
-            ocean.app.resync_state_updater.last_integration_state_updated_at = (
-                datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
-            )
+            # Startup resync. Remember that it ran without moving either watermark.
+            # A synthetic "now" (or the timestamp lifecycle writes afterwards) would
+            # become the request baseline and drop a request that arrived mid-run.
+            self._startup_resync_attempted = True
+            if self._startup_request_baseline is None:
+                current_watermark = (
+                    ocean.app.resync_state_updater.last_integration_state_updated_at
+                )
+                self._startup_request_baseline = current_watermark or ""
 
         running_task = asyncio.create_task(self._run_resync_task())
         signal_handler.register(running_task.cancel)
