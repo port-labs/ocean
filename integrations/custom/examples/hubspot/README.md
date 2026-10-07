@@ -159,4 +159,4 @@ Need help?
 
 ---
 
-**Note**: This integration requires Port Ocean's Custom Ocean Integration. Ensure you're using version `0.1.0-dev` or later.
+**Note**: This integration requires Port's Custom Ocean Integration. Ensure you're using version `0.1.0-dev` or later.

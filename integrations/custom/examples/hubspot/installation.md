@@ -43,7 +43,7 @@ helm upgrade --install port-ocean-hubspot port-labs/port-ocean -n port-ocean --c
 
 # HubSpot Integration Installation Guide
 
-This guide will help you set up the HubSpot integration using Port Ocean's Custom Ocean Integration with proper cursor-based pagination.
+This guide will help you set up the HubSpot integration using Port's Custom Ocean Integration with proper cursor-based pagination.
 
 ## Prerequisites
 

@@ -1,6 +1,6 @@
 # Canny Integration Installation Guide
 
-This guide will help you set up the Canny integration using Port Ocean's Custom Ocean Integration.
+This guide will help you set up the Canny integration using Port's Custom Ocean Integration.
 
 ## Prerequisites
 
