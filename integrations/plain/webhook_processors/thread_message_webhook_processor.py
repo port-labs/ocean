@@ -58,9 +58,11 @@ class ThreadMessageWebhookProcessor(PlainAbstractWebhookProcessor):
         try:
             entry = await client.get_timeline_entry(customer_id, entry_id)
         except PlainGraphQLError as error:
-            if "has no message text" in str(error):
+            message = str(error)
+            if "has no message text" in message or "was not found" in message:
                 logger.info(
-                    "Deleting Plain thread message {} without message text", entry_id
+                    "Deleting Plain thread message {} because it is missing or has no text",
+                    entry_id,
                 )
                 return WebhookEventRawResults(
                     updated_raw_results=[],

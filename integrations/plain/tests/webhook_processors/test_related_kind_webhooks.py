@@ -310,6 +310,36 @@ async def test_thread_message_deletes_when_text_is_cleared() -> None:
 
 
 @pytest.mark.asyncio
+async def test_thread_message_deletes_when_timeline_entry_is_missing() -> None:
+    processor = ThreadMessageWebhookProcessor(
+        event=_event(
+            {
+                "type": "timeline.timeline_entry_changed",
+                "payload": {
+                    "changeType": "UPDATED",
+                    "timelineEntry": {"id": "tl_gone", "customerId": "c_1"},
+                },
+            }
+        )
+    )
+    with patch(
+        "webhook_processors.thread_message_webhook_processor.PlainClient"
+    ) as client_cls:
+        client = client_cls.return_value
+        client.get_timeline_entry = AsyncMock(
+            side_effect=PlainGraphQLError(
+                [{"message": "Plain timeline entry 'tl_gone' was not found"}]
+            )
+        )
+        result = await processor.handle_event(
+            processor.event.payload, _resource_config(ObjectKind.THREAD_MESSAGE)
+        )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [{"id": "tl_gone"}]
+
+
+@pytest.mark.asyncio
 async def test_thread_message_deletes_removed_previous_timeline_entry() -> None:
     processor = ThreadMessageWebhookProcessor(
         event=_event(
