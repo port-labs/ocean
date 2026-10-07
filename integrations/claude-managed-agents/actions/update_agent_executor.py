@@ -24,10 +24,6 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
-        self.name = self.name or None
-        self.model = self.model or None
-        self.systemPrompt = self.systemPrompt or None
-
         if not any([self.name, self.model, self.systemPrompt, self.config]):
             raise ValueError(
                 "at least one of name, model, systemPrompt, or config must be provided"
