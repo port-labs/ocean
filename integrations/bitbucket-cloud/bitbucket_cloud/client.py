@@ -119,10 +119,7 @@ class BitbucketClient:
         method: str = "GET",
         data_key: str = "values",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if params is None:
-            params = {
-                "pagelen": PAGE_SIZE,
-            }
+        params = {"pagelen": PAGE_SIZE, **(params or {})}
         while True:
             if hasattr(self.auth, "token_manager") and self.auth.token_manager:
                 async with TokenRateLimiterContext(self.auth.token_manager) as ctx:
@@ -192,10 +189,7 @@ class BitbucketClient:
         Yields:
             Lists of dictionaries containing the paginated data.
         """
-        if params is None:
-            params = {
-                "pagelen": PAGE_SIZE,
-            }
+        params = {"pagelen": PAGE_SIZE, **(params or {})}
         while True:
             response = await self._send_api_request(url, params=params, method=method)
             if values := response.get(data_key, []):
@@ -237,11 +231,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
-        if params is None:
-            params = {
-                "max_depth": max_depth,
-                "pagelen": PAGE_SIZE,
-            }
+        params = {"pagelen": PAGE_SIZE, **(params or {}), "max_depth": max_depth}
         async for contents in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
