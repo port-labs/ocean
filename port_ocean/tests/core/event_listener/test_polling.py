@@ -425,10 +425,8 @@ async def test_polling_resyncs_on_start_when_integration_state_watermark_is_empt
     assert app.resync_state_updater.last_integration_state_updated_at == ""
     assert app.resync_state_updater.last_resync_request_updated_at is None
     if resync_on_start:
-        assert listener._startup_resync_attempted is True
         assert listener._startup_request_baseline == ""
     else:
-        assert listener._startup_resync_attempted is False
         assert listener._startup_request_baseline is None
 
 

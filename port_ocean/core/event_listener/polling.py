@@ -51,11 +51,10 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._current_resync_task: Task[Any] | None = None
-        self._startup_resync_attempted = False
         self._startup_request_baseline: str | None = None
 
     def should_resync_on_start(self) -> bool:
-        if self._startup_resync_attempted:
+        if self._startup_request_baseline is not None:
             return False
 
         _last_updated_at = (
@@ -201,7 +200,6 @@ class PollingEventListener(BaseEventListener):
                 resync_request_updated_at
             )
         else:
-            self._startup_resync_attempted = True
             if self._startup_request_baseline is None:
                 current_watermark = (
                     ocean.app.resync_state_updater.last_integration_state_updated_at
