@@ -341,3 +341,117 @@ async def test_probe_fails_kinds_for_accounts_that_cannot_be_assumed(
         check.scopes == {"account": "449957914654", "region": "*"}
         for check in inaccessible
     )
+
+
+@pytest.mark.asyncio
+async def test_probe_continues_when_one_account_identity_fails(
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    probe_context.available_kinds = ["AWS::EC2::Instance"]
+    healthy = make_session(account_id="111122223333")
+    broken = make_session(account_id="222233334444")
+
+    with (
+        patch(
+            "aws.probe.probe.initialize_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.clear_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.get_all_account_sessions",
+            return_value=_accounts(
+                ({"Id": "111122223333", "Name": "healthy"}, healthy),
+                ({"Id": "222233334444", "Name": "broken"}, broken),
+            ),
+        ),
+        patch(
+            "aws.probe.probe.get_policy_source_arn",
+            new_callable=AsyncMock,
+            side_effect=[
+                "arn:aws:iam::111122223333:role/PortOceanReadRole",
+                RuntimeError("sts denied"),
+            ],
+        ),
+        patch(
+            "aws.probe.probe.get_allowed_regions",
+            new_callable=AsyncMock,
+            return_value=["us-east-1"],
+        ),
+    ):
+        # Act
+        await AwsPermissionProbe(probe_context).run()
+
+    # Assert
+    by_account = {
+        str(check.scopes["account"]): check for check in probe_context.checks
+    }
+    assert by_account["111122223333"].status is ProbeCheckStatus.SUCCESS
+    assert by_account["111122223333"].scopes == {
+        "account": "111122223333",
+        "region": "us-east-1",
+    }
+    assert by_account["222233334444"].status is ProbeCheckStatus.FAILURE
+    assert by_account["222233334444"].scopes == {
+        "account": "222233334444",
+        "region": "*",
+    }
+    assert (
+        by_account["222233334444"].message
+        == "Failed to verify AWS authentication for account 222233334444."
+    )
+    assert probe_context.status is not ProbeStatus.FAILED
+
+
+@pytest.mark.asyncio
+async def test_probe_continues_when_one_account_region_discovery_fails(
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    probe_context.available_kinds = ["AWS::S3::Bucket"]
+    healthy = make_session(account_id="111122223333")
+    broken = make_session(account_id="222233334444")
+
+    with (
+        patch(
+            "aws.probe.probe.initialize_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.clear_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.get_all_account_sessions",
+            return_value=_accounts(
+                ({"Id": "111122223333", "Name": "healthy"}, healthy),
+                ({"Id": "222233334444", "Name": "broken"}, broken),
+            ),
+        ),
+        patch(
+            "aws.probe.probe.get_allowed_regions",
+            new_callable=AsyncMock,
+            side_effect=[["us-east-1"], RuntimeError("ListRegions denied")],
+        ),
+    ):
+        # Act
+        await AwsPermissionProbe(probe_context).run()
+
+    # Assert
+    by_account = {
+        str(check.scopes["account"]): check for check in probe_context.checks
+    }
+    assert by_account["111122223333"].status is ProbeCheckStatus.SUCCESS
+    assert by_account["222233334444"].status is ProbeCheckStatus.FAILURE
+    assert by_account["222233334444"].scopes == {
+        "account": "222233334444",
+        "region": "*",
+    }
+    assert (
+        by_account["222233334444"].message
+        == "Failed to list AWS regions for account 222233334444."
+    )
+    assert probe_context.status is not ProbeStatus.FAILED

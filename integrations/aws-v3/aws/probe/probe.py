@@ -58,7 +58,8 @@ class AwsPermissionProbe:
             await self.context.fail("No AWS accounts were accessible.")
             return
 
-        await self._fail_inaccessible_accounts()
+        for account_id, message in get_inaccessible_accounts().items():
+            await self._mark_account(account_id, message)
 
         action_names = sorted(
             {
@@ -68,11 +69,9 @@ class AwsPermissionProbe:
             }
         )
 
-        account_scopes = await self._collect_account_scopes(accounts, action_names)
-        if account_scopes is None:
-            return
-
-        scopes, sessions_by_account, policy_arns, collapsed_outcomes = account_scopes
+        scopes, sessions_by_account, policy_arns = await self._collect_account_scopes(
+            accounts, action_names
+        )
 
         checks = await self.context.add_scopes(*scopes)
         checks_by_scope: dict[tuple[str, str], list[ProbeCheck]] = defaultdict(list)
@@ -83,18 +82,6 @@ class AwsPermissionProbe:
 
         async def probe_account(account_id: str, session: AioSession) -> None:
             async with self._account_semaphore:
-                collapsed = collapsed_outcomes.get(account_id)
-                if collapsed is not None:
-                    await self._probe_scope(
-                        session,
-                        _UNREACHABLE_REGION,
-                        policy_arns[account_id],
-                        action_names,
-                        checks_by_scope[(account_id, _UNREACHABLE_REGION)],
-                        collapsed,
-                    )
-                    return
-
                 region_tasks = [
                     self._probe_scope(
                         session,
@@ -119,77 +106,90 @@ class AwsPermissionProbe:
         self,
         accounts: list[tuple[AccountInfo, AioSession]],
         action_names: list[str],
-    ) -> (
-        tuple[
-            list[dict[str, str | int]],
-            dict[str, AioSession],
-            dict[str, str],
-            dict[str, SimulateOutcome],
-        ]
-        | None
-    ):
+    ) -> tuple[
+        list[dict[str, str | int]],
+        dict[str, AioSession],
+        dict[str, str],
+    ]:
         scopes: list[dict[str, str | int]] = []
         sessions_by_account: dict[str, AioSession] = {}
         policy_arns: dict[str, str] = {}
-        collapsed_outcomes: dict[str, SimulateOutcome] = {}
 
         for account, session in accounts:
             account_id = account["Id"]
             try:
-                policy_arns[account_id] = await get_policy_source_arn(session)
+                policy_source_arn = await get_policy_source_arn(session)
             except Exception as error:
                 logger.warning(
                     "sts:GetCallerIdentity failed for account {}: {}",
                     account_id,
                     error,
                 )
-                await self.context.fail(
-                    f"Failed to verify AWS authentication for account {account_id}."
+                await self._mark_account(
+                    account_id,
+                    f"Failed to verify AWS authentication for account {account_id}.",
                 )
-                return None
+                continue
 
-            sessions_by_account[account_id] = session
             if action_names:
                 outcome = await simulate_principal_policy(
                     session,
-                    policy_arns[account_id],
+                    policy_source_arn,
                     action_names,
                     _UNREACHABLE_REGION,
                 )
                 if outcome.missing_simulate_permission:
-                    collapsed_outcomes[account_id] = outcome
-                    scopes.append(
-                        {"account": account_id, "region": _UNREACHABLE_REGION}
+                    await self._mark_account(
+                        account_id,
+                        outcome.error_message
+                        or "IAM policy simulation is not permitted.",
+                        status=ProbeCheckStatus.UNKNOWN,
                     )
                     continue
 
-            regions = await get_allowed_regions(
-                session, AWSResourceSelector(query="true")
-            )
-            if not regions:
-                await self.context.fail(
-                    f"No AWS regions were available for account {account_id}."
+            try:
+                regions = await get_allowed_regions(
+                    session, AWSResourceSelector(query="true")
                 )
-                return None
+            except Exception as error:
+                logger.warning(
+                    "Failed to list regions for account {}: {}",
+                    account_id,
+                    error,
+                )
+                await self._mark_account(
+                    account_id,
+                    f"Failed to list AWS regions for account {account_id}.",
+                )
+                continue
+
+            if not regions:
+                await self._mark_account(
+                    account_id,
+                    f"No AWS regions were available for account {account_id}.",
+                )
+                continue
+
+            sessions_by_account[account_id] = session
+            policy_arns[account_id] = policy_source_arn
             for region in regions:
                 scopes.append({"account": account_id, "region": region})
 
-        return scopes, sessions_by_account, policy_arns, collapsed_outcomes
+        return scopes, sessions_by_account, policy_arns
 
-    async def _fail_inaccessible_accounts(self) -> None:
-        inaccessible = get_inaccessible_accounts()
-        if not inaccessible:
-            return
-
+    async def _mark_account(
+        self,
+        account_id: str,
+        message: str,
+        *,
+        status: ProbeCheckStatus = ProbeCheckStatus.FAILURE,
+    ) -> None:
         checks = await self.context.add_scopes(
-            *(
-                {"account": account_id, "region": _UNREACHABLE_REGION}
-                for account_id in inaccessible
-            )  # type: ignore[arg-type]
+            {"account": account_id, "region": _UNREACHABLE_REGION}
         )
         for check in checks:
-            check.status = ProbeCheckStatus.FAILURE
-            check.message = inaccessible[str(check.scopes["account"])]
+            check.status = status
+            check.message = message
         await self.context.update_progress()
 
     async def _probe_scope(
@@ -199,13 +199,11 @@ class AwsPermissionProbe:
         policy_source_arn: str,
         action_names: list[str],
         checks: list[ProbeCheck],
-        outcome: SimulateOutcome | None = None,
     ) -> None:
         async with self._region_semaphore:
-            if outcome is None:
-                outcome = await simulate_principal_policy(
-                    session, policy_source_arn, action_names, region
-                )
+            outcome = await simulate_principal_policy(
+                session, policy_source_arn, action_names, region
+            )
             for check in checks:
                 self._resolve_check(check, outcome)
             await self.context.update_progress()
