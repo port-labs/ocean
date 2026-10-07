@@ -147,24 +147,6 @@ while IFS= read -r file; do
   index_dirty=true
   echo "Local ${index_file} updated for ${type}"
 
-  if [[ -d "${integration_dir}/examples" ]]; then
-    static_examples_folder_dest="${integration_folder}/examples/"
-    echo "Found examples/ — syncing to ${static_examples_folder_dest}"
-    if [[ "${DRY_RUN}" == "true" ]]; then
-      echo ">>> would upload examples recursively to s3://${aws_s3_bucket}/${static_examples_folder_dest}"
-      find "${integration_dir}/examples" -type f | sort | while IFS= read -r example_file; do
-        rel="${example_file#"${integration_dir}/examples/"}"
-        put_or_dry "${example_file}" "${static_examples_folder_dest}${rel}"
-      done
-    else
-      aws s3 cp "${integration_dir}/examples" \
-        "s3://${aws_s3_bucket}/${static_examples_folder_dest}" --recursive
-      echo "Uploaded ${type}/examples/"
-    fi
-  else
-    echo "No examples/ directory for ${type}; skipping examples upload"
-  fi
-
   echo "Done with ${type}@${version}"
   echo ""
 done <"${SPEC_LIST_FILE}"
