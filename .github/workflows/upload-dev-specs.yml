@@ -23,6 +23,9 @@ jobs:
   upload-dev-specs:
     name: Upload changed specs to dev S3
     runs-on: ubuntu-latest
+    # Branch deletion emits a push with deleted=true and a zero SHA; skip it.
+    # The recreate push (or workflow_dispatch) performs the intended upload.
+    if: github.event_name != 'push' || github.event.deleted != true
     steps:
       - name: Check out dev-specs
         uses: actions/checkout@v7

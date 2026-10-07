@@ -28,19 +28,22 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
 
-      - name: Ensure dev-specs branch exists
+      - name: Ensure dev-specs base is available
+        id: branch
         run: |
           set -euo pipefail
           BRANCH=dev-specs
           if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
             git fetch origin "${BRANCH}"
             echo "Fetched origin/${BRANCH}"
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
           else
-            echo "origin/${BRANCH} missing — creating from origin/main"
+            # Do not push an empty main-based branch yet — the first remote push
+            # should already include this PR's merged specs, so a full upload
+            # cannot race ahead and overwrite them with main's copies.
+            echo "origin/${BRANCH} missing — will create from origin/main on first push"
             git fetch origin main
-            git branch "${BRANCH}" origin/main
-            git push -u origin "${BRANCH}"
-            git fetch origin "${BRANCH}"
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Merge changed specs into dev-specs
@@ -49,6 +52,7 @@ jobs:
           PR_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BRANCH_EXISTS: ${{ steps.branch.outputs.exists }}
         run: |
           set -euo pipefail
           BRANCH=dev-specs
@@ -59,25 +63,35 @@ jobs:
           # Ensure PR head is reachable for git show / merge-base
           git fetch --no-tags origin "${PR_SHA}"
 
-          git checkout -B "${BRANCH}" "origin/${BRANCH}"
+          if [ "${BRANCH_EXISTS}" = "true" ]; then
+            git checkout -B "${BRANCH}" "origin/${BRANCH}"
+          else
+            git checkout -B "${BRANCH}" "origin/main"
+          fi
 
           chmod +x scripts/ci/merge_pr_specs_into_dev_specs.sh
           scripts/ci/merge_pr_specs_into_dev_specs.sh "${PR_SHA}" "${BASE_SHA}"
 
           if git diff --cached --quiet; then
-            echo "No changes to commit (already up to date on ${BRANCH})."
-            exit 0
+            if [ "${BRANCH_EXISTS}" = "true" ]; then
+              echo "No changes to commit (already up to date on ${BRANCH})."
+              exit 0
+            fi
+            # First create with no staged diff still needs a remote branch so
+            # upload-dev-specs can seed the bucket from main.
+            echo "No PR spec deltas; pushing ${BRANCH} from main to create the branch."
+          else
+            git commit -m "dev-specs: merge spec changes from PR #${PR_NUMBER}"
           fi
-
-          git commit -m "dev-specs: merge spec changes from PR #${PR_NUMBER}"
 
           # Handle concurrent PR jobs racing to push dev-specs
           for attempt in 1 2 3 4 5; do
-            if git push origin "HEAD:${BRANCH}"; then
+            if git push -u origin "HEAD:${BRANCH}"; then
               echo "Pushed to ${BRANCH}."
               exit 0
             fi
             echo "Push rejected (attempt ${attempt}), rebasing and retrying..."
+            git fetch origin "${BRANCH}"
             git pull --rebase origin "${BRANCH}"
           done
 
