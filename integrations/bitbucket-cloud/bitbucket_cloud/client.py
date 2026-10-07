@@ -1,5 +1,6 @@
+from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Optional
-from httpx import HTTPError, HTTPStatusError
+from httpx import HTTPError, HTTPStatusError, Response
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
@@ -18,6 +19,20 @@ RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
 
 class BitbucketClient:
     """Client for interacting with Bitbucket Cloud API v2.0."""
+
+    @staticmethod
+    def _error_message(error: HTTPStatusError) -> Optional[str]:
+        """Bitbucket's own message for a failed request.
+
+        httpx's own string carries the status and the url but never the body, and the
+        body is the only place this message appears. None when the body is not
+        Bitbucket's error shape.
+        """
+        try:
+            message = error.response.json()["error"]["message"]
+        except (JSONDecodeError, KeyError, TypeError):
+            return None
+        return message if isinstance(message, str) else None
 
     def __init__(
         self,
@@ -92,6 +107,7 @@ class BitbucketClient:
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        raise_on_missing: bool = False,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         response = await self.client.request(
@@ -102,8 +118,11 @@ class BitbucketClient:
             return response if return_full_response else response.json()
         except HTTPStatusError as e:
             if e.response.status_code == 404:
+                if raise_on_missing:
+                    raise e
                 logger.warning(
-                    f"Requested resource not found: {url}; message: {str(e)}"
+                    f"Requested resource not found: {url}; "
+                    f"{self._error_message(e) or 'no message in the response body'}"
                 )
                 return {}
             logger.error(f"Bitbucket API error: {str(e)}")
@@ -118,6 +137,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         data_key: str = "values",
+        raise_on_missing: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"pagelen": PAGE_SIZE, **(params or {})}
         while True:
@@ -126,12 +146,18 @@ class BitbucketClient:
                     current_token = ctx.get_token()
                     self._update_authorization_header(current_token)
                     response = await self._send_api_request(
-                        url, params=params, method=method
+                        url,
+                        params=params,
+                        method=method,
+                        raise_on_missing=raise_on_missing,
                     )
             else:
                 async with RATE_LIMITER:
                     response = await self._send_api_request(
-                        url, params=params, method=method
+                        url,
+                        params=params,
+                        method=method,
+                        raise_on_missing=raise_on_missing,
                     )
 
             values: list[dict[str, Any]] = response.get(data_key, [])
@@ -151,6 +177,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        raise_on_missing: bool = False,
     ) -> Any:
         """Send file-specific API request with dedicated file rate limiter."""
         if hasattr(self.auth, "file_token_manager") and self.auth.file_token_manager:
@@ -162,6 +189,7 @@ class BitbucketClient:
                     params=params,
                     method=method,
                     return_full_response=return_full_response,
+                    raise_on_missing=raise_on_missing,
                 )
         else:
             # No file token manager means single token or basic auth - just make the request
@@ -170,6 +198,7 @@ class BitbucketClient:
                 params=params,
                 method=method,
                 return_full_response=return_full_response,
+                raise_on_missing=raise_on_missing,
             )
         return response
 
@@ -231,6 +260,8 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
+        # Least to most specific: the module default, then what the caller passed as
+        # params, then what it named in the signature.
         params = {"pagelen": PAGE_SIZE, **(params or {}), "max_depth": max_depth}
         async for contents in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
@@ -269,13 +300,24 @@ class BitbucketClient:
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
 
-    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
-        """Get the content of a file."""
-        response = await self._send_file_api_request_with_rate_limiter(
-            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
-            method="GET",
-            return_full_response=True,
+    async def get_repository_files(
+        self, repo: str, branch: str, path: str
+    ) -> Optional[str]:
+        """Get the content of a file, or None if Bitbucket cannot return it."""
+        url = (
+            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}"
         )
+        try:
+            response: Response = await self._send_file_api_request_with_rate_limiter(
+                url,
+                method="GET",
+                return_full_response=True,
+                raise_on_missing=True,
+            )
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return None
+            raise
         logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
         return response.text
 
