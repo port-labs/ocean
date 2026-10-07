@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed file-kind live events not deleting entities when an item is removed from a file that uses itemsToParse. Modified files now fetch content from the before commit as deletes and the after commit as upserts.
