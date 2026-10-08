@@ -1,8 +1,18 @@
 name: Release integrations
 on:
+  workflow_run:
+    workflows:
+      - Trigger Load Test
+    types:
+      - completed
+    branches:
+      - main
   push:
     branches:
       - main
+    paths-ignore:
+      - 'integrations/**'
+      - 'port_ocean/**'
   workflow_dispatch:
 
 concurrency:
@@ -12,14 +22,34 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  RELEASE_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
+  verify-load-test-gate:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful load test workflow
+        run: |
+          conclusion="${{ github.event.workflow_run.conclusion }}"
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::Trigger Load Test workflow conclusion: $conclusion — blocking release"
+            exit 1
+          fi
+          echo "Load test workflow succeeded — proceeding with release."
+
   prepare-matrix:
+    needs: [verify-load-test-gate]
+    if: always() && (needs.verify-load-test-gate.result == 'success' || needs.verify-load-test-gate.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
       - name: Check out code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Prepare matrix
         id: prepare-matrix
@@ -71,6 +101,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Prepare Docker images tags
         id: prepare_tags
@@ -239,6 +271,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
