@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fixed the polling event listener skipping the startup resync when resync_on_start is enabled and the integration-state watermark is still empty
