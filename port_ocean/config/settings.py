@@ -401,6 +401,7 @@ class LiveEventsSettings(BaseOceanModel):
 
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
     is_redis_stream_consumer_enabled: bool = False
+    payload_logging_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):

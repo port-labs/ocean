@@ -42,9 +42,10 @@ class OrganizationClientMixin:
 
         response = await self._fetch_organization()
         handle_port_status_code(response, should_raise, should_log)
-        organization: dict[str, Any] = response.json().get("organization", {})
-        self._organization_cache = organization
-        self._organization_cached_at = now
+        organization: dict[str, Any] = response.json().get("organization") or {}
+        if response.is_success and organization:
+            self._organization_cache = organization
+            self._organization_cached_at = now
         return organization
 
     async def get_organization_feature_flags(

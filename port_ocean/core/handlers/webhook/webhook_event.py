@@ -9,7 +9,7 @@ from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_log_context import (
-    build_added_to_queue_payload_log_fields,
+    build_live_event_timestamp_log_fields,
 )
 from port_ocean.core.ocean_types import RAW_ITEM
 
@@ -90,6 +90,9 @@ class WebhookEvent(LiveEvent):
         self._original_request = original_request
         self.group_id = group_id
         self.created_at = created_at or datetime.now(timezone.utc)
+        self.webhook_path: str | None = None
+        self.log_full_payload: bool = False
+        self.live_event_log_identifiers: dict[str, Any] | None = None
 
     @classmethod
     async def from_request(cls, request: Request) -> "WebhookEvent":
@@ -119,27 +122,55 @@ class WebhookEvent(LiveEvent):
         )
 
     def clone(self) -> "WebhookEvent":
-        return WebhookEvent(
+        cloned = WebhookEvent(
             trace_id=self.trace_id,
             payload=self.payload,
             headers=self.headers,
             original_request=self._original_request,
             created_at=self.created_at,
         )
+        cloned.webhook_path = self.webhook_path
+        cloned.log_full_payload = self.log_full_payload
+        cloned.live_event_log_identifiers = (
+            dict(self.live_event_log_identifiers)
+            if self.live_event_log_identifiers
+            else None
+        )
+        return cloned
+
+    def merge_live_event_log_identifiers(self, identifiers: dict[str, Any]) -> None:
+        if not identifiers:
+            return
+        if self.live_event_log_identifiers is None:
+            self.live_event_log_identifiers = {}
+        self.live_event_log_identifiers.update(identifiers)
 
     def set_timestamp(
         self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
-        super().set_timestamp(
-            timestamp,
-            params={
-                "trace_id": self.trace_id,
-                "headers": self.headers,
-                **build_added_to_queue_payload_log_fields(self.payload),
-                **(params or {}),
-            },
+        log_fields = build_live_event_timestamp_log_fields(
+            timestamp.value,
+            self.payload,
+            self.headers,
+            trace_id=self.trace_id,
+            log_full_payload=self.log_full_payload,
+            webhook_path=self.webhook_path,
+            extra_identifiers=self.live_event_log_identifiers,
         )
+        log_params = {
+            **log_fields,
+            **(params or {}),
+        }
+        bound_logger = logger.bind(
+            **log_params,
+            timestamp_type=timestamp.value,
+        )
+        if self.log_full_payload:
+            bound_logger.debug(f"Event {timestamp.value}")
+        else:
+            bound_logger.info(f"Event {timestamp.value}")
+        self._timestamp = timestamp
 
 
 class WebhookEventRawResults:

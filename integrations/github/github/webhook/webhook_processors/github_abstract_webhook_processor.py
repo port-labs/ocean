@@ -12,6 +12,18 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookOriginalRequest,
 )
+from port_ocean.core.handlers.webhook.webhook_log_context import pick_nested_fields
+
+_GITHUB_LIVE_EVENT_PAYLOAD_PATHS = (
+    "action",
+    "number",
+    "ref",
+    "repository.full_name",
+    "organization.login",
+    "pull_request.number",
+    "issue.number",
+    "workflow_run.id",
+)
 
 
 class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
@@ -91,3 +103,9 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
             if self.is_personal_account_webhook(payload)
             else payload["organization"]
         )
+
+    def get_live_event_log_identifiers(
+        self, payload: EventPayload, headers: EventHeaders
+    ) -> dict[str, Any] | None:
+        identifiers = pick_nested_fields(payload, _GITHUB_LIVE_EVENT_PAYLOAD_PATHS)
+        return identifiers or None

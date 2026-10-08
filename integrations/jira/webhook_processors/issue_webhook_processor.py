@@ -4,8 +4,8 @@ from initialize_client import get_or_create_jira_client
 from jira.overrides import JiraIssueConfig
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
+from webhook_processors.jira_abstract_webhook_processor import (
+    JiraAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
@@ -15,7 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class IssueWebhookProcessor(AbstractWebhookProcessor):
+class IssueWebhookProcessor(JiraAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent", "").startswith("jira:issue_")
 
