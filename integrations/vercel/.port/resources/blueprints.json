@@ -1,0 +1,264 @@
+[
+  {
+    "identifier": "vercelTeam",
+    "title": "Vercel Team",
+    "icon": "Deployment",
+    "description": "A Vercel team (organization account) that owns projects and deployments.",
+    "schema": {
+      "properties": {
+        "slug": {
+          "title": "Slug",
+          "type": "string",
+          "description": "URL-friendly team identifier"
+        },
+        "avatar": {
+          "title": "Avatar URL",
+          "type": "string",
+          "format": "url"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "membership": {
+          "title": "Membership Role",
+          "type": "string",
+          "enum": ["OWNER", "MEMBER", "CONTRIBUTOR", "VIEWER", "DEVELOPER"],
+          "enumColors": {
+            "OWNER": "blue",
+            "MEMBER": "green",
+            "CONTRIBUTOR": "yellow",
+            "VIEWER": "lightGray",
+            "DEVELOPER": "purple"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "vercelProject",
+    "title": "Vercel Project",
+    "icon": "Deployment",
+    "description": "A Vercel project — a deployable application connected to a Git repository.",
+    "schema": {
+      "properties": {
+        "framework": {
+          "title": "Framework",
+          "type": "string",
+          "description": "The framework detected or configured for this project"
+        },
+        "link": {
+          "title": "Repository Link",
+          "type": "object",
+          "description": "Git provider information (org, repo, type)"
+        },
+        "latestDeploymentUrl": {
+          "title": "Latest Deployment URL",
+          "type": "string",
+          "format": "url"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "nodeVersion": {
+          "title": "Node Version",
+          "type": "string"
+        },
+        "devCommand": {
+          "title": "Dev Command",
+          "type": "string"
+        },
+        "buildCommand": {
+          "title": "Build Command",
+          "type": "string"
+        },
+        "outputDirectory": {
+          "title": "Output Directory",
+          "type": "string"
+        },
+        "rootDirectory": {
+          "title": "Root Directory",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "title": "Team",
+        "target": "vercelTeam",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "vercelDeployment",
+    "title": "Vercel Deployment",
+    "icon": "Deployment",
+    "description": "A Vercel deployment — a build+serve cycle triggered from a git push, API call, or CLI.",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Deployment URL",
+          "type": "string",
+          "format": "url"
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "enum": [
+            "BUILDING",
+            "ERROR",
+            "INITIALIZING",
+            "QUEUED",
+            "READY",
+            "CANCELED"
+          ],
+          "enumColors": {
+            "BUILDING": "blue",
+            "ERROR": "red",
+            "INITIALIZING": "yellow",
+            "QUEUED": "lightGray",
+            "READY": "green",
+            "CANCELED": "darkGray"
+          }
+        },
+        "target": {
+          "title": "Target Environment",
+          "type": "string",
+          "enum": ["production", "staging", "preview"],
+          "enumColors": {
+            "production": "green",
+            "staging": "yellow",
+            "preview": "blue"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "buildingAt": {
+          "title": "Build Started At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "ready": {
+          "title": "Ready At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "object",
+          "description": "User or bot that triggered this deployment"
+        },
+        "meta": {
+          "title": "Git Metadata",
+          "type": "object",
+          "description": "Branch, commit SHA, commit message, etc."
+        },
+        "source": {
+          "title": "Trigger Source",
+          "type": "string",
+          "description": "What triggered this deployment (git, api, redeploy, etc.)"
+        },
+        "inspectorUrl": {
+          "title": "Deployment Inspector",
+          "type": "string",
+          "format": "url",
+          "description": "Vercel deployment inspector — build output, status, and deployment details"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {
+      "projectName": {
+        "title": "Project Name",
+        "path": "project.$title"
+      }
+    },
+    "calculationProperties": {
+      "runtimeLogsUrl": {
+        "title": "Runtime Logs",
+        "type": "string",
+        "format": "url",
+        "description": "Live function and edge runtime logs for this deployment's project",
+        "calculation": ".properties.inspectorUrl | if . then (split(\"/\") | .[0:5] | join(\"/\")) + \"/logs\" else null end"
+      }
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "vercelProject",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "vercelDomain",
+    "title": "Vercel Domain",
+    "icon": "Deployment",
+    "description": "A custom domain configured on a Vercel project.",
+    "schema": {
+      "properties": {
+        "apexName": {
+          "title": "Apex Name",
+          "type": "string",
+          "description": "Root domain (e.g. example.com for sub.example.com)"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "verified": {
+          "title": "DNS Verified",
+          "type": "boolean"
+        },
+        "gitBranch": {
+          "title": "Git Branch",
+          "type": "string",
+          "description": "Git branch this domain is linked to"
+        },
+        "redirect": {
+          "title": "Redirects To",
+          "type": "string",
+          "description": "Target URL if this domain is a redirect"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "vercelProject",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
