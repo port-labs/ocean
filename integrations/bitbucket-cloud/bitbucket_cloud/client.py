@@ -1,5 +1,5 @@
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Literal, Optional
 from httpx import HTTPError, HTTPStatusError, Response
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -15,6 +15,11 @@ PAGE_SIZE = 100
 RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
     limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
 )
+# The Source API gives no machine-readable code for an absent path - its 404 body carries
+# only this message, where other endpoints supply error.data.key - so the message is the
+# only discriminator available. It is observed, not published in Atlassian's error
+# reference, so an unrecognised message counts as unreadable rather than absent.
+ABSENT_PATH_MESSAGE = "No such file or directory"
 
 
 class BitbucketClient:
@@ -33,6 +38,20 @@ class BitbucketClient:
         except (JSONDecodeError, KeyError, TypeError):
             return None
         return message if isinstance(message, str) else None
+
+    @staticmethod
+    def _is_absent_path(error: HTTPStatusError) -> bool:
+        """Whether a Source API error says the path is not in the repository.
+
+        An absent path, an unresolvable ref and a repository that cannot be read all
+        answer 404, so the status alone cannot tell them apart. Only the message
+        decides, and only its start: the phrase also appears inside other errors' data,
+        so searching the whole body would read an unresolvable ref as absence.
+        """
+        if error.response.status_code != 404:
+            return False
+        message = BitbucketClient._error_message(error)
+        return message is not None and message.startswith(ABSENT_PATH_MESSAGE)
 
     def __init__(
         self,
@@ -258,19 +277,43 @@ class BitbucketClient:
         path: str,
         max_depth: int,
         params: Optional[dict[str, Any]] = None,
+        missing_path: Literal["swallow", "tolerate", "raise"] = "swallow",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get contents of a directory."""
+        """Get contents of a directory.
+
+        missing_path says what an absent path means to this caller. "swallow" reports no
+        contents for any 404, which is what every endpoint on this client does.
+        "tolerate" reports none for a path this repository does not have, and raises for
+        an unresolvable ref or a repository that cannot be read - which also answer 404.
+        "raise" treats every error as a failure, for a path that cannot legitimately be
+        absent.
+        """
         # Least to most specific: the module default, then what the caller passed as
         # params, then what it named in the signature.
         params = {"pagelen": PAGE_SIZE, **(params or {}), "max_depth": max_depth}
-        async for contents in self._fetch_paginated_api_with_rate_limiter(
-            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
-            params=params,
-        ):
-            logger.info(
-                f"Fetched directory contents batch with {len(contents)} contents"
-            )
-            yield contents
+        first_page_seen = False
+        try:
+            async for contents in self._fetch_paginated_api_with_rate_limiter(
+                f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
+                params=params,
+                raise_on_missing=missing_path != "swallow",
+            ):
+                first_page_seen = True
+                logger.info(
+                    f"Fetched directory contents batch with {len(contents)} contents"
+                )
+                yield contents
+        except HTTPStatusError as e:
+            if (
+                not first_page_seen
+                and missing_path == "tolerate"
+                and self._is_absent_path(e)
+            ):
+                logger.warning(
+                    f"Path '{path}' is not in repository {repo_slug}, reporting no contents"
+                )
+                return
+            raise
 
     async def get_pull_requests(
         self, repo_slug: str, params: dict[str, Any] = {}
