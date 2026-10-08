@@ -9,7 +9,7 @@ python = "^3.12"
 port_ocean = {version = "^0.53.5", extras = ["cli"]}
 aiobotocore = "^2.25.1"
 boto3-stubs = {extras = ["sts"], version = "^1.39.3"}
-types-aiobotocore = {extras = ["sts"], version = "^2.25.0"}
+types-aiobotocore = {version = "^2.25.0", extras = ["sts", "iam"]}
 aiofiles = "^25.1.0"
 aioboto3 = "^15.5.0"
 aiohttp = "^3.14.3"
