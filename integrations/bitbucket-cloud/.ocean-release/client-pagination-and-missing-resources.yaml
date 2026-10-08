@@ -1,0 +1,8 @@
+bump: patch
+changelog-type: bugfix
+changelog:
+  - Fixed the repository listing paginating at Bitbucket's default page size of 10 instead of 100. Every kind that lists repositories passes a parameters dictionary, which is empty rather than unset when no selector filters are configured, so the page size was never applied - ten times the requests against the hourly rate limit on every resync of every kind.
+  - Fixed the directory listing dropping its own depth limit whenever a caller passes query parameters. Bitbucket defaults that limit to one level, so such a listing would have returned the repository root only, with no error.
+  - Fixed an `AttributeError` raised for a file whose content Bitbucket cannot return, which was logged as a successful fetch one line earlier. The shipped default repository mapping requests a CODEOWNERS file from every repository, so this was reached on every resync of most installations and recorded only at debug level.
+  - A file whose content cannot be read now ends the `file` kind in error so its existing entities are preserved rather than reconciled away, a nested `file://` reference resolves to null, and a push skips that file instead of overwriting a good entity with empty content.
+  - The `file` kind now reports every file it could not read and fails once the walk has finished, so the files it could read still reach Port. Previously the first unreadable file ended the walk and discarded everything behind it.
