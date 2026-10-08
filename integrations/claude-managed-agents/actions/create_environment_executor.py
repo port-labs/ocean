@@ -58,9 +58,7 @@ class CreateEnvironmentExecutor(AbstractAnthropicExecutor):
             ) from error
 
         environment_id = environment.get("id")
-        logger.info(
-            f"Created Claude environment {environment_id} for run {run.id}"
-        )
+        logger.info(f"Created Claude environment {environment_id} for run {run.id}")
 
         # Reflect the new environment in the catalog via the existing
         # `environment` kind mapping. Environments have no webhook events, so
