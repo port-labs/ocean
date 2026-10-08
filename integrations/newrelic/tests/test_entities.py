@@ -278,3 +278,187 @@ class TestEntitiesHandler:
         # Expect exception
         with pytest.raises(NewRelicNotFoundError):
             await entities_handler.get_entity("non-existent-guid")
+
+    async def test_list_service_call_relations_for_entities(
+        self,
+        entities_handler: EntitiesHandler,
+        mock_send_request: AsyncMock,
+        mock_render_query: AsyncMock,
+    ) -> None:
+        mock_render_query.return_value = "test-query"
+        mock_send_request.side_effect = [
+            {
+                "data": {
+                    "actor": {
+                        "entities": [
+                            {
+                                "guid": "source-guid",
+                                "relatedEntities": {
+                                    "nextCursor": "cursor-1",
+                                    "results": [
+                                        {
+                                            "type": "CALLS",
+                                            "source": {
+                                                "entity": {"guid": "source-guid"}
+                                            },
+                                            "target": {
+                                                "entity": {
+                                                    "guid": "service-target-guid",
+                                                    "type": "SERVICE",
+                                                    "domain": "APM",
+                                                }
+                                            },
+                                        },
+                                        {
+                                            "type": "CALLS",
+                                            "source": {
+                                                "entity": {"guid": "source-guid"}
+                                            },
+                                            "target": {
+                                                "entity": {
+                                                    "guid": "ext-service-guid",
+                                                    "name": "internal-traefik",
+                                                    "type": "SERVICE",
+                                                    "domain": "EXT",
+                                                }
+                                            },
+                                        },
+                                        {
+                                            "type": "CALLS",
+                                            "createdAt": 1000,
+                                            "source": {
+                                                "entity": {"guid": "source-guid"}
+                                            },
+                                            "target": {
+                                                "accountId": 42,
+                                                "entity": {
+                                                    "guid": "dependency-guid",
+                                                    "name": "db.example.com",
+                                                    "type": "DATABASE",
+                                                    "domain": "UNINSTRUMENTED",
+                                                    "entityType": "EXT-DATABASE",
+                                                    "reporting": False,
+                                                    "permalink": "https://example",
+                                                    "tags": [
+                                                        {
+                                                            "key": "env",
+                                                            "values": ["prod"],
+                                                        }
+                                                    ],
+                                                },
+                                            },
+                                        },
+                                        {
+                                            "type": "HOSTS",
+                                            "source": {
+                                                "entity": {"guid": "source-guid"}
+                                            },
+                                            "target": {
+                                                "entity": {
+                                                    "guid": "ignored-host-guid",
+                                                    "type": "CONTAINER",
+                                                }
+                                            },
+                                        },
+                                    ],
+                                },
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "data": {
+                    "actor": {
+                        "entity": {
+                            "relatedEntities": {
+                                "nextCursor": None,
+                                "results": [
+                                    {
+                                        "type": "CALLS",
+                                        "source": {"entity": {"guid": "other-guid"}},
+                                        "target": {
+                                            "entity": {
+                                                "guid": "ignored-reverse-guid",
+                                                "type": "HTTPSERVICE",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "CALLS",
+                                        "source": {"entity": {"guid": "source-guid"}},
+                                        "target": {
+                                            "entity": {
+                                                "guid": "source-guid",
+                                                "name": "self-call",
+                                                "type": "APPLICATION",
+                                                "domain": "APM",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "CALLS",
+                                        "source": {"entity": {"guid": "source-guid"}},
+                                        "target": {
+                                            "entity": {
+                                                "guid": "dependency-guid",
+                                                "name": "db.example.com",
+                                                "type": "DATABASE",
+                                                "domain": "UNINSTRUMENTED",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "CALLS",
+                                        "source": {"entity": {"guid": "source-guid"}},
+                                        "target": {
+                                            "entity": {
+                                                "guid": "dependency-guid-2",
+                                                "name": "cache.example.com",
+                                                "type": "REDIS",
+                                                "domain": "UNINSTRUMENTED",
+                                            }
+                                        },
+                                    },
+                                ],
+                            }
+                        }
+                    }
+                }
+            },
+        ]
+
+        relations = await entities_handler.list_service_call_relations_for_entities(
+            ["source-guid"]
+        )
+
+        assert relations["source-guid"]["depends_on"] == ["service-target-guid"]
+        assert relations["source-guid"]["calls"] == [
+            "dependency-guid",
+            "dependency-guid-2",
+            "ext-service-guid",
+        ]
+        assert "source-guid" not in relations["source-guid"]["depends_on"]
+        assert "source-guid" not in relations["source-guid"]["calls"]
+        assert len(relations["source-guid"]["call_targets"]) == 2
+        first_dependency = next(
+            target
+            for target in relations["source-guid"]["call_targets"]
+            if target["guid"] == "dependency-guid"
+        )
+        assert first_dependency["tags"] == {"env": ["prod"]}
+
+    async def test_list_service_call_relations_for_entity_empty(
+        self,
+        entities_handler: EntitiesHandler,
+    ) -> None:
+        with patch.object(
+            entities_handler,
+            "list_service_call_relations_for_entities",
+            AsyncMock(return_value={}),
+        ):
+            relations = await entities_handler.list_service_call_relations_for_entity(
+                "source-guid"
+            )
+
+        assert relations == {"depends_on": [], "calls": [], "call_targets": []}

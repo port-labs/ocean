@@ -25,6 +25,15 @@ class NewRelicSelector(Selector):
         title="Include Open Issue Count",
         description="Whether to calculate and attach the open issue count to each entity.",
     )
+    include_service_dependencies: bool = Field(
+        default=False,
+        alias="includeServiceDependencies",
+        title="Include Service Dependencies",
+        description=(
+            "Whether to enrich each service with outbound CALLS relationships from "
+            "New Relic relatedEntities."
+        ),
+    )
     entity_query_filter: str | None = Field(
         default=None,
         alias="entityQueryFilter",

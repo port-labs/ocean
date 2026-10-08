@@ -12,6 +12,7 @@ from newrelic_integration.core.alert_conditions import AlertConditionsHandler
 from newrelic_integration.utils import get_port_resource_configuration_by_port_kind
 
 SERVICE_LEVEL_MAX_CONCURRENT_REQUESTS = 10
+SERVICE_DEPENDENCIES_PAGE_SIZE = 100
 
 
 async def enrich_service_level(
@@ -21,6 +22,20 @@ async def enrich_service_level(
 ) -> dict[str, Any]:
     async with semaphore:
         return await handler.enrich_slo_with_sli_and_tags(service_level)
+
+
+async def enrich_service_call_relations(
+    entity_handler: EntitiesHandler,
+    entities: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    relation_data = await entity_handler.list_service_call_relations_for_entities(
+        [entity["guid"] for entity in entities if entity.get("guid")]
+    )
+    for entity in entities:
+        relations = relation_data.get(entity.get("guid", ""), {})
+        entity["__depends_on"] = relations.get("depends_on", [])
+        entity["__calls"] = relations.get("calls", [])
+    return entities
 
 
 @ocean.on_resync()
@@ -45,7 +60,11 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             page_size = 100
             counter = 0
             entities = []
-            async for entity in EntitiesHandler().list_entities_by_resource_kind(kind):
+            entities_handler = EntitiesHandler()
+            include_service_dependencies = (
+                port_resource_configuration.selector.include_service_dependencies
+            )
+            async for entity in entities_handler.list_entities_by_resource_kind(kind):
                 if port_resource_configuration.selector.calculate_open_issue_count:
                     number_of_open_issues = (
                         await IssuesHandler().get_number_of_issues_by_entity_guid(
@@ -59,9 +78,19 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 # yield the entities in batches to take advantage of the async list generator
                 if counter == page_size:
                     counter = 0
+                    if include_service_dependencies:
+                        entities = await enrich_service_call_relations(
+                            entities_handler,
+                            entities,
+                        )
                     yield entities
                     entities = []
             if entities:
+                if include_service_dependencies:
+                    entities = await enrich_service_call_relations(
+                        entities_handler,
+                        entities,
+                    )
                 yield entities
 
 
@@ -84,6 +113,66 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             enriched_service_levels = await asyncio.gather(*tasks)
             yield enriched_service_levels
+
+
+@ocean.on_resync(kind="newRelicDependency")
+async def resync_service_dependencies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    with logger.contextualize(resource_kind=kind):
+        service_resource_config = await get_port_resource_configuration_by_port_kind(
+            "newRelicService"
+        )
+        if not service_resource_config:
+            logger.error("No newRelicService resource configuration found")
+            return
+        if not service_resource_config.selector.include_service_dependencies:
+            logger.info(
+                "Skipping dependency resync because includeServiceDependencies is disabled"
+            )
+            return
+
+        entities_handler = EntitiesHandler()
+        dependency_entities: dict[str, dict[str, Any]] = {}
+        source_batch: list[dict[str, Any]] = []
+        service_counter = 0
+
+        async for entity in entities_handler.list_entities_by_resource_kind(
+            "newRelicService"
+        ):
+            source_batch.append(entity)
+            service_counter += 1
+            if service_counter == SERVICE_DEPENDENCIES_PAGE_SIZE:
+                relation_data = (
+                    await entities_handler.list_service_call_relations_for_entities(
+                        [
+                            service["guid"]
+                            for service in source_batch
+                            if service.get("guid")
+                        ]
+                    )
+                )
+                for relations in relation_data.values():
+                    for target in relations.get("call_targets", []):
+                        guid = target.get("guid")
+                        if guid:
+                            dependency_entities[guid] = target
+                source_batch = []
+                service_counter = 0
+
+        if source_batch:
+            relation_data = (
+                await entities_handler.list_service_call_relations_for_entities(
+                    [service["guid"] for service in source_batch if service.get("guid")]
+                )
+            )
+            for relations in relation_data.values():
+                for target in relations.get("call_targets", []):
+                    guid = target.get("guid")
+                    if guid:
+                        dependency_entities[guid] = target
+
+        dependencies = list(dependency_entities.values())
+        for index in range(0, len(dependencies), SERVICE_DEPENDENCIES_PAGE_SIZE):
+            yield dependencies[index : index + SERVICE_DEPENDENCIES_PAGE_SIZE]
 
 
 @ocean.on_resync(kind="newRelicAlertCondition")
