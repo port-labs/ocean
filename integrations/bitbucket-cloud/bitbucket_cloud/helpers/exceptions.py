@@ -13,7 +13,8 @@ class BitbucketFileWalkError(OceanAbortException):
 class BitbucketFileReadError(BaseOceanException):
     """One file's content could not be read.
 
-    Caught in file_kind._collect_walk_failures, which records it and lets the walk
-    finish. It is deliberately not an OceanAbortException: the walk decides whether a
-    failed read ends the kind, and raises BitbucketFileWalkError when it does.
+    Caught in file_kind.process_file_patterns, which records it against the repository
+    and lets the walk finish. It is deliberately not an OceanAbortException: the walk
+    decides whether a failed read ends the kind, and raises BitbucketFileWalkError when
+    it does.
     """
