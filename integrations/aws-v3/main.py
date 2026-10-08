@@ -1,10 +1,12 @@
 from typing import cast
 
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
+from aws.probe import AwsPermissionProbe
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
@@ -36,6 +38,15 @@ async def initialize_aws_sessions() -> None:
 async def cleanup_aws_sessions() -> None:
     """Clear AWS sessions from memory after resync completes."""
     await clear_aws_account_sessions()
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing AWS permissions for {len(context.available_kinds)} resource kinds"
+    )
+    await AwsPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_resync(ObjectKind.AccountInfo)

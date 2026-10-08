@@ -45,11 +45,15 @@ Create a new `AWSResourceConfig` subclass named `AWS<Resource>ResourceConfig`. I
 
 ```python
 class AWSSQSQueueResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("sqs:ListQueues",)
     kind: Literal["AWS::SQS::Queue"] = Field(
         title="AWS SQS Queue",
         description="AWS SQS Queue resource kind.",
     )
 ```
+
+Also declare `probe_permissions` as the IAM action(s) used by the exporter's list/describe paginator
+so Test Connection can simulate those actions.
 
 **File:** `integration.py`
 
