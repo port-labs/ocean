@@ -215,13 +215,16 @@ class SingleDependabotAlertOptions(RepositoryIdentifier):
     alert_number: Required[str]
 
 
-class ListDependabotAlertOptions(RepositoryIdentifier):
-    """Options for listing Dependabot alerts."""
+class ListDependabotAlertOptions(SingleOrganizationOptions):
+    """Options for listing Dependabot alerts (repo- or org-level)."""
 
     state: Required[list[str]]
     severity: NotRequired[Optional[str]]
     ecosystem: NotRequired[Optional[str]]
     updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -230,12 +233,15 @@ class SingleCodeScanningAlertOptions(RepositoryIdentifier):
     alert_number: Required[str]
 
 
-class ListCodeScanningAlertOptions(RepositoryIdentifier):
-    """Options for listing code scanning alerts."""
+class ListCodeScanningAlertOptions(SingleOrganizationOptions):
+    """Options for listing code scanning alerts (repo- or org-level)."""
 
     state: Required[str]
     severity: NotRequired[Optional[str]]
     updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class FileContentOptions(RepositoryIdentifier):
@@ -317,11 +323,15 @@ class SingleSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     alert_number: Required[str]
 
 
-class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+class ListSecretScanningAlertOptions(SingleOrganizationOptions):
     """Options for listing secret scanning alerts."""
 
+    hide_secret: Required[bool]
     state: Required[str]
     updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class SinglePackageOptions(SingleOrganizationOptions):

@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Fetch Dependabot, code-scanning, and secret-scanning alerts via org-level endpoints (one paginated stream per organization) with T2 updated_at cutoff; fall back to per-repo for User accounts.

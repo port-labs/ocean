@@ -23,6 +23,8 @@ from port_ocean.utils.cache import cache_coroutine_result
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+    from github.core.exporters.repository_exporter import RestRepositoryExporter
+    from github.core.options import ListRepositoryOptions
 
 
 BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
@@ -474,3 +476,26 @@ async def tag_batch_with_org(
 ) -> AsyncGenerator[Tuple[str, List[Dict[str, Any]]], None]:
     async for batch in iterator:
         yield (organization, batch)
+
+
+async def resolve_org_filtered_repos(
+    repository_exporter: "RestRepositoryExporter",
+    repo_options: "ListRepositoryOptions",
+) -> list[str] | None:
+    """
+    Resolve repoSearch allowlist for org-level resource streams.
+
+    Args:
+        repository_exporter: Exporter used to list repositories
+        repo_options: Repository list options (search/exclude filters)
+
+    Returns:
+        None if no filter; empty list if nothing matched; otherwise allowed repo names
+    """
+    if repo_options.get("search_params") is None:
+        return None
+    names: list[str] = []
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        for repo in repositories:
+            names.append(repo["name"])
+    return names

@@ -1,18 +1,14 @@
-from typing import cast, Optional
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from typing import cast
+from github.core.exporters.base_alert_exporter import BaseSecurityAlertExporter
 from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
     enrich_with_organization,
 )
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.core.ocean_types import RAW_ITEM
 from loguru import logger
-from github.core.options import ListDependabotAlertOptions, SingleDependabotAlertOptions
-from github.clients.http.rest_client import GithubRestClient
-from port_ocean.core.incremental.strategies import (
-    ClientSideCutoffStrategy,
-    paginate_with_strategy,
-)
+from github.core.options import SingleDependabotAlertOptions
+from port_ocean.core.incremental.strategies import ClientSideCutoffStrategy
 
 DEPENDABOT_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="updated_at",
@@ -20,11 +16,27 @@ DEPENDABOT_INCREMENTAL = ClientSideCutoffStrategy(
 )
 
 
-class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
+class RestDependabotAlertExporter(BaseSecurityAlertExporter):
+
+    @property
+    def alert_type_name(self) -> str:
+        return "Dependabot"
+
+    @property
+    def resource_path(self) -> str:
+        return "dependabot/alerts"
+
+    @property
+    def incremental_strategy(self) -> ClientSideCutoffStrategy:
+        return DEPENDABOT_INCREMENTAL
+
+    def prepare_request_params(self, params: dict) -> None:
+        """Join state list as comma-separated string for API request."""
+        params["state"] = ",".join(params["state"])
 
     async def get_resource[ExporterOptionsT: SingleDependabotAlertOptions](
         self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    ) -> RAW_ITEM | None:
 
         repo_name, organization, params = parse_github_options(dict(options))
         alert_number = params["alert_number"]
@@ -44,32 +56,3 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         return enrich_with_organization(
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
-
-    async def get_paginated_resources[ExporterOptionsT: ListDependabotAlertOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get all Dependabot alerts in the repository with pagination."""
-
-        repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = params.pop("updated_since", None)
-        params["state"] = ",".join(params["state"])
-        request_params = DEPENDABOT_INCREMENTAL.merge_params(params, incremental_cursor)
-
-        async for alerts in paginate_with_strategy(
-            self.client.send_paginated_request(
-                f"{self.client.base_url}/repos/{organization}/{repo_name}/dependabot/alerts",
-                request_params,
-            ),
-            cursor=incremental_cursor,
-            strategy=DEPENDABOT_INCREMENTAL,
-        ):
-            logger.info(
-                f"Fetched batch of {len(alerts)} Dependabot alerts from repository {repo_name} from {organization}"
-            )
-            batch = [
-                enrich_with_organization(
-                    enrich_with_repository(alert, cast(str, repo_name)), organization
-                )
-                for alert in alerts
-            ]
-            yield batch
