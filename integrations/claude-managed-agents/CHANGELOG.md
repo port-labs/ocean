@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.1 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 0.5.0 (2026-10-07)
+
+
+### Features
+
+- Added an update_agent action that updates a Claude managed agent's name, model, system prompt, or advanced configuration
+
+
 ## 0.4.1 (2026-10-07)
 
 
