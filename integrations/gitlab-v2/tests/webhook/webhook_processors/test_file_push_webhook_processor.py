@@ -70,6 +70,7 @@ class TestFilePushWebhookProcessor:
         client: MagicMock,
         added: list[str] | None = None,
         deleted: list[str] | None = None,
+        modified: list[str] | None = None,
     ) -> None:
         """Stub the repository compare API the processor resolves paths from."""
         diffs: list[dict[str, Any]] = [
@@ -81,6 +82,15 @@ class TestFilePushWebhookProcessor:
             }
             for path in added or []
         ]
+        diffs.extend(
+            {
+                "new_path": path,
+                "old_path": path,
+                "new_file": False,
+                "deleted_file": False,
+            }
+            for path in modified or []
+        )
         diffs.extend(
             {"new_path": path, "old_path": path, "deleted_file": True}
             for path in deleted or []
@@ -106,10 +116,12 @@ class TestFilePushWebhookProcessor:
     @pytest.fixture
     def resource_config(self, mock_gitlab_files_selector: MagicMock) -> ResourceConfig:
         """Create a mocked GitLabFilesResourceConfig with default no-repos config"""
-        config = MagicMock(spec=ResourceConfig)
+        config = MagicMock()
         config.selector = mock_gitlab_files_selector
         config.selector.included_files = []
         config.kind = "file"
+        config.port = MagicMock()
+        config.port.items_to_parse = None
         return config
 
     async def test_get_matching_kinds(
@@ -266,10 +278,12 @@ class TestFilePushWebhookProcessor:
         gitlab_files_selector.files = files_selector
 
         # Mock ResourceConfig
-        resource_config = MagicMock(spec=ResourceConfig)
+        resource_config = MagicMock()
         resource_config.selector = gitlab_files_selector
         resource_config.selector.included_files = []
         resource_config.kind = "file"
+        resource_config.port = MagicMock()
+        resource_config.port.items_to_parse = None
 
         project_id = push_payload["project_id"]
 
@@ -353,10 +367,12 @@ class TestFilePushWebhookProcessor:
         gitlab_files_selector.files = files_selector
 
         # Mock ResourceConfig
-        resource_config = MagicMock(spec=ResourceConfig)
+        resource_config = MagicMock()
         resource_config.selector = gitlab_files_selector
         resource_config.selector.included_files = []
         resource_config.kind = "file"
+        resource_config.port = MagicMock()
+        resource_config.port.items_to_parse = None
 
         processor._gitlab_webhook_client = MagicMock()
 
@@ -450,6 +466,69 @@ class TestFilePushWebhookProcessor:
         assert len(result.deleted_raw_results) == 2
         assert result.deleted_raw_results == enriched_deleted_data
         assert not result.updated_raw_results
+
+    async def test_handle_event_modified_file_fetches_old_content_for_items_to_parse(
+        self,
+        processor: FilePushWebhookProcessor,
+        push_payload: dict[str, Any],
+        resource_config: MagicMock,
+    ) -> None:
+        """Modified files with itemsToParse emit old content as deletes and new as upserts."""
+        resource_config.selector.files.path = "services.yaml"
+        resource_config.port.items_to_parse = ".file.content"
+        project_id = str(push_payload["project_id"])
+        new_file = {
+            "project_id": project_id,
+            "path": "services.yaml",
+            "ref": push_payload["after"],
+            "content": [{"name": "keep-me"}],
+        }
+        old_file = {
+            "project_id": project_id,
+            "path": "services.yaml",
+            "ref": push_payload["before"],
+            "content": [{"name": "keep-me"}, {"name": "delete-me"}],
+        }
+        new_enriched = [{"file": new_file, "repo": push_payload["project"]}]
+        old_enriched = [{"file": old_file, "repo": push_payload["project"]}]
+
+        processor._gitlab_webhook_client = MagicMock()
+        self.mock_compare(
+            processor._gitlab_webhook_client,
+            modified=["services.yaml"],
+        )
+
+        async def process_batch(
+            batch: list[dict[str, Any]], **kwargs: Any
+        ) -> list[dict[str, Any]]:
+            ref = batch[0]["ref"]
+            return [new_file if ref == push_payload["after"] else old_file]
+
+        async def enrich(batch: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            return (
+                new_enriched
+                if batch[0]["ref"] == push_payload["after"]
+                else old_enriched
+            )
+
+        processor._gitlab_webhook_client._process_file_batch = AsyncMock(
+            side_effect=process_batch
+        )
+        processor._gitlab_webhook_client._enrich_files_with_repos = AsyncMock(
+            side_effect=enrich
+        )
+
+        result = await processor.handle_event(push_payload, resource_config)
+
+        process_calls = (
+            processor._gitlab_webhook_client._process_file_batch.await_args_list
+        )
+        processed_batches = [call.args[0] for call in process_calls]
+        assert {
+            tuple(item["ref"] for item in batch) for batch in processed_batches
+        } == {(push_payload["after"],), (push_payload["before"],)}
+        assert result.updated_raw_results == new_enriched
+        assert result.deleted_raw_results == old_enriched
 
     async def test_handle_event_falls_back_to_commits_when_compare_fails(
         self,

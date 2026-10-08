@@ -62,7 +62,7 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        changed_files, removed_files = await resolve_push_path_changes(
+        changed_files, removed_files, _modified_files = await resolve_push_path_changes(
             self._gitlab_webhook_client, repo_path, payload
         )
 
