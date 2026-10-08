@@ -355,3 +355,4 @@ class LakehouseDataEntryBatch(TypedDict):
     resync_start_time: datetime | None
     extraction_timestamp: int
     data: list[LakehouseDataEntry]
+    extract_duration_ms: NotRequired[int]
