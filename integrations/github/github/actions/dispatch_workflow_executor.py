@@ -5,7 +5,11 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from github.actions.utils import build_external_id, extract_error_message
+from github.actions.utils import (
+    build_external_id,
+    extract_error_message,
+    report_workflow_run_conclusion,
+)
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -34,6 +38,13 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 MAX_WORKFLOW_POLL_ATTEMPTS = 30
 WORKFLOW_POLL_DELAY_SECONDS = 2
+
+# GitHub returns the run id from `/dispatches` before the run is readable via
+# `GET /actions/runs/{id}` (read-after-write lag), so the first fetch can 404.
+# Backoff: 1, 2, 4, 8, 10, 10, 10 seconds (~45s total) across 8 attempts.
+MAX_WORKFLOW_RUN_FETCH_ATTEMPTS = 8
+WORKFLOW_RUN_FETCH_INITIAL_DELAY_SECONDS = 1
+WORKFLOW_RUN_FETCH_MAX_DELAY_SECONDS = 10
 
 DISPATCHING_STATUS_LABEL = "Dispatching workflow"
 DISPATCH_FAILED_STATUS_LABEL = "Dispatch failed"
@@ -214,6 +225,40 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         )
         return workflow_runs[0]
 
+    async def _fetch_dispatched_workflow_run(
+        self,
+        rest_client: GithubRestClient,
+        organization: str,
+        repo: str,
+        workflow_run_id: int | str,
+    ) -> dict[str, Any]:
+        workflow_run_exporter = RestWorkflowRunExporter(rest_client)
+        delay = WORKFLOW_RUN_FETCH_INITIAL_DELAY_SECONDS
+        for attempt in range(1, MAX_WORKFLOW_RUN_FETCH_ATTEMPTS + 1):
+            workflow_run = await workflow_run_exporter.get_resource(
+                SingleWorkflowRunOptions(
+                    organization=organization,
+                    repo_name=repo,
+                    run_id=str(workflow_run_id),
+                )
+            )
+            if workflow_run:
+                return workflow_run
+
+            if attempt < MAX_WORKFLOW_RUN_FETCH_ATTEMPTS:
+                logger.warning(
+                    f"Dispatched workflow run {workflow_run_id} is not readable yet in "
+                    f"{organization}/{repo}, retrying in {delay} seconds",
+                    workflow_run_id=workflow_run_id,
+                    attempt=attempt,
+                )
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, WORKFLOW_RUN_FETCH_MAX_DELAY_SECONDS)
+
+        raise NoWorkflowRunsFoundException(
+            f"Workflow run {workflow_run_id} not found in {organization}/{repo}"
+        )
+
     def _parse_inputs(self, raw_inputs: dict[str, Any]) -> dict[str, Any]:
         inputs: dict[str, str] = {}
         for key, value in raw_inputs.items():
@@ -311,19 +356,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 if not workflow_run_id:
                     raise ActionExecutionError("Workflow run ID not found")
 
-                workflow_run_exporter = RestWorkflowRunExporter(rest_client)
-                fetched_workflow_run = await workflow_run_exporter.get_resource(
-                    SingleWorkflowRunOptions(
-                        organization=organization,
-                        repo_name=repo,
-                        run_id=workflow_run_id,
-                    )
+                workflow_run = await self._fetch_dispatched_workflow_run(
+                    rest_client, organization, repo, workflow_run_id
                 )
-                if not fetched_workflow_run:
-                    raise ActionExecutionError(
-                        f"Workflow run {workflow_run_id} not found in {organization}/{repo}"
-                    )
-                workflow_run = fetched_workflow_run
 
             external_id = build_external_id(workflow_run)
 
@@ -350,3 +385,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 f"Error dispatching workflow: {error_message}",
                 status_label=specific_label or DISPATCH_FAILED_STATUS_LABEL,
             )
+
+        # A short workflow can finish before `externalRunId` is set (e.g. while
+        # we were still retrying the run fetch), in which case its completion
+        # webhook found no Port run and was dropped. Report the conclusion here.
+        if workflow_run.get("status") == "completed" and run.execution_properties.get(
+            "reportWorkflowStatus", False
+        ):
+            await report_workflow_run_conclusion(run, workflow_run)
