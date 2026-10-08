@@ -3839,6 +3839,7 @@ files = [
 
 [package.dependencies]
 botocore-stubs = "*"
+types-aiobotocore-iam = {version = ">=2.26.0,<2.27.0", optional = true, markers = "extra == \"iam\""}
 types-aiobotocore-sts = {version = ">=2.26.0,<2.27.0", optional = true, markers = "extra == \"sts\""}
 
 [package.extras]
@@ -4259,6 +4260,18 @@ workspaces-instances = ["types-aiobotocore-workspaces-instances (>=2.26.0,<2.27.
 workspaces-thin-client = ["types-aiobotocore-workspaces-thin-client (>=2.26.0,<2.27.0)"]
 workspaces-web = ["types-aiobotocore-workspaces-web (>=2.26.0,<2.27.0)"]
 xray = ["types-aiobotocore-xray (>=2.26.0,<2.27.0)"]
+
+[[package]]
+name = "types-aiobotocore-iam"
+version = "2.26.0"
+description = "Type annotations for aiobotocore IAM 2.26.0 service generated with mypy-boto3-builder 8.12.0"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "types_aiobotocore_iam-2.26.0-py3-none-any.whl", hash = "sha256:f02267237439fb665029b7d86f09a70efdbf53e403b1c4d6bfe8cfb62cde78de"},
+    {file = "types_aiobotocore_iam-2.26.0.tar.gz", hash = "sha256:b18ece759363e119e86785bce321c073ecb5aa7bfbe07d1c2af403c6fabde0bc"},
+]
 
 [[package]]
 name = "types-aiobotocore-sts"
@@ -4703,4 +4716,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "19a3a1596f6db0bc8b33bd0d57e27379bfaf7a0defd13cb5fd9b241e5b83854a"
+content-hash = "49812e39ada184ff675a79b876204a761223a7b6383af9be86482b9d1920638c"
