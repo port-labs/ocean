@@ -311,13 +311,11 @@ async def test_paginated_request_keeps_page_size_when_the_caller_passes_params()
 
 
 @pytest.mark.asyncio
-async def test_get_repository_files_returns_none_when_bitbucket_has_no_content(
+async def test_get_repository_files_returns_none_when_the_file_is_absent(
     mock_client: BitbucketClient,
 ) -> None:
-    """A file Bitbucket cannot return is None, not an empty string and not a crash."""
-    response = MagicMock()
-    response.status_code = 404
-    error = HTTPStatusError("404 Not Found", request=MagicMock(), response=response)
+    """A file Bitbucket says is not there is None, not an empty string and not a crash."""
+    error = _src_404('{"error": {"message": "No such file or directory: CODEOWNERS"}}')
 
     async with event_context("test_event"):
         with patch.object(
@@ -332,6 +330,27 @@ async def test_get_repository_files_returns_none_when_bitbucket_has_no_content(
                 )
                 is None
             )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_raises_when_the_repository_cannot_be_read(
+    mock_client: BitbucketClient,
+) -> None:
+    """The content endpoint answers 404 for that too, and it is not an absent file."""
+    error = _src_404(
+        '{"error": {"message": "You may not have access to this repository or it no '
+        'longer exists in this workspace."}}'
+    )
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_file_api_request_with_rate_limiter",
+            new_callable=AsyncMock,
+            side_effect=error,
+        ):
+            with pytest.raises(HTTPStatusError):
+                await mock_client.get_repository_files("test-repo", "main", "port.yml")
 
 
 @pytest.mark.asyncio

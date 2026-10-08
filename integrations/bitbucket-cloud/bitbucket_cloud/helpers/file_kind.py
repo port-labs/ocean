@@ -1,14 +1,14 @@
 import fnmatch
-import os
-from httpx import HTTPStatusError, TransportError
+from httpx import HTTPError, HTTPStatusError
 from pathlib import Path
-from typing import Dict, List, Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Dict, List, Set, TYPE_CHECKING
 from loguru import logger
 from integration import BitbucketFilePattern
 from bitbucket_cloud.helpers.exceptions import (
     BitbucketFileReadError,
     BitbucketFileWalkError,
 )
+from bitbucket_cloud.helpers.folder import get_parts_before_wildcard
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
 from bitbucket_cloud.helpers.file_kind_live_event import (
@@ -17,24 +17,29 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
     parse_file,
 )
 
+if TYPE_CHECKING:
+    from bitbucket_cloud.client import BitbucketClient
+
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
-# A failed read of one file reports it and the walk carries on, because the kind ends in
-# error either way and the readable files are worth keeping. Two statuses are not about
-# the file at all: a dead credential and an exhausted quota apply to every repository
-# still to be walked, so they stop it now rather than failing another few hundred times.
+# A failed read of one repository reports it and the walk carries on, because the kind
+# ends in error either way and the readable files are worth keeping. Two statuses are not
+# about the repository at all: a dead credential and an exhausted quota apply to every
+# repository still to be walked, so they stop it now rather than failing another few
+# hundred times.
 WALK_STOPPING_STATUSES = (401, 429)
-
-
-def _repository_slug(repo_info: Dict[str, Any]) -> str:
-    """The repository's URL slug, from the ``workspace/slug`` in ``full_name``.
-
-    ``name`` is the display name, which is the slug only until a repository is renamed
-    or named with punctuation - and then it addresses either nothing or, worse, another
-    repository whose slug it happens to match.
-    """
-    return repo_info["full_name"].split("/", 1)[1]
+# Omitted, Bitbucket lists one level and reports no error. Honoured as requested to 13
+# segments and 1,959 files with no truncation, so this does not narrow the result set.
+MAX_LISTING_DEPTH = 10000
+# The same limit the github integration applies to file content
+# (github/core/exporters/file_exporter/utils.py). Code search never indexed files at or
+# above 512 KB, so everything below this was already absent from the file kind.
+MAX_FILE_SIZE = 1024 * 1024
+# The only source of commit.repository: without this expansion the listing entry's commit
+# carries hash, links and type alone. Kept so .metadata.commit.repository.* stays
+# resolvable for mappings written against search.
+REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
 
 
 def normalize_directory_path(path: str) -> str:
@@ -46,174 +51,217 @@ def normalize_directory_path(path: str) -> str:
     return path.strip("/")
 
 
-def extract_filename_extension(filename: str) -> str:
-    """Return a filename's extension without the leading dot.
+def escape_bbql_string(value: str) -> str:
+    """Escape a value for use inside a double-quoted BBQL string.
 
-    Dotfiles such as ``.nvmrc`` have no extension. ``os.path.splitext`` keeps
-    the leading dot on the name, so those files are not dropped from Bitbucket
-    code search by an ``ext:`` qualifier built from the rest of the name.
+    An unescaped quote makes Bitbucket answer 500 with an HTML body, which costs the
+    whole repository's listing, and a configured filename is free text.
     """
-    extension = os.path.splitext(filename)[1]
-    if extension.startswith("."):
-        return extension[1:]
-    return extension
+    return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def build_search_terms(
-    filename: str, repos: List[str] | None, path: str, extension: str
-) -> str:
+def build_source_filter(filenames: List[str]) -> str:
+    """One Source API query covering every configured filename.
+
+    ``type="commit_file"`` does more than exclude directories: only file entries carry
+    ``size``, which the walk indexes directly.
     """
-    This function builds search terms for Bitbucket's search API.
-    The entire workspace is searched for the filename if repos is not provided.
-    If repos are provided, only the repos specified are searched.
-    The path and extension are required to tailor the search so results
-    are relevant to the file kind.
+    clauses = " OR ".join(f'path~"{escape_bbql_string(name)}"' for name in filenames)
+    return f'type="commit_file" AND ({clauses})'
 
-    Args:
-        filename (str): The filename to search for.
-        repos (List[str] | None): The repositories to search in.
-        path (str): The path to search in.
-        extension (str): The extension to search for.
 
-    Returns:
-        str: The search terms for Bitbucket's search API.
+def build_listing_root(path: str) -> str:
+    """The directory to list, derived from a configured path pattern.
+
+    Everything before the first wildcard is a real directory and narrows the listing;
+    the rest is matched client-side. Every value in ``GLOBAL_PATHS`` reduces to the
+    repository root.
     """
-    search_terms = [f'"{filename}"']
-    if repos:
-        repo_filters = " ".join(f"repo:{repo}" for repo in repos)
-        search_terms.append(f"{repo_filters}")
-
-    search_terms.append(f"path:{normalize_directory_path(path) or '/'}")
-
-    if extension:
-        search_terms.append(f"ext:{extension}")
-
-    return " ".join(search_terms)
+    return "/".join(get_parts_before_wildcard(normalize_directory_path(path)))
 
 
-def _report_unreadable_file(
-    error: Exception, failures: List[Exception], file_info: Dict[str, Any]
-) -> None:
-    repository = _repository_slug(file_info["commit"]["repository"])
-    logger.warning(
-        f"Recording {file_info['path']} in {repository} as unreadable: {error}"
+def repository_matches(repo: Dict[str, Any], configured_repositories: Set[str]) -> bool:
+    """Whether a repository is one of the configured ones.
+
+    A configured value may be the slug, the display name, or the display name with
+    spaces hyphenated, in any case, so the caller passes the set lower-cased.
+    """
+    display_name = repo["name"]
+    identifiers = {repo["slug"], display_name, display_name.replace(" ", "-")}
+    return any(
+        identifier.lower() in configured_repositories for identifier in identifiers
     )
-    failures.append(error)
 
 
-async def _collect_walk_failures(
-    task: AsyncGenerator[Dict[str, Any], None],
-    failures: List[Exception],
-    file_info: Dict[str, Any],
-) -> AsyncGenerator[Dict[str, Any], None]:
-    """Report a file that cannot be read and carry on with the rest of the walk.
+def select_matching_files(
+    entries: List[Dict[str, Any]],
+    file_pattern: BitbucketFilePattern,
+    repo_slug: str,
+) -> List[Dict[str, Any]]:
+    """The entries on one listing page whose content should be fetched.
 
-    Discovery has already said this file exists, and a content fetch cannot tell a file
-    deleted since then from one it is not allowed to read. Reporting either as absence
-    would let reconciliation delete the entity, which is the failure this change exists
-    to stop, so both end the kind in error - but only once the walk has finished, so
-    every readable file still lands and every failure is named. Each failure is appended
-    to the caller's ``failures`` list, which the caller reads when the walk is drained.
+    The server filter is a case-insensitive substring match that crosses directory
+    separators, so it returns more than the configured filenames and
+    ``validate_file_match`` is what narrows it. The size cap reads the listing's own
+    ``size``, so an oversized file costs no content fetch.
     """
-    try:
-        async for file_result in task:
-            yield file_result
-    except HTTPStatusError as e:
-        if e.response.status_code in WALK_STOPPING_STATUSES:
-            logger.error(
-                f"Stopping the walk at {file_info['path']}: {e}. This applies to every "
-                f"repository still to be walked, not to this file."
+    selected = []
+    for entry in entries:
+        file_path = entry["path"]
+        if not any(
+            validate_file_match(file_path, filename, file_pattern.path)
+            for filename in file_pattern.filenames
+        ):
+            logger.debug(
+                f"{file_path} in {repo_slug} matches no configured filename, skipping"
             )
-            raise
-        _report_unreadable_file(e, failures, file_info)
-    except BitbucketFileReadError as e:
-        _report_unreadable_file(e, failures, file_info)
-    except TransportError as e:
-        _report_unreadable_file(e, failures, file_info)
+            continue
+        if entry["size"] > MAX_FILE_SIZE:
+            logger.warning(
+                f"Skipping {file_path} in {repo_slug}, {entry['size']} bytes "
+                f"exceeds the {MAX_FILE_SIZE} byte limit"
+            )
+            continue
+        selected.append(entry)
+    return selected
+
+
+async def _walk_repository(
+    client: "BitbucketClient",
+    repo: Dict[str, Any],
+    file_pattern: BitbucketFilePattern,
+    listing_root: str,
+    source_filter: str,
+) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    """List one repository's matching files and yield the content of each.
+
+    ``listing_root`` and ``source_filter`` are derived from ``file_pattern`` and are
+    passed in because they are the same for every repository in the workspace; the
+    pattern itself is still needed for the matcher and for skip_parsing.
+    """
+    repo_slug = repo["slug"]
+    async for entries in client.get_directory_contents(
+        repo_slug,
+        repo["mainbranch"]["name"],
+        listing_root,
+        max_depth=MAX_LISTING_DEPTH,
+        params={"q": source_filter, "fields": REPOSITORY_EXPANSION},
+        missing_path="tolerate" if listing_root else "raise",
+    ):
+        tasks = [
+            retrieve_file_content(repo, entry, file_pattern.skip_parsing)
+            for entry in select_matching_files(entries, file_pattern, repo_slug)
+        ]
+
+        if not tasks:
+            continue
+
+        # Up to one content fetch per matching entry on the page, in flight together.
+        # Bitbucket publishes no concurrent-request guidance and returns no rate-limit
+        # header on a success, so the only stated bound is the hourly window these
+        # fetches draw on. This is the fan-out the search path already had, over pages
+        # of 100 rather than its 300.
+        async for file_result in stream_async_iterators_tasks(*tasks):
+            yield [file_result]
 
 
 async def process_file_patterns(
     file_pattern: BitbucketFilePattern,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-    """Process file patterns and retrieve matching files using Bitbucket's search API."""
-    logger.info(
-        f"Searching for files in {len(file_pattern.repos) if file_pattern.repos else 'all'} repositories with pattern: {file_pattern.path}"
-    )
-
-    path_to_search = file_pattern.path
-
-    if not file_pattern.repos:
-        logger.warning("No repositories provided, searching entire workspace")
+    """Discover files by listing each repository through Bitbucket's Source API."""
     if not file_pattern.filenames:
-        logger.info("No filenames provided, skipping file search")
+        logger.info("No filenames provided, skipping file discovery")
         return
 
+    listing_root = build_listing_root(file_pattern.path)
+    source_filter = build_source_filter(file_pattern.filenames)
+    logger.info(
+        f"Discovering files with filter '{source_filter}' from root '{listing_root}'"
+    )
+
+    client = init_client()
+    configured_repositories = {name.lower() for name in file_pattern.repos}
     failures: List[Exception] = []
 
-    for filename in file_pattern.filenames:
-        search_query = build_search_terms(
-            filename=filename,
-            repos=file_pattern.repos,
-            path=path_to_search if path_to_search not in GLOBAL_PATHS else "/",
-            extension=extract_filename_extension(filename),
-        )
-        logger.debug(f"Constructed search query: {search_query}")
-        bitbucket_client = init_client()
-        async for search_results in bitbucket_client.search_files(search_query):
-            tasks = []
-            for result in search_results:
-                if len(result["path_matches"]) >= 1:
-                    file_info = result["file"]
-                    file_path = file_info["path"]
+    # An empty dict, not no argument: get_repositories is cached on the repr of its
+    # params, so passing nothing is a different key and lists the workspace a second
+    # time. This shares the entry with the repository and pull-request kinds only while
+    # they configure neither userRole nor repoQuery; when they do, theirs is a separate
+    # listing and this one is unchanged.
+    async for repositories in client.get_repositories(params={}):
+        for repo in repositories:
+            # size is bytes on disk, so this skips a repository with no commits, whose
+            # listing would answer 404 Commit not found. It is not a guard on
+            # mainbranch, which needs none: Bitbucket refuses to delete the branch
+            # mainbranch points at (400 "Cannot delete the main branch") and moving the
+            # default repoints the field, so it cannot dangle. Measured on 116
+            # repositories, and on one with no branches at all, which still reports it.
+            if not repo["size"]:
+                logger.debug(f"Repository {repo['slug']} has no commits, skipping")
+                continue
+            # Filtered here rather than with the BBQL name IN (...) that the folder
+            # kind sends, because a configured value may be a slug and that clause
+            # matches the display name only - for a repository named "BuyOrBid" the
+            # slug "buyorbid" would silently match nothing.
+            if configured_repositories and not repository_matches(
+                repo, configured_repositories
+            ):
+                logger.debug(
+                    f"Repository {repo['slug']} is not in the configured repositories, skipping"
+                )
+                continue
 
-                    if not validate_file_match(file_path, filename, file_pattern.path):
-                        logger.debug(
-                            f"Skipping file {file_path} as it doesn't match expected patterns"
-                        )
-                        continue
-
-                    tasks.append(
-                        _collect_walk_failures(
-                            retrieve_file_content(file_info, file_pattern.skip_parsing),
-                            failures,
-                            file_info,
-                        )
+            try:
+                async for batch in _walk_repository(
+                    client, repo, file_pattern, listing_root, source_filter
+                ):
+                    yield batch
+            except (BitbucketFileReadError, HTTPError) as e:
+                if (
+                    isinstance(e, HTTPStatusError)
+                    and e.response.status_code in WALK_STOPPING_STATUSES
+                ):
+                    logger.error(
+                        f"Stopping the walk at {repo['slug']}: {e}. This applies to "
+                        f"every repository still to be walked, not to this one."
                     )
-
-            async for file_results in stream_async_iterators_tasks(*tasks):
-                yield [file_results]
+                    raise
+                # Carries the error because nothing else does for every kind: the
+                # client logs a status it recognises, but a transport failure never
+                # reaches its except at all. Files already yielded from this repository
+                # stand; the rest of it is given up.
+                logger.warning(
+                    f"Recording {repo['slug']} as unreadable and continuing the walk: {e}"
+                )
+                failures.append(e)
+                continue
 
     if failures:
         raise BitbucketFileWalkError(
-            f"{len(failures)} {'file' if len(failures) == 1 else 'files'} "
-            f"could not be read while walking "
-            f"{file_pattern.filenames} under '{file_pattern.path}'"
-        ) from ExceptionGroup("Unreadable files", failures)
+            f"{len(failures)} "
+            f"{'repository' if len(failures) == 1 else 'repositories'} could not be "
+            f"walked for {file_pattern.filenames} under '{file_pattern.path}'"
+        ) from ExceptionGroup("Unreadable repositories", failures)
 
 
 async def retrieve_file_content(
-    file_info: Dict[str, Any],
+    repo: Dict[str, Any],
+    entry: Dict[str, Any],
     skip_parsing: bool,
 ) -> AsyncGenerator[Dict[str, Any], None]:
-    """
-    Retrieve the content of a single file from Bitbucket.
+    """Retrieve the content of a single listed file.
 
-    Args:
-        file_info (Dict[str, Any]): Information about the file to retrieve
-
-    Yields:
-        Dict[str, Any]: Dictionary containing the file content and metadata
+    The repository is passed rather than read back out of the entry: the listing carries
+    the authoritative slug, where the entry's embedded repository object carries only a
+    display name.
     """
-    file_path = file_info["path"]
-    repo_info = file_info["commit"]["repository"]
-    repo_slug = _repository_slug(repo_info)
-    branch = repo_info["mainbranch"]["name"]
+    file_path = entry["path"]
+    repo_slug = repo["slug"]
+    branch = repo["mainbranch"]["name"]
 
     logger.info(f"Retrieving contents for file: {file_path}")
-    bitbucket_client = init_client()
-    file_content = await bitbucket_client.get_repository_files(
-        repo_slug, branch, file_path
-    )
+    client = init_client()
+    file_content = await client.get_repository_files(repo_slug, branch, file_path)
     if file_content is None:
         raise BitbucketFileReadError(
             f"Bitbucket returned no content for {file_path} in repository {repo_slug} "
@@ -227,9 +275,9 @@ async def retrieve_file_content(
     if skip_parsing or not isinstance(file_content, (dict, list)):
         result = {
             "content": file_content,
-            "repo": repo_info,
+            "repo": repo,
             "branch": branch,
-            "metadata": file_info,
+            "metadata": entry,
         }
     else:
         result = await check_and_load_file_prefix(
@@ -237,8 +285,8 @@ async def retrieve_file_content(
             str(parent_directory),
             repo_slug,
             branch,
-            file_info,
-            repo_info,
+            entry,
+            repo,
             branch,
         )
     yield dict(result)
