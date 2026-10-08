@@ -16,28 +16,58 @@ def webhook_client() -> Any:
 class TestWebhookExists:
     @pytest.mark.asyncio
     async def test_webhook_exists_true(self, webhook_client: Any) -> None:
-        response = {
-            "data": [
-                {
-                    "id": "nc-1",
-                    "attributes": {"url": "https://example.com/integration/webhook"},
-                }
-            ]
-        }
+        configs = [
+            {
+                "id": "nc-1",
+                "attributes": {"url": "https://example.com/integration/webhook"},
+            }
+        ]
 
-        with patch.object(
-            webhook_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_send:
-            mock_send.return_value = response
+        with patch.object(webhook_client, "get_paginated_resources") as mock_paginated:
+
+            async def webhook_generator() -> Any:
+                yield configs
+
+            mock_paginated.return_value = webhook_generator()
 
             result = await webhook_client._webhook_exists(
                 "ws-123", "https://example.com/integration/webhook"
             )
 
             assert result is True
-            mock_send.assert_called_once_with(
-                endpoint="workspaces/ws-123/notification-configurations"
+            mock_paginated.assert_called_once_with(
+                "workspaces/ws-123/notification-configurations"
             )
+
+    @pytest.mark.asyncio
+    async def test_webhook_exists_true_on_second_page(
+        self, webhook_client: Any
+    ) -> None:
+        with patch.object(webhook_client, "get_paginated_resources") as mock_paginated:
+
+            async def webhook_generator() -> Any:
+                yield [
+                    {
+                        "id": "nc-1",
+                        "attributes": {"url": "https://different.com/webhook"},
+                    }
+                ]
+                yield [
+                    {
+                        "id": "nc-2",
+                        "attributes": {
+                            "url": "https://example.com/integration/webhook"
+                        },
+                    }
+                ]
+
+            mock_paginated.return_value = webhook_generator()
+
+            result = await webhook_client._webhook_exists(
+                "ws-123", "https://example.com/integration/webhook"
+            )
+
+            assert result is True
 
     @pytest.mark.asyncio
     async def test_webhook_exists_false_no_matching_url(

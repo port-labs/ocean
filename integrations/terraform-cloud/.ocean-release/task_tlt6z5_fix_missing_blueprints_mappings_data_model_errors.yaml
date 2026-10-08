@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Stopped logging request bodies, which sent the configured webhook secret to the log pipeline unmasked, and corrected the data model - added the missing `terraformCloudHealthAssessment` blueprint and mapping and the `workspace` and `run` relations on `terraformCloudStateVersion`, typed `terraformCloudOrganization.planExpired` as boolean, handled the 404 the health assessment endpoint returns for a workspace that has never been assessed, and fixed the webhook existence check reading only the first page of notification configurations
