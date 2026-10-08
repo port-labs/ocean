@@ -32,6 +32,14 @@ from gcp_core.overrides import ProtoConfig
 
 DEFAULT_SEMAPHORE = BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
+# searchAllIamPolicies caps pageSize at 500. Larger pages spend fewer of the
+# per-project quota units, which matters because each policy expands into one
+# entity per binding member.
+_IAM_POLICY_SEARCH_PAGE_SIZE = 500
+_IAM_POLICY_BINDING_BATCH_SIZE = 100
+_FOLDER_SCOPE_FIELD = "__folder"
+_ORGANIZATION_SCOPE_FIELD = "__organization"
+
 
 async def search_all_resources(
     project_data: dict[str, Any], asset_type: str, **kwargs: Any
@@ -370,3 +378,231 @@ async def feed_event_to_resource(
                     project_id, project_rate_limiter, project_semaphore, config
                 )
     return resource
+
+
+def partition_iam_policy_asset_types(
+    asset_types: list[str],
+) -> tuple[list[str], bool, bool]:
+    """Split asset types by the scope that returns their explicit allow policies.
+
+    Project scope returns policies on resources in that project. Folder and
+    organization policies are not inside a project. Searching an organization
+    for every asset type would also return policies on descendant projects, so
+    those two asset types are searched only on their own scopes.
+    """
+    project_types: list[str] = []
+    include_folders = False
+    include_organizations = False
+    for asset_type in asset_types:
+        if asset_type == AssetTypesWithSpecialHandling.FOLDER:
+            include_folders = True
+        elif asset_type == AssetTypesWithSpecialHandling.ORGANIZATION:
+            include_organizations = True
+        else:
+            project_types.append(asset_type)
+    return project_types, include_folders, include_organizations
+
+
+def _condition_or_none(binding: dict[str, Any]) -> dict[str, Any] | None:
+    condition = binding.get("condition")
+    if not isinstance(condition, dict):
+        return None
+    if not any(
+        condition.get(key) for key in ("expression", "title", "description", "location")
+    ):
+        return None
+    return {
+        "expression": condition.get("expression") or "",
+        "title": condition.get("title") or "",
+        "description": condition.get("description") or "",
+        "location": condition.get("location") or "",
+    }
+
+
+def _split_member(member: str) -> tuple[str, str]:
+    if ":" not in member:
+        return member, ""
+    member_type, member_id = member.split(":", 1)
+    return member_type, member_id
+
+
+def expand_iam_policy_bindings(
+    policies: list[dict[str, Any]],
+    scope: dict[str, Any],
+    scope_field: str,
+) -> list[dict[str, Any]]:
+    """Turn allow-policy search results into one raw item per binding member."""
+    bindings: list[dict[str, Any]] = []
+    for policy in policies:
+        policy_body = policy.get("policy")
+        if not isinstance(policy_body, dict):
+            continue
+        raw_bindings = policy_body.get("bindings") or []
+        if not isinstance(raw_bindings, list):
+            continue
+        for binding in raw_bindings:
+            if not isinstance(binding, dict):
+                continue
+            role = binding.get("role")
+            if not isinstance(role, str) or not role:
+                continue
+            members = binding.get("members") or []
+            if not isinstance(members, list):
+                continue
+            condition = _condition_or_none(binding)
+            for member in members:
+                if not isinstance(member, str) or not member:
+                    continue
+                member_type, member_id = _split_member(member)
+                folders = policy.get("folders") or []
+                bindings.append(
+                    {
+                        "resource": policy.get("resource") or "",
+                        "asset_type": policy.get("asset_type")
+                        or policy.get("assetType")
+                        or "",
+                        "project": policy.get("project") or "",
+                        "folders": list(folders) if isinstance(folders, list) else [],
+                        "organization": policy.get("organization") or "",
+                        "role": role,
+                        "member": member,
+                        "member_type": member_type,
+                        "member_id": member_id,
+                        "condition": dict(condition) if condition is not None else None,
+                        scope_field: scope,
+                    }
+                )
+    return bindings
+
+
+def _batched(
+    items: list[dict[str, Any]], size: int
+) -> typing.Iterator[list[dict[str, Any]]]:
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
+
+
+async def search_all_iam_policies_in_scope(
+    scope: dict[str, Any],
+    semaphore: BoundedSemaphore,
+    asset_types: list[str],
+    policy_query: str | None = None,
+    rate_limiter: FixedWindowLimiter | None = None,
+    scope_field: str = EXTRA_PROJECT_FIELD,
+    asset_type: str | None = None,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Search explicit IAM allow policies within one project, folder, or organization.
+
+    ``asset_type`` is accepted because project iteration passes it for logging.
+    The Cloud Asset request uses ``asset_types``.
+    """
+    del asset_type  # logging context only; the request filters with asset_types
+
+    def parse_policy_response(response: Any) -> list[dict[str, Any]]:
+        return parse_protobuf_messages(response.results)
+
+    scope_name = scope["name"]
+    request: dict[str, Any] = {
+        "scope": scope_name,
+        "asset_types": list(asset_types),
+    }
+    if policy_query:
+        request["query"] = policy_query
+
+    async with semaphore:
+        logger.info(
+            f"Searching explicit IAM allow policies in {scope_name} "
+            f"for asset types {asset_types}"
+        )
+        async_assets_client = get_asset_client()
+        try:
+            async for policies in paginated_query(
+                async_assets_client,
+                "search_all_iam_policies",
+                request,
+                parse_policy_response,
+                rate_limiter,
+                page_size=_IAM_POLICY_SEARCH_PAGE_SIZE,
+            ):
+                expanded = expand_iam_policy_bindings(policies, scope, scope_field)
+                for batch in _batched(expanded, _IAM_POLICY_BINDING_BATCH_SIZE):
+                    yield batch
+        except PermissionDenied as e:
+            logger.error(
+                f"Service account doesn't have permission "
+                f"cloudasset.assets.searchAllIamPolicies on scope {scope_name} "
+                f"for asset types {asset_types}. Error: {str(e.message)}"
+            )
+        except NotFound as e:
+            logger.info(
+                f"Couldn't perform search_all_iam_policies on scope {scope_name} "
+                f"since it wasn't found. Error: {str(e)}"
+            )
+        except Exception:
+            logger.exception(
+                f"Unexpected error while searching IAM allow policies in scope {scope_name}"
+            )
+            raise
+        else:
+            logger.info(
+                f"Successfully searched IAM allow policies within scope {scope_name}"
+            )
+
+
+async def search_explicit_iam_policy_bindings(
+    asset_types: list[str],
+    policy_query: str | None,
+    rate_limiter: FixedWindowLimiter,
+    semaphore: BoundedSemaphore,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Read explicit allow-policy bindings for the selector's asset types.
+
+    Project resources are searched once per accessible project. Folder and
+    organization asset types are searched on those scopes only, so an
+    organization search does not also return every descendant project policy.
+    """
+    (
+        project_types,
+        include_folders,
+        include_organizations,
+    ) = partition_iam_policy_asset_types(asset_types)
+
+    if project_types:
+        # Imported lazily: iterators imports search_all_projects from this module.
+        from gcp_core.search.iterators import iterate_per_available_project
+
+        async for batch in iterate_per_available_project(
+            search_all_iam_policies_in_scope,
+            asset_types=project_types,
+            policy_query=policy_query,
+            rate_limiter=rate_limiter,
+            semaphore=semaphore,
+            asset_type=AssetTypesWithSpecialHandling.IAM_POLICY,
+        ):
+            yield batch
+
+    if include_folders:
+        async for folders in search_all_folders():
+            for folder in folders:
+                async for batch in search_all_iam_policies_in_scope(
+                    folder,
+                    semaphore,
+                    asset_types=[AssetTypesWithSpecialHandling.FOLDER],
+                    policy_query=policy_query,
+                    rate_limiter=rate_limiter,
+                    scope_field=_FOLDER_SCOPE_FIELD,
+                ):
+                    yield batch
+
+    if include_organizations:
+        async for organizations in search_all_organizations():
+            for organization in organizations:
+                async for batch in search_all_iam_policies_in_scope(
+                    organization,
+                    semaphore,
+                    asset_types=[AssetTypesWithSpecialHandling.ORGANIZATION],
+                    policy_query=policy_query,
+                    rate_limiter=rate_limiter,
+                    scope_field=_ORGANIZATION_SCOPE_FIELD,
+                ):
+                    yield batch

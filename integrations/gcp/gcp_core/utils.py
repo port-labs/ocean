@@ -17,6 +17,7 @@ from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
 from gcp_core.helpers.ratelimiter.overrides import (
+    SearchAllIamPoliciesQpmPerProject,
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
     ProjectGetRequestsPerMinutePerProject,
@@ -28,6 +29,7 @@ from port_ocean.utils.async_http import http_async_client
 from httpx import HTTPError
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
+search_all_iam_policies_qpm_per_project = SearchAllIamPoliciesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 project_get_requests_per_minute_per_project = ProjectGetRequestsPerMinutePerProject()
 
@@ -131,6 +133,7 @@ class AssetTypesWithSpecialHandling(enum.StrEnum):
     FOLDER = "cloudresourcemanager.googleapis.com/Folder"
     CLOUD_RESOURCE = "cloudResource"
     CLOUD_FUNCTION = "gcpCloudFunction"
+    IAM_POLICY = "iam.googleapis.com/Policy"
 
 
 def get_current_resource_config() -> (
@@ -224,6 +227,14 @@ async def get_quotas_for_project(
                     )
                 )
                 return (topic_rate_limiter, topic_semaphore)
+            case AssetTypesWithSpecialHandling.IAM_POLICY:
+                iam_policy_rate_limiter = (
+                    await search_all_iam_policies_qpm_per_project.limiter(project_id)
+                )
+                iam_policy_semaphore = (
+                    await search_all_iam_policies_qpm_per_project.semaphore(project_id)
+                )
+                return (iam_policy_rate_limiter, iam_policy_semaphore)
             case _:
                 asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
                     project_id

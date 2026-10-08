@@ -21,6 +21,11 @@ class SearchAllResourcesQpmPerProject(CloudAssetAPI):
     container_type = ContainerType.PROJECT
 
 
+class SearchAllIamPoliciesQpmPerProject(CloudAssetAPI):
+    quota_id = "apiSearchAllIamPoliciesQpmPerProject"
+    container_type = ContainerType.PROJECT
+
+
 class PubSubAdministratorPerMinutePerProject(PubSubAPI):
     quota_id = "administratorPerMinutePerProject"
     container_type = ContainerType.PROJECT

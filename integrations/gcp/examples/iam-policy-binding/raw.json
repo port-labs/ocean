@@ -1,0 +1,17 @@
+{
+  "resource": "//cloudresourcemanager.googleapis.com/projects/my-project",
+  "asset_type": "cloudresourcemanager.googleapis.com/Project",
+  "project": "projects/123456789",
+  "folders": ["folders/111"],
+  "organization": "organizations/222",
+  "role": "roles/container.developer",
+  "member": "serviceAccount:app@my-project.iam.gserviceaccount.com",
+  "member_type": "serviceAccount",
+  "member_id": "app@my-project.iam.gserviceaccount.com",
+  "condition": null,
+  "__project": {
+    "name": "projects/my-project",
+    "project_id": "my-project",
+    "display_name": "My Project"
+  }
+}

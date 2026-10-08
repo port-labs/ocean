@@ -20,12 +20,50 @@ An integration used to import gcp resources into Port.
 - resourcemanager.projects.list
 - resourcemanager.folders.get
 - resourcemanager.folders.list
+- cloudasset.assets.searchAllIamPolicies (only for the `iam.googleapis.com/Policy` kind)
 
 #### Suggested way of achieving this
 
 1. Create a service account in a **project**
 2. Create a role in the scope you want the integration to run (= Make sure you selected the right resource in the top left corner).
 3. Grant the role to the service account (can be done via the Manage Resources in IAM)
+
+### IAM allow policy bindings
+
+Kind `iam.googleapis.com/Policy` syncs **explicit** IAM allow-policy bindings from Cloud Asset Inventory [`searchAllIamPolicies`](https://cloud.google.com/asset-inventory/docs/reference/rest/v1/TopLevel/searchAllIamPolicies). Each raw item is one binding member on one resource (`role`, `member`, `resource`). It does not call Policy Analyzer and does not include inherited or effective access.
+
+`selector.assetTypes` is required. Policies on project resources are read once per accessible project. Add `cloudresourcemanager.googleapis.com/Folder` or `cloudresourcemanager.googleapis.com/Organization` only when you also want the allow policy set directly on those folders or organizations. Optional `selector.policyQuery` is a Cloud Asset search query applied to each binding before it is returned (for example `memberTypes:serviceAccount`). `selector.query` remains the JQ filter applied after bindings are expanded.
+
+Real-time asset feeds are not applied to this kind. Workload Identity (Google service account to Kubernetes service account annotations) is not part of this kind.
+
+```yaml
+- kind: iam.googleapis.com/Policy
+  selector:
+    query: 'true'
+    assetTypes:
+      - cloudresourcemanager.googleapis.com/Project
+      - iam.googleapis.com/ServiceAccount
+    policyQuery: memberTypes:serviceAccount
+  port:
+    entity:
+      mappings:
+        identifier: .resource + "|" + .role + "|" + .member + "|" + (.condition.expression // "")
+        title: .member
+        blueprint: '"gcpIamPolicyBinding"'
+        properties:
+          role: .role
+          member: .member
+          memberType: .member_type
+          resource: .resource
+          assetType: .asset_type
+          condition: .condition.expression // ""
+        relations:
+          project: .__project.name
+```
+
+`assetTypes` selects the resource the policy is attached to. `policyQuery: memberTypes:serviceAccount` keeps principals that are Google service accounts. Together, a project asset type plus that query answers which service accounts have which role on which project. Policies attached to a service account (`iam.googleapis.com/ServiceAccount`) answer who can use that account. Project-scoped bindings include `__project`. Folder-scoped bindings include `__folder`, and organization-scoped bindings include `__organization`.
+
+The same member and role can appear twice on one resource when the conditions differ, so include the condition expression in the identifier.
 
 ### Real time requirements
 
