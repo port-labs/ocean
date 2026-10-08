@@ -1,9 +1,10 @@
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
+from github.helpers.models import SecurityAlert
 from github.helpers.utils import enrich_with_organization, enrich_with_repository
 
 
-def repository_name_from_alert(alert: dict[str, Any]) -> Optional[str]:
+def repository_name_from_alert(alert: SecurityAlert) -> Optional[str]:
     """Return the repository name embedded on an org-level security alert."""
     repository = alert.get("repository")
     if isinstance(repository, dict):
@@ -13,7 +14,7 @@ def repository_name_from_alert(alert: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def is_alert_repo_archived(alert: dict[str, Any]) -> bool:
+def is_alert_repo_archived(alert: SecurityAlert) -> bool:
     """Return whether the alert's repository is archived (org-level payloads)."""
     repository = alert.get("repository")
     if isinstance(repository, dict):
@@ -22,7 +23,7 @@ def is_alert_repo_archived(alert: dict[str, Any]) -> bool:
 
 
 def should_include_org_alert(
-    alert: dict[str, Any],
+    alert: SecurityAlert,
     *,
     allowed_repos: Optional[set[str]] = None,
     exclude_archived: bool = False,
@@ -71,10 +72,11 @@ def enrich_security_alert_batch(
     repo_name: Optional[str] = None,
     allowed_repos: Optional[set[str]] = None,
     exclude_archived: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[SecurityAlert]:
     """Enrich alerts with ``__repository`` / ``__organization``, filtering org streams."""
-    batch: list[dict[str, Any]] = []
-    for alert in alerts:
+    batch: list[SecurityAlert] = []
+    for raw in alerts:
+        alert = cast(SecurityAlert, raw)
         name = (
             repo_name
             if repo_name
@@ -87,6 +89,9 @@ def enrich_security_alert_batch(
         if not name:
             continue
         batch.append(
-            enrich_with_organization(enrich_with_repository(alert, name), organization)
+            cast(
+                SecurityAlert,
+                enrich_with_organization(enrich_with_repository(raw, name), organization),
+            )
         )
     return batch
