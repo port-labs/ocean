@@ -1,0 +1,361 @@
+[
+  {
+    "identifier": "sonatypeOrganization",
+    "title": "Sonatype Organization",
+    "icon": "Sonatype",
+    "description": "An organization in Sonatype IQ Server",
+    "schema": {
+      "properties": {
+        "parentOrganizationId": {
+          "title": "Parent Organization ID",
+          "type": "string",
+          "description": "Identifier of the parent organization in the IQ hierarchy"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "parentOrganization": {
+        "title": "Parent Organization",
+        "target": "sonatypeOrganization",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "sonatypeApplication",
+    "title": "Sonatype Application",
+    "icon": "Sonatype",
+    "description": "An application evaluated by Sonatype IQ Server",
+    "schema": {
+      "properties": {
+        "publicId": {
+          "title": "Public ID",
+          "type": "string",
+          "description": "Human-facing application ID used in the IQ Server UI"
+        },
+        "contactUserName": {
+          "title": "Contact",
+          "type": "string",
+          "description": "Owner/contact responsible for the application"
+        },
+        "tags": {
+          "title": "Application Categories",
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Application categories (tags) assigned in IQ Server"
+        },
+        "repositoryUrl": {
+          "title": "Repository URL",
+          "type": "string",
+          "format": "url",
+          "description": "Source control repository URL from IQ Source Control Management"
+        },
+        "scmProvider": {
+          "title": "SCM Provider",
+          "type": "string",
+          "description": "Source control provider configured in IQ (e.g. github)"
+        },
+        "scmBaseBranch": {
+          "title": "SCM Base Branch",
+          "type": "string",
+          "description": "Base branch configured for the application's source control"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "organization": {
+        "title": "Organization",
+        "target": "sonatypeOrganization",
+        "required": false,
+        "many": false
+      },
+      "githubRepository": {
+        "title": "GitHub Repository",
+        "target": "githubRepository",
+        "required": false,
+        "many": false,
+        "description": "Linked from IQ Source Control Management when provider is GitHub"
+      }
+    }
+  },
+  {
+    "identifier": "sonatypeReport",
+    "title": "Sonatype Report",
+    "icon": "Sonatype",
+    "description": "The latest Application Composition Report for an application at a given lifecycle stage",
+    "schema": {
+      "properties": {
+        "stage": {
+          "title": "Stage",
+          "type": "string",
+          "description": "Lifecycle stage (build, stage-release, release, operate, ...)"
+        },
+        "evaluationDate": {
+          "title": "Evaluation Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the report was generated"
+        },
+        "criticalCount": {
+          "title": "Critical Violations",
+          "type": "number",
+          "icon": "Alert"
+        },
+        "severeCount": {
+          "title": "Severe Violations",
+          "type": "number"
+        },
+        "moderateCount": {
+          "title": "Moderate Violations",
+          "type": "number"
+        },
+        "lowCount": {
+          "title": "Low Violations",
+          "type": "number"
+        },
+        "componentsWithViolations": {
+          "title": "Components With Violations",
+          "type": "number"
+        },
+        "totalComponents": {
+          "title": "Total Components",
+          "type": "number"
+        },
+        "reportUrl": {
+          "title": "Report URL",
+          "type": "string",
+          "format": "url",
+          "description": "Deep link to the report in IQ Server"
+        },
+        "reportPdfUrl": {
+          "title": "Report PDF",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "application": {
+        "title": "Application",
+        "target": "sonatypeApplication",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "sonatypePolicyViolation",
+    "title": "Sonatype Policy Violation",
+    "icon": "Sonatype",
+    "description": "A single policy violation found against a component in an application report",
+    "schema": {
+      "properties": {
+        "policyName": {
+          "title": "Policy",
+          "type": "string"
+        },
+        "threatLevel": {
+          "title": "Threat Level",
+          "type": "number",
+          "description": "IQ policy threat level, 0-10"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string",
+          "enum": ["critical", "severe", "moderate", "low", "none"],
+          "enumColors": {
+            "critical": "red",
+            "severe": "orange",
+            "moderate": "yellow",
+            "low": "blue",
+            "none": "green"
+          }
+        },
+        "threatCategory": {
+          "title": "Threat Category",
+          "type": "string",
+          "description": "e.g. SECURITY, LICENSE, QUALITY, INTEGRITY_RATING"
+        },
+        "component": {
+          "title": "Component",
+          "type": "string",
+          "description": "Affected component (package URL or coordinates)"
+        },
+        "packageUrl": {
+          "title": "Package URL",
+          "type": "string"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "waived": {
+          "title": "Waived",
+          "type": "boolean"
+        },
+        "grandfathered": {
+          "title": "Grandfathered",
+          "type": "boolean"
+        },
+        "reportUrl": {
+          "title": "Report URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "application": {
+        "title": "Application",
+        "target": "sonatypeApplication",
+        "required": false,
+        "many": false
+      },
+      "report": {
+        "title": "Report",
+        "target": "sonatypeReport",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "sonatypeComponent",
+    "title": "Sonatype Component",
+    "icon": "Package",
+    "description": "An open-source component found in an application report, with its vulnerabilities and recommended fix version",
+    "schema": {
+      "properties": {
+        "displayName": { "title": "Component", "type": "string" },
+        "packageUrl": { "title": "Package URL", "type": "string" },
+        "format": {
+          "title": "Format",
+          "type": "string",
+          "description": "Ecosystem, e.g. maven, npm, pypi"
+        },
+        "version": { "title": "Current Version", "type": "string" },
+        "matchState": { "title": "Match State", "type": "string" },
+        "directDependency": { "title": "Direct Dependency", "type": "boolean" },
+        "licenses": {
+          "title": "Licenses",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "maxCvssScore": { "title": "Max CVSS Score", "type": "number" },
+        "securityIssueCount": { "title": "Security Issues", "type": "number" },
+        "recommendedVersion": {
+          "title": "Recommended Version",
+          "type": "string",
+          "icon": "Rocket",
+          "description": "Version Sonatype recommends upgrading to that clears all policy violations"
+        },
+        "recommendedRemediationType": {
+          "title": "Recommendation Type",
+          "type": "string",
+          "description": "Which remediation Sonatype suggested (e.g. next-no-violations)"
+        },
+        "recommendedNonFailingVersion": {
+          "title": "Next Non-Failing Version",
+          "type": "string",
+          "description": "Next version that would not fail policy (softer fallback)"
+        },
+        "reportUrl": {
+          "title": "Report URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {
+      "repositoryIdentifier": {
+        "title": "Repository Identifier",
+        "path": "application.githubRepository.$identifier"
+      }
+    },
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "application": {
+        "title": "Application",
+        "target": "sonatypeApplication",
+        "required": false,
+        "many": false
+      },
+      "report": {
+        "title": "Report",
+        "target": "sonatypeReport",
+        "required": false,
+        "many": false
+      },
+      "vulnerabilities": {
+        "title": "Vulnerabilities",
+        "target": "sonatypeVulnerability",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "sonatypeVulnerability",
+    "title": "Sonatype Vulnerability",
+    "icon": "Alert",
+    "description": "A security vulnerability (e.g. CVE) detected by Sonatype, shared across all affected components",
+    "schema": {
+      "properties": {
+        "reference": {
+          "title": "Reference",
+          "type": "string",
+          "description": "e.g. CVE-2021-44228"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "description": "e.g. cve, sonatype"
+        },
+        "cvssScore": { "title": "CVSS Score", "type": "number" },
+        "severity": {
+          "title": "Severity",
+          "type": "string",
+          "enum": ["critical", "severe", "moderate", "low", "none"],
+          "enumColors": {
+            "critical": "red",
+            "severe": "orange",
+            "moderate": "yellow",
+            "low": "blue",
+            "none": "green"
+          }
+        },
+        "threatCategory": { "title": "Threat Category", "type": "string" },
+        "status": { "title": "Status", "type": "string" },
+        "url": {
+          "title": "Details URL",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]
