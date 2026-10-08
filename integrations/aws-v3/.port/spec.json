@@ -4,6 +4,7 @@
   "icon": "AWS",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3",
   "formMappingEnabled": true,
+  "testConnectionAvailable": false,
   "features": [
     {
       "type": "exporter",
