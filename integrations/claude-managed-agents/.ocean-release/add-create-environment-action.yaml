@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a create_environment action that creates a new Claude managed environment defining the container configuration for agent sessions
