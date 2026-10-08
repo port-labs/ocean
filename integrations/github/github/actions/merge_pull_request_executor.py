@@ -66,7 +66,7 @@ class MergePullRequestExecutor(AbstractGithubExecutor):
         logger.info(
             f"Merged pull request #{inputs.prNumber} in {inputs.org}/{inputs.repo}",
             pr_number=inputs.prNumber,
-            merge_sha=result["sha"],
+            merge_sha=result.get("sha"),
         )
 
         await ocean.port_client.report_run_completed(
