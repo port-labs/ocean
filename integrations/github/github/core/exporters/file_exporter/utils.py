@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 from collections import defaultdict
+from datetime import datetime
 from enum import StrEnum
 import json
 from pathlib import Path
@@ -171,15 +172,32 @@ class FilePatternMappingBuilder:
         repo_type: str,
     ):
         self.org_exporter = org_exporter
-        self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
+        self.repo_type = repo_type
 
     async def build(
-        self, files: List["GithubFilePattern"]
+        self,
+        files: List["GithubFilePattern"],
+        updated_since: Optional[datetime] = None,
+        cursor_field: str = "updated_at",
     ) -> List[ListFileSearchOptions]:
+        """Build file search options from patterns.
+        Supports both incremental and full sync modes.
+        If updated_since is provided (incremental), only repos modified since timestamp are included.
+        If updated_since is None (full sync), all repos are included.
+
+        Args:
+            files: File patterns to match against repositories
+            updated_since: Optional cursor for incremental sync
+            cursor_field: Which field to use for filtering ("updated_at" or "pushed_at")
+        """
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
+
+        repo_selector = CompositeRepositorySelector(
+            self.repo_type, updated_since=updated_since, cursor_field=cursor_field
+        )
 
         for file_sel in files:
             async for batch in self.org_exporter.get_paginated_resources(
@@ -188,7 +206,7 @@ class FilePatternMappingBuilder:
                 for org in batch:
                     org_login = org["login"]
                     org_type = org["type"]
-                    async for repo_name, branch, _ in self.repo_selector.select_repos(
+                    async for repo_name, branch, _ in repo_selector.select_repos(
                         file_sel, self.repo_exporter, org_login, org_type
                     ):
                         repo_map[(org_login, repo_name)].append(

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import (
     Any,
     AsyncIterator,
@@ -50,8 +51,15 @@ class RepositorySelectorStrategy(ABC):
 class AllRepositorySelector(RepositorySelectorStrategy):
     """Select all repositories of the provided repo_type within an organization."""
 
-    def __init__(self, repo_type: str):
+    def __init__(
+        self,
+        repo_type: str,
+        updated_since: Optional[datetime] = None,
+        cursor_field: str = "updated_at",
+    ):
         self.repo_type = repo_type
+        self.updated_since = updated_since
+        self.cursor_field = cursor_field
 
     async def select_repos(
         self,
@@ -68,6 +76,8 @@ class AllRepositorySelector(RepositorySelectorStrategy):
             organization_type=org_type,
             type=self.repo_type,
             exclude_archived=selector.exclude_archived,
+            updated_since=self.updated_since,
+            cursor_field=self.cursor_field,
         )
         async for batch in repo_exporter.get_paginated_resources(options):
             for repo in batch:
@@ -119,9 +129,16 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
     Otherwise, it combines exact and glob strategies.
     """
 
-    def __init__(self, repo_type: str):
+    def __init__(
+        self,
+        repo_type: str,
+        updated_since: Optional[datetime] = None,
+        cursor_field: str = "updated_at",
+    ):
         self.implicit_strategies: List[RepositorySelectorStrategy] = [
-            AllRepositorySelector(repo_type)
+            AllRepositorySelector(
+                repo_type, updated_since=updated_since, cursor_field=cursor_field
+            )
         ]
         self.explicit_strategies: List[RepositorySelectorStrategy] = [
             ExactRepositorySelector()

@@ -14,6 +14,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from github.helpers.incremental import resolve_effective_datetime
+from github.helpers.incremental_graphql import get_changed_repos
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.probe import ProbeContext
@@ -1131,14 +1132,18 @@ async def resync_code_scanning_alerts(
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 @_resync_per_authenticator
 async def resync_folders(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all folders in specified repositories."""
+    """Resync folders based on configuration using the folder exporter.
+    Incremental resync is supported by filtering repositories based on the updated_since cursor.
+    """
     logger.info(f"Starting resync for kind: {kind}")
 
+    sync_cursor = active_incremental_cursor()
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     folders = [
         folder
@@ -1177,7 +1182,9 @@ async def resync_folders(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(folders)
+    repo_path_map = await pattern_builder.build(
+        folders, updated_since=sync_cursor, cursor_field="pushed_at"
+    )
 
     async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1185,14 +1192,18 @@ async def resync_folders(
         yield folder_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync files based on configuration using the file exporter."""
+    """Resync files based on configuration using the file exporter.
+    Incremental resync is supported by filtering repositories based on the updated_since cursor.
+    """
     logger.info(f"Starting resync for kind: {kind}")
 
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubFileResourceConfig, event.resource_config)
     files = [
         file
@@ -1200,6 +1211,7 @@ async def resync_files(
         if can_access_organization(authenticator, file.organization)
     ]
     if not files:
+        logger.debug("No accessible file patterns, skipping FILE sync")
         return
 
     rest_client = create_github_client(authenticator)
@@ -1207,6 +1219,7 @@ async def resync_files(
     file_exporter = RestFileExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
+    sync_cursor = active_incremental_cursor()
     should_enrich_with_included_files = bool(config.selector.included_files)
     included_files_enricher = (
         IncludedFilesEnricher(
@@ -1224,7 +1237,52 @@ async def resync_files(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(files)
+
+    # For incremental sync, use GraphQL to find only changed repos
+    if sync_cursor:
+        graphql_client = create_github_client(authenticator, GithubClientType.GRAPHQL)
+
+        # Get all repos for each organization
+        for file_sel in files:
+            org = file_sel.organization
+            logger.debug(f"Querying changed repos for organization: {org}")
+
+            # Get all repos for this org
+            all_repos = []
+            async for batch in org_exporter.get_paginated_resources(
+                ListOrganizationOptions(organization=org)
+            ):
+                for org_obj in batch:
+                    org_login = org_obj["login"]
+                    async for repo_batch in repo_exporter.get_paginated_resources(
+                        ListRepositoryOptions(
+                            organization=org_login,
+                            organization_type=org_obj["type"],
+                            type=app_config.repository_type,
+                        )
+                    ):
+                        all_repos.extend([r["name"] for r in repo_batch])
+
+            # Get changed repos via GraphQL
+            changed_repos_set = set(
+                await get_changed_repos(graphql_client, org, all_repos, sync_cursor)
+            )
+
+            # Filter files to only changed repos
+            if changed_repos_set:
+                logger.info(
+                    f"Found {len(changed_repos_set)} changed repos in {org} on default branch"
+                )
+            else:
+                logger.debug(f"No changed repos found in {org}")
+
+    repo_path_map = await pattern_builder.build(
+        files, updated_since=sync_cursor, cursor_field="pushed_at"
+    )
+
+    if not repo_path_map:
+        logger.debug("No repos matched FILE patterns, skipping sync")
+        return
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
