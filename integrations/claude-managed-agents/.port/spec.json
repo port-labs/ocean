@@ -193,6 +193,48 @@
       ]
     },
     {
+      "name": "update_agent",
+      "icon": "Claude",
+      "description": "Update a Claude managed agent's configuration (name, model, system prompt, or advanced settings)",
+      "inputs": [
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "description": "The ID of the agent to update",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "description": "New human-readable name for the agent",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model",
+          "type": "string",
+          "description": "New model identifier, for example claude-opus-4-8",
+          "required": false
+        },
+        {
+          "name": "systemPrompt",
+          "title": "System prompt",
+          "type": "string",
+          "description": "New system prompt for the agent",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced agent configuration passed through to the Anthropic API (for example tools, mcp_servers, skills, metadata, description). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "archive_agent",
       "icon": "Claude",
       "description": "Permanently archive a Claude managed agent, making it read-only. Existing sessions continue, but no new sessions can reference the agent after this operation.",

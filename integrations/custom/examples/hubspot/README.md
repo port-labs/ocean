@@ -149,7 +149,7 @@ Once data is synced, you can run queries like:
 - [HubSpot API Documentation](https://developers.hubspot.com/docs/api/overview)
 - [HubSpot CRM API](https://developers.hubspot.com/docs/api/crm/understanding-the-crm)
 - [Port Ocean Documentation](https://docs.getport.io)
-- [Ocean Custom Integration Guide](https://docs.getport.io/build-your-software-catalog/custom-integration/custom)
+- [Custom Ocean Integration Guide](https://docs.getport.io/build-your-software-catalog/custom-integration/custom)
 
 ## Support
 
@@ -159,8 +159,4 @@ Need help?
 
 ---
 
-**Note**: This integration requires Port Ocean's Ocean Custom integration. Ensure you're using version `0.1.0-dev` or later.
-
-
-
-
+**Note**: This integration requires Port's Custom Ocean Integration. Ensure you're using version `0.1.0-dev` or later.
