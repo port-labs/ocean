@@ -193,6 +193,41 @@
       ]
     },
     {
+      "name": "create_environment",
+      "icon": "Claude",
+      "description": "Create a new Claude managed environment defining the container configuration for agent sessions",
+      "inputs": [
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "description": "Human-readable name for the environment (max 256 characters)",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Optional description of the environment (max 1024 characters)",
+          "required": false
+        },
+        {
+          "name": "scope",
+          "title": "Scope",
+          "type": "string",
+          "description": "Visibility scope: 'organization' (visible to all accounts) or 'account' (owning account only). Defaults based on organization type.",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Configuration",
+          "type": "jqObject",
+          "description": "Optional environment configuration passed through to the Anthropic API (for example type, networking, packages). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "update_agent",
       "icon": "Claude",
       "description": "Update a Claude managed agent's configuration (name, model, system prompt, or advanced settings)",
