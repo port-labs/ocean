@@ -1,0 +1,13 @@
+{
+  "id": "dm_1",
+  "threadId": "th_1",
+  "threadDiscussionId": "disc_1",
+  "type": "OUTBOUND",
+  "text": "Looking into the refund now",
+  "slackMessageLink": "slack://channel?team=T1&id=C1&message=2",
+  "createdAt": {"iso8601": "2026-01-02T00:00:00Z"},
+  "createdBy": {
+    "__typename": "UserActor",
+    "userId": "u_1"
+  }
+}

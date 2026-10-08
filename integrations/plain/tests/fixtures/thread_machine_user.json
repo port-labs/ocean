@@ -1,0 +1,19 @@
+{
+  "id": "th_2",
+  "ref": "T-200",
+  "externalId": null,
+  "title": null,
+  "description": "Automated follow-up",
+  "status": "DONE",
+  "priority": 2,
+  "customer": {"id": "c_1"},
+  "tenant": null,
+  "tier": null,
+  "assignedTo": {"__typename": "MachineUser", "id": "mu_1"},
+  "labels": [],
+  "threadFields": [
+    {"id": "tf_2", "key": "urgent", "type": "BOOL", "stringValue": null, "booleanValue": false, "numberValue": null}
+  ],
+  "createdAt": {"iso8601": "2026-01-03T00:00:00Z"},
+  "updatedAt": {"iso8601": "2026-01-04T00:00:00Z"}
+}

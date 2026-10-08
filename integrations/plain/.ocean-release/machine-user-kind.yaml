@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add Plain machine-user kind with thread machineAssignee relation

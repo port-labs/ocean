@@ -1,0 +1,176 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: company
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"plainCompany"'
+          properties:
+            domainName: .domainName
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+  - kind: tenant
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"plainTenant"'
+          properties:
+            externalId: .externalId
+            url: 'if .url == null or .url == "" then null elif (.url | startswith("http://") or startswith("https://")) then .url else "https://" + .url end'
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName // .publicName // .email
+          blueprint: '"plainUser"'
+          properties:
+            email: .email
+            publicName: .publicName
+            status: .status
+            role: .role.name
+  - kind: machine-user
+    selector:
+      query: "true"
+      excludeDeleted: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName // .publicName
+          blueprint: '"plainMachineUser"'
+          properties:
+            publicName: .publicName
+            description: .description
+            type: .type
+            isCustomAgent: .isCustomAgent
+            isAssignableToThreads: .isAssignableToThreads
+            isDeleted: .isDeleted
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+  - kind: customer
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName // .shortName // .email.email
+          blueprint: '"plainCustomer"'
+          properties:
+            externalId: .externalId
+            email: .email.email
+            shortName: .shortName
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+          relations:
+            company: .company.id
+            tenants: "[.tenantMemberships.edges[]?.node.tenant.id]"
+  - kind: thread
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title // .ref
+          blueprint: '"plainThread"'
+          properties:
+            ref: .ref
+            externalId: .externalId
+            description: .description
+            status: .status
+            priority: .priority
+            tier: .tier.name
+            assigneeType: .assignedTo.__typename
+            labels: "[.labels[]?.labelType.name]"
+            productArea: '([.threadFields[]? | select(.key == "product_area") | .stringValue] | first) // ""'
+            fields: '[.threadFields[]? | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+          relations:
+            customer: .customer.id
+            tenant: .tenant.id
+            assignee: if .assignedTo.__typename == "User" then .assignedTo.id else null end
+            machineAssignee: if .assignedTo.__typename == "MachineUser" then .assignedTo.id else null end
+  - kind: thread-message
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '(.entry.__typename // "Message") + (if .llmText then ": " + .llmText[0:80] else "" end)'
+          blueprint: '"plainThreadMessage"'
+          properties:
+            text: .llmText
+            entryType: .entry.__typename
+            timestamp: .timestamp.iso8601
+            actorType: .actor.__typename
+            actorId: .actor.user.id // .actor.customer.id // .actor.machineUser.id
+          relations:
+            thread: .threadId
+  - kind: discussion
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+      excludeAiDiscussions: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"plainDiscussion"'
+          properties:
+            status: .status
+            agentStatus: .agentStatus
+            visibility: .visibility
+            isUnread: .isUnread
+            channel: 'if .channelDetails == null then null elif .channelDetails.__typename == "ThreadDiscussionSlackChannelDetails" then "SLACK" elif .channelDetails.__typename == "ThreadDiscussionEmailChannelDetails" then "EMAIL" elif .channelDetails.__typename == "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails" then "CURSOR" elif .channelDetails.__typename == "ThreadDiscussionAgentSessionChannelDetails" then "AGENT_SESSION" else .channelDetails.__typename end'
+            slackChannelName: .channelDetails.slackChannelName
+            slackMessageLink: .channelDetails.slackMessageLink
+            emailRecipients: .channelDetails.emailRecipients
+            createdAt: .createdAt.iso8601
+            updatedAt: .updatedAt.iso8601
+            lastActivityAt: .lastActivityAt.iso8601
+            resolvedAt: .resolvedAt.iso8601
+            createdByType: .createdBy.__typename
+            createdById: .createdBy.userId // .createdBy.customerId // .createdBy.machineUserId // .createdBy.systemId
+          relations:
+            thread: .threadId
+  - kind: discussion-message
+    selector:
+      query: "true"
+      excludeDoneThreads: false
+      excludeAiDiscussions: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '(.type // "Message") + (if .text then ": " + .text[0:80] else "" end)'
+          blueprint: '"plainDiscussionMessage"'
+          properties:
+            text: .text
+            messageType: .type
+            slackMessageLink: .slackMessageLink
+            timestamp: .createdAt.iso8601
+            authorType: .createdBy.__typename
+            authorId: .createdBy.userId // .createdBy.customerId // .createdBy.machineUserId // .createdBy.systemId
+          relations:
+            thread: .threadId
+            discussion: .threadDiscussionId

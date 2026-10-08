@@ -1,0 +1,547 @@
+# Plain Integration — Detailed Implementation Task List
+
+> Branch: `feat/plain-integration`  
+> Companion doc: [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)  
+> Rule: **every task ends with tests that must pass before starting the next dependent task.**
+
+## How to use this list
+
+1. Work tasks in order within each phase unless a task explicitly allows parallel work.
+2. Do not start a task until all **Prerequisites** are done.
+3. After finishing a task, run the **Exit tests** and only then check the box.
+4. Prefer Linear-style patterns (`integrations/linear/`) for GraphQL client / resync handlers.
+
+### Status legend
+
+- `[ ]` not started
+- `[~]` in progress
+- `[x]` done
+
+### Dependency overview (Phase 1)
+
+```text
+T0  Verify API assumptions
+ │
+ ▼
+T1  Scaffold integration
+ │
+ ▼
+T2  Utils + exceptions
+ │
+ ▼
+T3  GraphQL client (execute)
+ │
+ ▼
+T4  Relay pagination
+ │
+ ├──────────────┬──────────────┬──────────────┐
+ ▼              ▼              ▼              ▼
+T5 company   T6 tenant      T7 user       T8 customer
+ │              │              │              │
+ └──────────────┴──────┬───────┴──────────────┘
+                       ▼
+                 T9 thread (+ getters stubs)
+                       │
+                       ▼
+                 T10 blueprints + port-app-config
+                       │
+                       ▼
+                 T11 Phase-2 stubs in spec / on_start
+                       │
+                       ▼
+                 T12 README + changelog + lint gate
+```
+
+`T5`–`T8` can run in parallel after `T4`.  
+`T9` should start only after `T5`–`T8` are done (so relations/mapping targets exist).  
+`T10` can start once `T5`–`T9` queries/fields are stable (may begin earlier as draft, finalize after `T9`).
+
+---
+
+## Phase 1 — Resync MVP
+
+### T0 — Verify Plain API assumptions
+
+**Goal:** Confirm endpoint, auth, page size, list query shapes, and permission names before coding.
+
+**Prerequisites:** none
+
+**Work**
+- [x] Confirm GraphQL URL (`https://core-api.uk.plain.com/graphql/v1` vs regional variants)
+- [x] Confirm Bearer auth with API key
+- [x] Confirm Relay pagination (`first`/`after`, max 100)
+- [x] Confirm list connection paths for: `companies`, `tenants`, `users`, `customers`, `threads`
+- [x] Confirm single-entity queries exist for `thread(threadId)` / `customer(customerId)` (Phase 2 stubs)
+- [x] Note exact API key permission names needed
+
+**Exit tests / checks**
+- [x] Document findings in a short `API_NOTES.md` under `integrations/plain/` **or** append an “API verification” section to this file
+- [x] At least one manual `curl`/GraphQL explorer list response captured (sanitized) for `threads` and one other kind
+
+**Done when:** team agrees on URL + auth + pagination + 5 list queries.
+
+Findings: [API_NOTES.md](./API_NOTES.md) (verified 2026-09-24). URL is UK-only (`us`/`eu` hosts do not resolve). Auth is `Authorization: Bearer`. Pagination is Relay, default 25, max 100. Permissions: `company:read`, `tenant:read`, `user:read`, `customer:read`, `thread:read`. Single-entity args are `threadId` / `customerId`.
+
+Authenticated `threads` and `companies` list calls (`first: 1`) returned HTTP 200. Sanitized pages are in `API_NOTES.md`. The key in `integrations/plain/.env` includes all five read permissions. Keep that file gitignored.
+
+---
+
+### T1 — Scaffold `integrations/plain/`
+
+**Goal:** Empty but runnable Ocean integration skeleton.
+
+**Prerequisites:** `T0`
+
+**Work**
+- [x] Create scaffold via Ocean CLI / skill (`ocean new` or create-ocean-integration skill)
+- [x] Ensure package layout exists:
+  - `pyproject.toml`, `Makefile`, `debug.py`, `main.py`, `integration.py`
+  - `.port/spec.yaml` (or `spec.json`)
+  - `.port/resources/` placeholders
+  - `tests/` with smoke test
+- [x] Wire `port_ocean` dependency consistent with other integrations
+- [x] Integration identifier/type = `plain`
+
+**Exit tests**
+- [x] `cd integrations/plain && poetry install`
+- [x] `poetry run pytest -q` (scaffold smoke test passes)
+- [x] `make lint` (or project equivalent) passes on scaffold
+
+**Done when:** empty integration installs and tests run.
+
+Scaffold generated from the Ocean cookiecutter (`integration_slug=plain`, public). `Makefile` is a symlink to `integrations/_infra/Makefile`. `port_ocean` is `^0.52.1` with the `cli` extra. Identifier is `plain` (`OCEAN__INTEGRATION__IDENTIFIER` in `.env.example`). `yamllint` was added to dev dependencies so `make lint` can run. `integrations/plain/.env` still holds `PLAIN_TOKEN` and is gitignored.
+
+---
+
+### T2 — Core utils + exceptions
+
+**Goal:** Shared types/helpers used by client and handlers.
+
+**Prerequisites:** `T1`
+
+**Work**
+- [x] `plain/exceptions.py` — `PlainGraphQLError` (and optional HTTP wrapper)
+- [x] `plain/utils.py` — `ObjectKind` enum (`COMPANY`, `TENANT`, `USER`, `CUSTOMER`, `THREAD`)
+- [x] Helpers: `get_nested(data, path)`, `edges_to_nodes(connection)`
+
+**Exit tests** (`tests/test_utils.py`, `tests/test_exceptions.py`)
+- [x] `get_nested` happy path + missing path
+- [x] `edges_to_nodes` flattens Relay edges
+- [x] `ObjectKind` values match intended kind strings (`company`, `tenant`, …)
+- [x] `poetry run pytest tests/test_utils.py tests/test_exceptions.py -q`
+
+**Done when:** utils/exceptions covered by unit tests.
+
+`ObjectKind` for the five Plain kinds lives in `plain/utils.py`. The cookiecutter example kind remains on `integration.py` until the real kinds replace it. `PlainHTTPError` covers gateway HTTP failures such as 401 `{"message":"Unauthorized"}`.
+
+---
+
+### T3 — GraphQL `execute()` client
+
+**Goal:** Authenticated POST that returns `data` and fails on GraphQL/HTTP errors.
+
+**Prerequisites:** `T2`
+
+**Work**
+- [x] `plain/client.py` with `PlainClient`
+- [x] Read `api_token`, `api_url` from `ocean.integration_config`
+- [x] `execute(query, variables, operation_name=None) -> dict`
+- [x] Raise on HTTP errors and on response `errors[]`
+- [x] Set `Authorization: Bearer …`
+
+**Exit tests** (`tests/test_client_execute.py`)
+- [x] Success: mocked 200 with `{ "data": {...} }` returns data
+- [x] GraphQL errors: `{ "errors": [...] }` raises `PlainGraphQLError`
+- [x] HTTP 401/500 raises clearly
+- [x] Auth header is Bearer token from config
+- [x] `poetry run pytest tests/test_client_execute.py -q`
+
+**Done when:** execute path is fully unit-tested with mocks (no live API required).
+
+`execute()` returns the GraphQL `data` object. HTTP 401/500 raise `PlainHTTPError`. A body `errors` array raises `PlainGraphQLError`. Requests send `Authorization: Bearer <api_token>` and `User-Agent: port-ocean-plain`. `api_url` defaults to `https://core-api.uk.plain.com/graphql/v1` when unset. Spec keys `apiToken` and `apiUrl` are exposed to the client as `api_token` and `api_url`.
+
+---
+
+### T4 — Relay pagination helper
+
+**Goal:** Generic multi-page iterator for all list kinds.
+
+**Prerequisites:** `T3`
+
+**Work**
+- [x] `paginate_connection(query, operation_name, variables, connection_path)`
+- [x] Inject `first` / `after` into variables each page
+- [x] Yield batches of nodes
+- [x] Stop when `pageInfo.hasNextPage` is false
+- [x] Honor `page_size` from config (cap at 100)
+
+**Exit tests** (`tests/test_client_pagination.py`)
+- [x] Single page: yields one batch, stops
+- [x] Multi-page: uses `endCursor` as next `after`, yields all pages in order
+- [x] Empty connection: yields nothing / empty batch without hanging
+- [x] Does not request another page when `hasNextPage=false`
+- [x] `poetry run pytest tests/test_client_pagination.py -q`
+
+**Done when:** pagination edge cases are covered; this unblocks all kind work.
+
+`paginate_connection` yields one batch of nodes per page. `page_size` defaults to 100 and is capped at 100. Paths such as `data.companies` are accepted because `execute()` already returns the GraphQL `data` object. A GraphQL error from `execute()` is not treated as an empty page.
+
+---
+
+### T5 — Kind: `company`
+
+**Goal:** List companies end-to-end (query → client method → resync handler).
+
+**Prerequisites:** `T4`  
+**Parallel with:** `T6`, `T7`, `T8`
+
+**Work**
+- [x] `LIST_COMPANIES` in `plain/queries.py`
+- [x] `client.get_companies()` using `paginate_connection(..., "data.companies")`
+- [x] `@ocean.on_resync("company")` in `main.py`
+- [x] Register kind in spec exporter resources
+
+**Exit tests** (`tests/test_company.py` and/or client query tests)
+- [x] Query string contains expected fields (`id`, `name`, `domainName`, …)
+- [x] Client method yields nodes from mocked paginated response
+- [x] Resync handler yields batches (unit-test with mocked client)
+- [x] `poetry run pytest -q -k company`
+
+**Done when:** company resync path works under mocks.
+
+Company has no `externalId` in the Plain schema. The list query selects `id`, `name`, `domainName`, and timestamps.
+
+---
+
+### T6 — Kind: `tenant`
+
+**Prerequisites:** `T4`  
+**Parallel with:** `T5`, `T7`, `T8`
+
+**Work**
+- [x] `LIST_TENANTS` query
+- [x] `client.get_tenants()`
+- [x] `@ocean.on_resync("tenant")`
+- [x] Spec resource registration
+
+**Exit tests**
+- [x] Query field smoke assertions
+- [x] Client pagination mock yields tenants
+- [x] Resync handler mock test
+- [x] `poetry run pytest -q -k tenant`
+
+---
+
+### T7 — Kind: `user`
+
+**Prerequisites:** `T4`  
+**Parallel with:** `T5`, `T6`, `T8`
+
+**Work**
+- [x] `LIST_USERS` query
+- [x] `client.get_users()`
+- [x] `@ocean.on_resync("user")`
+- [x] Spec resource registration
+
+**Exit tests**
+- [x] Query/client/resync tests analogous to `T5`
+- [x] `poetry run pytest -q -k user`
+
+---
+
+### T8 — Kind: `customer`
+
+**Prerequisites:** `T4`  
+**Parallel with:** `T5`, `T6`, `T7`
+
+**Work**
+- [x] `LIST_CUSTOMERS` query (include `company { id }` and tenants if available)
+- [x] `client.get_customers()`
+- [x] `@ocean.on_resync("customer")`
+- [x] Spec resource registration
+
+**Exit tests**
+- [x] Query includes relation ids needed for mapping
+- [x] Client/resync mock tests
+- [x] `poetry run pytest -q -k customer`
+
+Customer tenants come from `tenantMemberships`, not a `tenants` list. The query selects `company { id }` and `tenantMemberships { edges { node { tenant { id } } } }`.
+
+---
+
+### T9 — Kind: `thread` + single-entity getters
+
+**Goal:** Threads list sync + Phase-2-ready getters.
+
+**Prerequisites:** `T5`, `T6`, `T7`, `T8` (relation targets ready)
+
+**Work**
+- [x] `LIST_THREADS` query with customer/tenant/assignee/labels/threadFields
+- [x] Optional `threadStatusFilter` → GraphQL filters variable
+- [x] `client.get_threads()`
+- [x] `@ocean.on_resync("thread")`
+- [x] `GET_THREAD` / `GET_CUSTOMER` queries
+- [x] `client.get_thread(id)` / `client.get_customer(id)` (even if unused in Phase 1)
+
+**Exit tests** (`tests/test_thread.py`, `tests/test_getters.py`)
+- [x] List pagination mock for threads
+- [x] Assignee `__typename` present in fixture for mapping later
+- [x] `get_thread` / `get_customer` return node from mocked response
+- [x] `get_thread` raises on GraphQL errors / missing entity (agreed behavior)
+- [x] Resync handler mock test
+- [x] `poetry run pytest -q -k "thread or getter or get_thread or get_customer"`
+
+**Done when:** all 5 kinds resync under unit tests; getters exist.
+
+`threadStatusFilter` is an optional spec string (`TODO,SNOOZED,DONE`) read as `thread_status_filter` and sent as `filters.statuses`. When it is unset, threads are not filtered. `get_thread` and `get_customer` raise `PlainGraphQLError` when Plain returns a GraphQL error or a null entity. `assignedTo` selects `__typename` plus `User`, `MachineUser`, and `System` ids.
+
+---
+
+### T10 — Blueprints + `port-app-config` mappings
+
+**Goal:** Catalog model + JQ mappings for all kinds and relations.
+
+**Prerequisites:** `T9` (fields known). Drafts may start after `T5`–`T8`.
+
+**Work**
+- [x] `.port/resources/blueprints.json` for:
+  - `plainCompany`, `plainTenant`, `plainUser`, `plainCustomer`, `plainThread`
+- [x] Relations as in IMPLEMENTATION_PLAN.md
+- [x] `.port/resources/port-app-config.yaml` with mappings
+- [x] `createMissingRelatedEntities: true`
+- [x] Resource order: company → tenant → user → customer → thread
+
+**Exit tests**
+- [x] Mapping smoke tests: given sample raw fixtures, JQ/mapping expectations for identifiers/titles/relations
+  - Prefer lightweight tests that validate critical JQ expressions against fixtures in `tests/fixtures/`
+- [x] YAML/JSON parse validation (load files in test)
+- [x] `poetry run pytest -q -k "mapping or blueprint or port_app_config"`
+
+**Done when:** fixtures prove identifiers + key relations resolve.
+
+The mapping file is `.port/resources/port-app-config.yml` (Ocean accepts `.yml`). Customer tenants map from `tenantMemberships.edges[].node.tenant.id`. Thread `assignee` is set only when `assignedTo.__typename` is `User`; a machine user is stored on `machineUserAssignee`. The scaffold `example-kind` mapping was removed so a live run does not create the example blueprint. A full user sync still needs `roles:read`, and a full customer sync still needs `customerTenantMembership:read`.
+
+---
+
+### T11 — Phase 2 stubs (no live webhooks yet)
+
+**Goal:** Spec/config hooks so Phase 2 is non-breaking.
+
+**Prerequisites:** `T1` (can land anytime after scaffold; finalize after `T9`)
+
+**Work**
+- [x] `enableLiveEvents` boolean in `.port/spec.yaml` (default `false`)
+- [x] Guarded `@ocean.on_start` stub that no-ops when disabled
+- [x] Comment or TODO pointing to Phase 2 webhook registration
+
+**Exit tests**
+- [x] Spec loads / config model accepts `enable_live_events`
+- [x] `on_start` does not register webhooks when flag is false
+- [x] `poetry run pytest -q -k "live_events or on_start or spec"`
+
+`enableLiveEvents` defaults to false. `on_start` skips `_register_webhook_target` unless the flag is true. The target function only logs; Phase 2 (`P2-T5`) still has to register the webhook. Spec install keys are now `apiToken`, `apiUrl`, `pageSize`, `threadStatusFilter`, and `enableLiveEvents`.
+
+---
+
+### T12 — Docs, changelog, full gate
+
+**Goal:** Phase 1 merge-ready package on the feature branch.
+
+**Prerequisites:** `T9`, `T10`, `T11`
+
+**Work**
+- [x] README: install config, permissions, kinds, limitations
+- [x] CHANGELOG fragment / entry
+- [x] Example env / debug instructions
+- [x] Ensure `.port/spec` lists all 5 exporter resources
+
+**Exit tests / checks**
+- [x] `poetry run pytest -q` (full suite green)
+- [x] `make lint` / format checks green
+- [x] Manual checklist: no secrets in repo; defaults safe (`enableLiveEvents=false`)
+
+README, `CONTRIBUTING.md`, and `.env.example` document the install config. `CHANGELOG.md` records the 0.1.0-beta resync kinds. `.env` stays gitignored.
+
+**Phase 1 done when:** full suite + lint pass and docs are reviewable.
+
+---
+
+## Phase 2 — Live events (after Phase 1)
+
+> Do not start Phase 2 until Phase 1 `T12` is complete.
+
+### Dependency overview (Phase 2)
+
+```text
+P2-T1 Webhook payload + signature helpers
+ │
+ ▼
+P2-T2 Abstract webhook processor
+ │
+ ├──────────────────┐
+ ▼                  ▼
+P2-T3 thread     P2-T4 customer
+ processors       processors
+ │                  │
+ └────────┬─────────┘
+          ▼
+   P2-T5 webhook registration on_start
+          │
+          ▼
+   P2-T6 docs + full gate
+```
+
+### P2-T1 — Payload parsing + signature verification
+
+**Prerequisites:** Phase 1 `T12`, Phase 1 getters (`T9`)
+
+**Work**
+- [ ] Parse Plain webhook body into typed structure
+- [ ] Verify request signature per Plain docs
+- [ ] Reject invalid signatures
+
+**Exit tests**
+- [ ] Valid signature accepted
+- [ ] Invalid/missing signature rejected
+- [ ] Malformed payload rejected
+- [ ] `poetry run pytest -q -k "signature or webhook_payload"`
+
+---
+
+### P2-T2 — Abstract Plain webhook processor
+
+**Prerequisites:** `P2-T1`
+
+**Work**
+- [ ] `webhook_processors/plain_abstract_webhook_processor.py`
+- [ ] Shared validate/authenticate path
+- [ ] Register route `/webhook` (or agreed path)
+
+**Exit tests**
+- [ ] Base validation unit tests
+- [ ] `poetry run pytest -q -k "abstract_webhook or base_webhook"`
+
+---
+
+### P2-T3 — Thread webhook processors
+
+**Prerequisites:** `P2-T2`, Phase 1 `get_thread`
+
+**Work**
+- [ ] Handle `thread.created`, `thread.status_transitioned`, `thread.assignment_transitioned`
+- [ ] Upsert via `get_thread(id)`
+
+**Exit tests**
+- [ ] Each event type → upsert with expected raw result
+- [ ] Unknown event ignored
+- [ ] `poetry run pytest -q -k "thread_webhook"`
+
+---
+
+### P2-T4 — Customer webhook processors
+
+**Prerequisites:** `P2-T2`, Phase 1 `get_customer`
+
+**Work**
+- [ ] Handle `customer.created`, `customer.updated`, `customer.deleted`
+- [ ] Upsert/delete accordingly
+
+**Exit tests**
+- [ ] Create/update upsert tests
+- [ ] Delete removes entity
+- [ ] `poetry run pytest -q -k "customer_webhook"`
+
+---
+
+### P2-T5 — Webhook target registration
+
+**Prerequisites:** `P2-T3`, `P2-T4`
+
+**Work**
+- [ ] `plain/webhook_setup.py` — create/register webhook target when `enableLiveEvents=true`
+- [ ] Wire `@ocean.on_start`
+- [ ] Idempotent / safe re-run behavior
+
+**Exit tests**
+- [ ] Flag false → no registration calls
+- [ ] Flag true → registration called with expected URL/events
+- [ ] `poetry run pytest -q -k "webhook_setup or on_start"`
+
+---
+
+### P2-T6 — Phase 2 docs + gate
+
+**Prerequisites:** `P2-T5`
+
+**Work**
+- [ ] README live-events section
+- [ ] Changelog
+- [ ] Full pytest + lint
+
+**Exit tests**
+- [ ] `poetry run pytest -q`
+- [ ] `make lint`
+
+---
+
+## Phase 3+ backlog (not scheduled)
+
+Only after Phase 2 (or explicitly deferred). Each new kind should follow the same pattern as `T5`–`T9`:
+
+1. Query + client method  
+2. Resync handler  
+3. Tests for query/client/handler  
+4. Blueprint + mapping + mapping fixture test  
+
+Candidates: `machine-user`, `label-type`, `task`, help-center kinds, etc. (see IMPLEMENTATION_PLAN.md).
+
+---
+
+## Definition of done (per task)
+
+A task is done only if:
+
+1. Code for that task is on `feat/plain-integration`
+2. **Exit tests** listed above are green
+3. No new lint errors in `integrations/plain/`
+4. Dependent tasks are not started early (except allowed parallels)
+
+## Suggested first sprint (concrete)
+
+| Day | Tasks |
+|-----|-------|
+| 1 | `T0`, `T1`, `T2`, start `T3` |
+| 2 | Finish `T3`, `T4` |
+| 3 | `T5`–`T8` (parallelize if multiple people) |
+| 4 | `T9` |
+| 5 | `T10`, `T11`, `T12` |
+
+---
+
+## Tracking checkboxes
+
+Copy this into a PR description or project board if useful:
+
+**Phase 1**
+- [ ] T0 API verification
+- [ ] T1 Scaffold
+- [ ] T2 Utils/exceptions + tests
+- [ ] T3 Client execute + tests
+- [ ] T4 Pagination + tests
+- [ ] T5 Company + tests
+- [ ] T6 Tenant + tests
+- [ ] T7 User + tests
+- [ ] T8 Customer + tests
+- [ ] T9 Thread + getters + tests
+- [ ] T10 Blueprints/mappings + tests
+- [ ] T11 Phase-2 stubs + tests
+- [ ] T12 Docs/changelog/full gate
+
+**Phase 2**
+- [x] P2-T1 Signature/payload + tests
+- [x] P2-T2 Abstract processor + tests
+- [x] P2-T3 Thread webhooks + tests
+- [x] P2-T4 Customer webhooks + tests
+- [x] P2-T5 Registration + tests
+- [x] P2-T6 Docs/full gate
+- [x] Conversation + company/tenant/user processors (all 8 kinds)

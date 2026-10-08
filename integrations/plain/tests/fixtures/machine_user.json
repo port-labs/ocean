@@ -1,0 +1,12 @@
+{
+  "id": "mu_1",
+  "fullName": "Support Automation Bot",
+  "publicName": "Support Bot",
+  "description": "Handles automated support workflows.",
+  "type": "API_USER",
+  "isCustomAgent": false,
+  "isAssignableToThreads": true,
+  "isDeleted": false,
+  "createdAt": {"iso8601": "2026-01-01T00:00:00Z"},
+  "updatedAt": {"iso8601": "2026-01-02T00:00:00Z"}
+}

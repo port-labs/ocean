@@ -1,0 +1,45 @@
+description: Plain integration for Port Ocean
+icon: Blueprint
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: company
+      - kind: tenant
+      - kind: user
+      - kind: machine-user
+      - kind: customer
+      - kind: thread
+      - kind: thread-message
+      - kind: discussion
+      - kind: discussion-message
+configurations:
+  - name: apiToken
+    required: true
+    type: string
+    sensitive: true
+    description: Plain API key sent as a Bearer token
+  - name: apiUrl
+    required: false
+    type: url
+    default: "https://core-api.uk.plain.com/graphql/v1"
+    description: Plain GraphQL endpoint. The UK host is the one that resolves.
+  - name: pageSize
+    required: false
+    type: string
+    default: "100"
+    description: Page size for list queries. Plain caps this at 100.
+  - name: threadStatusFilter
+    required: false
+    type: string
+    description: Comma-separated thread statuses to sync (TODO, SNOOZED, DONE). Omit to sync every status.
+  - name: enableLiveEvents
+    required: false
+    type: boolean
+    default: false
+    description: Register a Plain webhook target for live catalog updates. Requires OCEAN__BASE_URL and webhookTarget permissions on the API key.
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Workspace HMAC secret from Plain Settings → Request signing. Used to verify Plain-Request-Signature on inbound webhooks.
