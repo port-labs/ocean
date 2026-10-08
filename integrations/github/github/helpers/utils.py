@@ -481,7 +481,6 @@ async def tag_batch_with_org(
 async def resolve_org_filtered_repos(
     repository_exporter: "RestRepositoryExporter",
     repo_options: "ListRepositoryOptions",
-    repo_search: Any,
 ) -> list[str] | None:
     """
     Resolve repoSearch allowlist for org-level resource streams.
@@ -489,12 +488,11 @@ async def resolve_org_filtered_repos(
     Args:
         repository_exporter: Exporter used to list repositories
         repo_options: Repository list options (search/exclude filters)
-        repo_search: repoSearch params, or None if unset
 
     Returns:
         None if no filter; empty list if nothing matched; otherwise allowed repo names
     """
-    if repo_search is None:
+    if repo_options.get("search_params") is None:
         return None
     names: list[str] = []
     async for repositories in repository_exporter.get_paginated_resources(repo_options):

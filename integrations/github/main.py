@@ -1061,7 +1061,7 @@ async def resync_dependabot_alerts(
 
             if org_type == "Organization":
                 allowed_repos = await resolve_org_filtered_repos(
-                    repository_exporter, repo_options, config.selector.repo_search
+                    repository_exporter, repo_options
                 )
                 if allowed_repos is not None and not allowed_repos:
                     logger.info(
@@ -1153,7 +1153,7 @@ async def resync_code_scanning_alerts(
 
             if org_type == "Organization":
                 allowed_repos = await resolve_org_filtered_repos(
-                    repository_exporter, repo_options, config.selector.repo_search
+                    repository_exporter, repo_options
                 )
                 # Skip early if repoSearch matched no repositories
                 if allowed_repos is not None and not allowed_repos:
@@ -1527,7 +1527,7 @@ async def resync_secret_scanning_alerts(
 
             if org_type == "Organization":
                 allowed_repos = await resolve_org_filtered_repos(
-                    repository_exporter, repo_options, config.selector.repo_search
+                    repository_exporter, repo_options
                 )
                 if allowed_repos is not None and not allowed_repos:
                     logger.info(
