@@ -1,0 +1,4 @@
+bump: patch
+changelog-type: improvement
+changelog: |
+  Moved `file` kind discovery off the code search API onto a per-repository Source API listing. `.metadata` is now the listing entry and `.repo` the full repository object, both supersets with `.metadata.commit.repository.*` preserved. A configured filename must now match a whole path segment, so `port.yml` no longer matches `airport.yml` and `.yml` no longer matches every YAML file.

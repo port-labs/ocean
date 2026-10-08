@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError
 from loguru import logger
@@ -92,6 +93,7 @@ class BitbucketClient:
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        raise_on_missing: bool = False,
     ) -> Any:
         """Send request to Bitbucket API with error handling."""
         response = await self.client.request(
@@ -101,7 +103,11 @@ class BitbucketClient:
             response.raise_for_status()
             return response if return_full_response else response.json()
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == HTTPStatus.NOT_FOUND:
+                if raise_on_missing:
+                    # The caller asked to handle this case and logs it with the
+                    # context that makes it readable.
+                    raise
                 logger.warning(
                     f"Requested resource not found: {url}; message: {str(e)}"
                 )
@@ -118,6 +124,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         data_key: str = "values",
+        raise_on_missing: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if params is None:
             params = {
@@ -129,12 +136,18 @@ class BitbucketClient:
                     current_token = ctx.get_token()
                     self._update_authorization_header(current_token)
                     response = await self._send_api_request(
-                        url, params=params, method=method
+                        url,
+                        params=params,
+                        method=method,
+                        raise_on_missing=raise_on_missing,
                     )
             else:
                 async with RATE_LIMITER:
                     response = await self._send_api_request(
-                        url, params=params, method=method
+                        url,
+                        params=params,
+                        method=method,
+                        raise_on_missing=raise_on_missing,
                     )
 
             values: list[dict[str, Any]] = response.get(data_key, [])
@@ -154,6 +167,7 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         return_full_response: bool = False,
+        raise_on_missing: bool = False,
     ) -> Any:
         """Send file-specific API request with dedicated file rate limiter."""
         if hasattr(self.auth, "file_token_manager") and self.auth.file_token_manager:
@@ -165,6 +179,7 @@ class BitbucketClient:
                     params=params,
                     method=method,
                     return_full_response=return_full_response,
+                    raise_on_missing=raise_on_missing,
                 )
         else:
             # No file token manager means single token or basic auth - just make the request
@@ -173,6 +188,7 @@ class BitbucketClient:
                 params=params,
                 method=method,
                 return_full_response=return_full_response,
+                raise_on_missing=raise_on_missing,
             )
         return response
 
@@ -235,16 +251,18 @@ class BitbucketClient:
         path: str,
         max_depth: int,
         params: Optional[dict[str, Any]] = None,
+        raise_on_missing: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory."""
-        if params is None:
-            params = {
-                "max_depth": max_depth,
-                "pagelen": PAGE_SIZE,
-            }
+        params = {
+            **(params or {}),
+            "max_depth": max_depth,
+            "pagelen": PAGE_SIZE,
+        }
         async for contents in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
             params=params,
+            raise_on_missing=raise_on_missing,
         ):
             logger.info(
                 f"Fetched directory contents batch with {len(contents)} contents"
@@ -279,32 +297,23 @@ class BitbucketClient:
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}"
         )
 
-    async def get_repository_files(self, repo: str, branch: str, path: str) -> Any:
-        """Get the content of a file."""
-        response = await self._send_file_api_request_with_rate_limiter(
-            f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
-            method="GET",
-            return_full_response=True,
-        )
+    async def get_repository_files(
+        self, repo: str, branch: str, path: str
+    ) -> Optional[str]:
+        """Get the content of a file, or None when Bitbucket does not have it."""
+        try:
+            response = await self._send_file_api_request_with_rate_limiter(
+                f"{self.base_url}/repositories/{self.workspace}/{repo}/src/{branch}/{path}",
+                method="GET",
+                return_full_response=True,
+                raise_on_missing=True,
+            )
+        except HTTPStatusError as error:
+            if error.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"File {path} not found in repository {repo} at ref {branch}"
+            )
+            return None
         logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
         return response.text
-
-    async def search_files(
-        self,
-        search_query: str,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Search for files using Bitbucket's search API."""
-        params = {
-            "pagelen": 300,
-            "search_query": search_query,
-            "fields": "+values.file.commit.repository.mainbranch.name",
-        }
-
-        async for results in self._send_paginated_api_request(
-            f"{self.base_url}/workspaces/{self.workspace}/search/code",
-            params=params,
-        ):
-            logger.info(
-                f"Fetched batch of {len(results)} matching files from workspace {self.workspace}"
-            )
-            yield results

@@ -6,7 +6,7 @@ import json
 import yaml
 from loguru import logger
 from bitbucket_cloud.client import BitbucketClient
-from fnmatch import fnmatch
+from bitbucket_cloud.helpers.utils import matches_configured_file
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_FILE_SUFFIX = ".json"
@@ -60,6 +60,12 @@ async def process_file_value(
     file_meta = Path(value.replace(FILE_PROPERTY_PREFIX, ""))
     file_path = f"{parent_directory}/{file_meta}"
     bitbucket_file = await client.get_repository_files(repository, hash, file_path)
+    if bitbucket_file is None:
+        logger.warning(
+            f"Referenced file {file_path} could not be read in {repository} at "
+            f"{hash[:12]}, resolving it to null"
+        )
+        return None
 
     return (
         parse_file(bitbucket_file, file_path)
@@ -145,6 +151,12 @@ async def check_and_load_file_prefix(
     repo: dict[str, Any],
     branch: str,
 ) -> FileObject:
+    """Resolve any file:// values nested in a parsed file.
+
+    ``hash`` is a commit hash, not a ref name - both callers resolve one before
+    getting here, so nested references are read at the same immutable commit as the
+    file that declared them. ``branch`` is carried through to the emitted object only.
+    """
     client = init_client()
 
     if isinstance(raw_data, dict):
@@ -172,24 +184,15 @@ async def check_and_load_file_prefix(
 
 
 def check_single_path(file_path: str, filenames: list[str], config_path: str) -> bool:
-    path_parts = file_path.split("/")
-    file_name = path_parts[-1]
-    path_without_file = "/".join(path_parts[:-1]).strip("/")
+    """Whether a pushed path is one the `file` kind is configured to ingest.
 
-    filename_match = (
-        any(fnmatch(file_name, pattern) for pattern in filenames) if filenames else True
-    )
-
-    # Special handling for root directory files
-    if not path_without_file and config_path in {"/", ""}:
-        path_match = True
-    else:
-        normalized_config = config_path.strip("/")
-        path_match = (
-            fnmatch(path_without_file, normalized_config) if config_path else True
-        )
-
-    return filename_match and path_match
+    Delegates to the matcher the resync walk uses, so one `files` selector cannot be
+    read two ways. This previously fnmatched the basename alone, which made
+    `['*.yaml']` match on push and nothing on resync, and `['conf/README.md']` the
+    other way round. An empty `filenames` now matches nothing, as the selector
+    documents and as the walk already behaved.
+    """
+    return matches_configured_file(file_path, filenames, config_path)
 
 
 async def process_file_changes(
@@ -241,6 +244,16 @@ async def process_file_changes(
                     raw_data = await webhook_client.get_repository_files(
                         repository, new_hash, file_path
                     )
+                    if raw_data is None:
+                        # Unlike the resync walk, a push runs no delete phase, so
+                        # omitting this file leaves the existing entity alone rather
+                        # than reconciling it away. Skipping is the safe default here.
+                        logger.warning(
+                            f"Skipping {repository}/{file_path} at "
+                            f"{new_hash[:12]}: the push reported it but its content "
+                            "could not be read"
+                        )
+                        continue
 
                     if not skip_parsing:
                         raw_data = parse_file(raw_data, file_path)

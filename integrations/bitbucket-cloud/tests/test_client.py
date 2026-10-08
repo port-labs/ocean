@@ -1,4 +1,5 @@
 import pytest
+from loguru import logger
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
@@ -250,6 +251,7 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
                 params={"max_depth": 2, "pagelen": 100},
+                raise_on_missing=False,
             )
 
 
@@ -531,3 +533,191 @@ async def test_get_pull_requests_multiple_states(mock_client: BitbucketClient) -
             )
 
             assert mock_paginated.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_directory_contents_merges_caller_params(
+    mock_client: BitbucketClient,
+) -> None:
+    """A caller's params are added to max_depth and pagelen, not substituted for them."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield []
+
+            mock_paginated.return_value = mock_generator()
+            async for _ in mock_client.get_directory_contents(
+                "test-repo",
+                "main",
+                "",
+                10000,
+                params={"q": 'type="commit_file"'},
+            ):
+                pass
+
+            mock_paginated.assert_called_once_with(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
+                params={
+                    "q": 'type="commit_file"',
+                    "max_depth": 10000,
+                    "pagelen": 100,
+                },
+                raise_on_missing=False,
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_returns_none_on_missing_file(
+    mock_client: BitbucketClient,
+) -> None:
+    """A missing file is None, not an empty string - "" is a valid file content."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=MagicMock(), response=MagicMock(status_code=404)
+    )
+    with patch.object(
+        mock_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        assert (
+            await mock_client.get_repository_files("repo", "main", "gone.yml") is None
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_returns_empty_string_for_an_empty_file(
+    mock_client: BitbucketClient,
+) -> None:
+    """The contract the None return exists to keep distinguishable."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.text = ""
+    with patch.object(
+        mock_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        assert await mock_client.get_repository_files("repo", "main", "empty.yml") == ""
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_propagates_non_404_errors(
+    mock_client: BitbucketClient,
+) -> None:
+    """Only a 404 means "not there". A 403 is a failure and must not look like absence."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "403", request=MagicMock(), response=MagicMock(status_code=403)
+    )
+    with patch.object(
+        mock_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        with pytest.raises(HTTPStatusError):
+            await mock_client.get_repository_files("repo", "main", "forbidden.yml")
+
+
+@pytest.mark.asyncio
+async def test_send_file_api_request_threads_raise_on_missing(
+    mock_client: BitbucketClient,
+) -> None:
+    """The flag reaches _send_api_request rather than being inferred from the type."""
+    with patch.object(
+        mock_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_send:
+        mock_send.return_value = MagicMock(text="content")
+
+        await mock_client.get_repository_files("repo", "main", "port.yml")
+
+        assert mock_send.await_args is not None
+        assert mock_send.await_args.kwargs["raise_on_missing"] is True
+        assert mock_send.await_args.kwargs["return_full_response"] is True
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_raises_on_missing_when_requested(
+    mock_client: BitbucketClient,
+) -> None:
+    """raise_on_missing turns the swallowed 404 back into an error for callers that need it."""
+    mock_response = MagicMock()
+    error = HTTPStatusError(
+        "404", request=MagicMock(), response=MagicMock(status_code=404)
+    )
+    mock_response.raise_for_status.side_effect = error
+    with patch.object(
+        mock_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = mock_response
+
+        assert await mock_client._send_api_request("http://example.com") == {}
+
+        with pytest.raises(HTTPStatusError):
+            await mock_client._send_api_request(
+                "http://example.com", raise_on_missing=True
+            )
+
+
+@pytest.mark.asyncio
+async def test_raise_on_missing_404_is_not_logged_as_an_error(
+    mock_client: BitbucketClient,
+) -> None:
+    """The caller asked to handle this 404 and logs it with its own context.
+
+    Without this, a repository that simply has no configured sub-path emits an error
+    for the listing and a second for the root probe before the info line saying it is
+    fine.
+    """
+    messages: list[str] = []
+    sink_id = logger.add(lambda record: messages.append(str(record)), level="WARNING")
+
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=MagicMock(), response=MagicMock(status_code=404)
+    )
+    try:
+        with patch.object(
+            mock_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            with pytest.raises(HTTPStatusError):
+                await mock_client._send_api_request(
+                    "https://api.bitbucket.org/2.0/x", raise_on_missing=True
+                )
+    finally:
+        logger.remove(sink_id)
+
+    assert messages == []
+
+
+@pytest.mark.asyncio
+async def test_swallowed_404_is_still_logged(
+    mock_client: BitbucketClient,
+) -> None:
+    """The default path returns {} silently otherwise, which is what hid R0."""
+    messages: list[str] = []
+    sink_id = logger.add(lambda record: messages.append(str(record)), level="WARNING")
+
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = HTTPStatusError(
+        "404", request=MagicMock(), response=MagicMock(status_code=404)
+    )
+    try:
+        with patch.object(
+            mock_client.client, "request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            assert (
+                await mock_client._send_api_request("https://api.bitbucket.org/2.0/x")
+                == {}
+            )
+    finally:
+        logger.remove(sink_id)
+
+    assert any("Requested resource not found" in message for message in messages)
