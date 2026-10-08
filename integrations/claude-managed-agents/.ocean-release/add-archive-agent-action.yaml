@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added an archive_agent action that permanently archives a Claude managed agent, making it read-only and preventing new sessions from referencing it
