@@ -1,9 +1,14 @@
 import fnmatch
 import os
+from httpx import HTTPStatusError, TransportError
 from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator
 from loguru import logger
 from integration import BitbucketFilePattern
+from bitbucket_cloud.helpers.exceptions import (
+    BitbucketFileReadError,
+    BitbucketFileWalkError,
+)
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from initialize_client import init_client
 from bitbucket_cloud.helpers.file_kind_live_event import (
@@ -15,6 +20,22 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
+# A failed read of one file reports it and the walk carries on, because the kind ends in
+# error either way and the readable files are worth keeping. Two statuses are not about
+# the file at all: a dead credential and an exhausted quota apply to every repository
+# still to be walked, so they stop it now rather than failing another few hundred times.
+WALK_STOPPING_STATUSES = (401, 429)
+
+
+def _repository_slug(repo_info: Dict[str, Any]) -> str:
+    """A guess at the repository's URL slug, from its display name.
+
+    It is wrong whenever the real slug is not the display name with spaces hyphenated -
+    a renamed repository, or a name containing punctuation. The authoritative slug is in
+    this same payload as ``full_name``; swapping to it changes which URL every content
+    fetch addresses, so it is its own change rather than part of this one.
+    """
+    return repo_info["name"].replace(" ", "-")
 
 
 def normalize_directory_path(path: str) -> str:
@@ -71,6 +92,47 @@ def build_search_terms(
     return " ".join(search_terms)
 
 
+def _report_unreadable_file(
+    error: Exception, failures: List[Exception], file_info: Dict[str, Any]
+) -> None:
+    repository = _repository_slug(file_info["commit"]["repository"])
+    logger.warning(
+        f"Recording {file_info['path']} in {repository} as unreadable: {error}"
+    )
+    failures.append(error)
+
+
+async def _collect_walk_failures(
+    task: AsyncGenerator[Dict[str, Any], None],
+    failures: List[Exception],
+    file_info: Dict[str, Any],
+) -> AsyncGenerator[Dict[str, Any], None]:
+    """Report a file that cannot be read and carry on with the rest of the walk.
+
+    Discovery has already said this file exists, and a content fetch cannot tell a file
+    deleted since then from one it is not allowed to read. Reporting either as absence
+    would let reconciliation delete the entity, which is the failure this change exists
+    to stop, so both end the kind in error - but only once the walk has finished, so
+    every readable file still lands and every failure is named. Each failure is appended
+    to the caller's ``failures`` list, which the caller reads when the walk is drained.
+    """
+    try:
+        async for file_result in task:
+            yield file_result
+    except HTTPStatusError as e:
+        if e.response.status_code in WALK_STOPPING_STATUSES:
+            logger.error(
+                f"Stopping the walk at {file_info['path']}: {e}. This applies to every "
+                f"repository still to be walked, not to this file."
+            )
+            raise
+        _report_unreadable_file(e, failures, file_info)
+    except BitbucketFileReadError as e:
+        _report_unreadable_file(e, failures, file_info)
+    except TransportError as e:
+        _report_unreadable_file(e, failures, file_info)
+
+
 async def process_file_patterns(
     file_pattern: BitbucketFilePattern,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -86,6 +148,8 @@ async def process_file_patterns(
     if not file_pattern.filenames:
         logger.info("No filenames provided, skipping file search")
         return
+
+    failures: List[Exception] = []
 
     for filename in file_pattern.filenames:
         search_query = build_search_terms(
@@ -110,11 +174,22 @@ async def process_file_patterns(
                         continue
 
                     tasks.append(
-                        retrieve_file_content(file_info, file_pattern.skip_parsing)
+                        _collect_walk_failures(
+                            retrieve_file_content(file_info, file_pattern.skip_parsing),
+                            failures,
+                            file_info,
+                        )
                     )
 
             async for file_results in stream_async_iterators_tasks(*tasks):
                 yield [file_results]
+
+    if failures:
+        raise BitbucketFileWalkError(
+            f"{len(failures)} {'file' if len(failures) == 1 else 'files'} "
+            f"could not be read while walking "
+            f"{file_pattern.filenames} under '{file_pattern.path}'"
+        ) from ExceptionGroup("Unreadable files", failures)
 
 
 async def retrieve_file_content(
@@ -130,9 +205,9 @@ async def retrieve_file_content(
     Yields:
         Dict[str, Any]: Dictionary containing the file content and metadata
     """
-    file_path = file_info.get("path", "")
+    file_path = file_info["path"]
     repo_info = file_info["commit"]["repository"]
-    repo_slug = repo_info["name"].replace(" ", "-")
+    repo_slug = _repository_slug(repo_info)
     branch = repo_info["mainbranch"]["name"]
 
     logger.info(f"Retrieving contents for file: {file_path}")
@@ -140,6 +215,11 @@ async def retrieve_file_content(
     file_content = await bitbucket_client.get_repository_files(
         repo_slug, branch, file_path
     )
+    if file_content is None:
+        raise BitbucketFileReadError(
+            f"Bitbucket returned no content for {file_path} in repository {repo_slug} "
+            f"on branch {branch}"
+        )
     parent_directory = Path(file_path).parent
     if not skip_parsing:
         file_content = parse_file(file_content, file_path)
