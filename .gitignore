@@ -170,6 +170,7 @@ junit/*
 
 # Ocean Cache
 .ocean_cache/
+**/probe_reports/*
 
 # macOS
 .DS_Store
