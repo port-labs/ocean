@@ -285,6 +285,26 @@ class AnthropicClient:
         vault = await self._client.beta.vaults.retrieve(vault_id)
         return vault.to_dict(mode="json")
 
+    async def create_environment(
+        self,
+        name: str,
+        description: str | None = None,
+        scope: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            k: v for k, v in (extra or {}).items() if v is not None
+        }
+        payload["name"] = name
+        if description:
+            payload["description"] = description
+        if scope:
+            payload["scope"] = scope
+
+        logger.info(f"Creating Claude environment '{name}'")
+        environment = await self._client.beta.environments.create(**payload)
+        return environment.to_dict(mode="json")
+
     async def get_agent(self, agent_id: str) -> dict[str, Any]:
         logger.info(f"Retrieving Claude agent '{agent_id}'")
         agent = await self._client.beta.agents.retrieve(agent_id)
