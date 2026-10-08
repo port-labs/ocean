@@ -1,10 +1,10 @@
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from github.helpers.models import SecurityAlert
 from github.helpers.utils import enrich_with_organization, enrich_with_repository
 
 
-def repository_name_from_alert(alert: SecurityAlert) -> Optional[str]:
+def repository_name_from_alert(alert: SecurityAlert) -> str | None:
     """Return the repository name embedded on an org-level security alert."""
     repository = alert.get("repository")
     if isinstance(repository, dict):
@@ -25,9 +25,9 @@ def is_alert_repo_archived(alert: SecurityAlert) -> bool:
 def should_include_org_alert(
     alert: SecurityAlert,
     *,
-    allowed_repos: Optional[set[str]] = None,
+    allowed_repos: set[str] | None = None,
     exclude_archived: bool = False,
-) -> Optional[str]:
+) -> str | None:
     """Return repo name if the alert should be synced, otherwise ``None``."""
     repo_name = repository_name_from_alert(alert)
     if not repo_name:
@@ -43,7 +43,7 @@ def security_alerts_list_url(
     base_url: str,
     organization: str,
     resource: str,
-    repo_name: Optional[str] = None,
+    repo_name: str | None = None,
 ) -> str:
     """Build repo- or org-level list URL for a security-alerts resource path."""
     if repo_name:
@@ -53,7 +53,7 @@ def security_alerts_list_url(
 
 def pop_org_alert_filters(
     params: dict[str, Any],
-) -> tuple[Optional[set[str]], bool]:
+) -> tuple[set[str] | None, bool]:
     """Pop org-level filter fields from request params.
 
     ``allowed_repos`` uses ``is not None`` so an empty allowlist (repoSearch
@@ -69,8 +69,8 @@ def enrich_security_alert_batch(
     alerts: list[dict[str, Any]],
     *,
     organization: str,
-    repo_name: Optional[str] = None,
-    allowed_repos: Optional[set[str]] = None,
+    repo_name: str | None = None,
+    allowed_repos: set[str] | None = None,
     exclude_archived: bool = False,
 ) -> list[SecurityAlert]:
     """Enrich alerts with ``__repository`` / ``__organization``, filtering org streams."""
