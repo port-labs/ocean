@@ -292,14 +292,13 @@ class AnthropicClient:
         scope: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            k: v for k, v in (extra or {}).items() if v is not None
-        }
-        payload["name"] = name
+        payload: dict[str, Any] = {"name": name}
         if description:
             payload["description"] = description
         if scope:
             payload["scope"] = scope
+        if extra:
+            payload["config"] = extra
 
         logger.info(f"Creating Claude environment '{name}'")
         environment = await self._client.beta.environments.create(**payload)
