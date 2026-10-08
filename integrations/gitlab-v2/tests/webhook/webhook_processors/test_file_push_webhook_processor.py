@@ -471,7 +471,7 @@ class TestFilePushWebhookProcessor:
         self,
         processor: FilePushWebhookProcessor,
         push_payload: dict[str, Any],
-        resource_config: ResourceConfig,
+        resource_config: MagicMock,
     ) -> None:
         """Modified files with itemsToParse emit old content as deletes and new as upserts."""
         resource_config.selector.files.path = "services.yaml"
