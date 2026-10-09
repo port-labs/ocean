@@ -5,11 +5,7 @@ from loguru import logger
 from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.core import PluginExporter
-from github.core.exporters.plugin_exporter.utils import (
-    build_plugin_raw_item,
-    empty_plugin,
-    path_touches_plugin,
-)
+from github.core.exporters.plugin_exporter.utils import find_plugin_roots
 from github.core.options import PluginRepositoryOptions
 from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.file_webhook_processor import (
@@ -17,6 +13,7 @@ from github.webhook.webhook_processors.file_webhook_processor import (
 )
 from integration import GithubPluginResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -42,6 +39,9 @@ class PluginWebhookProcessor(FileWebhookProcessor):
         selector = cast(GithubPluginResourceConfig, resource_config).selector
         providers = selector.providers
 
+        # Feature-branch edits do not update the catalog. This keeps the file
+        # kind rule: only the configured branch, or the default branch when
+        # repos[].branch is unset, is processed.
         if not any(
             (
                 path.organization is None
@@ -61,45 +61,69 @@ class PluginWebhookProcessor(FileWebhookProcessor):
         diff_data = await RestFileExporter(rest_client).fetch_commit_diff(
             organization, repo_name, before_sha, after_sha
         )
-        changed = diff_data.get("files") or []
-
-        if not any(
-            path_touches_plugin(file.get("filename", ""), providers) for file in changed
-        ):
+        # Only marker files matter; other files under a plugin (SKILL.md) do not.
+        changed_paths = [
+            path
+            for file_info in diff_data.get("files") or []
+            for path in (file_info.get("filename"), file_info.get("previous_filename"))
+            if path
+        ]
+        changed_roots = find_plugin_roots(changed_paths, providers, selector.max_depth)
+        if not changed_roots:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        exporter = PluginExporter(rest_client, providers)
-        plugin_item = await exporter.get_resource(
-            PluginRepositoryOptions(
-                organization=organization,
-                repository=repository,
-                branch=current_branch,
-            )
+        exporter = PluginExporter(rest_client, providers, selector.max_depth)
+        options = PluginRepositoryOptions(
+            organization=organization, repository=repository, branch=current_branch
         )
-
-        if plugin_item:
-            return WebhookEventRawResults(
-                updated_raw_results=[plugin_item],
-                deleted_raw_results=[],
+        roots, truncated = await exporter.get_plugin_roots(options)
+        if truncated:
+            logger.warning(
+                "Skipping plugin webhook: GitHub tree response was truncated"
             )
-
-        if await exporter.is_tree_truncated(organization, repo_name, current_branch):
-            logger.warning("Skipping plugin delete: GitHub tree response was truncated")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        logger.info("Plugin manifests removed; emitting delete")
+        updated_raw_results: list[RAW_ITEM] = []
+        removed_roots: list[str] = []
+        for root in sorted(changed_roots):
+            item = (
+                await exporter.build_plugin_item(options, root, roots[root])
+                if root in roots
+                else None
+            )
+            if item:
+                updated_raw_results.append(item)
+            else:
+                removed_roots.append(root)
+
+        # Rebuild removed plugins from the previous commit so the delete carries
+        # the manifest fields (name, ...) their identifier was computed from.
+        deleted_raw_results: list[RAW_ITEM] = []
+        if removed_roots:
+            previous = PluginRepositoryOptions(
+                organization=organization, repository=repository, branch=before_sha
+            )
+            old_roots, old_truncated = await exporter.get_plugin_roots(previous)
+            if old_truncated:
+                logger.warning("Skipping plugin deletes: previous tree was truncated")
+            else:
+                for root in removed_roots:
+                    if root in old_roots and (
+                        item := await exporter.build_plugin_item(
+                            options, root, old_roots[root], ref=before_sha
+                        )
+                    ):
+                        deleted_raw_results.append(item)
+
+        logger.info(
+            f"Plugin webhook processed {len(updated_raw_results)} updates and "
+            f"{len(deleted_raw_results)} deletes for {organization}/{repo_name}"
+        )
         return WebhookEventRawResults(
-            updated_raw_results=[],
-            deleted_raw_results=[
-                build_plugin_raw_item(
-                    plugin=empty_plugin(name=repo_name),
-                    repository=repository,
-                    branch=current_branch,
-                    organization=organization,
-                )
-            ],
+            updated_raw_results=updated_raw_results,
+            deleted_raw_results=deleted_raw_results,
         )
