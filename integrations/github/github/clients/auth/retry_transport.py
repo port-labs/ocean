@@ -5,7 +5,11 @@ import typing
 import httpx
 from loguru import logger
 
-from port_ocean.helpers.retry import RetryConfig, RetryTransport
+from port_ocean.helpers.retry import (
+    RetryConfig,
+    RetryTransport,
+    record_vendor_http_request,
+)
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.graphql_page_reduction import reduce_graphql_page_size
 from github.clients.rate_limiter.utils import is_rest_rate_limit_response
@@ -75,6 +79,11 @@ class GitHubRetryTransport(RetryTransport):
         )
         self._rate_limit_notifier = rate_limit_notifier
         self._token_refresher = token_refresher
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        response = await super().handle_async_request(request)
+        record_vendor_http_request(request, response)
+        return response
 
     async def _reduced_page_request(
         self, request: httpx.Request, response: Optional[httpx.Response]

@@ -19,10 +19,48 @@ from typing import (
 import httpx
 from dateutil.parser import isoparse
 import logging
+from loguru import logger
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.context.ocean import ocean
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
+
+
+def record_vendor_http_request(
+    request: httpx.Request, response: httpx.Response
+) -> None:
+    """Log a completed vendor HTTP call (use from integration retry transports only)."""
+    host = request.url.host or ""
+    logger.bind(
+        http_request=1,
+        http_method=request.method,
+        http_host=host,
+        http_path=request.url.path or "",
+        http_status_code=response.status_code,
+    ).info("Third-party HTTP request")
+
+
+def _record_rate_limit_wait(
+    wait_seconds: float,
+    *,
+    source: str,
+    reason: str,
+    vendor: str | None = None,
+    endpoint: str | None = None,
+) -> None:
+    if wait_seconds <= 0:
+        return
+    vendor_label = vendor or ""
+    endpoint_label = (endpoint or vendor_label or source)[:200]
+    logger.bind(
+        rate_limit_wait_seconds=wait_seconds,
+        rate_limit_source=source,
+        rate_limit_reason=reason,
+        rate_limit_vendor=vendor_label,
+        rate_limit_endpoint=endpoint_label,
+    ).info("Third-party rate limit wait")
+
+
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 _RETRY_CONFIG_CALLBACK: Callable[[], "RetryConfig"] | None = None
 SKIP_RETRY_EXTENSION_KEY = "skip_retry"
@@ -454,6 +492,14 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         response: httpx.Response | None,
         error: Exception | None,
     ) -> None:
+        if response and response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+            _record_rate_limit_wait(
+                sleep_time,
+                source="retry_transport",
+                reason="http_429",
+                vendor=request.url.host,
+                endpoint=request.url.host,
+            )
         if self._logger and response:
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with status code:"
@@ -465,8 +511,12 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
             )
 
+    def _should_log_third_party_http(self, request: httpx.Request) -> bool:
+        host = request.url.host or ""
+        return not host.endswith("port.io")
+
     def _should_log_response_size(self, request: httpx.Request) -> bool:
-        return self._logger is not None and not request.url.host.endswith("port.io")
+        return self._logger is not None and self._should_log_third_party_http(request)
 
     def _is_streaming_enabled(self) -> bool:
         """

@@ -89,7 +89,10 @@ class AzureDevOpsRateLimiter:
             throttle_end_time = now + seconds
             if self._throttle_until is None or self._throttle_until <= now:
                 self._throttle_until = throttle_end_time
-                logger.warning(
+                logger.bind(
+                    rate_limit_wait_seconds=float(seconds),
+                    rate_limit_reason=reason,
+                ).warning(
                     f"ADO rate limit: {reason} detected, pausing all requests for {seconds:.0f} seconds"
                 )
             elif throttle_end_time > self._throttle_until:
@@ -116,7 +119,10 @@ class AzureDevOpsRateLimiter:
             if self._throttle_until is not None:
                 remaining_seconds = self._throttle_until - time.time()
                 if remaining_seconds > 0:
-                    logger.warning(
+                    logger.bind(
+                        rate_limit_wait_seconds=float(remaining_seconds),
+                        rate_limit_reason="throttle_window",
+                    ).warning(
                         f"ADO rate limit: holding request for {remaining_seconds:.0f} seconds while throttle window expires"
                     )
                     await asyncio.sleep(remaining_seconds)
@@ -129,7 +135,10 @@ class AzureDevOpsRateLimiter:
             # Check if we need to wait due to previous rate limit
             retry_wait = self.should_wait_for_retry_after
             if retry_wait > 0:
-                logger.debug(
+                logger.bind(
+                    rate_limit_wait_seconds=float(retry_wait),
+                    rate_limit_reason="retry_after",
+                ).debug(
                     f"Rate limit: waiting {retry_wait:.2f}s due to previous rate limit"
                 )
                 await asyncio.sleep(retry_wait)
@@ -142,7 +151,12 @@ class AzureDevOpsRateLimiter:
             ):
                 reset_wait = self.seconds_until_reset
                 if reset_wait > 0:
-                    logger.warning(
+                    logger.bind(
+                        rate_limit_wait_seconds=float(reset_wait),
+                        rate_limit_reason="proactive",
+                        remaining=self._remaining,
+                        minimum_limit_remaining=self._minimum_limit_remaining,
+                    ).warning(
                         f"Rate limit: proactively waiting {reset_wait:.2f}s "
                         f"(remaining: {self._remaining}, threshold: {self._minimum_limit_remaining})"
                     )

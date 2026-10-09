@@ -4,7 +4,6 @@ from azure.core.credentials_async import AsyncTokenCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
 from azure_integration.azure_patch import list_resources
-from azure_integration.client_options import azure_mgmt_client_kwargs
 from azure_integration.utils import (
     batch_resources_iterator,
     get_resource_kind_by_level,
@@ -26,7 +25,6 @@ async def resource_group_iterator(
     async with ResourceManagementClient(
         credential=credential,
         subscription_id=subscription_id,
-        **azure_mgmt_client_kwargs(),
     ) as resource_management_client:
         async for resource_groups_batch in batch_resources_iterator(
             resource_management_client.resource_groups.list,
@@ -53,7 +51,6 @@ async def resource_base_kind_iterator(
     async with ResourceManagementClient(
         credential=credential,
         subscription_id=subscription_id,
-        **azure_mgmt_client_kwargs(),
     ) as resource_management_client:
         async for resources_batch in batch_resources_iterator(
             list_resources,
@@ -82,7 +79,6 @@ async def resource_extention_kind_iterator(
     async with ResourceManagementClient(
         credential=credential,
         subscription_id=subscription_id,
-        **azure_mgmt_client_kwargs(),
     ) as resource_management_client:
         base_resource_kind, _ = get_resource_kind_by_level(resource_kind, 0)
         logger.info(

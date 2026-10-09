@@ -3,9 +3,9 @@ import enum
 import typing
 
 from port_ocean.context.event import event
+from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
-from azure_integration.client_options import azure_async_credential, azure_mgmt_client_kwargs
 from azure_integration.overrides import (
     AzureCustomKindResourceConfig,
     AzureCloudResourceConfig,
@@ -178,10 +178,9 @@ async def resource_client_context(
     """
     Creates a resource client context manager that yields a resource client with the default azure credentials
     """
-    async with azure_async_credential() as credential:
+    async with DefaultAzureCredential() as credential:
         async with ResourceManagementClient(
             credential=credential,
             subscription_id=subscription_id,
-            **azure_mgmt_client_kwargs(),
         ) as client:
             yield client
