@@ -1,3 +1,5 @@
+from typing import cast
+
 from loguru import logger
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
@@ -10,6 +12,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import PullRequestEvents
+from integration import AzureDevopsPullRequestResourceConfig
 
 
 class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -34,7 +37,12 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     ) -> WebhookEventRawResults:
         client = self._get_client_for_webhook(payload)
         pull_request_id = payload["resource"]["pullRequestId"]
-        pull_request_data = await client.get_pull_request(pull_request_id)
+        selector = cast(AzureDevopsPullRequestResourceConfig, resource_config).selector
+        pull_request_data = await client.get_pull_request(
+            pull_request_id,
+            enrich_with_commits=selector.enrich_with_commits,
+            enrich_with_review_discussion=selector.enrich_with_review_discussion,
+        )
 
         if not pull_request_data:
             logger.warning(f"Pull request with ID {pull_request_id} not found")

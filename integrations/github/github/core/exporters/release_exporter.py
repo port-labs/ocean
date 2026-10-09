@@ -4,7 +4,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListReleaseOptions, SingleReleaseOptions
 from github.clients.http.rest_client import GithubRestClient
-from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -49,7 +48,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all releases in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
+        incremental_cursor = params.pop("created_since", None)
         request_params = RELEASE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for releases in paginate_with_strategy(

@@ -17,11 +17,16 @@ def validate(git: GitContext, *, base_ref: str, head_ref: str) -> list[str]:
     errors: list[str] = []
     release_files_by_target = _release_files_by_target(git, base_ref, head_ref)
     targets = git.changed_release_targets(base_ref, head_ref)
+    core_covers_integrations = _core_intent_covers_integrations(
+        targets, release_files_by_target
+    )
 
     print(f"Validating {len(targets)} release target(s) ({base_ref}...{head_ref})")
     if release_files_by_target:
         for (kind, name), files in release_files_by_target.items():
             print(f"  Found release file(s) for {kind}/{name}: {len(files)}")
+    if core_covers_integrations:
+        print("  Core release intent will cover changed integrations without their own")
 
     for target in targets:
         print(f"Checking {target.label}")
@@ -51,6 +56,10 @@ def validate(git: GitContext, *, base_ref: str, head_ref: str) -> list[str]:
             )
             continue
 
+        if target.kind == "integration" and core_covers_integrations:
+            print(f"  {target.label}: covered by core release intent")
+            continue
+
         print(f"  {target.label}: missing release")
         errors.append(
             f"{target.label}: add a release file ({target.release_hint}) "
@@ -63,6 +72,21 @@ def validate(git: GitContext, *, base_ref: str, head_ref: str) -> list[str]:
         print("Validation passed")
 
     return errors
+
+
+def _core_intent_covers_integrations(
+    targets: list[ReleaseTarget],
+    release_files_by_target: dict[tuple[str, str], list[Path]],
+) -> bool:
+    """A core intent alone may cover integrations changed in the same PR.
+
+    Combined core + integration PRs can declare a single `.ocean-release/core/`
+    intent. The integration is not bumped in the CoreBump PR; it gets its one
+    version bump later when ocean is applied to all integrations.
+    """
+    has_core_target = any(target.kind == "core" for target in targets)
+    has_core_intent = bool(release_files_by_target.get(("core", "core"), []))
+    return has_core_target and has_core_intent
 
 
 def _release_files_by_target(

@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.0.10 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 3.0.9 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 3.0.8 (2026-10-06)
+
+
+### Bug Fixes
+
+- Bumped aiohttp to ^3.14.3 to fix CVE-2026-69244 (GHSA-cq5v-8q36-5273)
+
+
+## 3.0.7 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 3.0.6 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
+## 3.0.5 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 3.0.4 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 3.0.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 3.0.2 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 3.0.1 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 3.0.0 (2026-09-24)
+
+
+### Features
+
+- Removed beta suffix from version number
+- Renamed integration to be the main AWS integration
+- Added support for self hosted installation method
+
+
+## 2.28.2-beta (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 2.28.1-beta (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
+## 2.28.0-beta (2026-09-22)
+
+
+### Features
+
+- Enable CloudTrail live events for all organizations, expose liveEventsApiKey in the spec, and turn on SaaS live events support.
+
+
 ## 2.27.0-beta (2026-09-17)
 
 

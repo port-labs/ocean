@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Report superseded in-flight resyncs as Aborted in Port (and notify lifecycle when DSP is enabled) when polling cancels a resync for a newer request.

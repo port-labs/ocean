@@ -12,6 +12,15 @@ from github.core.options import (
     SingleSecretScanningAlertOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    paginate_with_strategy,
+)
+
+SECRET_SCANNING_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "direction": "desc"},
+)
 
 
 class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
@@ -48,9 +57,18 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         if params["state"] == "all":
             params.pop("state")
 
-        async for alerts in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/secret-scanning/alerts",
-            params,
+        incremental_cursor = params.pop("updated_since", None)
+        request_params = SECRET_SCANNING_INCREMENTAL.merge_params(
+            params, incremental_cursor
+        )
+
+        async for alerts in paginate_with_strategy(
+            self.client.send_paginated_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/secret-scanning/alerts",
+                request_params,
+            ),
+            cursor=incremental_cursor,
+            strategy=SECRET_SCANNING_INCREMENTAL,
         ):
             logger.info(
                 f"Fetched batch of {len(alerts)} secret scanning alerts from repository {repo_name} from {organization}"

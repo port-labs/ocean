@@ -33,6 +33,18 @@ class TestGithubAuthenticator:
         assert github_auth.rate_limit_scope == "installation:12345"
 
     @pytest.mark.asyncio
+    async def test_get_authenticated_actor_delegates_to_app_auth(
+        self, github_auth: GitHubAppInstallationAuthenticator
+    ) -> None:
+        with patch.object(
+            github_auth.app_auth,
+            "get_authenticated_actor",
+            AsyncMock(return_value="port-bot[bot]"),
+        ) as mock_get_actor:
+            assert await github_auth.get_authenticated_actor() == "port-bot[bot]"
+            mock_get_actor.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_token_generated(
         self, github_auth: GitHubAppInstallationAuthenticator
     ) -> None:
@@ -172,3 +184,25 @@ class TestPersonalTokenAuthenticator:
         authenticator = PersonalTokenAuthenticator.from_config()
 
         assert authenticator.organization is None
+
+    def test_rate_limit_scope_is_stable_for_same_token(self) -> None:
+        first = PersonalTokenAuthenticator("gho_user_a", "org")
+        second = PersonalTokenAuthenticator("gho_user_a", "org")
+
+        assert first.rate_limit_scope == second.rate_limit_scope
+        assert first.rate_limit_scope.startswith("pat:")
+        assert first.rate_limit_scope != "pat"
+
+    def test_rate_limit_scope_differs_across_tokens(self) -> None:
+        integration_pat = PersonalTokenAuthenticator("ghp_integration")
+        user_a = PersonalTokenAuthenticator("gho_user_a", "org")
+        user_b = PersonalTokenAuthenticator("gho_user_b", "org")
+
+        scopes = {
+            integration_pat.rate_limit_scope,
+            user_a.rate_limit_scope,
+            user_b.rate_limit_scope,
+        }
+
+        assert len(scopes) == 3
+        assert all(scope.startswith("pat:") for scope in scopes)

@@ -101,8 +101,11 @@ async def get_installation_authenticator_for_organization(
     await _discover_installations()
     normalized_organization = organization.casefold()
     if normalized_organization not in _authenticators_by_org:
-        raise AuthenticationException(
-            f"No GitHub App installation found for organization '{organization}'"
-        )
+        reset_authenticators_by_org()
+        await _discover_installations()
+        if normalized_organization not in _authenticators_by_org:
+            raise AuthenticationException(
+                f"No GitHub App installation found for organization '{organization}'"
+            )
 
     return _authenticators_by_org[normalized_organization]

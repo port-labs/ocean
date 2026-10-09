@@ -7,6 +7,136 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.3 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 0.15.2 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.15.1 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 0.15.0 (2026-10-04)
+
+
+### Features
+
+- Added identity propagation for GitLab actions. The integration registers its own OAuth app (identityOauthClientId/identityOauthClientSecret) so actions can run as the triggering user. Authorize and token URLs are derived from gitlabHost.
+
+
+## 0.14.4 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
+## 0.14.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 0.14.2 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 0.14.1 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 0.14.0 (2026-09-30)
+
+
+### Features
+
+- Added set_merge_request_comment_reaction action for emoji reactions on MR comments
+
+
+## 0.13.0 (2026-09-30)
+
+
+### Improvements
+
+- Changed the default file `searchStrategy` to `repositoryTree` for complete path-based discovery. `groupSearch` and `projectSearch` remain available but rely on GitLab's Search API, which does not guarantee 100% completeness — see https://docs.gitlab.com/user/search/advanced_search/#known-issues
+
+
+## 0.12.4 (2026-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.4
+
+
+## 0.12.3 (2026-09-28)
+
+
+### Bug Fixes
+
+- Stop logging the full webhook payload once per registered processor on every incoming webhook. Payload logging is already handled by Ocean core behind the events_debug_logging flag.
+
+
+## 0.12.2 (2026-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.3
+
+
+## 0.12.1 (2026-09-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.2
+
+
+## 0.12.0 (2026-09-22)
+
+
+### Features
+
+- Added optional enrichWithCommits and enrichWithReviewDiscussion selectors on merge-request to attach raw GitLab commits and notes during resync
+- Added create_merge_request_comment action to post notes on GitLab merge requests
+- Added an update_merge_request action that updates a GitLab merge request
+
+
+## 0.11.4 (2026-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.1
+
+
 ## 0.11.3 (2026-09-16)
 
 

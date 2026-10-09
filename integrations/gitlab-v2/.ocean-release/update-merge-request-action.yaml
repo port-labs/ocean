@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added an update_merge_request action that updates a GitLab merge request

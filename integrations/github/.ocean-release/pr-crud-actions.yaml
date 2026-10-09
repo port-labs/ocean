@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: feature
-changelog: Added pull request CRUD actions (create, update, close, merge, review), enabling Port Workflows to manage GitHub pull requests with full lifecycle support

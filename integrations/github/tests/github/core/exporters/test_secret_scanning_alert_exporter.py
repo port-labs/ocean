@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import AsyncMock, patch
@@ -181,4 +182,70 @@ class TestRestSecretScanningAlertExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts",
                 expected_params,
+            )
+
+    async def test_get_paginated_resources_with_incremental_cursor_stops_at_old_items(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestSecretScanningAlertExporter(rest_client)
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        mixed_alerts = [
+            {
+                "number": 50,
+                "updated_at": "2026-06-02T00:00:00Z",
+                "state": "open",
+                "secret_type": "api_key",
+            },
+            {
+                "number": 42,
+                "updated_at": "2026-05-01T00:00:00Z",
+                "state": "open",
+                "secret_type": "api_key",
+            },
+        ]
+        second_page_fetched = False
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal second_page_fetched
+            yield mixed_alerts
+            second_page_fetched = True
+            yield [
+                {
+                    "number": 10,
+                    "updated_at": "2026-04-01T00:00:00Z",
+                    "state": "open",
+                    "secret_type": "api_key",
+                }
+            ]
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            alerts: list[dict[str, Any]] = []
+            async for batch in exporter.get_paginated_resources(
+                ListSecretScanningAlertOptions(
+                    organization="test-org",
+                    repo_name="test-repo",
+                    state="open",
+                    hide_secret=True,
+                    updated_since=cursor,
+                )
+            ):
+                alerts.extend(batch)
+
+            assert len(alerts) == 1
+            assert alerts[0]["number"] == 50
+            assert alerts[0]["__repository"] == "test-repo"
+            assert alerts[0]["__organization"] == "test-org"
+            assert second_page_fetched is False
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts",
+                {
+                    "state": "open",
+                    "hide_secret": True,
+                    "sort": "updated",
+                    "direction": "desc",
+                },
             )

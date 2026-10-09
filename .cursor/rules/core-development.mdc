@@ -93,6 +93,7 @@ Core Development Guidelines
 12. Release intent (changesets)
     - Every PR that changes `port_ocean/` MUST declare how to release
     - **Prefer** a release intent file: add `.ocean-release/core/<feature-related-name>.yaml` alongside your code changes (use a short filename related to the feature or change, e.g. `retry-transport-fix.yaml`)
+    - If the same PR also changes an integration with its **own** user-facing work, add `integrations/<name>/.ocean-release/` for that work only — changelog that file with the integration-specific change, not the core change. CI does not require an integration intent when the integration only moved because of core.
     - Only bump `pyproject.toml` or `CHANGELOG.md` manually when explicitly asked — if both a release file and manual bumps are present, manual changes take priority
     - Example:
 

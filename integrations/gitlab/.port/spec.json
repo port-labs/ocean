@@ -67,9 +67,6 @@
       "valuesOverride": {
         "integrationSpec": {
           "gitlabHost": "\"https://gitlab.com\""
-        },
-        "appSpec": {
-          "minimumScheduledResyncInterval": "2h"
         }
       }
     }

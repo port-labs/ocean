@@ -1,3 +1,4 @@
+import httpx
 from integration import (
     GithubCollaboratorConfig,
     GithubCollaboratorSelector,
@@ -9,7 +10,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
 )
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor import (
     CollaboratorTeamWebhookProcessor,
 )
@@ -93,11 +94,7 @@ class TestCollaboratorTeamWebhookProcessor:
         "event_type,action,expected",
         [
             ("team", "added_to_repository", True),
-            (
-                "team",
-                "removed_from_repository",
-                False,
-            ),  # Not in TEAM_COLLABORATOR_EVENTS
+            ("team", "removed_from_repository", True),
             ("member", "added", False),
             ("team", "unknown_action", False),
             ("team", None, False),
@@ -155,37 +152,15 @@ class TestCollaboratorTeamWebhookProcessor:
                 is expected_result
             )
 
-    @pytest.mark.parametrize(
-        "action,expected_updated,expected_deleted",
-        [
-            ("added_to_repository", True, False),
-            (
-                "removed_from_repository",
-                False,
-                False,
-            ),  # Not in TEAM_COLLABORATOR_EVENTS
-            ("unknown_action", False, False),  # Not in TEAM_COLLABORATOR_EVENTS
-        ],
-    )
-    async def test_handle_event_team_events(
+    async def test_handle_event_added_to_repository(
         self,
         team_webhook_processor: CollaboratorTeamWebhookProcessor,
         resource_config: GithubCollaboratorConfig,
-        action: str,
-        expected_updated: bool,
-        expected_deleted: bool,
     ) -> None:
-        # Set up payload
         payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
-        payload["action"] = action
+        payload["action"] = "added_to_repository"
 
-        rest_team_members_batch = [
-            {
-                "id": 1,
-                "login": "test-user",
-                "site_admin": False,
-            }
-        ]
+        rest_team_members_batch = [{"id": 1, "login": "test-user", "site_admin": False}]
 
         with patch(
             "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
@@ -202,28 +177,153 @@ class TestCollaboratorTeamWebhookProcessor:
 
             result = await team_webhook_processor.handle_event(payload, resource_config)
 
-            # Verify the result
             assert isinstance(result, WebhookEventRawResults)
-            assert bool(result.updated_raw_results) is expected_updated
-            assert bool(result.deleted_raw_results) is expected_deleted
+            assert result.updated_raw_results == [
+                {
+                    "id": 1,
+                    "login": "test-user",
+                    "site_admin": False,
+                    "__repository": "test-repo",
+                    "__organization": "test-org",
+                }
+            ]
+            assert result.deleted_raw_results == []
+            mock_create_client.assert_called_once_with("test-org")
 
-            if expected_updated:
-                # Verify the data structure matches expected format
-                expected_team_data = [
-                    {
-                        "id": 1,
-                        "login": "test-user",
-                        "site_admin": False,
-                        "__repository": "test-repo",
-                        "__organization": "test-org",
-                    }
-                ]
-                assert result.updated_raw_results == expected_team_data
+    async def test_handle_event_removed_from_repository(
+        self,
+        team_webhook_processor: CollaboratorTeamWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+    ) -> None:
+        payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "removed_from_repository"
 
-                mock_create_client.assert_called_once_with("test-org")
-            else:
-                # For unsupported events, no exporters should be called
-                mock_create_client.assert_not_called()
+        rest_team_members_batch = [
+            {"id": 1, "login": "user-still-collaborator"},
+            {"id": 2, "login": "user-no-longer-collaborator"},
+        ]
+
+        still_collaborator_data = {
+            "login": "user-still-collaborator",
+            "id": 1,
+            "__repository": "test-repo",
+            "__organization": "test-org",
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            async def mock_paginated_generator() -> (
+                AsyncGenerator[list[dict[str, Any]], None]
+            ):
+                yield rest_team_members_batch
+
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.RestCollaboratorExporter"
+            ) as mock_collab_exporter_class:
+                mock_collab_exporter = MagicMock()
+                mock_collab_exporter_class.return_value = mock_collab_exporter
+
+                async def mock_get_resource(options: Any) -> dict[str, Any] | None:
+                    if options["username"] == "user-still-collaborator":
+                        return still_collaborator_data
+                    return None
+
+                mock_collab_exporter.get_resource = AsyncMock(
+                    side_effect=mock_get_resource
+                )
+
+                result = await team_webhook_processor.handle_event(
+                    payload, resource_config
+                )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 1
+            assert result.updated_raw_results[0] == still_collaborator_data
+            assert len(result.deleted_raw_results) == 1
+            assert (
+                result.deleted_raw_results[0]["login"] == "user-no-longer-collaborator"
+            )
+            assert result.deleted_raw_results[0]["id"] == 2
+            assert result.deleted_raw_results[0]["__repository"] == "test-repo"
+            assert result.deleted_raw_results[0]["__organization"] == "test-org"
+
+    async def test_handle_event_removed_from_repository_skips_member_on_error(
+        self,
+        team_webhook_processor: CollaboratorTeamWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+    ) -> None:
+        payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "removed_from_repository"
+
+        rest_team_members_batch = [
+            {"id": 1, "login": "user-ok"},
+            {"id": 2, "login": "user-error"},
+        ]
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            async def mock_paginated_generator() -> (
+                AsyncGenerator[list[dict[str, Any]], None]
+            ):
+                yield rest_team_members_batch
+
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.RestCollaboratorExporter"
+            ) as mock_collab_exporter_class:
+                mock_collab_exporter = MagicMock()
+                mock_collab_exporter_class.return_value = mock_collab_exporter
+
+                async def mock_get_resource(options: Any) -> dict[str, Any] | None:
+                    if options["username"] == "user-error":
+                        raise httpx.HTTPStatusError(
+                            "Server Error",
+                            request=httpx.Request("GET", "https://api.github.com"),
+                            response=httpx.Response(500),
+                        )
+                    return None
+
+                mock_collab_exporter.get_resource = AsyncMock(
+                    side_effect=mock_get_resource
+                )
+
+                result = await team_webhook_processor.handle_event(
+                    payload, resource_config
+                )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert len(result.deleted_raw_results) == 1
+            assert result.deleted_raw_results[0]["login"] == "user-ok"
+
+    async def test_handle_event_unknown_action(
+        self,
+        team_webhook_processor: CollaboratorTeamWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+    ) -> None:
+        payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "unknown_action"
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
+        ) as mock_create_client:
+            result = await team_webhook_processor.handle_event(payload, resource_config)
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+            mock_create_client.assert_not_called()
 
     async def test_handle_event_skips_when_affiliation_filter_enabled(
         self,

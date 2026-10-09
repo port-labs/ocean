@@ -3,6 +3,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 from linear.actions.abstract_linear_executor import AbstractLinearExecutor
+from linear.actions.exceptions import LinearActionError
 from linear.actions.types import DelegateIssuePayload
 from linear.actions.utils import set_issue_run_output
 from linear.core.mutations import IssueMutations
@@ -29,6 +30,12 @@ class DelegateIssueToAgentExecutor(AbstractLinearExecutor):
 
         mutations = IssueMutations(self.client)
         issue = await mutations.update_issue(payload.issueId, payload.to_mutation())
+        delegate_id = issue.delegate.id if issue.delegate else None
+        if delegate_id != payload.delegateId:
+            raise LinearActionError(
+                f"Linear accepted the update but issue {issue.identifier} is delegated to "
+                f"{delegate_id or 'no one'}, not to agent {payload.delegateId}"
+            )
         message = f"Delegated issue {issue.identifier} to agent {payload.delegateId}"
         set_issue_run_output(run, issue)
 

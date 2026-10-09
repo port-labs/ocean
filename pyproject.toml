@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.52.0"
+version = "0.53.5"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -40,21 +40,21 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pydantic = { version = "^2.13.4", extras = ["dotenv"] }
+pydantic = { version = "^2.13.5", extras = ["dotenv"] }
 pydantic-settings = "^2.13.0"
-python-dotenv = "^1.2.2"
+python-dotenv = "^1.2.4"
 loguru = "^0.7.0"
 pyyaml = "^6.0"
-werkzeug = ">=3.1.6,<4.0.0"
-filelock = "^3.20.1"
-virtualenv = "^20.36.1"
-fastapi = "^0.133.0"
-starlette = ">=1.0.1,<2.0"
-uvicorn = "^0.34.3"
-confluent-kafka = "^2.10.1"
+werkzeug = ">=3.1.9,<4.0.0"
+filelock = "^3.32.7"
+starlette = ">=1.7.0,<2.0"
+uvicorn = "^0.54.0"
+confluent-kafka = "^2.15.1"
+virtualenv = "^21.14.2"
+fastapi = "^0.142.2"
 httpx = "^0.28.1"
 jq = "^1.8.0"
-urllib3 = "^2.7.0"
+urllib3 = "^2.8.0"
 six = "^1.16.0"
 pyhumps = "^3.8.0"
 pydispatcher = "^2.0.7"
@@ -62,25 +62,25 @@ tomli = "^2.0.1"
 aiostream = ">=0.5.2,<0.7.0"
 python-dateutil = "^2.9.0.post0"
 jinja2 = ">=3.1.6"
-pyjwt = "^2.13.0"
+pyjwt = "^2.15.1"
 prometheus-client = "^0.21.1"
 pytest-cov = ">=6,<8"
 ijson = "^3.4.0"
-aiofiles = "^24.1.0"
-cryptography = "^49.0.0"
+cryptography = "^50.0.2"
+aiofiles = "^25.1.0"
 jmespath = "^1.0.1"
 psutil = "^7.2.1"
-redis = { version = "^6.1.0", extras = ["hiredis"] }
+redis = { version = "^8.1.0", extras = ["hiredis"] }
 
 # CLI
-click = { version = "^8.1.3", optional = true }
+click = { version = "^8.5.0", optional = true }
 rich = { version = "^13.4.1", optional = true }
 cookiecutter = { version = "^2.1.1", optional = true }
 jinja2-time = { version = "^0.2.0", optional = true }
 jinja2-strcase = { version = "^0.0.2", optional = true }
 jsonref = { version = "^1.1.0", optional = true }
 
-boto3 = { version = "^1.43.64", optional = true }
+boto3 = { version = "^1.43.106", optional = true }
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time", "jinja2-strcase", "jsonref"]
@@ -88,10 +88,10 @@ aws-vault = ["boto3"]
 
 
 [tool.poetry.group.dev.dependencies]
-boto3 = "^1.43.64"
+boto3 = "^1.43.106"
 black = ">=26.3.1"
 mypy = "^1.3.0"
-pre-commit = "^4.2.0"
+pre-commit = "^4.6.2"
 pylint = ">=2.17.4,<4.0.0"
 pytest = ">=9.0.3"
 pytest-asyncio = ">=1.4.0"
@@ -99,16 +99,16 @@ pytest-httpx = ">=0.36.2"
 pytest-xdist = "^3.8.0"
 ruff = ">=0.6.3,<0.10.0"
 towncrier = "^23.6.0"
-types-python-dateutil = "^2.9.0.20240316"
-types-pyyaml = "^6.0.12.10"
+types-python-dateutil = "^2.9.0.20260807"
+types-pyyaml = "^6.0.12.20260906"
 types-toml = "^0.10.8.6"
 yamllint = "^1.32.0"
 pytest-timeout = "^2.3.1"
-memray = "^1.17.2"
+memray = "^1.20.0"
 faker = "^37.3.0"
 jsonref = "^1.1.0"
-types-aiofiles = "^24.1.0.20250809"
-types-psutil = "^7.2.1.20251231"
+types-aiofiles = "^25.1.0.20260518"
+types-psutil = "^7.2.2.20260906"
 
 [tool.towncrier]
 directory = "changelog"
@@ -217,5 +217,6 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/*' ./port_ocean/tests"
 markers = [
-    "smoke: Smoke tests (deselect with '-m \"not smoke\"')"
+    "smoke: Smoke tests (deselect with '-m \"not smoke\"')",
+    "smoke_configset(name): Smoke configset this test runs under (see port_ocean/tests/smoke/configsets/)",
 ]

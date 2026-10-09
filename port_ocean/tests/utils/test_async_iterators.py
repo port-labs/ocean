@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from port_ocean.utils import async_iterators
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_independent_async_iterators,
@@ -22,6 +23,12 @@ async def _yield_items(*items: int) -> AsyncGenerator[int, None]:
 async def _fail_after_first() -> AsyncGenerator[int, None]:
     yield 1
     raise RuntimeError("Iterator page failed")
+
+
+async def _fail_abort() -> AsyncGenerator[int, None]:
+    if False:
+        yield 0
+    raise OceanAbortException("tree fetch failed")
 
 
 async def _cancel_after_first() -> AsyncGenerator[int, None]:
@@ -142,6 +149,20 @@ async def test_stream_independent_async_iterators_streams_successful_items() -> 
     ]
 
     assert sorted(items) == [1, 2, 3]
+
+
+async def test_stream_independent_async_iterators_wraps_ocean_abort_in_exception_group() -> (
+    None
+):
+    with pytest.raises(ExceptionGroup) as exc_info:
+        async for _ in stream_independent_async_iterators(
+            _fail_abort(), context="file"
+        ):
+            pass
+
+    assert "file failed with 1 error(s)" in str(exc_info.value)
+    assert isinstance(exc_info.value.exceptions[0], OceanAbortException)
+    assert str(exc_info.value.exceptions[0]) == "tree fetch failed"
 
 
 async def test_stream_independent_async_iterators_defers_failures_until_finish() -> (

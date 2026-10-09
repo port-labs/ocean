@@ -25,12 +25,14 @@ from port_ocean.core.integrations.mixins.utils import (
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_redis_live_events_enabled,
+    resync_error_handling,
     resync_function_wrapper,
     resync_generator_wrapper,
     selector_hash_from_selector,
     selector_hash_from_resource,
     selector_query_from_resource,
 )
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.core.models import LakehouseOperation
 
 
@@ -1184,3 +1186,37 @@ class TestProcessingModes:
         assert "Failed to check Redis live events settings" in (
             mock_bound.warning.call_args.args[0]
         )
+
+
+class TestResyncErrorHandling:
+    def test_ocean_abort_re_raised_without_logging(self) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.exception"
+        ) as mock_exception:
+            with pytest.raises(OceanAbortException, match="tree fetch failed"):
+                with resync_error_handling():
+                    raise OceanAbortException("tree fetch failed")
+
+            mock_exception.assert_not_called()
+
+    def test_unexpected_exception_is_logged_and_wrapped(self) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.exception"
+        ) as mock_exception:
+            with pytest.raises(OceanAbortException, match="Failed to execute resync"):
+                with resync_error_handling():
+                    raise ValueError("unexpected")
+
+            mock_exception.assert_called_once()
+
+    def test_exception_group_is_logged_and_wrapped(self) -> None:
+        abort = OceanAbortException("tree fetch failed")
+        group = ExceptionGroup("file failed with 1 error(s)", [abort])
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.exception"
+        ) as mock_exception:
+            with pytest.raises(OceanAbortException, match="Failed to execute resync"):
+                with resync_error_handling():
+                    raise group
+
+            mock_exception.assert_called_once()

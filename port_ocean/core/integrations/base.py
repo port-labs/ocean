@@ -112,7 +112,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             error = ModeNotSupportedException(
                 self.context.config.integration.type, "probe"
             )
-            await context.fail(str(error))
+            await context.fail_internal(str(error))
             raise error
 
         async with event_context(
@@ -126,11 +126,14 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             try:
                 returned = await listener(context)
             except Exception as error:
-                await context.fail(str(error))
+                await context.fail_internal(str(error))
                 raise
 
             final_context = returned or context
-            if final_context.status is ProbeStatus.FAILED:
+            if final_context.status in (
+                ProbeStatus.FAILED,
+                ProbeStatus.INTERNAL_FAILURE,
+            ):
                 raise ProbeFailedError(final_context.message or "Probe failed")
             await final_context.finalize()
             return final_context

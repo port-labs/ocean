@@ -12,7 +12,7 @@ Auth0 Management API uses OAuth2 Client Credentials flow to authenticate server-
 - **Grant Type**: `client_credentials`
 - **Token Response**: `{"access_token": "...", "token_type": "Bearer", "expires_in": 86400}`
 
-### 2. Ocean Custom Integration Configuration
+### 2. Custom Ocean Integration Configuration
 
 #### Installation Config (Helm values.yaml or env vars)
 
@@ -173,4 +173,3 @@ Response: {"error":"invalid_client","error_description":"..."}
 - ❌ Static API keys that never expire
 - ❌ Simple bearer tokens you can store directly
 - ❌ APIs that don't support OAuth2
-

@@ -176,7 +176,7 @@ async def test_identity_http_error_still_closes_user_client(
         executor, "_client_for_token", MagicMock(return_value=user_pipeline_client)
     )
     monkeypatch.setattr(
-        "azure_devops.actions.trigger_pipeline_executor.resolve_user_token",
+        "azure_devops.actions.abstract_ado_executor._resolve_user_token",
         AsyncMock(return_value="entra-user-token"),
     )
     monkeypatch.setattr(
@@ -212,7 +212,7 @@ async def test_identity_run_uses_user_token_client(
     mock_client_for_token = MagicMock(return_value=user_pipeline_client)
     monkeypatch.setattr(executor, "_client_for_token", mock_client_for_token)
     monkeypatch.setattr(
-        "azure_devops.actions.trigger_pipeline_executor.resolve_user_token",
+        "azure_devops.actions.abstract_ado_executor._resolve_user_token",
         AsyncMock(return_value="entra-user-token"),
     )
     mock_ocean = _make_mock_ocean()
@@ -238,7 +238,7 @@ async def test_non_identity_run_uses_default_client(
     client.get_single_project.return_value = {"id": "proj-guid"}
     client.run_pipeline.return_value = {"id": 1, "_links": {}}
     monkeypatch.setattr(
-        "azure_devops.actions.trigger_pipeline_executor.resolve_user_token",
+        "azure_devops.actions.abstract_ado_executor._resolve_user_token",
         AsyncMock(return_value=None),
     )
     mock_client_for_token = MagicMock()

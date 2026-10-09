@@ -55,6 +55,12 @@ jobs:
             const org = payload.repository.owner.login;
             const user = pr.user.login;
 
+            // Bots aren't real external contributors and shouldn't open or update support tickets — skip.
+            if (pr.user.type === 'Bot') {
+              core.info(`PR author ${user} is a bot — skipping webhook.`);
+              return;
+            }
+
             // author_association misreports private org members as CONTRIBUTOR, so check
             // real org membership via a fine-grained PAT (org resource, Members: Read-only)
             const orgClient = getOctokit(process.env.ORG_MEMBERSHIP_TOKEN);
@@ -86,8 +92,17 @@ jobs:
             }
 
             if (eventName !== 'pull_request_target') {
-              const actor =
-                eventName === 'pull_request_review' ? payload.review.user.login : payload.comment.user.login;
+              const actorUser =
+                eventName === 'pull_request_review' ? payload.review.user : payload.comment.user;
+              const actor = actorUser.login;
+
+              // Bot comments shouldn't trigger a notification - skip.
+              // e.g. Amplify's preview-deploy bot commenting on the PR shouldn't touch the ticket.
+              if (actorUser.type === 'Bot') {
+                core.info(`${actor} is a bot — skipping webhook.`);
+                return;
+              }
+
               // when actor === user and we reach this point, their membership is already known (checked above as `user`)
               // and we know they are not an org member
               let actorIsMember = false;

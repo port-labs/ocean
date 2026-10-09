@@ -5,7 +5,7 @@ from loguru import logger
 from pydantic import Field
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
 from github.actions.abstract_github_action_input import AbstractGithubActionInput
 from github.actions.abstract_github_executor import AbstractGithubExecutor
@@ -73,6 +73,13 @@ class CreateIssueExecutor(AbstractGithubExecutor):
             issue_number=issue_number,
             html_url=issue["html_url"],
         )
+
+        if isinstance(run, WorkflowNodeRun):
+            run.output = {
+                "issueNumber": issue_number,
+                "issueId": str(issue.get("id", "")),
+                "issueUrl": issue["html_url"],
+            }
 
         await ocean.port_client.report_run_completed(
             run,

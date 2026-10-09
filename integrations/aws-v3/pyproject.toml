@@ -1,18 +1,18 @@
 [tool.poetry]
 name = "aws-v3"
-version = "2.27.0-beta"
+version = "3.0.10"
 description = "AWS"
 authors = ["Shariff Mohammed <mohammed.s@getport.io>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.52.0", extras = ["cli"]}
+port_ocean = {version = "^0.53.5", extras = ["cli"]}
 aiobotocore = "^2.25.1"
 boto3-stubs = {extras = ["sts"], version = "^1.39.3"}
 types-aiobotocore = {extras = ["sts"], version = "^2.25.0"}
-aiofiles = "^24.1.0"
+aiofiles = "^25.1.0"
 aioboto3 = "^15.5.0"
-aiohttp = "^3.13.4"
+aiohttp = "^3.14.3"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -26,7 +26,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-types-aiofiles = "^24.1.0.20250708"
+types-aiofiles = "^25.1.0.20260518"
 yamllint = "^1.37.1"
 
 [tool.towncrier]
