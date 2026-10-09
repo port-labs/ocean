@@ -5,11 +5,7 @@ from loguru import logger
 from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.core import PluginExporter
-from github.core.exporters.plugin_exporter.utils import (
-    build_plugin_raw_item,
-    empty_plugin,
-    find_plugin_roots,
-)
+from github.core.exporters.plugin_exporter.utils import find_plugin_roots
 from github.core.options import PluginRepositoryOptions
 from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.file_webhook_processor import (
@@ -84,13 +80,15 @@ class PluginWebhookProcessor(FileWebhookProcessor):
         )
         roots, truncated = await exporter.get_plugin_roots(options)
         if truncated:
-            logger.warning("Skipping plugin webhook: GitHub tree response was truncated")
+            logger.warning(
+                "Skipping plugin webhook: GitHub tree response was truncated"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         updated_raw_results: list[RAW_ITEM] = []
-        deleted_raw_results: list[RAW_ITEM] = []
+        removed_roots: list[str] = []
         for root in sorted(changed_roots):
             item = (
                 await exporter.build_plugin_item(options, root, roots[root])
@@ -99,19 +97,27 @@ class PluginWebhookProcessor(FileWebhookProcessor):
             )
             if item:
                 updated_raw_results.append(item)
-            elif truncated:
-                logger.warning(f"Skipping delete of plugin {root!r}: tree truncated")
             else:
-                deleted_raw_results.append(
-                    build_plugin_raw_item(
-                        plugin=empty_plugin(
-                            name=root.split("/")[-1] or repo_name, path=root
-                        ),
-                        repository=repository,
-                        branch=current_branch,
-                        organization=organization,
-                    )
-                )
+                removed_roots.append(root)
+
+        # Rebuild removed plugins from the previous commit so the delete carries
+        # the manifest fields (name, ...) their identifier was computed from.
+        deleted_raw_results: list[RAW_ITEM] = []
+        if removed_roots:
+            previous = PluginRepositoryOptions(
+                organization=organization, repository=repository, branch=before_sha
+            )
+            old_roots, old_truncated = await exporter.get_plugin_roots(previous)
+            if old_truncated:
+                logger.warning("Skipping plugin deletes: previous tree was truncated")
+            else:
+                for root in removed_roots:
+                    if root in old_roots and (
+                        item := await exporter.build_plugin_item(
+                            options, root, old_roots[root], ref=before_sha
+                        )
+                    ):
+                        deleted_raw_results.append(item)
 
         logger.info(
             f"Plugin webhook processed {len(updated_raw_results)} updates and "

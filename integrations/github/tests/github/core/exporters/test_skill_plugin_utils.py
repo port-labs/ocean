@@ -11,7 +11,6 @@ from github.core.exporters.skill_exporter.utils import (
 from github.core.exporters.plugin_exporter.utils import (
     PluginProvider,
     build_plugin_raw_item,
-    empty_plugin,
     find_plugin_roots,
     match_marker,
     normalize_plugin,
@@ -211,19 +210,20 @@ class TestPluginUtils:
             is None
         )
 
-    def test_build_plugin_raw_item_for_delete_keeps_path(self) -> None:
-        item = build_plugin_raw_item(
-            plugin=empty_plugin(
-                name="frontend-toolkit", path="plugins/frontend-toolkit"
-            ),
+    def test_build_plugin_raw_item(self) -> None:
+        plugin = normalize_plugin(
             repository=REPOSITORY,
-            branch="main",
-            organization="acme",
+            manifests={".claude-plugin/plugin.json": {"name": "frontend-toolkit"}},
+            providers=["claude"],
+            path="plugins/frontend-toolkit",
         )
-        assert item["plugin"]["name"] == item["plugin"]["displayName"]
+        assert plugin is not None
+        item = build_plugin_raw_item(
+            plugin=plugin, repository=REPOSITORY, branch="main", organization="acme"
+        )
         assert item["plugin"]["path"] == "plugins/frontend-toolkit"
-        assert item["plugin"]["supports"]["claude"] is False
-        assert item["plugin"]["claude"] == {}
+        assert item["plugin"]["supports"]["claude"] is True
+        assert item["plugin"]["cursor"] == {}
         assert item["__branch"] == "main"
         assert item["__organization"] == "acme"
 

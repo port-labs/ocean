@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -134,16 +134,35 @@ async def _handle(
     payload: EventPayload,
     changed: list[dict[str, str]],
     tree: list[str],
+    *,
+    old_tree: Optional[list[str]] = None,
+    truncated: frozenset[str] = frozenset(),
+    names: Optional[dict[str, str]] = None,
 ) -> tuple[WebhookEventRawResults, MagicMock]:
-    """Run handle_event for an explicit repo with a mocked diff and git tree."""
+    """Run handle_event for an explicit repo with a mocked diff and git trees.
+
+    `tree` is the tree after the push (branch "main"), `old_tree` the one before
+    it (ref "abc123", defaults to `tree`). `truncated` lists the refs GitHub
+    truncates. `names` overrides a manifest's `name` (default: its folder name).
+    """
+    trees = {"main": tree, "abc123": tree if old_tree is None else old_tree}
     file_exporter = MagicMock()
     file_exporter.fetch_commit_diff = AsyncMock(return_value={"files": changed})
     file_exporter.get_tree_recursive = AsyncMock(
-        return_value=([{"type": "blob", "path": path} for path in tree], False)
+        side_effect=lambda _org, _repo, ref: (
+            [{"type": "blob", "path": path} for path in trees[ref]],
+            ref in truncated,
+        )
     )
     file_exporter.get_resource = AsyncMock(
         side_effect=lambda options: {
-            "content": json.dumps({"name": options["file_path"].split("/")[1]})
+            "content": json.dumps(
+                {
+                    "name": (names or {}).get(
+                        options["file_path"], options["file_path"].split("/")[1]
+                    )
+                }
+            )
         }
     )
     config = _plugin_resource_config(
@@ -192,18 +211,77 @@ async def test_handle_event_updates_only_the_changed_plugin_root(
 async def test_handle_event_deletes_only_the_removed_plugin_root(
     plugin_webhook_processor: PluginWebhookProcessor, payload: EventPayload
 ) -> None:
-    result, _ = await _handle(
+    result, file_exporter = await _handle(
         plugin_webhook_processor,
         payload,
         [{"filename": FRONTEND, "status": "removed"}],
         [QUALITY],
+        old_tree=[FRONTEND, QUALITY],
+        # The manifest name differs from the folder name: a mapping identifier
+        # built on `.plugin.name` must resolve to the same entity as before.
+        names={FRONTEND: "frontend"},
     )
 
     assert result.updated_raw_results == []
     [item] = result.deleted_raw_results
     assert item["plugin"]["path"] == "plugins/frontend-toolkit"
-    assert item["plugin"]["name"] == "frontend-toolkit"
-    assert item["plugin"]["supports"]["claude"] is False
+    assert item["plugin"]["name"] == "frontend"
+    assert item["plugin"]["supports"]["claude"] is True
+    assert item["__branch"] == "main"
+    # The removed manifest is read from the previous commit.
+    [read] = [c.args[0] for c in file_exporter.get_resource.await_args_list]
+    assert (read["file_path"], read["branch"]) == (FRONTEND, "abc123")
+
+
+@pytest.mark.asyncio
+async def test_handle_event_skips_delete_of_a_root_that_never_existed(
+    plugin_webhook_processor: PluginWebhookProcessor, payload: EventPayload
+) -> None:
+    result, _ = await _handle(
+        plugin_webhook_processor,
+        payload,
+        [{"filename": ".claude-plugin/marketplace.json", "status": "removed"}],
+        [QUALITY],
+        old_tree=[".claude-plugin/marketplace.json", QUALITY],
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_handle_event_skips_everything_when_the_tree_is_truncated(
+    plugin_webhook_processor: PluginWebhookProcessor, payload: EventPayload
+) -> None:
+    """A partial tree can neither confirm a removal nor a provider's absence."""
+    result, file_exporter = await _handle(
+        plugin_webhook_processor,
+        payload,
+        [{"filename": FRONTEND, "status": "modified"}],
+        [QUALITY],
+        truncated=frozenset({"main"}),
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+    file_exporter.get_resource.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_event_skips_deletes_when_the_previous_tree_is_truncated(
+    plugin_webhook_processor: PluginWebhookProcessor, payload: EventPayload
+) -> None:
+    result, _ = await _handle(
+        plugin_webhook_processor,
+        payload,
+        [{"filename": FRONTEND, "status": "removed"}],
+        [QUALITY],
+        old_tree=[FRONTEND, QUALITY],
+        truncated=frozenset({"abc123"}),
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
 
 
 @pytest.mark.asyncio

@@ -14,6 +14,7 @@ from github.core.options import (
     ListPluginOptions,
     PluginRepositoryOptions,
 )
+from port_ocean.exceptions.core import OceanAbortException
 
 TEST_REPOSITORY = {"name": "repo1", "full_name": "test-org/repo1"}
 
@@ -393,9 +394,68 @@ class TestPluginExporter:
         assert len(items) == 1
         assert items[0]["plugin"]["name"] == "repo1"
 
-    async def test_is_tree_truncated(self, plugin_exporter: PluginExporter) -> None:
-        plugin_exporter._file_exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
-            return_value=([], True)
+    async def test_agents_marketplace_marks_support_on_an_existing_plugin(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = PluginExporter(rest_client, ["claude", "agents"])
+        marketplace = {"name": "acme-market", "plugins": [{"name": "listed"}]}
+
+        # Next to a real manifest it annotates the plugin ...
+        plugins = await _plugins(
+            exporter,
+            {
+                ".claude-plugin/plugin.json": {"name": "p"},
+                ".agents/plugins/marketplace.json": marketplace,
+            },
+        )
+        assert plugins[""]["supports"]["agents"] is True
+        assert plugins[""]["agents"] == {"name": "p", "marketplaceName": "acme-market"}
+
+        # ... but never creates one on its own.
+        assert (
+            await _plugins(exporter, {".agents/plugins/marketplace.json": marketplace})
+            == {}
         )
 
-        assert await plugin_exporter.is_tree_truncated("test-org", "repo1", "main")
+    async def test_truncated_tree_emits_nothing(
+        self, plugin_exporter: PluginExporter
+    ) -> None:
+        """A partial tree can drop a provider's manifest, so write nothing."""
+        plugin_exporter._file_exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
+            return_value=(_tree(".claude-plugin/plugin.json"), True)
+        )
+        plugin_exporter._file_exporter.get_resource = AsyncMock()  # type: ignore[method-assign]
+
+        assert await plugin_exporter.get_resource(_plugin_options()) == []
+        plugin_exporter._file_exporter.get_resource.assert_not_called()
+
+    async def test_truncated_repository_aborts_the_resync_after_the_others(
+        self, plugin_exporter: PluginExporter
+    ) -> None:
+        """Aborting makes Ocean skip reconciliation, so no entity gets deleted."""
+
+        async def tree(
+            _org: str, repo: str, _branch: str
+        ) -> tuple[List[Dict[str, Any]], bool]:
+            return _tree(".opencode/plugins/hook.ts"), repo == "huge"
+
+        plugin_exporter._file_exporter.get_tree_recursive = AsyncMock(side_effect=tree)  # type: ignore[method-assign]
+        items: List[Dict[str, Any]] = []
+
+        with pytest.raises(OceanAbortException, match="huge"):
+            async for batch in plugin_exporter.get_paginated_resources(
+                ListPluginOptions(
+                    organization="test-org",
+                    repositories=[
+                        PluginRepositoryOptions(
+                            organization="test-org",
+                            repository={"name": name},
+                            branch="main",
+                        )
+                        for name in ("huge", "small")
+                    ],
+                )
+            ):
+                items.extend(batch)
+
+        assert [item["__repository"]["name"] for item in items] == ["small"]

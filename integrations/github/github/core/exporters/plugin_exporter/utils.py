@@ -148,21 +148,6 @@ def find_plugin_roots(
     return roots
 
 
-def empty_plugin(
-    *, name: str, path: str = "", display_name: Optional[str] = None
-) -> Plugin:
-    """Shape of a plugin with no manifests left, used for webhook-driven deletes."""
-    return Plugin.model_validate(
-        {
-            "name": name,
-            "display_name": display_name or name,
-            "path": path,
-            "supports": {provider: False for provider in DEFAULT_PLUGIN_PROVIDERS},
-            **{provider: {} for provider in DEFAULT_PLUGIN_PROVIDERS},
-        }
-    )
-
-
 def build_plugin_raw_item(
     *,
     plugin: Plugin,
@@ -245,6 +230,11 @@ def _resolve_providers(
         )
         if provider_manifests:
             resolved[provider] = provider_manifests
+
+    # A marketplace file never creates a plugin on its own: marketplace-only
+    # providers (agents) only annotate a root that another provider makes a plugin.
+    if not any(r.primary or r.is_directory_only for r in resolved.values()):
+        return {}
     return resolved
 
 
@@ -266,7 +256,6 @@ def _resolve_provider(
     primary = _as_dict(manifests.get(primary_path)) if primary_path else {}
     marketplace = _as_dict(manifests.get(marketplace_path)) if marketplace_path else {}
 
-    # A marketplace file never creates a provider result on its own.
     if primary:
         return _ResolvedProvider(
             primary=primary,
@@ -278,6 +267,12 @@ def _resolve_provider(
     if has_directory_marker:
         return _ResolvedProvider(
             primary={}, marketplace={}, document={}, is_directory_only=True
+        )
+
+    # A provider whose only manifest is a marketplace (agents) has no primary file.
+    if marketplace and primary_path is None:
+        return _ResolvedProvider(
+            primary={}, marketplace=marketplace, document={}, is_directory_only=False
         )
 
     return None
