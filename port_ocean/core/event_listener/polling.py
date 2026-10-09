@@ -51,13 +51,17 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._current_resync_task: Task[Any] | None = None
+        self._startup_request_baseline: str | None = None
 
-    def should_resync(self) -> bool:
+    def should_resync_on_start(self) -> bool:
+        if self._startup_request_baseline is not None:
+            return False
+
         _last_updated_at = (
             ocean.app.resync_state_updater.last_integration_state_updated_at
         )
 
-        if _last_updated_at is None:
+        if not _last_updated_at:
             return self.event_listener_config.resync_on_start
 
         return False
@@ -70,6 +74,10 @@ class PollingEventListener(BaseEventListener):
         than the last processed resync-request timestamp. If no request timestamp was
         stored yet, the integration-state timestamp is used as the first baseline so
         old resync requests are not replayed after a regular polling resync.
+
+        A startup resync freezes that baseline before lifecycle updates run.
+        `update_before_resync` / `update_after_resync` advance the integration-state
+        watermark and must not hide a request that arrived while startup was running.
 
         `last_resync_request_updated_at` is treated as a watermark for resync-request
         events and is not reset by integration-change based resyncs. This intentionally
@@ -87,10 +95,14 @@ class PollingEventListener(BaseEventListener):
         except ValueError:
             return False
 
-        baseline_updated_at = (
-            last_processed_resync_request_updated_at
-            or ocean.app.resync_state_updater.last_integration_state_updated_at
-        )
+        if last_processed_resync_request_updated_at:
+            baseline_updated_at = last_processed_resync_request_updated_at
+        elif self._startup_request_baseline is not None:
+            baseline_updated_at = self._startup_request_baseline
+        else:
+            baseline_updated_at = (
+                ocean.app.resync_state_updater.last_integration_state_updated_at
+            )
 
         if not baseline_updated_at:
             return True
@@ -111,7 +123,7 @@ class PollingEventListener(BaseEventListener):
         Returns:
             A tuple of (should_resync, resync_request_updated_at).
         """
-        if self.should_resync():
+        if self.should_resync_on_start():
             return True, ""
 
         try:
@@ -180,13 +192,19 @@ class PollingEventListener(BaseEventListener):
         else:
             logger.info("First polling iteration, resyncing")
 
-        ocean.app.resync_state_updater.last_integration_state_updated_at = (
-            resync_request_updated_at
-        )
         if resync_request_updated_at:
+            ocean.app.resync_state_updater.last_integration_state_updated_at = (
+                resync_request_updated_at
+            )
             ocean.app.resync_state_updater.last_resync_request_updated_at = (
                 resync_request_updated_at
             )
+        else:
+            if self._startup_request_baseline is None:
+                current_watermark = (
+                    ocean.app.resync_state_updater.last_integration_state_updated_at
+                )
+                self._startup_request_baseline = current_watermark or ""
 
         running_task = asyncio.create_task(self._run_resync_task())
         signal_handler.register(running_task.cancel)
