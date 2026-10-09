@@ -9,11 +9,10 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.utils import (
-    Plugin,
+    PLUGIN_DIRECTORY_PREFIXES,
     PluginProvider,
-    all_manifest_paths,
     build_plugin_raw_item,
-    detect_directory_providers,
+    find_plugin_roots,
     normalize_plugin,
 )
 from github.core.options import (
@@ -33,28 +32,84 @@ MAX_CONCURRENT_PLUGIN_REPOS = 10
 
 
 class PluginExporter(AbstractGithubExporter[GithubRestClient]):
-    """Detects agent plugin manifests and emits one normalized plugin per repo."""
+    """Detects agent plugin manifests and emits one normalized plugin per plugin root."""
 
     def __init__(
-        self, client: GithubRestClient, providers: List[PluginProvider]
+        self,
+        client: GithubRestClient,
+        providers: List[PluginProvider],
+        max_depth: Optional[int] = None,
     ) -> None:
         super().__init__(client)
         self.providers = providers
-        self._manifest_paths = set(all_manifest_paths(providers))
+        self.max_depth = max_depth
         self._file_exporter = RestFileExporter(client)
 
-    async def get_resource[ExporterOptionsT: PluginRepositoryOptions](
+    async def get_resource[ExporterOptionsT: PluginRepositoryOptions](  # type: ignore[override]
         self, options: ExporterOptionsT
+    ) -> list[RAW_ITEM]:
+        """Build the plugin raw items for every plugin root in a repository."""
+        roots, _ = await self.get_plugin_roots(options)
+        items = [
+            item
+            for root, paths in sorted(roots.items())
+            if (item := await self.build_plugin_item(options, root, paths))
+        ]
+        logger.info(
+            f"Found {len(items)} plugin(s) in "
+            f"{options['organization']}/{options['repository']['name']}"
+        )
+        return items
+
+    async def get_plugin_roots(
+        self, options: PluginRepositoryOptions
+    ) -> tuple[dict[str, dict[PluginProvider, set[str]]], bool]:
+        """Plugin roots of a repository (from one tree fetch) and tree truncation."""
+        organization, repo_name = options["organization"], options["repository"]["name"]
+        tree, truncated = await self._file_exporter.get_tree_recursive(
+            organization, repo_name, options["branch"]
+        )
+        if truncated:
+            logger.warning(
+                f"Git tree of {organization}/{repo_name} was truncated; "
+                "plugin detection may be incomplete"
+            )
+        blobs = {
+            entry["path"]
+            for entry in tree or []
+            if entry.get("type") == "blob" and isinstance(entry.get("path"), str)
+        }
+        return find_plugin_roots(blobs, self.providers, self.max_depth), truncated
+
+    async def build_plugin_item(
+        self,
+        options: PluginRepositoryOptions,
+        root: str,
+        paths: dict[PluginProvider, set[str]],
     ) -> Optional[RAW_ITEM]:
-        """Build the plugin raw item for a single repository, if it is one."""
+        """Raw item for one plugin root, or None when it does not describe a plugin."""
         organization = options["organization"]
         repository = options["repository"]
         branch = options["branch"]
-
-        plugin = await self._build_plugin_for_repo(organization, repository, branch)
+        directory_supports = {p for p in paths if p in PLUGIN_DIRECTORY_PREFIXES}
+        manifest_paths = sorted(
+            path
+            for provider, provider_paths in paths.items()
+            if provider not in directory_supports
+            for path in provider_paths
+        )
+        manifests = await self._fetch_manifests(
+            organization, repository["name"], branch, root, manifest_paths
+        )
+        plugin = normalize_plugin(
+            repository=repository,
+            manifests=manifests,
+            providers=self.providers,
+            path=root,
+            directory_supports=directory_supports,
+        )
         if not plugin:
             return None
-
         return build_plugin_raw_item(
             plugin=plugin,
             repository=repository,
@@ -89,7 +144,7 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: PluginRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         try:
-            plugin_item = await self.get_resource(options)
+            plugin_items = await self.get_resource(options)
         except Exception as exc:
             logger.warning(
                 f"Failed to process plugin manifests for "
@@ -97,45 +152,18 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
             )
             return
 
-        if plugin_item:
-            yield [plugin_item]
-
-    async def _build_plugin_for_repo(
-        self, organization: str, repository: dict[str, Any], branch: str
-    ) -> Optional[Plugin]:
-        repo_name = repository["name"]
-        tree, _ = await self._file_exporter.get_tree_recursive(
-            organization, repo_name, branch
-        )
-        if not tree:
-            return None
-
-        tree_paths = {
-            entry["path"]
-            for entry in tree
-            if entry.get("path") and entry.get("type") in ("blob", "tree")
-        }
-        directory_supports = detect_directory_providers(tree_paths, self.providers)
-        present = sorted(self._manifest_paths & tree_paths)
-        if not present and not directory_supports:
-            return None
-
-        manifests = await self._fetch_manifests(
-            organization, repo_name, branch, present
-        )
-        if not manifests and not directory_supports:
-            return None
-
-        return normalize_plugin(
-            repository=repository,
-            manifests=manifests,
-            providers=self.providers,
-            directory_supports=directory_supports,
-        )
+        if plugin_items:
+            yield plugin_items
 
     async def _fetch_manifests(
-        self, organization: str, repo_name: str, branch: str, paths: List[str]
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        root: str,
+        paths: List[str],
     ) -> dict[str, Any]:
+        """Parsed manifests keyed by marker path relative to the plugin root."""
         manifests: dict[str, Any] = {}
         for path in paths:
             file_data = await self._file_exporter.get_resource(
@@ -152,7 +180,7 @@ class PluginExporter(AbstractGithubExporter[GithubRestClient]):
             if not isinstance(content, str):
                 continue
             try:
-                manifests[path] = json.loads(content)
+                manifests[path.removeprefix(root).lstrip("/")] = json.loads(content)
             except json.JSONDecodeError as exc:
                 logger.warning(f"Invalid JSON in plugin manifest {path}: {exc}")
         return manifests

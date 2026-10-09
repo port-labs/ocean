@@ -4,6 +4,7 @@
     "displayName": "Superpowers",
     "description": "Core skills library for Claude Code and Cursor",
     "version": "6.1.1",
+    "path": "",
     "supports": {
       "claude": true,
       "cursor": true,

@@ -4,6 +4,7 @@
     "displayName": "Port Widgets",
     "description": "Custom dashboard widgets for Port",
     "version": "1.2.0",
+    "path": "",
     "supports": {
       "claude": false,
       "cursor": true,

@@ -1295,7 +1295,9 @@ async def resync_plugins(
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
-    plugin_exporter = PluginExporter(rest_client, selector.providers)
+    plugin_exporter = PluginExporter(
+        rest_client, selector.providers, max_depth=selector.max_depth
+    )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_selector = CompositeRepositorySelector(app_config.repository_type)
 

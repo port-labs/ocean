@@ -1,3 +1,7 @@
+from typing import Any, Optional
+
+import pytest
+
 from github.core.exporters.skill_exporter.utils import (
     _build_skill,
     _infer_skill_root,
@@ -5,8 +9,11 @@ from github.core.exporters.skill_exporter.utils import (
     build_skill_raw_item,
 )
 from github.core.exporters.plugin_exporter.utils import (
+    PluginProvider,
     build_plugin_raw_item,
     empty_plugin,
+    find_plugin_roots,
+    match_marker,
     normalize_plugin,
 )
 
@@ -137,97 +144,174 @@ description: A minimal example
 
 class TestPluginUtils:
     def test_normalize_plugin_superpowers_shape(self) -> None:
-        repository = {"name": "superpowers", "full_name": "obra/superpowers"}
-        manifests = {
-            ".claude-plugin/plugin.json": {
-                "name": "superpowers",
-                "description": "Core skills",
-                "version": "6.1.1",
-            },
-            ".claude-plugin/marketplace.json": {"name": "superpowers-dev"},
-            ".cursor-plugin/plugin.json": {
-                "name": "superpowers",
-                "displayName": "Superpowers",
-                "version": "6.1.1",
-            },
-        }
         plugin = normalize_plugin(
-            repository=repository,
-            manifests=manifests,
+            repository={"name": "superpowers"},
+            manifests={
+                ".claude-plugin/plugin.json": {
+                    "name": "superpowers",
+                    "description": "Core skills",
+                    "version": "6.1.1",
+                },
+                ".claude-plugin/marketplace.json": {"name": "superpowers-dev"},
+                ".cursor-plugin/plugin.json": {
+                    "name": "superpowers",
+                    "displayName": "Superpowers",
+                },
+            },
             providers=["claude", "cursor", "codex"],
+            path="plugins/superpowers",
         )
         assert plugin is not None
         dumped = plugin.model_dump(by_alias=True)
-        assert dumped["name"] == "superpowers"
         assert dumped["displayName"] == "Superpowers"
-        assert dumped["supports"]["claude"] is True
-        assert dumped["supports"]["cursor"] is True
+        assert dumped["path"] == "plugins/superpowers"
+        assert dumped["supports"]["claude"] is dumped["supports"]["cursor"] is True
         assert dumped["supports"]["codex"] is False
         assert dumped["claude"]["marketplaceName"] == "superpowers-dev"
         assert dumped["codex"] == {}
 
     def test_normalize_plugin_directory_only(self) -> None:
-        repository = {"name": "opencode-plugin", "full_name": "acme/opencode-plugin"}
         plugin = normalize_plugin(
-            repository=repository,
+            repository={"name": "opencode-plugin"},
             manifests={},
             providers=["opencode", "pi"],
+            path="plugins/hooks",
             directory_supports={"opencode"},
         )
         assert plugin is not None
         assert plugin.name == "opencode-plugin"
+        assert plugin.path == "plugins/hooks"
         assert plugin.supports["opencode"] is True
         assert plugin.supports["pi"] is False
         assert plugin.model_dump()["opencode"] == {"detected": True}
 
-    def test_normalize_plugin_marketplace_only_uses_first_entry(self) -> None:
-        repository = {"name": "agent-marketplace"}
-        plugin = normalize_plugin(
-            repository=repository,
-            manifests={
-                ".agents/plugins/marketplace.json": {
-                    "name": "acme-marketplace",
-                    "interface": {"displayName": "Acme Agents"},
-                    "plugins": [{"name": "acme-agents", "version": "0.4.0"}],
-                }
-            },
-            providers=["agents"],
-        )
-        assert plugin is not None
-        dumped = plugin.model_dump(by_alias=True)
-        assert dumped["name"] == "acme-agents"
-        assert dumped["displayName"] == "Acme Agents"
-        assert dumped["version"] == "0.4.0"
-        assert dumped["agents"]["marketplaceName"] == "acme-marketplace"
-
-    def test_normalize_plugin_returns_none_without_evidence(self) -> None:
+    @pytest.mark.parametrize(
+        "manifests,providers",
+        [
+            # A marketplace file never creates a plugin, even with listed entries.
+            (
+                {".claude-plugin/marketplace.json": {"plugins": [{"name": "first"}]}},
+                ["claude"],
+            ),
+            (
+                {".agents/plugins/marketplace.json": {"plugins": [{"name": "x"}]}},
+                ["agents"],
+            ),
+            ({}, ["claude", "cursor"]),
+            ({".cursor-plugin/plugin.json": {"name": "cursor"}}, ["claude"]),
+        ],
+    )
+    def test_normalize_plugin_returns_none_without_primary_manifest(
+        self, manifests: dict[str, Any], providers: list[PluginProvider]
+    ) -> None:
         assert (
             normalize_plugin(
-                repository={"name": "plain-repo"},
-                manifests={},
-                providers=["claude", "cursor"],
+                repository={"name": "repo"}, manifests=manifests, providers=providers
             )
             is None
         )
 
-    def test_normalize_plugin_ignores_unselected_providers(self) -> None:
-        plugin = normalize_plugin(
-            repository={"name": "repo"},
-            manifests={".cursor-plugin/plugin.json": {"name": "only-cursor"}},
-            providers=["claude"],
-        )
-        assert plugin is None
-
-    def test_build_plugin_raw_item(self) -> None:
+    def test_build_plugin_raw_item_for_delete_keeps_path(self) -> None:
         item = build_plugin_raw_item(
-            plugin=empty_plugin(name="superpowers"),
-            repository={"name": "superpowers"},
+            plugin=empty_plugin(
+                name="frontend-toolkit", path="plugins/frontend-toolkit"
+            ),
+            repository=REPOSITORY,
             branch="main",
-            organization="obra",
+            organization="acme",
         )
-        assert item["plugin"]["name"] == "superpowers"
-        assert item["plugin"]["displayName"] == "superpowers"
+        assert item["plugin"]["name"] == item["plugin"]["displayName"]
+        assert item["plugin"]["path"] == "plugins/frontend-toolkit"
         assert item["plugin"]["supports"]["claude"] is False
         assert item["plugin"]["claude"] == {}
         assert item["__branch"] == "main"
-        assert item["__organization"] == "obra"
+        assert item["__organization"] == "acme"
+
+
+ALL_PROVIDERS: list[PluginProvider] = [
+    "claude",
+    "cursor",
+    "codex",
+    "agents",
+    "kimi",
+    "opencode",
+    "pi",
+    "antigravity",
+]
+
+
+class TestMatchMarker:
+    @pytest.mark.parametrize(
+        "path,expected",
+        [
+            (".claude-plugin/plugin.json", ("claude", "")),
+            (".claude-plugin/marketplace.json", ("claude", "")),
+            ("plugins/a/.cursor-plugin/plugin.json", ("cursor", "plugins/a")),
+            ("a/b/.agents/plugins/marketplace.json", ("agents", "a/b")),
+            # Bare filename marker: any depth.
+            ("gemini-extension.json", ("antigravity", "")),
+            (
+                "plugins/gravity/gemini-extension.json",
+                ("antigravity", "plugins/gravity"),
+            ),
+            # Directory markers: root is the parent of the marker directory.
+            (".opencode/plugins/x.ts", ("opencode", "")),
+            ("plugins/hooks/.opencode/plugins/sub/x.ts", ("opencode", "plugins/hooks")),
+            (".pi/extensions/x.ts", ("pi", "")),
+            # Not markers.
+            ("not-gemini-extension.json", None),
+            ("x.claude-plugin/plugin.json", None),
+            ("plugins/a/skills/x/SKILL.md", None),
+            (".opencode/plugins", None),
+            (".opencode/plugins/", None),
+            ("plugins/hooks/.pi/extensions", None),
+            # Ignored segments.
+            ("node_modules/foo/.claude-plugin/plugin.json", None),
+            ("vendor/bar/.cursor-plugin/plugin.json", None),
+            (".git/hooks/.codex-plugin/plugin.json", None),
+            ("dist/pkg/.kimi-plugin/plugin.json", None),
+            (
+                "plugins/dist-kit/.claude-plugin/plugin.json",
+                ("claude", "plugins/dist-kit"),
+            ),
+        ],
+    )
+    def test_match_marker(self, path: str, expected: Optional[tuple[str, str]]) -> None:
+        assert match_marker(path, ALL_PROVIDERS) == expected
+
+    def test_only_selected_providers_match(self) -> None:
+        assert match_marker(".cursor-plugin/plugin.json", ["claude"]) is None
+
+
+class TestFindPluginRoots:
+    def test_groups_paths_by_root_and_provider(self) -> None:
+        paths = [
+            ".claude-plugin/plugin.json",
+            ".claude-plugin/marketplace.json",
+            "plugins/a/.claude-plugin/plugin.json",
+            "plugins/a/.cursor-plugin/plugin.json",
+            "plugins/hooks/.opencode/plugins/hook.ts",
+        ]
+        roots = find_plugin_roots(paths, ALL_PROVIDERS)
+
+        assert set(roots) == {"", "plugins/a", "plugins/hooks"}
+        assert roots[""] == {
+            "claude": {".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"}
+        }
+        assert set(roots["plugins/a"]) == {"claude", "cursor"}
+        assert roots["plugins/hooks"] == {
+            "opencode": {"plugins/hooks/.opencode/plugins/hook.ts"}
+        }
+
+    def test_max_depth_counts_root_segments(self) -> None:
+        paths = [
+            ".claude-plugin/plugin.json",
+            "toolkit/.claude-plugin/plugin.json",
+            "plugins/a/.claude-plugin/plugin.json",
+        ]
+        assert set(find_plugin_roots(paths, ["claude"], max_depth=1)) == {"", "toolkit"}
+        assert set(find_plugin_roots(paths, ["claude"])) == {
+            "",
+            "toolkit",
+            "plugins/a",
+        }
