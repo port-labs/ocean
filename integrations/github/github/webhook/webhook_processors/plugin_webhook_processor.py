@@ -83,6 +83,11 @@ class PluginWebhookProcessor(FileWebhookProcessor):
             organization=organization, repository=repository, branch=current_branch
         )
         roots, truncated = await exporter.get_plugin_roots(options)
+        if truncated:
+            logger.warning("Skipping plugin webhook: GitHub tree response was truncated")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         updated_raw_results: list[RAW_ITEM] = []
         deleted_raw_results: list[RAW_ITEM] = []
