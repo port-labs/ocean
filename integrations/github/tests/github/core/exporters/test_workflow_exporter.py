@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator
 from datetime import datetime, timedelta
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.workflows_exporter import (
     RestWorkflowExporter,
@@ -102,20 +102,24 @@ async def test_has_workflow_changes_since_with_commits(
 
     commits_response = [{"sha": "abc123", "commit": {"message": "workflow change"}}]
 
-    async def mock_paginated_request(
-        *args: Any, **kwargs: Any
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield commits_response
-
     with patch.object(
-        rest_client, "send_paginated_request", side_effect=mock_paginated_request
-    ):
+        rest_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = commits_response
         async with event_context("test_event"):
             has_changes = await exporter.has_workflow_changes_since(
                 "test-org", "test-repo", cursor
             )
 
             assert has_changes is True
+            mock_request.assert_awaited_once_with(
+                f"{rest_client.base_url}/repos/test-org/test-repo/commits",
+                {
+                    "path": ".github/workflows",
+                    "since": cursor.isoformat(),
+                    "per_page": 1,
+                },
+            )
 
 
 @pytest.mark.asyncio
@@ -141,14 +145,10 @@ async def test_has_workflow_changes_since_no_commits(
     exporter = RestWorkflowExporter(rest_client)
     cursor = datetime.utcnow() - timedelta(days=1)
 
-    async def mock_paginated_request(
-        *args: Any, **kwargs: Any
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield []  # No commits
-
     with patch.object(
-        rest_client, "send_paginated_request", side_effect=mock_paginated_request
-    ):
+        rest_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = []
         async with event_context("test_event"):
             has_changes = await exporter.has_workflow_changes_since(
                 "test-org", "test-repo", cursor
@@ -165,14 +165,11 @@ async def test_has_workflow_changes_since_api_error(
     exporter = RestWorkflowExporter(rest_client)
     cursor = datetime.utcnow() - timedelta(days=1)
 
-    async def mock_paginated_request(
-        *args: Any, **kwargs: Any
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        raise Exception("API error")
-        yield  # Never reached, but needed for async generator
-
     with patch.object(
-        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        rest_client,
+        "send_api_request",
+        new_callable=AsyncMock,
+        side_effect=Exception("API error"),
     ):
         async with event_context("test_event"):
             with pytest.raises(Exception, match="API error"):
@@ -189,24 +186,11 @@ async def test_multi_repo_incremental_filtering(
     exporter = RestWorkflowExporter(rest_client)
     cursor = datetime.utcnow() - timedelta(days=1)
 
-    # Simulate checking commits for 3 repos
-    call_count = 0
-
-    async def mock_paginated_request(
-        *args: Any, **kwargs: Any
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        nonlocal call_count
-        call_count += 1
-
-        if call_count == 1:
-            # repo-a: has changes
-            yield [{"sha": "abc123"}]
-        elif call_count == 2:
-            # repo-b: no changes
-            yield []
-        elif call_count == 3:
-            # repo-c: has changes
-            yield [{"sha": "def456"}]
+    responses = [
+        [{"sha": "abc123"}],  # repo-a: has changes
+        [],  # repo-b: no changes
+        [{"sha": "def456"}],  # repo-c: has changes
+    ]
 
     repos_to_check = [
         {"name": "repo-a"},
@@ -217,8 +201,9 @@ async def test_multi_repo_incremental_filtering(
     repos_with_changes = []
 
     with patch.object(
-        rest_client, "send_paginated_request", side_effect=mock_paginated_request
-    ):
+        rest_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = responses
         async with event_context("test_event"):
             for repo in repos_to_check:
                 has_changes = await exporter.has_workflow_changes_since(
@@ -227,7 +212,6 @@ async def test_multi_repo_incremental_filtering(
                 if has_changes:
                     repos_with_changes.append(repo["name"])
 
-    # Verify: only repos with changes are included
     assert repos_with_changes == ["repo-a", "repo-c"]
     assert "repo-b" not in repos_with_changes
-    assert call_count == 3  # Called once per repo
+    assert mock_request.await_count == 3

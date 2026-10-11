@@ -23,15 +23,8 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
         params = {"path": ".github/workflows", "since": since_date, "per_page": 1}
 
-        async for commits_page in self.client.send_paginated_request(url, params):
-            commits = (
-                commits_page
-                if isinstance(commits_page, list)
-                else commits_page.get("items", [])
-            )
-            return bool(commits)
-
-        return False
+        commits = await self.client.send_api_request(url, params)
+        return bool(commits)
 
     async def get_resource[ExporterOptionsT: SingleWorkflowOptions](
         self, options: ExporterOptionsT
