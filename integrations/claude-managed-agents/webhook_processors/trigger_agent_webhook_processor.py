@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from anthropic.types.beta import (
     BetaWebhookSessionIdledEventData,
     BetaWebhookSessionStatusIdledEventData,
+    BetaWebhookSessionStatusTerminatedEventData,
     UnwrapWebhookEvent,
 )
 from anthropic.types.beta.sessions.beta_managed_agents_agent_message_event import (
@@ -40,13 +41,31 @@ from port_ocean.core.models import (
     WorkflowNodeRunLog,
 )
 
-from actions.utils import build_external_id
+from actions.types import TriggerAgentSessionOutput
+from actions.utils import (
+    build_external_id,
+    build_session_link,
+)
 from clients.client_factory import create_anthropic_client
 from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
 LogLevel = Literal["INFO", "WARN", "ERROR", "DEBUG"]
+
+# SDK models for the terminal session webhook `data` payloads this processor handles
+# (matches `_TERMINAL_SESSION_WEBHOOK_TYPES` / `should_process_event`).
+TerminalSessionWebhookData: TypeAlias = (
+    BetaWebhookSessionIdledEventData
+    | BetaWebhookSessionStatusIdledEventData
+    | BetaWebhookSessionStatusTerminatedEventData
+)
+
+_TERMINAL_SESSION_WEBHOOK_DATA = (
+    BetaWebhookSessionIdledEventData,
+    BetaWebhookSessionStatusIdledEventData,
+    BetaWebhookSessionStatusTerminatedEventData,
+)
 
 SESSION_SUCCESS_WEBHOOK_DATA = (
     BetaWebhookSessionIdledEventData,
@@ -134,6 +153,14 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         webhook_event = UnwrapWebhookEvent.model_validate(payload)
         webhook_time = webhook_event.created_at
         data = webhook_event.data
+        if not isinstance(data, _TERMINAL_SESSION_WEBHOOK_DATA):
+            logger.warning(
+                f"Ignoring unexpected webhook data type {type(data).__name__} "
+                f"(event type {getattr(data, 'type', None)!r})"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
         session_id = data.id
 
         anchor = await self._find_anchor_user_message(session_id, webhook_time)
@@ -186,7 +213,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
         success = webhook_succeeded and not interaction_failed
 
-        extra_output: dict[str, str] = {}
+        extra_output: dict[str, Any] = {}
         if success:
             response = self._extract_last_agent_response(
                 events,
@@ -197,6 +224,12 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 extra_output["response"] = response
         elif not success and last_error is not None:
             extra_output["error"] = last_error
+
+        extra_output.update(
+            (
+                await self._build_standard_completion_output(session_id, data)
+            ).model_dump()
+        )
 
         logger.info(
             f"Reporting run {run.id} as {'success' if success else 'failure'} "
@@ -217,6 +250,26 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+
+    async def _build_standard_completion_output(
+        self, session_id: str, webhook_data: TerminalSessionWebhookData
+    ) -> TriggerAgentSessionOutput:
+        """Session URL plus cumulative usage from a best-effort session retrieve."""
+        client = create_anthropic_client()
+        session_url = build_session_link(
+            client.get_console_host(), webhook_data.workspace_id, session_id
+        )
+
+        try:
+            session = await client.get_session(session_id)
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch session {session_id} for completion usage "
+                f"(returning url only): {error}"
+            )
+            return TriggerAgentSessionOutput(url=session_url)
+
+        return TriggerAgentSessionOutput.from_session(url=session_url, session=session)
 
     async def _find_anchor_user_message(
         self, session_id: str, webhook_time: datetime

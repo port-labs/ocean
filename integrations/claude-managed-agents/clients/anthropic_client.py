@@ -9,6 +9,7 @@ from typing import Any, Literal, Protocol
 import httpx
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import BetaEnvironment, UnwrapWebhookEvent
+from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
 )
@@ -243,9 +244,8 @@ class AnthropicClient:
         if batch:
             yield batch
 
-    async def get_session(self, session_id: str) -> dict[str, Any]:
-        session = await self._client.beta.sessions.retrieve(session_id)
-        return session.to_dict(mode="json")
+    async def get_session(self, session_id: str) -> BetaManagedAgentsSession:
+        return await self._client.beta.sessions.retrieve(session_id)
 
     async def get_session_events(
         self,
@@ -366,7 +366,7 @@ class AnthropicClient:
         agent_id: str,
         environment_id: str,
         extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> BetaManagedAgentsSession:
         payload: dict[str, Any] = {
             k: v for k, v in (extra or {}).items() if v is not None
         }
@@ -376,8 +376,7 @@ class AnthropicClient:
         logger.info(
             f"Creating Claude session for agent '{agent_id}' in environment '{environment_id}'"
         )
-        session = await self._client.beta.sessions.create(**payload)
-        return session.to_dict(mode="json")
+        return await self._client.beta.sessions.create(**payload)
 
     async def send_user_message(
         self, session_id: str, prompt: str

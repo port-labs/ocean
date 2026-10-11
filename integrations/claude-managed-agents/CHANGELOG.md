@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.0 (2026-10-11)
+
+
+### Features
+
+- Added standard `trigger_agent` completion output fields (`url`, `input_tokens`, `output_tokens`, `cost_usd`) from the Claude session retrieve, using Anthropic list-cost cents converted to USD.
+
+
 ## 0.7.0 (2026-10-11)
 
 
