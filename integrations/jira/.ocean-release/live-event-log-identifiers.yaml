@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Supply Jira-specific compact live-event log identifiers via JiraAbstractWebhookProcessor when dual-gated payload logging is enabled in Ocean core.
