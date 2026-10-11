@@ -8,13 +8,12 @@
         "title": "Role",
         "type": "string"
       },
-      "member": {
-        "title": "Member",
-        "type": "string"
-      },
-      "memberType": {
-        "title": "Member Type",
-        "type": "string"
+      "members": {
+        "title": "Members",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       },
       "resource": {
         "title": "Resource",
@@ -22,10 +21,6 @@
       },
       "assetType": {
         "title": "Asset Type",
-        "type": "string"
-      },
-      "condition": {
-        "title": "Condition",
         "type": "string"
       }
     },

@@ -280,3 +280,29 @@ class TestHandleEvent:
 
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
+
+    async def test_non_resource_content_type_skips_the_live_event(
+        self,
+        mock_ocean_context: None,
+        processor: MagicMock,
+        pubsub_payload: EventPayload,
+        asset_payload: dict[str, Any],
+        resource_config: MagicMock,
+    ) -> None:
+        resource_config.selector.content_type = "IAM_POLICY"
+        feed_event = AsyncMock(return_value=ASSET_RESOURCE_DATA)
+        with (
+            patch(
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+                new=AsyncMock(return_value=asset_payload),
+            ),
+            patch(
+                "gcp_core.webhook.webhook_processors.asset_feed_processor.feed_event_to_resource",
+                new=feed_event,
+            ),
+        ):
+            result = await processor.handle_event(pubsub_payload, resource_config)
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        feed_event.assert_not_called()

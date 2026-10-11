@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added the iam.googleapis.com/Policy kind, which syncs explicit IAM allow-policy bindings (resource, role, and member) from Cloud Asset Inventory searchAllIamPolicies. Set selector.assetTypes to the resources whose policies should be read, and optionally selector.policyQuery to filter bindings on the server.
+changelog: Added optional selector.contentType so GCP asset kinds can sync Cloud Asset Inventory IAM_POLICY, ORG_POLICY, ACCESS_POLICY, OS_INVENTORY, and RELATIONSHIP in addition to RESOURCE. RESOURCE stays on searchAllResources with the same raw shape. Other content types use listAssets and return the asset content block for itemsToParse. Optional selector.assetQuery is a server-side query for RESOURCE and IAM_POLICY only; other content types reject it.

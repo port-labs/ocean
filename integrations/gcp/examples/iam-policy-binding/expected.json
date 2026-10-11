@@ -1,14 +1,14 @@
 {
-  "identifier": "//cloudresourcemanager.googleapis.com/projects/my-project|roles/container.developer|serviceAccount:app@my-project.iam.gserviceaccount.com|",
-  "title": "serviceAccount:app@my-project.iam.gserviceaccount.com",
+  "identifier": "//cloudresourcemanager.googleapis.com/projects/my-project|roles/container.developer|serviceAccount:app@my-project.iam.gserviceaccount.com",
+  "title": "roles/container.developer",
   "blueprint": "gcpIamPolicyBinding",
   "properties": {
     "role": "roles/container.developer",
-    "member": "serviceAccount:app@my-project.iam.gserviceaccount.com",
-    "memberType": "serviceAccount",
+    "members": [
+      "serviceAccount:app@my-project.iam.gserviceaccount.com"
+    ],
     "resource": "//cloudresourcemanager.googleapis.com/projects/my-project",
-    "assetType": "cloudresourcemanager.googleapis.com/Project",
-    "condition": ""
+    "assetType": "cloudresourcemanager.googleapis.com/Project"
   },
   "relations": {
     "project": "projects/my-project"

@@ -1,22 +1,20 @@
 resources:
-  - kind: iam.googleapis.com/Policy
+  - kind: cloudresourcemanager.googleapis.com/Project
     selector:
       query: "true"
-      assetTypes:
-        - cloudresourcemanager.googleapis.com/Project
-      policyQuery: memberTypes:serviceAccount
+      contentType: IAM_POLICY
+      assetQuery: memberTypes:serviceAccount
     port:
+      itemsToParse: .iam_policy.bindings
       entity:
         mappings:
-          identifier: .resource + "|" + .role + "|" + .member + "|" + (.condition.expression // "")
-          title: .member
+          identifier: .name + "|" + .item.role + "|" + (.item.members | join(","))
+          title: .item.role
           blueprint: '"gcpIamPolicyBinding"'
           properties:
-            role: .role
-            member: .member
-            memberType: .member_type
-            resource: .resource
+            role: .item.role
+            members: .item.members
+            resource: .name
             assetType: .asset_type
-            condition: .condition.expression // ""
           relations:
             project: .__project.name
