@@ -14,7 +14,13 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 
-from clients.anthropic_client import AnthropicClient, RateLimitInfo
+from clients.anthropic_client import (
+    DEFAULT_ENABLED_WEBHOOK_EVENTS,
+    WEBHOOK_NAME,
+    WEBHOOKS_BETA,
+    AnthropicClient,
+    RateLimitInfo,
+)
 from clients.exceptions import (
     UnexpectedApiResponseError,
     WebhookSigningSecretNotConfiguredError,
@@ -56,8 +62,10 @@ def client() -> AnthropicClient:
         console_host="https://platform.claude.com",
         webhook_signing_secret="whsec_test",
         page_size=2,
+        anthropic_version="2023-06-01",
     )
     instance._client = MagicMock()
+    instance._console_http = AsyncMock()
     return instance
 
 
@@ -430,3 +438,108 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
 
     assert slept is False
     assert client.get_read_rate_limit_status() is None
+
+
+def test_console_webhook_headers_include_beta(client: AnthropicClient) -> None:
+    assert client._console_webhook_headers() == {
+        "x-api-key": "test-api-key",
+        "anthropic-beta": WEBHOOKS_BETA,
+        "content-type": "application/json",
+        "anthropic-version": "2023-06-01",
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_webhooks_follows_next_page(client: AnthropicClient) -> None:
+    client._console_request = AsyncMock(  # type: ignore[method-assign]
+        side_effect=[
+            {
+                "data": [{"id": "wh_1", "url": "https://a.example/integration/webhook"}],
+                "next_page": "cursor-2",
+            },
+            {
+                "data": [{"id": "wh_2", "url": "https://b.example/integration/webhook"}],
+                "next_page": None,
+            },
+        ]
+    )
+
+    webhooks = await client.list_webhooks()
+
+    assert [webhook["id"] for webhook in webhooks] == ["wh_1", "wh_2"]
+    assert client._console_request.await_args_list[0].kwargs.get("params") is None
+    assert client._console_request.await_args_list[1].kwargs["params"] == {
+        "page": "cursor-2"
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_if_not_exists_creates_when_missing(
+    client: AnthropicClient,
+) -> None:
+    client.list_webhooks = AsyncMock(return_value=[])  # type: ignore[method-assign]
+    client._console_request = AsyncMock(  # type: ignore[method-assign]
+        return_value={"id": "wh_new", "signing_secret": "whsec_once"}
+    )
+
+    await client.create_webhooks_if_not_exists("https://ocean.example")
+
+    client._console_request.assert_awaited_once_with(
+        "POST",
+        "/v1/webhooks",
+        json_data={
+            "url": "https://ocean.example/integration/webhook",
+            "name": WEBHOOK_NAME,
+            "description": "Port Ocean Claude Managed Agents live events",
+            "enabled_events": list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_if_not_exists_skips_when_already_current(
+    client: AnthropicClient,
+) -> None:
+    invoke_url = "https://ocean.example/integration/webhook"
+    client.list_webhooks = AsyncMock(  # type: ignore[method-assign]
+        return_value=[
+            {
+                "id": "wh_1",
+                "url": invoke_url,
+                "enabled_events": list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
+                "status": "enabled",
+            }
+        ]
+    )
+    client._console_request = AsyncMock()  # type: ignore[method-assign]
+
+    await client.create_webhooks_if_not_exists("https://ocean.example/")
+
+    client._console_request.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_create_webhooks_if_not_exists_updates_events_and_status(
+    client: AnthropicClient,
+) -> None:
+    invoke_url = "https://ocean.example/integration/webhook"
+    client.list_webhooks = AsyncMock(  # type: ignore[method-assign]
+        return_value=[
+            {
+                "id": "wh_1",
+                "url": invoke_url,
+                "enabled_events": ["session.status_idled"],
+                "status": "disabled",
+            }
+        ]
+    )
+    client._console_request = AsyncMock(return_value={"id": "wh_1"})  # type: ignore[method-assign]
+
+    await client.create_webhooks_if_not_exists("https://ocean.example")
+
+    call = client._console_request.await_args
+    assert call is not None
+    assert call.args == ("POST", "/v1/webhooks/wh_1")
+    update_body = call.kwargs["json_data"]
+    assert update_body["status"] == "enabled"
+    assert set(update_body["enabled_events"]) == set(DEFAULT_ENABLED_WEBHOOK_EVENTS)

@@ -40,6 +40,22 @@ _RATE_LIMIT_REMAINING_HEADER = "anthropic-ratelimit-requests-remaining"
 _RATE_LIMIT_RESET_HEADER = "anthropic-ratelimit-requests-reset"
 _WORKSPACE_ID_HEADER = "anthropic-workspace-id"
 
+WEBHOOKS_BETA = "webhooks-2026-03-01"
+WEBHOOK_NAME = "Port Ocean Integration"
+# Events this integration's processors handle (catalog sync + trigger_agent).
+DEFAULT_ENABLED_WEBHOOK_EVENTS = [
+    "session.status_run_started",
+    "session.status_idled",
+    "session.status_rescheduled",
+    "session.status_terminated",
+    "session.deleted",
+    "session.updated",
+    "session.error",
+    "vault.created",
+    "vault.archived",
+    "vault.deleted",
+]
+
 RateLimitPool = Literal["create", "read"]
 
 
@@ -93,6 +109,8 @@ class AnthropicClient:
         page_size: int = DEFAULT_PAGE_SIZE,
         anthropic_version: str | None = None,
     ) -> None:
+        self._api_key = api_key
+        self._anthropic_version = anthropic_version
         self._console_host = console_host.rstrip("/")
         self._webhook_signing_secret = webhook_signing_secret
         self._page_size = page_size
@@ -101,6 +119,12 @@ class AnthropicClient:
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
+        # Console admin APIs (webhooks) live on platform.claude.com, not the
+        # Managed Agents SDK base URL. The SDK only exposes `webhooks.unwrap`.
+        self._console_http = OceanAsyncClient(
+            timeout=ocean.config.client_timeout,
+            retry_config=RetryConfig(max_attempts=3),
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
@@ -440,3 +464,124 @@ class AnthropicClient:
     @property
     def has_webhook_secret(self) -> bool:
         return bool(self._webhook_signing_secret)
+
+    def _console_webhook_headers(self) -> dict[str, str]:
+        headers = {
+            "x-api-key": self._api_key,
+            "anthropic-beta": WEBHOOKS_BETA,
+            "content-type": "application/json",
+        }
+        if self._anthropic_version:
+            headers["anthropic-version"] = self._anthropic_version
+        return headers
+
+    async def _console_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json_data: dict[str, Any] | None = None,
+        params: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        response = await self._console_http.request(
+            method,
+            f"{self._console_host}{path}",
+            headers=self._console_webhook_headers(),
+            json=json_data,
+            params=params,
+        )
+        response.raise_for_status()
+        if not response.content:
+            return {}
+        return response.json()
+
+    async def list_webhooks(self) -> list[dict[str, Any]]:
+        """List Claude Platform webhooks (paginated via ``next_page``)."""
+        webhooks: list[dict[str, Any]] = []
+        params: dict[str, str] | None = None
+        while True:
+            page = await self._console_request("GET", "/v1/webhooks", params=params)
+            webhooks.extend(page.get("data") or [])
+            next_page = page.get("next_page")
+            if not isinstance(next_page, str) or not next_page:
+                return webhooks
+            params = {"page": next_page}
+
+    async def create_webhooks_if_not_exists(self, base_url: str) -> None:
+        """Upsert a Platform webhook pointing at this integration's public URL.
+
+        Idempotent: if a webhook already targets ``{base_url}/integration/webhook``,
+        ensure it is enabled and subscribed to ``DEFAULT_ENABLED_WEBHOOK_EVENTS``.
+        Create returns the signing secret once - it is never logged; configure
+        ``WEBHOOK_SIGNING_SECRET`` from the Claude Console / create response.
+        """
+        invoke_url = f"{base_url.rstrip('/')}/integration/webhook"
+        desired_events = set(DEFAULT_ENABLED_WEBHOOK_EVENTS)
+
+        try:
+            existing = await self.list_webhooks()
+        except (httpx.HTTPStatusError, httpx.HTTPError) as error:
+            logger.error(f"Failed to list Claude webhooks: {error}")
+            return
+
+        for webhook in existing:
+            if webhook.get("url") != invoke_url:
+                continue
+
+            webhook_id = webhook.get("id")
+            if not isinstance(webhook_id, str) or not webhook_id:
+                logger.warning(
+                    f"Found Claude webhook for {invoke_url} without an id; skipping update"
+                )
+                return
+
+            current_events = set(webhook.get("enabled_events") or [])
+            needs_events = not desired_events.issubset(current_events)
+            needs_enable = webhook.get("status") != "enabled"
+            if not needs_events and not needs_enable:
+                logger.info(
+                    f"Claude webhook {webhook_id} already registered for {invoke_url}"
+                )
+                return
+
+            update_body: dict[str, Any] = {}
+            if needs_events:
+                update_body["enabled_events"] = sorted(current_events | desired_events)
+            if needs_enable:
+                update_body["status"] = "enabled"
+
+            try:
+                # Platform update is POST /v1/webhooks/{id} (not PATCH).
+                await self._console_request(
+                    "POST", f"/v1/webhooks/{webhook_id}", json_data=update_body
+                )
+                logger.info(
+                    f"Updated Claude webhook {webhook_id} for {invoke_url} "
+                    f"(events={needs_events}, enable={needs_enable})"
+                )
+            except (httpx.HTTPStatusError, httpx.HTTPError) as error:
+                logger.error(f"Failed to update Claude webhook {webhook_id}: {error}")
+            return
+
+        body = {
+            "url": invoke_url,
+            "name": WEBHOOK_NAME,
+            "description": "Port Ocean Claude Managed Agents live events",
+            "enabled_events": list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
+        }
+        try:
+            created = await self._console_request(
+                "POST", "/v1/webhooks", json_data=body
+            )
+        except (httpx.HTTPStatusError, httpx.HTTPError) as error:
+            logger.error(f"Failed to create Claude webhook for {invoke_url}: {error}")
+            return
+
+        webhook_id = created.get("id")
+        logger.info(f"Created Claude webhook {webhook_id} for {invoke_url}")
+        if created.get("signing_secret") and not self._webhook_signing_secret:
+            logger.warning(
+                "Claude returned a webhook signing secret on create (shown only once). "
+                "Set OCEAN__INTEGRATION__CONFIG__WEBHOOK_SIGNING_SECRET from the create "
+                "response or Claude Console; it is not logged here."
+            )
