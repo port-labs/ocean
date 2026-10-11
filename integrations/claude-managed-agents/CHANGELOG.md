@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.0 (2026-10-08)
+
+
+### Features
+
+- Added a create_environment action that creates a new Claude managed environment defining the container configuration for agent sessions
+
+
+## 0.5.1 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 0.5.0 (2026-10-07)
+
+
+### Features
+
+- Added an update_agent action that updates a Claude managed agent's name, model, system prompt, or advanced configuration
+
+
+## 0.4.1 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.4.0 (2026-10-06)
+
+
+### Features
+
+- Added an archive_agent action that permanently archives a Claude managed agent, making it read-only and preventing new sessions from referencing it
+
+
+## 0.3.5 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 0.3.4 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
 ## 0.3.3 (2026-10-01)
 
 

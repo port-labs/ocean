@@ -1,4 +1,4 @@
-# Ocean Custom Integration
+# Custom Ocean Integration
 
 An Ocean integration that can connect to any HTTP REST API with configurable authentication, pagination, and data mapping.
 

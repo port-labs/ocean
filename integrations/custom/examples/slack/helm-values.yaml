@@ -1,4 +1,4 @@
-# Helm values for Port Ocean Ocean Custom - Slack example
+# Helm values for Port Custom Ocean Integration - Slack example
 # Replace ${...} via envsubst or manual edits before installing.
 
 integration:

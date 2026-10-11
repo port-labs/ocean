@@ -72,7 +72,7 @@ load_configset() {
     fi
     export SMOKE_TEST_SUFFIX="${SMOKE_TEST_BASE_SUFFIX}-${SMOKE_TEST_CONFIGSET_SUFFIX}"
     export SMOKE_TEST_CONTAINER="$(
-        echo "ocean-smoke-${SMOKE_TEST_SUFFIX}" | tr -c 'a-zA-Z0-9._-' '-'
+        printf '%s' "ocean-smoke-${SMOKE_TEST_SUFFIX}" | tr -c 'a-zA-Z0-9._-' '-'
     )"
 }
 

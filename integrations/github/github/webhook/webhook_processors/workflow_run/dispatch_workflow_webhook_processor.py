@@ -45,7 +45,8 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
     The processor only handles events where:
     - The event type is workflow_run
     - The workflow run status is "completed"
-    - The actor matches the authenticated GitHub user
+    - The actor matches the integration (or any actor when identity
+      propagation is enabled — user-token dispatches show the user as actor)
     - The run has a matching Port action run ID
 
     Attributes:
@@ -74,6 +75,12 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
             if workflow_run_status != "completed":
                 logger.debug("Skipping workflow run event as it's not completed yet")
                 return False
+
+            # With identity propagation, dispatch uses the user's OAuth token so
+            # workflow_run.actor is the user, not the GitHub App / integration PAT.
+            # handle_event still gates on external_id + reportWorkflowStatus.
+            if ocean.config.identity_propagation.enabled:
+                return True
 
             integration_actor = await get_auth_provider().get_integration_actor()
             if workflow_run_actor == integration_actor:

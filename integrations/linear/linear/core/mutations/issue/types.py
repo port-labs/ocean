@@ -35,12 +35,17 @@ class _IssueState(BaseModel):
     name: NonEmptyStr
 
 
+class _IssueDelegate(BaseModel):
+    id: NonEmptyStr
+
+
 class MutationIssue(BaseModel):
     id: NonEmptyStr
     identifier: NonEmptyStr
     url: NonEmptyStr
     title: str | None = None
     state: _IssueState | None = None
+    delegate: _IssueDelegate | None = None
 
 
 class MutationIssueResult(BaseModel):
