@@ -433,18 +433,28 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
     assert client.get_read_rate_limit_status() is None
 
 
+def _patch_http_async_client(
+    monkeypatch: pytest.MonkeyPatch, response: httpx.Response
+) -> AsyncMock:
+    post = AsyncMock(return_value=response)
+    mock_client = MagicMock()
+    mock_client.post = post
+    monkeypatch.setattr("clients.anthropic_client.http_async_client", mock_client)
+    return post
+
+
 @pytest.mark.asyncio
 async def test_create_webhook_if_not_exists_creates(
     client: AnthropicClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    post = AsyncMock(
-        return_value=httpx.Response(
+    post = _patch_http_async_client(
+        monkeypatch,
+        httpx.Response(
             200,
             json={"id": "wh_new", "signing_secret": "whsec_once"},
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
-        )
+        ),
     )
-    monkeypatch.setattr("clients.anthropic_client.http_async_client.post", post)
     client._webhook_signing_secret = None
 
     await client.create_webhook_if_not_exists("https://ocean.example")
@@ -461,13 +471,13 @@ async def test_create_webhook_if_not_exists_creates(
 async def test_create_webhook_if_not_exists_skips_on_conflict(
     client: AnthropicClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    post = AsyncMock(
-        return_value=httpx.Response(
+    post = _patch_http_async_client(
+        monkeypatch,
+        httpx.Response(
             409,
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
-        )
+        ),
     )
-    monkeypatch.setattr("clients.anthropic_client.http_async_client.post", post)
 
     await client.create_webhook_if_not_exists("https://ocean.example")
 
@@ -478,14 +488,14 @@ async def test_create_webhook_if_not_exists_skips_on_conflict(
 async def test_create_webhook_if_not_exists_logs_api_errors(
     client: AnthropicClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    post = AsyncMock(
-        return_value=httpx.Response(
+    post = _patch_http_async_client(
+        monkeypatch,
+        httpx.Response(
             400,
             text='{"error":"bad"}',
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
-        )
+        ),
     )
-    monkeypatch.setattr("clients.anthropic_client.http_async_client.post", post)
 
     await client.create_webhook_if_not_exists("https://ocean.example")
 
