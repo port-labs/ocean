@@ -1,6 +1,6 @@
 # Zendesk Integration Installation Examples
 
-This example demonstrates how to set up the Ocean Custom integration with Zendesk using cursor pagination and path parameters.
+This example demonstrates how to set up the Custom Ocean Integration with Zendesk using cursor pagination and path parameters.
 
 ## Prerequisites
 
@@ -169,7 +169,7 @@ services:
       # Port Configuration
       OCEAN__PORT__CLIENT_ID: ${PORT_CLIENT_ID}
       OCEAN__PORT__CLIENT_SECRET: ${PORT_CLIENT_SECRET}
-      
+
       # Integration Configuration
       OCEAN__INTEGRATION__IDENTIFIER: zendesk-integration
       OCEAN__INTEGRATION__TYPE: http-server
@@ -177,7 +177,7 @@ services:
       OCEAN__INTEGRATION__CONFIG__AUTH_TYPE: basic
       OCEAN__INTEGRATION__CONFIG__USERNAME: your-email@domain.com/token
       OCEAN__INTEGRATION__CONFIG__PASSWORD: ${ZENDESK_API_TOKEN}
-      
+
       # Pagination Configuration (Zendesk uses cursor-based pagination)
       OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE: cursor
       OCEAN__INTEGRATION__CONFIG__PAGE_SIZE: 100
@@ -185,7 +185,7 @@ services:
       OCEAN__INTEGRATION__CONFIG__SIZE_PARAM: page[size]
       OCEAN__INTEGRATION__CONFIG__CURSOR_PATH: meta.after_cursor
       OCEAN__INTEGRATION__CONFIG__HAS_MORE_PATH: meta.has_more
-      
+
       # Optional Settings
       OCEAN__INITIALIZE_PORT_RESOURCES: "true"
       OCEAN__SEND_RAW_DATA_EXAMPLES: "true"
@@ -233,10 +233,3 @@ The integration uses `data_path` to extract arrays from Zendesk's nested respons
 - Users: `data_path: .users`
 - Organizations: `data_path: .organizations`
 - Comments: `data_path: .comments`
-
-
-
-
-
-
-
