@@ -167,7 +167,6 @@ clean:
 	rm -rf *.egg-info
 	rm -rf htmlcov
 	rm -rf .tox/
-	rm -rf docs/_build
 	rm -rf dist/
 
 # make bump/integrations VERSION=0.3.2

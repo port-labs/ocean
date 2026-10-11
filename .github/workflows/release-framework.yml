@@ -138,7 +138,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<https://ocean.getport.io/changelog/${{ env.VERSION }}|Check out the Changelog>"
+                    "text": "<https://github.com/port-labs/ocean/blob/main/CHANGELOG.md|Check out the Changelog>"
                   }
                 },
                 {
