@@ -78,9 +78,9 @@ _SESSION_USAGE = BetaManagedAgentsSessionUsage.model_validate(
 _SESSION_URL = "https://platform.claude.com/workspaces/ws_1/sessions/s1"
 _STANDARD_COMPLETION = {
     "url": _SESSION_URL,
-    "input_tokens": 5000,
-    "output_tokens": 3200,
-    "cost_usd": 1.87,
+    "inputTokens": 5000,
+    "outputTokens": 3200,
+    "costUsd": 1.87,
 }
 
 
@@ -193,7 +193,7 @@ def _wf_node_run(
 ) -> MagicMock:
     run = MagicMock(spec=WorkflowNodeRun)
     run.id = "run_1"
-    run.output = {"session_id": "s1", "user_message_event_id": _ANCHOR_ID}
+    run.output = {"sessionId": "s1", "userMessageEventId": _ANCHOR_ID}
     run.execution_properties = {"reportSessionStatus": report_status}
     if session_id is not None:
         run.execution_properties["sessionId"] = session_id
@@ -398,8 +398,8 @@ async def test_trigger_reports_response_on_success() -> None:
         run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
     )
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         "response": "All done.",
         **_STANDARD_COMPLETION,
     }
@@ -440,8 +440,8 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
         run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
     )
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         "response": "Recovered.",
         **_STANDARD_COMPLETION,
     }
@@ -481,8 +481,8 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
         run, False, status_label=SESSION_FAILED_STATUS_LABEL
     )
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
         **_STANDARD_COMPLETION,
@@ -612,8 +612,8 @@ async def test_trigger_completes_run_when_error_inspection_fails() -> None:
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         **_STANDARD_COMPLETION,
     }
 
@@ -828,8 +828,8 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
         run, False, status_label=SESSION_FAILED_STATUS_LABEL
     )
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
         **_STANDARD_COMPLETION,
@@ -921,8 +921,8 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
         run, False, status_label=SESSION_FAILED_STATUS_LABEL
     )
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
         **_STANDARD_COMPLETION,
@@ -955,8 +955,8 @@ async def test_trigger_completion_includes_url_when_session_fetch_fails() -> Non
         await processor.handle_event(payload, None)
 
     assert run.output == {
-        "session_id": "s1",
-        "user_message_event_id": _ANCHOR_ID,
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
         "url": _SESSION_URL,
     }
 

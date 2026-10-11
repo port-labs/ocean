@@ -205,7 +205,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         extra_output.update(
             (
                 await self._build_standard_completion_output(session_id, data)
-            ).to_output_dict()
+            ).model_dump()
         )
 
         logger.info(

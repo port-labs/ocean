@@ -133,20 +133,20 @@ def test_trigger_agent_session_output_from_session() -> None:
         session=session,
         session_id="s1",
         user_message_event_id="msg_1",
-    ).to_output_dict() == {
-        "session_id": "s1",
-        "user_message_event_id": "msg_1",
+    ).model_dump() == {
+        "sessionId": "s1",
+        "userMessageEventId": "msg_1",
         "url": "https://platform.claude.com/workspaces/ws_1/sessions/s1",
-        "input_tokens": 5000,
-        "output_tokens": 3200,
-        "cost_usd": 1.87,
+        "inputTokens": 5000,
+        "outputTokens": 3200,
+        "costUsd": 1.87,
     }
 
 
 def test_trigger_agent_session_output_url_only() -> None:
     assert TriggerAgentSessionOutput(
         url="https://platform.claude.com/"
-    ).to_output_dict() == {"url": "https://platform.claude.com/"}
+    ).model_dump() == {"url": "https://platform.claude.com/"}
 
 
 def _rate_limit_client_mock(
@@ -582,8 +582,8 @@ async def test_trigger_agent_executor_starts_session() -> None:
     call = mock_ocean.port_client.update_run_started.call_args
     assert call.args[2] == "claude_session_sess_1_msg_1"
     assert call.kwargs["extra_output"] == {
-        "session_id": "sess_1",
-        "user_message_event_id": "msg_1",
+        "sessionId": "sess_1",
+        "userMessageEventId": "msg_1",
         "url": call.args[1],
     }
 

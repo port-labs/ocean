@@ -158,7 +158,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                 session_id=resolved_session_id,
                 user_message_event_id=user_message.id,
                 url=session_url,
-            ).to_output_dict(),
+            ).model_dump(),
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 

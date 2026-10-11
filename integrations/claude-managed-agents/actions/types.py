@@ -1,7 +1,7 @@
 from typing import Any, Self
 
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def list_cost_to_usd(list_cost: Any) -> float | None:
@@ -24,17 +24,19 @@ def list_cost_to_usd(list_cost: Any) -> float | None:
 class TriggerAgentSessionOutput(BaseModel):
     """Standard ``trigger_agent`` run-output fields for a Claude session."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", serialize_by_alias=True)
 
-    session_id: str | None = None
-    user_message_event_id: str | None = None
+    session_id: str | None = Field(default=None, serialization_alias="sessionId")
+    user_message_event_id: str | None = Field(
+        default=None, serialization_alias="userMessageEventId"
+    )
     url: str
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    cost_usd: float | None = None
+    input_tokens: int | None = Field(default=None, serialization_alias="inputTokens")
+    output_tokens: int | None = Field(default=None, serialization_alias="outputTokens")
+    cost_usd: float | None = Field(default=None, serialization_alias="costUsd")
 
-    def to_output_dict(self) -> dict[str, Any]:
-        return self.model_dump(exclude_none=True)
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        return super().model_dump(**kwargs, exclude_none=True)
 
     @classmethod
     def from_session(
