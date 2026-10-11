@@ -282,6 +282,20 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "delete_environment",
+      "icon": "Claude",
+      "description": "Permanently delete a Claude managed environment. Sessions already created against this environment are not affected.",
+      "inputs": [
+        {
+          "name": "environmentId",
+          "title": "Environment ID",
+          "type": "string",
+          "description": "The ID of the environment to delete",
+          "required": true
+        }
+      ]
     }
   ]
 }
