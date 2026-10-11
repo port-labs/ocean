@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from anthropic.types.beta import (
     BetaWebhookSessionIdledEventData,
     BetaWebhookSessionStatusIdledEventData,
+    BetaWebhookSessionStatusTerminatedEventData,
     UnwrapWebhookEvent,
 )
 from anthropic.types.beta.sessions.beta_managed_agents_agent_message_event import (
@@ -51,6 +52,20 @@ from webhook_processors.abstract_webhook_processor import (
 )
 
 LogLevel = Literal["INFO", "WARN", "ERROR", "DEBUG"]
+
+# SDK models for the terminal session webhook `data` payloads this processor handles
+# (matches `_TERMINAL_SESSION_WEBHOOK_TYPES` / `should_process_event`).
+TerminalSessionWebhookData: TypeAlias = (
+    BetaWebhookSessionIdledEventData
+    | BetaWebhookSessionStatusIdledEventData
+    | BetaWebhookSessionStatusTerminatedEventData
+)
+
+_TERMINAL_SESSION_WEBHOOK_DATA = (
+    BetaWebhookSessionIdledEventData,
+    BetaWebhookSessionStatusIdledEventData,
+    BetaWebhookSessionStatusTerminatedEventData,
+)
 
 SESSION_SUCCESS_WEBHOOK_DATA = (
     BetaWebhookSessionIdledEventData,
@@ -138,6 +153,14 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         webhook_event = UnwrapWebhookEvent.model_validate(payload)
         webhook_time = webhook_event.created_at
         data = webhook_event.data
+        if not isinstance(data, _TERMINAL_SESSION_WEBHOOK_DATA):
+            logger.warning(
+                f"Ignoring unexpected webhook data type {type(data).__name__} "
+                f"(event type {getattr(data, 'type', None)!r})"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
         session_id = data.id
 
         anchor = await self._find_anchor_user_message(session_id, webhook_time)
@@ -229,15 +252,12 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def _build_standard_completion_output(
-        self, session_id: str, webhook_data: Any
+        self, session_id: str, webhook_data: TerminalSessionWebhookData
     ) -> TriggerAgentSessionOutput:
         """Session URL plus cumulative usage from a best-effort session retrieve."""
         client = create_anthropic_client()
-        workspace_id = getattr(webhook_data, "workspace_id", None)
-        if not isinstance(workspace_id, str):
-            workspace_id = client.get_workspace_id()
         session_url = build_session_link(
-            client.get_console_host(), workspace_id, session_id
+            client.get_console_host(), webhook_data.workspace_id, session_id
         )
 
         try:
