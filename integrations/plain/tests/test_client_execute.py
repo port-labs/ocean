@@ -22,9 +22,12 @@ def _config(api_url: str = DEFAULT_API_URL) -> dict[str, str]:
 def _client(
     handler: Any,
     config: dict[str, str] | None = None,
+    *,
+    integration_identifier: str = "plain",
 ) -> tuple[Any, httpx.AsyncClient]:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = config or _config()
+    mock_ocean.config.integration.identifier = integration_identifier
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     with patch("plain.client.ocean", mock_ocean):
         from plain.client import PlainClient
@@ -153,4 +156,4 @@ async def test_authorization_header_uses_token_from_config() -> None:
         await client.execute("query { companies { edges { node { id } } } }")
 
     assert seen["authorization"] == "Bearer plainApiKey_from_config"
-    assert seen["user_agent"] == "port-ocean-plain"
+    assert seen["user_agent"] == "port-ocean-plain/plain"

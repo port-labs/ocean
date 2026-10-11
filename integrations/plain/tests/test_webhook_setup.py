@@ -1,8 +1,6 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from main import on_start
 from plain.constants import WEBHOOK_EVENT_TYPES, WEBHOOK_PATH_SUFFIX
 from tests.kind_helpers import make_client
