@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, TypeVar, cast
 
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.models import SecurityAlert
 from github.helpers.security_alerts import (
     enrich_security_alert_batch,
     pop_org_alert_filters,
@@ -75,7 +76,7 @@ class BaseSecurityAlertExporter(AbstractGithubExporter[GithubRestClient], ABC):
                 f"Fetched batch of {len(alerts)} {self.alert_type_name} alerts from {scope} via {endpoint_mode} endpoint"
             )
             batch = enrich_security_alert_batch(
-                alerts,
+                cast(list[SecurityAlert], alerts),
                 organization=organization,
                 repo_name=repo_name,
                 allowed_repos=allowed_repos,

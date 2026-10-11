@@ -86,10 +86,13 @@ def test_security_alerts_list_url() -> None:
 
 
 def test_enrich_security_alert_batch_filters_org_stream() -> None:
-    alerts = [
-        {"number": 1, "repository": {"name": "repo-a", "archived": False}},
-        {"number": 2, "repository": {"name": "repo-b", "archived": True}},
-    ]
+    alerts = cast(
+        list[SecurityAlert],
+        [
+            {"number": 1, "repository": {"name": "repo-a", "archived": False}},
+            {"number": 2, "repository": {"name": "repo-b", "archived": True}},
+        ],
+    )
     batch = enrich_security_alert_batch(
         alerts,
         organization="acme",

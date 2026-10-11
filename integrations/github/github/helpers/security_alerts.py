@@ -66,7 +66,7 @@ def pop_org_alert_filters(
 
 
 def enrich_security_alert_batch(
-    alerts: list[dict[str, Any]],
+    alerts: list[SecurityAlert],
     *,
     organization: str,
     repo_name: str | None = None,
@@ -75,8 +75,7 @@ def enrich_security_alert_batch(
 ) -> list[SecurityAlert]:
     """Enrich alerts with ``__repository`` / ``__organization``, filtering org streams."""
     batch: list[SecurityAlert] = []
-    for raw in alerts:
-        alert = cast(SecurityAlert, raw)
+    for alert in alerts:
         name = (
             repo_name
             if repo_name
@@ -92,7 +91,8 @@ def enrich_security_alert_batch(
             cast(
                 SecurityAlert,
                 enrich_with_organization(
-                    enrich_with_repository(raw, name), organization
+                    enrich_with_repository(cast(dict[str, Any], alert), name),
+                    organization,
                 ),
             )
         )
