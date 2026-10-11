@@ -57,7 +57,7 @@ class DeleteEnvironmentExecutor(AbstractAnthropicExecutor):
 
         logger.info(f"Deleted Claude environment {environment_id} for run {run.id}")
 
-        await self.deregister_entity(
+        await self.unregister_entity(
             ObjectKind.ENVIRONMENT, {"id": environment_id}, run
         )
 
