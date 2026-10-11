@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.0.12 (2026-10-11)
+
+
+### Improvements
+
+- Add probe entrypoint and add iam typing extra from existing package
+
+
+## 3.0.11 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
 ## 3.0.10 (2026-10-08)
 
 
