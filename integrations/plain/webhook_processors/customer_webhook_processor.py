@@ -22,8 +22,8 @@ from webhook_processors.utils import (
 
 
 class CustomerWebhookProcessor(PlainAbstractWebhookProcessor):
-    def get_event_types(self) -> set[str]:
-        return set(CUSTOMER_EVENTS)
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return event_type(event.payload) in CUSTOMER_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.CUSTOMER]

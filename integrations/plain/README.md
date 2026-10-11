@@ -32,14 +32,13 @@ Create the API key on a Plain machine user (Settings → Machine Users → Add A
 | `apiUrl` | no | `https://core-api.uk.plain.com/graphql/v1` | GraphQL endpoint |
 | `pageSize` | no | `100` | List page size. Plain's maximum is 100 |
 | `threadStatusFilter` | no | unset | Comma-separated statuses (`TODO`, `SNOOZED`, `DONE`) for a thread fetch that does not receive a status list. Thread resync uses `excludeDoneThreads` on the thread selector |
-| `enableLiveEvents` | no | `false` | When true, registers a Plain webhook target at `{OCEAN__BASE_URL}/integration/webhook` |
 | `webhookSecret` | no | unset | Workspace HMAC secret (Settings → Request signing). Verifies `Plain-Request-Signature` |
 
 For local runs, set the same values as environment variables, for example `OCEAN__INTEGRATION__CONFIG__API_TOKEN`. See `.env.example`.
 
 ## Live events
 
-Set `enableLiveEvents: true`, configure `OCEAN__BASE_URL`, and optionally `webhookSecret`. On start the integration creates or updates a Plain webhook target (needs `webhookTarget:create` / `webhookTarget:edit` / `webhookTarget:read`). If the API key cannot create the target, startup still succeeds and inbound events on `{OCEAN__BASE_URL}/integration/webhook` are processed — create the webhook target in Plain yourself.
+When the Ocean event listener supports webhooks (for example `POLLING`), set `OCEAN__BASE_URL` and optionally `webhookSecret`. On start the integration creates or updates a Plain webhook target (needs `webhookTarget:create` / `webhookTarget:edit` / `webhookTarget:read`). Listeners that do not process webhooks (for example `ONCE`) skip registration. If the API key cannot create the target, startup still succeeds and inbound events on `{OCEAN__BASE_URL}/integration/webhook` are processed — create the webhook target in Plain yourself.
 
 | Kind | Live-event source |
 |------|-------------------|
@@ -57,7 +56,7 @@ Handlers re-fetch entities via GraphQL before upserting (except customer delete,
 
 ## Limitations
 
-- Live events are off by default. Enable with `enableLiveEvents` and a reachable `OCEAN__BASE_URL`.
+- Live events need an event listener that processes webhooks and a reachable `OCEAN__BASE_URL`.
 - Plain does not emit dedicated company/tenant/user webhooks; those kinds update only when related thread/customer events fire.
 - Only the UK GraphQL host is known to resolve. `apiUrl` is an override if Plain adds another region.
 - Customer tenants come from the first page of `tenantMemberships` (at most 100). That selection needs `customerTenantMembership:read` in addition to `customer:read`.

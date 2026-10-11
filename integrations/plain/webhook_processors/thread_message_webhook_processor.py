@@ -17,6 +17,7 @@ from webhook_processors.plain_abstract_webhook_processor import (
 )
 from webhook_processors.utils import (
     event_payload,
+    event_type,
     is_excluded_done_thread,
     is_timeline_removed,
     timeline_entry_refs,
@@ -24,8 +25,8 @@ from webhook_processors.utils import (
 
 
 class ThreadMessageWebhookProcessor(PlainAbstractWebhookProcessor):
-    def get_event_types(self) -> set[str]:
-        return set(THREAD_MESSAGE_EVENTS)
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return event_type(event.payload) in THREAD_MESSAGE_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.THREAD_MESSAGE]

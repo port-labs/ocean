@@ -8,42 +8,30 @@ from plain.constants import WEBHOOK_EVENT_TYPES, WEBHOOK_PATH_SUFFIX
 from tests.kind_helpers import make_client
 
 
-@pytest.mark.parametrize("raw", [False, "false", None])
-async def test_on_start_skips_registration_when_disabled(
-    raw: bool | str | None,
-) -> None:
+async def test_on_start_skips_registration_when_webhooks_unsupported() -> None:
     from port_ocean.context.ocean import ocean
 
-    original = ocean.app.config.integration.config
-    config: dict[str, Any] = {"api_token": "plainApiKey_test"}
-    if raw is not None:
-        config["enable_live_events"] = raw
-    ocean.app.config.integration.config = config
+    original = ocean.app.config.event_listener.should_process_webhooks
+    ocean.app.config.event_listener.should_process_webhooks = False
     try:
         with patch("main.register_webhook_target", new_callable=AsyncMock) as register:
             await on_start()
         register.assert_not_awaited()
     finally:
-        ocean.app.config.integration.config = original
+        ocean.app.config.event_listener.should_process_webhooks = original
 
 
-async def test_on_start_registers_when_enabled() -> None:
+async def test_on_start_registers_when_webhooks_supported() -> None:
     from port_ocean.context.ocean import ocean
 
-    original = ocean.app.config.integration.config
-    original_listener = ocean.app.config.event_listener.type
-    ocean.app.config.integration.config = {
-        "api_token": "plainApiKey_test",
-        "enable_live_events": True,
-    }
-    ocean.app.config.event_listener.type = "POLLING"  # type: ignore[assignment]
+    original = ocean.app.config.event_listener.should_process_webhooks
+    ocean.app.config.event_listener.should_process_webhooks = True
     try:
         with patch("main.register_webhook_target", new_callable=AsyncMock) as register:
             await on_start()
         register.assert_awaited_once()
     finally:
-        ocean.app.config.integration.config = original
-        ocean.app.config.event_listener.type = original_listener
+        ocean.app.config.event_listener.should_process_webhooks = original
 
 
 async def test_register_webhook_target_does_not_fail_without_permissions() -> None:

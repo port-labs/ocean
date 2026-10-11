@@ -14,14 +14,19 @@ from plain.utils import ObjectKind
 from webhook_processors.plain_abstract_webhook_processor import (
     PlainAbstractWebhookProcessor,
 )
-from webhook_processors.utils import customer_id_from_payload, entity_id, event_payload
+from webhook_processors.utils import (
+    customer_id_from_payload,
+    entity_id,
+    event_payload,
+    event_type,
+)
 
 
 class CompanyWebhookProcessor(PlainAbstractWebhookProcessor):
     """Plain has no company.* webhooks; refresh company from customer events."""
 
-    def get_event_types(self) -> set[str]:
-        return set(COMPANY_EVENTS)
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return event_type(event.payload) in COMPANY_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.COMPANY]

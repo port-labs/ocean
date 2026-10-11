@@ -126,23 +126,14 @@ async def on_resync_discussion_messages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         yield messages
 
 
-def _live_events_enabled() -> bool:
-    raw = ocean.integration_config.get("enable_live_events", False)
-    if isinstance(raw, str):
-        return raw.strip().lower() in {"1", "true", "yes", "on"}
-    return bool(raw)
-
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting plain integration")
-    if ocean.event_listener_type == "ONCE":
+    if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
-            "Skipping Plain webhook registration because the event listener is ONCE"
+            "Skipping Plain webhook registration because the event listener "
+            "does not support webhooks"
         )
-        return
-    if not _live_events_enabled():
-        logger.info("Plain live events are disabled; skipping webhook registration")
         return
     await register_webhook_target()
 

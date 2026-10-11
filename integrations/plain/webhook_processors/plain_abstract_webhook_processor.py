@@ -18,11 +18,11 @@ from webhook_processors.utils import event_type
 
 
 class PlainAbstractWebhookProcessor(AbstractWebhookProcessor):
-    """Shared Plain webhook auth and event-type gating."""
+    """Shared Plain webhook auth and per-processor event gating."""
 
     @abstractmethod
-    def get_event_types(self) -> set[str]:
-        """Canonical Plain event types this processor handles."""
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        """Return True when this processor should handle the Plain event type."""
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
@@ -31,10 +31,10 @@ class PlainAbstractWebhookProcessor(AbstractWebhookProcessor):
         return isinstance(payload, dict) and bool(event_type(payload))
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        if event_type(event.payload) not in self.get_event_types():
-            return False
         if not event._original_request:
             logger.error("Plain webhook event is missing the original request body")
+            return False
+        if not await self._should_process_event(event):
             return False
 
         secret = ocean.integration_config.get("webhook_secret")

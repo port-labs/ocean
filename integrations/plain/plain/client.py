@@ -47,7 +47,6 @@ from plain.queries import (
 from plain.utils import edges_to_nodes, get_nested, is_ai_discussion
 
 DEFAULT_API_URL = "https://core-api.uk.plain.com/graphql/v1"
-USER_AGENT = "port-ocean-plain"
 DEFAULT_PAGE_SIZE = 100
 MAX_PAGE_SIZE = 100
 
@@ -62,9 +61,10 @@ class PlainClient:
         self._api_url = str(api_url).rstrip("/")
         self._page_size = _resolve_page_size(config.get("page_size"))
         self._thread_statuses = _thread_statuses(config.get("thread_status_filter"))
+        self._user_agent = f"port-ocean-plain/{ocean.config.integration.identifier}"
         self._http_client = http_client or OceanAsyncClient(
             timeout=ocean.config.client_timeout,
-            headers={"User-Agent": USER_AGENT},
+            headers={"User-Agent": self._user_agent},
         )
 
     async def execute(
@@ -86,7 +86,7 @@ class PlainClient:
             headers={
                 "Authorization": f"Bearer {self._api_token}",
                 "Content-Type": "application/json",
-                "User-Agent": USER_AGENT,
+                "User-Agent": self._user_agent,
             },
             # GraphQL is POST-only; Ocean RetryTransport skips POST unless opted in.
             extensions={"retryable": True},

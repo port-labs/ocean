@@ -33,11 +33,6 @@ configurations:
     required: false
     type: string
     description: Comma-separated thread statuses to sync (TODO, SNOOZED, DONE). Omit to sync every status.
-  - name: enableLiveEvents
-    required: false
-    type: boolean
-    default: false
-    description: Register a Plain webhook target for live catalog updates. Requires OCEAN__BASE_URL and webhookTarget permissions on the API key.
   - name: webhookSecret
     required: false
     type: string

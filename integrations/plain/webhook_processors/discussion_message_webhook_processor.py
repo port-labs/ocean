@@ -21,13 +21,14 @@ from webhook_processors.utils import (
     discussion_message_id,
     discussion_thread_id,
     event_payload,
+    event_type,
     is_excluded_done_thread,
 )
 
 
 class DiscussionMessageWebhookProcessor(PlainAbstractWebhookProcessor):
-    def get_event_types(self) -> set[str]:
-        return set(DISCUSSION_MESSAGE_EVENTS)
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return event_type(event.payload) in DISCUSSION_MESSAGE_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.DISCUSSION_MESSAGE]
