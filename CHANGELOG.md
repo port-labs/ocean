@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.6 (2026-10-11)
+
+
+### Improvements
+
+- Emit incremental resync trigger logs inside the event context so event_id is available for log correlation.
+
+
 ## 0.53.5 (2026-10-08)
 
 

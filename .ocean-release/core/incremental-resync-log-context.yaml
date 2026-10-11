@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Emit incremental resync trigger logs inside the event context so event_id is available for log correlation.
