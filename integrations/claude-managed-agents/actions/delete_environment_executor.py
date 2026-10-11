@@ -1,6 +1,6 @@
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
 
@@ -60,6 +60,9 @@ class DeleteEnvironmentExecutor(AbstractAnthropicExecutor):
         await self.deregister_entity(
             ObjectKind.ENVIRONMENT, {"id": environment_id}, run
         )
+
+        if isinstance(run, WorkflowNodeRun):
+            run.output["environmentId"] = environment_id
 
         await ocean.port_client.report_run_completed(
             run,
