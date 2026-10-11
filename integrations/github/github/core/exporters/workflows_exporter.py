@@ -1,5 +1,5 @@
-from datetime import datetime
 from typing import Any, cast, Optional
+from datetime import datetime
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
@@ -12,20 +12,6 @@ from github.helpers.utils import enrich_with_repository, enrich_with_organizatio
 
 
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
-    async def has_workflow_changes_since(
-        self, organization: str, repo_name: str, cursor: datetime | None
-    ) -> bool:
-        """Check if repo has commits touching .github/workflows since cursor."""
-        if not cursor:
-            return True
-
-        since_date = cursor.isoformat()
-        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
-        params = {"path": ".github/workflows", "since": since_date, "per_page": 1}
-
-        commits = await self.client.send_api_request(url, params)
-        return bool(commits)
-
     async def get_resource[ExporterOptionsT: SingleWorkflowOptions](
         self, options: ExporterOptionsT
     ) -> Optional[RAW_ITEM]:
@@ -51,21 +37,44 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: ListWorkflowOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get all workflows in repository with pagination."""
+        """Get all workflows in repository with pagination.
+
+        For incremental sync, filters workflows by updated_at >= updated_since.
+        """
 
         organization = options["organization"]
         repo_name = options["repo_name"]
         url = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows"
+        updated_since = options.get("updated_since")
 
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
                 f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {repo_name} from {organization}"
             )
-            batch = [
-                enrich_with_organization(
+
+            batch = []
+            for workflow in workflow_batch["workflows"]:
+                # Filter by updated_since if provided (incremental sync)
+                if updated_since:
+                    workflow_updated_at_str = workflow.get("updated_at")
+                    if workflow_updated_at_str:
+                        try:
+                            workflow_updated_at = datetime.fromisoformat(
+                                workflow_updated_at_str.replace('Z', '+00:00')
+                            )
+                            if workflow_updated_at < updated_since:
+                                continue
+                        except (ValueError, AttributeError):
+                            pass
+
+                enriched_workflow = enrich_with_organization(
                     enrich_with_repository(workflow, repo_name), organization
                 )
-                for workflow in workflow_batch["workflows"]
-            ]
-            yield batch
+                batch.append(enriched_workflow)
+
+            if batch:
+                logger.info(
+                    f"Incremental sync filtered {len(workflow_batch['workflows'])} workflows to {len(batch)} for {repo_name} from {organization}"
+                )
+                yield batch
