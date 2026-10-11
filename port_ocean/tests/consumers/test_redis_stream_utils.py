@@ -13,6 +13,7 @@ from port_ocean.consumers.redis_stream_utils import (
     ensure_consumer_group,
     is_missing_stream_or_group_error,
     is_redis_connection_error,
+    iter_xreadgroup_streams,
 )
 
 
@@ -20,6 +21,31 @@ def _make_redis_for_ack_finalize() -> AsyncMock:
     redis = AsyncMock()
     redis.eval = AsyncMock(return_value=1)
     return redis
+
+
+class TestIterXreadgroupStreams:
+    def test_legacy_list_shape(self) -> None:
+        response = [
+            [
+                "events",
+                [("1-0", {"eventId": "a"}), ("2-0", None)],
+            ]
+        ]
+
+        assert list(iter_xreadgroup_streams(response)) == [
+            ("events", [("1-0", {"eventId": "a"}), ("2-0", None)])
+        ]
+
+    def test_unified_dict_shape(self) -> None:
+        response = {"events": [("1-0", {"eventId": "a"})]}
+
+        assert list(iter_xreadgroup_streams(response)) == [
+            ("events", [("1-0", {"eventId": "a"})])
+        ]
+
+    @pytest.mark.parametrize("response", [None, [], {}])
+    def test_empty_response_yields_nothing(self, response: object) -> None:
+        assert list(iter_xreadgroup_streams(response)) == []
 
 
 class TestIsMissingStreamOrGroupError:

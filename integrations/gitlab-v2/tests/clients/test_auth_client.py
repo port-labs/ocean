@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -75,3 +76,47 @@ def test_auth_client_get_refreshed_token_raises_value_error() -> None:
         # Act & Assert
         with pytest.raises(ValueError, match="Token not available"):
             client.get_refreshed_token()
+
+
+def test_auth_client_get_refreshed_token_disabled() -> None:
+    """Identity-propagated clients must not load the integration OAuth token."""
+    client = AuthClient("user-token")
+    client.disable_token_refresh()
+
+    with patch.object(
+        type(client),
+        "external_access_token",
+        new_callable=lambda: property(lambda self: "integration-oauth-token"),
+    ):
+        with pytest.raises(ValueError, match="Token refresh is disabled"):
+            client.get_refreshed_token()
+
+
+def test_refresh_request_auth_creds_uses_token_when_refresh_disabled() -> None:
+    """When refresh is disabled, keep the fixed user token even if OAuth exists."""
+    client = AuthClient("user-token")
+    client.disable_token_refresh()
+    request = httpx.Request("GET", "https://gitlab.example.com/api/v4/projects")
+
+    with patch.object(
+        type(client),
+        "external_access_token",
+        new_callable=lambda: property(lambda self: "integration-oauth-token"),
+    ):
+        refreshed = client.refresh_request_auth_creds(request)
+
+    assert refreshed.headers["Authorization"] == "Bearer user-token"
+
+
+def test_refresh_request_auth_creds_prefers_external_when_refresh_enabled() -> None:
+    client = AuthClient("integration-token")
+    request = httpx.Request("GET", "https://gitlab.example.com/api/v4/projects")
+
+    with patch.object(
+        type(client),
+        "external_access_token",
+        new_callable=lambda: property(lambda self: "integration-oauth-token"),
+    ):
+        refreshed = client.refresh_request_auth_creds(request)
+
+    assert refreshed.headers["Authorization"] == "Bearer integration-oauth-token"

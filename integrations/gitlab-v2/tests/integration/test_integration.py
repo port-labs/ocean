@@ -122,10 +122,10 @@ def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() 
     assert "enrichWithReviewDiscussion" in schema_str
 
 
-def test_files_selector_defaults_to_group_search_strategy() -> None:
+def test_files_selector_defaults_to_repository_tree_strategy() -> None:
     selector = FilesSelector(path="**/skills/**/*")
 
-    assert selector.search_strategy == "groupSearch"
+    assert selector.search_strategy == "repositoryTree"
 
 
 def test_files_selector_accepts_project_search_strategy() -> None:

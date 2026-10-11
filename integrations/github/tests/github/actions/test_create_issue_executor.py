@@ -12,6 +12,9 @@ from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
     RunStatus,
+    WorkflowIntegrationActionConfig,
+    WorkflowNodeRun,
+    WorkflowNodeRunStatus,
 )
 
 ACTION = "create_issue"
@@ -34,6 +37,20 @@ def make_run(execution_properties: dict[str, Any]) -> ActionRun:
             type="INTEGRATION_ACTION",
             installationId="inst-1",
             integrationActionType=ACTION,
+            integrationActionExecutionProperties=execution_properties,
+        ),
+    )
+
+
+def make_workflow_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
+    return WorkflowNodeRun(
+        id="run-456",
+        status=WorkflowNodeRunStatus.IN_PROGRESS,
+        config=WorkflowIntegrationActionConfig(
+            type="INTEGRATION_ACTION",
+            installationId="inst-1",
+            integrationProvider="github-ocean",
+            integrationInvocationType=ACTION,
             integrationActionExecutionProperties=execution_properties,
         ),
     )
@@ -93,6 +110,26 @@ class TestCreateIssueExecutor:
             message="Issue #7 created: https://github.com/port-labs/ocean/issues/7",
             status_label="Issue created",
         )
+
+    @pytest.mark.asyncio
+    async def test_sets_workflow_output(
+        self,
+        executor: CreateIssueExecutor,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_workflow_run(
+            {"org": "port-labs", "repo": "ocean", "title": "Test issue"}
+        )
+
+        with patch("github.actions.create_issue_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        assert run.output == {
+            "issueNumber": 7,
+            "issueId": "123456",
+            "issueUrl": "https://github.com/port-labs/ocean/issues/7",
+        }
 
     @pytest.mark.asyncio
     async def test_with_optional_fields(

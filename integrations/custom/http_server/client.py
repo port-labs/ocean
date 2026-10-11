@@ -1,5 +1,5 @@
 """
-Ocean Custom Client
+Custom Ocean Client
 
 Main client for making authenticated HTTP requests with automatic pagination support.
 Uses Ocean's built-in HTTP client with caching and rate limiting.

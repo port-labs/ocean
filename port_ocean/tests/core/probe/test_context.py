@@ -376,3 +376,22 @@ async def test_fail() -> None:
     assert context.status == ProbeStatus.FAILED
     assert context.message == failure_message
     mock_update_progress.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_fail_internal() -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+    started_before = datetime.now(timezone.utc)
+    failure_message = "Unhandled exception in probe"
+
+    # Act
+    with patch.object(context, "update_progress") as mock_update_progress:
+        await context.fail_internal(failure_message)
+
+    # Assert
+    assert context.ended_at is not None
+    assert context.ended_at >= started_before
+    assert context.status == ProbeStatus.INTERNAL_FAILURE
+    assert context.message == failure_message
+    mock_update_progress.assert_called_once_with()

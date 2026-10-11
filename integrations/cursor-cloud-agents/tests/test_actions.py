@@ -10,9 +10,14 @@ from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractCursorExecutor
+from actions.create_agent.v0_handler import AGENT_LAUNCHED_STATUS_LABEL
+from actions.create_agent.v1_handler import AGENT_CREATED_STATUS_LABEL
 from actions.create_agent_executor import CreateAgentExecutor
 from actions.exceptions import InvalidActionParametersException
-from actions.trigger_agent_executor import TriggerAgentExecutor
+from actions.trigger_agent_executor import (
+    FOLLOW_UP_SENT_STATUS_LABEL,
+    TriggerAgentExecutor,
+)
 
 T = TypeVar("T", bound=AbstractCursorExecutor)
 
@@ -48,6 +53,7 @@ def _build_mock_ocean(*, base_url: str | None = "https://cca.example.com") -> Ma
     }
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
     return mock_ocean
 
 
@@ -125,7 +131,7 @@ async def test_create_agent_executor_uses_v1_by_default() -> None:
         "run", [{"id": "run-1", "agentId": "bc-1"}]
     )
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Created agent bc-1"
+        run, True, "Created agent bc-1", status_label=AGENT_CREATED_STATUS_LABEL
     )
 
 
@@ -268,7 +274,7 @@ async def test_create_agent_executor_v0_without_tracking_completes_immediately()
         [{"id": "run-1", "status": "CREATING", "agentId": "bc-1"}],
     )
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Launched agent bc-1"
+        run, True, "Launched agent bc-1", status_label=AGENT_LAUNCHED_STATUS_LABEL
     )
 
 
@@ -775,7 +781,10 @@ async def test_trigger_agent_executor_uses_v1_by_default() -> None:
         "run", [{"id": "run-2", "agentId": "bc-1"}]
     )
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Follow-up sent to agent bc-1"
+        run,
+        True,
+        "Follow-up sent to agent bc-1",
+        status_label=FOLLOW_UP_SENT_STATUS_LABEL,
     )
 
 
@@ -852,7 +861,10 @@ async def test_trigger_agent_executor_untracked_agent_completes_immediately() ->
         "run", [{"id": "run-2", "agentId": "bc-1"}]
     )
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
-        run, True, "Follow-up sent to agent bc-1"
+        run,
+        True,
+        "Follow-up sent to agent bc-1",
+        status_label=FOLLOW_UP_SENT_STATUS_LABEL,
     )
 
 

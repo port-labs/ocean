@@ -72,27 +72,28 @@ class ClosePullRequestExecutor(AbstractAzureDevopsExecutor):
             should_raise=False,
         )
 
-        try:
-            pull_request = await self.client.close_pull_request(
-                inputs.project,
-                inputs.repositoryId,
-                inputs.pullRequestId,
-            )
-        except httpx.HTTPStatusError as error:
-            logger.error(
-                f"Azure DevOps rejected pull request close for action run {run.id}: "
-                f"HTTP {error.response.status_code}",
-                run_id=run.id,
-                project_id=inputs.project,
-                repository_id=inputs.repositoryId,
-                pull_request_id=inputs.pullRequestId,
-                status_code=error.response.status_code,
-            )
-            raise ClosePullRequestError.from_response(
-                error.response,
-                f"Could not close pull request '{inputs.pullRequestId}' in repository "
-                f"'{inputs.repositoryId}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                pull_request = await api_client.close_pull_request(
+                    inputs.project,
+                    inputs.repositoryId,
+                    inputs.pullRequestId,
+                )
+            except httpx.HTTPStatusError as error:
+                logger.error(
+                    f"Azure DevOps rejected pull request close for action run {run.id}: "
+                    f"HTTP {error.response.status_code}",
+                    run_id=run.id,
+                    project_id=inputs.project,
+                    repository_id=inputs.repositoryId,
+                    pull_request_id=inputs.pullRequestId,
+                    status_code=error.response.status_code,
+                )
+                raise ClosePullRequestError.from_response(
+                    error.response,
+                    f"Could not close pull request '{inputs.pullRequestId}' in repository "
+                    f"'{inputs.repositoryId}'",
+                )
 
         closed_id = pull_request.get("pullRequestId")
         if closed_id is None:

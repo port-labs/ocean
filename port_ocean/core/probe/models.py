@@ -24,6 +24,7 @@ class ProbeStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    INTERNAL_FAILURE = "INTERNAL_FAILURE"
 
 
 @dataclass

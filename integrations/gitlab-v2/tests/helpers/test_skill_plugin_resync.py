@@ -31,7 +31,7 @@ class FakeGitLabClient:
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
-        strategy: str = "groupSearch",
+        strategy: str = "repositoryTree",
     ) -> AsyncIterator[list[dict[str, Any]]]:
         self.search_calls.append(
             {
