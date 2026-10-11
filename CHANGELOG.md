@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.7 (2026-10-11)
+
+
+### Improvements
+
+- Skip registering incremental resync handlers when incrementalSyncEnabled is false on the integration config.
+
+
 ## 0.53.6 (2026-10-11)
 
 
