@@ -40,7 +40,11 @@ from port_ocean.core.models import (
     WorkflowNodeRunLog,
 )
 
-from actions.utils import build_external_id
+from actions.types import TriggerAgentSessionOutput
+from actions.utils import (
+    build_external_id,
+    build_session_link,
+)
 from clients.client_factory import create_anthropic_client
 from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
@@ -186,7 +190,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
         success = webhook_succeeded and not interaction_failed
 
-        extra_output: dict[str, str] = {}
+        extra_output: dict[str, Any] = {}
         if success:
             response = self._extract_last_agent_response(
                 events,
@@ -197,6 +201,12 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 extra_output["response"] = response
         elif not success and last_error is not None:
             extra_output["error"] = last_error
+
+        extra_output.update(
+            (
+                await self._build_standard_completion_output(session_id, data)
+            ).to_output_dict()
+        )
 
         logger.info(
             f"Reporting run {run.id} as {'success' if success else 'failure'} "
@@ -217,6 +227,29 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+
+    async def _build_standard_completion_output(
+        self, session_id: str, webhook_data: Any
+    ) -> TriggerAgentSessionOutput:
+        """Session URL plus cumulative usage from a best-effort session retrieve."""
+        client = create_anthropic_client()
+        workspace_id = getattr(webhook_data, "workspace_id", None)
+        if not isinstance(workspace_id, str):
+            workspace_id = client.get_workspace_id()
+        session_url = build_session_link(
+            client.get_console_host(), workspace_id, session_id
+        )
+
+        try:
+            session = await client.get_session(session_id)
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch session {session_id} for completion usage "
+                f"(returning url only): {error}"
+            )
+            return TriggerAgentSessionOutput(url=session_url)
+
+        return TriggerAgentSessionOutput.from_session(url=session_url, session=session)
 
     async def _find_anchor_user_message(
         self, session_id: str, webhook_time: datetime

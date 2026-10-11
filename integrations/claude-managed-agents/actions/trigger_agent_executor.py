@@ -1,5 +1,4 @@
-from typing import Any
-
+from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_requires_action import (
     BetaManagedAgentsSessionRequiresAction,
 )
@@ -13,6 +12,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.exceptions import InvalidActionParametersException
+from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
     build_session_link,
@@ -54,12 +54,14 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             return session_id
         return None
 
-    async def _ensure_session_continuable(self, session_id: str) -> dict[str, Any]:
+    async def _ensure_session_continuable(
+        self, session_id: str
+    ) -> BetaManagedAgentsSession:
         session = await self.client.get_session(session_id)
-        status = session.get("status")
-        if status != "idle":
+        if session.status != "idle":
             raise ActionExecutionError(
-                f"Session {session_id} cannot be continued (status={status!r}); "
+                f"Session {session_id} cannot be continued "
+                f"(status={session.status!r}); "
                 "only idle sessions accept a new prompt",
                 status_label=SESSION_NOT_CONTINUABLE_STATUS_LABEL,
             )
@@ -111,7 +113,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         if session_id:
             session = await self._ensure_session_continuable(session_id)
-            resolved_session_id = session_id
         else:
             if not environment_id:
                 raise InvalidActionParametersException(
@@ -123,13 +124,13 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                 environment_id,
                 extra=api_config or None,
             )
-            resolved_session_id = session.get("id")
-            if not resolved_session_id or not isinstance(resolved_session_id, str):
+            if not session.id:
                 raise ActionExecutionError(
                     "Session was created but no session id was returned",
                     status_label=SESSION_START_FAILED_STATUS_LABEL,
                 )
 
+        resolved_session_id = session.id
         user_message = await self.client.send_user_message(resolved_session_id, prompt)
         logger.info(
             f"Triggered Claude agent {agent_id} via session {resolved_session_id} "
@@ -138,22 +139,26 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Status updates arrive later via webhooks. Best-effort:
-        # never fails the run.
-        await self.register_entity(ObjectKind.SESSION, session, run)
+        # never fails the run. Convert to dict only at the catalog boundary.
+        await self.register_entity(
+            ObjectKind.SESSION, session.to_dict(mode="json"), run
+        )
 
         external_id = build_external_id(resolved_session_id, user_message.id)
+        session_url = build_session_link(
+            self.client.get_console_host(),
+            self.client.get_workspace_id(),
+            resolved_session_id,
+        )
         await ocean.port_client.update_run_started(
             run,
-            build_session_link(
-                self.client.get_console_host(),
-                self.client.get_workspace_id(),
-                resolved_session_id,
-            ),
+            session_url,
             external_id,
-            extra_output={
-                "sessionId": resolved_session_id,
-                "userMessageEventId": user_message.id,
-            },
+            extra_output=TriggerAgentSessionOutput(
+                session_id=resolved_session_id,
+                user_message_event_id=user_message.id,
+                url=session_url,
+            ).to_output_dict(),
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
