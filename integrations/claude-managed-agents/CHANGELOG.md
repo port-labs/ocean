@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-10-11)
+
+
+### Features
+
+- Added a delete_environment action that permanently deletes a Claude managed environment and removes it from the catalog
+
+
 ## 0.6.1 (2026-10-11)
 
 
