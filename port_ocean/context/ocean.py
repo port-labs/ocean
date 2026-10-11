@@ -145,7 +145,11 @@ class PortOceanContext:
         def wrapper(
             function: INCREMENTAL_EVENT_LISTENER | None,
         ) -> INCREMENTAL_EVENT_LISTENER | None:
-            return self.integration.on_incremental_resync(function, kind)
+            return (
+                self.integration.on_incremental_resync(function, kind)
+                if self.app.config.integration.incremental_sync_enabled
+                else None
+            )
 
         return wrapper
 
