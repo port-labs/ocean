@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.17.6 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
+## 6.17.5 (2026-10-11)
+
+
+### Improvements
+
+- Log a structured GitHub API request entry with http_request for per-resync HTTP volume in integration logs.
+
+
+## 6.17.4 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
 ## 6.17.3 (2026-10-07)
 
 

@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.0 (2026-10-11)
+
+
+### Features
+
+- Added an update_environment action that updates a Claude managed environment's configuration with optimistic concurrency
+
+
+## 0.8.0 (2026-10-11)
+
+
+### Features
+
+- Added standard `trigger_agent` completion output fields (`url`, `input_tokens`, `output_tokens`, `cost_usd`) from the Claude session retrieve, using Anthropic list-cost cents converted to USD.
+
+
+## 0.7.0 (2026-10-11)
+
+
+### Features
+
+- Added a delete_environment action that permanently deletes a Claude managed environment and removes it from the catalog
+
+
+## 0.6.1 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
+## 0.6.0 (2026-10-08)
+
+
+### Features
+
+- Added a create_environment action that creates a new Claude managed environment defining the container configuration for agent sessions
+
+
+## 0.5.1 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 0.5.0 (2026-10-07)
+
+
+### Features
+
+- Added an update_agent action that updates a Claude managed agent's name, model, system prompt, or advanced configuration
+
+
 ## 0.4.1 (2026-10-07)
 
 

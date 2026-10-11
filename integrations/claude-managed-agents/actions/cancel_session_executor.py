@@ -52,10 +52,10 @@ class CancelSessionExecutor(AbstractAnthropicExecutor):
         )
 
         session = await self.client.get_session(session_id)
-        status = session.get("status")
-        if status != CANCELLABLE_STATUS:
+        if session.status != CANCELLABLE_STATUS:
             raise ActionExecutionError(
-                f"Session {session_id} cannot be cancelled (status={status!r}); "
+                f"Session {session_id} cannot be cancelled "
+                f"(status={session.status!r}); "
                 f"only {CANCELLABLE_STATUS} sessions can be interrupted",
                 status_label=SESSION_NOT_CANCELLABLE_STATUS_LABEL,
             )
@@ -77,7 +77,9 @@ class CancelSessionExecutor(AbstractAnthropicExecutor):
 
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Best-effort: never fails the run.
-        await self.register_entity(ObjectKind.SESSION, session, run)
+        await self.register_entity(
+            ObjectKind.SESSION, session.to_dict(mode="json"), run
+        )
 
         if isinstance(run, WorkflowNodeRun):
             run.output["sessionId"] = session_id
