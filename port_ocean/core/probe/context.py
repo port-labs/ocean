@@ -27,7 +27,7 @@ class ProbeContext:
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     ended_at: datetime | None = None
     status: ProbeStatus = ProbeStatus.IN_PROGRESS
-    """The status of the overall probe, should never be altered manually, only using finalize() or fail()"""
+    """Overall probe status. Mutate only via finalize(), fail(), or fail_internal()."""
     message: str | None = None
     checks: list[ProbeCheck] = field(default_factory=list)
     reporter: ProbeReporter | None = None
@@ -106,7 +106,15 @@ class ProbeContext:
         await self.update_progress()
 
     async def fail(self, message: str) -> None:
+        """Mark the probe as failed due to an external/third-party issue."""
         self.ended_at = datetime.now(timezone.utc)
         self.status = ProbeStatus.FAILED
+        self.message = message
+        await self.update_progress()
+
+    async def fail_internal(self, message: str) -> None:
+        """Mark the probe as failed due to an Ocean/platform-side error."""
+        self.ended_at = datetime.now(timezone.utc)
+        self.status = ProbeStatus.INTERNAL_FAILURE
         self.message = message
         await self.update_progress()

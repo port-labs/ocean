@@ -1,6 +1,6 @@
 # Canny Integration Installation Guide
 
-This guide will help you set up the Canny integration using Port Ocean's Ocean Custom integration.
+This guide will help you set up the Canny integration using Port's Custom Ocean Integration.
 
 ## Prerequisites
 
@@ -232,11 +232,10 @@ helm uninstall port-ocean-canny
 
 - [Canny API Documentation](https://developers.canny.io/api-reference)
 - [Port Ocean Documentation](https://docs.getport.io/build-your-software-catalog/custom-integration/ocean)
-- [Ocean Custom Integration](https://docs.getport.io/build-your-software-catalog/custom-integration/custom)
+- [Custom Ocean Integration](https://docs.getport.io/build-your-software-catalog/custom-integration/custom)
 
 ## Support
 
 For issues or questions:
 - Port Support: support@getport.io
 - Canny Support: help@canny.io
-

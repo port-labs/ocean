@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.4 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
+## 0.15.3 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 0.15.2 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.15.1 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 0.15.0 (2026-10-04)
+
+
+### Features
+
+- Added identity propagation for GitLab actions. The integration registers its own OAuth app (identityOauthClientId/identityOauthClientSecret) so actions can run as the triggering user. Authorize and token URLs are derived from gitlabHost.
+
+
+## 0.14.4 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
+## 0.14.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 0.14.2 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
+## 0.14.1 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.52.5
+
+
+## 0.14.0 (2026-09-30)
+
+
+### Features
+
+- Added set_merge_request_comment_reaction action for emoji reactions on MR comments
+
+
 ## 0.13.0 (2026-09-30)
 
 

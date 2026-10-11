@@ -144,16 +144,17 @@ class UpdateMergeRequestExecutor(AbstractGitlabExecutor):
             should_raise=False,
         )
 
-        try:
-            merge_request = await self.client.update_merge_request(
-                inputs.id, inputs.mergeRequestIid, payload
-            )
-        except httpx.HTTPStatusError as e:
-            raise GitlabUpdateMergeRequestError.from_response(
-                e.response,
-                f"Could not update merge request !{inputs.mergeRequestIid} "
-                f"in project '{inputs.id}'",
-            )
+        async with self._api_client_for_run(run) as api_client:
+            try:
+                merge_request = await api_client.update_merge_request(
+                    inputs.id, inputs.mergeRequestIid, payload
+                )
+            except httpx.HTTPStatusError as e:
+                raise GitlabUpdateMergeRequestError.from_response(
+                    e.response,
+                    f"Could not update merge request !{inputs.mergeRequestIid} "
+                    f"in project '{inputs.id}'",
+                )
 
         if not merge_request or not all(k in merge_request for k in ("iid", "web_url")):
             raise GitlabUpdateMergeRequestError(

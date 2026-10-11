@@ -39,6 +39,7 @@ from port_ocean.identity_propagation.vault.base import VaultClient, build_vault_
 from port_ocean.identity_propagation.verifier import (
     IdentityTokenVerifier,
     PortIdentityTokenVerifier,
+    UnavailableIdentityTokenVerifier,
 )
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
@@ -119,12 +120,24 @@ class Ocean:
         self.lifecycle_client: LifecycleClient = LifecycleClient(
             auth=self.port_client.auth,
         )
+
+        self.identity_verifier: IdentityTokenVerifier = (
+            UnavailableIdentityTokenVerifier()
+        )
+        self.vault_client: VaultClient | None = None
+        self.oauth_provider: OAuth2Provider | None = None
+
         if self.config.identity_propagation.enabled:
-            self.vault_client: VaultClient | None = build_vault_client(
+            if not self.config.actions_processor.enabled:
+                raise ValueError(
+                    "Identity propagation requires actions processing to be enabled. "
+                    "Set OCEAN__ACTIONS_PROCESSOR__ENABLED=true or disable "
+                    "identity propagation."
+                )
+            self.vault_client = build_vault_client(
                 self.config.identity_propagation.vault
             ) or getattr(self, "vault_client", None)
-            self.identity_verifier: IdentityTokenVerifier = PortIdentityTokenVerifier()
-            self.oauth_provider: OAuth2Provider | None = None
+            self.identity_verifier = PortIdentityTokenVerifier()
             if self.vault_client is None:
                 raise ValueError(
                     "Identity propagation enabled but no vault client configured."

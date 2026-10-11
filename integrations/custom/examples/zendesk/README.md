@@ -1,6 +1,6 @@
 # Zendesk Integration Example
 
-This example demonstrates how to integrate Zendesk with Port using the Ocean Custom integration. It showcases several advanced features:
+This example demonstrates how to integrate Zendesk with Port using the Custom Ocean Integration. It showcases several advanced features:
 
 ## Features Demonstrated
 
@@ -77,12 +77,5 @@ zendesk_comment → (relates to ticket and author)
 ## Learn More
 
 - [Zendesk API Documentation](https://developer.zendesk.com/api-reference/)
-- [Port Ocean Custom Integration](../../README.md)
+- [Port Custom Ocean Integration](../../README.md)
 - [Ocean Framework Documentation](https://ocean.getport.io/)
-
-
-
-
-
-
-

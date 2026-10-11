@@ -7,6 +7,78 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.7 (2026-10-11)
+
+
+### Improvements
+
+- Skip registering incremental resync handlers when incrementalSyncEnabled is false on the integration config.
+
+
+## 0.53.6 (2026-10-11)
+
+
+### Improvements
+
+- Emit incremental resync trigger logs inside the event context so event_id is available for log correlation.
+
+
+## 0.53.5 (2026-10-08)
+
+
+### Bug Fixes
+
+- Fixed the polling event listener skipping the startup resync when resync_on_start is enabled and the integration-state watermark is still empty
+
+
+## 0.53.4 (2026-10-07)
+
+
+### Bug Fixes
+
+- Always restore the previous event context when an event raises, so a failed action run no longer leaves a dead context behind that makes every later run on that worker fail with "Port app config is not set".
+
+
+## 0.53.3 (2026-10-05)
+
+
+### Improvements
+
+- Enable Ocean core smoke tests for Port workflows
+
+
+## 0.53.2 (2026-10-04)
+
+
+### Improvements
+
+- Integrations now construct and register a fully built OAuth2Provider. Core no longer parses GitHub, GitLab, or Azure DevOps OAuth settings, and identity propagation requires actions processing to be enabled.
+
+
+## 0.53.1 (2026-10-01)
+
+
+### Improvements
+
+- Bump compatible Ocean core dependencies, including uvicorn 0.54 and security fixes in urllib3 and PyJWT
+
+
+## 0.53.0 (2026-10-01)
+
+
+### Features
+
+- Add ocean core smoke configsets that boot fake-integration per Ocean settings, with tests opting in via smoke_configset markers
+
+
+## 0.52.5 (2026-10-01)
+
+
+### Features
+
+- Add INTERNAL_FAILURE probe status to distinguish Ocean/platform errors from third-party connection failures
+
+
 ## 0.52.4 (2026-09-28)
 
 

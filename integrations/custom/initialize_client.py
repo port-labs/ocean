@@ -1,5 +1,5 @@
 """
-Ocean Custom Client Factory
+Custom Ocean Client Factory
 
 Factory function to create HTTP client instances from Ocean configuration.
 Supports shared client singleton for parallel-safe operation.
@@ -52,7 +52,7 @@ def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
 
 
 def init_client() -> HttpServerClient:
-    """Initialize Ocean Custom client from Ocean configuration"""
+    """Initialize Custom Ocean client from Ocean configuration"""
     config = ocean.integration_config
 
     # Parse custom headers from config

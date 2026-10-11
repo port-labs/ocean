@@ -60,7 +60,7 @@ def bulk_update_executor(
     mock_rest_client: MagicMock,
 ) -> Generator[BulkUpdateExternalCustomPropertyValuesExecutor, None, None]:
     with patch(
-        "github.actions.external_custom_properties.bulk_update_external_custom_property_values_executor.create_github_client_for_org",
+        "github.actions.external_custom_properties.abstract_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield BulkUpdateExternalCustomPropertyValuesExecutor()
@@ -71,7 +71,7 @@ def bulk_delete_executor(
     mock_rest_client: MagicMock,
 ) -> Generator[BulkDeleteExternalCustomPropertyValuesExecutor, None, None]:
     with patch(
-        "github.actions.external_custom_properties.bulk_delete_external_custom_property_values_executor.create_github_client_for_org",
+        "github.actions.external_custom_properties.abstract_executor.create_github_client_for_org",
         new=AsyncMock(return_value=mock_rest_client),
     ):
         yield BulkDeleteExternalCustomPropertyValuesExecutor()

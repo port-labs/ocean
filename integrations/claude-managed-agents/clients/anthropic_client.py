@@ -8,9 +8,16 @@ from typing import Any, Literal, Protocol
 
 import httpx
 from anthropic import AsyncAnthropic
-from anthropic.types.beta import UnwrapWebhookEvent
+from anthropic.types.beta import BetaEnvironment, UnwrapWebhookEvent
+from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event import (
+    BetaManagedAgentsUserInterruptEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event_params import (
+    BetaManagedAgentsUserInterruptEventParams,
 )
 from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import (
     BetaManagedAgentsUserMessageEvent,
@@ -237,9 +244,8 @@ class AnthropicClient:
         if batch:
             yield batch
 
-    async def get_session(self, session_id: str) -> dict[str, Any]:
-        session = await self._client.beta.sessions.retrieve(session_id)
-        return session.to_dict(mode="json")
+    async def get_session(self, session_id: str) -> BetaManagedAgentsSession:
+        return await self._client.beta.sessions.retrieve(session_id)
 
     async def get_session_events(
         self,
@@ -279,6 +285,63 @@ class AnthropicClient:
         vault = await self._client.beta.vaults.retrieve(vault_id)
         return vault.to_dict(mode="json")
 
+    async def create_environment(
+        self,
+        name: str,
+        description: str | None = None,
+        scope: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"name": name}
+        if description:
+            payload["description"] = description
+        if scope:
+            payload["scope"] = scope
+        if extra:
+            payload["config"] = extra
+
+        logger.info(f"Creating Claude environment '{name}'")
+        environment = await self._client.beta.environments.create(**payload)
+        return environment.to_dict(mode="json")
+
+    async def get_agent(self, agent_id: str) -> dict[str, Any]:
+        logger.info(f"Retrieving Claude agent '{agent_id}'")
+        agent = await self._client.beta.agents.retrieve(agent_id)
+        return agent.to_dict(mode="json")
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        version: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
+        agent = await self._client.beta.agents.update(
+            agent_id, version=version, **payload
+        )
+        return agent.to_dict(mode="json")
+
+    async def delete_environment(self, environment_id: str) -> None:
+        logger.info(f"Deleting Claude environment '{environment_id}'")
+        await self._client.beta.environments.delete(environment_id)
+
+    async def get_environment(self, environment_id: str) -> BetaEnvironment:
+        logger.info(f"Retrieving Claude environment '{environment_id}'")
+        return await self._client.beta.environments.retrieve(environment_id)
+
+    async def update_environment(
+        self,
+        environment_id: str,
+        payload: dict[str, Any],
+    ) -> BetaEnvironment:
+        logger.info(f"Updating Claude environment '{environment_id}'")
+        return await self._client.beta.environments.update(environment_id, **payload)
+
+    async def archive_agent(self, agent_id: str) -> dict[str, Any]:
+        logger.info(f"Archiving Claude agent '{agent_id}'")
+        agent = await self._client.beta.agents.archive(agent_id)
+        return agent.to_dict(mode="json")
+
     async def create_agent(
         self,
         name: str,
@@ -303,7 +366,7 @@ class AnthropicClient:
         agent_id: str,
         environment_id: str,
         extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> BetaManagedAgentsSession:
         payload: dict[str, Any] = {
             k: v for k, v in (extra or {}).items() if v is not None
         }
@@ -313,8 +376,7 @@ class AnthropicClient:
         logger.info(
             f"Creating Claude session for agent '{agent_id}' in environment '{environment_id}'"
         )
-        session = await self._client.beta.sessions.create(**payload)
-        return session.to_dict(mode="json")
+        return await self._client.beta.sessions.create(**payload)
 
     async def send_user_message(
         self, session_id: str, prompt: str
@@ -339,6 +401,30 @@ class AnthropicClient:
                 f"Expected user.message event from send, got {event.type}"
             )
         return event
+
+    async def send_user_interrupt(
+        self, session_id: str, session_thread_id: str | None = None
+    ) -> BetaManagedAgentsUserInterruptEvent:
+        logger.info(f"Interrupting Claude session '{session_id}'")
+        event: BetaManagedAgentsUserInterruptEventParams = {"type": "user.interrupt"}
+        # Omitted rather than sent as null: the API interrupts every
+        # non-archived thread only when the field is absent.
+        if session_thread_id:
+            event["session_thread_id"] = session_thread_id
+        response = await self._client.beta.sessions.events.send(
+            session_id,
+            events=[event],
+        )
+        if not response.data:
+            raise UnexpectedApiResponseError(
+                "Interrupt was sent but no event was returned"
+            )
+        returned_event = response.data[0]
+        if not isinstance(returned_event, BetaManagedAgentsUserInterruptEvent):
+            raise UnexpectedApiResponseError(
+                f"Expected user.interrupt event from send, got {returned_event.type}"
+            )
+        return returned_event
 
     def unwrap_webhook(
         self, payload: str, headers: Mapping[str, str]

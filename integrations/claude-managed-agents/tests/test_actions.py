@@ -14,7 +14,15 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
 from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
 )
+from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event import (
+    BetaManagedAgentsUserInterruptEvent,
+)
 from actions.abstract_executor import AbstractAnthropicExecutor
+from actions.cancel_session_executor import (
+    SESSION_CANCELLED_STATUS_LABEL,
+    SESSION_NOT_CANCELLABLE_STATUS_LABEL,
+    CancelSessionExecutor,
+)
 from actions.create_agent_executor import (
     AGENT_CREATED_STATUS_LABEL,
     CreateAgentExecutor,
@@ -24,10 +32,14 @@ from actions.trigger_agent_executor import (
     SESSION_NOT_CONTINUABLE_STATUS_LABEL,
     TriggerAgentExecutor,
 )
+from actions.types import TriggerAgentSessionOutput, list_cost_to_usd
 from actions.utils import (
     build_external_id,
     build_session_link,
     normalize_session_config,
+)
+from anthropic.types.beta.beta_managed_agents_session_usage import (
+    BetaManagedAgentsSessionUsage,
 )
 from clients.anthropic_client import RateLimitInfo
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
@@ -80,6 +92,61 @@ def test_build_session_link_uses_configured_console_host() -> None:
         build_session_link("https://console.example.com", "ws_1", "s1")
         == "https://console.example.com/workspaces/ws_1/sessions/s1"
     )
+
+
+def test_list_cost_to_usd() -> None:
+    assert list_cost_to_usd({"amount": "187", "currency": "USD"}) == 1.87
+    assert list_cost_to_usd({"amount": "50", "currency": "USD"}) == 0.5
+    assert list_cost_to_usd({"amount": "0", "currency": "USD"}) == 0.0
+    assert list_cost_to_usd(None) is None
+    assert list_cost_to_usd({"amount": "not-a-number"}) is None
+    assert list_cost_to_usd({}) is None
+
+
+def _sdk_session(
+    *,
+    session_id: str = "sess_1",
+    status: str = "idle",
+    usage: BetaManagedAgentsSessionUsage | None = None,
+) -> MagicMock:
+    session = MagicMock()
+    session.id = session_id
+    session.status = status
+    session.usage = usage
+    session.to_dict = MagicMock(return_value={"id": session_id, "status": status})
+    return session
+
+
+def test_trigger_agent_session_output_from_session() -> None:
+    session = _sdk_session(
+        session_id="s1",
+        usage=BetaManagedAgentsSessionUsage.model_validate(
+            {
+                "input_tokens": 5000,
+                "output_tokens": 3200,
+                "list_cost": {"amount": "187", "currency": "USD"},
+            }
+        ),
+    )
+    assert TriggerAgentSessionOutput.from_session(
+        url="https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        session=session,
+        session_id="s1",
+        user_message_event_id="msg_1",
+    ).model_dump() == {
+        "sessionId": "s1",
+        "userMessageEventId": "msg_1",
+        "url": "https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        "inputTokens": 5000,
+        "outputTokens": 3200,
+        "costUsd": 1.87,
+    }
+
+
+def test_trigger_agent_session_output_url_only() -> None:
+    assert TriggerAgentSessionOutput(
+        url="https://platform.claude.com/"
+    ).model_dump() == {"url": "https://platform.claude.com/"}
 
 
 def _rate_limit_client_mock(
@@ -485,7 +552,7 @@ def _user_message_event(event_id: str = "msg_1") -> BetaManagedAgentsUserMessage
 @pytest.mark.asyncio
 async def test_trigger_agent_executor_starts_session() -> None:
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -517,13 +584,14 @@ async def test_trigger_agent_executor_starts_session() -> None:
     assert call.kwargs["extra_output"] == {
         "sessionId": "sess_1",
         "userMessageEventId": "msg_1",
+        "url": call.args[1],
     }
 
 
 @pytest.mark.asyncio
 async def test_trigger_agent_executor_passes_config_on_new_session() -> None:
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -589,7 +657,7 @@ async def test_trigger_agent_executor_ignores_session_create_fields_when_continu
     None
 ):
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(return_value={"id": "sess_1", "status": "idle"})
+    client_mock.get_session = AsyncMock(return_value=_sdk_session())
     client_mock.get_session_events = _empty_session_events
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event("msg_2"))
     executor = _build_executor(TriggerAgentExecutor, client_mock)
@@ -636,7 +704,7 @@ async def test_trigger_agent_partition_key_is_session_id_when_continuing() -> No
 @pytest.mark.asyncio
 async def test_trigger_agent_continues_idle_session() -> None:
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(return_value={"id": "sess_1", "status": "idle"})
+    client_mock.get_session = AsyncMock(return_value=_sdk_session())
     client_mock.get_session_events = _empty_session_events
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event("msg_2"))
     executor = _build_executor(TriggerAgentExecutor, client_mock)
@@ -678,9 +746,7 @@ async def _empty_session_events(
 @pytest.mark.asyncio
 async def test_trigger_agent_rejects_non_idle_session() -> None:
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(
-        return_value={"id": "sess_1", "status": "running"}
-    )
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -724,7 +790,7 @@ async def test_trigger_agent_rejects_requires_action_idle() -> None:
         yield [idle_event]
 
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(return_value={"id": "sess_1", "status": "idle"})
+    client_mock.get_session = AsyncMock(return_value=_sdk_session())
     client_mock.get_session_events = _idle_events
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -814,7 +880,7 @@ async def test_normalize_session_config_skips_repos_with_existing_token() -> Non
 @pytest.mark.asyncio
 async def test_trigger_agent_executor_injects_github_pat_into_session_config() -> None:
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -864,7 +930,7 @@ async def test_trigger_agent_executor_completes_run_synchronously_when_report_st
     None
 ):
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -898,7 +964,7 @@ async def test_trigger_agent_executor_completes_run_synchronously_by_default() -
     """reportSessionStatus defaults to False: without a webhook configured on the
     integration, a run left in progress would never complete."""
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -923,3 +989,164 @@ async def test_trigger_agent_executor_completes_run_synchronously_by_default() -
 
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
+
+
+def _interrupt_event(event_id: str = "int_1") -> BetaManagedAgentsUserInterruptEvent:
+    return BetaManagedAgentsUserInterruptEvent(
+        id=event_id,
+        type="user.interrupt",
+    )
+
+
+def _cancel_run(**overrides: Any) -> MagicMock:
+    run = MagicMock()
+    run.id = "run_1"
+    props: dict[str, Any] = {"sessionId": "sess_1"}
+    props.update(overrides)
+    run.execution_properties = props
+    return run
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_requires_session_id() -> None:
+    executor = _build_executor(CancelSessionExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+
+    with pytest.raises(InvalidActionParametersException, match="sessionId"):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("session_id", ["", 123])
+async def test_cancel_session_rejects_invalid_session_id(session_id: Any) -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock()
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    with pytest.raises(InvalidActionParametersException, match="sessionId"):
+        await executor.execute(_cancel_run(sessionId=session_id))
+
+    client_mock.get_session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_partition_key_is_session_id() -> None:
+    executor = _build_executor(CancelSessionExecutor, MagicMock())
+    assert await executor._get_partition_key(_cancel_run()) == "sess_1"
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_partition_key_is_none_without_session_id() -> None:
+    executor = _build_executor(CancelSessionExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+    assert await executor._get_partition_key(run) is None
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_interrupts_running_session() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(return_value=_interrupt_event())
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    run = _cancel_run()
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.send_user_interrupt.assert_awaited_once_with("sess_1", None)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
+    assert (
+        mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
+        == SESSION_CANCELLED_STATUS_LABEL
+    )
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_forwards_session_thread_id() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(return_value=_interrupt_event())
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(_cancel_run(sessionThreadId="thr_1"))
+
+    client_mock.send_user_interrupt.assert_awaited_once_with("sess_1", "thr_1")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["idle", "terminated", "rescheduled"])
+async def test_cancel_session_rejects_non_running_session(status: str) -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status=status))
+    client_mock.send_user_interrupt = AsyncMock()
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+    ):
+        with pytest.raises(ActionExecutionError) as exc_info:
+            await executor.execute(_cancel_run())
+
+    assert exc_info.value.status_label == SESSION_NOT_CANCELLABLE_STATUS_LABEL
+    client_mock.send_user_interrupt.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_wraps_upstream_failure() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(side_effect=RuntimeError("boom"))
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+    ):
+        with pytest.raises(ActionExecutionError, match="boom"):
+            await executor.execute(_cancel_run())
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_sets_workflow_node_outputs() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(return_value=_interrupt_event("int_9"))
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.execution_properties = {"sessionId": "sess_1"}
+    run.output = {}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"sessionId": "sess_1", "interruptEventId": "int_9"}

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 from port_ocean.config.settings import SslSettings
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.ocean import Ocean
-from port_ocean.tests.helpers.smoke_test import cleanup_smoke_test
+from port_ocean.tests.smoke.helpers.port_client import cleanup_smoke_test
 
 
 def _create_minimal_ocean_mock() -> MagicMock:
