@@ -398,7 +398,8 @@
         {
           "name": "milestone",
           "title": "Milestone",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "Milestone number to associate with the issue"
         }
       ]
@@ -425,7 +426,8 @@
         {
           "name": "issueNumber",
           "title": "Issue number",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The number of the issue to edit",
           "required": true
         },
@@ -456,7 +458,8 @@
         {
           "name": "milestone",
           "title": "Milestone",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "Milestone number to associate with the issue (null to remove)"
         }
       ]
@@ -483,7 +486,8 @@
         {
           "name": "issueNumber",
           "title": "Issue number",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The number of the issue to close",
           "required": true
         },
@@ -498,7 +502,8 @@
         {
           "name": "duplicateIssueId",
           "title": "Duplicate of issue ID",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The ID of the issue this is a duplicate of (required when close reason is 'duplicate')"
         }
       ]
@@ -580,7 +585,8 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The number of the pull request to update",
           "required": true
         },
@@ -626,7 +632,8 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The number of the pull request to close",
           "required": true
         }
@@ -654,7 +661,8 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The number of the pull request to merge",
           "required": true
         },
@@ -702,7 +710,8 @@
         {
           "name": "prNumber",
           "title": "Pull request number",
-          "type": "number",
+          "type": "string",
+          "pattern": "^(?:\\d+|\\{\\{.+\\}\\})$",
           "description": "The number of the pull request to review",
           "required": true
         },

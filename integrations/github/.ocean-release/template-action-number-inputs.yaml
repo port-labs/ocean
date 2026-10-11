@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Allow GitHub action number inputs to use a number or a template expression
