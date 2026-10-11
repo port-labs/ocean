@@ -30,19 +30,10 @@ class UpdateEnvironmentInputs(AbstractAnthropicActionInput):
             )
         return self
 
-    def to_request_payload(self) -> dict[str, Any]:
-        """Return only the fields that should be sent to the Anthropic API.
-
-        Omits environmentId (routing key, not an API field) and drops
-        None/empty values.
-        """
-        return {
-            field: value
-            for field, value in self.model_dump(
-                exclude={"environmentId"}, exclude_none=True
-            ).items()
-            if value
-        }
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        data.pop("environmentId", None)
+        return {field: value for field, value in data.items() if value}
 
 
 class UpdateEnvironmentExecutor(AbstractAnthropicExecutor):
@@ -77,7 +68,7 @@ class UpdateEnvironmentExecutor(AbstractAnthropicExecutor):
         try:
             environment = await self.client.update_environment(
                 environment_id,
-                payload=inputs.to_request_payload(),
+                payload=inputs.model_dump(exclude_none=True),
             )
         except Exception as error:
             raise ActionExecutionError(
