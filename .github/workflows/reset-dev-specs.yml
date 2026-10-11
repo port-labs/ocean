@@ -37,9 +37,9 @@ jobs:
             echo "origin/${BRANCH} did not exist; nothing to delete"
           fi
 
-          # Drop any leftover local ref, then recreate from main and push.
+          # Recreate the remote branch from main without a local branch named
+          # BRANCH — `git branch -D` / `git branch` fail if BRANCH is checked out
+          # (e.g. workflow_dispatch ran with that ref selected).
           # A new-branch push has before=0000… → upload-dev-specs does a full upload.
-          git branch -D "${BRANCH}" 2>/dev/null || true
-          git branch "${BRANCH}" origin/main
-          git push -u origin "${BRANCH}"
+          git push -u origin "origin/main:refs/heads/${BRANCH}"
           echo "Recreated origin/${BRANCH} from origin/main"
