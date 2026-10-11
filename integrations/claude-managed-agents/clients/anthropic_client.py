@@ -8,7 +8,7 @@ from typing import Any, Literal, Protocol
 
 import httpx
 from anthropic import AsyncAnthropic
-from anthropic.types.beta import UnwrapWebhookEvent
+from anthropic.types.beta import BetaEnvironment, UnwrapWebhookEvent
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
@@ -324,6 +324,18 @@ class AnthropicClient:
     async def delete_environment(self, environment_id: str) -> None:
         logger.info(f"Deleting Claude environment '{environment_id}'")
         await self._client.beta.environments.delete(environment_id)
+
+    async def get_environment(self, environment_id: str) -> BetaEnvironment:
+        logger.info(f"Retrieving Claude environment '{environment_id}'")
+        return await self._client.beta.environments.retrieve(environment_id)
+
+    async def update_environment(
+        self,
+        environment_id: str,
+        payload: dict[str, Any],
+    ) -> BetaEnvironment:
+        logger.info(f"Updating Claude environment '{environment_id}'")
+        return await self._client.beta.environments.update(environment_id, **payload)
 
     async def archive_agent(self, agent_id: str) -> dict[str, Any]:
         logger.info(f"Archiving Claude agent '{agent_id}'")
