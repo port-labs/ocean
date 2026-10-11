@@ -14,7 +14,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 
-from clients.anthropic_client import AnthropicClient, RateLimitInfo, _WEBHOOK_EVENTS
+from clients.anthropic_client import AnthropicClient, RateLimitInfo
 from clients.exceptions import (
     UnexpectedApiResponseError,
     WebhookSigningSecretNotConfiguredError,
@@ -59,6 +59,7 @@ def client() -> AnthropicClient:
         anthropic_version="2023-06-01",
     )
     instance._client = MagicMock()
+    instance._console_http = MagicMock()
     return instance
 
 
@@ -433,55 +434,55 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
     assert client.get_read_rate_limit_status() is None
 
 
-def _mock_console_http(
-    monkeypatch: pytest.MonkeyPatch, response: httpx.Response
-) -> AsyncMock:
-    post = AsyncMock(return_value=response)
-    http = MagicMock()
-    http.post = post
-    http.__aenter__ = AsyncMock(return_value=http)
-    http.__aexit__ = AsyncMock(return_value=None)
-    monkeypatch.setattr(
-        "clients.anthropic_client.OceanAsyncClient", lambda **kwargs: http
-    )
-    return post
-
-
 @pytest.mark.asyncio
-async def test_create_webhooks_if_not_exists_creates(
-    client: AnthropicClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    post = _mock_console_http(
-        monkeypatch,
-        httpx.Response(
+async def test_create_webhook_if_not_exists_creates(client: AnthropicClient) -> None:
+    client._console_http.post = AsyncMock(
+        return_value=httpx.Response(
             200,
-            json={"id": "wh_new"},
+            json={"id": "wh_new", "signing_secret": "whsec_once"},
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
-        ),
+        )
     )
+    client._webhook_signing_secret = None
 
-    await client.create_webhooks_if_not_exists("https://ocean.example")
+    await client.create_webhook_if_not_exists("https://ocean.example")
 
-    post.assert_awaited_once()
-    assert post.await_args.kwargs["json"] == {
-        "url": "https://ocean.example/integration/webhook",
-        "name": "Port Ocean Integration",
-        "enabled_events": _WEBHOOK_EVENTS,
-    }
+    client._console_http.post.assert_awaited_once()
+    body = client._console_http.post.await_args.kwargs["json"]
+    assert body["url"] == "https://ocean.example/integration/webhook"
+    assert body["name"] == "Port Ocean Integration"
+    assert "session.status_idled" in body["enabled_events"]
+    assert "vault.deleted" in body["enabled_events"]
 
 
 @pytest.mark.asyncio
-async def test_create_webhooks_if_not_exists_skips_on_conflict(
-    client: AnthropicClient, monkeypatch: pytest.MonkeyPatch
+async def test_create_webhook_if_not_exists_skips_on_conflict(
+    client: AnthropicClient,
 ) -> None:
-    post = _mock_console_http(
-        monkeypatch,
-        httpx.Response(
+    client._console_http.post = AsyncMock(
+        return_value=httpx.Response(
             409,
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
-        ),
+        )
     )
 
-    await client.create_webhooks_if_not_exists("https://ocean.example")
+    await client.create_webhook_if_not_exists("https://ocean.example")
 
-    post.assert_awaited_once()
+    client._console_http.post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_if_not_exists_logs_api_errors(
+    client: AnthropicClient,
+) -> None:
+    client._console_http.post = AsyncMock(
+        return_value=httpx.Response(
+            400,
+            text='{"error":"bad"}',
+            request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
+        )
+    )
+
+    await client.create_webhook_if_not_exists("https://ocean.example")
+
+    client._console_http.post.assert_awaited_once()

@@ -40,7 +40,9 @@ _RATE_LIMIT_REMAINING_HEADER = "anthropic-ratelimit-requests-remaining"
 _RATE_LIMIT_RESET_HEADER = "anthropic-ratelimit-requests-reset"
 _WORKSPACE_ID_HEADER = "anthropic-workspace-id"
 
+# Platform Console admin API (not covered by the Anthropic SDK webhooks resource).
 _WEBHOOKS_BETA = "webhooks-2026-03-01"
+_WEBHOOK_NAME = "Port Ocean Integration"
 _WEBHOOK_EVENTS = [
     "session.status_run_started",
     "session.status_idled",
@@ -116,6 +118,11 @@ class AnthropicClient:
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
+        # Console admin APIs (e.g. webhook registration) hit platform.claude.com.
+        self._console_http = OceanAsyncClient(
+            timeout=ocean.config.client_timeout,
+            retry_config=RetryConfig(max_attempts=3),
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
@@ -456,9 +463,14 @@ class AnthropicClient:
     def has_webhook_secret(self) -> bool:
         return bool(self._webhook_signing_secret)
 
-    async def create_webhooks_if_not_exists(self, base_url: str) -> None:
-        """POST Platform webhook; ignore 409 if the URL is already registered."""
-        url = f"{base_url.rstrip('/')}/integration/webhook"
+    async def create_webhook_if_not_exists(self, base_url: str) -> None:
+        """Register this integration's webhook URL on the Claude Platform Console.
+
+        Create is idempotent enough for startup: a ``409`` means the URL is
+        already registered. The signing secret is returned only on create and
+        is never logged - configure ``WEBHOOK_SIGNING_SECRET`` from Console.
+        """
+        webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
         headers = {
             "x-api-key": self._api_key,
             "anthropic-beta": _WEBHOOKS_BETA,
@@ -466,21 +478,38 @@ class AnthropicClient:
         }
         if self._anthropic_version:
             headers["anthropic-version"] = self._anthropic_version
+
         try:
-            async with OceanAsyncClient(timeout=ocean.config.client_timeout) as http:
-                response = await http.post(
-                    f"{self._console_host}/v1/webhooks",
-                    headers=headers,
-                    json={
-                        "url": url,
-                        "name": "Port Ocean Integration",
-                        "enabled_events": _WEBHOOK_EVENTS,
-                    },
-                )
-            if response.status_code == 409:
-                logger.info(f"Claude webhook already exists for {url}")
-                return
-            response.raise_for_status()
-            logger.info(f"Created Claude webhook {response.json().get('id')} for {url}")
+            response = await self._console_http.post(
+                f"{self._console_host}/v1/webhooks",
+                headers=headers,
+                json={
+                    "url": webhook_url,
+                    "name": _WEBHOOK_NAME,
+                    "description": "Port Ocean Claude Managed Agents live events",
+                    "enabled_events": _WEBHOOK_EVENTS,
+                },
+            )
         except httpx.HTTPError as error:
-            logger.error(f"Failed to create Claude webhook for {url}: {error}")
+            logger.error(f"Failed to create Claude webhook for {webhook_url}: {error}")
+            return
+
+        if response.status_code == 409:
+            logger.info(f"Claude webhook already exists for {webhook_url}")
+            return
+
+        if response.is_error:
+            logger.error(
+                f"Failed to create Claude webhook for {webhook_url}: "
+                f"{response.status_code} {(response.text or '')[:500]}"
+            )
+            return
+
+        created = response.json()
+        logger.info(f"Created Claude webhook {created.get('id')} for {webhook_url}")
+        if created.get("signing_secret") and not self._webhook_signing_secret:
+            logger.warning(
+                "Claude returned a webhook signing secret on create (shown once). "
+                "Set OCEAN__INTEGRATION__CONFIG__WEBHOOK_SIGNING_SECRET from that "
+                "response or the Claude Console."
+            )

@@ -94,12 +94,21 @@ async def on_start() -> None:
     logger.info("Starting claude-managed-agents integration")
 
     if not ocean.app.config.event_listener.should_process_webhooks:
-        logger.info("Skipping Claude webhook create (event listener)")
+        logger.info(
+            "Skipping Claude webhook creation because the event listener "
+            "does not process webhooks"
+        )
         return
-    if not ocean.app.base_url:
-        logger.warning("Skipping Claude webhook create (no OCEAN__BASE_URL)")
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "Skipping Claude webhook creation because no base URL is configured. "
+            "Set OCEAN__BASE_URL to enable live events."
+        )
         return
-    await create_anthropic_client().create_webhooks_if_not_exists(ocean.app.base_url)
+
+    await create_anthropic_client().create_webhook_if_not_exists(base_url)
 
 
 register_live_events_webhooks()
