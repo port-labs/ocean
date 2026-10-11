@@ -12,7 +12,10 @@ _JIRA_LIVE_EVENT_PAYLOAD_PATHS = (
     "issue.id",
     "sprint.id",
     "board.id",
-    "project.id",
+    "project.key",
+    "user.accountId",
+    "version.id",
+    "worklog.id",
 )
 
 
