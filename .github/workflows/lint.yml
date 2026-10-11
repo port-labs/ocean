@@ -33,7 +33,8 @@ jobs:
         run: |
           if [ "${{ matrix.folder }}" != "." ] && \
              ([ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
-              [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ]); then
+              [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ] || \
+              grep -q '^def pick_nested_fields' ../../port_ocean/core/handlers/webhook/webhook_log_context.py 2>/dev/null); then
             make install/local-core
           else
             make install
