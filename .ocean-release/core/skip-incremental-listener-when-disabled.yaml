@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Skip registering incremental resync handlers when incrementalSyncEnabled is false on the integration config.
