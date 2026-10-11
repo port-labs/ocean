@@ -59,6 +59,9 @@ jobs:
               - '!./*.md'
               - '!.github/**'
               - '!docs/**'
+              # Editor launch configs are often updated alongside integration PRs;
+              # do not treat them as ocean-core changes.
+              - '!.vscode/**'
             core_ci_files:
               - '.github/workflows/core-test.yml'
               - '.github/workflows/integration-tests.yml'
