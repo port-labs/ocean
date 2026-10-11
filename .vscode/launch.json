@@ -501,6 +501,28 @@
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/claude-managed-agents",
+      "envFile": "${workspaceFolder}/integrations/claude-managed-agents/.env",
+      "justMyCode": true,
+      "name": "Run claude-managed-agents integration",
+      "program": "${workspaceFolder}/integrations/claude-managed-agents/debug.py",
+      "python": "${workspaceFolder}/integrations/claude-managed-agents/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/cursor-cloud-agents",
+      "envFile": "${workspaceFolder}/integrations/cursor-cloud-agents/.env",
+      "justMyCode": true,
+      "name": "Run cursor-cloud-agents integration",
+      "program": "${workspaceFolder}/integrations/cursor-cloud-agents/debug.py",
+      "python": "${workspaceFolder}/integrations/cursor-cloud-agents/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

@@ -321,6 +321,10 @@ class AnthropicClient:
         )
         return agent.to_dict(mode="json")
 
+    async def delete_environment(self, environment_id: str) -> None:
+        logger.info(f"Deleting Claude environment '{environment_id}'")
+        await self._client.beta.environments.delete(environment_id)
+
     async def archive_agent(self, agent_id: str) -> dict[str, Any]:
         logger.info(f"Archiving Claude agent '{agent_id}'")
         agent = await self._client.beta.agents.archive(agent_id)
