@@ -95,7 +95,7 @@ async def on_start() -> None:
 
     if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
-            "Skipping Claude webhook upsert because the event listener "
+            "Skipping Claude webhook create because the event listener "
             "does not process webhooks"
         )
         return
@@ -103,7 +103,7 @@ async def on_start() -> None:
     base_url = ocean.app.base_url
     if not base_url:
         logger.warning(
-            "Skipping Claude webhook upsert because no base URL is configured. "
+            "Skipping Claude webhook create because no base URL is configured. "
             "Set OCEAN__BASE_URL to enable live events."
         )
         return
