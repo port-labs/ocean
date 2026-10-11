@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add probe entrypoint and add iam typing extra from existing package
