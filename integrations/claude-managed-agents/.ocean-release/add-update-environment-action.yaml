@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added an update_environment action that updates a Claude managed environment's configuration with optimistic concurrency
