@@ -78,7 +78,9 @@ class UpdateEnvironmentExecutor(AbstractAnthropicExecutor):
 
         logger.info(f"Updated Claude environment {environment_id} for run {run.id}")
 
-        await self.register_entity(ObjectKind.ENVIRONMENT, environment, run)
+        await self.register_entity(
+            ObjectKind.ENVIRONMENT, environment.to_dict(mode="json"), run
+        )
 
         if isinstance(run, WorkflowNodeRun):
             run.output["environmentId"] = environment_id
