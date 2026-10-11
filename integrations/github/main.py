@@ -1065,7 +1065,7 @@ async def resync_dependabot_alerts(
                 )
                 if allowed_repos is not None and not allowed_repos:
                     logger.info(
-                        f"Skipping {org_name}: repoSearch matched no repositories"
+                        f"Skipping {org_name}: repository filters matched no repositories"
                     )
                     continue
 
@@ -1155,10 +1155,10 @@ async def resync_code_scanning_alerts(
                 allowed_repos = await resolve_org_filtered_repos(
                     repository_exporter, repo_options
                 )
-                # Skip early if repoSearch matched no repositories
+                # Skip early if repository filters matched no repositories
                 if allowed_repos is not None and not allowed_repos:
                     logger.info(
-                        f"Skipping {org_name}: repoSearch matched no repositories"
+                        f"Skipping {org_name}: repository filters matched no repositories"
                     )
                     continue
 
@@ -1531,7 +1531,7 @@ async def resync_secret_scanning_alerts(
                 )
                 if allowed_repos is not None and not allowed_repos:
                     logger.info(
-                        f"Skipping {org_name}: repoSearch matched no repositories"
+                        f"Skipping {org_name}: repository filters matched no repositories"
                     )
                     continue
 

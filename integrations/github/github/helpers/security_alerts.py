@@ -91,7 +91,9 @@ def enrich_security_alert_batch(
         batch.append(
             cast(
                 SecurityAlert,
-                enrich_with_organization(enrich_with_repository(raw, name), organization),
+                enrich_with_organization(
+                    enrich_with_repository(raw, name), organization
+                ),
             )
         )
     return batch

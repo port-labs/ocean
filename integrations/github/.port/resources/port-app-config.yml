@@ -77,3 +77,22 @@ resources:
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .__repository
+  - kind: code-scanning-alerts
+    selector:
+      query: 'true'
+      state: open
+    port:
+      entity:
+        mappings:
+          identifier: .__repository + "/" + (.number | tostring)
+          blueprint: '"githubCodeScanningAlert"'
+          title: .rule.name
+          properties:
+            description: .rule.description
+            severity: .rule.severity
+            state: .state
+            tags: .rule.tags
+            updatedAt: .updated_at
+            url: .html_url
+          relations:
+            repository: .__repository

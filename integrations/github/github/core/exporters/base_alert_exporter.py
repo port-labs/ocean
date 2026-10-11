@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar
+from typing import Any, TypeVar, cast
 
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.security_alerts import (
@@ -9,7 +9,10 @@ from github.helpers.security_alerts import (
 )
 from github.helpers.utils import parse_github_options
 from loguru import logger
-from port_ocean.core.incremental.strategies import ClientSideCutoffStrategy, paginate_with_strategy
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    paginate_with_strategy,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from github.clients.http.rest_client import GithubRestClient
 
@@ -34,7 +37,7 @@ class BaseSecurityAlertExporter(AbstractGithubExporter[GithubRestClient], ABC):
     def incremental_strategy(self) -> ClientSideCutoffStrategy:
         """Incremental sync strategy for this alert type."""
 
-    def prepare_request_params(self, params: dict) -> None:
+    def prepare_request_params(self, params: dict[str, Any]) -> None:
         """Override to customize params before API request. Called after pop_org_alert_filters."""
 
     async def get_paginated_resources(
@@ -42,13 +45,17 @@ class BaseSecurityAlertExporter(AbstractGithubExporter[GithubRestClient], ABC):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get alerts with pagination (repo- or org-level). Handles common pagination logic."""
 
-        repo_name, organization, params = parse_github_options(dict(options))
+        repo_name, organization, params = parse_github_options(
+            cast(dict[str, Any], options)
+        )
         incremental_cursor = params.pop("updated_since", None)
         allowed_repos, exclude_archived = pop_org_alert_filters(params)
 
         self.prepare_request_params(params)
 
-        request_params = self.incremental_strategy.merge_params(params, incremental_cursor)
+        request_params = self.incremental_strategy.merge_params(
+            params, incremental_cursor
+        )
         endpoint = security_alerts_list_url(
             self.client.base_url, organization, self.resource_path, repo_name
         )
@@ -76,4 +83,4 @@ class BaseSecurityAlertExporter(AbstractGithubExporter[GithubRestClient], ABC):
             )
             if batch:
                 logger.debug(f"Yielding {len(batch)} enriched alerts from {scope}")
-                yield batch
+                yield cast(list[dict[str, Any]], batch)

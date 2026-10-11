@@ -483,16 +483,23 @@ async def resolve_org_filtered_repos(
     repo_options: "ListRepositoryOptions",
 ) -> list[str] | None:
     """
-    Resolve repoSearch allowlist for org-level resource streams.
+    Resolve repository allowlist for org-level resource streams.
+
+    Builds an allowlist when ``repoSearch`` and/or a non-``all`` ``repositoryType``
+    is configured, so org-level alert syncs match webhook visibility filtering.
+    ``exclude_archived`` alone does not require an allowlist (handled on each alert).
 
     Args:
         repository_exporter: Exporter used to list repositories
-        repo_options: Repository list options (search/exclude filters)
+        repo_options: Repository list options (type/search/exclude filters)
 
     Returns:
-        None if no filter; empty list if nothing matched; otherwise allowed repo names
+        None if no allowlist filter; empty list if nothing matched; otherwise
+        allowed repo names
     """
-    if repo_options.get("search_params") is None:
+    search_params = repo_options.get("search_params")
+    repo_type = repo_options.get("type", "all")
+    if search_params is None and repo_type == "all":
         return None
     names: list[str] = []
     async for repositories in repository_exporter.get_paginated_resources(repo_options):

@@ -1,3 +1,6 @@
+from typing import cast
+
+from github.helpers.models import SecurityAlert
 from github.helpers.security_alerts import (
     enrich_security_alert_batch,
     is_alert_repo_archived,
@@ -9,19 +12,30 @@ from github.helpers.security_alerts import (
 
 
 def test_repository_name_from_alert() -> None:
-    assert repository_name_from_alert({"repository": {"name": "ocean"}}) == "ocean"
-    assert repository_name_from_alert({"repository": {}}) is None
-    assert repository_name_from_alert({}) is None
+    assert (
+        repository_name_from_alert(
+            cast(SecurityAlert, {"repository": {"name": "ocean"}})
+        )
+        == "ocean"
+    )
+    assert repository_name_from_alert(cast(SecurityAlert, {"repository": {}})) is None
+    assert repository_name_from_alert(cast(SecurityAlert, {})) is None
 
 
 def test_is_alert_repo_archived() -> None:
-    assert is_alert_repo_archived({"repository": {"archived": True}}) is True
-    assert is_alert_repo_archived({"repository": {"archived": False}}) is False
-    assert is_alert_repo_archived({}) is False
+    assert (
+        is_alert_repo_archived(cast(SecurityAlert, {"repository": {"archived": True}}))
+        is True
+    )
+    assert (
+        is_alert_repo_archived(cast(SecurityAlert, {"repository": {"archived": False}}))
+        is False
+    )
+    assert is_alert_repo_archived(cast(SecurityAlert, {})) is False
 
 
 def test_should_include_org_alert_filters() -> None:
-    alert = {"repository": {"name": "repo-a", "archived": False}}
+    alert = cast(SecurityAlert, {"repository": {"name": "repo-a", "archived": False}})
     assert (
         should_include_org_alert(alert, allowed_repos={"repo-a"}, exclude_archived=True)
         == "repo-a"
@@ -35,7 +49,7 @@ def test_should_include_org_alert_filters() -> None:
         is None
     )
 
-    archived = {"repository": {"name": "repo-a", "archived": True}}
+    archived = cast(SecurityAlert, {"repository": {"name": "repo-a", "archived": True}})
     assert (
         should_include_org_alert(archived, allowed_repos=None, exclude_archived=True)
         is None

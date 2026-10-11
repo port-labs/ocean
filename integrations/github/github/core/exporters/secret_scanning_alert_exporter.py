@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 from github.core.exporters.base_alert_exporter import BaseSecurityAlertExporter
 from github.helpers.utils import (
     enrich_with_repository,
@@ -30,7 +30,7 @@ class RestSecretScanningAlertExporter(BaseSecurityAlertExporter):
     def incremental_strategy(self) -> ClientSideCutoffStrategy:
         return SECRET_SCANNING_INCREMENTAL
 
-    def prepare_request_params(self, params: dict) -> None:
+    def prepare_request_params(self, params: dict[str, Any]) -> None:
         """Remove state param if it's 'all' (not supported by API)."""
         if params.get("state") == "all":
             params.pop("state")

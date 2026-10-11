@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 from github.core.exporters.base_alert_exporter import BaseSecurityAlertExporter
 from github.helpers.utils import (
     enrich_with_repository,
@@ -30,7 +30,7 @@ class RestDependabotAlertExporter(BaseSecurityAlertExporter):
     def incremental_strategy(self) -> ClientSideCutoffStrategy:
         return DEPENDABOT_INCREMENTAL
 
-    def prepare_request_params(self, params: dict) -> None:
+    def prepare_request_params(self, params: dict[str, Any]) -> None:
         """Join state list as comma-separated string for API request."""
         params["state"] = ",".join(params["state"])
 
