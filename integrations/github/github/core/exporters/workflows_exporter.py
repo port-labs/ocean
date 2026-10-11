@@ -45,7 +45,7 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         repo_name = options["repo_name"]
         url = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows"
-        updated_since = options.get("updated_since")
+        updated_since = cast(datetime | None, options.get("updated_since"))
 
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
@@ -61,7 +61,7 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
                     if workflow_updated_at_str:
                         try:
                             workflow_updated_at = datetime.fromisoformat(
-                                workflow_updated_at_str.replace('Z', '+00:00')
+                                workflow_updated_at_str.replace("Z", "+00:00")
                             )
                             if workflow_updated_at < updated_since:
                                 continue
