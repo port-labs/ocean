@@ -19,6 +19,7 @@ from clients.anthropic_client import (
     WEBHOOK_NAME,
     WEBHOOKS_BETA,
     AnthropicClient,
+    PlatformWebhook,
     RateLimitInfo,
 )
 from clients.exceptions import (
@@ -468,7 +469,7 @@ async def test_list_webhooks_follows_after_id(client: AnthropicClient) -> None:
 
     webhooks = await client.list_webhooks()
 
-    assert [webhook["id"] for webhook in webhooks] == ["wh_1", "wh_2"]
+    assert [webhook.id for webhook in webhooks] == ["wh_1", "wh_2"]
     assert client._console_request.await_args_list[0].kwargs.get("params") is None
     assert client._console_request.await_args_list[1].kwargs["params"] == {
         "after_id": "wh_1"
@@ -481,7 +482,11 @@ async def test_create_webhooks_if_not_exists_creates_when_missing(
 ) -> None:
     client.list_webhooks = AsyncMock(return_value=[])  # type: ignore[method-assign]
     client._console_request = AsyncMock(  # type: ignore[method-assign]
-        return_value={"id": "wh_new", "signing_secret": "whsec_once"}
+        return_value={
+            "id": "wh_new",
+            "url": "https://ocean.example/integration/webhook",
+            "signing_secret": "whsec_once",
+        }
     )
 
     await client.create_webhooks_if_not_exists("https://ocean.example")
@@ -505,12 +510,12 @@ async def test_create_webhooks_if_not_exists_skips_when_already_current(
     invoke_url = "https://ocean.example/integration/webhook"
     client.list_webhooks = AsyncMock(  # type: ignore[method-assign]
         return_value=[
-            {
-                "id": "wh_1",
-                "url": invoke_url,
-                "enabled_events": list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
-                "state": "enabled",
-            }
+            PlatformWebhook(
+                id="wh_1",
+                url=invoke_url,
+                enabled_events=list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
+                state="enabled",
+            )
         ]
     )
     client._console_request = AsyncMock()  # type: ignore[method-assign]
@@ -527,15 +532,17 @@ async def test_create_webhooks_if_not_exists_updates_events_and_state(
     invoke_url = "https://ocean.example/integration/webhook"
     client.list_webhooks = AsyncMock(  # type: ignore[method-assign]
         return_value=[
-            {
-                "id": "wh_1",
-                "url": invoke_url,
-                "enabled_events": ["session.status_idled"],
-                "state": "disabled",
-            }
+            PlatformWebhook(
+                id="wh_1",
+                url=invoke_url,
+                enabled_events=["session.status_idled"],
+                state="disabled",
+            )
         ]
     )
-    client._console_request = AsyncMock(return_value={"id": "wh_1"})  # type: ignore[method-assign]
+    client._console_request = AsyncMock(  # type: ignore[method-assign]
+        return_value={"id": "wh_1", "url": invoke_url, "state": "enabled"}
+    )
 
     await client.create_webhooks_if_not_exists("https://ocean.example")
 

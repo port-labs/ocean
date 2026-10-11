@@ -23,7 +23,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
@@ -97,6 +97,40 @@ class _SessionEventsListParams(BaseModel):
     created_at_lt: datetime | None = None
     created_at_lte: datetime | None = None
     limit: int | None = None
+
+
+class PlatformWebhook(BaseModel):
+    """Claude Platform ``/v1/webhooks`` resource (admin API, not in the SDK)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    url: str
+    name: str = ""
+    enabled_events: list[str] = Field(default_factory=list)
+    state: Literal["enabled", "disabled"] | None = None
+    signing_secret: str | None = None
+
+
+class PlatformWebhookListPage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    data: list[PlatformWebhook] = Field(default_factory=list)
+    has_more: bool = False
+    last_id: str | None = None
+    first_id: str | None = None
+
+
+class _WebhookCreateParams(BaseModel):
+    url: str
+    name: str
+    description: str
+    enabled_events: list[str]
+
+
+class _WebhookUpdateParams(BaseModel):
+    enabled_events: list[str] | None = None
+    state: Literal["enabled", "disabled"] | None = None
 
 
 class AnthropicClient:
@@ -503,19 +537,18 @@ class AnthropicClient:
             return {}
         return response.json()
 
-    async def list_webhooks(self) -> list[dict[str, Any]]:
+    async def list_webhooks(self) -> list[PlatformWebhook]:
         """List Claude Platform webhooks (``has_more`` / ``after_id`` pagination)."""
-        webhooks: list[dict[str, Any]] = []
+        webhooks: list[PlatformWebhook] = []
         params: dict[str, str] | None = None
         while True:
-            page = await self._console_request("GET", "/v1/webhooks", params=params)
-            webhooks.extend(page.get("data") or [])
-            if not page.get("has_more"):
+            page = PlatformWebhookListPage.model_validate(
+                await self._console_request("GET", "/v1/webhooks", params=params)
+            )
+            webhooks.extend(page.data)
+            if not page.has_more or not page.last_id:
                 return webhooks
-            last_id = page.get("last_id")
-            if not isinstance(last_id, str) or not last_id:
-                return webhooks
-            params = {"after_id": last_id}
+            params = {"after_id": page.last_id}
 
     async def create_webhooks_if_not_exists(self, base_url: str) -> None:
         """Upsert a Platform webhook pointing at this integration's public URL.
@@ -535,62 +568,57 @@ class AnthropicClient:
             return
 
         for webhook in existing:
-            if webhook.get("url") != invoke_url:
+            if webhook.url != invoke_url:
                 continue
 
-            webhook_id = webhook.get("id")
-            if not isinstance(webhook_id, str) or not webhook_id:
-                logger.warning(
-                    f"Found Claude webhook for {invoke_url} without an id; skipping update"
-                )
-                return
-
-            current_events = set(webhook.get("enabled_events") or [])
-            needs_events = not desired_events.issubset(current_events)
+            needs_events = not desired_events.issubset(set(webhook.enabled_events))
             # Platform uses ``state`` (enabled/disabled), not ``status``.
-            needs_enable = webhook.get("state") != "enabled"
+            needs_enable = webhook.state != "enabled"
             if not needs_events and not needs_enable:
                 logger.info(
-                    f"Claude webhook {webhook_id} already registered for {invoke_url}"
+                    f"Claude webhook {webhook.id} already registered for {invoke_url}"
                 )
                 return
 
-            update_body: dict[str, Any] = {}
-            if needs_events:
-                update_body["enabled_events"] = sorted(desired_events)
-            if needs_enable:
-                update_body["state"] = "enabled"
-
+            update = _WebhookUpdateParams(
+                enabled_events=sorted(desired_events) if needs_events else None,
+                state="enabled" if needs_enable else None,
+            )
             try:
                 # Platform update is POST /v1/webhooks/{id} (not PATCH).
                 await self._console_request(
-                    "POST", f"/v1/webhooks/{webhook_id}", json_data=update_body
+                    "POST",
+                    f"/v1/webhooks/{webhook.id}",
+                    json_data=update.model_dump(exclude_none=True),
                 )
                 logger.info(
-                    f"Updated Claude webhook {webhook_id} for {invoke_url} "
+                    f"Updated Claude webhook {webhook.id} for {invoke_url} "
                     f"(events={needs_events}, enable={needs_enable})"
                 )
             except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-                logger.error(f"Failed to update Claude webhook {webhook_id}: {error}")
+                logger.error(f"Failed to update Claude webhook {webhook.id}: {error}")
             return
 
-        body = {
-            "url": invoke_url,
-            "name": WEBHOOK_NAME,
-            "description": "Port Ocean Claude Managed Agents live events",
-            "enabled_events": list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
-        }
+        create = _WebhookCreateParams(
+            url=invoke_url,
+            name=WEBHOOK_NAME,
+            description="Port Ocean Claude Managed Agents live events",
+            enabled_events=list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
+        )
         try:
-            created = await self._console_request(
-                "POST", "/v1/webhooks", json_data=body
+            created = PlatformWebhook.model_validate(
+                await self._console_request(
+                    "POST",
+                    "/v1/webhooks",
+                    json_data=create.model_dump(),
+                )
             )
         except (httpx.HTTPStatusError, httpx.HTTPError) as error:
             logger.error(f"Failed to create Claude webhook for {invoke_url}: {error}")
             return
 
-        webhook_id = created.get("id")
-        logger.info(f"Created Claude webhook {webhook_id} for {invoke_url}")
-        if created.get("signing_secret") and not self._webhook_signing_secret:
+        logger.info(f"Created Claude webhook {created.id} for {invoke_url}")
+        if created.signing_secret and not self._webhook_signing_secret:
             logger.warning(
                 "Claude returned a webhook signing secret on create (shown only once). "
                 "Set OCEAN__INTEGRATION__CONFIG__WEBHOOK_SIGNING_SECRET from the create "
