@@ -1190,17 +1190,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         integration_type = ocean.config.integration.type
         integration_id = ocean.config.integration.identifier
-        logger.info(
-            "Incremental resync triggered",
-            integration_type=integration_type,
-            integration_id=integration_id,
-            interval_seconds=interval_seconds,
-        )
 
         async with event_context(
             EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
         ):
             ocean.metrics.event_id = event.id
+            logger.info(
+                "Incremental resync triggered",
+                integration_type=integration_type,
+                integration_id=integration_id,
+                event_id=event.id,
+                interval_seconds=interval_seconds,
+            )
             dsp_enabled = await is_dsp_mode_enabled()
             run_started_at_monotonic = time.monotonic()
             kinds_succeeded = 0
