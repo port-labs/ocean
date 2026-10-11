@@ -58,10 +58,14 @@ jobs:
             AFTER="${{ github.sha }}"
             if [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
               find integrations -path '*/.port/spec.json' | sort > changed_specs.txt
+            elif git diff --name-only --diff-filter=ACMR "${BEFORE}" "${AFTER}" -- \
+              'integrations/*/.port/spec.json' \
+              > changed_specs.txt; then
+              echo "Computed changed specs via git diff ${BEFORE}..${AFTER}"
             else
-              git diff --name-only --diff-filter=ACMR "${BEFORE}" "${AFTER}" -- \
-                'integrations/*/.port/spec.json' \
-                > changed_specs.txt || true
+              # Unreachable before SHA (e.g. force-push) — do not skip upload.
+              echo "::warning::git diff failed for ${BEFORE}..${AFTER}; falling back to full upload"
+              find integrations -path '*/.port/spec.json' | sort > changed_specs.txt
             fi
           fi
 
