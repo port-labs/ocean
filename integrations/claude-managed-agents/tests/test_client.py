@@ -19,7 +19,6 @@ from clients.anthropic_client import (
     WEBHOOK_NAME,
     WEBHOOKS_BETA,
     AnthropicClient,
-    PlatformWebhook,
     RateLimitInfo,
 )
 from clients.exceptions import (
@@ -451,36 +450,9 @@ def test_console_webhook_headers_include_beta(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_webhooks_follows_after_id(client: AnthropicClient) -> None:
-    client._console_request = AsyncMock(  # type: ignore[method-assign]
-        side_effect=[
-            {
-                "data": [{"id": "wh_1", "url": "https://a.example/integration/webhook"}],
-                "has_more": True,
-                "last_id": "wh_1",
-            },
-            {
-                "data": [{"id": "wh_2", "url": "https://b.example/integration/webhook"}],
-                "has_more": False,
-                "last_id": "wh_2",
-            },
-        ]
-    )
-
-    webhooks = await client.list_webhooks()
-
-    assert [webhook.id for webhook in webhooks] == ["wh_1", "wh_2"]
-    assert client._console_request.await_args_list[0].kwargs.get("params") is None
-    assert client._console_request.await_args_list[1].kwargs["params"] == {
-        "after_id": "wh_1"
-    }
-
-
-@pytest.mark.asyncio
 async def test_create_webhooks_if_not_exists_creates_when_missing(
     client: AnthropicClient,
 ) -> None:
-    client.list_webhooks = AsyncMock(return_value=[])  # type: ignore[method-assign]
     client._console_request = AsyncMock(  # type: ignore[method-assign]
         return_value={
             "id": "wh_new",
@@ -504,51 +476,17 @@ async def test_create_webhooks_if_not_exists_creates_when_missing(
 
 
 @pytest.mark.asyncio
-async def test_create_webhooks_if_not_exists_skips_when_already_current(
+async def test_create_webhooks_if_not_exists_skips_on_conflict(
     client: AnthropicClient,
 ) -> None:
-    invoke_url = "https://ocean.example/integration/webhook"
-    client.list_webhooks = AsyncMock(  # type: ignore[method-assign]
-        return_value=[
-            PlatformWebhook(
-                id="wh_1",
-                url=invoke_url,
-                enabled_events=list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
-                state="enabled",
-            )
-        ]
-    )
-    client._console_request = AsyncMock()  # type: ignore[method-assign]
-
-    await client.create_webhooks_if_not_exists("https://ocean.example/")
-
-    client._console_request.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_create_webhooks_if_not_exists_updates_events_and_state(
-    client: AnthropicClient,
-) -> None:
-    invoke_url = "https://ocean.example/integration/webhook"
-    client.list_webhooks = AsyncMock(  # type: ignore[method-assign]
-        return_value=[
-            PlatformWebhook(
-                id="wh_1",
-                url=invoke_url,
-                enabled_events=["session.status_idled"],
-                state="disabled",
-            )
-        ]
-    )
+    request = httpx.Request("POST", "https://platform.claude.com/v1/webhooks")
+    response = httpx.Response(409, request=request, text='{"type":"error"}')
     client._console_request = AsyncMock(  # type: ignore[method-assign]
-        return_value={"id": "wh_1", "url": invoke_url, "state": "enabled"}
+        side_effect=httpx.HTTPStatusError(
+            "Conflict", request=request, response=response
+        )
     )
 
     await client.create_webhooks_if_not_exists("https://ocean.example")
 
-    call = client._console_request.await_args
-    assert call is not None
-    assert call.args == ("POST", "/v1/webhooks/wh_1")
-    update_body = call.kwargs["json_data"]
-    assert update_body["state"] == "enabled"
-    assert set(update_body["enabled_events"]) == set(DEFAULT_ENABLED_WEBHOOK_EVENTS)
+    client._console_request.assert_awaited_once()

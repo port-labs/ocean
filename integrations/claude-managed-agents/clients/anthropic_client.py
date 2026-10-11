@@ -112,25 +112,11 @@ class PlatformWebhook(BaseModel):
     signing_secret: str | None = None
 
 
-class PlatformWebhookListPage(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    data: list[PlatformWebhook] = Field(default_factory=list)
-    has_more: bool = False
-    last_id: str | None = None
-    first_id: str | None = None
-
-
 class _WebhookCreateParams(BaseModel):
     url: str
     name: str
     description: str
     enabled_events: list[str]
-
-
-class _WebhookUpdateParams(BaseModel):
-    enabled_events: list[str] | None = None
-    state: Literal["enabled", "disabled"] | None = None
 
 
 class AnthropicClient:
@@ -537,68 +523,14 @@ class AnthropicClient:
             return {}
         return response.json()
 
-    async def list_webhooks(self) -> list[PlatformWebhook]:
-        """List Claude Platform webhooks (``has_more`` / ``after_id`` pagination)."""
-        webhooks: list[PlatformWebhook] = []
-        params: dict[str, str] | None = None
-        while True:
-            page = PlatformWebhookListPage.model_validate(
-                await self._console_request("GET", "/v1/webhooks", params=params)
-            )
-            webhooks.extend(page.data)
-            if not page.has_more or not page.last_id:
-                return webhooks
-            params = {"after_id": page.last_id}
-
     async def create_webhooks_if_not_exists(self, base_url: str) -> None:
-        """Upsert a Platform webhook pointing at this integration's public URL.
+        """Create a Platform webhook for this integration's public URL.
 
-        Idempotent: if a webhook already targets ``{base_url}/integration/webhook``,
-        ensure it is enabled and subscribed to ``DEFAULT_ENABLED_WEBHOOK_EVENTS``.
+        On ``409 Conflict`` (webhook already exists for the URL), log and return.
         Create returns the signing secret once - it is never logged; configure
         ``WEBHOOK_SIGNING_SECRET`` from the Claude Console / create response.
         """
         invoke_url = f"{base_url.rstrip('/')}/integration/webhook"
-        desired_events = set(DEFAULT_ENABLED_WEBHOOK_EVENTS)
-
-        try:
-            existing = await self.list_webhooks()
-        except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-            logger.error(f"Failed to list Claude webhooks: {error}")
-            return
-
-        for webhook in existing:
-            if webhook.url != invoke_url:
-                continue
-
-            needs_events = not desired_events.issubset(set(webhook.enabled_events))
-            # Platform uses ``state`` (enabled/disabled), not ``status``.
-            needs_enable = webhook.state != "enabled"
-            if not needs_events and not needs_enable:
-                logger.info(
-                    f"Claude webhook {webhook.id} already registered for {invoke_url}"
-                )
-                return
-
-            update = _WebhookUpdateParams(
-                enabled_events=sorted(desired_events) if needs_events else None,
-                state="enabled" if needs_enable else None,
-            )
-            try:
-                # Platform update is POST /v1/webhooks/{id} (not PATCH).
-                await self._console_request(
-                    "POST",
-                    f"/v1/webhooks/{webhook.id}",
-                    json_data=update.model_dump(exclude_none=True),
-                )
-                logger.info(
-                    f"Updated Claude webhook {webhook.id} for {invoke_url} "
-                    f"(events={needs_events}, enable={needs_enable})"
-                )
-            except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-                logger.error(f"Failed to update Claude webhook {webhook.id}: {error}")
-            return
-
         create = _WebhookCreateParams(
             url=invoke_url,
             name=WEBHOOK_NAME,
@@ -613,7 +545,15 @@ class AnthropicClient:
                     json_data=create.model_dump(),
                 )
             )
-        except (httpx.HTTPStatusError, httpx.HTTPError) as error:
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 409:
+                logger.info(
+                    f"Claude webhook already exists for {invoke_url}; skipping create"
+                )
+                return
+            logger.error(f"Failed to create Claude webhook for {invoke_url}: {error}")
+            return
+        except httpx.HTTPError as error:
             logger.error(f"Failed to create Claude webhook for {invoke_url}: {error}")
             return
 
