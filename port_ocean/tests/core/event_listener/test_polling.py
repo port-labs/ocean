@@ -7,10 +7,12 @@ import pytest
 
 import port_ocean.core.event_listener.base as base_module
 import port_ocean.core.event_listener.polling as polling_module
+import port_ocean.core.handlers.resync_state_updater.updater as updater_module
 from port_ocean.core.event_listener.polling import (
     PollingEventListener,
     PollingEventListenerSettings,
 )
+from port_ocean.core.handlers.resync_state_updater.updater import ResyncStateUpdater
 from port_ocean.core.models import EventListenerType
 from port_ocean.utils.misc import IntegrationStateStatus
 
@@ -373,3 +375,148 @@ async def test_polling_marks_resync_failed_when_background_task_fails(
     assert resync_state_updater.update_after_resync.call_args_list[-1].args[0] == (
         IntegrationStateStatus.Failed
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("resync_on_start", "expected_resync_calls"),
+    [(True, 1), (False, 0)],
+)
+async def test_polling_resyncs_on_start_when_integration_state_watermark_is_empty(
+    monkeypatch: pytest.MonkeyPatch,
+    resync_on_start: bool,
+    expected_resync_calls: int,
+) -> None:
+    """
+    A fresh process stores "" in last_integration_state_updated_at. With no
+    pending resync request, the first poll must follow resync_on_start, and a
+    later poll must not resync again only because that flag is still true.
+    """
+    port_client = MagicMock()
+    port_client.get_integration_resync_request = AsyncMock(return_value={})
+
+    app = SimpleNamespace(
+        port_client=port_client,
+        resync_state_updater=SimpleNamespace(
+            last_integration_state_updated_at="",
+            last_resync_request_updated_at=None,
+        ),
+    )
+    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
+    monkeypatch.setattr(
+        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
+    )
+
+    listener = PollingEventListener(
+        events={"on_resync": AsyncMock(return_value=True)},
+        event_listener_config=PollingEventListenerSettings(
+            type=EventListenerType.POLLING,
+            resync_on_start=resync_on_start,
+        ),
+    )
+    resync_mock = AsyncMock()
+    monkeypatch.setattr(listener, "_resync", resync_mock)
+
+    await listener._start()
+    await sleep(0)
+
+    assert resync_mock.call_count == expected_resync_calls
+    assert app.resync_state_updater.last_integration_state_updated_at == ""
+    assert app.resync_state_updater.last_resync_request_updated_at is None
+    if resync_on_start:
+        assert listener._startup_request_baseline == ""
+    else:
+        assert listener._startup_request_baseline is None
+
+
+@pytest.mark.asyncio
+async def test_resync_request_arriving_during_startup_resync_is_not_dropped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    A request that lands after startup state is marked running, and before the
+    run finishes, must still be handled on the next poll.
+
+    update_after_resync advances last_integration_state_updated_at past that
+    request. Request dedup must keep the pre-startup baseline instead.
+    """
+    request_updated_at = "2024-01-01T00:05:00Z"
+    state_before_updated_at = "2024-01-01T00:02:00Z"
+    state_after_updated_at = "2024-01-01T00:10:00Z"
+
+    async def update_integration_state(
+        state: dict[str, Any], should_raise: bool = False
+    ) -> dict[str, Any]:
+        if state.get("status") == IntegrationStateStatus.Running.value:
+            updated_at = state_before_updated_at
+        else:
+            updated_at = state_after_updated_at
+        return {"resyncState": {"updatedAt": updated_at}}
+
+    port_client = MagicMock()
+    port_client.update_integration_state = AsyncMock(
+        side_effect=update_integration_state
+    )
+    port_client.get_integration_resync_request = AsyncMock(
+        return_value={"id": "resync-during-startup", "updatedAt": request_updated_at}
+    )
+
+    resync_state_updater = ResyncStateUpdater(
+        port_client=port_client, scheduled_resync_interval=None
+    )
+    assert resync_state_updater.last_integration_state_updated_at == ""
+
+    metrics = SimpleNamespace(
+        set_metric=MagicMock(),
+        sync_state="",
+        send_metrics_to_webhook=AsyncMock(),
+        report_sync_metrics=AsyncMock(),
+        clear_sync_context=MagicMock(),
+        current_resource_kind=lambda: "kind",
+        event_id="",
+    )
+    app = SimpleNamespace(
+        port_client=port_client,
+        resync_state_updater=resync_state_updater,
+    )
+    ocean = SimpleNamespace(app=app, metrics=metrics)
+    monkeypatch.setattr(polling_module, "ocean", ocean)
+    monkeypatch.setattr(base_module, "ocean", ocean)
+    monkeypatch.setattr(updater_module, "ocean", ocean)
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
+    monkeypatch.setattr(
+        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
+    )
+
+    watermarks_seen_by_handler: list[str] = []
+
+    async def on_resync(_args: Any) -> bool:
+        watermarks_seen_by_handler.append(
+            resync_state_updater.last_integration_state_updated_at
+        )
+        return True
+
+    listener = PollingEventListener(
+        events={"on_resync": on_resync},
+        event_listener_config=PollingEventListenerSettings(
+            type=EventListenerType.POLLING,
+            resync_on_start=True,
+        ),
+    )
+
+    await listener._start()
+    for _ in range(100):
+        if (
+            len(watermarks_seen_by_handler) == 2
+            and listener._current_resync_task is None
+        ):
+            break
+        await sleep(0)
+    else:
+        pytest.fail("Startup resync and follow-up request resync did not both finish")
+
+    assert watermarks_seen_by_handler[0] == state_before_updated_at
+    assert resync_state_updater.last_resync_request_updated_at == request_updated_at
+    assert listener._startup_request_baseline == ""
+    port_client.get_integration_resync_request.assert_called_once()

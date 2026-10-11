@@ -71,6 +71,27 @@ class AbstractAnthropicExecutor(AbstractExecutor):
         ]
         return max(waits, default=0.0)
 
+    async def unregister_entity(
+        self, kind: str, raw: dict[str, Any], run: IntegrationRun
+    ) -> None:
+        """Best-effort removal of a raw object from the catalog.
+
+        Mirrors `register_entity` but calls `unregister_raw` instead. Used
+        after a hard-delete so the entity does not linger until the next
+        resync. Failures are logged and reported as a run log, never raised.
+        """
+        try:
+            await ocean.unregister_raw(kind, [raw])
+        except Exception as error:
+            message = f"Failed to delete {kind} from the catalog (continuing): {error}"
+            logger.warning(message)
+            try:
+                await ocean.port_client.post_run_log(run, message, level="WARNING")
+            except Exception as log_error:
+                logger.warning(
+                    f"Failed to post run log for catalog unregister failure: {log_error}"
+                )
+
     async def register_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
