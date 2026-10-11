@@ -1,0 +1,14 @@
+---
+description: Never create or commit Postman workspace files in this repo
+alwaysApply: true
+---
+
+# No Postman files
+
+Do not create, edit, or commit Postman local workspace artifacts:
+
+- `.postman/`
+- `postman/`
+- any `*postman*` workspace/globals/resources files
+
+These are local IDE/tooling leftovers and are gitignored. If they appear, remove them from the commit and leave them ignored.

@@ -173,3 +173,7 @@ junit/*
 
 # macOS
 .DS_Store
+
+# Local Postman workspace artifacts
+.postman/
+postman/
