@@ -1,5 +1,5 @@
 description: Plain integration for Port Ocean
-icon: Blueprint
+icon: Plain
 features:
   - type: exporter
     section: Project management
