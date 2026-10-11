@@ -296,6 +296,48 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "update_environment",
+      "icon": "Claude",
+      "description": "Update a Claude managed environment's configuration (name, description, scope, or advanced settings)",
+      "inputs": [
+        {
+          "name": "environmentId",
+          "title": "Environment ID",
+          "type": "string",
+          "description": "The ID of the environment to update",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "description": "New human-readable name for the environment (max 256 characters)",
+          "required": false
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "New description for the environment (max 1024 characters)",
+          "required": false
+        },
+        {
+          "name": "scope",
+          "title": "Scope",
+          "type": "string",
+          "description": "Visibility scope: 'organization' (visible to all accounts) or 'account' (owning account only)",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Configuration",
+          "type": "jqObject",
+          "description": "Optional environment configuration passed through to the Anthropic API (for example type, networking, packages). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
     }
   ]
 }

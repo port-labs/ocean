@@ -325,6 +325,22 @@ class AnthropicClient:
         logger.info(f"Deleting Claude environment '{environment_id}'")
         await self._client.beta.environments.delete(environment_id)
 
+    async def get_environment(self, environment_id: str) -> dict[str, Any]:
+        logger.info(f"Retrieving Claude environment '{environment_id}'")
+        environment = await self._client.beta.environments.retrieve(environment_id)
+        return environment.to_dict(mode="json")
+
+    async def update_environment(
+        self,
+        environment_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        logger.info(f"Updating Claude environment '{environment_id}'")
+        environment = await self._client.beta.environments.update(
+            environment_id, **payload
+        )
+        return environment.to_dict(mode="json")
+
     async def archive_agent(self, agent_id: str) -> dict[str, Any]:
         logger.info(f"Archiving Claude agent '{agent_id}'")
         agent = await self._client.beta.agents.archive(agent_id)
