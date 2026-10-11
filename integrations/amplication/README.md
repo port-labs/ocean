@@ -14,6 +14,6 @@ An integration used to import amplication resources into Port.
 
 ## Develop & improve the integration
 
-- [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
+- [Ocean integration development documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)
 - See out [contributing guide](CONTRIBUTING.md)
 - For any questions or inquiries, please reach out to our team at [support@amplication.com](mailto:support@amplication.com).

@@ -1,0 +1,86 @@
+name: Upload integration specs
+on:
+  workflow_dispatch:
+    inputs:
+      bucket:
+        description: 'S3 bucket to upload to'
+        required: true
+        default: 'ocean-registry'
+      prefix:
+        description: 'Key prefix inside the bucket (empty = bucket root)'
+        required: false
+        default: ''
+      integrations:
+        description: 'Space-separated integration folder names (empty = all)'
+        required: false
+        default: ''
+
+concurrency:
+  group: upload-specs-${{ inputs.bucket }}-${{ inputs.prefix }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload-specs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Configure AWS Credentials 🔒
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload spec.json and index.json
+        env:
+          BUCKET: ${{ inputs.bucket }}
+          PREFIX: ${{ inputs.prefix }}
+          INTEGRATIONS: ${{ inputs.integrations }}
+        run: |
+          set -euo pipefail
+          source scripts/ci/integration_spec.sh
+
+          PREFIX="${PREFIX#/}"; PREFIX="${PREFIX%/}"
+          dest="s3://$BUCKET${PREFIX:+/$PREFIX}"
+          index_file="index.json"
+          stable="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
+
+          if aws s3 ls "$dest/$index_file" >/dev/null 2>&1; then
+            aws s3 cp "$dest/$index_file" "$index_file"
+          else
+            echo "No $index_file at $dest, creating a new one."
+            echo "[]" > "$index_file"
+          fi
+
+          for file in $(find_integration_spec_files); do
+            integration_dir=$(dirname "$file")
+            name=$(basename "$(dirname "$integration_dir")")
+            if [[ -n "$INTEGRATIONS" && " $INTEGRATIONS " != *" $name "* ]]; then
+              continue
+            fi
+
+            type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+            version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+
+            convert_spec_to_json "$file" spec.tmp.json
+            jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' spec.tmp.json > spec.json
+
+            aws s3 cp spec.json "$dest/$type/$version/spec.json"
+
+            # Same rule as release-integrations: a dev version never replaces a stable index entry
+            latest_version=$(jq -r --arg type "$type" '.[] | select(.type == $type) | .version' "$index_file")
+            if [[ -z "$latest_version" || ! "$latest_version" =~ $stable || "$version" =~ $stable ]]; then
+              jq --slurpfile spec spec.json --arg type "$type" \
+                'if any(.[]; .type == $type) then map(if .type == $type then $spec[0] else . end) else . + $spec end' \
+                "$index_file" > index.tmp.json
+              mv index.tmp.json "$index_file"
+              aws s3 cp spec.json "$dest/$type/spec.json"
+            fi
+          done
+
+          aws s3 cp "$index_file" "$dest/$index_file"

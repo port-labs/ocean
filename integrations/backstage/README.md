@@ -13,4 +13,4 @@ FYI the integration uses the following API:
 
 https://backstage.io/docs/features/software-catalog/software-catalog-api/#get-entitiesby-query
 
-#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
+#### Develop & improve the integration - [Ocean integration development documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)

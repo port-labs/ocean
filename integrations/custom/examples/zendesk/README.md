@@ -78,4 +78,4 @@ zendesk_comment → (relates to ticket and author)
 
 - [Zendesk API Documentation](https://developer.zendesk.com/api-reference/)
 - [Port Custom Ocean Integration](../../README.md)
-- [Ocean Framework Documentation](https://ocean.getport.io/)
+- [Ocean Framework Documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)

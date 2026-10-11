@@ -86,7 +86,7 @@ This maps to the Aikido containers query parameter `filter_status`.
 
 You can control whether issue groups are fetched globally or scoped per team using `scopeToTeam` in the `issue_groups` selector.
 
-When `scopeToTeam` is `true`, the integration iterates all active teams and fetches issue groups scoped to each team, enriching each record with `__team_id` and `__team_name`. 
+When `scopeToTeam` is `true`, the integration iterates all active teams and fetches issue groups scoped to each team, enriching each record with `__team_id` and `__team_name`.
 
 When `scopeToTeam` is `false` (default), issue groups are fetched globally without team context.
 
@@ -113,4 +113,4 @@ If Webhook secret is used, make sure to set the same webhook secret used during 
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/aikido)
 
-#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
+#### Develop & improve the integration - [Ocean integration development documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)
