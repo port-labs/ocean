@@ -450,16 +450,18 @@ def test_console_webhook_headers_include_beta(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_webhooks_follows_next_page(client: AnthropicClient) -> None:
+async def test_list_webhooks_follows_after_id(client: AnthropicClient) -> None:
     client._console_request = AsyncMock(  # type: ignore[method-assign]
         side_effect=[
             {
                 "data": [{"id": "wh_1", "url": "https://a.example/integration/webhook"}],
-                "next_page": "cursor-2",
+                "has_more": True,
+                "last_id": "wh_1",
             },
             {
                 "data": [{"id": "wh_2", "url": "https://b.example/integration/webhook"}],
-                "next_page": None,
+                "has_more": False,
+                "last_id": "wh_2",
             },
         ]
     )
@@ -469,7 +471,7 @@ async def test_list_webhooks_follows_next_page(client: AnthropicClient) -> None:
     assert [webhook["id"] for webhook in webhooks] == ["wh_1", "wh_2"]
     assert client._console_request.await_args_list[0].kwargs.get("params") is None
     assert client._console_request.await_args_list[1].kwargs["params"] == {
-        "page": "cursor-2"
+        "after_id": "wh_1"
     }
 
 
@@ -507,7 +509,7 @@ async def test_create_webhooks_if_not_exists_skips_when_already_current(
                 "id": "wh_1",
                 "url": invoke_url,
                 "enabled_events": list(DEFAULT_ENABLED_WEBHOOK_EVENTS),
-                "status": "enabled",
+                "state": "enabled",
             }
         ]
     )
@@ -519,7 +521,7 @@ async def test_create_webhooks_if_not_exists_skips_when_already_current(
 
 
 @pytest.mark.asyncio
-async def test_create_webhooks_if_not_exists_updates_events_and_status(
+async def test_create_webhooks_if_not_exists_updates_events_and_state(
     client: AnthropicClient,
 ) -> None:
     invoke_url = "https://ocean.example/integration/webhook"
@@ -529,7 +531,7 @@ async def test_create_webhooks_if_not_exists_updates_events_and_status(
                 "id": "wh_1",
                 "url": invoke_url,
                 "enabled_events": ["session.status_idled"],
-                "status": "disabled",
+                "state": "disabled",
             }
         ]
     )
@@ -541,5 +543,5 @@ async def test_create_webhooks_if_not_exists_updates_events_and_status(
     assert call is not None
     assert call.args == ("POST", "/v1/webhooks/wh_1")
     update_body = call.kwargs["json_data"]
-    assert update_body["status"] == "enabled"
+    assert update_body["state"] == "enabled"
     assert set(update_body["enabled_events"]) == set(DEFAULT_ENABLED_WEBHOOK_EVENTS)

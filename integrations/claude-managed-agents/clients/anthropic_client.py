@@ -43,6 +43,7 @@ _WORKSPACE_ID_HEADER = "anthropic-workspace-id"
 WEBHOOKS_BETA = "webhooks-2026-03-01"
 WEBHOOK_NAME = "Port Ocean Integration"
 # Events this integration's processors handle (catalog sync + trigger_agent).
+# Must match Platform's webhook enum (no stream-only names like session.error).
 DEFAULT_ENABLED_WEBHOOK_EVENTS = [
     "session.status_run_started",
     "session.status_idled",
@@ -50,7 +51,6 @@ DEFAULT_ENABLED_WEBHOOK_EVENTS = [
     "session.status_terminated",
     "session.deleted",
     "session.updated",
-    "session.error",
     "vault.created",
     "vault.archived",
     "vault.deleted",
@@ -490,22 +490,32 @@ class AnthropicClient:
             json=json_data,
             params=params,
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as error:
+            body = (error.response.text or "")[:500]
+            raise httpx.HTTPStatusError(
+                f"{error}; body={body}",
+                request=error.request,
+                response=error.response,
+            ) from error
         if not response.content:
             return {}
         return response.json()
 
     async def list_webhooks(self) -> list[dict[str, Any]]:
-        """List Claude Platform webhooks (paginated via ``next_page``)."""
+        """List Claude Platform webhooks (``has_more`` / ``after_id`` pagination)."""
         webhooks: list[dict[str, Any]] = []
         params: dict[str, str] | None = None
         while True:
             page = await self._console_request("GET", "/v1/webhooks", params=params)
             webhooks.extend(page.get("data") or [])
-            next_page = page.get("next_page")
-            if not isinstance(next_page, str) or not next_page:
+            if not page.get("has_more"):
                 return webhooks
-            params = {"page": next_page}
+            last_id = page.get("last_id")
+            if not isinstance(last_id, str) or not last_id:
+                return webhooks
+            params = {"after_id": last_id}
 
     async def create_webhooks_if_not_exists(self, base_url: str) -> None:
         """Upsert a Platform webhook pointing at this integration's public URL.
@@ -537,7 +547,8 @@ class AnthropicClient:
 
             current_events = set(webhook.get("enabled_events") or [])
             needs_events = not desired_events.issubset(current_events)
-            needs_enable = webhook.get("status") != "enabled"
+            # Platform uses ``state`` (enabled/disabled), not ``status``.
+            needs_enable = webhook.get("state") != "enabled"
             if not needs_events and not needs_enable:
                 logger.info(
                     f"Claude webhook {webhook_id} already registered for {invoke_url}"
@@ -546,9 +557,9 @@ class AnthropicClient:
 
             update_body: dict[str, Any] = {}
             if needs_events:
-                update_body["enabled_events"] = sorted(current_events | desired_events)
+                update_body["enabled_events"] = sorted(desired_events)
             if needs_enable:
-                update_body["status"] = "enabled"
+                update_body["state"] = "enabled"
 
             try:
                 # Platform update is POST /v1/webhooks/{id} (not PATCH).
