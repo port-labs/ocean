@@ -4,4 +4,4 @@ An integration used to import [Cursor Cloud Agents](https://cursor.com/docs/clou
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/agent-management/external-agents/cursor-cloud-agents)
 
-#### Develop & improve the integration - [Ocean integration development documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)
+#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.port.io/developing-an-integration/)

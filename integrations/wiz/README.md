@@ -11,4 +11,4 @@ Your Wiz credentials should have the `read:projects` and `read:issues` permissio
 
 ### Resources
 1. Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz)
-2. Develop & improve the integration - [Ocean integration development documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)
+2. Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)

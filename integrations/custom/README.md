@@ -620,7 +620,7 @@ This will show:
 ## Support
 
 For issues or questions:
-1. Check the [Ocean Integration Documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)
+1. Check the [Ocean Integration Documentation](https://ocean.getport.io/)
 2. Review API logs for detailed error information
 3. Test endpoints manually to verify API behavior
 4. Contact Port support with integration logs

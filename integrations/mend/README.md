@@ -189,4 +189,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for deeper notes on the auth flow, pagi
   - `POST /api/v3.0/orgs/{orgUuid}/projects/summaries`
   - `GET  /api/v3.0/projects/{projectUuid}/dependencies/findings/security`
 
-#### Develop & improve the integration — [Ocean integration development documentation](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/custom-integration/custom-coded-ocean-integration/overview/)
+#### Develop & improve the integration — [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
