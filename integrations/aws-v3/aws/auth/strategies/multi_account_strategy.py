@@ -84,14 +84,13 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             for arn, task in zip(batch, tasks):
                 try:
                     arn, session = await task
+                    account_id = extract_account_from_arn(arn)
                     if session:
                         self._valid_arns.add(arn)
                         self._valid_sessions[arn] = session
                         successful += 1
-                        account_id = extract_account_from_arn(arn)
                         logger.debug(f"Role ARN validated for account {account_id}")
                     else:
-                        account_id = extract_account_from_arn(arn)
                         self._inaccessible_accounts.setdefault(
                             account_id, f"Failed to assume role {arn}"
                         )
