@@ -72,6 +72,15 @@ class HTTPBaseClient:
                     headers=headers,
                 )
                 response.raise_for_status()
+                request = response.request
+                host = request.url.host or ""
+                logger.bind(
+                    http_request=1,
+                    http_method=request.method,
+                    http_host=host,
+                    http_path=request.url.path or "",
+                    http_status_code=response.status_code,
+                ).info("Azure DevOps API request")
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:
                 if raise_on_404:

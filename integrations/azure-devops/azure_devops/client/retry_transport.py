@@ -4,11 +4,7 @@ import typing
 
 import httpx
 from loguru import logger
-from port_ocean.helpers.retry import (
-    RetryConfig,
-    RetryTransport,
-    record_vendor_http_request,
-)
+from port_ocean.helpers.retry import RetryConfig, RetryTransport
 
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
@@ -60,11 +56,6 @@ class AzureDevOpsRetryTransport(RetryTransport):
         )
         self._rate_limiter = rate_limiter
         self._auth_header_refresher = auth_header_refresher
-
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        response = await super().handle_async_request(request)
-        record_vendor_http_request(request, response)
-        return response
 
     async def after_retry_async(
         self,
