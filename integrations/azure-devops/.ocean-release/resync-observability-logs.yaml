@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add structured integration logs for successful API requests (http_request) and rate-limit waits (rate_limit_wait_seconds).
