@@ -31,9 +31,9 @@ class UpdateEnvironmentInputs(AbstractAnthropicActionInput):
         return self
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        data = super().model_dump(**kwargs)
+        data = super().model_dump(**kwargs, exclude_none=True)
         data.pop("environmentId", None)
-        return {field: value for field, value in data.items() if value}
+        return data
 
 
 class UpdateEnvironmentExecutor(AbstractAnthropicExecutor):
@@ -68,7 +68,7 @@ class UpdateEnvironmentExecutor(AbstractAnthropicExecutor):
         try:
             environment = await self.client.update_environment(
                 environment_id,
-                payload=inputs.model_dump(exclude_none=True),
+                payload=inputs.model_dump(),
             )
         except Exception as error:
             raise ActionExecutionError(
