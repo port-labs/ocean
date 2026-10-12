@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.18.1 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
+## 6.18.0 (2026-10-11)
+
+
+### Features
+
+- Fetch Dependabot, code-scanning, and secret-scanning alerts via org-level endpoints (one paginated stream per organization) with T2 updated_at cutoff; fall back to per-repo for User accounts.
+
+
+## 6.17.6 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
+## 6.17.5 (2026-10-11)
+
+
+### Improvements
+
+- Log a structured GitHub API request entry with http_request for per-resync HTTP volume in integration logs.
+
+
 ## 6.17.4 (2026-10-08)
 
 

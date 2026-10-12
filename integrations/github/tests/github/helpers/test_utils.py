@@ -9,8 +9,11 @@ from github.helpers.utils import (
     parse_github_options,
     enrich_user_with_primary_email,
     get_saml_identities,
+    resolve_org_filtered_repos,
     _parse_saml_edges,
 )
+from github.core.options import ListRepositoryOptions
+from github.helpers.models import RepoSearchParams
 
 
 class TestEnrichWithRepository:
@@ -529,3 +532,81 @@ class TestParseSamlEdges:
 
     def test_empty_edges(self) -> None:
         assert _parse_saml_edges([]) == {}
+
+
+class TestResolveOrgFilteredRepos:
+    """Tests for resolve_org_filtered_repos allowlist resolution."""
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_no_search_and_type_all(self) -> None:
+        exporter = MagicMock()
+        exporter.get_paginated_resources = AsyncMock()
+        options = ListRepositoryOptions(
+            organization="acme",
+            organization_type="Organization",
+            type="all",
+        )
+
+        result = await resolve_org_filtered_repos(exporter, options)
+
+        assert result is None
+        exporter.get_paginated_resources.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_builds_allowlist_for_repository_type(self) -> None:
+        async def mock_repos(
+            *_: Any, **__: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [{"name": "private-a"}, {"name": "private-b"}]
+
+        exporter = MagicMock()
+        exporter.get_paginated_resources = mock_repos
+        options = ListRepositoryOptions(
+            organization="acme",
+            organization_type="Organization",
+            type="private",
+        )
+
+        result = await resolve_org_filtered_repos(exporter, options)
+
+        assert result == ["private-a", "private-b"]
+
+    @pytest.mark.asyncio
+    async def test_builds_allowlist_for_repo_search(self) -> None:
+        async def mock_repos(
+            *_: Any, **__: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [{"name": "matched-repo"}]
+
+        exporter = MagicMock()
+        exporter.get_paginated_resources = mock_repos
+        options = ListRepositoryOptions(
+            organization="acme",
+            organization_type="Organization",
+            type="all",
+            search_params=RepoSearchParams(query="matched in:name"),
+        )
+
+        result = await resolve_org_filtered_repos(exporter, options)
+
+        assert result == ["matched-repo"]
+
+    @pytest.mark.asyncio
+    async def test_empty_list_when_filters_match_nothing(self) -> None:
+        async def mock_repos(
+            *_: Any, **__: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            if False:
+                yield []
+
+        exporter = MagicMock()
+        exporter.get_paginated_resources = mock_repos
+        options = ListRepositoryOptions(
+            organization="acme",
+            organization_type="Organization",
+            type="public",
+        )
+
+        result = await resolve_org_filtered_repos(exporter, options)
+
+        assert result == []
