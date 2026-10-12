@@ -1696,6 +1696,13 @@ async def test_create_environment_executor_posts_warn_log_when_catalog_upsert_fa
     )
 
 
+def _sdk_environment(environment_id: str = "env_1") -> MagicMock:
+    env = MagicMock()
+    env.id = environment_id
+    env.to_dict = MagicMock(return_value={"id": environment_id})
+    return env
+
+
 def _update_env_run(**overrides: Any) -> MagicMock:
     run = MagicMock()
     run.id = "run_1"
@@ -1708,7 +1715,7 @@ def _update_env_run(**overrides: Any) -> MagicMock:
 @pytest.mark.asyncio
 async def test_update_environment_executor_updates_and_completes() -> None:
     client_mock = MagicMock()
-    client_mock.update_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.update_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
 
     run = _update_env_run()
@@ -1739,7 +1746,7 @@ async def test_update_environment_executor_sets_environment_id_output_for_workfl
     None
 ):
     client_mock = MagicMock()
-    client_mock.update_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.update_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
 
     run = MagicMock(spec=WorkflowNodeRun)
@@ -1767,7 +1774,7 @@ async def test_update_environment_executor_skips_output_for_classic_action_runs(
     """Classic self-service action runs have no structured output field, so the
     executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
     client_mock = MagicMock()
-    client_mock.update_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.update_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
 
     run = MagicMock(spec=ActionRun)
