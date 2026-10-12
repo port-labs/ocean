@@ -311,18 +311,46 @@ async def test_the_emitted_object_carries_the_listing_repository_and_the_entry()
 
 
 @pytest.mark.asyncio
-async def test_one_unreadable_file_costs_its_repository_and_not_the_others() -> None:
-    """Collection is per repository, as it is in the github file exporter."""
+async def test_one_unreadable_file_costs_only_itself() -> None:
+    """Three files on one page, the first unreadable: the other two still reach Port.
+
+    aiostream cancels an iterator's siblings when one raises, so a file that raised
+    would take the rest of its own page with it, unfetched.
+    """
     client = FakeClient(
-        [repo("repo-one"), repo("repo-two")],
-        {"repo-one": [entry("a.yml")], "repo-two": [entry("b.yml")]},
+        [repo("repo-one")],
+        {"repo-one": [entry("a.yml"), entry("b.yml"), entry("c.yml")]},
         {"a.yml": None},
     )
-    emitted, raised = await walk(client, filenames=["a.yml", "b.yml"])
+    emitted, raised = await walk(client, filenames=["a.yml", "b.yml", "c.yml"])
 
-    assert [item["metadata"]["path"] for item in emitted] == ["b.yml"]
+    assert sorted(item["metadata"]["path"] for item in emitted) == ["b.yml", "c.yml"]
+    assert sorted(call[2] for call in client.content_calls) == [
+        "a.yml",
+        "b.yml",
+        "c.yml",
+    ]
     assert isinstance(raised, BitbucketFileWalkError)
-    assert "1 repository could not be walked" in str(raised)
+    assert "1 read failure" in str(raised)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [401, 429])
+async def test_a_stopping_status_on_a_content_fetch_stops_the_walk(status: int) -> None:
+    """The stop has to survive the fetch being recorded rather than raised."""
+    client = FakeClient(
+        [repo("repo-one"), repo("repo-two")],
+        {"repo-one": [entry("a.yml")], "repo-two": [entry("a.yml")]},
+        {"a.yml": http_error(status)},
+    )
+    emitted, raised = await walk(client, filenames=["a.yml"])
+
+    assert emitted == []
+    assert [call["repo"] for call in client.listing_calls] == ["repo-one"]
+    assert isinstance(raised, BitbucketFileWalkError)
+    cause = raised.__cause__
+    assert isinstance(cause, ExceptionGroup)
+    assert isinstance(cause.exceptions[0], HTTPStatusError)
 
 
 @pytest.mark.asyncio
@@ -406,8 +434,11 @@ async def test_a_dead_credential_or_exhausted_quota_stops_the_walk(status: int) 
     emitted, raised = await walk(client, filenames=["port.yml"])
 
     assert emitted == []
-    assert isinstance(raised, HTTPStatusError)
     assert [call["repo"] for call in client.listing_calls] == ["broken"]
+    assert isinstance(raised, BitbucketFileWalkError)
+    cause = raised.__cause__
+    assert isinstance(cause, ExceptionGroup)
+    assert isinstance(cause.exceptions[0], HTTPStatusError)
 
 
 @pytest.mark.asyncio

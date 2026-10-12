@@ -117,12 +117,34 @@ def select_matching_files(
     return selected
 
 
+def _record_or_stop(error: Exception, failures: List[Exception], context: str) -> None:
+    """Record a failed read, or end the walk when the cause is not about this read.
+
+    A dead credential and an exhausted quota apply to every repository still to be
+    walked, so they stop it now and carry everything collected so far; anything else
+    costs one file or one repository and the walk finishes without it.
+    """
+    if (
+        isinstance(error, HTTPStatusError)
+        and error.response.status_code in WALK_STOPPING_STATUSES
+    ):
+        raise BitbucketFileWalkError(
+            f"Stopping the walk at {context}: {error}. This applies to every repository "
+            f"still to be walked, not to this one."
+        ) from ExceptionGroup("Unreadable files and repositories", failures + [error])
+    logger.warning(
+        f"Recording {context} as unreadable and continuing the walk: {error}"
+    )
+    failures.append(error)
+
+
 async def _walk_repository(
     client: "BitbucketClient",
     repo: Dict[str, Any],
     file_pattern: BitbucketFilePattern,
     listing_root: str,
     source_filter: str,
+    failures: List[Exception],
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """List one repository's matching files and yield the content of each.
 
@@ -140,13 +162,9 @@ async def _walk_repository(
         raise_on_missing=True,
     ):
         tasks = [
-            retrieve_file_content(repo, entry, file_pattern.skip_parsing)
+            retrieve_file_content(repo, entry, file_pattern.skip_parsing, failures)
             for entry in select_matching_files(entries, file_pattern, repo_slug)
         ]
-
-        if not tasks:
-            continue
-
         # One content fetch per matching entry on the page, as the search path did over pages of 300.
         async for file_result in stream_async_iterators_tasks(*tasks):
             yield [file_result]
@@ -188,38 +206,25 @@ async def process_file_patterns(
 
             try:
                 async for batch in _walk_repository(
-                    client, repo, file_pattern, listing_root, source_filter
+                    client, repo, file_pattern, listing_root, source_filter, failures
                 ):
                     yield batch
-            except (BitbucketFileReadError, HTTPError) as e:
-                if (
-                    isinstance(e, HTTPStatusError)
-                    and e.response.status_code in WALK_STOPPING_STATUSES
-                ):
-                    logger.error(
-                        f"Stopping the walk at {repo['slug']}: {e}. This applies to "
-                        f"every repository still to be walked, not to this one."
-                    )
-                    raise
-                # Only this carries a transport failure, which never reaches the client's own except.
-                logger.warning(
-                    f"Recording {repo['slug']} as unreadable and continuing the walk: {e}"
-                )
-                failures.append(e)
-                continue
+            # Only this catches a transport failure, which never reaches the client's own except.
+            except HTTPError as e:
+                _record_or_stop(e, failures, repo["slug"])
 
     if failures:
         raise BitbucketFileWalkError(
-            f"{len(failures)} "
-            f"{'repository' if len(failures) == 1 else 'repositories'} could not be "
-            f"walked for {file_pattern.filenames} under '{file_pattern.path}'"
-        ) from ExceptionGroup("Unreadable repositories", failures)
+            f"{len(failures)} read {'failure' if len(failures) == 1 else 'failures'} "
+            f"walking {file_pattern.filenames} under '{file_pattern.path}'"
+        ) from ExceptionGroup("Unreadable files and repositories", failures)
 
 
 async def retrieve_file_content(
     repo: Dict[str, Any],
     entry: Dict[str, Any],
     skip_parsing: bool,
+    failures: List[Exception],
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Retrieve the content of a single listed file.
 
@@ -233,12 +238,22 @@ async def retrieve_file_content(
 
     logger.info(f"Retrieving contents for file: {file_path}")
     client = init_client()
-    file_content = await client.get_repository_files(repo_slug, branch, file_path)
+    # Recorded rather than raised: aiostream cancels this file's siblings on an exception.
+    try:
+        file_content = await client.get_repository_files(repo_slug, branch, file_path)
+    except HTTPError as e:
+        _record_or_stop(e, failures, f"{file_path} in {repo_slug}")
+        return
     if file_content is None:
-        raise BitbucketFileReadError(
-            f"Bitbucket returned no content for {file_path} in repository {repo_slug} "
-            f"on branch {branch}"
+        _record_or_stop(
+            BitbucketFileReadError(
+                f"Bitbucket returned no content for {file_path} in repository "
+                f"{repo_slug} on branch {branch}"
+            ),
+            failures,
+            f"{file_path} in {repo_slug}",
         )
+        return
     parent_directory = Path(file_path).parent
     if not skip_parsing:
         file_content = parse_file(file_content, file_path)
