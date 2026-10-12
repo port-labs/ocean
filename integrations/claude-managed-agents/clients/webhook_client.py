@@ -81,38 +81,17 @@ class ClaudeWebhookClient:
         identifier = ocean.config.integration.identifier.replace("/", "-")
         return f"{identifier}-claude-webhook-signing-secret"
 
-    async def _patch_signing_secret_spec(self, secret_name: str) -> None:
-        """Point SaaS integrationSpec.webhookSigningSecret at the org secret name."""
-        await ocean.port_client.patch_integration(
-            spec={
-                "integrationSpec": {
-                    _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
-                }
-            }
-        )
-
     async def _persist_signing_secret(self, signing_secret: str) -> None:
         """Store the Claude signing secret as an org secret and point SaaS spec at it."""
         secret_name = self._signing_secret_name()
-        description = (
-            "Claude Managed Agents webhook signing secret for Port Ocean live events"
+        await ocean.port_client.upsert_integration_spec_secret(
+            secret_name=secret_name,
+            secret_value=signing_secret,
+            integration_spec_key=_WEBHOOK_SIGNING_SECRET_SPEC_KEY,
+            description=(
+                "Claude Managed Agents webhook signing secret for Port Ocean live events"
+            ),
         )
-        try:
-            await ocean.port_client.create_organization_secret(
-                secret_name=secret_name,
-                secret_value=signing_secret,
-                description=description,
-            )
-        except httpx.HTTPStatusError as error:
-            if error.response.status_code not in (409, 422):
-                raise
-            await ocean.port_client.update_organization_secret(
-                secret_name=secret_name,
-                secret_value=signing_secret,
-                description=description,
-            )
-
-        await self._patch_signing_secret_spec(secret_name)
         self._webhook_signing_secret = signing_secret
         logger.info(
             f"Persisted Claude webhook signing secret as org secret '{secret_name}' "
@@ -121,14 +100,22 @@ class ClaudeWebhookClient:
 
     async def _backfill_signing_secret_spec_if_needed(self) -> None:
         """If SaaS verify is on but spec secret is unset, point it at our org secret."""
-        if self._webhook_signing_secret or not self._verify_webhook_secrets:
-            return
-        if not ocean.app.is_saas():
+        if (
+            self._webhook_signing_secret
+            or not self._verify_webhook_secrets
+            or not ocean.app.is_saas()
+        ):
             return
 
         secret_name = self._signing_secret_name()
         try:
-            await self._patch_signing_secret_spec(secret_name)
+            await ocean.port_client.patch_integration(
+                spec={
+                    "integrationSpec": {
+                        _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
+                    }
+                }
+            )
             logger.info(
                 f"Backfilled integrationSpec.{_WEBHOOK_SIGNING_SECRET_SPEC_KEY} "
                 f"to org secret '{secret_name}'"
@@ -215,9 +202,9 @@ class ClaudeWebhookClient:
             logger.error(f"Failed to ensure Claude webhook for {webhook_url}: {error}")
 
     async def _maybe_store_signing_secret(self, signing_secret: str | None) -> None:
+        # Always prefer the create-response secret: Claude rotates it on create
+        # (e.g. base URL change), so an existing env value may be stale.
         if not signing_secret or not self._verify_webhook_secrets:
-            return
-        if self._webhook_signing_secret:
             return
 
         self._webhook_signing_secret = signing_secret
