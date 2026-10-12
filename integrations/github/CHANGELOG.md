@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.19.0 (2026-10-12)
+
+
+### Features
+
+- Add incremental sync for workflows. Incremental runs only list repositories pushed since the cursor (sorted by push time with early stop, or a `pushed:>=` search qualifier when `repoSearch` is set) and fetch workflows for those repositories.
+
+
 ## 6.18.0 (2026-10-11)
 
 
