@@ -92,7 +92,10 @@ class AWSResourceConfig(ResourceConfig):
 
 
 class AWSS3BucketResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("s3:ListAllMyBuckets",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketTagging",
+    )
     kind: Literal["AWS::S3::Bucket"] = Field(
         title="AWS S3 Bucket",
         description="AWS S3 Bucket resource kind.",
@@ -108,7 +111,10 @@ class AWSEC2InstanceResourceConfig(AWSResourceConfig):
 
 
 class AWSECSClusterResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("ecs:ListClusters",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "ecs:ListClusters",
+        "ecs:DescribeClusters",
+    )
     kind: Literal["AWS::ECS::Cluster"] = Field(
         title="AWS ECS Cluster",
         description="AWS ECS Cluster resource kind.",
@@ -148,7 +154,10 @@ class AWSRDSDBClusterResourceConfig(AWSResourceConfig):
 
 
 class AWSEKSClusterResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("eks:ListClusters",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "eks:ListClusters",
+        "eks:DescribeCluster",
+    )
     kind: Literal["AWS::EKS::Cluster"] = Field(
         title="AWS EKS Cluster",
         description="AWS EKS Cluster resource kind.",
@@ -164,7 +173,11 @@ class AWSLambdaFunctionResourceConfig(AWSResourceConfig):
 
 
 class AWSECSServiceResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("ecs:ListClusters",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "ecs:ListClusters",
+        "ecs:ListServices",
+        "ecs:DescribeServices",
+    )
     kind: Literal["AWS::ECS::Service"] = Field(
         title="AWS ECS Service",
         description="AWS ECS Service resource kind.",
@@ -172,7 +185,10 @@ class AWSECSServiceResourceConfig(AWSResourceConfig):
 
 
 class AWSSQSQueueResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("sqs:ListQueues",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "sqs:ListQueues",
+        "sqs:GetQueueAttributes",
+    )
     kind: Literal["AWS::SQS::Queue"] = Field(
         title="AWS SQS Queue",
         description="AWS SQS Queue resource kind.",
@@ -188,7 +204,10 @@ class AWSECRRepositoryResourceConfig(AWSResourceConfig):
 
 
 class AWSECSTaskDefinitionResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("ecs:ListTaskDefinitions",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "ecs:ListTaskDefinitions",
+        "ecs:DescribeTaskDefinition",
+    )
     kind: Literal["AWS::ECS::TaskDefinition"] = Field(
         title="AWS ECS Task Definition",
         description="AWS ECS Task Definition resource kind.",
@@ -238,7 +257,10 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
 
 
 class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codebuild:ListProjects",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codebuild:ListProjects",
+        "codebuild:BatchGetProjects",
+    )
     kind: Literal["AWS::CodeBuild::Project"] = Field(
         title="AWS CodeBuild Project",
         description="AWS CodeBuild Project resource kind.",
@@ -246,7 +268,10 @@ class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
 
 
 class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codebuild:ListBuilds",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codebuild:ListBuilds",
+        "codebuild:BatchGetBuilds",
+    )
     kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
         title="AWS CodeBuild BuildRun",
         description="AWS CodeBuild BuildRun resource kind.",
@@ -254,7 +279,11 @@ class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
 
 
 class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codedeploy:ListApplications",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codedeploy:ListApplications",
+        "codedeploy:BatchGetApplications",
+        "codedeploy:ListTagsForResource",
+    )
     kind: Literal["AWS::CodeDeploy::Application"] = Field(
         title="AWS CodeDeploy Application",
         description="AWS CodeDeploy Application resource kind.",
@@ -262,7 +291,11 @@ class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
 
 
 class AWSCodeDeployDeploymentGroupResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codedeploy:ListApplications",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codedeploy:ListApplications",
+        "codedeploy:ListDeploymentGroups",
+        "codedeploy:BatchGetDeploymentGroups",
+    )
     kind: Literal["AWS::CodeDeploy::DeploymentGroup"] = Field(
         title="AWS CodeDeploy Deployment Group",
         description="AWS CodeDeploy Deployment Group resource kind.",
@@ -270,7 +303,10 @@ class AWSCodeDeployDeploymentGroupResourceConfig(AWSResourceConfig):
 
 
 class AWSCodeDeployDeploymentResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codedeploy:ListDeployments",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codedeploy:ListDeployments",
+        "codedeploy:GetDeployment",
+    )
     kind: Literal["AWS::CodeDeploy::Deployment"] = Field(
         title="AWS CodeDeploy Deployment",
         description="AWS CodeDeploy Deployment resource kind.",
@@ -278,7 +314,11 @@ class AWSCodeDeployDeploymentResourceConfig(AWSResourceConfig):
 
 
 class AWSCodeDeployDeploymentTargetResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codedeploy:ListDeployments",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codedeploy:ListDeployments",
+        "codedeploy:ListDeploymentTargets",
+        "codedeploy:BatchGetDeploymentTargets",
+    )
     kind: Literal["AWS::CodeDeploy::DeploymentTarget"] = Field(
         title="AWS CodeDeploy DeploymentTarget",
         description="AWS CodeDeploy Deployment Target resource kind.",
@@ -286,7 +326,11 @@ class AWSCodeDeployDeploymentTargetResourceConfig(AWSResourceConfig):
 
 
 class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codepipeline:ListPipelines",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codepipeline:ListPipelines",
+        "codepipeline:GetPipeline",
+        "codepipeline:ListTagsForResource",
+    )
     kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
         title="AWS CodePipeline Pipeline",
         description="AWS CodePipeline Pipeline resource kind.",
@@ -294,7 +338,10 @@ class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
 
 
 class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codepipeline:ListPipelines",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codepipeline:ListPipelines",
+        "codepipeline:GetPipeline",
+    )
     kind: Literal["AWS::CodePipeline::Stage"] = Field(
         title="AWS CodePipeline Stage",
         description="AWS CodePipeline Stage resource kind.",
@@ -302,7 +349,10 @@ class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
 
 
 class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codepipeline:ListPipelines",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codepipeline:ListPipelines",
+        "codepipeline:GetPipeline",
+    )
     kind: Literal["AWS::CodePipeline::Action"] = Field(
         title="AWS CodePipeline Action",
         description="AWS CodePipeline Action resource kind.",
@@ -310,7 +360,11 @@ class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
 
 
 class AWSCodePipelinePipelineExecutionResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codepipeline:ListPipelines",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codepipeline:ListPipelines",
+        "codepipeline:ListPipelineExecutions",
+        "codepipeline:GetPipelineExecution",
+    )
     kind: Literal["AWS::CodePipeline::PipelineExecution"] = Field(
         title="AWS CodePipeline Pipeline Execution",
         description="AWS CodePipeline Pipeline Execution resource kind.",
@@ -318,7 +372,10 @@ class AWSCodePipelinePipelineExecutionResourceConfig(AWSResourceConfig):
 
 
 class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("codepipeline:ListPipelines",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "codepipeline:ListPipelines",
+        "codepipeline:ListActionExecutions",
+    )
     kind: Literal["AWS::CodePipeline::ActionExecution"] = Field(
         title="AWS CodePipeline Action Execution",
         description="AWS CodePipeline Action Execution resource kind.",
@@ -326,7 +383,10 @@ class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
 
 
 class AWSSESEmailIdentityResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("ses:ListEmailIdentities",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "ses:ListEmailIdentities",
+        "ses:GetEmailIdentity",
+    )
     kind: Literal["AWS::SES::EmailIdentity"] = Field(
         title="AWS SES Email Identity",
         description="AWS SES Email Identity resource kind.",
@@ -334,7 +394,10 @@ class AWSSESEmailIdentityResourceConfig(AWSResourceConfig):
 
 
 class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("dynamodb:ListTables",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "dynamodb:ListTables",
+        "dynamodb:DescribeTable",
+    )
     kind: Literal["AWS::DynamoDB::Table"] = Field(
         title="AWS DynamoDB Table",
         description="AWS DynamoDB Table resource kind.",
@@ -342,7 +405,10 @@ class AWSDynamoDBTableResourceConfig(AWSResourceConfig):
 
 
 class AWSSESConfigurationSetResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("ses:ListConfigurationSets",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "ses:ListConfigurationSets",
+        "ses:GetConfigurationSet",
+    )
     kind: Literal["AWS::SES::ConfigurationSet"] = Field(
         title="AWS SES Configuration Set",
         description="AWS SES Configuration Set resource kind.",
@@ -350,7 +416,10 @@ class AWSSESConfigurationSetResourceConfig(AWSResourceConfig):
 
 
 class AWSSNSTopicResourceConfig(AWSResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("sns:ListTopics",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "sns:ListTopics",
+        "sns:GetTopicAttributes",
+    )
     kind: Literal["AWS::SNS::Topic"] = Field(
         title="AWS SNS Topic",
         description="AWS SNS Topic resource kind.",

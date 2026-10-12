@@ -68,6 +68,10 @@ def make_session(
                         "EvalActionName": "s3:ListAllMyBuckets",
                         "EvalDecision": "allowed",
                     },
+                    {
+                        "EvalActionName": "s3:GetBucketTagging",
+                        "EvalDecision": "allowed",
+                    },
                 ],
                 "IsTruncated": False,
             }

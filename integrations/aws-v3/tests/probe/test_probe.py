@@ -118,6 +118,10 @@ async def test_probe_marks_explicit_deny_as_failure(
                     "EvalActionName": "s3:ListAllMyBuckets",
                     "EvalDecision": "allowed",
                 },
+                {
+                    "EvalActionName": "s3:GetBucketTagging",
+                    "EvalDecision": "allowed",
+                },
             ],
             "IsTruncated": False,
         }
@@ -213,6 +217,10 @@ async def test_probe_implicit_deny_fails_independently_of_allowed_kinds(
                 },
                 {
                     "EvalActionName": "s3:ListAllMyBuckets",
+                    "EvalDecision": "allowed",
+                },
+                {
+                    "EvalActionName": "s3:GetBucketTagging",
                     "EvalDecision": "allowed",
                 },
             ],

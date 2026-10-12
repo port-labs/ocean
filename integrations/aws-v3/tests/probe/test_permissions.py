@@ -14,7 +14,10 @@ def test_aws_kind_permission_verdict_loads_kind_probe_permissions() -> None:
     assert verdict.kind_permissions == get_kind_probe_permissions(AWSPortAppConfig)
     assert verdict.combination is PermissionCombination.AND
     assert verdict.kind_permissions["AWS::EC2::Instance"] == ("ec2:DescribeInstances",)
-    assert verdict.kind_permissions["AWS::S3::Bucket"] == ("s3:ListAllMyBuckets",)
+    assert verdict.kind_permissions["AWS::S3::Bucket"] == (
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketTagging",
+    )
 
 
 def test_verdict_succeeds_when_required_actions_are_allowed() -> None:
