@@ -27,7 +27,6 @@ from pydantic import BaseModel
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
-from port_ocean.utils import http_async_client
 
 from clients.exceptions import (
     UnexpectedApiResponseError,
@@ -119,26 +118,25 @@ class AnthropicClient:
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
+        # Shared transport for the SDK and Console admin calls (e.g. webhook create)
+        # so rate-limit hooks apply to every Anthropic HTTP request.
+        self._anthropic_http = OceanAsyncClient(
+            timeout=ocean.config.client_timeout,
+            retry_config=RetryConfig(max_attempts=0),
+            event_hooks={
+                "request": [self._on_request],
+                "response": [self._on_response],
+            },
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
             default_headers=(
                 {"anthropic-version": anthropic_version} if anthropic_version else None
             ),
-            # A dedicated OceanAsyncClient gets us SaaS IP-blocking and consistent
-            # SSL verification. Ocean's own retry layer is disabled (max_attempts=0)
-            # since the Anthropic SDK already retries internally. The request/
-            # response hooks below capture rate limit headers and proactively
-            # pace requests for both the create- and read-endpoint pools, on
-            # every call the client makes (resync, actions, and webhooks alike).
-            http_client=OceanAsyncClient(
-                timeout=ocean.config.client_timeout,
-                retry_config=RetryConfig(max_attempts=0),
-                event_hooks={
-                    "request": [self._on_request],
-                    "response": [self._on_response],
-                },
-            ),
+            # Ocean's retry layer is disabled (max_attempts=0) since the Anthropic
+            # SDK already retries internally.
+            http_client=self._anthropic_http,
         )
 
     def _rate_limit_lock(self, pool: RateLimitPool) -> asyncio.Lock:
@@ -476,7 +474,7 @@ class AnthropicClient:
             headers["anthropic-version"] = self._anthropic_version
 
         try:
-            response = await http_async_client.post(
+            response = await self._anthropic_http.post(
                 f"{self._console_host}/v1/webhooks",
                 headers=headers,
                 json={
