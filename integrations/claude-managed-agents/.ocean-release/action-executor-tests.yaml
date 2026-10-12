@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: fix
+changelog: Fix UpdateEnvironmentExecutor calling `.to_dict()` on a plain dict returned by the Anthropic client; add unit tests for archive_agent, update_agent, create_environment, update_environment, and delete_environment executors
