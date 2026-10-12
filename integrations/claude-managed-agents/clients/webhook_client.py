@@ -183,9 +183,7 @@ class ClaudeWebhookClient:
                 return
 
             created = response.json()
-            logger.info(
-                f"Created Claude webhook {created.get('id')} for {webhook_url}"
-            )
+            logger.info(f"Created Claude webhook {created.get('id')} for {webhook_url}")
             await self._maybe_store_signing_secret(created.get("signing_secret"))
         except httpx.HTTPError as error:
             logger.error(f"Failed to ensure Claude webhook for {webhook_url}: {error}")

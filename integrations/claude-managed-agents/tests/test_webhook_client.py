@@ -10,12 +10,15 @@ from clients.webhook_client import ClaudeWebhookClient, _WEBHOOK_EVENTS
 
 
 @pytest.fixture
-def webhook_client() -> ClaudeWebhookClient:
-    http = MagicMock()
-    anthropic = MagicMock()
+def webhook_http() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def webhook_client(webhook_http: MagicMock) -> ClaudeWebhookClient:
     return ClaudeWebhookClient(
-        http_client=http,
-        anthropic_client=anthropic,
+        http_client=webhook_http,
+        anthropic_client=MagicMock(),
         console_host="https://platform.claude.com",
         api_key="test-api-key",
         webhook_signing_secret="whsec_test",
@@ -39,8 +42,9 @@ def test_unwrap_webhook_without_secret_raises() -> None:
 @pytest.mark.asyncio
 async def test_upsert_webhook_creates(
     webhook_client: ClaudeWebhookClient,
+    webhook_http: MagicMock,
 ) -> None:
-    webhook_client._http.post = AsyncMock(
+    webhook_http.post = AsyncMock(
         return_value=httpx.Response(
             200,
             json={"id": "wh_new", "signing_secret": "whsec_once"},
@@ -50,8 +54,8 @@ async def test_upsert_webhook_creates(
 
     await webhook_client.upsert_webhook("https://ocean.example")
 
-    webhook_client._http.post.assert_awaited_once()
-    body = webhook_client._http.post.await_args.kwargs["json"]
+    webhook_http.post.assert_awaited_once()
+    body = webhook_http.post.await_args.kwargs["json"]
     assert body["url"] == "https://ocean.example/integration/webhook"
     assert body["name"] == "Port Ocean Integration"
     assert "session.status_idled" in body["enabled_events"]
@@ -61,10 +65,11 @@ async def test_upsert_webhook_creates(
 @pytest.mark.asyncio
 async def test_upsert_webhook_reconciles_events_on_conflict(
     webhook_client: ClaudeWebhookClient,
+    webhook_http: MagicMock,
 ) -> None:
     webhook_url = "https://ocean.example/integration/webhook"
     existing_events = ["session.status_idled", "agent.created"]
-    webhook_client._http.post = AsyncMock(
+    webhook_http.post = AsyncMock(
         side_effect=[
             httpx.Response(
                 409,
@@ -81,7 +86,7 @@ async def test_upsert_webhook_reconciles_events_on_conflict(
             ),
         ]
     )
-    webhook_client._http.get = AsyncMock(
+    webhook_http.get = AsyncMock(
         return_value=httpx.Response(
             200,
             json={
@@ -99,9 +104,9 @@ async def test_upsert_webhook_reconciles_events_on_conflict(
 
     await webhook_client.upsert_webhook("https://ocean.example")
 
-    assert webhook_client._http.post.await_count == 2
-    webhook_client._http.get.assert_awaited_once()
-    update_body = webhook_client._http.post.await_args_list[1].kwargs["json"]
+    assert webhook_http.post.await_count == 2
+    webhook_http.get.assert_awaited_once()
+    update_body = webhook_http.post.await_args_list[1].kwargs["json"]
     assert set(update_body["enabled_events"]) == set(existing_events) | set(
         _WEBHOOK_EVENTS
     )
@@ -111,15 +116,16 @@ async def test_upsert_webhook_reconciles_events_on_conflict(
 @pytest.mark.asyncio
 async def test_upsert_webhook_skips_update_when_events_cover_required(
     webhook_client: ClaudeWebhookClient,
+    webhook_http: MagicMock,
 ) -> None:
     webhook_url = "https://ocean.example/integration/webhook"
-    webhook_client._http.post = AsyncMock(
+    webhook_http.post = AsyncMock(
         return_value=httpx.Response(
             409,
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
         )
     )
-    webhook_client._http.get = AsyncMock(
+    webhook_http.get = AsyncMock(
         return_value=httpx.Response(
             200,
             json={
@@ -137,15 +143,16 @@ async def test_upsert_webhook_skips_update_when_events_cover_required(
 
     await webhook_client.upsert_webhook("https://ocean.example")
 
-    webhook_client._http.post.assert_awaited_once()
-    webhook_client._http.get.assert_awaited_once()
+    webhook_http.post.assert_awaited_once()
+    webhook_http.get.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_upsert_webhook_logs_api_errors(
     webhook_client: ClaudeWebhookClient,
+    webhook_http: MagicMock,
 ) -> None:
-    webhook_client._http.post = AsyncMock(
+    webhook_http.post = AsyncMock(
         return_value=httpx.Response(
             400,
             text='{"error":"bad"}',
@@ -155,58 +162,68 @@ async def test_upsert_webhook_logs_api_errors(
 
     await webhook_client.upsert_webhook("https://ocean.example")
 
-    webhook_client._http.post.assert_awaited_once()
+    webhook_http.post.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_upsert_webhook_persists_signing_secret_on_saas() -> None:
+    http = MagicMock()
     client = ClaudeWebhookClient(
-        http_client=MagicMock(),
+        http_client=http,
         anthropic_client=MagicMock(),
         console_host="https://platform.claude.com",
         api_key="test-api-key",
         webhook_signing_secret=None,
         verify_webhook_secrets=True,
     )
-    client._http.post = AsyncMock(
+    http.post = AsyncMock(
         return_value=httpx.Response(
             200,
             json={"id": "wh_new", "signing_secret": "whsec_once"},
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
         )
     )
-    client._persist_signing_secret = AsyncMock()  # type: ignore[method-assign]
 
-    with patch("clients.webhook_client.ocean") as mock_ocean:
+    with (
+        patch.object(
+            client, "_persist_signing_secret", new_callable=AsyncMock
+        ) as persist,
+        patch("clients.webhook_client.ocean") as mock_ocean,
+    ):
         mock_ocean.app.is_saas = MagicMock(return_value=True)
         await client.upsert_webhook("https://ocean.example")
 
-    client._persist_signing_secret.assert_awaited_once_with("whsec_once")
+    persist.assert_awaited_once_with("whsec_once")
     assert client.has_webhook_secret is True
 
 
 @pytest.mark.asyncio
 async def test_upsert_webhook_skips_persist_when_not_saas() -> None:
+    http = MagicMock()
     client = ClaudeWebhookClient(
-        http_client=MagicMock(),
+        http_client=http,
         anthropic_client=MagicMock(),
         console_host="https://platform.claude.com",
         api_key="test-api-key",
         webhook_signing_secret=None,
         verify_webhook_secrets=True,
     )
-    client._http.post = AsyncMock(
+    http.post = AsyncMock(
         return_value=httpx.Response(
             200,
             json={"id": "wh_new", "signing_secret": "whsec_once"},
             request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
         )
     )
-    client._persist_signing_secret = AsyncMock()  # type: ignore[method-assign]
 
-    with patch("clients.webhook_client.ocean") as mock_ocean:
+    with (
+        patch.object(
+            client, "_persist_signing_secret", new_callable=AsyncMock
+        ) as persist,
+        patch("clients.webhook_client.ocean") as mock_ocean,
+    ):
         mock_ocean.app.is_saas = MagicMock(return_value=False)
         await client.upsert_webhook("https://ocean.example")
 
-    client._persist_signing_secret.assert_not_awaited()
+    persist.assert_not_awaited()
     assert client.has_webhook_secret is True
