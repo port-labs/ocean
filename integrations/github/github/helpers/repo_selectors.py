@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import (
     Any,
     AsyncIterator,
@@ -15,10 +16,17 @@ from loguru import logger
 
 from github.core.options import ListRepositoryOptions
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import get_repository_metadata
+from github.helpers.utils import get_repository_metadata, parse_timestamp
 
 if TYPE_CHECKING:
     from integration import RepositoryBranchMapping
+
+
+def is_pushed_since(repo: Dict[str, Any], pushed_since: datetime) -> bool:
+    """Return True when the repo was pushed at or after ``pushed_since`` (unknown counts as pushed)."""
+    raw_pushed_at = repo.get("pushed_at")
+    pushed_at = parse_timestamp(raw_pushed_at) if raw_pushed_at else None
+    return pushed_at is None or pushed_at >= pushed_since
 
 
 class RepoListSelector(Protocol):
@@ -42,6 +50,7 @@ class RepositorySelectorStrategy(ABC):
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
         org_type: str,
+        pushed_since: Optional[datetime] = None,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         """Yield (repo_name, branch, repo_obj)"""
         ...
@@ -59,6 +68,7 @@ class AllRepositorySelector(RepositorySelectorStrategy):
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
         org_type: str,
+        pushed_since: Optional[datetime] = None,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         logger.info(
             f"Fetching all '{self.repo_type}' repositories from '{org_login}' of type '{org_type}'."
@@ -69,6 +79,8 @@ class AllRepositorySelector(RepositorySelectorStrategy):
             type=self.repo_type,
             exclude_archived=selector.exclude_archived,
         )
+        if pushed_since:
+            options["pushed_since"] = pushed_since
         async for batch in repo_exporter.get_paginated_resources(options):
             for repo in batch:
                 name = repo["name"]
@@ -96,6 +108,7 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
         org_type: str,
+        pushed_since: Optional[datetime] = None,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         if not selector.repos:
             return
@@ -106,6 +119,12 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
             )
             if not repo_obj:
                 logger.warning(f"Repository {repo_sel.name} not found in {org_login}")
+                continue
+
+            if pushed_since and not is_pushed_since(repo_obj, pushed_since):
+                logger.debug(
+                    f"Skipping repository {repo_sel.name}: not pushed since {pushed_since.isoformat()}"
+                )
                 continue
 
             branch = repo_sel.branch or repo_obj["default_branch"]
@@ -133,12 +152,13 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
         org_type: str,
+        pushed_since: Optional[datetime] = None,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         active_strategies = (
             self.explicit_strategies if selector.repos else self.implicit_strategies
         )
         for strategy in active_strategies:
             async for result in strategy.select_repos(
-                selector, repo_exporter, org_login, org_type
+                selector, repo_exporter, org_login, org_type, pushed_since
             ):
                 yield result

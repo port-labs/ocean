@@ -1275,13 +1275,14 @@ async def resync_folders(
         yield folder_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync files based on configuration using the file exporter."""
-    logger.info(f"Starting resync for kind: {kind}")
+    """Resync files; incremental runs only fetch files changed in repos pushed since the cursor."""
+    sync_cursor = active_incremental_cursor()
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     files = [
@@ -1314,7 +1315,7 @@ async def resync_files(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(files)
+    repo_path_map = await pattern_builder.build(files, updated_since=sync_cursor)
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
