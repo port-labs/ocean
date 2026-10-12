@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Add incremental sync for workflows by checking commits under `.github/workflows` since the cursor and only resyncing repositories with changes.
+changelog: Add incremental sync for workflows. Incremental runs only list repositories pushed since the cursor (sorted by push time with early stop, or a `pushed:>=` search qualifier when `repoSearch` is set) and fetch workflows for those repositories.
