@@ -9,6 +9,17 @@ def test_skill_path_defaults_omit_unset_repository_filters() -> None:
     assert defaults == [{"path": path} for path in DEFAULT_SKILL_PATHS]
 
 
+def test_skill_include_references_defaults_to_false() -> None:
+    properties = GithubSkillSelector.schema()["properties"]
+
+    assert properties["includeReferences"]["default"] is False
+    assert GithubSkillSelector(query="true").include_references is False
+    assert (
+        GithubSkillSelector(query="true", includeReferences=True).include_references
+        is True
+    )
+
+
 def test_mcp_path_defaults_omit_unset_repository_filters() -> None:
     defaults = GithubMcpSelector.schema()["properties"]["paths"]["default"]
 

@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added an opt-in `includeReferences` selector to the `skill` kind that bundles every text file in the skill folder into `skill.references` as a list of `{path, content}`, on both resync and push webhooks. Skills whose SKILL.md and references exceed 1MB in total are skipped with a warning.

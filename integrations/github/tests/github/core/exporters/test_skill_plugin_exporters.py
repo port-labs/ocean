@@ -1,6 +1,6 @@
 import json
 from typing import Any, AsyncGenerator, Dict, List
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -8,6 +8,7 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.core import PluginExporter
 from github.core.exporters.skill_exporter.core import SkillExporter
+from github.core.exporters.skill_exporter.references import MAX_SKILL_BUNDLE_SIZE
 from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
@@ -144,6 +145,182 @@ class TestSkillExporter:
             ]
 
         assert batches == []
+
+
+def _sized_blob(path: str, size: int = 10) -> Dict[str, Any]:
+    return {"type": "blob", "path": path, "size": size, "mode": "100644"}
+
+
+class _FakeContentFetcher:
+    """Stands in for the batched GraphQL/REST fetchers and records requested paths and refs."""
+
+    def __init__(self) -> None:
+        self.graphql_paths: List[str] = []
+        self.rest_paths: List[str] = []
+        self.refs: set[str] = set()
+
+    async def graphql(
+        self, files: List[Dict[str, Any]]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        self.graphql_paths.extend(file["file_path"] for file in files)
+        self.refs.update(file["branch"] for file in files)
+        if files:
+            yield [self._file(file) for file in files]
+
+    async def rest(
+        self, files: List[Dict[str, Any]]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        self.rest_paths.extend(file["file_path"] for file in files)
+        self.refs.update(file["branch"] for file in files)
+        yield [self._file(file) for file in files]
+
+    @staticmethod
+    def _file(file: Dict[str, Any]) -> Dict[str, Any]:
+        return {"path": file["file_path"], "content": f"content of {file['file_path']}"}
+
+
+def _exporter_with_references(
+    rest_client: GithubRestClient, tree: List[Dict[str, Any]]
+) -> tuple[SkillExporter, _FakeContentFetcher]:
+    exporter = SkillExporter(rest_client, include_references=True)
+    fetcher = _FakeContentFetcher()
+    exporter.get_tree_recursive = AsyncMock(return_value=(tree, False))  # type: ignore[method-assign]
+    exporter.process_graphql_files = fetcher.graphql  # type: ignore[method-assign]
+    exporter.process_rest_api_files = fetcher.rest  # type: ignore[method-assign]
+    return exporter, fetcher
+
+
+class TestSkillExporterReferences:
+    async def test_flag_off_skips_reference_fetching(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        async def fake_files(
+            _self: RestFileExporter, _options: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [_file_object("skills/hello/SKILL.md", SKILL_MD)]
+
+        exporter = SkillExporter(rest_client)
+        exporter.get_tree_recursive = AsyncMock()  # type: ignore[method-assign]
+        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+            batches = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    _skill_search_options("skills/**/SKILL.md")
+                )
+            ]
+
+        assert batches[0][0]["skill"]["references"] is None
+        exporter.get_tree_recursive.assert_not_called()
+
+    async def test_flag_on_bundles_sorted_relative_references(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        tree = [
+            _sized_blob("skills/hello/SKILL.md"),
+            _sized_blob("skills/hello/references/b.md"),
+            _sized_blob("skills/hello/references/a.md"),
+            _sized_blob("skills/hello/scripts/big.py", size=200_000),
+            _sized_blob("skills/hello/assets/logo.png"),
+        ]
+        exporter, fetcher = _exporter_with_references(rest_client, tree)
+
+        async def fake_files(
+            _self: RestFileExporter, _options: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [_file_object("skills/hello/SKILL.md", SKILL_MD)]
+
+        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+            batches = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    _skill_search_options("skills/**/SKILL.md")
+                )
+            ]
+
+        assert batches[0][0]["skill"]["references"] == [
+            {
+                "path": "references/a.md",
+                "content": "content of skills/hello/references/a.md",
+            },
+            {
+                "path": "references/b.md",
+                "content": "content of skills/hello/references/b.md",
+            },
+            {
+                "path": "scripts/big.py",
+                "content": "content of skills/hello/scripts/big.py",
+            },
+        ]
+        assert sorted(fetcher.graphql_paths) == [
+            "skills/hello/references/a.md",
+            "skills/hello/references/b.md",
+        ]
+        assert fetcher.rest_paths == ["skills/hello/scripts/big.py"]
+
+    async def test_oversized_skill_is_dropped_without_fetching(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        tree = [
+            _sized_blob("skills/small/SKILL.md"),
+            _sized_blob("skills/small/references/api.md"),
+            _sized_blob("skills/big/SKILL.md"),
+            _sized_blob("skills/big/references/huge.md", size=MAX_SKILL_BUNDLE_SIZE),
+        ]
+        exporter, fetcher = _exporter_with_references(rest_client, tree)
+
+        async def fake_files(
+            _self: RestFileExporter, _options: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [
+                _file_object("skills/small/SKILL.md", SKILL_MD),
+                _file_object("skills/big/SKILL.md", SKILL_MD),
+            ]
+
+        mock_logger = MagicMock()
+        with (
+            patch.object(RestFileExporter, "get_paginated_resources", fake_files),
+            patch("github.core.exporters.skill_exporter.core.logger", mock_logger),
+        ):
+            batches = [
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    _skill_search_options("skills/**/SKILL.md")
+                )
+            ]
+
+        assert [item["skill"]["skillMdPath"] for item in batches[0]] == [
+            "skills/small/SKILL.md"
+        ]
+        assert fetcher.graphql_paths == ["skills/small/references/api.md"]
+        assert fetcher.rest_paths == []
+        [warning_call] = mock_logger.warning.call_args_list
+        assert "skills/big/SKILL.md" in warning_call.args[0]
+
+    async def test_references_are_read_at_given_ref(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        tree = [
+            _sized_blob("skills/hello/SKILL.md"),
+            _sized_blob("skills/hello/references/api.md"),
+        ]
+        exporter, fetcher = _exporter_with_references(rest_client, tree)
+
+        item = await exporter.build_skill_item(
+            skill_md_path="skills/hello/SKILL.md",
+            content=SKILL_MD,
+            repository=TEST_REPOSITORY,
+            branch="main",
+            organization="test-org",
+            path_globs=["skills/**/SKILL.md"],
+            ref="abc123",
+        )
+
+        assert item is not None
+        assert item["__branch"] == "main"
+        exporter.get_tree_recursive.assert_called_once_with(  # type: ignore[attr-defined]
+            "test-org", TEST_REPOSITORY["name"], "abc123"
+        )
+        assert fetcher.refs == {"abc123"}
 
 
 def _tree(*paths: str) -> List[Dict[str, Any]]:

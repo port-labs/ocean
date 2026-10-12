@@ -1,15 +1,36 @@
-from typing import Any, List
+import asyncio
+from typing import Any, List, Optional
 
 from loguru import logger
 
+from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.file_exporter.core import RestFileExporter
-from github.core.exporters.skill_exporter.utils import build_skill_raw_item
+from github.core.exporters.file_exporter.utils import (
+    determine_api_client_type_by_file_size,
+)
+from github.core.exporters.skill_exporter.references import (
+    MAX_SKILL_BUNDLE_SIZE,
+    get_bundle_size,
+    select_reference_files,
+    skill_dir_prefix,
+)
+from github.core.exporters.skill_exporter.utils import (
+    SkillReference,
+    build_skill_raw_item,
+)
 from github.core.options import ListFileSearchOptions
+from github.helpers.utils import GithubClientType
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 class SkillExporter(RestFileExporter):
     """Discovers SKILL.md files and emits normalized skill entities."""
+
+    def __init__(
+        self, client: GithubRestClient, include_references: bool = False
+    ) -> None:
+        super().__init__(client)
+        self.include_references = include_references
 
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
@@ -23,25 +44,139 @@ class SkillExporter(RestFileExporter):
         )
 
         async for file_batch in super().get_paginated_resources(options):
-            skills: list[dict[str, Any]] = []
+            valid_files = []
             for file_obj in file_batch:
-                content = file_obj.get("content")
-                if not isinstance(content, str):
+                if isinstance(file_obj.get("content"), str):
+                    valid_files.append(file_obj)
+                else:
                     logger.warning(
                         f"Skipping skill file {file_obj.get('path')} — "
                         "content is not a string"
                     )
-                    continue
-                skills.append(
-                    build_skill_raw_item(
+
+            results = await asyncio.gather(
+                *(
+                    self.build_skill_item(
                         skill_md_path=file_obj["path"],
-                        content=content,
+                        content=file_obj["content"],
                         repository=file_obj["repository"],
                         branch=file_obj["branch"],
-                        organization=file_obj.get("organization"),
+                        organization=file_obj["organization"],
                         path_globs=path_globs,
                         blob_sha=file_obj.get("metadata", {}).get("sha"),
                     )
+                    for file_obj in valid_files
                 )
+            )
+            skills = [skill for skill in results if skill is not None]
             if skills:
                 yield skills
+
+    async def build_skill_item(
+        self,
+        *,
+        skill_md_path: str,
+        content: str,
+        repository: dict[str, Any],
+        branch: str,
+        organization: str,
+        path_globs: list[str],
+        blob_sha: Optional[str] = None,
+        ref: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Build the skill raw item, or None if its references bundle is too large.
+
+        References are read at `ref` (defaults to `branch`). Pass a commit SHA
+        when the branch tree may already be cached from an earlier event.
+        """
+        references = None
+        if self.include_references:
+            references = await self.fetch_references(
+                organization=organization,
+                repo_name=repository["name"],
+                ref=ref or branch,
+                skill_md_path=skill_md_path,
+                skill_md_size=len(content.encode("utf-8")),
+            )
+            if references is None:
+                return None
+
+        return build_skill_raw_item(
+            skill_md_path=skill_md_path,
+            content=content,
+            repository=repository,
+            branch=branch,
+            organization=organization,
+            path_globs=path_globs,
+            blob_sha=blob_sha,
+            references=references,
+        )
+
+    async def fetch_references(
+        self,
+        *,
+        organization: str,
+        repo_name: str,
+        ref: str,
+        skill_md_path: str,
+        skill_md_size: int,
+    ) -> Optional[list[SkillReference]]:
+        """Fetch the text files in the skill folder at `ref` (branch or commit
+        SHA), sorted by relative path.
+
+        Returns None when SKILL.md plus its references exceed the bundle limit.
+        """
+        tree, _ = await self.get_tree_recursive(organization, repo_name, ref)
+        entries = select_reference_files(tree, skill_md_path)
+
+        bundle_size = get_bundle_size(skill_md_size, entries)
+        if bundle_size > MAX_SKILL_BUNDLE_SIZE:
+            logger.warning(
+                f"Skipping skill {skill_md_path} in {organization}/{repo_name}@{ref}: "
+                f"SKILL.md and its {len(entries)} reference files total {bundle_size} bytes, "
+                f"over the {MAX_SKILL_BUNDLE_SIZE} byte limit"
+            )
+            return None
+
+        contents = await self._fetch_file_contents(
+            organization, repo_name, ref, entries
+        )
+        prefix = skill_dir_prefix(skill_md_path)
+        return [
+            SkillReference(path=path.removeprefix(prefix), content=content)
+            for path, content in sorted(contents.items())
+        ]
+
+    async def _fetch_file_contents(
+        self,
+        organization: str,
+        repo_name: str,
+        ref: str,
+        entries: list[dict[str, Any]],
+    ) -> dict[str, str]:
+        """Fetch raw contents keyed by repo path: small files in batched GraphQL
+        queries, larger ones through the REST contents API."""
+        graphql_files = []
+        rest_files = []
+        for entry in entries:
+            file_info = {
+                "organization": organization,
+                "repo_name": repo_name,
+                "file_path": entry["path"],
+                "skip_parsing": True,
+                "branch": ref,
+                "sha": entry.get("sha"),
+            }
+            fetch_method = determine_api_client_type_by_file_size(entry.get("size", 0))
+            if fetch_method == GithubClientType.GRAPHQL:
+                graphql_files.append(file_info)
+            else:
+                rest_files.append(file_info)
+
+        contents: dict[str, str] = {}
+        async for batch in self.process_graphql_files(graphql_files):
+            contents.update({file["path"]: file["content"] for file in batch})
+        if rest_files:
+            async for batch in self.process_rest_api_files(rest_files):
+                contents.update({file["path"]: file["content"] for file in batch})
+        return contents

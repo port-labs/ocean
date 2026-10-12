@@ -363,6 +363,16 @@ class GithubSkillSelector(Selector):
             "multi-org filtration."
         ),
     )
+    include_references: bool = Field(
+        title="Include references",
+        alias="includeReferences",
+        default=False,
+        description=(
+            "Bundle every text file in the skill folder (e.g. references/, "
+            "scripts/) into `skill.references` as a list of `{path, content}`. "
+            "Skills whose SKILL.md and references exceed 1MB in total are skipped."
+        ),
+    )
 
     class Config:
         @staticmethod
