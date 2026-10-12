@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -27,6 +28,15 @@ _WEBHOOK_EVENTS = [
     "vault.deleted",
 ]
 _WEBHOOK_SIGNING_SECRET_SPEC_KEY = "webhookSigningSecret"
+# Matches OceanInstallationModal: "_" + screamingSnakeCase(id_type_property)
+_ORG_SECRET_NAME_PREFIX = "_"
+
+
+def _screaming_snake_case(value: str) -> str:
+    """Approximate lodash snakeCase(...).toUpperCase() used by the install modal."""
+    with_underscores = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
+    with_underscores = re.sub(r"[^A-Za-z0-9]+", "_", with_underscores)
+    return with_underscores.strip("_").upper()
 
 
 class ClaudeWebhookClient:
@@ -78,19 +88,30 @@ class ClaudeWebhookClient:
         return headers
 
     def _signing_secret_name(self) -> str:
-        identifier = ocean.config.integration.identifier.replace("/", "-")
-        return f"{identifier}-claude-webhook-signing-secret"
+        integration = ocean.config.integration
+        return (
+            _ORG_SECRET_NAME_PREFIX
+            + _screaming_snake_case(
+                f"{integration.identifier}_{integration.type}_{_WEBHOOK_SIGNING_SECRET_SPEC_KEY}"
+            )
+        )
 
     async def _persist_signing_secret(self, signing_secret: str) -> None:
         """Store the Claude signing secret as an org secret and point SaaS spec at it."""
         secret_name = self._signing_secret_name()
-        await ocean.port_client.upsert_integration_spec_secret(
+        await ocean.port_client.upsert_organization_secret(
             secret_name=secret_name,
             secret_value=signing_secret,
-            integration_spec_key=_WEBHOOK_SIGNING_SECRET_SPEC_KEY,
             description=(
                 "Claude Managed Agents webhook signing secret for Port Ocean live events"
             ),
+        )
+        await ocean.port_client.patch_integration(
+            spec={
+                "integrationSpec": {
+                    _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
+                }
+            }
         )
         self._webhook_signing_secret = signing_secret
         logger.info(

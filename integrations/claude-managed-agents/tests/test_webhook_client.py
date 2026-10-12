@@ -6,7 +6,11 @@ import httpx
 import pytest
 
 from clients.exceptions import WebhookSigningSecretNotConfiguredError
-from clients.webhook_client import ClaudeWebhookClient, _WEBHOOK_EVENTS
+from clients.webhook_client import (
+    ClaudeWebhookClient,
+    _WEBHOOK_EVENTS,
+    _screaming_snake_case,
+)
 
 
 @pytest.fixture
@@ -24,6 +28,31 @@ def webhook_client(webhook_http: MagicMock) -> ClaudeWebhookClient:
         webhook_signing_secret="whsec_test",
         anthropic_version="2023-06-01",
     )
+
+
+def test_screaming_snake_case_matches_install_modal_style() -> None:
+    assert (
+        _screaming_snake_case(
+            "claude-managed_claude-managed-agents_webhookSigningSecret"
+        )
+        == "CLAUDE_MANAGED_CLAUDE_MANAGED_AGENTS_WEBHOOK_SIGNING_SECRET"
+    )
+
+
+def test_signing_secret_name_uses_install_modal_prefix() -> None:
+    client = ClaudeWebhookClient(
+        http_client=MagicMock(),
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+    )
+    with patch("clients.webhook_client.ocean") as mock_ocean:
+        mock_ocean.config.integration.identifier = "claude-managed"
+        mock_ocean.config.integration.type = "claude-managed-agents"
+        assert (
+            client._signing_secret_name()
+            == "_CLAUDE_MANAGED_CLAUDE_MANAGED_AGENTS_WEBHOOK_SIGNING_SECRET"
+        )
 
 
 def test_unwrap_webhook_without_secret_raises() -> None:
