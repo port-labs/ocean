@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added Plain Ocean integration with resync for companies, tenants, users, machine users, customers, threads, thread messages, discussions, and discussion messages
-- Added selector flags for excluding done threads, optional thread statuses, deleted machine users, and AI/agent-session discussions
+- Added selector flags for page size, excluding done threads, optional thread statuses, deleted machine users, and AI/agent-session discussions
 - Added live events gated by the Ocean event listener (`should_process_webhooks`), with webhook registration that continues startup when the API key cannot create the target
 - Opted GraphQL POSTs into Ocean RetryTransport so Plain 429s wait instead of failing the kind
 

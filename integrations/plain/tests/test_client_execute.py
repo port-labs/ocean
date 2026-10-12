@@ -16,7 +16,7 @@ DEFAULT_API_URL = "https://core-api.uk.plain.com/graphql/v1"
 
 
 def _config(api_url: str = DEFAULT_API_URL) -> dict[str, str]:
-    return {"api_token": API_TOKEN, "api_url": api_url, "page_size": "100"}
+    return {"api_token": API_TOKEN, "api_url": api_url}
 
 
 def _client(
@@ -153,7 +153,6 @@ async def test_authorization_header_uses_token_from_config() -> None:
         {
             "api_token": "plainApiKey_from_config",
             "api_url": DEFAULT_API_URL,
-            "page_size": "100",
         },
     )
     async with http_client:

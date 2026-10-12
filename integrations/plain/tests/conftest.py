@@ -18,7 +18,6 @@ try:
     mock_ocean_app.config.integration.config = {
         "api_token": "plainApiKey_test",
         "api_url": "https://core-api.uk.plain.com/graphql/v1",
-        "page_size": "100",
     }
     mock_ocean_app.config.integration.identifier = "plain"
     mock_ocean_app.config.client_timeout = 30

@@ -11,10 +11,28 @@ from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.v1 import Field
 
 
+class PlainSelector(Selector):
+    page_size: int = Field(
+        default=100,
+        alias="pageSize",
+        ge=1,
+        le=100,
+        description=(
+            "Page size for list queries for this kind. "
+            "Must be between 1 and 100 (Plain's maximum)."
+        ),
+        title="Page size",
+    )
+
+
 class CompanyResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.COMPANY] = Field(
         description="Plain company",
         title="Company",
+    )
+    selector: PlainSelector = Field(
+        description="Company selector",
+        title="Selector",
     )
 
 
@@ -23,6 +41,10 @@ class TenantResourceConfig(ResourceConfig):
         description="Plain tenant",
         title="Tenant",
     )
+    selector: PlainSelector = Field(
+        description="Tenant selector",
+        title="Selector",
+    )
 
 
 class UserResourceConfig(ResourceConfig):
@@ -30,9 +52,13 @@ class UserResourceConfig(ResourceConfig):
         description="Plain user",
         title="User",
     )
+    selector: PlainSelector = Field(
+        description="User selector",
+        title="Selector",
+    )
 
 
-class MachineUserSelector(Selector):
+class MachineUserSelector(PlainSelector):
     exclude_deleted: bool = Field(
         default=False,
         alias="excludeDeleted",
@@ -61,9 +87,13 @@ class CustomerResourceConfig(ResourceConfig):
         description="Plain customer",
         title="Customer",
     )
+    selector: PlainSelector = Field(
+        description="Customer selector",
+        title="Selector",
+    )
 
 
-class ThreadSelector(Selector):
+class ThreadSelector(PlainSelector):
     exclude_done_threads: bool = Field(
         default=False,
         alias="excludeDoneThreads",

@@ -24,13 +24,9 @@ configurations:
     type: url
     default: "https://core-api.uk.plain.com/graphql/v1"
     description: Plain GraphQL endpoint. The UK host is the one that resolves.
-  - name: pageSize
-    required: false
-    type: string
-    default: "100"
-    description: Page size for list queries. Plain caps this at 100.
   - name: webhookSecret
     required: false
     type: string
     sensitive: true
-    description: Workspace HMAC secret from Plain Settings → Request signing. Used to verify Plain-Request-Signature on inbound webhooks.
+    description: Optional. Not required to register the Plain webhook target. When set (Plain Settings → Request signing), verifies Plain-Request-Signature on inbound events. When unset, signature verification is skipped.
+

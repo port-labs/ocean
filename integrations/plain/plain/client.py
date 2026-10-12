@@ -46,8 +46,6 @@ from plain.queries import (
 )
 from plain.utils import edges_to_nodes, get_nested, is_ai_discussion
 
-MAX_PAGE_SIZE = 100
-
 
 class PlainClient:
     """Authenticated client for Plain's GraphQL API."""
@@ -61,7 +59,6 @@ class PlainClient:
                 "Plain apiUrl is not configured. Set it in the integration config."
             )
         self._api_url = str(api_url).rstrip("/")
-        self._page_size = _resolve_page_size(config.get("page_size"))
         self._user_agent = f"port-ocean-plain/{ocean.config.integration.identifier}"
         self._http_client = http_client or OceanAsyncClient(
             timeout=ocean.config.client_timeout,
@@ -140,7 +137,7 @@ class PlainClient:
         while True:
             page_variables = {
                 **(variables or {}),
-                "first": self._page_size,
+                "first": _page_size(),
                 "after": after,
             }
             data = await self.execute(query, page_variables, operation_name)
@@ -635,14 +632,12 @@ def _has_message_text(entry: dict[str, Any]) -> bool:
     return isinstance(text, str) and bool(text.strip())
 
 
-def _resolve_page_size(raw: Any) -> int:
+def _page_size() -> int:
+    """Page size from the current kind selector, or 100 outside resource context."""
     try:
-        size = int(raw)
-    except (TypeError, ValueError):
-        return MAX_PAGE_SIZE
-    if size < 1:
-        return MAX_PAGE_SIZE
-    return min(size, MAX_PAGE_SIZE)
+        return int(getattr(resource.resource_config.selector, "page_size", 100))
+    except ResourceContextNotFoundError:
+        return 100
 
 
 def _connection_lookup_path(connection_path: str) -> str:

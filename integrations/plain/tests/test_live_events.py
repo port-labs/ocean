@@ -29,15 +29,21 @@ def test_spec_accepts_webhook_secret() -> None:
 
     config_names = {item["name"] for item in spec["configurations"]}
     assert "enableLiveEvents" not in config_names
+    assert "pageSize" not in config_names
+    assert "threadStatusFilter" not in config_names
 
     model = default_config_factory(spec["configurations"])
     config = model(api_token="plainApiKey_test")
     dumped: dict[str, Any] = config.model_dump()
 
     assert "enable_live_events" not in dumped
+    assert "page_size" not in dumped
     assert dumped.get("webhook_secret") in (None, "")
     assert dumped["api_url"] == "https://core-api.uk.plain.com/graphql/v1"
-    assert dumped["page_size"] == "100"
+    webhook = next(
+        item for item in spec["configurations"] if item["name"] == "webhookSecret"
+    )
+    assert "Not required to register" in webhook["description"]
 
 
 async def test_on_start_does_not_register_webhooks_when_listener_disables_them() -> (

@@ -1,10 +1,15 @@
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from port_ocean.context.resource import resource_context
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from pydantic.v1 import ValidationError
 
-from plain.client import MAX_PAGE_SIZE, PlainClient
+from integration import ThreadResourceConfig
+from plain.client import PlainClient
 from plain.exceptions import PlainGraphQLError
 
 QUERY = "query ListThreads { threads { edges { node { id } } } }"
@@ -25,13 +30,11 @@ def _connection(
     }
 
 
-def _client(page_size: Any = None) -> PlainClient:
+def _client() -> PlainClient:
     config: dict[str, Any] = {
         "api_token": "plainApiKey_test",
         "api_url": "https://core-api.uk.plain.com/graphql/v1",
     }
-    if page_size is not None:
-        config["page_size"] = page_size
     mock_ocean = MagicMock()
     mock_ocean.integration_config = config
     mock_ocean.config.integration.identifier = "plain"
@@ -40,6 +43,27 @@ def _client(page_size: Any = None) -> PlainClient:
     )
     with patch("plain.client.ocean", mock_ocean):
         return PlainClient(http_client=http_client)
+
+
+def _resource(page_size: int = 100) -> ResourceConfig:
+    config = ThreadResourceConfig.parse_obj(
+        {
+            "kind": "thread",
+            "selector": {
+                "query": "true",
+                "pageSize": page_size,
+            },
+            "port": {
+                "entity": {
+                    "mappings": {
+                        "identifier": ".id",
+                        "blueprint": '"plainThread"',
+                    }
+                }
+            },
+        }
+    )
+    return config
 
 
 async def _pages(
@@ -72,46 +96,48 @@ async def _pages(
 
 async def test_single_page_yields_one_batch_and_stops() -> None:
     client = _client()
-    batches, seen = await _pages(
-        client,
-        [
-            _connection(
-                [{"id": "th_1"}],
-                has_next_page=False,
-                end_cursor="cursor-1",
-            )
-        ],
-    )
+    async with resource_context(_resource()):
+        batches, seen = await _pages(
+            client,
+            [
+                _connection(
+                    [{"id": "th_1"}],
+                    has_next_page=False,
+                    end_cursor="cursor-1",
+                )
+            ],
+        )
 
     assert batches == [[{"id": "th_1"}]]
     assert len(seen) == 1
-    assert seen[0]["first"] == MAX_PAGE_SIZE
+    assert seen[0]["first"] == 100
     assert seen[0]["after"] is None
 
 
 async def test_multi_page_follows_end_cursor_in_order() -> None:
-    client = _client(page_size="25")
-    batches, seen = await _pages(
-        client,
-        [
-            _connection(
-                [{"id": "th_1"}],
-                has_next_page=True,
-                end_cursor="cursor-1",
-            ),
-            _connection(
-                [{"id": "th_2"}],
-                has_next_page=True,
-                end_cursor="cursor-2",
-            ),
-            _connection(
-                [{"id": "th_3"}],
-                has_next_page=False,
-                end_cursor=None,
-            ),
-        ],
-        variables={"filters": {"statuses": ["TODO"]}},
-    )
+    client = _client()
+    async with resource_context(_resource(page_size=25)):
+        batches, seen = await _pages(
+            client,
+            [
+                _connection(
+                    [{"id": "th_1"}],
+                    has_next_page=True,
+                    end_cursor="cursor-1",
+                ),
+                _connection(
+                    [{"id": "th_2"}],
+                    has_next_page=True,
+                    end_cursor="cursor-2",
+                ),
+                _connection(
+                    [{"id": "th_3"}],
+                    has_next_page=False,
+                    end_cursor=None,
+                ),
+            ],
+            variables={"filters": {"statuses": ["TODO"]}},
+        )
 
     assert batches == [[{"id": "th_1"}], [{"id": "th_2"}], [{"id": "th_3"}]]
     assert [page["after"] for page in seen] == [None, "cursor-1", "cursor-2"]
@@ -121,10 +147,11 @@ async def test_multi_page_follows_end_cursor_in_order() -> None:
 
 async def test_empty_connection_yields_one_empty_batch() -> None:
     client = _client()
-    batches, seen = await _pages(
-        client,
-        [_connection([], has_next_page=False, end_cursor=None)],
-    )
+    async with resource_context(_resource()):
+        batches, seen = await _pages(
+            client,
+            [_connection([], has_next_page=False, end_cursor=None)],
+        )
 
     assert batches == [[]]
     assert len(seen) == 1
@@ -141,23 +168,83 @@ async def test_does_not_request_another_page_when_has_next_page_is_false() -> No
     )
     client.execute = execute  # type: ignore[method-assign]
 
-    batches = [
-        batch
-        async for batch in client.paginate_connection(QUERY, OPERATION, {}, "threads")
-    ]
+    async with resource_context(_resource()):
+        batches = [
+            batch
+            async for batch in client.paginate_connection(
+                QUERY, OPERATION, {}, "threads"
+            )
+        ]
 
     assert batches == [[{"id": "th_1"}]]
     execute.assert_awaited_once()
 
 
-async def test_page_size_is_capped_at_100() -> None:
-    client = _client(page_size=500)
+async def test_page_size_comes_from_selector() -> None:
+    client = _client()
+    async with resource_context(_resource(page_size=50)):
+        _, seen = await _pages(
+            client,
+            [_connection([], has_next_page=False, end_cursor=None)],
+        )
+
+    assert seen[0]["first"] == 50
+
+
+def test_page_size_selector_rejects_values_above_100() -> None:
+    with pytest.raises(ValidationError):
+        ThreadResourceConfig.parse_obj(
+            {
+                "kind": "thread",
+                "selector": {"query": "true", "pageSize": 500},
+                "port": {
+                    "entity": {
+                        "mappings": {
+                            "identifier": ".id",
+                            "blueprint": '"plainThread"',
+                        }
+                    }
+                },
+            }
+        )
+
+
+async def test_page_size_defaults_to_100_outside_resource_context() -> None:
+    client = _client()
     _, seen = await _pages(
         client,
         [_connection([], has_next_page=False, end_cursor=None)],
     )
 
-    assert seen[0]["first"] == MAX_PAGE_SIZE
+    assert seen[0]["first"] == 100
+
+
+async def test_page_size_reads_selector_without_local_config_class() -> None:
+    client = _client()
+    config = ResourceConfig.parse_obj(
+        {
+            "kind": "thread",
+            "selector": {"query": "true"},
+            "port": {
+                "entity": {
+                    "mappings": {
+                        "identifier": ".id",
+                        "blueprint": '"plainThread"',
+                    }
+                }
+            },
+        }
+    )
+    # Simulate Ocean loading a second copy of the selector model.
+    config.selector = SimpleNamespace(page_size=40)  # type: ignore[assignment]
+
+    async with resource_context(config):
+        _, seen = await _pages(
+            client,
+            [_connection([], has_next_page=False, end_cursor=None)],
+        )
+
+    assert seen[0]["first"] == 40
 
 
 async def test_graphql_error_is_not_treated_as_an_empty_page() -> None:

@@ -23,7 +23,6 @@ def make_client(config: dict[str, Any] | None = None) -> PlainClient:
     integration_config: dict[str, Any] = {
         "api_token": "plainApiKey_test",
         "api_url": "https://core-api.uk.plain.com/graphql/v1",
-        "page_size": "100",
     }
     if config:
         integration_config.update(config)

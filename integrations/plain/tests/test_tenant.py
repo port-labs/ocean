@@ -31,7 +31,6 @@ def _client() -> PlainClient:
     mock_ocean.integration_config = {
         "api_token": "plainApiKey_test",
         "api_url": "https://core-api.uk.plain.com/graphql/v1",
-        "page_size": "100",
     }
     mock_ocean.config.integration.identifier = "plain"
     http_client = httpx.AsyncClient(
