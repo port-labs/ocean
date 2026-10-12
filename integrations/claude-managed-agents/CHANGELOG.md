@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.2 (2026-10-12)
+
+
+### Bug Fixes
+
+- Fix UpdateEnvironmentExecutor calling `.to_dict()` on a plain dict returned by the Anthropic client; add unit tests for archive_agent, update_agent, create_environment, update_environment, and delete_environment executors
+
+
+## 0.9.1 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
 ## 0.9.0 (2026-10-11)
 
 

@@ -59,3 +59,46 @@ class OrganizationClientMixin:
     ) -> bool:
         organization = await self._get_organization(should_raise, should_log)
         return bool(organization.get("isBlocked", False))
+
+    async def create_organization_secret(
+        self,
+        secret_name: str,
+        secret_value: str,
+        description: str | None = None,
+        should_raise: bool = True,
+        should_log: bool = True,
+    ) -> dict[str, Any]:
+        logger.info(f"Creating organization secret '{secret_name}'")
+        body: dict[str, Any] = {
+            "secretName": secret_name,
+            "secretValue": secret_value,
+        }
+        if description is not None:
+            body["description"] = description
+        response = await self.client.post(
+            f"{self.auth.api_url}/organization/secrets",
+            headers=await self.auth.headers(),
+            json=body,
+        )
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json()
+
+    async def update_organization_secret(
+        self,
+        secret_name: str,
+        secret_value: str,
+        description: str | None = None,
+        should_raise: bool = True,
+        should_log: bool = True,
+    ) -> dict[str, Any]:
+        logger.info(f"Updating organization secret '{secret_name}'")
+        body: dict[str, Any] = {"secretValue": secret_value}
+        if description is not None:
+            body["description"] = description
+        response = await self.client.patch(
+            f"{self.auth.api_url}/organization/secrets/{secret_name}",
+            headers=await self.auth.headers(),
+            json=body,
+        )
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json()

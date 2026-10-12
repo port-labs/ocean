@@ -1,0 +1,8 @@
+{
+  "id": "us_1",
+  "fullName": "Grace Hopper",
+  "publicName": "Grace",
+  "email": "grace@example.com",
+  "status": "ONLINE",
+  "role": {"id": "role_1", "name": "Support", "key": "support"}
+}

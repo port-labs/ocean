@@ -2,7 +2,7 @@ import base64
 import json
 import re
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, NotRequired, Required, TypedDict, cast
 
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -137,9 +137,24 @@ def _is_generic_delivery_or_event_header(header_name: str) -> bool:
         return True
     if not lower.startswith("x-"):
         return False
-    if lower.endswith("-event") or lower.endswith("-delivery"):
-        return True
-    return "webhook-identifier" in lower or lower.endswith("-webhook-uuid")
+    return (
+        lower.endswith("-event")
+        or lower.endswith("-delivery")
+        or "webhook-identifier" in lower
+        or lower.endswith("-webhook-uuid")
+    )
+
+
+class LiveEventTimestampLogFields(TypedDict, total=False):
+    """Structured fields bound to live-event timestamp log lines."""
+
+    trace_id: Required[str]
+    webhook_path: str
+    headers: dict[str, str]
+    payload: dict[str, Any]
+    payload_b64: str
+    payload_b64_truncated: bool
+    event_identifiers: dict[str, Any]
 
 
 def extract_compact_headers(headers: Mapping[str, str]) -> dict[str, str]:
@@ -160,7 +175,7 @@ def build_live_event_timestamp_log_fields(
     log_full_payload: bool,
     webhook_path: str | None = None,
     extra_identifiers: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> LiveEventTimestampLogFields:
     """Build structured fields for Event * timestamp log lines."""
     fields: dict[str, Any] = {"trace_id": trace_id}
 
@@ -173,13 +188,11 @@ def build_live_event_timestamp_log_fields(
         fields.update(build_added_to_queue_payload_log_fields(masked_payload))
         if extra_identifiers:
             fields["event_identifiers"] = extra_identifiers
-        return fields
+    else:
+        compact_headers = extract_compact_headers(headers)
+        if compact_headers:
+            fields["headers"] = compact_headers
+        if extra_identifiers:
+            fields["payload"] = extra_identifiers
 
-    compact_headers = extract_compact_headers(headers)
-    if compact_headers:
-        fields["headers"] = compact_headers
-
-    if extra_identifiers:
-        fields["payload"] = extra_identifiers
-
-    return fields
+    return cast(LiveEventTimestampLogFields, fields)

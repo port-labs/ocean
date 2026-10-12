@@ -91,3 +91,51 @@ async def test_get_organization_does_not_cache_failed_responses(
 
     assert result == ["aa"]
     assert mock_client.get.call_count == 2
+
+
+async def test_create_organization_secret_posts_body(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_client.post = AsyncMock(
+        return_value=MagicMock(
+            status_code=200, json=MagicMock(return_value={"ok": True})
+        )
+    )
+    mocked_org_mixin.auth.api_url = "https://api.example"
+
+    result = await mocked_org_mixin.create_organization_secret(
+        secret_name="my-secret",
+        secret_value="value",
+        description="desc",
+    )
+
+    assert result == {"ok": True}
+    mock_client.post.assert_awaited_once()
+    assert mock_client.post.await_args.kwargs["json"] == {
+        "secretName": "my-secret",
+        "secretValue": "value",
+        "description": "desc",
+    }
+
+
+async def test_update_organization_secret_patches_body(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_client.patch = AsyncMock(
+        return_value=MagicMock(
+            status_code=200, json=MagicMock(return_value={"ok": True})
+        )
+    )
+    mocked_org_mixin.auth.api_url = "https://api.example"
+
+    result = await mocked_org_mixin.update_organization_secret(
+        secret_name="my-secret",
+        secret_value="new-value",
+    )
+
+    assert result == {"ok": True}
+    mock_client.patch.assert_awaited_once()
+    assert "/organization/secrets/my-secret" in mock_client.patch.await_args.args[0]
+    assert mock_client.patch.await_args.kwargs["json"] == {"secretValue": "new-value"}
