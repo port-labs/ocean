@@ -12,7 +12,7 @@ from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
-MEMORY_STORE_EVENTS = ("memory_store.",)
+MEMORY_STORE_EVENTS_PREFIX = "memory_store."
 MEMORY_STORE_DELETE_EVENTS = {"memory_store.deleted"}
 
 
@@ -20,7 +20,7 @@ class MemoryStoreWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Keeps `memory-store` entities in sync from memory_store webhooks."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self.get_event_type(event.payload).startswith(MEMORY_STORE_EVENTS)
+        return self.get_event_type(event.payload).startswith(MEMORY_STORE_EVENTS_PREFIX)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.MEMORY_STORE]

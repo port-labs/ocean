@@ -12,7 +12,7 @@ from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
-VAULT_EVENTS = ("vault.",)
+VAULT_EVENTS_PREFIX = "vault."
 VAULT_DELETE_EVENTS = {"vault.deleted"}
 
 
@@ -20,7 +20,7 @@ class VaultWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Keeps `vault` entities in sync from vault webhooks."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self.get_event_type(event.payload).startswith(VAULT_EVENTS)
+        return self.get_event_type(event.payload).startswith(VAULT_EVENTS_PREFIX)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.VAULT]

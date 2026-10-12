@@ -12,7 +12,7 @@ from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
-ENVIRONMENT_EVENTS = ("environment.",)
+ENVIRONMENT_EVENTS_PREFIX = "environment."
 ENVIRONMENT_DELETE_EVENTS = {"environment.deleted"}
 
 
@@ -20,7 +20,7 @@ class EnvironmentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Keeps `environment` entities in sync from environment webhooks."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self.get_event_type(event.payload).startswith(ENVIRONMENT_EVENTS)
+        return self.get_event_type(event.payload).startswith(ENVIRONMENT_EVENTS_PREFIX)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ENVIRONMENT]
