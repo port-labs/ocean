@@ -101,13 +101,14 @@ async def test_paginate_yields_nothing_for_empty_paginator(
 
 
 @pytest.mark.asyncio
-async def test_get_session_serializes_result(client: AnthropicClient) -> None:
+async def test_get_session_returns_sdk_model(client: AnthropicClient) -> None:
     inner: Any = client._client
-    inner.beta.sessions.retrieve = AsyncMock(return_value=_Model({"id": "sess_1"}))
+    session = _Model({"id": "sess_1"})
+    inner.beta.sessions.retrieve = AsyncMock(return_value=session)
 
     result = await client.get_session("sess_1")
 
-    assert result == {"id": "sess_1"}
+    assert result is session
     inner.beta.sessions.retrieve.assert_awaited_once_with("sess_1")
 
 
@@ -186,13 +187,14 @@ async def test_create_agent_builds_payload_and_drops_none(
 
 
 @pytest.mark.asyncio
-async def test_create_session_builds_payload(client: AnthropicClient) -> None:
+async def test_create_session_returns_sdk_model(client: AnthropicClient) -> None:
     inner: Any = client._client
-    inner.beta.sessions.create = AsyncMock(return_value=_Model({"id": "sess_1"}))
+    session = _Model({"id": "sess_1"})
+    inner.beta.sessions.create = AsyncMock(return_value=session)
 
     result = await client.create_session("agent_1", "env_1")
 
-    assert result == {"id": "sess_1"}
+    assert result is session
     inner.beta.sessions.create.assert_awaited_once_with(
         agent="agent_1", environment_id="env_1"
     )
