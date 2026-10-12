@@ -107,6 +107,7 @@ def select_matching_files(
                 f"{file_path} in {repo_slug} matches no configured filename, skipping"
             )
             continue
+        # Excluded by policy, not unreadable: letting reconciliation delete its entity is correct.
         if entry["size"] > MAX_FILE_SIZE:
             logger.warning(
                 f"Skipping {file_path} in {repo_slug}, {entry['size']} bytes "

@@ -283,6 +283,7 @@ async def test_a_dotfile_is_discovered_and_emitted() -> None:
 
 @pytest.mark.asyncio
 async def test_an_oversized_file_is_skipped_without_fetching_it() -> None:
+    """The kind still succeeds: an excluded file is absent, so deleting its entity is right."""
     client = FakeClient(
         [repo("repo-one")],
         {"repo-one": [entry("big.yml", size=MAX_FILE_SIZE + 1), entry("small.yml")]},

@@ -135,3 +135,29 @@ async def test_file_entity_processor_search_missing_folder_commit() -> None:
         mock_client.get_repository_files.assert_called_once_with(
             "test-repo", "main", "src/config.json"
         )
+
+
+@pytest.mark.asyncio
+async def test_file_entity_processor_prefers_the_slug_over_the_display_name() -> None:
+    """The walk emits the full repository object, whose slug is authoritative.
+
+    Hyphenating the display name guesses at the slug and gets it wrong for any name
+    Bitbucket does not slugify that way.
+    """
+    data = {
+        "repo": {"slug": "my-repo", "name": "My Repo!", "mainbranch": {"name": "main"}}
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get_repository_files.return_value = "content"
+
+    with patch(
+        "bitbucket_cloud.entity_processors.file_entity_processor.init_client",
+        return_value=mock_client,
+    ):
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
+        await processor._search(data, "file://port.yml")
+
+    mock_client.get_repository_files.assert_called_once_with(
+        "my-repo", "main", "port.yml"
+    )

@@ -46,10 +46,9 @@ class FileEntityProcessor(JQEntityProcessor):
         """
 
         repo_data = data.get("repo", data)
-        repo_slug = repo_data.get("name", "").replace(" ", "-")
-        default_branch = (
-            repo_data.get("mainbranch", {}).get("name", "main").replace(" ", "-")
-        )
+        # Derive from the display name only when the payload carries no slug.
+        repo_slug = repo_data.get("slug") or repo_data.get("name", "").replace(" ", "-")
+        default_branch = repo_data.get("mainbranch", {}).get("name", "main")
 
         if current_directory_path := data.get("folder", {}).get("path", ""):
             file_path = f"{current_directory_path}/{pattern.replace(self.prefix, '')}"
