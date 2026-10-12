@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -28,15 +27,6 @@ _WEBHOOK_EVENTS = [
     "vault.deleted",
 ]
 _WEBHOOK_SIGNING_SECRET_SPEC_KEY = "webhookSigningSecret"
-# Matches OceanInstallationModal: "_" + screamingSnakeCase(id_type_property)
-_ORG_SECRET_NAME_PREFIX = "_"
-
-
-def _screaming_snake_case(value: str) -> str:
-    """Approximate lodash snakeCase(...).toUpperCase() used by the install modal."""
-    with_underscores = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
-    with_underscores = re.sub(r"[^A-Za-z0-9]+", "_", with_underscores)
-    return with_underscores.strip("_").upper()
 
 
 class ClaudeWebhookClient:
@@ -88,10 +78,11 @@ class ClaudeWebhookClient:
         return headers
 
     def _signing_secret_name(self) -> str:
+        # Install modal: "_" + upper(id_type_property) with hyphens → underscores.
         integration = ocean.config.integration
-        return _ORG_SECRET_NAME_PREFIX + _screaming_snake_case(
-            f"{integration.identifier}_{integration.type}_{_WEBHOOK_SIGNING_SECRET_SPEC_KEY}"
-        )
+        return f"_{integration.identifier}_{integration.type}_webhook_signing_secret".replace(
+            "-", "_"
+        ).upper()
 
     async def _persist_signing_secret(self, signing_secret: str) -> None:
         """Store the Claude signing secret as an org secret and point SaaS spec at it."""
@@ -117,7 +108,12 @@ class ClaudeWebhookClient:
         )
 
     async def _backfill_signing_secret_spec_if_needed(self) -> None:
-        """If SaaS verify is on but spec secret is unset, point it at our org secret."""
+        """If SaaS verify is on but spec secret is unset, point it at our org secret.
+
+        Only patches when the org secret already exists. Old installs that created
+        the Claude webhook before persist landed have no recoverable secret (Claude
+        returns it once on create), so we skip rather than write a dangling pointer.
+        """
         if (
             self._webhook_signing_secret
             or not self._verify_webhook_secrets
@@ -127,6 +123,17 @@ class ClaudeWebhookClient:
 
         secret_name = self._signing_secret_name()
         try:
+            existing = await ocean.port_client.get_organization_secret(
+                secret_name, should_raise=False, should_log=False
+            )
+            if not existing:
+                logger.warning(
+                    f"Org secret '{secret_name}' missing; cannot backfill "
+                    f"integrationSpec.{_WEBHOOK_SIGNING_SECRET_SPEC_KEY}. "
+                    "Recreate the Claude webhook or set the signing secret manually."
+                )
+                return
+
             await ocean.port_client.patch_integration(
                 spec={
                     "integrationSpec": {

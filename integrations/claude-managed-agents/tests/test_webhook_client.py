@@ -6,11 +6,7 @@ import httpx
 import pytest
 
 from clients.exceptions import WebhookSigningSecretNotConfiguredError
-from clients.webhook_client import (
-    ClaudeWebhookClient,
-    _WEBHOOK_EVENTS,
-    _screaming_snake_case,
-)
+from clients.webhook_client import ClaudeWebhookClient, _WEBHOOK_EVENTS
 
 
 @pytest.fixture
@@ -27,15 +23,6 @@ def webhook_client(webhook_http: MagicMock) -> ClaudeWebhookClient:
         api_key="test-api-key",
         webhook_signing_secret="whsec_test",
         anthropic_version="2023-06-01",
-    )
-
-
-def test_screaming_snake_case_matches_install_modal_style() -> None:
-    assert (
-        _screaming_snake_case(
-            "claude-managed_claude-managed-agents_webhookSigningSecret"
-        )
-        == "CLAUDE_MANAGED_CLAUDE_MANAGED_AGENTS_WEBHOOK_SIGNING_SECRET"
     )
 
 
@@ -256,6 +243,52 @@ async def test_upsert_webhook_skips_persist_when_not_saas() -> None:
 
     persist.assert_not_awaited()
     assert client.has_webhook_secret is True
+
+
+@pytest.mark.asyncio
+async def test_backfill_skips_when_org_secret_missing() -> None:
+    client = ClaudeWebhookClient(
+        http_client=MagicMock(),
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+        webhook_signing_secret=None,
+        verify_webhook_secrets=True,
+    )
+    with patch("clients.webhook_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=True)
+        mock_ocean.config.integration.identifier = "claude-managed"
+        mock_ocean.config.integration.type = "claude-managed-agents"
+        mock_ocean.port_client.get_organization_secret = AsyncMock(return_value=None)
+        mock_ocean.port_client.patch_integration = AsyncMock()
+
+        await client._backfill_signing_secret_spec_if_needed()
+
+    mock_ocean.port_client.patch_integration.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_backfill_patches_spec_when_org_secret_exists() -> None:
+    client = ClaudeWebhookClient(
+        http_client=MagicMock(),
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+        webhook_signing_secret=None,
+        verify_webhook_secrets=True,
+    )
+    with patch("clients.webhook_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=True)
+        mock_ocean.config.integration.identifier = "claude-managed"
+        mock_ocean.config.integration.type = "claude-managed-agents"
+        mock_ocean.port_client.get_organization_secret = AsyncMock(
+            return_value={"secretName": "x"}
+        )
+        mock_ocean.port_client.patch_integration = AsyncMock()
+
+        await client._backfill_signing_secret_spec_if_needed()
+
+    mock_ocean.port_client.patch_integration.assert_awaited_once()
 
 
 @pytest.mark.asyncio
