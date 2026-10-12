@@ -166,7 +166,7 @@ def test_setTimestamp_addedToQueue_logsFullPayloadWhenBothGatesOn() -> None:
     record, extra = _capture_set_timestamp_record(
         event, LiveEventTimestamp.AddedToQueue
     )
-    assert record.levelno == logging.DEBUG
+    assert record.levelno == logging.INFO
 
     assert extra["trace_id"] == "test-trace-id"
     headers_logged = extra["headers"]
@@ -294,7 +294,7 @@ def test_setTimestamp_startedProcessing_logsFullPayloadWhenBothGatesOn() -> None
     record, extra = _capture_set_timestamp_record(
         event, LiveEventTimestamp.StartedProcessing
     )
-    assert record.levelno == logging.DEBUG
+    assert record.levelno == logging.INFO
 
     assert extra["payload"] == payload
     headers_logged = extra["headers"]
@@ -318,7 +318,7 @@ def test_setTimestamp_finishedProcessing_follows_same_gating_as_started() -> Non
     record, extra = _capture_set_timestamp_record(
         event, LiveEventTimestamp.FinishedProcessingSuccessfully
     )
-    assert record.levelno == logging.DEBUG
+    assert record.levelno == logging.INFO
     assert extra["timestamp_type"] == "Finished Processing Successfully"
     headers_logged = extra["headers"]
     assert isinstance(headers_logged, dict)
