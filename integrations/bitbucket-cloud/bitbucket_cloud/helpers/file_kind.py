@@ -164,7 +164,6 @@ async def _walk_repository(
             retrieve_file_content(repo, entry, file_pattern.skip_parsing, failures)
             for entry in select_matching_files(entries, file_pattern, repo_slug)
         ]
-        # One content fetch per matching entry on the page, as the search path did over pages of 300.
         async for file_result in stream_async_iterators_tasks(*tasks):
             yield [file_result]
 
@@ -192,11 +191,10 @@ async def process_file_patterns(
     # An empty dict, not no argument: get_repositories is cached on the repr of its params.
     async for repositories in client.get_repositories(params={}):
         for repo in repositories:
-            # Measured: an empty repository reports size 0, and its listing answers 404 "Commit not found", which is not tolerated.
+            # A repository with no commits answers 404 "Commit not found" on its listing, which is not a tolerated body.
             if not repo["size"]:
                 logger.debug(f"Repository {repo['slug']} has no commits, skipping")
                 continue
-            # The folder kind's BBQL name IN (...) matches the display name only, so a configured slug would miss.
             if configured_repositories and not repository_matches(
                 repo, configured_repositories
             ):
@@ -231,7 +229,8 @@ async def retrieve_file_content(
 
     The repository is passed rather than read back out of the entry: the listing carries
     the authoritative slug, where the entry's embedded repository object carries only a
-    display name.
+    display name. ``failures`` is the caller's list and this appends to it rather than
+    raising, because raising here cancels the other fetches in flight for the page.
     """
     file_path = entry["path"]
     repo_slug = repo["slug"]
