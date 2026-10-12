@@ -426,7 +426,7 @@ async def test_a_tolerated_absent_path_reports_no_contents(
             batches = [
                 batch
                 async for batch in mock_client.get_directory_contents(
-                    "test-repo", "main", "charts", 10000, missing_path="tolerate"
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
                 )
             ]
     assert batches == []
@@ -449,7 +449,7 @@ async def test_only_an_absent_path_is_tolerated(
         ):
             with pytest.raises(HTTPStatusError):
                 async for _ in mock_client.get_directory_contents(
-                    "test-repo", "main", "charts", 10000, missing_path="tolerate"
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
                 ):
                     pass
 
@@ -480,7 +480,7 @@ async def test_only_the_errors_own_message_decides_absence(
         ):
             with pytest.raises(HTTPStatusError):
                 async for _ in mock_client.get_directory_contents(
-                    "test-repo", "main", "charts", 10000, missing_path="tolerate"
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
                 ):
                     pass
 
@@ -499,7 +499,7 @@ async def test_an_absent_path_raises_when_nothing_may_be_absent(
         ):
             with pytest.raises(HTTPStatusError):
                 async for _ in mock_client.get_directory_contents(
-                    "test-repo", "main", "", 10000, missing_path="raise"
+                    "test-repo", "main", "", 10000, raise_on_missing=True
                 ):
                     pass
 
@@ -524,7 +524,7 @@ async def test_an_absent_path_part_way_through_a_listing_raises(
             batches = []
             with pytest.raises(HTTPStatusError):
                 async for batch in mock_client.get_directory_contents(
-                    "test-repo", "main", "charts", 10000, missing_path="tolerate"
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
                 ):
                     batches.append(batch)
 

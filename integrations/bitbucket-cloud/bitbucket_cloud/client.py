@@ -1,5 +1,5 @@
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Literal, Optional
+from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPError, HTTPStatusError, Response
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -44,9 +44,9 @@ class BitbucketClient:
         """Whether a Source API error says the path is not in the repository.
 
         An absent path, an unresolvable ref and a repository that cannot be read all
-        answer 404, so the status alone cannot tell them apart. Only the message
-        decides, and only its start: the phrase also appears inside other errors' data,
-        so searching the whole body would read an unresolvable ref as absence.
+        answer 404, so the status alone cannot tell them apart. Only the error's own
+        message decides, and only its start - it carries the path after the phrase. An
+        unrecognised message is not absence.
         """
         if error.response.status_code != 404:
             return False
@@ -277,16 +277,14 @@ class BitbucketClient:
         path: str,
         max_depth: int,
         params: Optional[dict[str, Any]] = None,
-        missing_path: Literal["swallow", "tolerate", "raise"] = "swallow",
+        raise_on_missing: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get contents of a directory.
 
-        missing_path says what an absent path means to this caller. "swallow" reports no
-        contents for any 404, which is what every endpoint on this client does and what
-        the folder kind's two callers take. "tolerate" reports none for a path this
-        repository does not have, and raises for an unresolvable ref or a repository
-        that cannot be read - which also answer 404. "raise" treats every error as a
-        failure, for a path that cannot legitimately be absent.
+        Left alone, any 404 reports no contents, as every other endpoint on this client
+        does and as the folder kind's two callers expect. raise_on_missing instead fails
+        on an unresolvable ref or a repository that cannot be read - which also answer
+        404 - and tolerates only a path this repository does not have.
         """
         # Least to most specific: the module default, then what the caller passed as
         # params, then what it named in the signature.
@@ -296,7 +294,7 @@ class BitbucketClient:
             async for contents in self._fetch_paginated_api_with_rate_limiter(
                 f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
                 params=params,
-                raise_on_missing=missing_path != "swallow",
+                raise_on_missing=raise_on_missing,
             ):
                 first_page_seen = True
                 logger.info(
@@ -304,9 +302,13 @@ class BitbucketClient:
                 )
                 yield contents
         except HTTPStatusError as e:
+            # Only a path that was actually asked for may be absent: listing the
+            # repository root cannot legitimately 404, and after the first page the path
+            # provably existed, so tolerating one then would truncate the inventory.
             if (
-                not first_page_seen
-                and missing_path == "tolerate"
+                raise_on_missing
+                and path
+                and not first_page_seen
                 and self._is_absent_path(e)
             ):
                 logger.warning(
