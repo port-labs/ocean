@@ -1,7 +1,8 @@
 from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
 
@@ -130,6 +131,25 @@ async def test_get_organization_secret_returns_none_on_404(
 
     assert result is None
     assert "/organization/secrets/missing-secret" in mock_client.get.await_args.args[0]
+
+
+async def test_get_organization_secret_raises_on_non_404_error(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    response = MagicMock(status_code=500, is_error=True, text="boom")
+    response.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError(
+            "boom",
+            request=httpx.Request("GET", "https://api.example/organization/secrets/x"),
+            response=httpx.Response(500),
+        )
+    )
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_client.get = AsyncMock(return_value=response)
+    mocked_org_mixin.auth.api_url = "https://api.example"
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await mocked_org_mixin.get_organization_secret("x", should_raise=False)
 
 
 async def test_upsert_organization_secret_creates_when_missing(

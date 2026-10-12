@@ -77,8 +77,7 @@ class OrganizationClientMixin:
                 response.raise_for_status()
             return None
         handle_port_status_code(response, should_raise, should_log)
-        if response.is_error:
-            return None
+        response.raise_for_status()
         secret = response.json().get("secret")
         return secret if isinstance(secret, dict) else None
 

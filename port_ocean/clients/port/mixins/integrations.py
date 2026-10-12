@@ -300,24 +300,23 @@ class IntegrationClientMixin:
             return await _send_patch()
 
         delay = SPEC_PATCH_RETRY_INITIAL_SECONDS
-        last_error: httpx.HTTPStatusError | None = None
-        for attempt in range(1, SPEC_PATCH_RETRY_ATTEMPTS + 1):
+        attempt = 0
+        while True:
+            attempt += 1
             try:
                 return await _send_patch()
             except httpx.HTTPStatusError as error:
-                if not _is_integration_in_progress_error(error):
+                if (
+                    not _is_integration_in_progress_error(error)
+                    or attempt >= SPEC_PATCH_RETRY_ATTEMPTS
+                ):
                     raise
-                last_error = error
-                if attempt == SPEC_PATCH_RETRY_ATTEMPTS:
-                    break
                 logger.info(
                     "Integration still updating; retrying spec patch "
                     f"({attempt}/{SPEC_PATCH_RETRY_ATTEMPTS}) in {delay:.1f}s"
                 )
                 await asyncio.sleep(delay)
                 delay *= SPEC_PATCH_RETRY_BACKOFF
-        assert last_error is not None
-        raise last_error
 
     async def patch_integration_config(
         self,
