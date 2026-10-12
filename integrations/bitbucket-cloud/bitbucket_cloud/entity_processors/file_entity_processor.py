@@ -1,4 +1,5 @@
 from typing import Any, Optional
+from httpx import HTTPError
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from initialize_client import init_client
@@ -19,12 +20,9 @@ class FileEntityProcessor(JQEntityProcessor):
                 repo_slug, ref, file_path
             )
             if content is None:
-                logger.warning(
-                    f"Bitbucket returned no content for {file_path} in repository "
-                    f"{repo_slug}, resolving the reference to null"
-                )
+                logger.warning(f"Resolving {file_path} in {repo_slug} to null")
             return content
-        except Exception as e:
+        except HTTPError as e:
             logger.error(
                 f"Failed to get file content for {file_path} in repository {repo_slug} in branch {ref}: {e}"
             )

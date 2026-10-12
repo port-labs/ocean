@@ -98,7 +98,11 @@ async def test_process_file_patterns() -> None:
             "file": {
                 "path": "src/test.py",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         }
@@ -161,7 +165,11 @@ async def test_process_file_patterns_keeps_readable_files_when_one_cannot_be_rea
             "file": {
                 "path": "a.yaml",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         },
@@ -170,7 +178,11 @@ async def test_process_file_patterns_keeps_readable_files_when_one_cannot_be_rea
             "file": {
                 "path": "b.yaml",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         },
@@ -222,7 +234,11 @@ async def test_process_file_patterns_collects_a_failure_about_one_file(
             "file": {
                 "path": "a.yaml",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         },
@@ -231,7 +247,11 @@ async def test_process_file_patterns_collects_a_failure_about_one_file(
             "file": {
                 "path": "b.yaml",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         },
@@ -282,7 +302,11 @@ async def test_process_file_patterns_stops_when_the_credential_or_quota_is_gone(
             "file": {
                 "path": "a.yaml",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         }
@@ -366,6 +390,7 @@ async def test_process_file_patterns_ingests_dotfiles() -> None:
                     "commit": {
                         "repository": {
                             "name": "test-repo",
+                            "full_name": "test-workspace/test-repo",
                             "mainbranch": {"name": "main"},
                         }
                     },
@@ -447,7 +472,11 @@ async def test_process_file_patterns_skip_non_matching() -> None:
             "file": {
                 "path": "other/test.py",  # Different path than expected
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         }
@@ -490,3 +519,42 @@ async def test_process_file_patterns_skip_non_matching() -> None:
 
             # Verify no results due to path mismatch
             assert not results
+
+
+@pytest.mark.asyncio
+async def test_a_renamed_repository_is_addressed_by_its_real_slug() -> None:
+    """The display name is not the slug once a repository is renamed or punctuated."""
+    renamed = {
+        "path_matches": [{"match": "port.yml"}],
+        "file": {
+            "path": "port.yml",
+            "commit": {
+                "repository": {
+                    "name": "Payments Service (legacy)",
+                    "full_name": "test-workspace/payments-api",
+                    "mainbranch": {"name": "main"},
+                }
+            },
+        },
+    }
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [renamed]
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = AsyncMock(return_value="content: yes\n")
+        mock_init_client.return_value = mock_client
+
+        file_pattern = BitbucketFilePattern(
+            path="/", filenames=["port.yml"], skipParsing=True
+        )
+        async for _ in process_file_patterns(file_pattern):
+            pass
+
+    mock_client.get_repository_files.assert_called_once_with(
+        "payments-api", "main", "port.yml"
+    )
