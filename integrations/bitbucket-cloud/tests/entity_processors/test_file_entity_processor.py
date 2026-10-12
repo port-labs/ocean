@@ -161,3 +161,26 @@ async def test_file_entity_processor_prefers_the_slug_over_the_display_name() ->
     mock_client.get_repository_files.assert_called_once_with(
         "my-repo", "main", "port.yml"
     )
+
+
+@pytest.mark.asyncio
+async def test_file_entity_processor_prefers_the_branch_on_the_emitted_data() -> None:
+    """The resync, the folder walk and a push all emit `branch`; mainbranch is the fallback."""
+    data = {
+        "branch": "develop",
+        "repo": {"slug": "my-repo", "mainbranch": {"name": "master"}},
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get_repository_files.return_value = "content"
+
+    with patch(
+        "bitbucket_cloud.entity_processors.file_entity_processor.init_client",
+        return_value=mock_client,
+    ):
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
+        await processor._search(data, "file://port.yml")
+
+    mock_client.get_repository_files.assert_called_once_with(
+        "my-repo", "develop", "port.yml"
+    )

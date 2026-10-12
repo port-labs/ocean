@@ -48,7 +48,11 @@ class BitbucketClient:
         if error.response.status_code != 404:
             return False
         message = BitbucketClient._error_message(error)
-        return message is not None and message.startswith(ABSENT_PATH_MESSAGE)
+        if message is not None and message.startswith(ABSENT_PATH_MESSAGE):
+            return True
+        # The phrase is observed, not published: a reword surfaces here before a ticket.
+        logger.warning(f"Unrecognised 404 from {error.request.url}: {message}")
+        return False
 
     def __init__(
         self,
@@ -356,7 +360,7 @@ class BitbucketClient:
         except HTTPStatusError as e:
             if self._is_absent_path(e):
                 logger.warning(
-                    f"Bitbucket returned no content for {url}; {self._error_message(e)}"
+                    f"{path} is not in {repo} on {branch}; {self._error_message(e)}"
                 )
                 return None
             raise
