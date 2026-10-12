@@ -161,7 +161,7 @@ async def _walk_repository(
     listing_root: str,
     source_filter: str,
     failures: List[Exception],
-    fetches: Semaphore,
+    fetch_semaphore: Semaphore,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """List one repository's matching files and yield the content of each.
 
@@ -183,7 +183,7 @@ async def _walk_repository(
         ):
             tasks = [
                 semaphore_async_iterator(
-                    fetches,
+                    fetch_semaphore,
                     partial(
                         retrieve_file_content,
                         repo,
@@ -196,7 +196,8 @@ async def _walk_repository(
             ]
             async for file_result in stream_async_iterators_tasks(*tasks):
                 yield [file_result]
-    # Only this catches a transport failure, which never reaches the client's own except.
+    # get_directory_contents only classifies HTTPStatusError, so a transport failure
+    # reaches nothing that knows which repository it was.
     except HTTPError as e:
         _record_or_stop(e, failures, repo_slug)
 
@@ -223,14 +224,14 @@ async def process_file_patterns(
         logger.warning("No repositories configured, listing the entire workspace")
     failures: List[Exception] = []
 
-    listings = Semaphore(MAX_CONCURRENT_REPOSITORIES)
-    fetches = Semaphore(MAX_CONCURRENT_FILE_FETCHES)
+    listing_semaphore = Semaphore(MAX_CONCURRENT_REPOSITORIES)
+    fetch_semaphore = Semaphore(MAX_CONCURRENT_FILE_FETCHES)
 
     # Shares the repository kind's cached listing when that kind configures neither
     # userRole nor repoQuery, since build_repo_params then also passes {} - the cache key
     # is the repr of the params, so any other value is a second full workspace listing.
     async for repositories in client.get_repositories(params={}):
-        selected = []
+        selected_repositories = []
         for repo in repositories:
             # A repository with no commits answers 404 "Commit not found" on its
             # listing, which is not a tolerated body.
@@ -244,12 +245,12 @@ async def process_file_patterns(
                     f"Repository {repo['slug']} is not in the configured repositories, skipping"
                 )
                 continue
-            selected.append(repo)
+            selected_repositories.append(repo)
 
-        walked += len(selected)
+        walked += len(selected_repositories)
         tasks = [
             semaphore_async_iterator(
-                listings,
+                listing_semaphore,
                 partial(
                     _walk_repository,
                     client,
@@ -258,10 +259,10 @@ async def process_file_patterns(
                     listing_root,
                     source_filter,
                     failures,
-                    fetches,
+                    fetch_semaphore,
                 ),
             )
-            for repo in selected
+            for repo in selected_repositories
         ]
         async for batch in stream_async_iterators_tasks(*tasks):
             matched += len(batch)
@@ -270,8 +271,8 @@ async def process_file_patterns(
     if not matched and not failures:
         logger.warning(
             f"Walked {walked} repositories and matched no files for "
-            f"{file_pattern.filenames} under '{file_pattern.path}'. A resync that "
-            f"ends here with no error lets reconciliation delete every file entity."
+            f"{file_pattern.filenames} under '{file_pattern.path}'. If that is not "
+            f"the configuration's intent, existing file entities will be deleted."
         )
 
     if failures:
@@ -300,45 +301,47 @@ async def retrieve_file_content(
 
     logger.info(f"Retrieving contents for {file_path} in {repo_slug}")
     client = init_client()
-    # Recorded, not raised: an exception here cancels this page's other fetches, which is
-    # what a 401 or 429 wants and nothing else does.
+    context = f"{file_path} in {repo_slug}"
+    result: FileObject
+    # Everything that reaches Bitbucket is inside this: resolving a nested file://
+    # reference fetches again, and an exception escaping here would cancel the page's
+    # other fetches and end this repository's listing, which only a 401 or 429 wants.
     try:
         file_content = await client.get_repository_files(repo_slug, branch, file_path)
-    except HTTPError as e:
-        _record_or_stop(e, failures, f"{file_path} in {repo_slug}")
-        return
-    if file_content is None:
-        _record_or_stop(
-            BitbucketFileReadError(
-                f"Bitbucket returned no content for {file_path} in repository "
-                f"{repo_slug} on branch {branch}"
-            ),
-            failures,
-            f"{file_path} in {repo_slug}",
-        )
-        return
-    parent_directory = Path(file_path).parent
-    if not skip_parsing:
-        file_content = parse_file(file_content, file_path)
+        if file_content is None:
+            _record_or_stop(
+                BitbucketFileReadError(
+                    f"Bitbucket returned no content for {file_path} in repository "
+                    f"{repo_slug} on branch {branch}"
+                ),
+                failures,
+                context,
+            )
+            return
+        parent_directory = Path(file_path).parent
+        if not skip_parsing:
+            file_content = parse_file(file_content, file_path)
 
-    result: FileObject
-    if skip_parsing or not isinstance(file_content, (dict, list)):
-        result = {
-            "content": file_content,
-            "repo": repo,
-            "branch": branch,
-            "metadata": entry,
-        }
-    else:
-        result = await check_and_load_file_prefix(
-            file_content,
-            str(parent_directory),
-            repo_slug,
-            branch,
-            entry,
-            repo,
-            branch,
-        )
+        if skip_parsing or not isinstance(file_content, (dict, list)):
+            result = {
+                "content": file_content,
+                "repo": repo,
+                "branch": branch,
+                "metadata": entry,
+            }
+        else:
+            result = await check_and_load_file_prefix(
+                file_content,
+                str(parent_directory),
+                repo_slug,
+                branch,
+                entry,
+                repo,
+                branch,
+            )
+    except HTTPError as e:
+        _record_or_stop(e, failures, context)
+        return
     yield dict(result)
 
 

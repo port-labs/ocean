@@ -1,8 +1,11 @@
+import asyncio
 import pytest
+from loguru import logger
 from unittest.mock import patch
 from httpx import HTTPStatusError, Request, Response
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from bitbucket_cloud.helpers import file_kind
 from bitbucket_cloud.helpers.exceptions import BitbucketFileWalkError
 from bitbucket_cloud.helpers.file_kind import (
     MAX_FILE_SIZE,
@@ -389,10 +392,6 @@ async def test_a_failed_listing_is_collected_whatever_its_status(status: int) ->
 @pytest.mark.asyncio
 async def test_the_fan_out_is_bounded_at_the_observed_maximum() -> None:
     """Asserts what was in flight, not the value of the constants."""
-    import asyncio
-
-    from bitbucket_cloud.helpers import file_kind
-
     peak_listings = 0
     peak_fetches = 0
     in_listings = 0
@@ -439,10 +438,35 @@ async def test_the_fan_out_is_bounded_at_the_observed_maximum() -> None:
 
 
 @pytest.mark.asyncio
+async def test_a_failed_nested_reference_costs_only_its_own_file() -> None:
+    """Resolving a file:// reference fetches again, outside the first fetch's own call.
+
+    Escaping would cancel the page's other fetches, end this repository's listing early
+    and record the failure against the repository with no file named.
+    """
+    # Content that parses to a dict is what reaches the prefix loader at all.
+    client = FakeClient(
+        [repo("repo-one")],
+        {"repo-one": [entry("a.yml"), entry("b.yml")]},
+        {"a.yml": "k: v", "b.yml": "k: v"},
+    )
+    with patch(
+        "bitbucket_cloud.helpers.file_kind.check_and_load_file_prefix",
+        side_effect=http_error(403),
+    ):
+        emitted, raised = await walk(
+            client, filenames=["a.yml", "b.yml"], skipParsing=False
+        )
+
+    assert [item["metadata"]["path"] for item in emitted] == []
+    assert sorted(call[2] for call in client.content_calls) == ["a.yml", "b.yml"]
+    assert isinstance(raised, BitbucketFileWalkError)
+    assert "2 read failures" in str(raised)
+
+
+@pytest.mark.asyncio
 async def test_a_walk_that_matches_nothing_says_so() -> None:
     """Completing with no files and no error is what lets reconciliation delete them all."""
-    from loguru import logger
-
     warnings: List[str] = []
     sink = logger.add(warnings.append, level="WARNING")
     try:
