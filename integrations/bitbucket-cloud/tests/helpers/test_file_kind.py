@@ -387,6 +387,24 @@ async def test_a_failed_listing_is_collected_whatever_its_status(status: int) ->
 
 
 @pytest.mark.asyncio
+async def test_a_walk_that_matches_nothing_says_so() -> None:
+    """Completing with no files and no error is what lets reconciliation delete them all."""
+    from loguru import logger
+
+    warnings: List[str] = []
+    sink = logger.add(warnings.append, level="WARNING")
+    try:
+        client = FakeClient([repo("repo-one"), repo("repo-two")], {})
+        emitted, raised = await walk(client, filenames=["port.yml"])
+    finally:
+        logger.remove(sink)
+
+    assert emitted == []
+    assert raised is None
+    assert any("Walked 2 repositories and matched no files" in w for w in warnings)
+
+
+@pytest.mark.asyncio
 async def test_no_filenames_configured_makes_no_requests() -> None:
     client = FakeClient([repo("repo-one")], {})
     emitted, raised = await walk(client, filenames=[])

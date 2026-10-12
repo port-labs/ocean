@@ -21,13 +21,18 @@ if TYPE_CHECKING:
     from bitbucket_cloud.client import BitbucketClient
 
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
-# A dead credential and an exhausted quota apply to every repository still to be walked, not to this one.
+# A dead credential and an exhausted quota are about every repository still to be
+# walked, not about this one.
 WALK_STOPPING_STATUSES = (401, 429)
-# Bitbucket lists one level when this is omitted, and publishes no ceiling: 10000, 1e6 and 1e8 are all accepted unclamped (measured 2026-10-12), so this only has to exceed the deepest tree.
+# Bitbucket lists one level when this is omitted. No ceiling is published and none was
+# found - 10000, 1e6 and 1e8 are all accepted unclamped - so this only has to exceed
+# the deepest tree.
 MAX_LISTING_DEPTH = 10000
-# Our limit, not Bitbucket's - it publishes none for /src content. Matches github/core/exporters/file_exporter/utils.py.
+# Ours, not Bitbucket's: it publishes no limit for /src content. Matches
+# github/core/exporters/file_exporter/utils.py.
 MAX_FILE_SIZE = 1024 * 1024
-# Without this the entry's commit carries no repository, breaking .metadata.commit.repository.* mappings.
+# Without this the entry's commit carries no repository at all, and
+# .metadata.commit.repository.* stops resolving for mappings written against search.
 REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
 
 
@@ -164,6 +169,9 @@ async def _walk_repository(
             retrieve_file_content(repo, entry, file_pattern.skip_parsing, failures)
             for entry in select_matching_files(entries, file_pattern, repo_slug)
         ]
+        # Repositories are walked one at a time and a page's fetches together: content
+        # draws on its own 4980/hr window (BitbucketFileRateLimiterConfig), listings on
+        # the 980/hr one, so the bound that matters is per window, not per loop.
         async for file_result in stream_async_iterators_tasks(*tasks):
             yield [file_result]
 
@@ -182,16 +190,20 @@ async def process_file_patterns(
         f"Discovering files with filter '{source_filter}' from root '{listing_root}'"
     )
 
+    walked = 0
+    matched = 0
     client = init_client()
     configured_repositories = {name.lower() for name in file_pattern.repos}
     if not configured_repositories:
         logger.warning("No repositories configured, listing the entire workspace")
     failures: List[Exception] = []
 
-    # An empty dict, not no argument: get_repositories is cached on the repr of its params.
+    # Shares the repository kind's cached listing, which also passes {} - the cache key is
+    # the repr of the params, so no argument at all is a different key and a second listing.
     async for repositories in client.get_repositories(params={}):
         for repo in repositories:
-            # A repository with no commits answers 404 "Commit not found" on its listing, which is not a tolerated body.
+            # A repository with no commits answers 404 "Commit not found" on its
+            # listing, which is not a tolerated body.
             if not repo["size"]:
                 logger.debug(f"Repository {repo['slug']} has no commits, skipping")
                 continue
@@ -203,14 +215,23 @@ async def process_file_patterns(
                 )
                 continue
 
+            walked += 1
             try:
                 async for batch in _walk_repository(
                     client, repo, file_pattern, listing_root, source_filter, failures
                 ):
+                    matched += len(batch)
                     yield batch
             # Only this catches a transport failure, which never reaches the client's own except.
             except HTTPError as e:
                 _record_or_stop(e, failures, repo["slug"])
+
+    if not matched and not failures:
+        logger.warning(
+            f"Walked {walked} repositories and matched no files for "
+            f"{file_pattern.filenames} under '{file_pattern.path}'. A resync that "
+            f"ends here with no error lets reconciliation delete every file entity."
+        )
 
     if failures:
         raise BitbucketFileWalkError(
@@ -238,7 +259,8 @@ async def retrieve_file_content(
 
     logger.info(f"Retrieving contents for {file_path} in {repo_slug}")
     client = init_client()
-    # Recorded, not raised, because an exception here cancels this page's other fetches - which is what a 401 or 429 wants, and nothing else does.
+    # Recorded, not raised: an exception here cancels this page's other fetches, which is
+    # what a 401 or 429 wants and nothing else does.
     try:
         file_content = await client.get_repository_files(repo_slug, branch, file_path)
     except HTTPError as e:

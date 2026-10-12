@@ -48,7 +48,9 @@ class FileEntityProcessor(JQEntityProcessor):
         repo_data = data.get("repo", data)
         # Derive from the display name only when the payload carries no slug.
         repo_slug = repo_data.get("slug") or repo_data.get("name", "").replace(" ", "-")
-        # Every path that emits this data sets branch; "main" was a guess, and Bitbucket's own default is master.
+        # The resync, the folder walk and a push all set branch; mainbranch covers a
+        # payload shape none of them produce, and "main" was a guess - Bitbucket's own
+        # default is master.
         default_branch = data.get("branch") or repo_data.get("mainbranch", {}).get(
             "name"
         )
