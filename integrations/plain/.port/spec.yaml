@@ -29,4 +29,3 @@ configurations:
     type: string
     sensitive: true
     description: Optional. Not required to register the Plain webhook target. When set (Plain Settings → Request signing), verifies Plain-Request-Signature on inbound events. When unset, signature verification is skipped.
-
