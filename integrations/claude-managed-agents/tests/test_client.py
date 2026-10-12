@@ -122,6 +122,18 @@ async def test_get_vault_serializes_result(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_memory_store_returns_sdk_model(client: AnthropicClient) -> None:
+    inner: Any = client._client
+    memory_store = _Model({"id": "ms_1"})
+    inner.beta.memory_stores.retrieve = AsyncMock(return_value=memory_store)
+
+    result = await client.get_memory_store("ms_1")
+
+    assert result is memory_store
+    inner.beta.memory_stores.retrieve.assert_awaited_once_with("ms_1")
+
+
+@pytest.mark.asyncio
 async def test_get_session_events_omits_unset_filters(
     client: AnthropicClient,
 ) -> None:

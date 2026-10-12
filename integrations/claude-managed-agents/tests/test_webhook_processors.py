@@ -257,8 +257,10 @@ async def test_memory_store_delete_event_returns_delete() -> None:
 async def test_memory_store_upsert_event_fetches_resource() -> None:
     payload = {"data": {"type": "memory_store.archived", "id": "ms1"}}
     processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    memory_store = MagicMock()
+    memory_store.to_dict.return_value = {"id": "ms1", "name": "mem"}
     client = MagicMock()
-    client.get_memory_store = AsyncMock(return_value={"id": "ms1", "name": "mem"})
+    client.get_memory_store = AsyncMock(return_value=memory_store)
     with patch(
         "webhook_processors.memory_store_webhook_processor.create_anthropic_client",
         return_value=client,
@@ -266,6 +268,7 @@ async def test_memory_store_upsert_event_fetches_resource() -> None:
         results = await processor.handle_event(payload, None)
     assert results.updated_raw_results == [{"id": "ms1", "name": "mem"}]
     client.get_memory_store.assert_awaited_once_with("ms1")
+    memory_store.to_dict.assert_called_once_with(mode="json")
 
 
 # --- trigger agent (action) ---

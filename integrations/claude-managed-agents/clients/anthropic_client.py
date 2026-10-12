@@ -9,6 +9,9 @@ from typing import Any, Literal, Protocol
 import httpx
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import BetaEnvironment
+from anthropic.types.beta.beta_managed_agents_memory_store import (
+    BetaManagedAgentsMemoryStore,
+)
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
@@ -297,10 +300,11 @@ class AnthropicClient:
         vault = await self._client.beta.vaults.retrieve(vault_id)
         return vault.to_dict(mode="json")
 
-    async def get_memory_store(self, memory_store_id: str) -> dict[str, Any]:
+    async def get_memory_store(
+        self, memory_store_id: str
+    ) -> BetaManagedAgentsMemoryStore:
         logger.info(f"Retrieving Claude memory store '{memory_store_id}'")
-        memory_store = await self._client.beta.memory_stores.retrieve(memory_store_id)
-        return memory_store.to_dict(mode="json")
+        return await self._client.beta.memory_stores.retrieve(memory_store_id)
 
     async def create_environment(
         self,
