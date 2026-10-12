@@ -387,6 +387,58 @@ async def test_a_failed_listing_is_collected_whatever_its_status(status: int) ->
 
 
 @pytest.mark.asyncio
+async def test_the_fan_out_is_bounded_at_the_observed_maximum() -> None:
+    """Asserts what was in flight, not the value of the constants."""
+    import asyncio
+
+    from bitbucket_cloud.helpers import file_kind
+
+    peak_listings = 0
+    peak_fetches = 0
+    in_listings = 0
+    in_fetches = 0
+
+    class CountingClient(FakeClient):
+        async def get_directory_contents(  # type: ignore[override]
+            self, repo_slug: str, branch: str, path: str, max_depth: int, **kw: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            nonlocal in_listings, peak_listings
+            in_listings += 1
+            peak_listings = max(peak_listings, in_listings)
+            await asyncio.sleep(0.01)
+            try:
+                async for page in super().get_directory_contents(
+                    repo_slug, branch, path, max_depth, **kw
+                ):
+                    yield page
+            finally:
+                in_listings -= 1
+
+        async def get_repository_files(
+            self, repo_slug: str, branch: str, path: str
+        ) -> Optional[str]:
+            nonlocal in_fetches, peak_fetches
+            in_fetches += 1
+            peak_fetches = max(peak_fetches, in_fetches)
+            await asyncio.sleep(0.01)
+            try:
+                return await super().get_repository_files(repo_slug, branch, path)
+            finally:
+                in_fetches -= 1
+
+    repos = [repo(f"repo-{n}") for n in range(25)]
+    page = [entry(f"f{n}.yml") for n in range(40)]
+    client = CountingClient(repos, {r["slug"]: page for r in repos})
+    emitted, raised = await walk(client, filenames=[f"f{n}.yml" for n in range(40)])
+
+    assert raised is None
+    assert len(emitted) == 25 * 40
+    assert peak_listings <= file_kind.MAX_CONCURRENT_REPOSITORIES
+    assert peak_fetches <= file_kind.MAX_CONCURRENT_FILE_FETCHES
+    assert peak_listings > 1, "serial, so the bound is not doing anything"
+
+
+@pytest.mark.asyncio
 async def test_a_walk_that_matches_nothing_says_so() -> None:
     """Completing with no files and no error is what lets reconciliation delete them all."""
     from loguru import logger

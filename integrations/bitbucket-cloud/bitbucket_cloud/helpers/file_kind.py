@@ -1,4 +1,6 @@
 import fnmatch
+from asyncio import Semaphore
+from functools import partial
 from httpx import HTTPError, HTTPStatusError
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Set, TYPE_CHECKING
@@ -9,7 +11,10 @@ from bitbucket_cloud.helpers.exceptions import (
     BitbucketFileWalkError,
 )
 from bitbucket_cloud.helpers.folder import get_parts_before_wildcard
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
 from initialize_client import init_client
 from bitbucket_cloud.helpers.file_kind_live_event import (
     FileObject,
@@ -31,6 +36,13 @@ MAX_LISTING_DEPTH = 10000
 # Ours, not Bitbucket's: it publishes no limit for /src content. Matches
 # github/core/exporters/file_exporter/utils.py.
 MAX_FILE_SIZE = 1024 * 1024
+# Bitbucket publishes no concurrent-request guidance and sends no x-ratelimit header on
+# a 200, so these are the only bound on fan-out. Listings are also metered against the
+# shared 980/hr window; content fetches are metered only under MultiTokenAuth, which is
+# the one auth mode with a file_token_manager, so for the other two these are the whole
+# of it. Serial was measured 10x slower over 30 repositories.
+MAX_CONCURRENT_REPOSITORIES = 10
+MAX_CONCURRENT_FILE_FETCHES = 20
 # Without this the entry's commit carries no repository at all, and
 # .metadata.commit.repository.* stops resolving for mappings written against search.
 REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
@@ -149,31 +161,44 @@ async def _walk_repository(
     listing_root: str,
     source_filter: str,
     failures: List[Exception],
+    fetches: Semaphore,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """List one repository's matching files and yield the content of each.
 
     ``listing_root`` and ``source_filter`` are derived from ``file_pattern`` and are
     passed in because they are the same for every repository in the workspace; the
-    pattern itself is still needed for the matcher and for skip_parsing.
+    pattern itself is still needed for the matcher and for skip_parsing. A failed
+    listing is recorded here rather than raised, because this runs as one of several
+    concurrent walks and an exception would cancel the others.
     """
     repo_slug = repo["slug"]
-    async for entries in client.get_directory_contents(
-        repo_slug,
-        repo["mainbranch"]["name"],
-        listing_root,
-        max_depth=MAX_LISTING_DEPTH,
-        params={"q": source_filter, "fields": REPOSITORY_EXPANSION},
-        raise_on_missing=True,
-    ):
-        tasks = [
-            retrieve_file_content(repo, entry, file_pattern.skip_parsing, failures)
-            for entry in select_matching_files(entries, file_pattern, repo_slug)
-        ]
-        # Repositories are walked one at a time and a page's fetches together: content
-        # draws on its own 4980/hr window (BitbucketFileRateLimiterConfig), listings on
-        # the 980/hr one, so the bound that matters is per window, not per loop.
-        async for file_result in stream_async_iterators_tasks(*tasks):
-            yield [file_result]
+    try:
+        async for entries in client.get_directory_contents(
+            repo_slug,
+            repo["mainbranch"]["name"],
+            listing_root,
+            max_depth=MAX_LISTING_DEPTH,
+            params={"q": source_filter, "fields": REPOSITORY_EXPANSION},
+            raise_on_missing=True,
+        ):
+            tasks = [
+                semaphore_async_iterator(
+                    fetches,
+                    partial(
+                        retrieve_file_content,
+                        repo,
+                        entry,
+                        file_pattern.skip_parsing,
+                        failures,
+                    ),
+                )
+                for entry in select_matching_files(entries, file_pattern, repo_slug)
+            ]
+            async for file_result in stream_async_iterators_tasks(*tasks):
+                yield [file_result]
+    # Only this catches a transport failure, which never reaches the client's own except.
+    except HTTPError as e:
+        _record_or_stop(e, failures, repo_slug)
 
 
 async def process_file_patterns(
@@ -198,9 +223,14 @@ async def process_file_patterns(
         logger.warning("No repositories configured, listing the entire workspace")
     failures: List[Exception] = []
 
-    # Shares the repository kind's cached listing, which also passes {} - the cache key is
-    # the repr of the params, so no argument at all is a different key and a second listing.
+    listings = Semaphore(MAX_CONCURRENT_REPOSITORIES)
+    fetches = Semaphore(MAX_CONCURRENT_FILE_FETCHES)
+
+    # Shares the repository kind's cached listing when that kind configures neither
+    # userRole nor repoQuery, since build_repo_params then also passes {} - the cache key
+    # is the repr of the params, so any other value is a second full workspace listing.
     async for repositories in client.get_repositories(params={}):
+        selected = []
         for repo in repositories:
             # A repository with no commits answers 404 "Commit not found" on its
             # listing, which is not a tolerated body.
@@ -214,17 +244,28 @@ async def process_file_patterns(
                     f"Repository {repo['slug']} is not in the configured repositories, skipping"
                 )
                 continue
+            selected.append(repo)
 
-            walked += 1
-            try:
-                async for batch in _walk_repository(
-                    client, repo, file_pattern, listing_root, source_filter, failures
-                ):
-                    matched += len(batch)
-                    yield batch
-            # Only this catches a transport failure, which never reaches the client's own except.
-            except HTTPError as e:
-                _record_or_stop(e, failures, repo["slug"])
+        walked += len(selected)
+        tasks = [
+            semaphore_async_iterator(
+                listings,
+                partial(
+                    _walk_repository,
+                    client,
+                    repo,
+                    file_pattern,
+                    listing_root,
+                    source_filter,
+                    failures,
+                    fetches,
+                ),
+            )
+            for repo in selected
+        ]
+        async for batch in stream_async_iterators_tasks(*tasks):
+            matched += len(batch)
+            yield batch
 
     if not matched and not failures:
         logger.warning(
