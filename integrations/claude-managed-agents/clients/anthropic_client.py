@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, Sequence
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol
 
 import httpx
 from anthropic import AsyncAnthropic
-from anthropic.types.beta import BetaEnvironment, UnwrapWebhookEvent
+from anthropic.types.beta import BetaEnvironment
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
@@ -28,10 +28,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-from clients.exceptions import (
-    UnexpectedApiResponseError,
-    WebhookSigningSecretNotConfiguredError,
-)
+from clients.exceptions import UnexpectedApiResponseError
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -39,21 +36,6 @@ _RATE_LIMIT_LIMIT_HEADER = "anthropic-ratelimit-requests-limit"
 _RATE_LIMIT_REMAINING_HEADER = "anthropic-ratelimit-requests-remaining"
 _RATE_LIMIT_RESET_HEADER = "anthropic-ratelimit-requests-reset"
 _WORKSPACE_ID_HEADER = "anthropic-workspace-id"
-
-# Platform Console admin API (not covered by the Anthropic SDK webhooks resource).
-_WEBHOOKS_BETA = "webhooks-2026-03-01"
-_WEBHOOK_NAME = "Port Ocean Integration"
-_WEBHOOK_EVENTS = [
-    "session.status_run_started",
-    "session.status_idled",
-    "session.status_rescheduled",
-    "session.status_terminated",
-    "session.deleted",
-    "session.updated",
-    "vault.created",
-    "vault.archived",
-    "vault.deleted",
-]
 
 RateLimitPool = Literal["create", "read"]
 
@@ -104,21 +86,19 @@ class AnthropicClient:
         api_host: str,
         api_key: str,
         console_host: str,
-        webhook_signing_secret: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
         anthropic_version: str | None = None,
     ) -> None:
         self._api_key = api_key
         self._anthropic_version = anthropic_version
         self._console_host = console_host.rstrip("/")
-        self._webhook_signing_secret = webhook_signing_secret
         self._page_size = page_size
         self._create_rate_limit_info: RateLimitInfo | None = None
         self._read_rate_limit_info: RateLimitInfo | None = None
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
-        # Shared transport for the SDK and Console admin calls (e.g. webhook create)
+        # Shared transport for the SDK and Console admin calls (e.g. webhooks)
         # so rate-limit hooks apply to every Anthropic HTTP request.
         self._anthropic_http = OceanAsyncClient(
             timeout=ocean.config.client_timeout,
@@ -138,6 +118,22 @@ class AnthropicClient:
             # SDK already retries internally.
             http_client=self._anthropic_http,
         )
+
+    @property
+    def http_client(self) -> OceanAsyncClient:
+        return self._anthropic_http
+
+    @property
+    def async_client(self) -> AsyncAnthropic:
+        return self._client
+
+    @property
+    def api_key(self) -> str:
+        return self._api_key
+
+    @property
+    def anthropic_version(self) -> str | None:
+        return self._anthropic_version
 
     def _rate_limit_lock(self, pool: RateLimitPool) -> asyncio.Lock:
         return (
@@ -441,69 +437,3 @@ class AnthropicClient:
                 f"Expected user.interrupt event from send, got {returned_event.type}"
             )
         return returned_event
-
-    def unwrap_webhook(
-        self, payload: str, headers: Mapping[str, str]
-    ) -> UnwrapWebhookEvent:
-        if not self._webhook_signing_secret:
-            raise WebhookSigningSecretNotConfiguredError(
-                "Webhook signing secret is not configured"
-            )
-        return self._client.beta.webhooks.unwrap(
-            payload, headers=headers, key=self._webhook_signing_secret
-        )
-
-    @property
-    def has_webhook_secret(self) -> bool:
-        return bool(self._webhook_signing_secret)
-
-    async def create_webhook_if_not_exists(self, base_url: str) -> None:
-        """Register this integration's webhook URL on the Claude Platform Console.
-
-        Create is idempotent enough for startup: a ``409`` means the URL is
-        already registered. The signing secret is returned only on create and
-        is never logged - configure ``WEBHOOK_SIGNING_SECRET`` from Console.
-        """
-        webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
-        headers = {
-            "x-api-key": self._api_key,
-            "anthropic-beta": _WEBHOOKS_BETA,
-            "content-type": "application/json",
-        }
-        if self._anthropic_version:
-            headers["anthropic-version"] = self._anthropic_version
-
-        try:
-            response = await self._anthropic_http.post(
-                f"{self._console_host}/v1/webhooks",
-                headers=headers,
-                json={
-                    "url": webhook_url,
-                    "name": _WEBHOOK_NAME,
-                    "description": "Port Ocean Claude Managed Agents live events",
-                    "enabled_events": _WEBHOOK_EVENTS,
-                },
-            )
-        except httpx.HTTPError as error:
-            logger.error(f"Failed to create Claude webhook for {webhook_url}: {error}")
-            return
-
-        if response.status_code == 409:
-            logger.info(f"Claude webhook already exists for {webhook_url}")
-            return
-
-        if response.is_error:
-            logger.error(
-                f"Failed to create Claude webhook for {webhook_url}: "
-                f"{response.status_code} {(response.text or '')[:500]}"
-            )
-            return
-
-        created = response.json()
-        logger.info(f"Created Claude webhook {created.get('id')} for {webhook_url}")
-        if created.get("signing_secret") and not self._webhook_signing_secret:
-            logger.warning(
-                "Claude returned a webhook signing secret on create (shown once). "
-                "Set OCEAN__INTEGRATION__CONFIG__WEBHOOK_SIGNING_SECRET from that "
-                "response or the Claude Console."
-            )

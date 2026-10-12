@@ -7,7 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
 )
 
-from clients.client_factory import create_anthropic_client
+from clients.client_factory import create_webhook_client
 
 
 class AbstractAnthropicWebhookProcessor(AbstractWebhookProcessor):
@@ -18,7 +18,7 @@ class AbstractAnthropicWebhookProcessor(AbstractWebhookProcessor):
     """
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        client = create_anthropic_client()
+        client = create_webhook_client()
         if not client.has_webhook_secret:
             logger.warning(
                 "Skipping webhook signature verification because no signing secret is configured"

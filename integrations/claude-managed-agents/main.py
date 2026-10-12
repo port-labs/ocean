@@ -6,7 +6,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from actions.registry import register_action_executors
-from clients.client_factory import create_anthropic_client
+from clients.client_factory import create_webhook_client
 from exporter_factory import (
     create_agents_exporter,
     create_environments_exporter,
@@ -108,7 +108,7 @@ async def on_start() -> None:
         )
         return
 
-    await create_anthropic_client().create_webhook_if_not_exists(base_url)
+    await create_webhook_client().create_webhook_if_not_exists(base_url)
 
 
 register_live_events_webhooks()

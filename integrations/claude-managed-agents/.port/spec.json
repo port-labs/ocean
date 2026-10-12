@@ -74,7 +74,7 @@
       "type": "string",
       "required": false,
       "sensitive": true,
-      "description": "The signing secret from the Claude Console webhook configuration. Required only to enable live events (webhooks). Refer <a href=\"https://platform.claude.com/docs/en/api/typescript/beta/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+      "description": "Optional signing secret from the Claude Console webhook configuration. When set, incoming live-event webhooks are signature-verified; when omitted, webhooks are accepted without verification. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
     },
     {
       "name": "githubAuthorizationToken",
@@ -165,7 +165,7 @@
           "name": "reportSessionStatus",
           "title": "Report session status",
           "type": "boolean",
-          "description": "Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires a webhook to be configured on the integration (see webhookSigningSecret); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.",
+          "description": "Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires live events (OCEAN__BASE_URL / webhook registration); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.",
           "default": false,
           "required": false
         }
