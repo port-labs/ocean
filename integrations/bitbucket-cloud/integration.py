@@ -129,7 +129,7 @@ class BitbucketFilePattern(BaseModel):
         default_factory=list,
         alias="filenames",
         title="File Names",
-        description="List of filenames to match within the specified path (e.g. ['config.yml', '.yaml']). A value is matched as a suffix, so '.yaml' matches every YAML file. Wildcards are not supported. Required — if empty, no file search will be performed",
+        description="List of filenames or patterns to search for within the specified path (e.g. ['config.yml', '*.yaml']). Required — if empty, no file search will be performed",
     )
 
 

@@ -46,29 +46,22 @@ class FileEntityProcessor(JQEntityProcessor):
         """
 
         repo_data = data.get("repo", data)
-        # Derive from the display name only when the payload carries no slug.
-        repo_slug = repo_data.get("slug") or repo_data.get("name", "").replace(" ", "-")
-        # The resync, the folder walk and a push all set branch; mainbranch covers a
-        # payload shape none of them produce, and "main" was a guess - Bitbucket's own
-        # default is master.
-        default_branch = data.get("branch") or repo_data.get("mainbranch", {}).get(
-            "name"
+        repo_slug = repo_data.get("name", "").replace(" ", "-")
+        default_branch = (
+            repo_data.get("mainbranch", {}).get("name", "main").replace(" ", "-")
         )
 
         if current_directory_path := data.get("folder", {}).get("path", ""):
             file_path = f"{current_directory_path}/{pattern.replace(self.prefix, '')}"
-            ref = data.get("folder", {}).get("commit", {}).get("hash") or default_branch
+            ref = data.get("folder", {}).get("commit", {}).get("hash", default_branch)
         else:
             file_path = pattern.replace(self.prefix, "")
+            if not default_branch:
+                logger.info(
+                    f"No default branch found for repository {repo_slug} and file path {file_path}"
+                )
+                return None
             ref = default_branch
-
-        # Guarded after both branches: the monorepo one has a commit hash to fall back
-        # from, so a missing ref there is as reachable as a missing branch here.
-        if not ref:
-            logger.info(
-                f"No ref found for repository {repo_slug} and file path {file_path}"
-            )
-            return None
 
         if not repo_slug:
             logger.info(
