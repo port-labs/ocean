@@ -339,3 +339,67 @@ async def test_patch_integration_config_sends_skip_resync_header_when_requested(
     # Assert
     call_args = integration_client.client.patch.call_args
     assert call_args[1]["headers"]["x-skip-resync"] == "true"
+
+
+def _integration_in_progress_error() -> httpx.HTTPStatusError:
+    request = httpx.Request(
+        "PATCH", f"{TEST_API_URL}/integration/{TEST_INTEGRATION_IDENTIFIER}"
+    )
+    response = httpx.Response(
+        400,
+        json={
+            "ok": False,
+            "error": "integration_is_in_progress",
+            "message": "Can't update integration while it's being updating",
+        },
+        request=request,
+    )
+    return httpx.HTTPStatusError("in progress", request=request, response=response)
+
+
+@pytest.mark.asyncio
+async def test_patch_integration_retries_in_progress_when_spec_sent(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    in_progress = _integration_in_progress_error()
+
+    with (
+        patch(
+            "port_ocean.clients.port.mixins.integrations.handle_port_status_code",
+            side_effect=[in_progress, None],
+        ),
+        patch(
+            "port_ocean.clients.port.mixins.integrations.asyncio.sleep",
+            new_callable=AsyncMock,
+        ) as sleep,
+    ):
+        result = await integration_client.patch_integration(
+            spec={"integrationSpec": {"webhookSigningSecret": "secret-name"}}
+        )
+
+    assert integration_client.client.patch.await_count == 2
+    sleep.assert_awaited_once()
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_patch_integration_does_not_retry_in_progress_without_spec(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    in_progress = _integration_in_progress_error()
+
+    with (
+        patch(
+            "port_ocean.clients.port.mixins.integrations.handle_port_status_code",
+            side_effect=in_progress,
+        ),
+        patch(
+            "port_ocean.clients.port.mixins.integrations.asyncio.sleep",
+            new_callable=AsyncMock,
+        ) as sleep,
+        pytest.raises(httpx.HTTPStatusError),
+    ):
+        await integration_client.patch_integration(_type="claude-managed-agents")
+
+    assert integration_client.client.patch.await_count == 1
+    sleep.assert_not_awaited()
