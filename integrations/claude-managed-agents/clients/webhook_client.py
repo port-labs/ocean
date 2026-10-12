@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Mapping
 from typing import Any
 
@@ -28,19 +27,6 @@ _WEBHOOK_EVENTS = [
     "vault.deleted",
 ]
 _WEBHOOK_SIGNING_SECRET_SPEC_KEY = "webhookSigningSecret"
-_SPEC_PATCH_RETRY_ATTEMPTS = 8
-_SPEC_PATCH_RETRY_INITIAL_SECONDS = 2.0
-_SPEC_PATCH_RETRY_BACKOFF = 1.5
-
-
-def _is_integration_in_progress_error(error: httpx.HTTPStatusError) -> bool:
-    if error.response.status_code != 400:
-        return False
-    try:
-        body = error.response.json()
-    except ValueError:
-        return False
-    return body.get("error") == "integration_is_in_progress"
 
 
 class ClaudeWebhookClient:
@@ -96,33 +82,14 @@ class ClaudeWebhookClient:
         return f"{identifier}-claude-webhook-signing-secret"
 
     async def _patch_signing_secret_spec(self, secret_name: str) -> None:
-        """Patch integrationSpec.webhookSigningSecret, retrying SaaS in-progress races."""
-        delay = _SPEC_PATCH_RETRY_INITIAL_SECONDS
-        last_error: httpx.HTTPStatusError | None = None
-        for attempt in range(1, _SPEC_PATCH_RETRY_ATTEMPTS + 1):
-            try:
-                await ocean.port_client.patch_integration(
-                    spec={
-                        "integrationSpec": {
-                            _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
-                        }
-                    }
-                )
-                return
-            except httpx.HTTPStatusError as error:
-                if not _is_integration_in_progress_error(error):
-                    raise
-                last_error = error
-                if attempt == _SPEC_PATCH_RETRY_ATTEMPTS:
-                    break
-                logger.info(
-                    "Integration still updating; retrying webhookSigningSecret "
-                    f"spec patch ({attempt}/{_SPEC_PATCH_RETRY_ATTEMPTS}) in {delay:.1f}s"
-                )
-                await asyncio.sleep(delay)
-                delay *= _SPEC_PATCH_RETRY_BACKOFF
-        assert last_error is not None
-        raise last_error
+        """Point SaaS integrationSpec.webhookSigningSecret at the org secret name."""
+        await ocean.port_client.patch_integration(
+            spec={
+                "integrationSpec": {
+                    _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
+                }
+            }
+        )
 
     async def _persist_signing_secret(self, signing_secret: str) -> None:
         """Store the Claude signing secret as an org secret and point SaaS spec at it."""
