@@ -1,3 +1,3 @@
 bump: patch
 changelog-type: bugfix
-changelog: Retry patch_integration when a SaaS integration is still updating and the request includes a spec payload
+changelog: Retry patch_integration(spec) while SaaS is updating; add get/upsert organization secret helpers and upsert_integration_spec_secret

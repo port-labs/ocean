@@ -113,3 +113,61 @@ async def test_update_organization_secret_patches_body(
     mock_client.patch.assert_awaited_once()
     assert "/organization/secrets/my-secret" in mock_client.patch.await_args.args[0]
     assert mock_client.patch.await_args.kwargs["json"] == {"secretValue": "new-value"}
+
+
+async def test_get_organization_secret_returns_none_on_404(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_client.get = AsyncMock(
+        return_value=MagicMock(status_code=404, is_error=True, text="missing")
+    )
+    mocked_org_mixin.auth.api_url = "https://api.example"
+
+    result = await mocked_org_mixin.get_organization_secret(
+        "missing-secret", should_raise=False
+    )
+
+    assert result is None
+    assert "/organization/secrets/missing-secret" in mock_client.get.await_args.args[0]
+
+
+async def test_upsert_organization_secret_creates_when_missing(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mocked_org_mixin.get_organization_secret = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    mocked_org_mixin.create_organization_secret = AsyncMock(  # type: ignore[method-assign]
+        return_value={"ok": True, "created": True}
+    )
+    mocked_org_mixin.update_organization_secret = AsyncMock()  # type: ignore[method-assign]
+
+    result = await mocked_org_mixin.upsert_organization_secret(
+        secret_name="my-secret",
+        secret_value="value",
+        description="desc",
+    )
+
+    assert result == {"ok": True, "created": True}
+    mocked_org_mixin.create_organization_secret.assert_awaited_once()
+    mocked_org_mixin.update_organization_secret.assert_not_awaited()
+
+
+async def test_upsert_organization_secret_updates_when_present(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mocked_org_mixin.get_organization_secret = AsyncMock(  # type: ignore[method-assign]
+        return_value={"secretName": "my-secret"}
+    )
+    mocked_org_mixin.create_organization_secret = AsyncMock()  # type: ignore[method-assign]
+    mocked_org_mixin.update_organization_secret = AsyncMock(  # type: ignore[method-assign]
+        return_value={"ok": True, "updated": True}
+    )
+
+    result = await mocked_org_mixin.upsert_organization_secret(
+        secret_name="my-secret",
+        secret_value="new-value",
+    )
+
+    assert result == {"ok": True, "updated": True}
+    mocked_org_mixin.update_organization_secret.assert_awaited_once()
+    mocked_org_mixin.create_organization_secret.assert_not_awaited()
