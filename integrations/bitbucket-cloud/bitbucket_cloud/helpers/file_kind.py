@@ -23,22 +23,13 @@ if TYPE_CHECKING:
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
-# A failed read of one repository reports it and the walk carries on, because the kind
-# ends in error either way and the readable files are worth keeping. Two statuses are not
-# about the repository at all: a dead credential and an exhausted quota apply to every
-# repository still to be walked, so they stop it now rather than failing another few
-# hundred times.
+# A dead credential and an exhausted quota apply to every repository still to be walked, not to this one.
 WALK_STOPPING_STATUSES = (401, 429)
-# Omitted, Bitbucket lists one level and reports no error. Honoured as requested to 13
-# segments and 1,959 files with no truncation, so this does not narrow the result set.
+# Omitted, Bitbucket lists one level and reports no error. Measured honoured as asked, with no truncation.
 MAX_LISTING_DEPTH = 10000
-# The same limit the github integration applies to file content
-# (github/core/exporters/file_exporter/utils.py). Code search never indexed files at or
-# above 512 KB, so everything below this was already absent from the file kind.
+# The same limit github applies to file content (github/core/exporters/file_exporter/utils.py).
 MAX_FILE_SIZE = 1024 * 1024
-# The only source of commit.repository: without this expansion the listing entry's commit
-# carries hash, links and type alone. Kept so .metadata.commit.repository.* stays
-# resolvable for mappings written against search.
+# Without this the entry's commit carries no repository, breaking .metadata.commit.repository.* mappings.
 REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
 
 
@@ -156,11 +147,7 @@ async def _walk_repository(
         if not tasks:
             continue
 
-        # Up to one content fetch per matching entry on the page, in flight together.
-        # Bitbucket publishes no concurrent-request guidance and returns no rate-limit
-        # header on a success, so the only stated bound is the hourly window these
-        # fetches draw on. This is the fan-out the search path already had, over pages
-        # of 100 rather than its 300.
+        # One content fetch per matching entry on the page, as the search path did over pages of 300.
         async for file_result in stream_async_iterators_tasks(*tasks):
             yield [file_result]
 
@@ -183,26 +170,14 @@ async def process_file_patterns(
     configured_repositories = {name.lower() for name in file_pattern.repos}
     failures: List[Exception] = []
 
-    # An empty dict, not no argument: get_repositories is cached on the repr of its
-    # params, so passing nothing is a different key and lists the workspace a second
-    # time. This shares the entry with the repository and pull-request kinds only while
-    # they configure neither userRole nor repoQuery; when they do, theirs is a separate
-    # listing and this one is unchanged.
+    # An empty dict, not no argument: get_repositories is cached on the repr of its params.
     async for repositories in client.get_repositories(params={}):
         for repo in repositories:
-            # size is bytes on disk, so this skips a repository with no commits, whose
-            # listing would answer 404 Commit not found. It is not a guard on
-            # mainbranch, which needs none: Bitbucket refuses to delete the branch
-            # mainbranch points at (400 "Cannot delete the main branch") and moving the
-            # default repoints the field, so it cannot dangle. Measured on 116
-            # repositories, and on one with no branches at all, which still reports it.
+            # size is bytes on disk, so a repository with no commits is skipped before its listing 404s.
             if not repo["size"]:
                 logger.debug(f"Repository {repo['slug']} has no commits, skipping")
                 continue
-            # Filtered here rather than with the BBQL name IN (...) that the folder
-            # kind sends, because a configured value may be a slug and that clause
-            # matches the display name only - for a repository named "BuyOrBid" the
-            # slug "buyorbid" would silently match nothing.
+            # The folder kind's BBQL name IN (...) matches the display name only, so a configured slug would miss.
             if configured_repositories and not repository_matches(
                 repo, configured_repositories
             ):
@@ -226,10 +201,7 @@ async def process_file_patterns(
                         f"every repository still to be walked, not to this one."
                     )
                     raise
-                # Carries the error because nothing else does for every kind: the
-                # client logs a status it recognises, but a transport failure never
-                # reaches its except at all. Files already yielded from this repository
-                # stand; the rest of it is given up.
+                # Only this carries a transport failure, which never reaches the client's own except.
                 logger.warning(
                     f"Recording {repo['slug']} as unreadable and continuing the walk: {e}"
                 )
