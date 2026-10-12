@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Retry patch_integration when a SaaS integration is still updating and the request includes a spec payload
