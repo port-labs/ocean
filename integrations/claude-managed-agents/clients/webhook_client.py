@@ -89,11 +89,8 @@ class ClaudeWebhookClient:
 
     def _signing_secret_name(self) -> str:
         integration = ocean.config.integration
-        return (
-            _ORG_SECRET_NAME_PREFIX
-            + _screaming_snake_case(
-                f"{integration.identifier}_{integration.type}_{_WEBHOOK_SIGNING_SECRET_SPEC_KEY}"
-            )
+        return _ORG_SECRET_NAME_PREFIX + _screaming_snake_case(
+            f"{integration.identifier}_{integration.type}_{_WEBHOOK_SIGNING_SECRET_SPEC_KEY}"
         )
 
     async def _persist_signing_secret(self, signing_secret: str) -> None:
