@@ -118,7 +118,6 @@ class ServiceDependenciesHandler:
         services_by_guid: Mapping[str, str | None],
     ) -> list[str]:
         calls: list[str] = []
-        seen: set[str] = set()
         cursor: str | None = None
         seen_cursors: set[str] = set()
 
@@ -135,8 +134,7 @@ class ServiceDependenciesHandler:
                 target_guid = select_dependency_call(
                     source_guid, edge, services_by_guid
                 )
-                if target_guid and target_guid not in seen:
-                    seen.add(target_guid)
+                if target_guid and target_guid not in calls:
                     calls.append(target_guid)
 
             next_cursor = related.get("nextCursor")
