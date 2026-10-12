@@ -285,7 +285,9 @@ class BitbucketClient:
         Left alone, any 404 reports no contents, as every other endpoint on this client
         does and as the folder kind's two callers expect. raise_on_missing instead fails
         on an unresolvable ref or a repository that cannot be read - which also answer
-        404 - and tolerates only a path this repository does not have.
+        404 - and tolerates only a path this repository does not have. With an empty
+        path nothing is tolerated, which is what the file kind's default configuration
+        resolves to: there, every 404 is a failure.
         """
         # Least to most specific: module default, the caller's params, then what it named.
         params = {"pagelen": PAGE_SIZE, **(params or {}), "max_depth": max_depth}
