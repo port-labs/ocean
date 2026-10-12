@@ -88,7 +88,9 @@ class ClaudeWebhookClient:
             "Claude Managed Agents webhook signing secret for Port Ocean live events"
         )
         try:
-            await ocean.port_client.create_organization_secret(
+            # Available on ocean-core >= the org-secret helpers PR; CI may still
+            # resolve the published package until CoreBump lands.
+            await ocean.port_client.create_organization_secret(  # type: ignore[attr-defined]
                 secret_name=secret_name,
                 secret_value=signing_secret,
                 description=description,
@@ -96,13 +98,13 @@ class ClaudeWebhookClient:
         except httpx.HTTPStatusError as error:
             if error.response.status_code not in (409, 422):
                 raise
-            await ocean.port_client.update_organization_secret(
+            await ocean.port_client.update_organization_secret(  # type: ignore[attr-defined]
                 secret_name=secret_name,
                 secret_value=signing_secret,
                 description=description,
             )
 
-        await ocean.port_client.patch_integration(
+        await ocean.port_client.patch_integration(  # type: ignore[call-arg]
             spec={
                 "integrationSpec": {
                     _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
