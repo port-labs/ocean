@@ -29,6 +29,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
     updated_since: NotRequired[Optional[datetime]]
+    pushed_since: NotRequired[Optional[datetime]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -110,6 +111,8 @@ class ListTeamOptions(BaseUserOptions):
 
 class ListWorkflowOptions(RepositoryIdentifier):
     """Options for workflows"""
+
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class SingleWorkflowOptions(ListWorkflowOptions):
