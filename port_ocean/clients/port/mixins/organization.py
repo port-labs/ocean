@@ -58,3 +58,96 @@ class OrganizationClientMixin:
     ) -> bool:
         organization = await self._get_organization(should_raise, should_log)
         return bool(organization.get("isBlocked", False))
+
+    async def get_organization_secret(
+        self,
+        secret_name: str,
+        should_raise: bool = True,
+        should_log: bool = True,
+    ) -> dict[str, Any] | None:
+        """Return organization secret metadata, or None when missing (404)."""
+        logger.info(f"Fetching organization secret '{secret_name}'")
+        response = await self.client.get(
+            f"{self.auth.api_url}/organization/secrets/{secret_name}",
+            headers=await self.auth.headers(),
+        )
+        if response.status_code == 404:
+            handle_port_status_code(response, should_raise=False, should_log=should_log)
+            if should_raise:
+                response.raise_for_status()
+            return None
+        handle_port_status_code(response, should_raise, should_log)
+        response.raise_for_status()
+        secret = response.json().get("secret")
+        return secret if isinstance(secret, dict) else None
+
+    async def create_organization_secret(
+        self,
+        secret_name: str,
+        secret_value: str,
+        description: str | None = None,
+        should_raise: bool = True,
+        should_log: bool = True,
+    ) -> dict[str, Any]:
+        logger.info(f"Creating organization secret '{secret_name}'")
+        body: dict[str, Any] = {
+            "secretName": secret_name,
+            "secretValue": secret_value,
+        }
+        if description is not None:
+            body["description"] = description
+        response = await self.client.post(
+            f"{self.auth.api_url}/organization/secrets",
+            headers=await self.auth.headers(),
+            json=body,
+        )
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json()
+
+    async def update_organization_secret(
+        self,
+        secret_name: str,
+        secret_value: str,
+        description: str | None = None,
+        should_raise: bool = True,
+        should_log: bool = True,
+    ) -> dict[str, Any]:
+        logger.info(f"Updating organization secret '{secret_name}'")
+        body: dict[str, Any] = {"secretValue": secret_value}
+        if description is not None:
+            body["description"] = description
+        response = await self.client.patch(
+            f"{self.auth.api_url}/organization/secrets/{secret_name}",
+            headers=await self.auth.headers(),
+            json=body,
+        )
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json()
+
+    async def upsert_organization_secret(
+        self,
+        secret_name: str,
+        secret_value: str,
+        description: str | None = None,
+        should_raise: bool = True,
+        should_log: bool = True,
+    ) -> dict[str, Any]:
+        """Create or update an organization secret after checking whether it exists."""
+        existing = await self.get_organization_secret(
+            secret_name, should_raise=False, should_log=False
+        )
+        if existing is None:
+            return await self.create_organization_secret(
+                secret_name=secret_name,
+                secret_value=secret_value,
+                description=description,
+                should_raise=should_raise,
+                should_log=should_log,
+            )
+        return await self.update_organization_secret(
+            secret_name=secret_name,
+            secret_value=secret_value,
+            description=description,
+            should_raise=should_raise,
+            should_log=should_log,
+        )

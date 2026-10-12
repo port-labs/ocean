@@ -7,6 +7,46 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.9 (2026-10-12)
+
+
+### Bug Fixes
+
+- Retry patch_integration(spec) while SaaS is updating; add get/upsert organization secret helpers
+
+
+## 0.53.8 (2026-10-12)
+
+
+### Features
+
+- Add organization secret create/update helpers and patch_integration(spec=) support
+
+
+## 0.53.7 (2026-10-11)
+
+
+### Improvements
+
+- Skip registering incremental resync handlers when incrementalSyncEnabled is false on the integration config.
+
+
+## 0.53.6 (2026-10-11)
+
+
+### Improvements
+
+- Emit incremental resync trigger logs inside the event context so event_id is available for log correlation.
+
+
+## 0.53.5 (2026-10-08)
+
+
+### Bug Fixes
+
+- Fixed the polling event listener skipping the startup resync when resync_on_start is enabled and the integration-state watermark is still empty
+
+
 ## 0.53.4 (2026-10-07)
 
 
