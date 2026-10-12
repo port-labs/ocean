@@ -74,15 +74,15 @@
       "type": "boolean",
       "required": false,
       "sensitive": false,
-      "default": false,
-      "description": "When true, verify Claude live-event webhook signatures using webhookSigningSecret. If that field is unset, the secret returned when the webhook is first created is used in-memory only until restart. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+      "default": true,
+      "description": "When true, verify Claude live-event webhook signatures using webhookSigningSecret. On SaaS, the signing secret returned when the webhook is first created is stored as an organization secret and webhookSigningSecret is patched on the integration spec automatically. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
     },
     {
       "name": "webhookSigningSecret",
       "type": "string",
       "required": false,
       "sensitive": true,
-      "description": "Claude webhook signing secret used when verifyWebhookSecrets is enabled. Set manually from the Claude Console (Manage > Webhooks) to persist verification across restarts."
+      "description": "Claude webhook signing secret used when verifyWebhookSecrets is enabled. On SaaS, Port stores an organization secret and sets this field automatically when the webhook is first registered. For self-hosted, set it manually from the Claude Console (Manage > Webhooks)."
     },
     {
       "name": "githubAuthorizationToken",

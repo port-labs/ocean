@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -156,3 +156,57 @@ async def test_upsert_webhook_logs_api_errors(
     await webhook_client.upsert_webhook("https://ocean.example")
 
     webhook_client._http.post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upsert_webhook_persists_signing_secret_on_saas() -> None:
+    client = ClaudeWebhookClient(
+        http_client=MagicMock(),
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+        webhook_signing_secret=None,
+        verify_webhook_secrets=True,
+    )
+    client._http.post = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={"id": "wh_new", "signing_secret": "whsec_once"},
+            request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
+        )
+    )
+    client._persist_signing_secret = AsyncMock()  # type: ignore[method-assign]
+
+    with patch("clients.webhook_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=True)
+        await client.upsert_webhook("https://ocean.example")
+
+    client._persist_signing_secret.assert_awaited_once_with("whsec_once")
+    assert client.has_webhook_secret is True
+
+
+@pytest.mark.asyncio
+async def test_upsert_webhook_skips_persist_when_not_saas() -> None:
+    client = ClaudeWebhookClient(
+        http_client=MagicMock(),
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+        webhook_signing_secret=None,
+        verify_webhook_secrets=True,
+    )
+    client._http.post = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={"id": "wh_new", "signing_secret": "whsec_once"},
+            request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
+        )
+    )
+    client._persist_signing_secret = AsyncMock()  # type: ignore[method-assign]
+
+    with patch("clients.webhook_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=False)
+        await client.upsert_webhook("https://ocean.example")
+
+    client._persist_signing_secret.assert_not_awaited()
+    assert client.has_webhook_secret is True

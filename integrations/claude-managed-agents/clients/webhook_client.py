@@ -7,6 +7,7 @@ import httpx
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import UnwrapWebhookEvent
 from loguru import logger
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 
 from clients.exceptions import WebhookSigningSecretNotConfiguredError
@@ -25,6 +26,7 @@ _WEBHOOK_EVENTS = [
     "vault.archived",
     "vault.deleted",
 ]
+_WEBHOOK_SIGNING_SECRET_SPEC_KEY = "webhookSigningSecret"
 
 
 class ClaudeWebhookClient:
@@ -74,6 +76,44 @@ class ClaudeWebhookClient:
         if self._anthropic_version:
             headers["anthropic-version"] = self._anthropic_version
         return headers
+
+    def _signing_secret_name(self) -> str:
+        identifier = ocean.config.integration.identifier.replace("/", "-")
+        return f"{identifier}-claude-webhook-signing-secret"
+
+    async def _persist_signing_secret(self, signing_secret: str) -> None:
+        """Store the Claude signing secret as an org secret and point SaaS spec at it."""
+        secret_name = self._signing_secret_name()
+        description = (
+            "Claude Managed Agents webhook signing secret for Port Ocean live events"
+        )
+        try:
+            await ocean.port_client.create_organization_secret(
+                secret_name=secret_name,
+                secret_value=signing_secret,
+                description=description,
+            )
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code not in (409, 422):
+                raise
+            await ocean.port_client.update_organization_secret(
+                secret_name=secret_name,
+                secret_value=signing_secret,
+                description=description,
+            )
+
+        await ocean.port_client.patch_integration(
+            spec={
+                "integrationSpec": {
+                    _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
+                }
+            }
+        )
+        self._webhook_signing_secret = signing_secret
+        logger.info(
+            f"Persisted Claude webhook signing secret as org secret '{secret_name}' "
+            "and patched integrationSpec"
+        )
 
     async def get_webhook_by_url(self, webhook_url: str) -> dict[str, Any] | None:
         response = await self._http.get(
@@ -157,9 +197,18 @@ class ClaudeWebhookClient:
             return
 
         self._webhook_signing_secret = signing_secret
-        logger.warning(
-            "verifyWebhookSecrets is enabled but webhookSigningSecret is unset; "
-            "using the create-response signing secret in-memory only. See "
-            "https://docs.port.io/agent-management/external-agents/claude-managed-agents/#webhook-configuration "
-            "for how to persist webhookSigningSecret across restarts."
-        )
+        if not ocean.app.is_saas():
+            logger.warning(
+                "verifyWebhookSecrets is enabled but this is not a SaaS install; "
+                "using the create-response signing secret in-memory only. See "
+                "https://docs.port.io/agent-management/external-agents/claude-managed-agents/#webhook-configuration "
+                "for how to persist webhookSigningSecret across restarts."
+            )
+            return
+
+        try:
+            await self._persist_signing_secret(signing_secret)
+        except Exception as error:
+            logger.error(
+                f"Failed to persist Claude webhook signing secret to Port: {error}"
+            )
