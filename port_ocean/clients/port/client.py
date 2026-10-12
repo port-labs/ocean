@@ -95,24 +95,6 @@ class PortClient(
 
         return response.json()["organization"]["id"]
 
-    async def upsert_integration_spec_secret(
-        self,
-        *,
-        secret_name: str,
-        secret_value: str,
-        integration_spec_key: str,
-        description: str | None = None,
-    ) -> None:
-        """Upsert an org secret and point integrationSpec[key] at its name."""
-        await self.upsert_organization_secret(
-            secret_name=secret_name,
-            secret_value=secret_value,
-            description=description,
-        )
-        await self.patch_integration(
-            spec={"integrationSpec": {integration_spec_key: secret_name}}
-        )
-
     async def patch_probe_health_result(
         self, org_id: str, probe_id: str, body: dict[str, Any]
     ) -> None:
