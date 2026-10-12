@@ -138,6 +138,13 @@ def _sdk_session(
     return session
 
 
+def _sdk_agent(*, agent_id: str = "agent_1") -> MagicMock:
+    agent = MagicMock()
+    agent.id = agent_id
+    agent.to_dict = MagicMock(return_value={"id": agent_id})
+    return agent
+
+
 def test_trigger_agent_session_output_from_session() -> None:
     session = _sdk_session(
         session_id="s1",
@@ -328,7 +335,7 @@ async def test_is_close_to_rate_limit_false_once_reset_time_has_passed() -> None
 @pytest.mark.asyncio
 async def test_create_agent_executor_creates_and_completes() -> None:
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -360,7 +367,7 @@ async def test_create_agent_executor_creates_and_completes() -> None:
 @pytest.mark.asyncio
 async def test_create_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock(spec=WorkflowNodeRun)
@@ -389,7 +396,7 @@ async def test_create_agent_executor_skips_output_for_classic_action_runs() -> N
     """Classic self-service action runs have no structured output field, so the
     executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock(spec=ActionRun)
@@ -416,7 +423,7 @@ async def test_create_agent_executor_posts_warn_log_when_catalog_upsert_fails() 
     """Catalog reflection is best-effort: a failure must not fail the run, but
     should surface as a warning run log in addition to the loguru warning."""
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -452,7 +459,7 @@ async def test_create_agent_executor_posts_warn_log_when_catalog_upsert_fails() 
 async def test_create_agent_executor_passes_config_through() -> None:
     """Config (including MCP servers declared by the workflow) is passed through unchanged."""
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     mcp_config = {
@@ -497,7 +504,7 @@ async def test_create_agent_executor_passes_config_through() -> None:
 @pytest.mark.asyncio
 async def test_create_agent_executor_passes_skills_config_through() -> None:
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     skills = [{"type": "custom", "skill_id": "skill_01"}]

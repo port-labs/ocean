@@ -195,7 +195,9 @@ async def test_agent_upsert_event_fetches_resource() -> None:
     payload = {"data": {"type": "agent.created", "id": "a1"}}
     processor = AgentWebhookProcessor(_event(payload["data"]))
     client = MagicMock()
-    client.get_agent = AsyncMock(return_value={"id": "a1", "name": "bot"})
+    agent = MagicMock()
+    agent.to_dict.return_value = {"id": "a1", "name": "bot"}
+    client.get_agent = AsyncMock(return_value=agent)
     with patch(
         "webhook_processors.agent_webhook_processor.create_anthropic_client",
         return_value=client,
@@ -203,6 +205,7 @@ async def test_agent_upsert_event_fetches_resource() -> None:
         results = await processor.handle_event(payload, None)
     assert results.updated_raw_results == [{"id": "a1", "name": "bot"}]
     client.get_agent.assert_awaited_once_with("a1")
+    agent.to_dict.assert_called_once_with(mode="json")
 
 
 # --- environment ---

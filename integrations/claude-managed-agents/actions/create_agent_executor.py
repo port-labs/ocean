@@ -53,13 +53,13 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
                 status_label=CREATE_FAILED_STATUS_LABEL,
             ) from error
 
-        agent_id = agent.get("id")
+        agent_id = agent.id
         logger.info(f"Created Claude agent {agent_id} for run {run.id}")
 
         # Reflect the new agent in the catalog immediately via the `agent` kind
         # mapping (webhooks also keep agents in sync). Best-effort: never fails
         # the run.
-        await self.register_entity(ObjectKind.AGENT, agent, run)
+        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json"), run)
 
         if isinstance(run, WorkflowNodeRun):
             # Expose the created agent's id as a workflow output so later nodes

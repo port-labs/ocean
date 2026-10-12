@@ -12,7 +12,7 @@ from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
-AGENT_EVENTS = ("agent.",)
+AGENT_EVENTS_PREFIX = "agent."
 AGENT_DELETE_EVENTS = {"agent.deleted"}
 
 
@@ -20,7 +20,7 @@ class AgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Keeps `agent` entities in sync from agent webhooks."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self.get_event_type(event.payload).startswith(AGENT_EVENTS)
+        return self.get_event_type(event.payload).startswith(AGENT_EVENTS_PREFIX)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.AGENT]
@@ -41,5 +41,6 @@ class AgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         agent = await client.get_agent(agent_id)
         logger.info(f"Upserting agent {agent_id} from catalog ({event_type})")
         return WebhookEventRawResults(
-            updated_raw_results=[agent], deleted_raw_results=[]
+            updated_raw_results=[agent.to_dict(mode="json")],
+            deleted_raw_results=[],
         )

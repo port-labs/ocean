@@ -9,10 +9,12 @@ from typing import Any, Literal, Protocol
 import httpx
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import BetaEnvironment
+from anthropic.types.beta.beta_managed_agents_agent import BetaManagedAgentsAgent
 from anthropic.types.beta.beta_managed_agents_memory_store import (
     BetaManagedAgentsMemoryStore,
 )
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
+from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVault
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
 )
@@ -296,9 +298,8 @@ class AnthropicClient:
         if batch:
             yield batch
 
-    async def get_vault(self, vault_id: str) -> dict[str, Any]:
-        vault = await self._client.beta.vaults.retrieve(vault_id)
-        return vault.to_dict(mode="json")
+    async def get_vault(self, vault_id: str) -> BetaManagedAgentsVault:
+        return await self._client.beta.vaults.retrieve(vault_id)
 
     async def get_memory_store(
         self, memory_store_id: str
@@ -312,7 +313,7 @@ class AnthropicClient:
         description: str | None = None,
         scope: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> BetaEnvironment:
         payload: dict[str, Any] = {"name": name}
         if description:
             payload["description"] = description
@@ -322,25 +323,22 @@ class AnthropicClient:
             payload["config"] = extra
 
         logger.info(f"Creating Claude environment '{name}'")
-        environment = await self._client.beta.environments.create(**payload)
-        return environment.to_dict(mode="json")
+        return await self._client.beta.environments.create(**payload)
 
-    async def get_agent(self, agent_id: str) -> dict[str, Any]:
+    async def get_agent(self, agent_id: str) -> BetaManagedAgentsAgent:
         logger.info(f"Retrieving Claude agent '{agent_id}'")
-        agent = await self._client.beta.agents.retrieve(agent_id)
-        return agent.to_dict(mode="json")
+        return await self._client.beta.agents.retrieve(agent_id)
 
     async def update_agent(
         self,
         agent_id: str,
         version: int,
         payload: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> BetaManagedAgentsAgent:
         logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
-        agent = await self._client.beta.agents.update(
+        return await self._client.beta.agents.update(
             agent_id, version=version, **payload
         )
-        return agent.to_dict(mode="json")
 
     async def delete_environment(self, environment_id: str) -> None:
         logger.info(f"Deleting Claude environment '{environment_id}'")
@@ -358,10 +356,9 @@ class AnthropicClient:
         logger.info(f"Updating Claude environment '{environment_id}'")
         return await self._client.beta.environments.update(environment_id, **payload)
 
-    async def archive_agent(self, agent_id: str) -> dict[str, Any]:
+    async def archive_agent(self, agent_id: str) -> BetaManagedAgentsAgent:
         logger.info(f"Archiving Claude agent '{agent_id}'")
-        agent = await self._client.beta.agents.archive(agent_id)
-        return agent.to_dict(mode="json")
+        return await self._client.beta.agents.archive(agent_id)
 
     async def create_agent(
         self,
@@ -369,7 +366,7 @@ class AnthropicClient:
         model: str,
         system: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> BetaManagedAgentsAgent:
         payload: dict[str, Any] = {
             k: v for k, v in (extra or {}).items() if v is not None
         }
@@ -379,8 +376,7 @@ class AnthropicClient:
             payload["system"] = system
 
         logger.info(f"Creating Claude agent '{name}' with model '{model}'")
-        agent = await self._client.beta.agents.create(**payload)
-        return agent.to_dict(mode="json")
+        return await self._client.beta.agents.create(**payload)
 
     async def create_session(
         self,

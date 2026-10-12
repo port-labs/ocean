@@ -57,13 +57,15 @@ class CreateEnvironmentExecutor(AbstractAnthropicExecutor):
                 status_label=CREATE_FAILED_STATUS_LABEL,
             ) from error
 
-        environment_id = environment.get("id")
+        environment_id = environment.id
         logger.info(f"Created Claude environment {environment_id} for run {run.id}")
 
         # Reflect the new environment in the catalog immediately via the
         # `environment` kind mapping (webhooks also keep environments in sync).
         # Best-effort: never fails the run.
-        await self.register_entity(ObjectKind.ENVIRONMENT, environment, run)
+        await self.register_entity(
+            ObjectKind.ENVIRONMENT, environment.to_dict(mode="json"), run
+        )
 
         if isinstance(run, WorkflowNodeRun):
             run.output["environmentId"] = environment_id
