@@ -18,8 +18,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
     DEFAULT_BATCH_SIZE = 10
 
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
-        self.provider = provider
-        self.config = config
+        super().__init__(provider, config)
 
         self._valid_arns: set[str] = set()
         self._valid_sessions: dict[str, AioSession] = {}
@@ -44,11 +43,13 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             return session
         except Exception as e:
             logger.warning(f"Health check failed for role ARN {arn}: {e}")
+            self._inaccessible_accounts[extract_account_from_arn(arn)] = str(e)
             return None
 
     async def healthcheck(self) -> bool:
         self._valid_arns = set()
         self._valid_sessions = {}
+        self._inaccessible_accounts = {}
 
         arns = normalize_arn_list(self.config.get("account_role_arns", []))
         if not arns:
@@ -83,12 +84,16 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             for arn, task in zip(batch, tasks):
                 try:
                     arn, session = await task
+                    account_id = extract_account_from_arn(arn)
                     if session:
                         self._valid_arns.add(arn)
                         self._valid_sessions[arn] = session
                         successful += 1
-                        account_id = extract_account_from_arn(arn)
                         logger.debug(f"Role ARN validated for account {account_id}")
+                    else:
+                        self._inaccessible_accounts.setdefault(
+                            account_id, f"Failed to assume role {arn}"
+                        )
                 except Exception as e:
                     logger.warning(f"Health check failed for role ARN {arn}: {e}")
 
