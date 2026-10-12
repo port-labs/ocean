@@ -20,14 +20,12 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 if TYPE_CHECKING:
     from bitbucket_cloud.client import BitbucketClient
 
-JSON_FILE_SUFFIX = ".json"
-YAML_FILE_SUFFIX = (".yaml", ".yml")
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
 # A dead credential and an exhausted quota apply to every repository still to be walked, not to this one.
 WALK_STOPPING_STATUSES = (401, 429)
-# Omitted, Bitbucket lists one level and reports no error. Measured honoured as asked, with no truncation.
+# Bitbucket lists one level when this is omitted, and publishes no ceiling: 10000, 1e6 and 1e8 are all accepted unclamped (measured 2026-10-12), so this only has to exceed the deepest tree.
 MAX_LISTING_DEPTH = 10000
-# The same limit github applies to file content (github/core/exporters/file_exporter/utils.py).
+# Our limit, not Bitbucket's - it publishes none for /src content. Matches github/core/exporters/file_exporter/utils.py.
 MAX_FILE_SIZE = 1024 * 1024
 # Without this the entry's commit carries no repository, breaking .metadata.commit.repository.* mappings.
 REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
@@ -187,12 +185,14 @@ async def process_file_patterns(
 
     client = init_client()
     configured_repositories = {name.lower() for name in file_pattern.repos}
+    if not configured_repositories:
+        logger.warning("No repositories configured, listing the entire workspace")
     failures: List[Exception] = []
 
     # An empty dict, not no argument: get_repositories is cached on the repr of its params.
     async for repositories in client.get_repositories(params={}):
         for repo in repositories:
-            # size is bytes on disk, so a repository with no commits is skipped before its listing 404s.
+            # Measured: an empty repository reports size 0, and its listing answers 404 "Commit not found", which is not tolerated.
             if not repo["size"]:
                 logger.debug(f"Repository {repo['slug']} has no commits, skipping")
                 continue
@@ -237,9 +237,9 @@ async def retrieve_file_content(
     repo_slug = repo["slug"]
     branch = repo["mainbranch"]["name"]
 
-    logger.info(f"Retrieving contents for file: {file_path}")
+    logger.info(f"Retrieving contents for {file_path} in {repo_slug}")
     client = init_client()
-    # Recorded rather than raised: aiostream cancels this file's siblings on an exception.
+    # Recorded, not raised, because an exception here cancels this page's other fetches - which is what a 401 or 429 wants, and nothing else does.
     try:
         file_content = await client.get_repository_files(repo_slug, branch, file_path)
     except HTTPError as e:
