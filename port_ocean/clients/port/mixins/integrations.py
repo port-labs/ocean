@@ -244,6 +244,7 @@ class IntegrationClientMixin:
         are_port_resources_initialized: Optional[bool] = None,
         processing_mode: ProcessingMode | None = None,
         oauth_broker_url: str | None = None,
+        spec: dict[str, Any] | None = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -264,6 +265,8 @@ class IntegrationClientMixin:
             json["processingMode"] = processing_mode.value
         if oauth_broker_url is not None:
             json["oauthBrokerUrl"] = oauth_broker_url
+        if spec is not None:
+            json["spec"] = spec
 
         json["version"] = self.integration_version
 
