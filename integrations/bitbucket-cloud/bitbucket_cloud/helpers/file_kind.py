@@ -26,25 +26,14 @@ if TYPE_CHECKING:
     from bitbucket_cloud.client import BitbucketClient
 
 GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
-# A dead credential and an exhausted quota are about every repository still to be
-# walked, not about this one.
 WALK_STOPPING_STATUSES = (401, 429)
-# Bitbucket lists one level when this is omitted. No ceiling is published and none was
-# found - 10000, 1e6 and 1e8 are all accepted unclamped - so this only has to exceed
-# the deepest tree.
+# Omitted, Bitbucket lists one level only.
 MAX_LISTING_DEPTH = 10000
-# Ours, not Bitbucket's: it publishes no limit for /src content. Matches
-# github/core/exporters/file_exporter/utils.py.
 MAX_FILE_SIZE = 1024 * 1024
-# Bitbucket publishes no concurrent-request guidance and sends no x-ratelimit header on
-# a 200, so these are the only bound on fan-out. Listings are also metered against the
-# shared 980/hr window; content fetches are metered only under MultiTokenAuth, which is
-# the one auth mode with a file_token_manager, so for the other two these are the whole
-# of it. Serial was measured 10x slower over 30 repositories.
+# The only bound on content fetches: only MultiTokenAuth meters them.
 MAX_CONCURRENT_REPOSITORIES = 10
 MAX_CONCURRENT_FILE_FETCHES = 20
-# Without this the entry's commit carries no repository at all, and
-# .metadata.commit.repository.* stops resolving for mappings written against search.
+# The only source of .metadata.commit.repository.* for existing mappings.
 REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
 
 
@@ -122,7 +111,6 @@ def select_matching_files(
                 f"{file_path} in {repo_slug} matches no configured filename, skipping"
             )
             continue
-        # Excluded by policy, not unreadable: letting reconciliation delete its entity is correct.
         if entry["size"] > MAX_FILE_SIZE:
             logger.warning(
                 f"Skipping {file_path} in {repo_slug}, {entry['size']} bytes "
@@ -196,8 +184,6 @@ async def _walk_repository(
             ]
             async for file_result in stream_async_iterators_tasks(*tasks):
                 yield [file_result]
-    # get_directory_contents only classifies HTTPStatusError, so a transport failure
-    # reaches nothing that knows which repository it was.
     except HTTPError as e:
         _record_or_stop(e, failures, repo_slug)
 
@@ -227,14 +213,10 @@ async def process_file_patterns(
     listing_semaphore = Semaphore(MAX_CONCURRENT_REPOSITORIES)
     fetch_semaphore = Semaphore(MAX_CONCURRENT_FILE_FETCHES)
 
-    # Shares the repository kind's cached listing when that kind configures neither
-    # userRole nor repoQuery, since build_repo_params then also passes {} - the cache key
-    # is the repr of the params, so any other value is a second full workspace listing.
+    # {} shares the repository kind's cached listing; no argument is a second listing.
     async for repositories in client.get_repositories(params={}):
         selected_repositories = []
         for repo in repositories:
-            # A repository with no commits answers 404 "Commit not found" on its
-            # listing, which is not a tolerated body.
             if not repo["size"]:
                 logger.debug(f"Repository {repo['slug']} has no commits, skipping")
                 continue
@@ -303,9 +285,7 @@ async def retrieve_file_content(
     client = init_client()
     context = f"{file_path} in {repo_slug}"
     result: FileObject
-    # Everything that reaches Bitbucket is inside this: resolving a nested file://
-    # reference fetches again, and an exception escaping here would cancel the page's
-    # other fetches and end this repository's listing, which only a 401 or 429 wants.
+    # Resolving a nested file:// reference fetches again, so it belongs inside this.
     try:
         file_content = await client.get_repository_files(repo_slug, branch, file_path)
         if file_content is None:

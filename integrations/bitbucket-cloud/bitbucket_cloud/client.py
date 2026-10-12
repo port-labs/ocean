@@ -50,9 +50,6 @@ class BitbucketClient:
         message = BitbucketClient._error_message(error)
         if message is not None and message.startswith(ABSENT_PATH_MESSAGE):
             return True
-        # "Commit not found" and the inaccessible-repository message land here and are
-        # meant to; the absent-path phrase is observed rather than published, so a reword
-        # surfaces here too, before it surfaces as every file failing.
         logger.warning(f"404 from {error.request.url} is not an absent path: {message}")
         return False
 
