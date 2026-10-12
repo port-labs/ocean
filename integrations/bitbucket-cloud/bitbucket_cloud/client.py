@@ -15,10 +15,7 @@ PAGE_SIZE = 100
 RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
     limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
 )
-# The Source API gives no machine-readable code for an absent path - its 404 body carries
-# only this message, where other endpoints supply error.data.key - so the message is the
-# only discriminator available. It is observed, not published in Atlassian's error
-# reference, so an unrecognised message counts as unreadable rather than absent.
+# The Source API's 404 body carries only this message, and it is observed, not published.
 ABSENT_PATH_MESSAGE = "No such file or directory"
 
 
@@ -286,8 +283,7 @@ class BitbucketClient:
         on an unresolvable ref or a repository that cannot be read - which also answer
         404 - and tolerates only a path this repository does not have.
         """
-        # Least to most specific: the module default, then what the caller passed as
-        # params, then what it named in the signature.
+        # Least to most specific: module default, the caller's params, then what it named.
         params = {"pagelen": PAGE_SIZE, **(params or {}), "max_depth": max_depth}
         first_page_seen = False
         try:
@@ -302,9 +298,7 @@ class BitbucketClient:
                 )
                 yield contents
         except HTTPStatusError as e:
-            # Only a path that was actually asked for may be absent: listing the
-            # repository root cannot legitimately 404, and after the first page the path
-            # provably existed, so tolerating one then would truncate the inventory.
+            # A root cannot legitimately 404, and past the first page the path provably existed.
             if (
                 raise_on_missing
                 and path
