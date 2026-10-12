@@ -183,6 +183,8 @@ class TestEntitiesHandler:
         assert len(entities) == 1
         assert entities[0]["guid"] == "entity1"
         assert entities[0]["tags"] == {"test": ["value"]}
+        mock_render_query.assert_awaited_once()
+        assert mock_render_query.await_args.kwargs["extra_entity_properties"] == ""
 
     async def test_list_entities_by_resource_kind_none_response(
         self,
@@ -279,19 +281,36 @@ class TestEntitiesHandler:
         with pytest.raises(NewRelicNotFoundError):
             await entities_handler.get_entity("non-existent-guid")
 
-    async def test_entity_search_query_omits_missing_extra_properties(self) -> None:
-        """A missing extra-properties fragment must not be rendered as the field None."""
-        from newrelic_integration.core.query_templates.entities import (
-            LIST_ENTITIES_WITH_FILTER_QUERY,
-        )
-        from newrelic_integration.core.utils import render_query
+    async def test_list_entities_passes_empty_extra_properties_when_missing(
+        self,
+        entities_handler: EntitiesHandler,
+    ) -> None:
+        """Missing extra properties are passed as an empty string, not None."""
+        captured: Dict[str, Any] = {}
 
-        rendered = await render_query(
-            LIST_ENTITIES_WITH_FILTER_QUERY,
-            entity_query_filter="type in ('SERVICE','APPLICATION')",
-            next_cursor_request="",
-            extra_entity_properties=None,
-        )
+        async def mock_async_generator(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Dict[str, Any], None]:
+            captured.update(kwargs)
+            if False:
+                yield {}
 
-        assert "None" not in rendered
-        assert "entitySearch" in rendered
+        with patch(
+            "newrelic_integration.core.entities.get_port_resource_configuration_by_port_kind"
+        ) as mock_config:
+            mock_config.return_value = MagicMock(
+                selector=MagicMock(
+                    entity_query_filter="type in ('SERVICE','APPLICATION')",
+                    entity_extra_properties_query=None,
+                )
+            )
+            with patch(
+                "newrelic_integration.core.entities.send_paginated_graph_api_request",
+                new=mock_async_generator,
+            ):
+                async for _ in entities_handler.list_entities_by_resource_kind(
+                    "newRelicServiceDependency"
+                ):
+                    pass
+
+        assert captured["extra_entity_properties"] == ""
