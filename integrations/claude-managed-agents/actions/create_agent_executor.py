@@ -56,9 +56,9 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         agent_id = agent.get("id")
         logger.info(f"Created Claude agent {agent_id} for run {run.id}")
 
-        # Reflect the new agent in the catalog via the existing `agent` kind
-        # mapping. Agents have no webhook events, so without this the entity would
-        # not appear until the next resync. Best-effort: never fails the run.
+        # Reflect the new agent in the catalog immediately via the `agent` kind
+        # mapping (webhooks also keep agents in sync). Best-effort: never fails
+        # the run.
         await self.register_entity(ObjectKind.AGENT, agent, run)
 
         if isinstance(run, WorkflowNodeRun):

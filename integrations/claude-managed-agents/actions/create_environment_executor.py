@@ -60,9 +60,8 @@ class CreateEnvironmentExecutor(AbstractAnthropicExecutor):
         environment_id = environment.get("id")
         logger.info(f"Created Claude environment {environment_id} for run {run.id}")
 
-        # Reflect the new environment in the catalog via the existing
-        # `environment` kind mapping. Environments have no webhook events, so
-        # without this the entity would not appear until the next resync.
+        # Reflect the new environment in the catalog immediately via the
+        # `environment` kind mapping (webhooks also keep environments in sync).
         # Best-effort: never fails the run.
         await self.register_entity(ObjectKind.ENVIRONMENT, environment, run)
 

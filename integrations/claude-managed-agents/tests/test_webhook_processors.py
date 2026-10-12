@@ -58,6 +58,9 @@ from webhook_processors.trigger_agent_webhook_processor import (
     SESSION_FAILED_STATUS_LABEL,
     TriggerAgentWebhookProcessor,
 )
+from webhook_processors.agent_webhook_processor import AgentWebhookProcessor
+from webhook_processors.environment_webhook_processor import EnvironmentWebhookProcessor
+from webhook_processors.memory_store_webhook_processor import MemoryStoreWebhookProcessor
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
@@ -164,6 +167,103 @@ async def test_vault_delete_event_returns_delete() -> None:
     processor = VaultWebhookProcessor(_event(payload["data"]))
     results = await processor.handle_event(payload, None)
     assert results.deleted_raw_results == [{"id": "v1"}]
+
+
+# --- agent ---
+
+
+@pytest.mark.asyncio
+async def test_agent_should_process_and_kinds() -> None:
+    processor = AgentWebhookProcessor(_event({"type": "agent.updated", "id": "a1"}))
+    assert await processor.should_process_event(processor.event) is True
+    assert await processor.get_matching_kinds(processor.event) == ["agent"]
+
+
+@pytest.mark.asyncio
+async def test_agent_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "agent.deleted", "id": "a1"}}
+    processor = AgentWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "a1"}]
+    assert results.updated_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_agent_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "agent.created", "id": "a1"}}
+    processor = AgentWebhookProcessor(_event(payload["data"]))
+    client = MagicMock()
+    client.get_agent = AsyncMock(return_value={"id": "a1", "name": "bot"})
+    with patch(
+        "webhook_processors.agent_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "a1", "name": "bot"}]
+    client.get_agent.assert_awaited_once_with("a1")
+
+
+# --- environment ---
+
+
+@pytest.mark.asyncio
+async def test_environment_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "environment.deleted", "id": "e1"}}
+    processor = EnvironmentWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "e1"}]
+
+
+@pytest.mark.asyncio
+async def test_environment_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "environment.updated", "id": "e1"}}
+    processor = EnvironmentWebhookProcessor(_event(payload["data"]))
+    environment = MagicMock()
+    environment.to_dict.return_value = {"id": "e1", "name": "env"}
+    client = MagicMock()
+    client.get_environment = AsyncMock(return_value=environment)
+    with patch(
+        "webhook_processors.environment_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "e1", "name": "env"}]
+    client.get_environment.assert_awaited_once_with("e1")
+
+
+# --- memory store ---
+
+
+@pytest.mark.asyncio
+async def test_memory_store_should_process_and_kinds() -> None:
+    processor = MemoryStoreWebhookProcessor(
+        _event({"type": "memory_store.created", "id": "ms1"})
+    )
+    assert await processor.should_process_event(processor.event) is True
+    assert await processor.get_matching_kinds(processor.event) == ["memory-store"]
+
+
+@pytest.mark.asyncio
+async def test_memory_store_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "memory_store.deleted", "id": "ms1"}}
+    processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "ms1"}]
+
+
+@pytest.mark.asyncio
+async def test_memory_store_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "memory_store.archived", "id": "ms1"}}
+    processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    client = MagicMock()
+    client.get_memory_store = AsyncMock(return_value={"id": "ms1", "name": "mem"})
+    with patch(
+        "webhook_processors.memory_store_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "ms1", "name": "mem"}]
+    client.get_memory_store.assert_awaited_once_with("ms1")
 
 
 # --- trigger agent (action) ---
