@@ -126,7 +126,7 @@
       "request": "launch",
       "type": "debugpy"
     },
-        {
+    {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/gcp",
       "envFile": "${workspaceFolder}/integrations/gcp/.env",
@@ -245,9 +245,7 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": [
-        "new"
-      ]
+      "args": ["new"]
     },
     {
       "console": "integratedTerminal",
