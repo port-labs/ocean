@@ -108,7 +108,7 @@ async def on_start() -> None:
         )
         return
 
-    await create_webhook_client().create_webhook_if_not_exists(base_url)
+    await create_webhook_client().upsert_webhook(base_url)
 
 
 register_live_events_webhooks()

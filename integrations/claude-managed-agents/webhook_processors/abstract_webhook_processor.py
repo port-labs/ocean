@@ -19,6 +19,9 @@ class AbstractAnthropicWebhookProcessor(AbstractWebhookProcessor):
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         client = create_webhook_client()
+        if not client.verify_webhook_secrets:
+            return True
+
         if not client.has_webhook_secret:
             logger.warning(
                 "Skipping webhook signature verification because no signing secret is configured"

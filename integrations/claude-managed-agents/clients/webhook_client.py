@@ -35,6 +35,7 @@ class ClaudeWebhookClient:
         console_host: str,
         api_key: str,
         webhook_signing_secret: str | None = None,
+        verify_webhook_secrets: bool = False,
         anthropic_version: str | None = None,
     ) -> None:
         self._http = http_client
@@ -42,7 +43,12 @@ class ClaudeWebhookClient:
         self._console_host = console_host.rstrip("/")
         self._api_key = api_key
         self._webhook_signing_secret = webhook_signing_secret
+        self._verify_webhook_secrets = verify_webhook_secrets
         self._anthropic_version = anthropic_version
+
+    @property
+    def verify_webhook_secrets(self) -> bool:
+        return self._verify_webhook_secrets
 
     @property
     def has_webhook_secret(self) -> bool:
@@ -93,7 +99,7 @@ class ClaudeWebhookClient:
         )
         response.raise_for_status()
 
-    async def create_webhook_if_not_exists(self, base_url: str) -> None:
+    async def upsert_webhook(self, base_url: str) -> None:
         """Register the webhook URL; on 409, ensure required events are covered."""
         webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
         headers = self._headers()
@@ -136,8 +142,24 @@ class ClaudeWebhookClient:
                 )
                 return
 
+            created = response.json()
             logger.info(
-                f"Created Claude webhook {response.json().get('id')} for {webhook_url}"
+                f"Created Claude webhook {created.get('id')} for {webhook_url}"
             )
+            await self._maybe_store_signing_secret(created.get("signing_secret"))
         except httpx.HTTPError as error:
             logger.error(f"Failed to ensure Claude webhook for {webhook_url}: {error}")
+
+    async def _maybe_store_signing_secret(self, signing_secret: str | None) -> None:
+        if not signing_secret or not self._verify_webhook_secrets:
+            return
+        if self._webhook_signing_secret:
+            return
+
+        self._webhook_signing_secret = signing_secret
+        logger.warning(
+            "verifyWebhookSecrets is enabled but webhookSigningSecret is unset; "
+            "using the create-response signing secret in-memory only. See "
+            "https://docs.port.io/agent-management/external-agents/claude-managed-agents/#webhook-configuration "
+            "for how to persist webhookSigningSecret across restarts."
+        )

@@ -70,11 +70,19 @@
       "description": "The host of the Claude Console, used to build session links in action run output. If not specified, the default will be https://platform.claude.com."
     },
     {
+      "name": "verifyWebhookSecrets",
+      "type": "boolean",
+      "required": false,
+      "sensitive": false,
+      "default": false,
+      "description": "When true, verify Claude live-event webhook signatures using webhookSigningSecret. If that field is unset, the secret returned when the webhook is first created is used in-memory only until restart. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+    },
+    {
       "name": "webhookSigningSecret",
       "type": "string",
       "required": false,
       "sensitive": true,
-      "description": "Optional signing secret from the Claude Console webhook configuration. When set, incoming live-event webhooks are signature-verified; when omitted, webhooks are accepted without verification. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+      "description": "Claude webhook signing secret used when verifyWebhookSecrets is enabled. Set manually from the Claude Console (Manage > Webhooks) to persist verification across restarts."
     },
     {
       "name": "githubAuthorizationToken",

@@ -37,6 +37,9 @@ def create_webhook_client() -> ClaudeWebhookClient:
         console_host=integration_config["platform_console_host"],
         api_key=anthropic.api_key,
         webhook_signing_secret=integration_config.get("webhook_signing_secret"),
+        verify_webhook_secrets=bool(
+            integration_config.get("verify_webhook_secrets", False)
+        ),
         anthropic_version=anthropic.anthropic_version,
     )
     return _webhook_client

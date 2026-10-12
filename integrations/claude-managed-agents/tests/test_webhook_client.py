@@ -37,7 +37,7 @@ def test_unwrap_webhook_without_secret_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_webhook_if_not_exists_creates(
+async def test_upsert_webhook_creates(
     webhook_client: ClaudeWebhookClient,
 ) -> None:
     webhook_client._http.post = AsyncMock(
@@ -48,7 +48,7 @@ async def test_create_webhook_if_not_exists_creates(
         )
     )
 
-    await webhook_client.create_webhook_if_not_exists("https://ocean.example")
+    await webhook_client.upsert_webhook("https://ocean.example")
 
     webhook_client._http.post.assert_awaited_once()
     body = webhook_client._http.post.await_args.kwargs["json"]
@@ -59,7 +59,7 @@ async def test_create_webhook_if_not_exists_creates(
 
 
 @pytest.mark.asyncio
-async def test_create_webhook_if_not_exists_reconciles_events_on_conflict(
+async def test_upsert_webhook_reconciles_events_on_conflict(
     webhook_client: ClaudeWebhookClient,
 ) -> None:
     webhook_url = "https://ocean.example/integration/webhook"
@@ -97,7 +97,7 @@ async def test_create_webhook_if_not_exists_reconciles_events_on_conflict(
         )
     )
 
-    await webhook_client.create_webhook_if_not_exists("https://ocean.example")
+    await webhook_client.upsert_webhook("https://ocean.example")
 
     assert webhook_client._http.post.await_count == 2
     webhook_client._http.get.assert_awaited_once()
@@ -109,7 +109,7 @@ async def test_create_webhook_if_not_exists_reconciles_events_on_conflict(
 
 
 @pytest.mark.asyncio
-async def test_create_webhook_if_not_exists_skips_update_when_events_cover_required(
+async def test_upsert_webhook_skips_update_when_events_cover_required(
     webhook_client: ClaudeWebhookClient,
 ) -> None:
     webhook_url = "https://ocean.example/integration/webhook"
@@ -135,14 +135,14 @@ async def test_create_webhook_if_not_exists_skips_update_when_events_cover_requi
         )
     )
 
-    await webhook_client.create_webhook_if_not_exists("https://ocean.example")
+    await webhook_client.upsert_webhook("https://ocean.example")
 
     webhook_client._http.post.assert_awaited_once()
     webhook_client._http.get.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_create_webhook_if_not_exists_logs_api_errors(
+async def test_upsert_webhook_logs_api_errors(
     webhook_client: ClaudeWebhookClient,
 ) -> None:
     webhook_client._http.post = AsyncMock(
@@ -153,6 +153,6 @@ async def test_create_webhook_if_not_exists_logs_api_errors(
         )
     )
 
-    await webhook_client.create_webhook_if_not_exists("https://ocean.example")
+    await webhook_client.upsert_webhook("https://ocean.example")
 
     webhook_client._http.post.assert_awaited_once()
