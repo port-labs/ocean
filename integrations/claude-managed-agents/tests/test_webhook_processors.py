@@ -60,7 +60,9 @@ from webhook_processors.trigger_agent_webhook_processor import (
 )
 from webhook_processors.agent_webhook_processor import AgentWebhookProcessor
 from webhook_processors.environment_webhook_processor import EnvironmentWebhookProcessor
-from webhook_processors.memory_store_webhook_processor import MemoryStoreWebhookProcessor
+from webhook_processors.memory_store_webhook_processor import (
+    MemoryStoreWebhookProcessor,
+)
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
