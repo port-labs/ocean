@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
 from typing import Any
 
@@ -27,6 +28,19 @@ _WEBHOOK_EVENTS = [
     "vault.deleted",
 ]
 _WEBHOOK_SIGNING_SECRET_SPEC_KEY = "webhookSigningSecret"
+_SPEC_PATCH_RETRY_ATTEMPTS = 8
+_SPEC_PATCH_RETRY_INITIAL_SECONDS = 2.0
+_SPEC_PATCH_RETRY_BACKOFF = 1.5
+
+
+def _is_integration_in_progress_error(error: httpx.HTTPStatusError) -> bool:
+    if error.response.status_code != 400:
+        return False
+    try:
+        body = error.response.json()
+    except ValueError:
+        return False
+    return body.get("error") == "integration_is_in_progress"
 
 
 class ClaudeWebhookClient:
@@ -81,6 +95,35 @@ class ClaudeWebhookClient:
         identifier = ocean.config.integration.identifier.replace("/", "-")
         return f"{identifier}-claude-webhook-signing-secret"
 
+    async def _patch_signing_secret_spec(self, secret_name: str) -> None:
+        """Patch integrationSpec.webhookSigningSecret, retrying SaaS in-progress races."""
+        delay = _SPEC_PATCH_RETRY_INITIAL_SECONDS
+        last_error: httpx.HTTPStatusError | None = None
+        for attempt in range(1, _SPEC_PATCH_RETRY_ATTEMPTS + 1):
+            try:
+                await ocean.port_client.patch_integration(
+                    spec={
+                        "integrationSpec": {
+                            _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
+                        }
+                    }
+                )
+                return
+            except httpx.HTTPStatusError as error:
+                if not _is_integration_in_progress_error(error):
+                    raise
+                last_error = error
+                if attempt == _SPEC_PATCH_RETRY_ATTEMPTS:
+                    break
+                logger.info(
+                    "Integration still updating; retrying webhookSigningSecret "
+                    f"spec patch ({attempt}/{_SPEC_PATCH_RETRY_ATTEMPTS}) in {delay:.1f}s"
+                )
+                await asyncio.sleep(delay)
+                delay *= _SPEC_PATCH_RETRY_BACKOFF
+        assert last_error is not None
+        raise last_error
+
     async def _persist_signing_secret(self, signing_secret: str) -> None:
         """Store the Claude signing secret as an org secret and point SaaS spec at it."""
         secret_name = self._signing_secret_name()
@@ -102,18 +145,31 @@ class ClaudeWebhookClient:
                 description=description,
             )
 
-        await ocean.port_client.patch_integration(
-            spec={
-                "integrationSpec": {
-                    _WEBHOOK_SIGNING_SECRET_SPEC_KEY: secret_name,
-                }
-            }
-        )
+        await self._patch_signing_secret_spec(secret_name)
         self._webhook_signing_secret = signing_secret
         logger.info(
             f"Persisted Claude webhook signing secret as org secret '{secret_name}' "
             "and patched integrationSpec"
         )
+
+    async def _backfill_signing_secret_spec_if_needed(self) -> None:
+        """If SaaS verify is on but spec secret is unset, point it at our org secret."""
+        if self._webhook_signing_secret or not self._verify_webhook_secrets:
+            return
+        if not ocean.app.is_saas():
+            return
+
+        secret_name = self._signing_secret_name()
+        try:
+            await self._patch_signing_secret_spec(secret_name)
+            logger.info(
+                f"Backfilled integrationSpec.{_WEBHOOK_SIGNING_SECRET_SPEC_KEY} "
+                f"to org secret '{secret_name}'"
+            )
+        except Exception as error:
+            logger.error(
+                f"Failed to backfill webhookSigningSecret integrationSpec: {error}"
+            )
 
     async def get_webhook_by_url(self, webhook_url: str) -> dict[str, Any] | None:
         response = await self._http.get(
@@ -161,10 +217,12 @@ class ClaudeWebhookClient:
                     logger.warning(
                         f"Claude webhook 409 for {webhook_url} but none found in list"
                     )
+                    await self._backfill_signing_secret_spec_if_needed()
                     return
                 current = set(existing.get("enabled_events") or [])
                 if set(_WEBHOOK_EVENTS).issubset(current):
                     logger.info(f"Claude webhook already exists for {webhook_url}")
+                    await self._backfill_signing_secret_spec_if_needed()
                     return
                 await self.update_webhook_events(
                     existing["id"],
@@ -173,6 +231,7 @@ class ClaudeWebhookClient:
                 logger.info(
                     f"Updated Claude webhook {existing['id']} events for {webhook_url}"
                 )
+                await self._backfill_signing_secret_spec_if_needed()
                 return
 
             if response.is_error:

@@ -227,3 +227,84 @@ async def test_upsert_webhook_skips_persist_when_not_saas() -> None:
 
     persist.assert_not_awaited()
     assert client.has_webhook_secret is True
+
+
+def _in_progress_error() -> httpx.HTTPStatusError:
+    request = httpx.Request("PATCH", "https://api.getport.io/v1/integration/x")
+    response = httpx.Response(
+        400,
+        json={
+            "ok": False,
+            "error": "integration_is_in_progress",
+            "message": "Can't update integration while it's being updating",
+        },
+        request=request,
+    )
+    return httpx.HTTPStatusError("in progress", request=request, response=response)
+
+
+@pytest.mark.asyncio
+async def test_patch_signing_secret_spec_retries_in_progress() -> None:
+    client = ClaudeWebhookClient(
+        http_client=MagicMock(),
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+    )
+    patch_integration = AsyncMock(side_effect=[_in_progress_error(), {"id": "ok"}])
+
+    with (
+        patch("clients.webhook_client.ocean") as mock_ocean,
+        patch("clients.webhook_client.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        mock_ocean.port_client.patch_integration = patch_integration
+        await client._patch_signing_secret_spec("claude-managed-claude-webhook-signing-secret")
+
+    assert patch_integration.await_count == 2
+    sleep.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upsert_webhook_backfills_spec_on_conflict_when_secret_missing() -> None:
+    http = MagicMock()
+    client = ClaudeWebhookClient(
+        http_client=http,
+        anthropic_client=MagicMock(),
+        console_host="https://platform.claude.com",
+        api_key="test-api-key",
+        webhook_signing_secret=None,
+        verify_webhook_secrets=True,
+    )
+    webhook_url = "https://ocean.example/integration/webhook"
+    http.post = AsyncMock(
+        return_value=httpx.Response(
+            409,
+            request=httpx.Request("POST", "https://platform.claude.com/v1/webhooks"),
+        )
+    )
+    http.get = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": "wh_existing",
+                        "url": webhook_url,
+                        "enabled_events": list(_WEBHOOK_EVENTS),
+                    }
+                ]
+            },
+            request=httpx.Request("GET", "https://platform.claude.com/v1/webhooks"),
+        )
+    )
+
+    with (
+        patch.object(
+            client, "_backfill_signing_secret_spec_if_needed", new_callable=AsyncMock
+        ) as backfill,
+        patch("clients.webhook_client.ocean") as mock_ocean,
+    ):
+        mock_ocean.app.is_saas = MagicMock(return_value=True)
+        await client.upsert_webhook("https://ocean.example")
+
+    backfill.assert_awaited_once()
