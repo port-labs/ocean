@@ -231,6 +231,9 @@ class TestMultiAccountHealthCheckMixin:
                 "arn:aws:iam::123456789012:role/test-role"
             )
             assert result is None
+            assert (
+                strategy.inaccessible_accounts["123456789012"] == "Assume role failed"
+            )
 
     @pytest.mark.asyncio
     async def test_healthcheck_success(
@@ -275,6 +278,7 @@ class TestMultiAccountHealthCheckMixin:
             assert result is True
             assert len(strategy._valid_arns) == 1
             assert len(strategy._valid_sessions) == 1
+            assert "987654321098" in strategy.inaccessible_accounts
 
     @pytest.mark.asyncio
     async def test_healthcheck_all_failures(
@@ -567,6 +571,10 @@ class TestOrganizationsHealthCheckMixin:
         ):
             session = await strategy._can_assume_role_in_account("123456789012")
             assert session is None
+            assert (
+                strategy.inaccessible_accounts["123456789012"]
+                == "Role assumption failed"
+            )
 
     @pytest.mark.asyncio
     async def test_healthcheck_success(
@@ -631,6 +639,7 @@ class TestOrganizationsHealthCheckMixin:
                     "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
                 )
                 assert strategy.valid_arns == {expected_arn}
+                assert "123456789013" in strategy.inaccessible_accounts
 
     @pytest.mark.asyncio
     async def test_healthcheck_is_idempotent(
