@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.6 (2026-10-12)
+
+
+### Bug Fixes
+
+- Fixed file-kind live events not deleting entities when an item is removed from a file that uses itemsToParse. Modified files now fetch content from the before commit as deletes and the after commit as upserts.
+
+
 ## 0.15.5 (2026-10-12)
 
 
