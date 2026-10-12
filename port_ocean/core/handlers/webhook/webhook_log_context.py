@@ -2,7 +2,7 @@ import base64
 import json
 import re
 from collections.abc import Iterable, Mapping
-from typing import Any, NotRequired, Required, TypedDict, cast
+from typing import Any, Required, TypedDict, cast
 
 from port_ocean.log.sensetive import sensitive_log_filter
 
