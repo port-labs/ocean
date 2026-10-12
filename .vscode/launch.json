@@ -120,8 +120,19 @@
       "cwd": "${workspaceFolder}/integrations/gcp",
       "envFile": "${workspaceFolder}/integrations/gcp/.env",
       "justMyCode": false,
+      "name": "Probe GCP integration",
+      "program": "${workspaceFolder}/integrations/gcp/debug_probe.py",
+      "python": "${workspaceFolder}/integrations/gcp/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/gcp",
+      "envFile": "${workspaceFolder}/integrations/gcp/.env",
+      "justMyCode": false,
       "name": "Run GCP integration",
-      "program": "${workspaceFolder}/integrations/gcp/debug.py",
+      "program": "${workspaceFolder}/integrations/gcp/debug_resync.py",
       "python": "${workspaceFolder}/integrations/gcp/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
