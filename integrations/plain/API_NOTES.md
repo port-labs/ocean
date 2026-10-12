@@ -109,7 +109,7 @@ threads(filters: ThreadsFilter, sortBy: ThreadsSort, first: Int, after: String, 
 
 `MachineUsersFilter` supports `type` (`API_USER` / `AI_AGENT`) and `isCustomAgent`. It has **no** `isDeleted` filter — the integration's `excludeDeleted` selector filters client-side after fetch.
 
-`ThreadsFilter.statuses` is `[ThreadStatus!]`. Status enum: `TODO`, `SNOOZED`, `DONE`. That is the variable for an optional `threadStatusFilter`.
+`ThreadsFilter.statuses` is `[ThreadStatus!]`. Status enum: `TODO`, `SNOOZED`, `DONE`. Resync passes that from the thread selector (`excludeDoneThreads` or optional `threadStatuses`).
 
 ### Field corrections vs the implementation plan
 

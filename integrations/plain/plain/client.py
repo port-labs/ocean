@@ -46,8 +46,6 @@ from plain.queries import (
 )
 from plain.utils import edges_to_nodes, get_nested, is_ai_discussion
 
-DEFAULT_API_URL = "https://core-api.uk.plain.com/graphql/v1"
-DEFAULT_PAGE_SIZE = 100
 MAX_PAGE_SIZE = 100
 
 
@@ -57,10 +55,13 @@ class PlainClient:
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         config = ocean.integration_config
         self._api_token = str(config["api_token"])
-        api_url = config.get("api_url") or DEFAULT_API_URL
+        api_url = config.get("api_url")
+        if not api_url:
+            raise OceanAbortException(
+                "Plain apiUrl is not configured. Set it in the integration config."
+            )
         self._api_url = str(api_url).rstrip("/")
         self._page_size = _resolve_page_size(config.get("page_size"))
-        self._thread_statuses = _thread_statuses(config.get("thread_status_filter"))
         self._user_agent = f"port-ocean-plain/{ocean.config.integration.identifier}"
         self._http_client = http_client or OceanAsyncClient(
             timeout=ocean.config.client_timeout,
@@ -315,10 +316,9 @@ class PlainClient:
     def _thread_list_variables(
         self, statuses: list[str] | None
     ) -> dict[str, Any] | None:
-        chosen = self._thread_statuses if statuses is None else statuses
-        if not chosen:
+        if not statuses:
             return None
-        return {"filters": {"statuses": chosen}}
+        return {"filters": {"statuses": statuses}}
 
     async def _timeline_pages(
         self, thread_id: str
@@ -639,20 +639,10 @@ def _resolve_page_size(raw: Any) -> int:
     try:
         size = int(raw)
     except (TypeError, ValueError):
-        return DEFAULT_PAGE_SIZE
+        return MAX_PAGE_SIZE
     if size < 1:
-        return DEFAULT_PAGE_SIZE
+        return MAX_PAGE_SIZE
     return min(size, MAX_PAGE_SIZE)
-
-
-def _thread_statuses(raw: Any) -> list[str]:
-    if isinstance(raw, str):
-        values = raw.split(",")
-    elif isinstance(raw, list):
-        values = [str(value) for value in raw]
-    else:
-        return []
-    return [value.strip() for value in values if value.strip()]
 
 
 def _connection_lookup_path(connection_path: str) -> str:

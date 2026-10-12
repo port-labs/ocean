@@ -15,7 +15,12 @@ def _passthrough(function: object, kind: str | None = None) -> object:
 
 try:
     mock_ocean_app = MagicMock()
-    mock_ocean_app.config.integration.config = {"api_token": "plainApiKey_test"}
+    mock_ocean_app.config.integration.config = {
+        "api_token": "plainApiKey_test",
+        "api_url": "https://core-api.uk.plain.com/graphql/v1",
+        "page_size": "100",
+    }
+    mock_ocean_app.config.integration.identifier = "plain"
     mock_ocean_app.config.client_timeout = 30
     mock_ocean_app.config.event_listener.should_resync = True
     mock_ocean_app.integration.on_resync.side_effect = _passthrough

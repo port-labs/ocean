@@ -26,11 +26,15 @@ def _connection(
 
 
 def _client(page_size: Any = None) -> PlainClient:
-    config: dict[str, Any] = {"api_token": "plainApiKey_test"}
+    config: dict[str, Any] = {
+        "api_token": "plainApiKey_test",
+        "api_url": "https://core-api.uk.plain.com/graphql/v1",
+    }
     if page_size is not None:
         config["page_size"] = page_size
     mock_ocean = MagicMock()
     mock_ocean.integration_config = config
+    mock_ocean.config.integration.identifier = "plain"
     http_client = httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(500))
     )

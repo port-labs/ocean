@@ -9,14 +9,14 @@ from port_ocean.context.resource import resource_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.exceptions.core import OceanAbortException
 
-from plain.client import DEFAULT_API_URL
 from plain.exceptions import PlainGraphQLError, PlainHTTPError
 
 API_TOKEN = "plainApiKey_test"
+DEFAULT_API_URL = "https://core-api.uk.plain.com/graphql/v1"
 
 
 def _config(api_url: str = DEFAULT_API_URL) -> dict[str, str]:
-    return {"api_token": API_TOKEN, "api_url": api_url}
+    return {"api_token": API_TOKEN, "api_url": api_url, "page_size": "100"}
 
 
 def _client(
@@ -150,7 +150,11 @@ async def test_authorization_header_uses_token_from_config() -> None:
 
     client, http_client = _client(
         handler,
-        {"api_token": "plainApiKey_from_config"},
+        {
+            "api_token": "plainApiKey_from_config",
+            "api_url": DEFAULT_API_URL,
+            "page_size": "100",
+        },
     )
     async with http_client:
         await client.execute("query { companies { edges { node { id } } } }")

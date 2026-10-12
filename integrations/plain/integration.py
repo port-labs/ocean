@@ -70,6 +70,15 @@ class ThreadSelector(Selector):
         description="Sync only TODO and SNOOZED threads. Leave false to sync every status.",
         title="Exclude done threads",
     )
+    thread_statuses: list[str] | None = Field(
+        default=None,
+        alias="threadStatuses",
+        description=(
+            "Optional list of thread statuses to sync (TODO, SNOOZED, DONE). "
+            "Ignored when excludeDoneThreads is true. Omit to sync every status."
+        ),
+        title="Thread statuses",
+    )
 
 
 class DiscussionSelector(ThreadSelector):

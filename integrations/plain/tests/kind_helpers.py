@@ -20,11 +20,16 @@ async def collect_pages(method: Any) -> list[list[dict[str, Any]]]:
 
 
 def make_client(config: dict[str, Any] | None = None) -> PlainClient:
-    integration_config = {"api_token": "plainApiKey_test"}
+    integration_config: dict[str, Any] = {
+        "api_token": "plainApiKey_test",
+        "api_url": "https://core-api.uk.plain.com/graphql/v1",
+        "page_size": "100",
+    }
     if config:
         integration_config.update(config)
     mock_ocean = MagicMock()
     mock_ocean.integration_config = integration_config
+    mock_ocean.config.integration.identifier = "plain"
     http_client = httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(500))
     )

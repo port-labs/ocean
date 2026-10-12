@@ -69,7 +69,7 @@ async def test_get_threads_yields_pages_with_assignee_typename() -> None:
 
 
 async def test_get_threads_passes_status_filter() -> None:
-    client = make_client({"thread_status_filter": "TODO, DONE"})
+    client = make_client()
     seen: dict[str, Any] = {}
 
     async def paginate_connection(
@@ -82,19 +82,25 @@ async def test_get_threads_passes_status_filter() -> None:
         yield []
 
     client.paginate_connection = paginate_connection  # type: ignore[method-assign]
-    await collect_pages(client.get_threads())
+    await collect_pages(client.get_threads(["TODO", "DONE"]))
 
     assert seen["variables"] == {"filters": {"statuses": ["TODO", "DONE"]}}
 
 
-def _thread_resource(exclude_done_threads: bool) -> ThreadResourceConfig:
+def _thread_resource(
+    exclude_done_threads: bool,
+    thread_statuses: list[str] | None = None,
+) -> ThreadResourceConfig:
+    selector: dict[str, Any] = {
+        "query": "true",
+        "excludeDoneThreads": exclude_done_threads,
+    }
+    if thread_statuses is not None:
+        selector["threadStatuses"] = thread_statuses
     config = ThreadResourceConfig.parse_obj(
         {
             "kind": "thread",
-            "selector": {
-                "query": "true",
-                "excludeDoneThreads": exclude_done_threads,
-            },
+            "selector": selector,
             "port": {
                 "entity": {
                     "mappings": {
@@ -139,29 +145,27 @@ async def test_resync_threads_yields_batches() -> None:
     assert batches[0][0]["assignedTo"]["__typename"] == "MachineUser"
 
 
-async def test_resync_threads_honors_thread_status_filter_when_exclude_done_is_false() -> (
+async def test_resync_threads_honors_thread_statuses_selector_when_exclude_done_is_false() -> (
     None
 ):
     seen: dict[str, Any] = {}
 
-    async def paginate_connection(
-        query: str,
-        operation_name: str,
-        variables: dict[str, Any] | None,
-        connection_path: str,
-    ) -> Any:
-        seen["variables"] = variables
-        yield []
+    class FakeClient:
+        def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+            pass
 
-    client = make_client({"thread_status_filter": "TODO, SNOOZED"})
-    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+        async def get_threads(self, statuses: list[str] | None = None) -> Any:
+            seen["statuses"] = statuses
+            yield []
 
-    with patch("main.PlainClient", return_value=client):
+    with patch("main.PlainClient", FakeClient):
         assert on_resync_threads is not None
-        async with resource_context(_thread_resource(False)):
+        async with resource_context(
+            _thread_resource(False, thread_statuses=["TODO", "SNOOZED"])
+        ):
             await collect_pages(on_resync_threads("thread"))
 
-    assert seen["variables"] == {"filters": {"statuses": ["TODO", "SNOOZED"]}}
+    assert seen["statuses"] == ["TODO", "SNOOZED"]
 
 
 async def test_resync_threads_excludes_done_when_mapping_flag_is_set() -> None:

@@ -29,10 +29,6 @@ configurations:
     type: string
     default: "100"
     description: Page size for list queries. Plain caps this at 100.
-  - name: threadStatusFilter
-    required: false
-    type: string
-    description: Comma-separated thread statuses to sync (TODO, SNOOZED, DONE). Omit to sync every status.
   - name: webhookSecret
     required: false
     type: string

@@ -28,7 +28,12 @@ def test_tenant_kind_is_registered_in_spec() -> None:
 
 def _client() -> PlainClient:
     mock_ocean = MagicMock()
-    mock_ocean.integration_config = {"api_token": "plainApiKey_test"}
+    mock_ocean.integration_config = {
+        "api_token": "plainApiKey_test",
+        "api_url": "https://core-api.uk.plain.com/graphql/v1",
+        "page_size": "100",
+    }
+    mock_ocean.config.integration.identifier = "plain"
     http_client = httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(500))
     )
