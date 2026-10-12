@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -56,6 +57,12 @@ def skill_dir_prefix(skill_md_path: str) -> str:
     return "" if skill_dir == "." else f"{skill_dir}/"
 
 
+def glob_base_dir(pattern: str) -> str:
+    """Folder prefix before the first wildcard ("skills/" for "skills/**/SKILL.md")."""
+    literal = re.split(r"[*?\[{]", pattern, maxsplit=1)[0]
+    return literal[: literal.rfind("/") + 1]
+
+
 def select_reference_files(
     tree: list[dict[str, Any]], skill_md_path: str
 ) -> list[dict[str, Any]]:
@@ -89,8 +96,3 @@ def select_reference_files(
         ):
             selected.append(entry)
     return selected
-
-
-def get_bundle_size(skill_md_size: int, references: list[dict[str, Any]]) -> int:
-    """Total bytes of SKILL.md plus its references, using sizes from the git tree."""
-    return skill_md_size + sum(entry.get("size", 0) for entry in references)

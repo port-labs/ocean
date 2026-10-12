@@ -10,7 +10,6 @@ from github.core.exporters.file_exporter.utils import (
 )
 from github.core.exporters.skill_exporter.references import (
     MAX_SKILL_BUNDLE_SIZE,
-    get_bundle_size,
     select_reference_files,
     skill_dir_prefix,
 )
@@ -134,7 +133,7 @@ class SkillExporter(RestFileExporter):
             )
         entries = select_reference_files(tree, skill_md_path)
 
-        bundle_size = get_bundle_size(skill_md_size, entries)
+        bundle_size = skill_md_size + sum(entry.get("size", 0) for entry in entries)
         if bundle_size > MAX_SKILL_BUNDLE_SIZE:
             logger.warning(
                 f"Skipping skill {skill_md_path} in {organization}/{repo_name}@{ref}: "

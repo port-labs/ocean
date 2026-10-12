@@ -11,7 +11,10 @@ from github.core.exporters.file_exporter.utils import (
     group_files_by_status,
 )
 from github.core.exporters.skill_exporter import SkillExporter
-from github.core.exporters.skill_exporter.references import skill_dir_prefix
+from github.core.exporters.skill_exporter.references import (
+    glob_base_dir,
+    skill_dir_prefix,
+)
 from github.core.exporters.skill_exporter.utils import (
     SKILL_MD_FILENAME,
     build_skill_raw_item,
@@ -93,7 +96,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                 diff_files,
                 matching_patterns,
             )
-        updated_paths -= deleted_paths
+        skill_md_paths = sorted(updated_paths - deleted_paths)
 
         updated_items = await asyncio.gather(
             *(
@@ -106,22 +109,33 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                     skill_md_path,
                     path_globs,
                 )
-                for skill_md_path in sorted(updated_paths)
+                for skill_md_path in skill_md_paths
             )
         )
         updated_raw_results = [item for item in updated_items if item is not None]
 
-        deleted_raw_results = [
-            build_skill_raw_item(
-                skill_md_path=file_info["filename"],
+        def deleted_skill(
+            skill_md_path: str, blob_sha: Optional[str] = None
+        ) -> dict[str, Any]:
+            return build_skill_raw_item(
+                skill_md_path=skill_md_path,
                 content="",
                 repository=repository,
                 branch=current_branch,
                 organization=organization,
                 path_globs=path_globs,
-                blob_sha=file_info.get("sha"),
+                blob_sha=blob_sha,
             )
+
+        # A skill that can no longer be built (unreadable, or over the references
+        # size limit) is removed, as a resync would drop it.
+        deleted_raw_results = [
+            deleted_skill(file_info["filename"], file_info.get("sha"))
             for file_info in deleted_files
+        ] + [
+            deleted_skill(skill_md_path)
+            for skill_md_path, item in zip(skill_md_paths, updated_items)
+            if item is None
         ]
 
         logger.info(
@@ -149,6 +163,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         The tree is read at the pushed commit, not the branch: the tree cache
         lives across webhook events, so a branch tree may predate this push.
         """
+        skill_roots = tuple(glob_base_dir(pattern.path) for pattern in patterns)
         changed_paths: set[str] = set()
         for file_info in diff_files:
             is_skill_md_edit = (
@@ -157,9 +172,9 @@ class SkillWebhookProcessor(FileWebhookProcessor):
             )
             if is_skill_md_edit:
                 continue
-            changed_paths.add(file_info["filename"])
-            if file_info.get("previous_filename"):
-                changed_paths.add(file_info["previous_filename"])
+            for path in (file_info["filename"], file_info.get("previous_filename")):
+                if path and path.startswith(skill_roots):
+                    changed_paths.add(path)
         if not changed_paths:
             return set()
 
@@ -188,13 +203,12 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         skill_md_path: str,
         path_globs: list[str],
     ) -> Optional[dict[str, Any]]:
-        """Rebuild a skill with SKILL.md and its references read at the same commit."""
         file_data = await exporter.get_resource(
             FileContentOptions(
                 organization=organization,
                 repo_name=repository["name"],
                 file_path=skill_md_path,
-                branch=commit_sha,
+                branch=branch,
             )
         )
         if not file_data or not isinstance(file_data.get("content"), str):

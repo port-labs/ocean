@@ -258,14 +258,17 @@ class TestSkillExporterReferences:
         ]
         assert fetcher.rest_paths == ["skills/hello/scripts/big.py"]
 
-    async def test_oversized_skill_is_dropped_without_fetching(
+    async def test_skill_over_size_limit_is_dropped_without_fetching(
         self, rest_client: GithubRestClient
     ) -> None:
+        reference_size_at_limit = MAX_SKILL_BUNDLE_SIZE - len(SKILL_MD.encode())
         tree = [
-            _sized_blob("skills/small/SKILL.md"),
-            _sized_blob("skills/small/references/api.md"),
+            _sized_blob("skills/fits/SKILL.md"),
+            _sized_blob("skills/fits/references/api.md", size=reference_size_at_limit),
             _sized_blob("skills/big/SKILL.md"),
-            _sized_blob("skills/big/references/huge.md", size=MAX_SKILL_BUNDLE_SIZE),
+            _sized_blob(
+                "skills/big/references/huge.md", size=reference_size_at_limit + 1
+            ),
         ]
         exporter, fetcher = _exporter_with_references(rest_client, tree)
 
@@ -273,7 +276,7 @@ class TestSkillExporterReferences:
             _self: RestFileExporter, _options: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [
-                _file_object("skills/small/SKILL.md", SKILL_MD),
+                _file_object("skills/fits/SKILL.md", SKILL_MD),
                 _file_object("skills/big/SKILL.md", SKILL_MD),
             ]
 
@@ -290,10 +293,10 @@ class TestSkillExporterReferences:
             ]
 
         assert [item["skill"]["skillMdPath"] for item in batches[0]] == [
-            "skills/small/SKILL.md"
+            "skills/fits/SKILL.md"
         ]
-        assert fetcher.graphql_paths == ["skills/small/references/api.md"]
-        assert fetcher.rest_paths == []
+        assert fetcher.rest_paths == ["skills/fits/references/api.md"]
+        assert fetcher.graphql_paths == []
         [warning_call] = mock_logger.warning.call_args_list
         assert "skills/big/SKILL.md" in warning_call.args[0]
 

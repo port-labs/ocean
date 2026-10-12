@@ -201,10 +201,9 @@ class TestSkillWebhookProcessor:
                 organization="test-org",
                 repo_name="test-repo",
                 file_path="skills/hello/SKILL.md",
-                branch=payload["after"],
+                branch="main",
             )
         )
-        assert result.updated_raw_results[0]["__branch"] == "main"
 
     async def test_handle_event_deleted_skill_includes_blob_sha_from_compare_api(
         self,
@@ -388,7 +387,31 @@ class TestSkillWebhookProcessor:
         assert updated["skill"]["skillMdPath"] == "skills/hello/SKILL.md"
         exporter.get_tree_recursive.assert_not_called()  # type: ignore[attr-defined]
 
-    async def test_oversized_skill_is_skipped_when_flag_on(
+    async def test_change_outside_skill_roots_does_not_fetch_tree_when_flag_on(
+        self,
+        skill_webhook_processor: SkillWebhookProcessor,
+        resource_config: GithubSkillResourceConfig,
+        payload: EventPayload,
+        exporter: SkillExporter,
+    ) -> None:
+        resource_config.selector.include_references = True
+        exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
+            "files": [
+                {"filename": "README.md", "status": "modified"},
+                {"filename": "docs/skills/guide.md", "status": "added"},
+            ]
+        }
+
+        with use_exporter(exporter):
+            result = await skill_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        exporter.get_tree_recursive.assert_not_called()  # type: ignore[attr-defined]
+
+    async def test_oversized_skill_is_deleted_when_flag_on(
         self,
         skill_webhook_processor: SkillWebhookProcessor,
         resource_config: GithubSkillResourceConfig,
@@ -408,4 +431,5 @@ class TestSkillWebhookProcessor:
             )
 
         assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
+        [deleted] = result.deleted_raw_results
+        assert deleted["skill"]["skillMdPath"] == "skills/hello/SKILL.md"

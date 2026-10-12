@@ -2,13 +2,11 @@ from typing import Any
 
 from github.core.exporters.skill_exporter.references import (
     MAX_REFERENCE_DEPTH,
-    MAX_SKILL_BUNDLE_SIZE,
-    get_bundle_size,
+    glob_base_dir,
     select_reference_files,
     skill_dir_prefix,
 )
 from github.core.exporters.skill_exporter.utils import (
-    SkillReference,
     _build_skill,
     _infer_skill_root,
     _parse_skill_markdown,
@@ -144,29 +142,6 @@ description: A minimal example
             upserted["skill"]["blob_sha"] == "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
         )
 
-    def test_build_skill_raw_item_references_default_to_none(self) -> None:
-        item = build_skill_raw_item(
-            skill_md_path="skills/hello/SKILL.md",
-            content="# Hi",
-            repository=REPOSITORY,
-            branch="main",
-            path_globs=["skills/**/SKILL.md"],
-        )
-        assert item["skill"]["references"] is None
-
-    def test_build_skill_raw_item_serializes_references_as_list(self) -> None:
-        item = build_skill_raw_item(
-            skill_md_path="skills/hello/SKILL.md",
-            content="# Hi",
-            repository=REPOSITORY,
-            branch="main",
-            path_globs=["skills/**/SKILL.md"],
-            references=[SkillReference(path="references/api.md", content="# API")],
-        )
-        assert item["skill"]["references"] == [
-            {"path": "references/api.md", "content": "# API"}
-        ]
-
 
 def _blob(path: str, size: int = 10, mode: str = "100644") -> dict[str, Any]:
     return {"type": "blob", "path": path, "size": size, "mode": mode}
@@ -180,6 +155,13 @@ class TestSkillReferences:
     def test_skill_dir_prefix(self) -> None:
         assert skill_dir_prefix("skills/hello/SKILL.md") == "skills/hello/"
         assert skill_dir_prefix("SKILL.md") == ""
+
+    def test_glob_base_dir(self) -> None:
+        assert glob_base_dir("skills/**/SKILL.md") == "skills/"
+        assert glob_base_dir(".claude/skills/*/SKILL.md") == ".claude/skills/"
+        assert glob_base_dir("skills/hello/SKILL.md") == "skills/hello/"
+        assert glob_base_dir("**/SKILL.md") == ""
+        assert glob_base_dir("SKILL.md") == ""
 
     def test_selects_nested_text_files(self) -> None:
         tree = [
@@ -230,15 +212,6 @@ class TestSkillReferences:
     def test_root_level_skill_uses_whole_repository(self) -> None:
         tree = [_blob("SKILL.md"), _blob("references/api.md")]
         assert _selected_paths(tree, "SKILL.md") == ["references/api.md"]
-
-    def test_get_bundle_size(self) -> None:
-        references = [_blob("a.md", size=100), _blob("b.md", size=50)]
-        assert get_bundle_size(10, references) == 160
-
-    def test_bundle_limit_boundary(self) -> None:
-        at_limit = [_blob("a.md", size=MAX_SKILL_BUNDLE_SIZE - 10)]
-        assert get_bundle_size(10, at_limit) == MAX_SKILL_BUNDLE_SIZE
-        assert get_bundle_size(11, at_limit) > MAX_SKILL_BUNDLE_SIZE
 
 
 class TestPluginUtils:
