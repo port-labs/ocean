@@ -75,7 +75,7 @@ class FakeClient:
         path: str,
         max_depth: int,
         params: Optional[Dict[str, Any]] = None,
-        missing_path: str = "swallow",
+        raise_on_missing: bool = False,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         self.listing_calls.append(
             {
@@ -84,7 +84,7 @@ class FakeClient:
                 "root": path,
                 "max_depth": max_depth,
                 "params": params,
-                "missing_path": missing_path,
+                "raise_on_missing": raise_on_missing,
             }
         )
         listing = self.listings.get(repo_slug, [])
@@ -236,19 +236,19 @@ async def test_the_repos_selector_narrows_which_repositories_are_walked() -> Non
 
 
 @pytest.mark.asyncio
-async def test_an_empty_listing_root_refuses_to_tolerate_absence() -> None:
-    client = FakeClient([repo("repo-one")], {"repo-one": []})
-    await walk(client, filenames=["port.yml"], path="*/")
-    assert client.listing_calls[0]["root"] == ""
-    assert client.listing_calls[0]["missing_path"] == "raise"
+@pytest.mark.parametrize(("path", "root"), [("*/", ""), ("charts/*", "charts")])
+async def test_the_listing_root_is_derived_and_every_error_is_the_clients_to_judge(
+    path: str, root: str
+) -> None:
+    """Which 404s are tolerated follows from the root, and is decided in the client.
 
-
-@pytest.mark.asyncio
-async def test_a_configured_sub_path_tolerates_absence() -> None:
+    See test_client.py: raise_on_missing tolerates an absent path only when one was
+    asked for, so an empty root tolerates nothing without the walk saying so.
+    """
     client = FakeClient([repo("repo-one")], {"repo-one": []})
-    await walk(client, filenames=["port.yml"], path="charts/*")
-    assert client.listing_calls[0]["root"] == "charts"
-    assert client.listing_calls[0]["missing_path"] == "tolerate"
+    await walk(client, filenames=["port.yml"], path=path)
+    assert client.listing_calls[0]["root"] == root
+    assert client.listing_calls[0]["raise_on_missing"] is True
 
 
 @pytest.mark.asyncio

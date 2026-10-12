@@ -146,7 +146,7 @@ async def _walk_repository(
         listing_root,
         max_depth=MAX_LISTING_DEPTH,
         params={"q": source_filter, "fields": REPOSITORY_EXPANSION},
-        missing_path="tolerate" if listing_root else "raise",
+        raise_on_missing=True,
     ):
         tasks = [
             retrieve_file_content(repo, entry, file_pattern.skip_parsing)
