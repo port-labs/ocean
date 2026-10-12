@@ -1,5 +1,5 @@
 import fnmatch
-from asyncio import Semaphore
+from asyncio import BoundedSemaphore
 from functools import partial
 from httpx import HTTPError, HTTPStatusError
 from pathlib import Path
@@ -149,15 +149,16 @@ async def _walk_repository(
     listing_root: str,
     source_filter: str,
     failures: List[Exception],
-    fetch_semaphore: Semaphore,
+    fetch_semaphore: BoundedSemaphore,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """List one repository's matching files and yield the content of each.
 
     ``listing_root`` and ``source_filter`` are derived from ``file_pattern`` and are
     passed in because they are the same for every repository in the workspace; the
     pattern itself is still needed for the matcher and for skip_parsing. A failed
-    listing is recorded here rather than raised, because this runs as one of several
-    concurrent walks and an exception would cancel the others.
+    listing is recorded rather than raised, because this is one of several concurrent
+    walks and an exception cancels the others - unless the status applies to every
+    repository still to be walked, which is when cancelling them is the point.
     """
     repo_slug = repo["slug"]
     try:
@@ -210,10 +211,10 @@ async def process_file_patterns(
         logger.warning("No repositories configured, listing the entire workspace")
     failures: List[Exception] = []
 
-    listing_semaphore = Semaphore(MAX_CONCURRENT_REPOSITORIES)
-    fetch_semaphore = Semaphore(MAX_CONCURRENT_FILE_FETCHES)
+    listing_semaphore = BoundedSemaphore(MAX_CONCURRENT_REPOSITORIES)
+    fetch_semaphore = BoundedSemaphore(MAX_CONCURRENT_FILE_FETCHES)
 
-    # {} shares the repository kind's cached listing; no argument is a second listing.
+    # {} shares the repository kind's listing while it sets no userRole or repoQuery.
     async for repositories in client.get_repositories(params={}):
         selected_repositories = []
         for repo in repositories:
@@ -275,7 +276,8 @@ async def retrieve_file_content(
     The repository is passed rather than read back out of the entry: the listing carries
     the authoritative slug, where the entry's embedded repository object carries only a
     display name. ``failures`` is the caller's list and this appends to it rather than
-    raising, because raising here cancels the other fetches in flight for the page.
+    raising, because raising cancels the other fetches in flight for the page - unless
+    the status applies to every repository still to be walked, which is when it should.
     """
     file_path = entry["path"]
     repo_slug = repo["slug"]
