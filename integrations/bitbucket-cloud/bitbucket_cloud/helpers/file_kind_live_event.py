@@ -64,10 +64,7 @@ async def process_file_value(
     # the entity is still valid with this one property null. process_file_changes skips
     # instead, because there the missing file *is* the entity's content.
     if bitbucket_file is None:
-        logger.warning(
-            f"Bitbucket returned no content for {file_path} in repository {repository}, "
-            f"resolving the reference to null"
-        )
+        logger.warning(f"Resolving {file_path} in {repository} to null")
         return None
 
     return (
@@ -252,8 +249,8 @@ async def process_file_changes(
                     )
                     if raw_data is None:
                         logger.warning(
-                            f"Bitbucket returned no content for {file_path} in "
-                            f"repository {repository}, leaving its existing entity alone"
+                            f"Leaving the existing entity for {file_path} in "
+                            f"{repository} alone"
                         )
                         continue
 

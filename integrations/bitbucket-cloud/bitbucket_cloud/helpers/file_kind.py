@@ -28,14 +28,13 @@ WALK_STOPPING_STATUSES = (401, 429)
 
 
 def _repository_slug(repo_info: Dict[str, Any]) -> str:
-    """A guess at the repository's URL slug, from its display name.
+    """The repository's URL slug, from the ``workspace/slug`` in ``full_name``.
 
-    It is wrong whenever the real slug is not the display name with spaces hyphenated -
-    a renamed repository, or a name containing punctuation. The authoritative slug is in
-    this same payload as ``full_name``; swapping to it changes which URL every content
-    fetch addresses, so it is its own change rather than part of this one.
+    ``name`` is the display name, which is the slug only until a repository is renamed
+    or named with punctuation - and then it addresses either nothing or, worse, another
+    repository whose slug it happens to match.
     """
-    return repo_info["name"].replace(" ", "-")
+    return repo_info["full_name"].split("/", 1)[1]
 
 
 def normalize_directory_path(path: str) -> str:
