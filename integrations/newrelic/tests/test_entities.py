@@ -278,3 +278,20 @@ class TestEntitiesHandler:
         # Expect exception
         with pytest.raises(NewRelicNotFoundError):
             await entities_handler.get_entity("non-existent-guid")
+
+    async def test_entity_search_query_omits_missing_extra_properties(self) -> None:
+        """A missing extra-properties fragment must not be rendered as the field None."""
+        from newrelic_integration.core.query_templates.entities import (
+            LIST_ENTITIES_WITH_FILTER_QUERY,
+        )
+        from newrelic_integration.core.utils import render_query
+
+        rendered = await render_query(
+            LIST_ENTITIES_WITH_FILTER_QUERY,
+            entity_query_filter="type in ('SERVICE','APPLICATION')",
+            next_cursor_request="",
+            extra_entity_properties=None,
+        )
+
+        assert "None" not in rendered
+        assert "entitySearch" in rendered

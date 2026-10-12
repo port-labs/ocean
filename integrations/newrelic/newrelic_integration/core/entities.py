@@ -78,7 +78,8 @@ class EntitiesHandler:
             request_type="list_entities_by_resource_kind",
             extract_data=extract_entities,
             entity_query_filter=resource_config.selector.entity_query_filter,
-            extra_entity_properties=resource_config.selector.entity_extra_properties_query,
+            extra_entity_properties=resource_config.selector.entity_extra_properties_query
+            or "",
         ):
 
             if entity:

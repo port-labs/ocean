@@ -38,7 +38,7 @@ LIST_ENTITIES_WITH_FILTER_QUERY = """
           accountId
           alertSeverity
           permalink
-          {{ extra_entity_properties }}
+          {% if extra_entity_properties %}{{ extra_entity_properties }}{% endif %}
         }
         nextCursor
       }
@@ -66,7 +66,7 @@ LIST_ENTITIES_BY_GUIDS_QUERY = """
             accountId
             alertSeverity
             permalink
-            {{ extra_entity_properties }}
+            {% if extra_entity_properties %}{{ extra_entity_properties }}{% endif %}
         }
     }
 }
