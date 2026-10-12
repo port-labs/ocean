@@ -201,9 +201,10 @@ class TestSkillWebhookProcessor:
                 organization="test-org",
                 repo_name="test-repo",
                 file_path="skills/hello/SKILL.md",
-                branch="main",
+                branch=payload["after"],
             )
         )
+        assert result.updated_raw_results[0]["__branch"] == "main"
 
     async def test_handle_event_deleted_skill_includes_blob_sha_from_compare_api(
         self,

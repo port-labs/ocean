@@ -9,6 +9,7 @@ from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.core import PluginExporter
 from github.core.exporters.skill_exporter.core import SkillExporter
 from github.core.exporters.skill_exporter.references import MAX_SKILL_BUNDLE_SIZE
+from github.core.exporters.skill_exporter.utils import SkillReference
 from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
@@ -321,6 +322,65 @@ class TestSkillExporterReferences:
             "test-org", TEST_REPOSITORY["name"], "abc123"
         )
         assert fetcher.refs == {"abc123"}
+
+    async def test_truncated_repo_tree_falls_back_to_skill_folder_tree(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter, fetcher = _exporter_with_references(rest_client, [])
+        exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
+            side_effect=[
+                ([_sized_blob("skills/hello/SKILL.md")], True),
+                (
+                    [
+                        _sized_blob("SKILL.md"),
+                        _sized_blob("references/api.md"),
+                        _sized_blob("child/SKILL.md"),
+                        _sized_blob("child/notes.md"),
+                    ],
+                    False,
+                ),
+            ]
+        )
+
+        references = await exporter.fetch_references(
+            organization="test-org",
+            repo_name="repo1",
+            ref="main",
+            skill_md_path="skills/hello/SKILL.md",
+            skill_md_size=10,
+        )
+
+        assert exporter.get_tree_recursive.call_args_list[1].args == (
+            "test-org",
+            "repo1",
+            "main:skills/hello",
+        )
+        assert references == [
+            SkillReference(
+                path="references/api.md",
+                content="content of skills/hello/references/api.md",
+            )
+        ]
+        assert fetcher.graphql_paths == ["skills/hello/references/api.md"]
+
+    async def test_truncated_tree_for_root_skill_uses_repo_tree(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter, _ = _exporter_with_references(rest_client, [])
+        exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
+            return_value=([_sized_blob("SKILL.md"), _sized_blob("notes.md")], True)
+        )
+
+        references = await exporter.fetch_references(
+            organization="test-org",
+            repo_name="repo1",
+            ref="main",
+            skill_md_path="SKILL.md",
+            skill_md_size=10,
+        )
+
+        exporter.get_tree_recursive.assert_called_once()
+        assert [reference.path for reference in references or []] == ["notes.md"]
 
 
 def _tree(*paths: str) -> List[Dict[str, Any]]:

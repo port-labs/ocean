@@ -126,7 +126,12 @@ class SkillExporter(RestFileExporter):
 
         Returns None when SKILL.md plus its references exceed the bundle limit.
         """
-        tree, _ = await self.get_tree_recursive(organization, repo_name, ref)
+        prefix = skill_dir_prefix(skill_md_path)
+        tree, truncated = await self.get_tree_recursive(organization, repo_name, ref)
+        if truncated and prefix:
+            tree = await self._get_skill_folder_tree(
+                organization, repo_name, ref, prefix
+            )
         entries = select_reference_files(tree, skill_md_path)
 
         bundle_size = get_bundle_size(skill_md_size, entries)
@@ -141,11 +146,23 @@ class SkillExporter(RestFileExporter):
         contents = await self._fetch_file_contents(
             organization, repo_name, ref, entries
         )
-        prefix = skill_dir_prefix(skill_md_path)
         return [
             SkillReference(path=path.removeprefix(prefix), content=content)
             for path, content in sorted(contents.items())
         ]
+
+    async def _get_skill_folder_tree(
+        self, organization: str, repo_name: str, ref: str, prefix: str
+    ) -> list[dict[str, Any]]:
+        """The skill folder's own tree with repo-relative paths.
+
+        Used when GitHub truncates the whole-repo tree: a single folder stays far
+        below the limit, so its listing is complete.
+        """
+        folder_tree, _ = await self.get_tree_recursive(
+            organization, repo_name, f"{ref}:{prefix.rstrip('/')}"
+        )
+        return [{**entry, "path": f"{prefix}{entry['path']}"} for entry in folder_tree]
 
     async def _fetch_file_contents(
         self,

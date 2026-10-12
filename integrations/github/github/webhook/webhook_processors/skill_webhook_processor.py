@@ -188,12 +188,13 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         skill_md_path: str,
         path_globs: list[str],
     ) -> Optional[dict[str, Any]]:
+        """Rebuild a skill with SKILL.md and its references read at the same commit."""
         file_data = await exporter.get_resource(
             FileContentOptions(
                 organization=organization,
                 repo_name=repository["name"],
                 file_path=skill_md_path,
-                branch=branch,
+                branch=commit_sha,
             )
         )
         if not file_data or not isinstance(file_data.get("content"), str):
