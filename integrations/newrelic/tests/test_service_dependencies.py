@@ -194,7 +194,7 @@ async def test_list_service_dependencies_emits_services_with_empty_calls() -> No
         ),
         patch.object(
             handler,
-            "outbound_call_guids",
+            "get_entity_dependencies",
             new_callable=AsyncMock,
             side_effect=[["service-b"], []],
         ),

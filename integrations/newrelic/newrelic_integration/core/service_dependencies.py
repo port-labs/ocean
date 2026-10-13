@@ -131,9 +131,7 @@ class ServiceDependenciesHandler:
 
             related = entity.get("relatedEntities") or {}
             for edge in related.get("results") or []:
-                target_guid = select_dependency(
-                    source_guid, edge, services_by_guid
-                )
+                target_guid = select_dependency(source_guid, edge, services_by_guid)
                 if target_guid and target_guid not in dependencies:
                     dependencies.append(target_guid)
 
