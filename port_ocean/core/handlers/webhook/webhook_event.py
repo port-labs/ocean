@@ -168,8 +168,7 @@ class WebhookEvent(LiveEvent):
         )
         if self.log_full_payload:
             bound_logger.info(f"Event {timestamp.value}")
-        else:
-            bound_logger.info(f"Event {timestamp.value}")
+
         self._timestamp = timestamp
 
 
