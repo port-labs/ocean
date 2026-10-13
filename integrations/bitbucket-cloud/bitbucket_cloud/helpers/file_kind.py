@@ -254,7 +254,7 @@ async def process_file_patterns(
 
 
 async def retrieve_file_content(
-    repo: Dict[str, Any],
+    repo_info: Dict[str, Any],
     entry: Dict[str, Any],
     skip_parsing: bool,
     failures: List[Exception],
@@ -268,8 +268,8 @@ async def retrieve_file_content(
     the status applies to every repository still to be walked, which is when it should.
     """
     file_path = entry["path"]
-    repo_slug = repo["slug"]
-    branch = repo["mainbranch"]["name"]
+    repo_slug = repo_info["slug"]
+    branch = repo_info["mainbranch"]["name"]
 
     logger.info(f"Retrieving contents for {file_path} in {repo_slug}")
     client = init_client()
@@ -295,7 +295,7 @@ async def retrieve_file_content(
         if skip_parsing or not isinstance(file_content, (dict, list)):
             result = {
                 "content": file_content,
-                "repo": repo,
+                "repo": repo_info,
                 "branch": branch,
                 "metadata": entry,
             }
@@ -306,7 +306,7 @@ async def retrieve_file_content(
                 repo_slug,
                 branch,
                 entry,
-                repo,
+                repo_info,
                 branch,
             )
     except HTTPError as e:
