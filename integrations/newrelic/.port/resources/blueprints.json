@@ -144,6 +144,28 @@
     "relations": {}
   },
   {
+    "identifier": "newRelicServiceDependency",
+    "description": "This blueprint represents the services a New Relic service calls.",
+    "title": "New Relic Service Dependency",
+    "icon": "NewRelic",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "dependencies": {
+        "title": "Depends on",
+        "description": "Services this service calls",
+        "target": "newRelicService",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
     "identifier": "newRelicServiceLevel",
     "description": "This blueprint represents a New Relic Service Level",
     "title": "New Relic Service Level",
