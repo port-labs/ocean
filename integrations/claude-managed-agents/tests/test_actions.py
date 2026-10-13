@@ -14,20 +14,52 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
 from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
 )
+from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event import (
+    BetaManagedAgentsUserInterruptEvent,
+)
 from actions.abstract_executor import AbstractAnthropicExecutor
+from actions.archive_agent_executor import (
+    AGENT_ARCHIVED_STATUS_LABEL,
+    ArchiveAgentExecutor,
+)
+from actions.cancel_session_executor import (
+    SESSION_CANCELLED_STATUS_LABEL,
+    SESSION_NOT_CANCELLABLE_STATUS_LABEL,
+    CancelSessionExecutor,
+)
 from actions.create_agent_executor import (
     AGENT_CREATED_STATUS_LABEL,
     CreateAgentExecutor,
+)
+from actions.create_environment_executor import (
+    ENVIRONMENT_CREATED_STATUS_LABEL,
+    CreateEnvironmentExecutor,
+)
+from actions.delete_environment_executor import (
+    ENVIRONMENT_DELETED_STATUS_LABEL,
+    DeleteEnvironmentExecutor,
 )
 from actions.exceptions import InvalidActionParametersException
 from actions.trigger_agent_executor import (
     SESSION_NOT_CONTINUABLE_STATUS_LABEL,
     TriggerAgentExecutor,
 )
+from actions.update_agent_executor import (
+    AGENT_UPDATED_STATUS_LABEL,
+    UpdateAgentExecutor,
+)
+from actions.update_environment_executor import (
+    ENVIRONMENT_UPDATED_STATUS_LABEL,
+    UpdateEnvironmentExecutor,
+)
+from actions.types import TriggerAgentSessionOutput, list_cost_to_usd
 from actions.utils import (
     build_external_id,
     build_session_link,
     normalize_session_config,
+)
+from anthropic.types.beta.beta_managed_agents_session_usage import (
+    BetaManagedAgentsSessionUsage,
 )
 from clients.anthropic_client import RateLimitInfo
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
@@ -52,6 +84,7 @@ def _build_mock_ocean() -> MagicMock:
     mock_ocean = MagicMock()
     mock_ocean.config.port = SimpleNamespace(base_url="https://api.getport.io")
     mock_ocean.register_raw = AsyncMock()
+    mock_ocean.unregister_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     mock_ocean.port_client.post_run_log = AsyncMock()
     return mock_ocean
@@ -80,6 +113,76 @@ def test_build_session_link_uses_configured_console_host() -> None:
         build_session_link("https://console.example.com", "ws_1", "s1")
         == "https://console.example.com/workspaces/ws_1/sessions/s1"
     )
+
+
+def test_list_cost_to_usd() -> None:
+    assert list_cost_to_usd({"amount": "187", "currency": "USD"}) == 1.87
+    assert list_cost_to_usd({"amount": "50", "currency": "USD"}) == 0.5
+    assert list_cost_to_usd({"amount": "0", "currency": "USD"}) == 0.0
+    assert list_cost_to_usd(None) is None
+    assert list_cost_to_usd({"amount": "not-a-number"}) is None
+    assert list_cost_to_usd({}) is None
+
+
+def _sdk_session(
+    *,
+    session_id: str = "sess_1",
+    status: str = "idle",
+    usage: BetaManagedAgentsSessionUsage | None = None,
+) -> MagicMock:
+    session = MagicMock()
+    session.id = session_id
+    session.status = status
+    session.usage = usage
+    session.to_dict = MagicMock(return_value={"id": session_id, "status": status})
+    return session
+
+
+def _sdk_agent(*, agent_id: str = "agent_1", version: int | None = None) -> MagicMock:
+    agent = MagicMock()
+    agent.id = agent_id
+    agent.version = version
+    agent.to_dict = MagicMock(return_value={"id": agent_id})
+    return agent
+
+
+def _sdk_environment(*, environment_id: str = "env_1") -> MagicMock:
+    env = MagicMock()
+    env.id = environment_id
+    env.to_dict = MagicMock(return_value={"id": environment_id})
+    return env
+
+
+def test_trigger_agent_session_output_from_session() -> None:
+    session = _sdk_session(
+        session_id="s1",
+        usage=BetaManagedAgentsSessionUsage.model_validate(
+            {
+                "input_tokens": 5000,
+                "output_tokens": 3200,
+                "list_cost": {"amount": "187", "currency": "USD"},
+            }
+        ),
+    )
+    assert TriggerAgentSessionOutput.from_session(
+        url="https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        session=session,
+        session_id="s1",
+        user_message_event_id="msg_1",
+    ).model_dump() == {
+        "sessionId": "s1",
+        "userMessageEventId": "msg_1",
+        "url": "https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        "inputTokens": 5000,
+        "outputTokens": 3200,
+        "costUsd": 1.87,
+    }
+
+
+def test_trigger_agent_session_output_url_only() -> None:
+    assert TriggerAgentSessionOutput(
+        url="https://platform.claude.com/"
+    ).model_dump() == {"url": "https://platform.claude.com/"}
 
 
 def _rate_limit_client_mock(
@@ -240,7 +343,7 @@ async def test_is_close_to_rate_limit_false_once_reset_time_has_passed() -> None
 @pytest.mark.asyncio
 async def test_create_agent_executor_creates_and_completes() -> None:
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -272,7 +375,7 @@ async def test_create_agent_executor_creates_and_completes() -> None:
 @pytest.mark.asyncio
 async def test_create_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock(spec=WorkflowNodeRun)
@@ -301,7 +404,7 @@ async def test_create_agent_executor_skips_output_for_classic_action_runs() -> N
     """Classic self-service action runs have no structured output field, so the
     executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock(spec=ActionRun)
@@ -328,7 +431,7 @@ async def test_create_agent_executor_posts_warn_log_when_catalog_upsert_fails() 
     """Catalog reflection is best-effort: a failure must not fail the run, but
     should surface as a warning run log in addition to the loguru warning."""
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -364,7 +467,7 @@ async def test_create_agent_executor_posts_warn_log_when_catalog_upsert_fails() 
 async def test_create_agent_executor_passes_config_through() -> None:
     """Config (including MCP servers declared by the workflow) is passed through unchanged."""
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     mcp_config = {
@@ -409,7 +512,7 @@ async def test_create_agent_executor_passes_config_through() -> None:
 @pytest.mark.asyncio
 async def test_create_agent_executor_passes_skills_config_through() -> None:
     client_mock = MagicMock()
-    client_mock.create_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
 
     skills = [{"type": "custom", "skill_id": "skill_01"}]
@@ -485,7 +588,7 @@ def _user_message_event(event_id: str = "msg_1") -> BetaManagedAgentsUserMessage
 @pytest.mark.asyncio
 async def test_trigger_agent_executor_starts_session() -> None:
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -517,13 +620,14 @@ async def test_trigger_agent_executor_starts_session() -> None:
     assert call.kwargs["extra_output"] == {
         "sessionId": "sess_1",
         "userMessageEventId": "msg_1",
+        "url": call.args[1],
     }
 
 
 @pytest.mark.asyncio
 async def test_trigger_agent_executor_passes_config_on_new_session() -> None:
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -589,7 +693,7 @@ async def test_trigger_agent_executor_ignores_session_create_fields_when_continu
     None
 ):
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(return_value={"id": "sess_1", "status": "idle"})
+    client_mock.get_session = AsyncMock(return_value=_sdk_session())
     client_mock.get_session_events = _empty_session_events
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event("msg_2"))
     executor = _build_executor(TriggerAgentExecutor, client_mock)
@@ -636,7 +740,7 @@ async def test_trigger_agent_partition_key_is_session_id_when_continuing() -> No
 @pytest.mark.asyncio
 async def test_trigger_agent_continues_idle_session() -> None:
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(return_value={"id": "sess_1", "status": "idle"})
+    client_mock.get_session = AsyncMock(return_value=_sdk_session())
     client_mock.get_session_events = _empty_session_events
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event("msg_2"))
     executor = _build_executor(TriggerAgentExecutor, client_mock)
@@ -678,9 +782,7 @@ async def _empty_session_events(
 @pytest.mark.asyncio
 async def test_trigger_agent_rejects_non_idle_session() -> None:
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(
-        return_value={"id": "sess_1", "status": "running"}
-    )
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -724,7 +826,7 @@ async def test_trigger_agent_rejects_requires_action_idle() -> None:
         yield [idle_event]
 
     client_mock = MagicMock()
-    client_mock.get_session = AsyncMock(return_value={"id": "sess_1", "status": "idle"})
+    client_mock.get_session = AsyncMock(return_value=_sdk_session())
     client_mock.get_session_events = _idle_events
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -814,7 +916,7 @@ async def test_normalize_session_config_skips_repos_with_existing_token() -> Non
 @pytest.mark.asyncio
 async def test_trigger_agent_executor_injects_github_pat_into_session_config() -> None:
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -864,7 +966,7 @@ async def test_trigger_agent_executor_completes_run_synchronously_when_report_st
     None
 ):
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -898,7 +1000,7 @@ async def test_trigger_agent_executor_completes_run_synchronously_by_default() -
     """reportSessionStatus defaults to False: without a webhook configured on the
     integration, a run left in progress would never complete."""
     client_mock = MagicMock()
-    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.create_session = AsyncMock(return_value=_sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
@@ -923,3 +1025,937 @@ async def test_trigger_agent_executor_completes_run_synchronously_by_default() -
 
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
+
+
+def _interrupt_event(event_id: str = "int_1") -> BetaManagedAgentsUserInterruptEvent:
+    return BetaManagedAgentsUserInterruptEvent(
+        id=event_id,
+        type="user.interrupt",
+    )
+
+
+def _cancel_run(**overrides: Any) -> MagicMock:
+    run = MagicMock()
+    run.id = "run_1"
+    props: dict[str, Any] = {"sessionId": "sess_1"}
+    props.update(overrides)
+    run.execution_properties = props
+    return run
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_requires_session_id() -> None:
+    executor = _build_executor(CancelSessionExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+
+    with pytest.raises(InvalidActionParametersException, match="sessionId"):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("session_id", ["", 123])
+async def test_cancel_session_rejects_invalid_session_id(session_id: Any) -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock()
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    with pytest.raises(InvalidActionParametersException, match="sessionId"):
+        await executor.execute(_cancel_run(sessionId=session_id))
+
+    client_mock.get_session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_partition_key_is_session_id() -> None:
+    executor = _build_executor(CancelSessionExecutor, MagicMock())
+    assert await executor._get_partition_key(_cancel_run()) == "sess_1"
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_partition_key_is_none_without_session_id() -> None:
+    executor = _build_executor(CancelSessionExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+    assert await executor._get_partition_key(run) is None
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_interrupts_running_session() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(return_value=_interrupt_event())
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    run = _cancel_run()
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.send_user_interrupt.assert_awaited_once_with("sess_1", None)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
+    assert (
+        mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
+        == SESSION_CANCELLED_STATUS_LABEL
+    )
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_forwards_session_thread_id() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(return_value=_interrupt_event())
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(_cancel_run(sessionThreadId="thr_1"))
+
+    client_mock.send_user_interrupt.assert_awaited_once_with("sess_1", "thr_1")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["idle", "terminated", "rescheduled"])
+async def test_cancel_session_rejects_non_running_session(status: str) -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status=status))
+    client_mock.send_user_interrupt = AsyncMock()
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+    ):
+        with pytest.raises(ActionExecutionError) as exc_info:
+            await executor.execute(_cancel_run())
+
+    assert exc_info.value.status_label == SESSION_NOT_CANCELLABLE_STATUS_LABEL
+    client_mock.send_user_interrupt.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_wraps_upstream_failure() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(side_effect=RuntimeError("boom"))
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+    ):
+        with pytest.raises(ActionExecutionError, match="boom"):
+            await executor.execute(_cancel_run())
+
+
+@pytest.mark.asyncio
+async def test_cancel_session_sets_workflow_node_outputs() -> None:
+    client_mock = MagicMock()
+    client_mock.get_session = AsyncMock(return_value=_sdk_session(status="running"))
+    client_mock.send_user_interrupt = AsyncMock(return_value=_interrupt_event("int_9"))
+    executor = _build_executor(CancelSessionExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.execution_properties = {"sessionId": "sess_1"}
+    run.output = {}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.cancel_session_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"sessionId": "sess_1", "interruptEventId": "int_9"}
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_executor_archives_and_completes() -> None:
+    client_mock = MagicMock()
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(ArchiveAgentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"agentId": "agent_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.archive_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.archive_agent.assert_awaited_once_with("agent_1")
+    mock_ocean.register_raw.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, "Archived agent agent_1", status_label=AGENT_ARCHIVED_STATUS_LABEL
+    )
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
+    client_mock = MagicMock()
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(ArchiveAgentExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.output = {}
+    run.execution_properties = {"agentId": "agent_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.archive_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"agentId": "agent_1"}
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_executor_skips_output_for_classic_action_runs() -> None:
+    """Classic self-service action runs have no structured output field, so the
+    executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
+    client_mock = MagicMock()
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(ArchiveAgentExecutor, client_mock)
+
+    run = MagicMock(spec=ActionRun)
+    run.id = "run_1"
+    run.execution_properties = {"agentId": "agent_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.archive_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_executor_reports_failure_on_api_error() -> None:
+    client_mock = MagicMock()
+    client_mock.archive_agent = AsyncMock(side_effect=RuntimeError("agent not found"))
+    executor = _build_executor(ArchiveAgentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"agentId": "agent_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.archive_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="agent not found"):
+            await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+    mock_ocean.register_raw.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_executor_requires_agent_id() -> None:
+    executor = _build_executor(ArchiveAgentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+    with pytest.raises(InvalidActionParametersException):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_executor_posts_warn_log_when_catalog_upsert_fails() -> (
+    None
+):
+    """Catalog reflection is best-effort: a failure must not fail the run, but
+    should surface as a warning run log in addition to the loguru warning."""
+    client_mock = MagicMock()
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(ArchiveAgentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"agentId": "agent_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.register_raw = AsyncMock(side_effect=RuntimeError("catalog down"))
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.archive_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    warn_calls = [
+        call
+        for call in mock_ocean.port_client.post_run_log.await_args_list
+        if call.kwargs.get("level") == "WARNING"
+    ]
+    assert len(warn_calls) == 1
+    assert warn_calls[0].args[0] is run
+    assert "catalog down" in warn_calls[0].args[1]
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, "Archived agent agent_1", status_label=AGENT_ARCHIVED_STATUS_LABEL
+    )
+
+
+@pytest.mark.asyncio
+async def test_archive_agent_partition_key_is_agent_id() -> None:
+    executor = _build_executor(ArchiveAgentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"agentId": "agent_1"}
+    assert await executor._get_partition_key(run) == "agent_1"
+
+
+def _update_agent_run(**overrides: Any) -> MagicMock:
+    run = MagicMock()
+    run.id = "run_1"
+    props: dict[str, Any] = {"agentId": "agent_1", "name": "new-name"}
+    props.update(overrides)
+    run.execution_properties = props
+    return run
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_updates_and_completes() -> None:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=3))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent(version=4))
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    run = _update_agent_run()
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.get_agent.assert_awaited_once_with("agent_1")
+    client_mock.update_agent.assert_awaited_once_with(
+        "agent_1", version=3, payload={"name": "new-name"}
+    )
+    mock_ocean.register_raw.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run, True, "Updated agent agent_1", status_label=AGENT_UPDATED_STATUS_LABEL
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.output = {}
+    run.execution_properties = {"agentId": "agent_1", "name": "n"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"agentId": "agent_1"}
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_skips_output_for_classic_action_runs() -> None:
+    """Classic self-service action runs have no structured output field, so the
+    executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    run = MagicMock(spec=ActionRun)
+    run.id = "run_1"
+    run.execution_properties = {"agentId": "agent_1", "name": "n"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_requires_at_least_one_update_field() -> None:
+    executor = _build_executor(UpdateAgentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"agentId": "agent_1"}
+    with pytest.raises(InvalidActionParametersException, match="at least one"):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_requires_agent_id() -> None:
+    executor = _build_executor(UpdateAgentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"name": "n"}
+    with pytest.raises(InvalidActionParametersException):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_raises_on_get_agent_failure() -> None:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(side_effect=RuntimeError("not found"))
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="not found"):
+            await executor.execute(_update_agent_run())
+
+    client_mock.update_agent.assert_not_called()
+    mock_ocean.register_raw.assert_not_awaited()
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_raises_on_invalid_version() -> None:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=None))
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="unexpected version"):
+            await executor.execute(_update_agent_run())
+
+    client_mock.update_agent.assert_not_called()
+    mock_ocean.register_raw.assert_not_awaited()
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_raises_on_update_failure() -> None:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=2))
+    client_mock.update_agent = AsyncMock(side_effect=RuntimeError("conflict"))
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="conflict"):
+            await executor.execute(_update_agent_run())
+
+    mock_ocean.register_raw.assert_not_awaited()
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_agent_executor_maps_system_prompt_to_system_field() -> None:
+    """systemPrompt in execution properties must arrive as `system` in the API payload."""
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(_update_agent_run(name=None, systemPrompt="be helpful"))
+
+    client_mock.update_agent.assert_awaited_once_with(
+        "agent_1", version=1, payload={"system": "be helpful"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_agent_partition_key_is_agent_id() -> None:
+    executor = _build_executor(UpdateAgentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"agentId": "agent_1"}
+    assert await executor._get_partition_key(run) == "agent_1"
+
+
+@pytest.mark.asyncio
+async def test_create_environment_executor_creates_and_completes() -> None:
+    client_mock = MagicMock()
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(CreateEnvironmentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"name": "my-env", "description": "test env"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.create_environment.assert_awaited_once_with(
+        name="my-env", description="test env", scope=None, extra=None
+    )
+    mock_ocean.register_raw.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run,
+        True,
+        "Created environment env_1",
+        status_label=ENVIRONMENT_CREATED_STATUS_LABEL,
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_environment_executor_sets_environment_id_output_for_workflow_nodes() -> (
+    None
+):
+    client_mock = MagicMock()
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(CreateEnvironmentExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.output = {}
+    run.execution_properties = {"name": "my-env"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"environmentId": "env_1"}
+
+
+@pytest.mark.asyncio
+async def test_create_environment_executor_skips_output_for_classic_action_runs() -> (
+    None
+):
+    """Classic self-service action runs have no structured output field, so the
+    executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
+    client_mock = MagicMock()
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(CreateEnvironmentExecutor, client_mock)
+
+    run = MagicMock(spec=ActionRun)
+    run.id = "run_1"
+    run.execution_properties = {"name": "my-env"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_create_environment_executor_reports_failure_on_api_error() -> None:
+    client_mock = MagicMock()
+    client_mock.create_environment = AsyncMock(
+        side_effect=RuntimeError("quota exceeded")
+    )
+    executor = _build_executor(CreateEnvironmentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"name": "my-env"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="quota exceeded"):
+            await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+    mock_ocean.register_raw.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_create_environment_executor_requires_name() -> None:
+    executor = _build_executor(CreateEnvironmentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+    with pytest.raises(InvalidActionParametersException):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_create_environment_executor_posts_warn_log_when_catalog_upsert_fails() -> (
+    None
+):
+    """Catalog reflection is best-effort: a failure must not fail the run, but
+    should surface as a warning run log in addition to the loguru warning."""
+    client_mock = MagicMock()
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(CreateEnvironmentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"name": "my-env"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.register_raw = AsyncMock(side_effect=RuntimeError("catalog down"))
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    warn_calls = [
+        call
+        for call in mock_ocean.port_client.post_run_log.await_args_list
+        if call.kwargs.get("level") == "WARNING"
+    ]
+    assert len(warn_calls) == 1
+    assert warn_calls[0].args[0] is run
+    assert "catalog down" in warn_calls[0].args[1]
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run,
+        True,
+        "Created environment env_1",
+        status_label=ENVIRONMENT_CREATED_STATUS_LABEL,
+    )
+
+
+def _update_env_run(**overrides: Any) -> MagicMock:
+    run = MagicMock()
+    run.id = "run_1"
+    props: dict[str, Any] = {"environmentId": "env_1", "name": "new-name"}
+    props.update(overrides)
+    run.execution_properties = props
+    return run
+
+
+@pytest.mark.asyncio
+async def test_update_environment_executor_updates_and_completes() -> None:
+    client_mock = MagicMock()
+    client_mock.update_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
+
+    run = _update_env_run()
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.update_environment.assert_awaited_once_with(
+        "env_1", payload={"name": "new-name"}
+    )
+    mock_ocean.register_raw.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run,
+        True,
+        "Updated environment env_1",
+        status_label=ENVIRONMENT_UPDATED_STATUS_LABEL,
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_environment_executor_sets_environment_id_output_for_workflow_nodes() -> (
+    None
+):
+    client_mock = MagicMock()
+    client_mock.update_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
+
+    run = MagicMock(spec=WorkflowNodeRun)
+    run.id = "run_1"
+    run.output = {}
+    run.execution_properties = {"environmentId": "env_1", "name": "n"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    assert run.output == {"environmentId": "env_1"}
+
+
+@pytest.mark.asyncio
+async def test_update_environment_executor_skips_output_for_classic_action_runs() -> (
+    None
+):
+    """Classic self-service action runs have no structured output field, so the
+    executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
+    client_mock = MagicMock()
+    client_mock.update_environment = AsyncMock(return_value=_sdk_environment())
+    executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
+
+    run = MagicMock(spec=ActionRun)
+    run.id = "run_1"
+    run.execution_properties = {"environmentId": "env_1", "name": "n"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_environment_executor_requires_at_least_one_update_field() -> None:
+    executor = _build_executor(UpdateEnvironmentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"environmentId": "env_1"}
+    with pytest.raises(InvalidActionParametersException, match="at least one"):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_update_environment_executor_requires_environment_id() -> None:
+    executor = _build_executor(UpdateEnvironmentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"name": "n"}
+    with pytest.raises(InvalidActionParametersException):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_update_environment_executor_raises_on_api_error() -> None:
+    client_mock = MagicMock()
+    client_mock.update_environment = AsyncMock(side_effect=RuntimeError("not found"))
+    executor = _build_executor(UpdateEnvironmentExecutor, client_mock)
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="not found"):
+            await executor.execute(_update_env_run())
+
+    mock_ocean.register_raw.assert_not_awaited()
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_environment_partition_key_is_environment_id() -> None:
+    executor = _build_executor(UpdateEnvironmentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"environmentId": "env_1"}
+    assert await executor._get_partition_key(run) == "env_1"
+
+
+@pytest.mark.asyncio
+async def test_delete_environment_executor_deletes_and_completes() -> None:
+    client_mock = MagicMock()
+    client_mock.delete_environment = AsyncMock()
+    executor = _build_executor(DeleteEnvironmentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"environmentId": "env_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.delete_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    client_mock.delete_environment.assert_awaited_once_with("env_1")
+    mock_ocean.unregister_raw.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run,
+        True,
+        "Deleted environment env_1",
+        status_label=ENVIRONMENT_DELETED_STATUS_LABEL,
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_environment_executor_reports_failure_on_api_error() -> None:
+    client_mock = MagicMock()
+    client_mock.delete_environment = AsyncMock(
+        side_effect=RuntimeError("env not found")
+    )
+    executor = _build_executor(DeleteEnvironmentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"environmentId": "env_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.delete_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        with pytest.raises(ActionExecutionError, match="env not found"):
+            await executor.execute(run)
+
+    mock_ocean.unregister_raw.assert_not_awaited()
+    mock_ocean.port_client.report_run_completed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_delete_environment_executor_posts_warn_log_when_catalog_deregister_fails() -> (
+    None
+):
+    """Catalog deregistration is best-effort: a failure must not fail the run."""
+    client_mock = MagicMock()
+    client_mock.delete_environment = AsyncMock()
+    executor = _build_executor(DeleteEnvironmentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"environmentId": "env_1"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.unregister_raw = AsyncMock(side_effect=RuntimeError("catalog down"))
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.delete_environment_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    warn_calls = [
+        call
+        for call in mock_ocean.port_client.post_run_log.await_args_list
+        if call.kwargs.get("level") == "WARNING"
+    ]
+    assert len(warn_calls) == 1
+    assert warn_calls[0].args[0] is run
+    assert "catalog down" in warn_calls[0].args[1]
+    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
+        run,
+        True,
+        "Deleted environment env_1",
+        status_label=ENVIRONMENT_DELETED_STATUS_LABEL,
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_environment_executor_requires_environment_id() -> None:
+    executor = _build_executor(DeleteEnvironmentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {}
+    with pytest.raises(InvalidActionParametersException):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
+async def test_delete_environment_partition_key_is_environment_id() -> None:
+    executor = _build_executor(DeleteEnvironmentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"environmentId": "env_1"}
+    assert await executor._get_partition_key(run) == "env_1"

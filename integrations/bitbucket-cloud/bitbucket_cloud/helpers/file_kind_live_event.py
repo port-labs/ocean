@@ -16,9 +16,7 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 class FileObject(TypedDict):
     """Represents a processed file object with its associated metadata."""
 
-    content: (
-        dict[str, Any] | list[dict[str, Any]]
-    )  # The actual content of the file (parsed JSON/YAML)
+    content: Any  # Parsed JSON/YAML structure, or raw scalar/plain-text content
     metadata: dict[str, Any]  # Diff statistics and file information
     repo: dict[str, Any]  # Repository information
     branch: str  # Branch name
@@ -176,7 +174,7 @@ async def check_and_load_file_prefix(
 def check_single_path(file_path: str, filenames: list[str], config_path: str) -> bool:
     path_parts = file_path.split("/")
     file_name = path_parts[-1]
-    path_without_file = "/".join(path_parts[:-1])
+    path_without_file = "/".join(path_parts[:-1]).strip("/")
 
     filename_match = (
         any(fnmatch(file_name, pattern) for pattern in filenames) if filenames else True
@@ -186,7 +184,10 @@ def check_single_path(file_path: str, filenames: list[str], config_path: str) ->
     if not path_without_file and config_path in {"/", ""}:
         path_match = True
     else:
-        path_match = fnmatch(path_without_file, config_path) if config_path else True
+        normalized_config = config_path.strip("/")
+        path_match = (
+            fnmatch(path_without_file, normalized_config) if config_path else True
+        )
 
     return filename_match and path_match
 
@@ -243,6 +244,16 @@ async def process_file_changes(
 
                     if not skip_parsing:
                         raw_data = parse_file(raw_data, file_path)
+
+                    full_raw_data: FileObject
+                    if skip_parsing or not isinstance(raw_data, (dict, list)):
+                        full_raw_data = {
+                            "content": raw_data,
+                            "metadata": diff_stat,
+                            "repo": repo,
+                            "branch": branch,
+                        }
+                    else:
                         directory_path = Path(file_path).parent
                         full_raw_data = await check_and_load_file_prefix(
                             raw_data,
@@ -253,13 +264,6 @@ async def process_file_changes(
                             repo,
                             branch,
                         )
-                    else:
-                        full_raw_data = {
-                            "content": raw_data,
-                            "metadata": diff_stat,
-                            "repo": repo,
-                            "branch": branch,
-                        }
                     updated_raw_results.append(dict(full_raw_data))
 
     return updated_raw_results, deleted_raw_results

@@ -4,6 +4,7 @@ from typing import Any, Callable, cast
 from loguru import logger
 
 from github.actions.registry import register_actions_executors
+from github.oauth.registry import register_oauth_provider
 from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -11,6 +12,10 @@ from github.clients.auth.abstract_authenticator import (
 from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+from github.helpers.incremental import resolve_effective_datetime
+from github.helpers.utils import resolve_org_filtered_repos
+from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.async_iterators import (
@@ -265,6 +270,7 @@ async def resync_repositories(
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relations = repo_config.selector.normalized_relations
     included_files = repo_config.selector.included_files or []
+    sync_cursor = active_incremental_cursor()
     included_files_enricher = (
         IncludedFilesEnricher(
             client=rest_client,
@@ -284,6 +290,9 @@ async def resync_repositories(
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                     exclude_archived=repo_config.selector.exclude_archived,
+                    updated_since=resolve_effective_datetime(
+                        sync_cursor, repo_config.selector.updated_since_datetime
+                    ),
                 )
             )
             for org in organizations
@@ -425,17 +434,19 @@ async def resync_packages(
                 yield packages
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW)
 @ocean.on_resync(ObjectKind.WORKFLOW)
 @_resync_per_authenticator
 async def resync_workflows(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all workflows for specified Github repositories"""
+    """Resync workflows; incremental runs only cover repos pushed since the cursor."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -449,17 +460,23 @@ async def resync_workflows(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
+                pushed_since=sync_cursor,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
                 options=repo_options
             ):
+
                 tasks = []
                 for repo in repositories:
                     tasks.append(
                         workflow_exporter.get_paginated_resources(
                             options=ListWorkflowOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, None
+                                ),
                             )
                         )
                     )
@@ -484,6 +501,12 @@ async def resync_workflow_runs(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    created_filter = (
+        WORKFLOW_RUN_INCREMENTAL.build_params(sync_cursor).get("created")
+        if sync_cursor is not None
+        else config.selector.created_after
+    )
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -515,9 +538,10 @@ async def resync_workflow_runs(
                                         organization=org_name,
                                         repo_name=repo_name,
                                         workflow_id=workflow["id"],
-                                        max_runs=100,
+                                        max_runs=None if sync_cursor else 100,
                                         status=status,
-                                        created=config.selector.created_after,
+                                        created=created_filter,
+                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -530,8 +554,9 @@ async def resync_workflow_runs(
                                         organization=org_name,
                                         repo_name=repo_name,
                                         workflow_id=workflow["id"],
-                                        max_runs=100,
-                                        created=config.selector.created_after,
+                                        max_runs=None if sync_cursor else 100,
+                                        created=created_filter,
+                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -555,6 +580,7 @@ async def resync_pull_requests(
     repository_exporter = RestRepositoryExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
@@ -587,9 +613,22 @@ async def resync_pull_requests(
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
-                                max_results=config.selector.effective_max_results,
-                                updated_after=config.selector.updated_after,
-                                closed_after=config.selector.closed_after,
+                                incremental_cursor=sync_cursor,
+                                updated_after=(
+                                    resolve_effective_datetime(
+                                        sync_cursor, config.selector.updated_after
+                                    )
+                                ),
+                                max_results=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.effective_max_results
+                                ),
+                                closed_after=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.closed_after
+                                ),
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -636,6 +675,7 @@ async def resync_issues(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -660,6 +700,9 @@ async def resync_issues(
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 labels=config.selector.labels_str,
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.updated_since_datetime
+                                ),
                             )
                         )
                     )
@@ -683,6 +726,7 @@ async def resync_releases(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -705,6 +749,9 @@ async def resync_releases(
                             ListReleaseOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                created_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.created_since_datetime
+                                ),
                             )
                         )
                     )
@@ -874,6 +921,7 @@ async def resync_deployments(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -899,6 +947,9 @@ async def resync_deployments(
                                 task=config.selector.task,
                                 environment=config.selector.environment,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                created_since=resolve_effective_datetime(
+                                    sync_cursor, config.selector.created_since_datetime
+                                ),
                             )
                         )
                     )
@@ -991,7 +1042,7 @@ async def resync_deployment_statuses(
 async def resync_dependabot_alerts(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all Dependabot alerts in the organization's repositories."""
+    """Resync Dependabot alerts (org-level stream for Organizations)."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -1000,36 +1051,79 @@ async def resync_dependabot_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    updated_since = resolve_effective_datetime(
+        sync_cursor, config.selector.updated_since_datetime
+    )
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
             org_name = org["login"]
-
+            org_type = org["type"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
-                organization_type=org["type"],
+                organization_type=org_type,
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
             )
 
+            if org_type == "Organization":
+                allowed_repos = await resolve_org_filtered_repos(
+                    repository_exporter, repo_options
+                )
+                if allowed_repos is not None and not allowed_repos:
+                    logger.info(
+                        f"Skipping {org_name}: repository filters matched no repositories"
+                    )
+                    continue
+
+                logger.info(
+                    f"Syncing {org_name} via org-level endpoint "
+                    + (
+                        f"(incremental from {sync_cursor.isoformat()})"
+                        if sync_cursor
+                        else "(full resync)"
+                    )
+                )
+                async for alerts in dependabot_alert_exporter.get_paginated_resources(
+                    ListDependabotAlertOptions(
+                        organization=org_name,
+                        state=list(config.selector.states),
+                        severity=config.selector.severity_str,
+                        ecosystem=config.selector.ecosystems_str,
+                        updated_since=updated_since,
+                        allowed_repos=allowed_repos,
+                        exclude_archived=config.selector.exclude_archived,
+                    )
+                ):
+                    yield alerts
+                continue
+
+            logger.info(
+                f"Syncing {org_name} via per-repo endpoint "
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
+            )
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
-                tasks = []
-                for repo in repositories:
-                    tasks.append(
-                        dependabot_alert_exporter.get_paginated_resources(
-                            ListDependabotAlertOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=list(config.selector.states),
-                                severity=config.selector.severity_str,
-                                ecosystem=config.selector.ecosystems_str,
-                            )
+                tasks = [
+                    dependabot_alert_exporter.get_paginated_resources(
+                        ListDependabotAlertOptions(
+                            organization=org_name,
+                            repo_name=repo["name"],
+                            state=list(config.selector.states),
+                            severity=config.selector.severity_str,
+                            ecosystem=config.selector.ecosystems_str,
+                            updated_since=updated_since,
                         )
                     )
-
+                    for repo in repositories
+                ]
                 async for alerts in stream_async_iterators_tasks(*tasks):
                     yield alerts
 
@@ -1040,7 +1134,7 @@ async def resync_dependabot_alerts(
 async def resync_code_scanning_alerts(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all code scanning alerts in the organization's repositories."""
+    """Resync code scanning alerts (org-level stream for Organizations)."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -1049,34 +1143,80 @@ async def resync_code_scanning_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    updated_since = resolve_effective_datetime(
+        sync_cursor, config.selector.updated_since_datetime
+    )
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
             org_name = org["login"]
+            org_type = org["type"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
-                organization_type=org["type"],
+                organization_type=org_type,
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
             )
 
+            if org_type == "Organization":
+                allowed_repos = await resolve_org_filtered_repos(
+                    repository_exporter, repo_options
+                )
+                # Skip early if repository filters matched no repositories
+                if allowed_repos is not None and not allowed_repos:
+                    logger.info(
+                        f"Skipping {org_name}: repository filters matched no repositories"
+                    )
+                    continue
+
+                logger.info(
+                    f"Syncing {org_name} via org-level endpoint "
+                    + (
+                        f"(incremental from {sync_cursor.isoformat()})"
+                        if sync_cursor
+                        else "(full resync)"
+                    )
+                )
+                async for (
+                    alerts
+                ) in code_scanning_alert_exporter.get_paginated_resources(
+                    ListCodeScanningAlertOptions(
+                        organization=org_name,
+                        state=config.selector.state,
+                        severity=config.selector.severity,
+                        updated_since=updated_since,
+                        allowed_repos=allowed_repos,
+                        exclude_archived=config.selector.exclude_archived,
+                    )
+                ):
+                    yield alerts
+                continue
+
+            logger.info(
+                f"Syncing {org_name} via per-repo endpoint "
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
+            )
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
-                tasks = []
-                for repo in repositories:
-                    tasks.append(
-                        code_scanning_alert_exporter.get_paginated_resources(
-                            ListCodeScanningAlertOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=config.selector.state,
-                                severity=config.selector.severity,
-                            )
+                tasks = [
+                    code_scanning_alert_exporter.get_paginated_resources(
+                        ListCodeScanningAlertOptions(
+                            organization=org_name,
+                            repo_name=repo["name"],
+                            state=config.selector.state,
+                            severity=config.selector.severity,
+                            updated_since=updated_since,
                         )
                     )
-
+                    for repo in repositories
+                ]
                 async for alerts in stream_async_iterators_tasks(*tasks):
                     yield alerts
 
@@ -1362,12 +1502,13 @@ async def resync_collaborators(
                     yield collaborators
 
 
+@ocean.on_incremental_resync(ObjectKind.SECRET_SCANNING_ALERT)
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
 @_resync_per_authenticator
 async def resync_secret_scanning_alerts(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all secret scanning alerts in the organization's repositories."""
+    """Resync secret scanning alerts (org-level stream for Organizations)."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -1376,34 +1517,79 @@ async def resync_secret_scanning_alerts(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    updated_since = resolve_effective_datetime(
+        sync_cursor, config.selector.updated_since_datetime
+    )
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
             org_name = org["login"]
+            org_type = org["type"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
-                organization_type=org["type"],
+                organization_type=org_type,
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
             )
 
+            if org_type == "Organization":
+                allowed_repos = await resolve_org_filtered_repos(
+                    repository_exporter, repo_options
+                )
+                if allowed_repos is not None and not allowed_repos:
+                    logger.info(
+                        f"Skipping {org_name}: repository filters matched no repositories"
+                    )
+                    continue
+
+                logger.info(
+                    f"Syncing {org_name} via org-level endpoint "
+                    + (
+                        f"(incremental from {sync_cursor.isoformat()})"
+                        if sync_cursor
+                        else "(full resync)"
+                    )
+                )
+                async for (
+                    alerts
+                ) in secret_scanning_alert_exporter.get_paginated_resources(
+                    ListSecretScanningAlertOptions(
+                        organization=org_name,
+                        state=config.selector.state,
+                        hide_secret=config.selector.hide_secret,
+                        updated_since=updated_since,
+                        allowed_repos=allowed_repos,
+                        exclude_archived=config.selector.exclude_archived,
+                    )
+                ):
+                    yield alerts
+                continue
+
+            logger.info(
+                f"Syncing {org_name} via per-repo endpoint "
+                + (
+                    f"(incremental from {sync_cursor.isoformat()})"
+                    if sync_cursor
+                    else "(full resync)"
+                )
+            )
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
-                tasks = []
-                for repo in repositories:
-                    tasks.append(
-                        secret_scanning_alert_exporter.get_paginated_resources(
-                            ListSecretScanningAlertOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=config.selector.state,
-                                hide_secret=config.selector.hide_secret,
-                            )
+                tasks = [
+                    secret_scanning_alert_exporter.get_paginated_resources(
+                        ListSecretScanningAlertOptions(
+                            organization=org_name,
+                            repo_name=repo["name"],
+                            state=config.selector.state,
+                            hide_secret=config.selector.hide_secret,
+                            updated_since=updated_since,
                         )
                     )
-
+                    for repo in repositories
+                ]
                 async for alerts in stream_async_iterators_tasks(*tasks):
                     yield alerts
 
@@ -1413,3 +1599,4 @@ register_live_events_webhooks()
 
 # Register actions executors
 register_actions_executors()
+register_oauth_provider()

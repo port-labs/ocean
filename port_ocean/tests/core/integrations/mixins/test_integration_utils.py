@@ -24,13 +24,16 @@ from port_ocean.core.integrations.mixins.utils import (
     handle_items_to_parse,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
+    is_live_event_payload_logging_enabled,
     is_redis_live_events_enabled,
+    resync_error_handling,
     resync_function_wrapper,
     resync_generator_wrapper,
     selector_hash_from_selector,
     selector_hash_from_resource,
     selector_query_from_resource,
 )
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.core.models import LakehouseOperation
 
 
@@ -1108,6 +1111,57 @@ class TestProcessingModes:
         )
 
     @pytest.mark.asyncio
+    async def test_is_live_event_payload_logging_config_off_skips_feature_flags(
+        self,
+    ) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.payload_logging_enabled = False
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED]
+            )
+
+            result = await is_live_event_payload_logging_enabled()
+
+        assert result is False
+        mock_ocean_context.port_client.get_organization_feature_flags.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_is_live_event_payload_logging_config_on_feature_flag_off(
+        self,
+    ) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.payload_logging_enabled = True
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[]
+            )
+
+            result = await is_live_event_payload_logging_enabled()
+
+        assert result is False
+        mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_is_live_event_payload_logging_enabled_when_both_gates_on(
+        self,
+    ) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.live_events.payload_logging_enabled = True
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED]
+            )
+
+            result = await is_live_event_payload_logging_enabled()
+
+        assert result is True
+        mock_ocean_context.port_client.get_organization_feature_flags.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_is_redis_live_events_enabled_when_org_not_blocked(self) -> None:
         with patch(
             "port_ocean.core.integrations.mixins.utils.ocean"
@@ -1184,3 +1238,37 @@ class TestProcessingModes:
         assert "Failed to check Redis live events settings" in (
             mock_bound.warning.call_args.args[0]
         )
+
+
+class TestResyncErrorHandling:
+    def test_ocean_abort_re_raised_without_logging(self) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.exception"
+        ) as mock_exception:
+            with pytest.raises(OceanAbortException, match="tree fetch failed"):
+                with resync_error_handling():
+                    raise OceanAbortException("tree fetch failed")
+
+            mock_exception.assert_not_called()
+
+    def test_unexpected_exception_is_logged_and_wrapped(self) -> None:
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.exception"
+        ) as mock_exception:
+            with pytest.raises(OceanAbortException, match="Failed to execute resync"):
+                with resync_error_handling():
+                    raise ValueError("unexpected")
+
+            mock_exception.assert_called_once()
+
+    def test_exception_group_is_logged_and_wrapped(self) -> None:
+        abort = OceanAbortException("tree fetch failed")
+        group = ExceptionGroup("file failed with 1 error(s)", [abort])
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.exception"
+        ) as mock_exception:
+            with pytest.raises(OceanAbortException, match="Failed to execute resync"):
+                with resync_error_handling():
+                    raise group
+
+            mock_exception.assert_called_once()

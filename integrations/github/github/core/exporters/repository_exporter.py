@@ -1,7 +1,7 @@
 import asyncio
 import copy
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -22,7 +22,6 @@ from github.core.options import (
     SingleRepositoryOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
-from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -37,6 +36,11 @@ REPOSITORY_INCREMENTAL = ClientSideCutoffStrategy(
 REPOSITORY_SEARCH_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="updated_at",
     query_params={"sort": "updated", "order": "desc"},
+)
+
+REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="pushed_at",
+    query_params={"sort": "pushed", "direction": "desc"},
 )
 
 if TYPE_CHECKING:
@@ -97,10 +101,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         options_dict = dict(options)
         included_relations = options_dict.pop("included_relations", None)
+        incremental_cursor = options_dict.pop("updated_since", None)
+        pushed_since = options_dict.pop("pushed_since", None)
 
         async for repos in self._fetch_repositories(
             cast(ListRepositoryOptions, options_dict),
-            incremental_cursor=active_incremental_cursor(),
+            incremental_cursor=incremental_cursor,
+            pushed_since=pushed_since,
         ):
             if not included_relations:
                 yield repos
@@ -130,6 +137,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         options: ListRepositoryOptions,
         *,
         incremental_cursor: datetime | None = None,
+        pushed_since: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
         organization_type = params.pop("organization_type")
@@ -153,6 +161,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             params,
             search_params,
             incremental_cursor=incremental_cursor,
+            pushed_since=pushed_since,
             exclude_archived=exclude_archived,
         ):
             if exclude_archived:
@@ -169,18 +178,24 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         _: Optional[RepoSearchParams],
         *,
         incremental_cursor: datetime | None = None,
+        pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        strategy, cursor = (
+            (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
+            if pushed_since
+            else (REPOSITORY_INCREMENTAL, incremental_cursor)
+        )
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
-            REPOSITORY_INCREMENTAL.merge_params(params, incremental_cursor),
+            strategy.merge_params(params, cursor),
         )
 
         async for repos in paginate_with_strategy(
             self.client.send_paginated_request(url, final_params),
-            cursor=incremental_cursor,
-            strategy=REPOSITORY_INCREMENTAL,
+            cursor=cursor,
+            strategy=strategy,
         ):
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from organization {organization}"
@@ -195,6 +210,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         search_params: Optional[RepoSearchParams],
         *,
         incremental_cursor: datetime | None = None,
+        pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repository_type = params.pop("type")
@@ -214,6 +230,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
+        if pushed_since:
+            # Search has no "pushed" sort, so filter server-side with a qualifier instead.
+            raw_q = (
+                f"{raw_q} pushed:>={self._format_search_datetime(pushed_since)}".strip()
+            )
+            incremental_cursor = None
+
         query_params = {
             "q": f"org:{organization} {raw_q}",
             **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
@@ -229,6 +252,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
             )
             yield repos
+
+    @staticmethod
+    def _format_search_datetime(value: datetime) -> str:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     async def _search_result_items(
         self, url: str, query_params: dict[str, Any]

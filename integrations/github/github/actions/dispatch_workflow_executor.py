@@ -6,7 +6,6 @@ from typing import Any
 import httpx
 from loguru import logger
 from github.actions.utils import build_external_id, extract_error_message
-from github.clients.auth import get_auth_provider
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -23,9 +22,6 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
     DispatchWorkflowWebhookProcessor,
 )
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
-from github.clients.client_factory import (
-    create_github_client_for_org,
-)
 from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.ocean import ocean
@@ -136,7 +132,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         organization = run.execution_properties.get("org")
         if not isinstance(organization, str):
             raise InvalidActionParametersException("org is required")
-        return [await create_github_client_for_org(organization)]
+        return [await self._rest_client_for_org(run, organization)]
 
     async def _get_default_ref(
         self, rest_client: GithubRestClient, organization: str, repo_name: str
@@ -184,7 +180,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         iso_date: str,
     ) -> dict[str, Any]:
         workflow_runs: list[dict[str, Any]] = []
-        actor = await get_auth_provider().get_integration_actor()
+        actor = await rest_client.authenticator.get_authenticated_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
             response = await rest_client.send_api_request(

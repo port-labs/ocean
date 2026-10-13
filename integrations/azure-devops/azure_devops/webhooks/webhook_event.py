@@ -55,14 +55,15 @@ class WebhookSubscription(BaseModel):
             for key, value in FULL_PAYLOAD_CONSUMER_INPUTS.items()
         )
 
-    def get_event_by_subscription(
+    def get_matching_subscriptions(
         self, subscribed_events: list["WebhookSubscription"]
-    ) -> Optional["WebhookSubscription"]:
+    ) -> list["WebhookSubscription"]:
         if not self.consumerInputs:
-            return None
+            return []
 
         current_url = self.consumerInputs.get("url")
         current_project_id = (self.publisherInputs or {}).get("projectId")
+        matching_subscriptions: list["WebhookSubscription"] = []
 
         for subscribed_event in subscribed_events:
             if not subscribed_event.consumerInputs:
@@ -79,9 +80,15 @@ class WebhookSubscription(BaseModel):
                 and subscribed_url == current_url
                 and subscribed_project_id == current_project_id
             ):
-                return subscribed_event
+                matching_subscriptions.append(subscribed_event)
 
-        return None
+        return matching_subscriptions
+
+    def get_event_by_subscription(
+        self, subscribed_events: list["WebhookSubscription"]
+    ) -> Optional["WebhookSubscription"]:
+        matching_subscriptions = self.get_matching_subscriptions(subscribed_events)
+        return matching_subscriptions[0] if matching_subscriptions else None
 
     def is_enabled(self) -> bool:
         return self.status == "enabled"

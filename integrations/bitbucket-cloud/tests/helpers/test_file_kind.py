@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from bitbucket_cloud.helpers.file_kind import (
     build_search_terms,
+    extract_filename_extension,
     process_file_patterns,
     validate_file_match,
 )
@@ -35,13 +36,55 @@ def test_build_search_terms_with_minimal_parameters() -> None:
     assert query == '"test.py" path:/'
 
 
+@pytest.mark.parametrize(
+    ("filename", "extension"),
+    [
+        (".nvmrc", ""),
+        (".gitignore", ""),
+        (".env", ""),
+        ("Dockerfile", ""),
+        ("test.py", "py"),
+        ("test.js", "js"),
+        ("catalog.yaml", "yaml"),
+        ("package.json", "json"),
+        ("archive.tar.gz", "gz"),
+        (".eslintrc.js", "js"),
+    ],
+)
+def test_extract_filename_extension(filename: str, extension: str) -> None:
+    """Dotfiles have no extension; ordinary files keep theirs."""
+    assert extract_filename_extension(filename) == extension
+
+
 def test_validate_file_match() -> None:
     """Test validate_file_match function."""
     assert validate_file_match("src/main/test.py", "test.py", "src/main")
     assert validate_file_match("test.py", "test.py", "")
     assert validate_file_match("test.py", "test.py", "/")
+    assert validate_file_match(".nvmrc", ".nvmrc", "/")
+    assert validate_file_match("src/.gitignore", ".gitignore", "src")
+    assert validate_file_match(".env", ".env", "")
     assert not validate_file_match("src/main/other.py", "test.py", "src/main")
     assert not validate_file_match("src/test/test.py", "test.py", "src/main")
+
+
+@pytest.mark.parametrize(
+    "expected_path",
+    ["hello/test", "/hello/test", "/hello/test/", "hello/test/"],
+)
+def test_validate_file_match_ignores_path_slash_variants(expected_path: str) -> None:
+    """Leading/trailing slashes on the configured path must not change matching."""
+    assert validate_file_match("hello/test/file.txt", "file.txt", expected_path)
+    assert not validate_file_match("hello/other/file.txt", "file.txt", expected_path)
+
+
+def test_build_search_terms_normalizes_path_slashes() -> None:
+    """Search path: qualifier should not keep a leading or trailing slash."""
+    for path in ("hello/test", "/hello/test", "/hello/test/", "hello/test/"):
+        query = build_search_terms("file.txt", None, path, "txt")
+        assert "path:hello/test" in query
+        assert "path:/hello/test" not in query
+        assert "path:hello/test/" not in query
 
 
 @pytest.mark.asyncio
@@ -134,6 +177,102 @@ async def test_process_file_patterns_with_extensions() -> None:
         assert len(search_calls) == 2
         assert "ext:py" in search_calls[0]
         assert "ext:js" in search_calls[1]
+
+
+@pytest.mark.asyncio
+async def test_process_file_patterns_ingests_dotfiles() -> None:
+    """Dotfiles are searched without an ext filter; plain-text content is returned via retrieve_file_content."""
+    filenames = [".nvmrc", ".gitignore", ".env"]
+    file_contents = {
+        ".nvmrc": "18",
+        ".gitignore": "node_modules/\n.env\n",
+        ".env": "SECRET=value\n",
+    }
+    search_calls: List[str] = []
+
+    async def mock_search_files(
+        query: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        search_calls.append(query)
+        filename = query.split('"')[1]
+        yield [
+            {
+                "path_matches": [{"match": filename}],
+                "file": {
+                    "path": filename,
+                    "commit": {
+                        "repository": {
+                            "name": "test-repo",
+                            "mainbranch": {"name": "main"},
+                        }
+                    },
+                },
+            }
+        ]
+
+    async def mock_get_repository_files(
+        repo_slug: str, branch: str, file_path: str
+    ) -> str:
+        return file_contents[file_path]
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = mock_get_repository_files
+        mock_init_client.return_value = mock_client
+
+        file_pattern = BitbucketFilePattern(
+            path="/",
+            repos=["test-repo"],
+            filenames=filenames,
+            skipParsing=False,
+        )
+
+        results = []
+        async for result in process_file_patterns(file_pattern):
+            results.extend(result)
+
+    assert [result["metadata"]["path"] for result in results] == filenames
+    assert [result["content"] for result in results] == [
+        file_contents[filename] for filename in filenames
+    ]
+    assert len(search_calls) == len(filenames)
+    for query, filename in zip(search_calls, filenames):
+        assert f'"{filename}"' in query
+        assert "ext:" not in query
+
+
+@pytest.mark.asyncio
+async def test_process_file_patterns_keeps_extension_for_regular_files() -> None:
+    """Files with a real extension still search by that extension."""
+    search_calls: List[str] = []
+
+    async def mock_search_files(
+        query: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        search_calls.append(query)
+        yield []
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_init_client.return_value = mock_client
+
+        file_pattern = BitbucketFilePattern(
+            path="src",
+            repos=["test-repo"],
+            filenames=["catalog.yaml", "package.json", "archive.tar.gz"],
+            skipParsing=False,
+        )
+
+        async for _ in process_file_patterns(file_pattern):
+            pass
+
+    assert len(search_calls) == 3
+    assert "ext:yaml" in search_calls[0]
+    assert "ext:json" in search_calls[1]
+    assert "ext:gz" in search_calls[2]
+    assert "ext:tar" not in search_calls[2]
 
 
 @pytest.mark.asyncio

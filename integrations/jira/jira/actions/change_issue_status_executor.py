@@ -1,14 +1,14 @@
+from typing import Any
+
 import httpx
 from loguru import logger
 from pydantic import Field, ValidationError
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
-from typing import Any
+from port_ocean.core.models import IntegrationRun
 
 from jira.actions.abstract_jira_action_input import AbstractJiraActionInput
 from jira.actions.abstract_jira_executor import AbstractJiraExecutor
 from jira.actions.exceptions import ChangeIssueStatusError
-from jira.actions.utils import get_issue_browse_url
 from jira.api_models import JiraIssueTransition, JiraIssueTransitionsResponse
 
 
@@ -51,11 +51,16 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
         if current_status and self._normalize_status_name(
             current_status
         ) == self._normalize_status_name(action_input.status):
-            message = (
-                f"Issue {action_input.issue_key} is already in status "
-                f"'{current_status}'"
+            await self._complete_issue_action(
+                run,
+                issue_key=action_input.issue_key,
+                message=(
+                    f"Issue {action_input.issue_key} is already in status "
+                    f"'{current_status}'"
+                ),
+                status_label="Status changed",
+                output={"status": current_status},
             )
-            await self._complete_run(run, action_input, current_status, message)
             return
 
         try:
@@ -86,13 +91,6 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
             )
 
         resolved_status = transition.to.name
-        await self._complete_run(
-            run,
-            action_input,
-            resolved_status,
-            message=f"Changed issue {action_input.issue_key} to status '{resolved_status}'",
-        )
-
         logger.info(
             "Changed Jira issue status",
             issue_key=action_input.issue_key,
@@ -100,39 +98,15 @@ class ChangeIssueStatusExecutor(AbstractJiraExecutor):
             transition_id=transition.id,
         )
 
-    async def _complete_run(
-        self,
-        run: IntegrationRun,
-        action_input: ChangeIssueStatusInput,
-        status: str,
-        message: str,
-    ) -> None:
-        issue_link = get_issue_browse_url(
-            self.client.jira_url,
-            action_input.issue_key,
-            oauth_enabled=self.client.is_oauth_enabled(),
-        )
-        if issue_link:
-            message = f"{message}: {issue_link}"
-
-        await ocean.port_client.post_run_log(
+        await self._complete_issue_action(
             run,
-            message,
-            should_raise=False,
-        )
-
-        if isinstance(run, WorkflowNodeRun):
-            run.output = {
-                "issueKey": action_input.issue_key,
-                "status": status,
-                "issueUrl": issue_link or "",
-            }
-
-        await ocean.port_client.report_run_completed(
-            run,
-            success=True,
-            message=message,
+            issue_key=action_input.issue_key,
+            message=(
+                f"Changed issue {action_input.issue_key} to status "
+                f"'{resolved_status}'"
+            ),
             status_label="Status changed",
+            output={"status": resolved_status},
         )
 
     @staticmethod

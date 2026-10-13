@@ -5,6 +5,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, 
 import anyio
 import httpx
 from loguru import logger
+from pydantic.v1 import BaseModel
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -22,7 +23,17 @@ from gitlab.helpers.utils import (
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
 
+
+class AwardEmoji(BaseModel):
+    id: int
+    name: str
+
+
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
+_MR_ENRICHMENT_FIELDS = {
+    "commits": "__commits",
+    "notes": "__notes",
+}
 
 
 def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any] | None:
@@ -184,6 +195,33 @@ class GitLabClient:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
         )
+
+    async def get_merge_request_commits(
+        self, project_id: str | int, merge_request_iid: str | int
+    ) -> list[dict[str, Any]]:
+        """Return all commits on a merge request, paginating fully."""
+        encoded_iid = quote(str(merge_request_iid), safe="")
+        commits: list[dict[str, Any]] = []
+        async for batch in self.rest.get_paginated_project_resource(
+            str(project_id),
+            f"merge_requests/{encoded_iid}/commits",
+        ):
+            commits.extend(batch)
+        return commits
+
+    async def get_merge_request_notes(
+        self, project_id: str | int, merge_request_iid: str | int
+    ) -> list[dict[str, Any]]:
+        """Return all notes on a merge request, paginating fully in created-at order."""
+        encoded_iid = quote(str(merge_request_iid), safe="")
+        notes: list[dict[str, Any]] = []
+        async for batch in self.rest.get_paginated_project_resource(
+            str(project_id),
+            f"merge_requests/{encoded_iid}/notes",
+            params={"sort": "asc", "order_by": "created_at"},
+        ):
+            notes.extend(batch)
+        return notes
 
     async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(
@@ -657,7 +695,7 @@ class GitLabClient:
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
-        strategy: str = "groupSearch",
+        strategy: str = "repositoryTree",
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files based on the specified strategy.
 
@@ -665,9 +703,12 @@ class GitLabClient:
             query: The parsed search path, built once by the caller and threaded
                 through every strategy so the query string is never rebuilt.
             strategy: One of "projectSearch", "repositoryTree", or "groupSearch".
-                - projectSearch: Search across all accessible projects
                 - repositoryTree: Search across all accessible projects using tree API
+                - projectSearch: Search across all accessible projects via Search API
                 - groupSearch: Search across groups (with fallback to projectSearch if no results)
+
+            GitLab's Search API (groupSearch / projectSearch) does not guarantee complete
+            results; see https://docs.gitlab.com/user/search/advanced_search/#known-issues
         """
         should_use_tree = strategy == "repositoryTree"
 
@@ -904,6 +945,83 @@ class GitLabClient:
             ]
             if folders_batch:
                 yield folders_batch
+
+    async def enrich_merge_requests(
+        self,
+        batch: list[dict[str, Any]],
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+        max_concurrent: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Attach opt-in raw commits and notes from GitLab onto a merge-request batch."""
+        if not batch or not (enrich_with_commits or enrich_with_review_discussion):
+            return batch
+
+        logger.info(
+            f"Enriching {len(batch)} merge requests "
+            f"(commits={enrich_with_commits}, "
+            f"reviewDiscussion={enrich_with_review_discussion})"
+        )
+        return await self._enrich_batch(
+            batch,
+            partial(
+                self._attach_merge_request_enrichment,
+                enrich_with_commits=enrich_with_commits,
+                enrich_with_review_discussion=enrich_with_review_discussion,
+            ),
+            max_concurrent,
+        )
+
+    async def _attach_merge_request_enrichment(
+        self,
+        merge_request: dict[str, Any],
+        *,
+        enrich_with_commits: bool,
+        enrich_with_review_discussion: bool,
+    ) -> dict[str, Any]:
+        project_id = merge_request.get("project_id")
+        iid = merge_request.get("iid")
+        if project_id is None or iid is None:
+            logger.warning(
+                "Skipping merge request enrichment; missing project_id or iid "
+                f"(id={merge_request.get('id')!r})"
+            )
+            return merge_request
+
+        try:
+            fetchers: list[tuple[str, Awaitable[list[dict[str, Any]]]]] = []
+            if enrich_with_commits:
+                fetchers.append(
+                    ("commits", self.get_merge_request_commits(project_id, iid))
+                )
+            if enrich_with_review_discussion:
+                fetchers.append(
+                    ("notes", self.get_merge_request_notes(project_id, iid))
+                )
+
+            results = await asyncio.gather(
+                *(coro for _, coro in fetchers),
+                return_exceptions=True,
+            )
+
+            for (label, _), result in zip(fetchers, results):
+                field = _MR_ENRICHMENT_FIELDS[label]
+                if not isinstance(result, list):
+                    logger.warning(
+                        f"{label} enrichment failed for merge request "
+                        f"{project_id}!{iid}: {result}"
+                    )
+                    merge_request[field] = None
+                    continue
+                merge_request[field] = result
+        except Exception as e:
+            logger.warning(
+                f"Merge request enrichment failed for merge request "
+                f"{project_id}!{iid}: {e}"
+            )
+
+        return merge_request
 
     async def _enrich_batch(
         self,
@@ -1567,6 +1685,72 @@ class GitLabClient:
             f"projects/{encoded_id}/merge_requests/{merge_request_iid}",
             data=data,
         )
+
+    async def create_merge_request_note(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        body: str,
+    ) -> dict[str, Any]:
+        encoded_id = quote(project_id, safe="")
+        path = f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes"
+        return await self.rest.send_api_request("POST", path, data={"body": body})
+
+    async def award_merge_request_note_emoji(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        note_id: int,
+        name: str,
+    ) -> dict[str, Any]:
+        encoded_id = quote(project_id, safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji"
+        )
+        return await self.rest.send_api_request("POST", path, data={"name": name})
+
+    async def list_merge_request_note_award_emojis(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        note_id: int,
+    ) -> list[AwardEmoji] | None:
+        """Return every award on the note, or None if GitLab answered 403/404."""
+        encoded_id = quote(project_id, safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji"
+        )
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        awards: list[AwardEmoji] = []
+        page = 1
+        while True:
+            response = await self.rest.send_api_request(
+                "GET", path, params={"per_page": page_size, "page": page}
+            )
+            # send_api_request turns a GET 403/404 into {}, so a non-list means
+            # the note could not be read, not that it has no reactions.
+            if not isinstance(response, list):
+                return None
+            awards.extend(AwardEmoji.parse_obj(award) for award in response)
+            if len(response) < page_size:
+                return awards
+            page += 1
+
+    async def revoke_merge_request_note_award_emoji(
+        self,
+        project_id: str,
+        merge_request_iid: int,
+        note_id: int,
+        award_id: int,
+    ) -> dict[str, Any]:
+        encoded_id = quote(project_id, safe="")
+        path = (
+            f"projects/{encoded_id}/merge_requests/{merge_request_iid}/notes/"
+            f"{note_id}/award_emoji/{award_id}"
+        )
+        return await self.rest.send_api_request("DELETE", path)
 
     def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Return the most-recently observed rate-limit info, or None if unknown."""

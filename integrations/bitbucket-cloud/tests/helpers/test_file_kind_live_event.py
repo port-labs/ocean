@@ -89,6 +89,11 @@ async def test_check_single_path() -> None:
     # Test root directory file with empty path
     assert check_single_path("README.md", ["README.md"], "")
 
+    # Leading/trailing slashes on config path are equivalent
+    for config_path in ("hello/test", "/hello/test", "/hello/test/", "hello/test/"):
+        assert check_single_path("hello/test/file.txt", ["file.txt"], config_path)
+        assert not check_single_path("hello/other/file.txt", ["file.txt"], config_path)
+
 
 @pytest.mark.asyncio
 async def test_check_and_load_file_prefix() -> None:
@@ -129,6 +134,48 @@ async def test_check_and_load_file_prefix() -> None:
         assert result["metadata"] == {"commit": {"hash": "test-hash"}}
         assert result["repo"] == {"name": "test-repo"}
         assert result["branch"] == "main"
+
+
+@pytest.mark.asyncio
+async def test_process_file_changes_plain_text_content() -> None:
+    """Plain-text files are returned as scalar content without prefix loading."""
+    plain_diff_stat: Dict[str, Any] = {
+        "new": {"path": ".nvmrc"},
+        "old": {"path": ".nvmrc"},
+        "status": "modified",
+        "commit": {"hash": "new_hash"},
+    }
+
+    async def mock_retrieve_diff_stat(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [plain_diff_stat]
+
+    mock_webhook_client = AsyncMock()
+    mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
+    mock_webhook_client.get_repository_files.return_value = "18"
+
+    mock_selector = MagicMock()
+    mock_selector.files.filenames = [".nvmrc"]
+    mock_selector.files.path = "/"
+
+    with patch("bitbucket_cloud.helpers.file_kind_live_event.init_client") as mock_init:
+        mock_init.return_value = AsyncMock()
+
+        updated, deleted = await process_file_changes(
+            "test-repo",
+            [SAMPLE_CHANGE],
+            mock_selector,
+            False,
+            mock_webhook_client,
+            {"repository": {"name": "test-repo"}},
+        )
+
+    assert deleted == []
+    assert len(updated) == 1
+    assert updated[0]["content"] == "18"
+    assert updated[0]["metadata"]["path"] == ".nvmrc"
+    mock_init.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -61,34 +61,7 @@ class SslSettings(BaseOceanModel):
     third_party: SslClientSettings = Field(default_factory=SslClientSettings)
 
 
-class OAuthProviderSettings(BaseOceanModel):
-    model_config = ConfigDict(extra="allow")
-
-    client_id: str = sensitive_field()
-    client_secret: str = sensitive_field()
-    scopes: str | None = None
-    authorize_url: str | None = None
-    token_url: str | None = None
-
-
-class GitHubOAuthSettings(OAuthProviderSettings):
-    pass
-
-
-class GitLabOAuthSettings(OAuthProviderSettings):
-    host: str | None = None
-
-
-class AzureDevOpsOAuthSettings(OAuthProviderSettings):
-    tenant_id: str
-
-
 class IdentityPropagationOAuthSettings(BaseOceanModel):
-    model_config = ConfigDict(extra="allow")
-
-    github: GitHubOAuthSettings | None = None
-    gitlab: GitLabOAuthSettings | None = None
-    azure_devops: AzureDevOpsOAuthSettings | None = None
     state_signing_secret: str | None = sensitive_field(default=None)
 
 
@@ -428,6 +401,7 @@ class LiveEventsSettings(BaseOceanModel):
 
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
     is_redis_stream_consumer_enabled: bool = False
+    payload_logging_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):

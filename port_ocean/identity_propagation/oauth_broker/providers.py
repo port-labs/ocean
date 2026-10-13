@@ -1,12 +1,10 @@
 import time
-from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlencode
 
 from loguru import logger
 
 from port_ocean.identity_propagation.vault.base import TokenRecord
-from port_ocean.config.settings import OAuthProviderSettings
 from port_ocean.exceptions.identity_propagation import (
     OAuthError,
     OAuthProviderNotConfiguredError,
@@ -14,21 +12,12 @@ from port_ocean.exceptions.identity_propagation import (
 from port_ocean.utils import http_async_client
 
 
-@dataclass(frozen=True)
-class ProviderDefaults:
-
-    authorize_url: str
-    token_url: str
-    scopes: str
-    default_host: str | None = None
-
-
 def require_provider() -> "OAuth2Provider":
     """Return this process's single registered OAuth provider.
 
     There is no target-based lookup: one Ocean process hosts exactly one integration, so
     there's exactly one provider to have registered, set once at startup via
-    `ocean.register_oauth_provider`. See `context/ocean.py`.
+    ``ocean.register_oauth_provider``.  See ``context/ocean.py``.
     """
     from port_ocean.context.ocean import (
         ocean,
@@ -43,31 +32,34 @@ def require_provider() -> "OAuth2Provider":
 
 
 class OAuth2Provider:
+    """Generic OAuth 2.0 provider for identity-propagation token exchange.
+
+    Core owns this class but knows nothing about any specific downstream
+    provider (GitHub, GitLab, Azure DevOps, ...).  Integrations construct
+    an instance with fully-resolved URLs and credentials, then register it
+    via ``ocean.register_oauth_provider(provider)``.
+    """
 
     def __init__(
-        self, target: str, defaults: ProviderDefaults, settings: OAuthProviderSettings
+        self,
+        *,
+        target: str,
+        authorize_url: str,
+        token_url: str,
+        client_id: str,
+        client_secret: str,
+        scopes: str,
     ) -> None:
-        host = (getattr(settings, "host", None) or defaults.default_host or "").rstrip(
-            "/"
-        )
-        placeholders = {
-            "host": host,
-            "tenant_id": getattr(settings, "tenant_id", "") or "",
-        }
-
         self.target = target
-        self._settings = settings
-        self._authorize_url = (settings.authorize_url or defaults.authorize_url).format(
-            **placeholders
-        )
-        self._token_url = (settings.token_url or defaults.token_url).format(
-            **placeholders
-        )
-        self._scopes = settings.scopes or defaults.scopes
+        self._authorize_url = authorize_url
+        self._token_url = token_url
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._scopes = scopes
 
     def authorization_url(self, redirect_uri: str, state: str) -> str:
         params = {
-            "client_id": self._settings.client_id,
+            "client_id": self._client_id,
             "redirect_uri": redirect_uri,
             "scope": self._scopes,
             "state": state,
@@ -97,8 +89,8 @@ class OAuth2Provider:
     async def _request_token(self, data: dict[str, str]) -> TokenRecord:
         payload = {
             **data,
-            "client_id": self._settings.client_id,
-            "client_secret": self._settings.client_secret,
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
         }
         try:
             response = await http_async_client.post(
@@ -126,8 +118,9 @@ class OAuth2Provider:
     def _to_record(self, body: dict[str, Any]) -> TokenRecord:
         access_token = body.get("access_token")
         if not access_token:
-            # GitHub answers 200 with an error body, so the status code is not
-            # enough to tell success from failure.
+            # Some providers (e.g. GitHub) answer 200 with an error body instead
+            # of a 4xx status code, so the status alone cannot distinguish success
+            # from failure.
             raise OAuthError(
                 f"Token response from {self.target} carried no access token"
                 f" ({body.get('error', 'unknown error')})"

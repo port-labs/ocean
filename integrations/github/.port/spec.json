@@ -4,6 +4,7 @@
   "icon": "Github",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean",
   "formMappingEnabled": true,
+  "testConnectionAvailable": true,
   "features": [
     {
       "type": "exporter",
@@ -188,6 +189,22 @@
       "required": false,
       "default": false,
       "description": "Enable for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch (see https://github.com/github/roadmap/issues/1188). Polls GitHub for the triggered workflow run and serializes dispatches per organization/repository/workflow."
+    },
+    {
+      "name": "identityOauthClientId",
+      "title": "Identity propagation OAuth client ID",
+      "description": "Client ID of the GitHub OAuth app used so workflow actions run as the triggering user. Authorize and token URLs are derived from githubHost.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "identityOauthClientSecret",
+      "title": "Identity propagation OAuth client secret",
+      "description": "Client secret of the GitHub OAuth app used so workflow actions run as the triggering user.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
     }
   ],
   "saas": {

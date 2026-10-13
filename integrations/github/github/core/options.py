@@ -28,6 +28,8 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     search_params: NotRequired[Optional[RepoSearchParams]]
     exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
+    updated_since: NotRequired[Optional[datetime]]
+    pushed_since: NotRequired[Optional[datetime]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -54,6 +56,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
 
     states: Required[list[str]]
     max_results: Required[Optional[int]]
+    incremental_cursor: NotRequired[Optional[datetime]]
     updated_after: NotRequired[Optional[datetime]]
     closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
@@ -82,6 +85,7 @@ class ListIssueOptions(RepositoryIdentifier):
 
     state: Required[str]
     labels: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class BaseUserOptions(SingleOrganizationOptions):
@@ -108,6 +112,8 @@ class ListTeamOptions(BaseUserOptions):
 class ListWorkflowOptions(RepositoryIdentifier):
     """Options for workflows"""
 
+    updated_since: NotRequired[Optional[datetime]]
+
 
 class SingleWorkflowOptions(ListWorkflowOptions):
     workflow_id: Required[str]
@@ -117,9 +123,10 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
     """Options for workflow runs"""
 
     workflow_id: Required[int]
-    max_runs: Required[int]
+    max_runs: NotRequired[Optional[int]]
     status: NotRequired[Optional[str]]
     created: NotRequired[Optional[str]]
+    incremental_active: NotRequired[bool]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):
@@ -134,6 +141,8 @@ class SingleReleaseOptions(RepositoryIdentifier):
 
 class ListReleaseOptions(RepositoryIdentifier):
     """Options for listing releases."""
+
+    created_since: NotRequired[Optional[datetime]]
 
 
 class SingleTagOptions(RepositoryIdentifier):
@@ -187,6 +196,7 @@ class ListDeploymentsOptions(RepositoryIdentifier):
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
     enrich_with_first_commit: NotRequired[bool]
+    created_since: NotRequired[Optional[datetime]]
 
 
 class SingleDeploymentStatusOptions(RepositoryIdentifier):
@@ -208,12 +218,16 @@ class SingleDependabotAlertOptions(RepositoryIdentifier):
     alert_number: Required[str]
 
 
-class ListDependabotAlertOptions(RepositoryIdentifier):
-    """Options for listing Dependabot alerts."""
+class ListDependabotAlertOptions(SingleOrganizationOptions):
+    """Options for listing Dependabot alerts (repo- or org-level)."""
 
     state: Required[list[str]]
     severity: NotRequired[Optional[str]]
     ecosystem: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -222,11 +236,15 @@ class SingleCodeScanningAlertOptions(RepositoryIdentifier):
     alert_number: Required[str]
 
 
-class ListCodeScanningAlertOptions(RepositoryIdentifier):
-    """Options for listing code scanning alerts."""
+class ListCodeScanningAlertOptions(SingleOrganizationOptions):
+    """Options for listing code scanning alerts (repo- or org-level)."""
 
     state: Required[str]
     severity: NotRequired[Optional[str]]
+    updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class FileContentOptions(RepositoryIdentifier):
@@ -308,10 +326,15 @@ class SingleSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
     alert_number: Required[str]
 
 
-class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+class ListSecretScanningAlertOptions(SingleOrganizationOptions):
     """Options for listing secret scanning alerts."""
 
+    hide_secret: Required[bool]
     state: Required[str]
+    updated_since: NotRequired[Optional[datetime]]
+    repo_name: NotRequired[Optional[str]]
+    allowed_repos: NotRequired[Optional[list[str]]]
+    exclude_archived: NotRequired[bool]
 
 
 class SinglePackageOptions(SingleOrganizationOptions):

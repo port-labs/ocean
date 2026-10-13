@@ -37,7 +37,6 @@ from github.helpers.utils import (
 from github.core.exporters.pull_request_exporter.utils import (
     paginate_closed_pull_requests,
 )
-from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import (
     ClientSideCutoffStrategy,
     paginate_with_strategy,
@@ -98,13 +97,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all pull requests in the organization's repositories with pagination."""
 
         repo_name, organization, extras = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
-        if incremental_cursor is not None:
-            extras["updated_after"] = incremental_cursor
-            extras["max_results"] = None
-            extras["closed_after"] = None
         states = extras["states"]
         max_results = extras["max_results"]
+        incremental_cursor = extras.pop("incremental_cursor", None)
         updated_after = extras.get("updated_after")
         closed_after = extras.get("closed_after")
 
@@ -255,13 +250,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, extras = parse_github_options(dict(options))
-        incremental_cursor = active_incremental_cursor()
-        if incremental_cursor is not None:
-            extras["updated_after"] = incremental_cursor
-            extras["max_results"] = None
-            extras["closed_after"] = None
         states = extras["states"]
         max_results = extras["max_results"]
+        incremental_cursor = extras.pop("incremental_cursor", None)
         updated_after = extras.get("updated_after")
         closed_after = extras.get("closed_after")
         repo = extras["repo"]
