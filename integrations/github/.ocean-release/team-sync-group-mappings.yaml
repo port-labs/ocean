@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added an opt-in `include_group_mappings` selector to the team kind that fetches the IdP groups mapped to each team via `GET /orgs/{org}/teams/{slug}/team-sync/group-mappings` and exposes them under `__group_mappings`. Supports organizations using GitHub Enterprise Cloud team synchronization (non-EMU).
