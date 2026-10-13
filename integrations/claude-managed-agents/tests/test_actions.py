@@ -138,11 +138,19 @@ def _sdk_session(
     return session
 
 
-def _sdk_agent(*, agent_id: str = "agent_1") -> MagicMock:
+def _sdk_agent(*, agent_id: str = "agent_1", version: int | None = None) -> MagicMock:
     agent = MagicMock()
     agent.id = agent_id
+    agent.version = version
     agent.to_dict = MagicMock(return_value={"id": agent_id})
     return agent
+
+
+def _sdk_environment(*, environment_id: str = "env_1") -> MagicMock:
+    env = MagicMock()
+    env.id = environment_id
+    env.to_dict = MagicMock(return_value={"id": environment_id})
+    return env
 
 
 def test_trigger_agent_session_output_from_session() -> None:
@@ -1183,9 +1191,7 @@ async def test_cancel_session_sets_workflow_node_outputs() -> None:
 @pytest.mark.asyncio
 async def test_archive_agent_executor_archives_and_completes() -> None:
     client_mock = MagicMock()
-    client_mock.archive_agent = AsyncMock(
-        return_value={"id": "agent_1", "archived": True}
-    )
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(ArchiveAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -1212,7 +1218,7 @@ async def test_archive_agent_executor_archives_and_completes() -> None:
 @pytest.mark.asyncio
 async def test_archive_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
     client_mock = MagicMock()
-    client_mock.archive_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(ArchiveAgentExecutor, client_mock)
 
     run = MagicMock(spec=WorkflowNodeRun)
@@ -1238,7 +1244,7 @@ async def test_archive_agent_executor_skips_output_for_classic_action_runs() -> 
     """Classic self-service action runs have no structured output field, so the
     executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
     client_mock = MagicMock()
-    client_mock.archive_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(ArchiveAgentExecutor, client_mock)
 
     run = MagicMock(spec=ActionRun)
@@ -1299,7 +1305,7 @@ async def test_archive_agent_executor_posts_warn_log_when_catalog_upsert_fails()
     """Catalog reflection is best-effort: a failure must not fail the run, but
     should surface as a warning run log in addition to the loguru warning."""
     client_mock = MagicMock()
-    client_mock.archive_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.archive_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(ArchiveAgentExecutor, client_mock)
 
     run = MagicMock()
@@ -1350,8 +1356,8 @@ def _update_agent_run(**overrides: Any) -> MagicMock:
 @pytest.mark.asyncio
 async def test_update_agent_executor_updates_and_completes() -> None:
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value={"id": "agent_1", "version": 3})
-    client_mock.update_agent = AsyncMock(return_value={"id": "agent_1", "version": 4})
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=3))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent(version=4))
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
     run = _update_agent_run()
@@ -1378,8 +1384,8 @@ async def test_update_agent_executor_updates_and_completes() -> None:
 @pytest.mark.asyncio
 async def test_update_agent_executor_sets_agent_id_output_for_workflow_nodes() -> None:
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value={"id": "agent_1", "version": 1})
-    client_mock.update_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
     run = MagicMock(spec=WorkflowNodeRun)
@@ -1405,8 +1411,8 @@ async def test_update_agent_executor_skips_output_for_classic_action_runs() -> N
     """Classic self-service action runs have no structured output field, so the
     executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value={"id": "agent_1", "version": 1})
-    client_mock.update_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
     run = MagicMock(spec=ActionRun)
@@ -1469,7 +1475,7 @@ async def test_update_agent_executor_raises_on_get_agent_failure() -> None:
 @pytest.mark.asyncio
 async def test_update_agent_executor_raises_on_invalid_version() -> None:
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value={"id": "agent_1", "version": None})
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=None))
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
     mock_ocean = _build_mock_ocean()
@@ -1491,7 +1497,7 @@ async def test_update_agent_executor_raises_on_invalid_version() -> None:
 @pytest.mark.asyncio
 async def test_update_agent_executor_raises_on_update_failure() -> None:
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value={"id": "agent_1", "version": 2})
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=2))
     client_mock.update_agent = AsyncMock(side_effect=RuntimeError("conflict"))
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
@@ -1514,8 +1520,8 @@ async def test_update_agent_executor_raises_on_update_failure() -> None:
 async def test_update_agent_executor_maps_system_prompt_to_system_field() -> None:
     """systemPrompt in execution properties must arrive as `system` in the API payload."""
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value={"id": "agent_1", "version": 1})
-    client_mock.update_agent = AsyncMock(return_value={"id": "agent_1"})
+    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
     mock_ocean = _build_mock_ocean()
@@ -1544,7 +1550,7 @@ async def test_update_agent_partition_key_is_agent_id() -> None:
 @pytest.mark.asyncio
 async def test_create_environment_executor_creates_and_completes() -> None:
     client_mock = MagicMock()
-    client_mock.create_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(CreateEnvironmentExecutor, client_mock)
 
     run = MagicMock()
@@ -1578,7 +1584,7 @@ async def test_create_environment_executor_sets_environment_id_output_for_workfl
     None
 ):
     client_mock = MagicMock()
-    client_mock.create_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(CreateEnvironmentExecutor, client_mock)
 
     run = MagicMock(spec=WorkflowNodeRun)
@@ -1606,7 +1612,7 @@ async def test_create_environment_executor_skips_output_for_classic_action_runs(
     """Classic self-service action runs have no structured output field, so the
     executor must not touch `.output` on them (it doesn't exist on `ActionRun`)."""
     client_mock = MagicMock()
-    client_mock.create_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(CreateEnvironmentExecutor, client_mock)
 
     run = MagicMock(spec=ActionRun)
@@ -1669,7 +1675,7 @@ async def test_create_environment_executor_posts_warn_log_when_catalog_upsert_fa
     """Catalog reflection is best-effort: a failure must not fail the run, but
     should surface as a warning run log in addition to the loguru warning."""
     client_mock = MagicMock()
-    client_mock.create_environment = AsyncMock(return_value={"id": "env_1"})
+    client_mock.create_environment = AsyncMock(return_value=_sdk_environment())
     executor = _build_executor(CreateEnvironmentExecutor, client_mock)
 
     run = MagicMock()
@@ -1701,13 +1707,6 @@ async def test_create_environment_executor_posts_warn_log_when_catalog_upsert_fa
         "Created environment env_1",
         status_label=ENVIRONMENT_CREATED_STATUS_LABEL,
     )
-
-
-def _sdk_environment(environment_id: str = "env_1") -> MagicMock:
-    env = MagicMock()
-    env.id = environment_id
-    env.to_dict = MagicMock(return_value={"id": environment_id})
-    return env
 
 
 def _update_env_run(**overrides: Any) -> MagicMock:
