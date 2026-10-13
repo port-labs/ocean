@@ -31,7 +31,6 @@ WALK_STOPPING_STATUSES = (401, 429)
 MAX_LISTING_DEPTH = 10000
 MAX_FILE_SIZE = 1024 * 1024
 # The only bound on content fetches: only MultiTokenAuth meters them.
-MAX_CONCURRENT_REPOSITORIES = 10
 MAX_CONCURRENT_FILE_FETCHES = 20
 # The only source of .metadata.commit.repository.* for existing mappings.
 REPOSITORY_EXPANSION = "+values.commit.repository.mainbranch.name"
@@ -156,9 +155,9 @@ async def _walk_repository(
     ``listing_root`` and ``source_filter`` are derived from ``file_pattern`` and are
     passed in because they are the same for every repository in the workspace; the
     pattern itself is still needed for the matcher and for skip_parsing. A failed
-    listing is recorded rather than raised, because this is one of several concurrent
-    walks and an exception cancels the others - unless the status applies to every
-    repository still to be walked, which is when cancelling them is the point.
+    listing is recorded rather than raised, so the remaining repositories are still
+    walked - unless the status applies to every one of them, which is when stopping is
+    the point.
     """
     repo_slug = repo["slug"]
     try:
@@ -211,12 +210,10 @@ async def process_file_patterns(
         logger.warning("No repositories configured, listing the entire workspace")
     failures: List[Exception] = []
 
-    listing_semaphore = BoundedSemaphore(MAX_CONCURRENT_REPOSITORIES)
     fetch_semaphore = BoundedSemaphore(MAX_CONCURRENT_FILE_FETCHES)
 
     # {} shares the repository kind's listing while it sets no userRole or repoQuery.
     async for repositories in client.get_repositories(params={}):
-        selected_repositories = []
         for repo in repositories:
             if not repo["size"]:
                 logger.debug(f"Repository {repo['slug']} has no commits, skipping")
@@ -228,28 +225,19 @@ async def process_file_patterns(
                     f"Repository {repo['slug']} is not in the configured repositories, skipping"
                 )
                 continue
-            selected_repositories.append(repo)
 
-        walked += len(selected_repositories)
-        tasks = [
-            semaphore_async_iterator(
-                listing_semaphore,
-                partial(
-                    _walk_repository,
-                    client,
-                    repo,
-                    file_pattern,
-                    listing_root,
-                    source_filter,
-                    failures,
-                    fetch_semaphore,
-                ),
-            )
-            for repo in selected_repositories
-        ]
-        async for batch in stream_async_iterators_tasks(*tasks):
-            matched += len(batch)
-            yield batch
+            walked += 1
+            async for batch in _walk_repository(
+                client,
+                repo,
+                file_pattern,
+                listing_root,
+                source_filter,
+                failures,
+                fetch_semaphore,
+            ):
+                matched += len(batch)
+                yield batch
 
     if not matched and not failures:
         logger.warning(
