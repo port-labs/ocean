@@ -6,6 +6,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from actions.registry import register_action_executors
+from clients.client_factory import create_webhook_client
 from exporter_factory import (
     create_agents_exporter,
     create_environments_exporter,
@@ -90,10 +91,24 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    # Anthropic webhooks are configured in the Claude Console (there is no
-    # create-subscription API), so there is nothing to register on the Anthropic
-    # side here - the integration only verifies incoming webhook signatures.
     logger.info("Starting claude-managed-agents integration")
+
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping Claude webhook creation because the event listener "
+            "does not process webhooks"
+        )
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "Skipping Claude webhook creation because no base URL is configured. "
+            "Set OCEAN__BASE_URL to enable live events."
+        )
+        return
+
+    await create_webhook_client().upsert_webhook(base_url)
 
 
 register_live_events_webhooks()

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-10-13)
+
+
+### Features
+
+- Add a New Relic service dependency kind from outbound CALLS relationships
+
+
+## 0.1.448 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 0.1.447 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
 ## 0.1.446 (2026-10-12)
 
 
