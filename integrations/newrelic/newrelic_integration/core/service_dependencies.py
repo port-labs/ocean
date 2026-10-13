@@ -24,12 +24,12 @@ MAX_CONCURRENT_RELATIONSHIP_REQUESTS = 10
 DEPENDENCY_BATCH_SIZE = 100
 
 
-def select_dependency_call(
+def select_dependency(
     source_guid: str,
     edge: dict[str, Any],
     services_by_guid: Mapping[str, str | None],
 ) -> str | None:
-    """Keep an outbound CALLS edge whose target is a service from the same search."""
+    """Keep a CALLS edge whose target is a service from the same search."""
     if edge.get("type") != CALLS_RELATIONSHIP:
         return None
 
@@ -83,7 +83,7 @@ class ServiceDependenciesHandler:
 
         services_by_guid = {entity["guid"]: entity.get("type") for entity in services}
         logger.info(
-            "Fetching outbound CALLS for New Relic services",
+            "Fetching dependencies for New Relic services",
             service_count=len(services),
         )
 
@@ -105,19 +105,19 @@ class ServiceDependenciesHandler:
         entity: dict[str, Any],
         services_by_guid: Mapping[str, str | None],
     ) -> dict[str, Any]:
-        calls = await self.outbound_call_guids(entity["guid"], services_by_guid)
+        calls = await self.get_entity_dependencies(entity["guid"], services_by_guid)
         return {
             "guid": entity["guid"],
             "name": entity.get("name"),
             "calls": calls,
         }
 
-    async def outbound_call_guids(
+    async def get_entity_dependencies(
         self,
         source_guid: str,
         services_by_guid: Mapping[str, str | None],
     ) -> list[str]:
-        calls: list[str] = []
+        dependencies: list[str] = []
         cursor: str | None = None
         seen_cursors: set[str] = set()
 
@@ -131,15 +131,15 @@ class ServiceDependenciesHandler:
 
             related = entity.get("relatedEntities") or {}
             for edge in related.get("results") or []:
-                target_guid = select_dependency_call(
+                target_guid = select_dependency(
                     source_guid, edge, services_by_guid
                 )
-                if target_guid and target_guid not in calls:
-                    calls.append(target_guid)
+                if target_guid and target_guid not in dependencies:
+                    dependencies.append(target_guid)
 
             next_cursor = related.get("nextCursor")
             if not next_cursor or next_cursor in seen_cursors:
-                return calls
+                return dependencies
             seen_cursors.add(next_cursor)
             cursor = next_cursor
 

@@ -6,7 +6,7 @@ import pytest
 from newrelic_integration.core.errors import NewRelicError, NewRelicNotFoundError
 from newrelic_integration.core.service_dependencies import (
     ServiceDependenciesHandler,
-    select_dependency_call,
+    select_dependency,
 )
 from newrelic_integration.overrides import (
     NewRelicSelector,
@@ -42,7 +42,7 @@ def _edge(
 
 def test_select_dependency_call_keeps_outbound_service_target() -> None:
     edge = _edge("service-a", "service-b", "APPLICATION")
-    assert select_dependency_call("service-a", edge, SERVICES) == "service-b"
+    assert select_dependency("service-a", edge, SERVICES) == "service-b"
 
 
 @pytest.mark.parametrize(
@@ -58,7 +58,7 @@ def test_select_dependency_call_keeps_outbound_service_target() -> None:
 def test_select_dependency_call_drops_edges_outside_the_map(
     edge: dict[str, Any],
 ) -> None:
-    assert select_dependency_call("service-a", edge, SERVICES) is None
+    assert select_dependency("service-a", edge, SERVICES) is None
 
 
 def _related_response(
@@ -116,7 +116,7 @@ async def test_outbound_call_guids_paginates_and_filters() -> None:
             side_effect=pages,
         ) as mock_send,
     ):
-        calls = await handler.outbound_call_guids("service-a", SERVICES)
+        calls = await handler.get_entity_dependencies("service-a", SERVICES)
 
     assert calls == ["service-b"]
     assert mock_send.await_count == 2
@@ -138,7 +138,7 @@ async def test_outbound_call_guids_raises_on_graphql_error() -> None:
         ),
         pytest.raises(NewRelicError, match="complexity exceeded"),
     ):
-        await handler.outbound_call_guids("service-a", SERVICES)
+        await handler.get_entity_dependencies("service-a", SERVICES)
 
 
 @pytest.mark.asyncio
@@ -157,7 +157,7 @@ async def test_outbound_call_guids_raises_when_entity_is_missing() -> None:
         ),
         pytest.raises(NewRelicNotFoundError),
     ):
-        await handler.outbound_call_guids("service-a", SERVICES)
+        await handler.get_entity_dependencies("service-a", SERVICES)
 
 
 @pytest.mark.asyncio
