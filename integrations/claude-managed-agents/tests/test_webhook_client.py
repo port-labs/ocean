@@ -75,6 +75,9 @@ async def test_upsert_webhook_creates(
     assert body["url"] == "https://ocean.example/integration/webhook"
     assert body["name"] == "Port Ocean Integration"
     assert "session.status_idled" in body["enabled_events"]
+    assert "agent.created" in body["enabled_events"]
+    assert "environment.deleted" in body["enabled_events"]
+    assert "memory_store.created" in body["enabled_events"]
     assert "vault.deleted" in body["enabled_events"]
 
 

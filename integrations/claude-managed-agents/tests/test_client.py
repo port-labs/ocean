@@ -111,14 +111,27 @@ async def test_get_session_returns_sdk_model(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_vault_serializes_result(client: AnthropicClient) -> None:
+async def test_get_vault_returns_sdk_model(client: AnthropicClient) -> None:
     inner: Any = client._client
-    inner.beta.vaults.retrieve = AsyncMock(return_value=_Model({"id": "vault_1"}))
+    vault = _Model({"id": "vault_1"})
+    inner.beta.vaults.retrieve = AsyncMock(return_value=vault)
 
     result = await client.get_vault("vault_1")
 
-    assert result == {"id": "vault_1"}
+    assert result is vault
     inner.beta.vaults.retrieve.assert_awaited_once_with("vault_1")
+
+
+@pytest.mark.asyncio
+async def test_get_memory_store_returns_sdk_model(client: AnthropicClient) -> None:
+    inner: Any = client._client
+    memory_store = _Model({"id": "ms_1"})
+    inner.beta.memory_stores.retrieve = AsyncMock(return_value=memory_store)
+
+    result = await client.get_memory_store("ms_1")
+
+    assert result is memory_store
+    inner.beta.memory_stores.retrieve.assert_awaited_once_with("ms_1")
 
 
 @pytest.mark.asyncio
@@ -166,7 +179,8 @@ async def test_create_agent_builds_payload_and_drops_none(
     client: AnthropicClient,
 ) -> None:
     inner: Any = client._client
-    inner.beta.agents.create = AsyncMock(return_value=_Model({"id": "agent_1"}))
+    agent = _Model({"id": "agent_1"})
+    inner.beta.agents.create = AsyncMock(return_value=agent)
 
     result = await client.create_agent(
         name="my-agent",
@@ -175,7 +189,7 @@ async def test_create_agent_builds_payload_and_drops_none(
         extra={"description": "demo", "metadata": None},
     )
 
-    assert result == {"id": "agent_1"}
+    assert result is agent
     inner.beta.agents.create.assert_awaited_once_with(
         name="my-agent",
         model="claude-opus-4-6",
