@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.1 (2026-10-13)
+
+
+### Features
+
+- Add agent, environment, and memory_store live-event webhook processors
+
+
+## 0.10.0 (2026-10-13)
+
+
+### Features
+
+- Upsert Claude Platform webhooks on start and persist signing secrets on SaaS, including integrationSpec backfill when missing
+
+
+## 0.9.3 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
 ## 0.9.2 (2026-10-12)
 
 

@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.53.9 (2026-10-12)
+
+
+### Bug Fixes
+
+- Retry patch_integration(spec) while SaaS is updating; add get/upsert organization secret helpers
+
+
 ## 0.53.8 (2026-10-12)
 
 
