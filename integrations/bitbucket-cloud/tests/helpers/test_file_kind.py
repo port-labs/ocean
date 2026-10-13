@@ -390,8 +390,8 @@ async def test_a_failed_listing_is_collected_whatever_its_status(status: int) ->
 
 
 @pytest.mark.asyncio
-async def test_the_fan_out_is_bounded_at_the_observed_maximum() -> None:
-    """Asserts what was in flight, not the value of the constants."""
+async def test_the_content_fetches_are_bounded_at_the_observed_maximum() -> None:
+    """Asserts what was in flight, not the value of the constant."""
     peak_listings = 0
     peak_fetches = 0
     in_listings = 0
@@ -432,9 +432,9 @@ async def test_the_fan_out_is_bounded_at_the_observed_maximum() -> None:
 
     assert raised is None
     assert len(emitted) == 25 * 40
-    assert peak_listings <= file_kind.MAX_CONCURRENT_REPOSITORIES
     assert peak_fetches <= file_kind.MAX_CONCURRENT_FILE_FETCHES
-    assert peak_listings > 1, "serial, so the bound is not doing anything"
+    assert peak_fetches > 1, "serial, so the bound is not doing anything"
+    assert peak_listings == 1, "repositories are walked one at a time"
 
 
 @pytest.mark.asyncio
