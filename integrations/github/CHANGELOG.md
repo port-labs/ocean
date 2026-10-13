@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.19.0 (2026-10-13)
+
+
+### Features
+
+- >
+    Discover agent plugins at any directory depth and emit one plugin entity
+    per plugin root. Repository-root plugins keep an empty path so existing
+    identifiers stay stable, marketplace files no longer create entities on
+    their own, and selector.maxDepth can cap how deep discovery searches.
+
+
 ## 6.18.3 (2026-10-13)
 
 
