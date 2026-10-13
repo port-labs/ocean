@@ -1843,3 +1843,61 @@ async def test_get_changed_paths_since_caches_empty_results(
 
     assert first == second
     assert mock_request.await_count == len(responses)
+
+
+@pytest.mark.asyncio
+async def test_builder_lists_org_repos_once_for_selectors_without_repos() -> None:
+    repo_exporter = MagicMock()
+    org_exporter = MagicMock()
+    list_calls: List[Dict[str, Any]] = []
+
+    async def mock_repos(
+        options: Dict[str, Any],
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        list_calls.append(options)
+        yield [{"name": "repo1", "default_branch": "main"}]
+
+    async def mock_orgs(
+        *_: Any, **__: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"login": "test-org", "type": "Organization"}]
+
+    repo_exporter.get_paginated_resources = mock_repos
+    org_exporter.get_paginated_resources = mock_orgs
+
+    files = [
+        GithubFilePattern(organization="test-org", path="**/README.md"),
+        GithubFilePattern(organization="test-org", path="**/port.yml"),
+        GithubFilePattern(organization="test-org", path="**/package.json"),
+        GithubFilePattern(
+            organization="test-org", path="**/catalog.yaml", excludeArchived=True
+        ),
+        GithubFilePattern(
+            organization="test-org",
+            path="CODEOWNERS",
+            repos=[RepositoryBranchMapping(name="explicit", branch="dev")],
+        ),
+    ]
+
+    builder = FilePatternMappingBuilder(org_exporter, repo_exporter, "all")
+    with patch(
+        "github.helpers.repo_selectors.get_repository_metadata",
+        AsyncMock(return_value={"name": "explicit", "default_branch": "main"}),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(include_authenticated_user=False)
+            result = await builder.build(files)
+
+    # One listing per (org, excludeArchived); explicit repos don't list the org.
+    assert [call["exclude_archived"] for call in list_calls] == [False, True]
+
+    by_repo = {item["repo_name"]: item["files"] for item in result}
+    assert [f["path"] for f in by_repo["repo1"]] == [
+        "**/README.md",
+        "**/port.yml",
+        "**/package.json",
+        "**/catalog.yaml",
+    ]
+    assert [(f["path"], f["branch"]) for f in by_repo["explicit"]] == [
+        ("CODEOWNERS", "dev")
+    ]

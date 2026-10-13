@@ -182,6 +182,8 @@ class FilePatternMappingBuilder:
         updated_since: datetime | None = None,
     ) -> List[ListFileSearchOptions]:
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
+        # Selectors without explicit repos list the same org repos; list them once.
+        listed_repos: Dict[Tuple[str, bool], List[Tuple[str, str]]] = {}
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
@@ -191,14 +193,24 @@ class FilePatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    org_type = org["type"]
-                    async for repo_name, branch, _ in self.repo_selector.select_repos(
-                        file_sel,
-                        self.repo_exporter,
-                        org_login,
-                        org_type,
-                        pushed_since=updated_since,
-                    ):
+                    list_key = (org_login, file_sel.exclude_archived)
+                    if file_sel.repos or list_key not in listed_repos:
+                        repos = [
+                            (repo_name, branch)
+                            async for repo_name, branch, _ in self.repo_selector.select_repos(
+                                file_sel,
+                                self.repo_exporter,
+                                org_login,
+                                org["type"],
+                                pushed_since=updated_since,
+                            )
+                        ]
+                        if not file_sel.repos:
+                            listed_repos[list_key] = repos
+                    else:
+                        repos = listed_repos[list_key]
+
+                    for repo_name, branch in repos:
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
                                 organization=org_login,
