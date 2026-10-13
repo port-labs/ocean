@@ -184,7 +184,9 @@ class TestEntitiesHandler:
         assert entities[0]["guid"] == "entity1"
         assert entities[0]["tags"] == {"test": ["value"]}
         mock_render_query.assert_awaited_once()
-        assert mock_render_query.await_args.kwargs["extra_entity_properties"] == ""
+        render_call = mock_render_query.await_args
+        assert render_call is not None
+        assert render_call.kwargs["extra_entity_properties"] == ""
 
     async def test_list_entities_by_resource_kind_none_response(
         self,
