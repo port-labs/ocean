@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum
+from typing import Any
+
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -98,6 +100,12 @@ class AbstractWebhookProcessor(ABC):
             self.max_retry_delay_seconds,
         )
         return delay
+
+    def get_live_event_log_identifiers(
+        self, payload: EventPayload, headers: EventHeaders
+    ) -> dict[str, Any] | None:
+        """Optional integration-specific fields to include in compact live-event logs."""
+        return None
 
     async def before_processing(self) -> None:
         """Hook to run before processing the event"""
