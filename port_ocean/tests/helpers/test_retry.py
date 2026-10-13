@@ -1270,10 +1270,11 @@ class TestSyncTierJitter:
             assert transport._calculate_sleep(1, {}) == 60.0
 
 
-class TestDeriveSyncTierMultiplier:
-    """_derive_sync_tier_multiplier() is how RetryConfig.sync_tier_multiplier gets its
-    value -- auto-detecting this pod's mode from settings already loaded by construction
-    time, under the one-pod-one-mode assumption."""
+class TestDeriveSyncTier:
+    """_derive_sync_tier() is how RetryConfig.sync_tier gets its value -- auto-detecting
+    this pod's mode from settings already loaded by construction time, under the
+    one-pod-one-mode assumption. Both DEFAULT_SYNC_TIER_MULTIPLIERS and
+    DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT are looked up from this single resolved tier."""
 
     def _listener(
         self,
@@ -1287,21 +1288,17 @@ class TestDeriveSyncTierMultiplier:
             should_run_actions=should_run_actions,
         )
 
-    def test_resync_without_incremental_yields_resync_multiplier(self) -> None:
+    def test_resync_without_incremental_yields_resync(self) -> None:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
-            assert retry_module._derive_sync_tier_multiplier(True) == pytest.approx(
-                retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.RESYNC]
-            )
+            assert retry_module._derive_sync_tier(True) == EventType.RESYNC
 
-    def test_incremental_sync_enabled_yields_incremental_multiplier(self) -> None:
+    def test_incremental_sync_enabled_yields_incremental_resync(self) -> None:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = True
-            assert retry_module._derive_sync_tier_multiplier(True) == pytest.approx(
-                retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.INCREMENTAL_RESYNC]
-            )
+            assert retry_module._derive_sync_tier(True) == EventType.INCREMENTAL_RESYNC
 
     def test_incremental_sync_enabled_wins_even_if_should_resync_is_false(self) -> None:
         """incremental_sync_enabled is checked before should_resync -- it's the single
@@ -1310,50 +1307,87 @@ class TestDeriveSyncTierMultiplier:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=False)
             mock_ocean.config.integration.incremental_sync_enabled = True
-            assert retry_module._derive_sync_tier_multiplier(True) == pytest.approx(
-                retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.INCREMENTAL_RESYNC]
-            )
+            assert retry_module._derive_sync_tier(True) == EventType.INCREMENTAL_RESYNC
 
-    def test_webhooks_only_yields_webhooks_multiplier(self) -> None:
+    def test_webhooks_only_yields_http_request(self) -> None:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(
                 should_process_webhooks=True
             )
             mock_ocean.config.integration.incremental_sync_enabled = False
-            assert retry_module._derive_sync_tier_multiplier(True) == pytest.approx(
-                retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.HTTP_REQUEST]
-            )
+            assert retry_module._derive_sync_tier(True) == EventType.HTTP_REQUEST
 
-    def test_actions_only_yields_actions_multiplier(self) -> None:
+    def test_actions_only_yields_action_run(self) -> None:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_run_actions=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
-            assert retry_module._derive_sync_tier_multiplier(True) == pytest.approx(
-                retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.ACTION_RUN]
-            )
+            assert retry_module._derive_sync_tier(True) == EventType.ACTION_RUN
 
-    def test_no_flags_active_yields_default_1(self) -> None:
+    def test_no_flags_active_yields_none(self) -> None:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener()
             mock_ocean.config.integration.incremental_sync_enabled = False
-            assert retry_module._derive_sync_tier_multiplier(True) == 1.0
+            assert retry_module._derive_sync_tier(True) is None
 
-    def test_webhooks_and_actions_multipliers_are_both_1(self) -> None:
-        """Documented directly: WEBHOOKS and ACTIONS are HIGH-priority tiers, both 1.0."""
-        assert retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.HTTP_REQUEST] == 1.0
-        assert retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.ACTION_RUN] == 1.0
+    def test_apply_sync_tier_jitter_false_yields_none_regardless_of_settings(
+        self,
+    ) -> None:
+        with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            assert retry_module._derive_sync_tier(False) is None
 
-    def test_exception_reading_config_yields_default_1(self) -> None:
+    def test_exception_reading_config_yields_none(self) -> None:
         """Defensive fallback for contexts where ocean.config isn't fully available
         (e.g. some test harnesses) -- matches the style of RetryTransport._is_streaming_enabled.
         """
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             del mock_ocean.config  # any access now raises AttributeError
-            assert retry_module._derive_sync_tier_multiplier(True) == 1.0
+            assert retry_module._derive_sync_tier(True) is None
 
-    def test_retry_config_stores_the_derived_multiplier(self) -> None:
+    def test_high_priority_tiers_have_no_multiplier_entry(self) -> None:
+        """Documented directly: ACTION_RUN/HTTP_REQUEST are absent from the multiplier
+        map, so .get(tier, 1.0) returns the no-op default -- not an explicit 1.0 entry.
+        """
+        assert EventType.HTTP_REQUEST not in retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS
+        assert EventType.ACTION_RUN not in retry_module.DEFAULT_SYNC_TIER_MULTIPLIERS
+
+    def test_high_priority_tiers_have_a_lower_max_backoff_wait(self) -> None:
+        """The actual bug this map exists to fix: without it, a real multi-pod GitHub
+        run showed every tier clamped to the same 1800s ceiling once the header-driven
+        wait exceeded it -- the multiplier's differentiation disappeared exactly when
+        the quota was most exhausted."""
+        assert retry_module.DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT[
+            EventType.ACTION_RUN
+        ] == (60.0)
+        assert retry_module.DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT[
+            EventType.HTTP_REQUEST
+        ] == (60.0)
+
+    def test_low_medium_tiers_have_no_max_backoff_wait_override(self) -> None:
+        """RESYNC/INCREMENTAL_RESYNC fall back to the integration's own max_backoff_wait
+        (e.g. GitHub's 1800s) -- only HIGH-priority work gets a lower ceiling."""
+        assert EventType.RESYNC not in retry_module.DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT
+        assert (
+            EventType.INCREMENTAL_RESYNC
+            not in retry_module.DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT
+        )
+
+    def test_retry_config_stores_the_resolved_tier_and_both_lookups(self) -> None:
         with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
-            config = RetryConfig()
+            config = RetryConfig(max_backoff_wait=1800.0)
+            assert config.sync_tier == EventType.RESYNC
             assert config.sync_tier_multiplier == pytest.approx(1.25)
+            # RESYNC has no override -- falls back to the configured max_backoff_wait.
+            assert config.sync_tier_max_backoff_wait == 1800.0
+
+    def test_retry_config_action_run_gets_the_lower_ceiling(self) -> None:
+        with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_run_actions=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            config = RetryConfig(max_backoff_wait=1800.0)
+            assert config.sync_tier == EventType.ACTION_RUN
+            assert config.sync_tier_multiplier == 1.0
+            assert config.sync_tier_max_backoff_wait == 60.0
