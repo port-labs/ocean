@@ -15,10 +15,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
 )
 
 from clients.anthropic_client import AnthropicClient, RateLimitInfo
-from clients.exceptions import (
-    UnexpectedApiResponseError,
-    WebhookSigningSecretNotConfiguredError,
-)
+from clients.exceptions import UnexpectedApiResponseError
 
 
 class _Model:
@@ -54,10 +51,11 @@ def client() -> AnthropicClient:
         api_host="https://api.anthropic.com",
         api_key="test-api-key",
         console_host="https://platform.claude.com",
-        webhook_signing_secret="whsec_test",
         page_size=2,
+        anthropic_version="2023-06-01",
     )
     instance._client = MagicMock()
+    instance._anthropic_http = MagicMock()
     return instance
 
 
@@ -275,18 +273,6 @@ async def test_send_user_message_raises_on_unexpected_event_type(
 
     with pytest.raises(UnexpectedApiResponseError, match="session.status_idle"):
         await client.send_user_message("sess_1", "hello there")
-
-
-def test_unwrap_webhook_without_secret_raises() -> None:
-    instance = AnthropicClient(
-        api_host="https://api.anthropic.com",
-        api_key="test-api-key",
-        console_host="https://platform.claude.com",
-        webhook_signing_secret=None,
-    )
-    assert instance.has_webhook_secret is False
-    with pytest.raises(WebhookSigningSecretNotConfiguredError):
-        instance.unwrap_webhook("{}", {})
 
 
 # --- Rate limit + workspace-id capture, via the request/response hooks -----

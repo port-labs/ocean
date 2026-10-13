@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, Sequence
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol
 
 import httpx
 from anthropic import AsyncAnthropic
-from anthropic.types.beta import BetaEnvironment, UnwrapWebhookEvent
+from anthropic.types.beta import BetaEnvironment
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
@@ -28,10 +28,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-from clients.exceptions import (
-    UnexpectedApiResponseError,
-    WebhookSigningSecretNotConfiguredError,
-)
+from clients.exceptions import UnexpectedApiResponseError
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -89,39 +86,54 @@ class AnthropicClient:
         api_host: str,
         api_key: str,
         console_host: str,
-        webhook_signing_secret: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
         anthropic_version: str | None = None,
     ) -> None:
+        self._api_key = api_key
+        self._anthropic_version = anthropic_version
         self._console_host = console_host.rstrip("/")
-        self._webhook_signing_secret = webhook_signing_secret
         self._page_size = page_size
         self._create_rate_limit_info: RateLimitInfo | None = None
         self._read_rate_limit_info: RateLimitInfo | None = None
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
+        # Shared transport for the SDK and Console admin calls (e.g. webhooks)
+        # so rate-limit hooks apply to every Anthropic HTTP request.
+        self._anthropic_http = OceanAsyncClient(
+            timeout=ocean.config.client_timeout,
+            retry_config=RetryConfig(max_attempts=0),
+            event_hooks={
+                "request": [self._on_request],
+                "response": [self._on_response],
+            },
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
             default_headers=(
                 {"anthropic-version": anthropic_version} if anthropic_version else None
             ),
-            # A dedicated OceanAsyncClient gets us SaaS IP-blocking and consistent
-            # SSL verification. Ocean's own retry layer is disabled (max_attempts=0)
-            # since the Anthropic SDK already retries internally. The request/
-            # response hooks below capture rate limit headers and proactively
-            # pace requests for both the create- and read-endpoint pools, on
-            # every call the client makes (resync, actions, and webhooks alike).
-            http_client=OceanAsyncClient(
-                timeout=ocean.config.client_timeout,
-                retry_config=RetryConfig(max_attempts=0),
-                event_hooks={
-                    "request": [self._on_request],
-                    "response": [self._on_response],
-                },
-            ),
+            # Ocean's retry layer is disabled (max_attempts=0) since the Anthropic
+            # SDK already retries internally.
+            http_client=self._anthropic_http,
         )
+
+    @property
+    def http_client(self) -> OceanAsyncClient:
+        return self._anthropic_http
+
+    @property
+    def async_client(self) -> AsyncAnthropic:
+        return self._client
+
+    @property
+    def api_key(self) -> str:
+        return self._api_key
+
+    @property
+    def anthropic_version(self) -> str | None:
+        return self._anthropic_version
 
     def _rate_limit_lock(self, pool: RateLimitPool) -> asyncio.Lock:
         return (
@@ -425,18 +437,3 @@ class AnthropicClient:
                 f"Expected user.interrupt event from send, got {returned_event.type}"
             )
         return returned_event
-
-    def unwrap_webhook(
-        self, payload: str, headers: Mapping[str, str]
-    ) -> UnwrapWebhookEvent:
-        if not self._webhook_signing_secret:
-            raise WebhookSigningSecretNotConfiguredError(
-                "Webhook signing secret is not configured"
-            )
-        return self._client.beta.webhooks.unwrap(
-            payload, headers=headers, key=self._webhook_signing_secret
-        )
-
-    @property
-    def has_webhook_secret(self) -> bool:
-        return bool(self._webhook_signing_secret)
