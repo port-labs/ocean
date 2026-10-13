@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Add a New Relic service dependency kind from outbound CALLS relationships
