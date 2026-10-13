@@ -1,0 +1,7 @@
+bump: minor
+changelog-type: feature
+changelog: >
+  Discover agent plugins at any directory depth and emit one plugin entity
+  per plugin root. Repository-root plugins keep an empty path so existing
+  identifiers stay stable, marketplace files no longer create entities on
+  their own, and selector.maxDepth can cap how deep discovery searches.
