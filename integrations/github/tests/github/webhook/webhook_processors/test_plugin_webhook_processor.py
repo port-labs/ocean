@@ -141,11 +141,13 @@ async def _handle(
 ) -> tuple[WebhookEventRawResults, MagicMock]:
     """Run handle_event for an explicit repo with a mocked diff and git trees.
 
-    `tree` is the tree after the push (branch "main"), `old_tree` the one before
-    it (ref "abc123", defaults to `tree`). `truncated` lists the refs GitHub
+    `tree` is the tree after the push (commit "def456"), `old_tree` the one before
+    it (commit "abc123", defaults to `tree`). Trees are only served by commit sha:
+    requesting the branch name fails, since GitHub trees are cached per ref and a
+    branch name would return a stale tree. `truncated` lists the refs GitHub
     truncates. `names` overrides a manifest's `name` (default: its folder name).
     """
-    trees = {"main": tree, "abc123": tree if old_tree is None else old_tree}
+    trees = {"def456": tree, "abc123": tree if old_tree is None else old_tree}
     file_exporter = MagicMock()
     file_exporter.fetch_commit_diff = AsyncMock(return_value={"files": changed})
     file_exporter.get_tree_recursive = AsyncMock(
@@ -259,7 +261,7 @@ async def test_handle_event_skips_everything_when_the_tree_is_truncated(
         payload,
         [{"filename": FRONTEND, "status": "modified"}],
         [QUALITY],
-        truncated=frozenset({"main"}),
+        truncated=frozenset({"def456"}),
     )
 
     assert result.updated_raw_results == []

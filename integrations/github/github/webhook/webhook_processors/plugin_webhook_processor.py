@@ -78,7 +78,12 @@ class PluginWebhookProcessor(FileWebhookProcessor):
         options = PluginRepositoryOptions(
             organization=organization, repository=repository, branch=current_branch
         )
-        roots, truncated = await exporter.get_plugin_roots(options)
+        # Trees are cached by ref for the life of the process (cleared only around
+        # resyncs). A branch name would return a stale tree, so read the pushed commit.
+        pushed = PluginRepositoryOptions(
+            organization=organization, repository=repository, branch=after_sha
+        )
+        roots, truncated = await exporter.get_plugin_roots(pushed)
         if truncated:
             logger.warning(
                 "Skipping plugin webhook: GitHub tree response was truncated"
