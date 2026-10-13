@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import PurePosixPath
 from typing import Any, cast
 
 from loguru import logger
@@ -172,11 +173,13 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         changed_paths: set[str],
         path_globs: list[str],
     ) -> set[str]:
-        """SKILL.md paths whose folder contains a changed path.
+        """SKILL.md paths of the closest skill containing each changed path.
 
-        `changed_paths` excludes in-place edits of SKILL.md, which only affect
-        that skill. Adding or removing a nested SKILL.md moves its folder out of
-        or into the parent's bundle, so those count.
+        A file inside a nested skill belongs only to that skill, so outer skills
+        are not rebuilt for it. `changed_paths` excludes in-place edits of
+        SKILL.md, which only affect that skill. Adding or removing a nested
+        SKILL.md moves its folder out of or into the parent's bundle, so the
+        parent is its owner.
         """
         skill_roots = _minimize_tree_roots(
             {_literal_tree_prefix(pattern) for pattern in path_globs}
@@ -197,10 +200,12 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                     if entry.get("type") == "blob"
                     and matches_skill_path(entry["path"], path_globs)
                 )
-        return {
-            skill_md_path
-            for skill_md_path in skill_md_paths
-            if any(
-                path.startswith(skill_dir_prefix(skill_md_path)) for path in candidates
-            )
-        }
+        skill_md_by_prefix = {skill_dir_prefix(path): path for path in skill_md_paths}
+        owners: set[str] = set()
+        for path in candidates:
+            for parent in map(str, PurePosixPath(path).parents):
+                owner = skill_md_by_prefix.get("" if parent == "." else f"{parent}/")
+                if owner is not None and owner != path:
+                    owners.add(owner)
+                    break
+        return owners

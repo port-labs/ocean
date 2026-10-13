@@ -394,6 +394,52 @@ class TestSkillPushWebhookSkillFolder:
             item["skill"]["skillMdPath"] for item in result.updated_raw_results
         ) == ["skills/parent/SKILL.md", "skills/parent/child/SKILL.md"]
 
+    async def test_nested_skill_md_removed_rebuilds_parent(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(deleted=["skills/parent/child/SKILL.md"]),
+            tree=["skills/parent/SKILL.md", "skills/parent/child/notes.md"],
+            contents={"skills/parent/child/notes.md": "notes"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert len(result.updated_raw_results) == 1
+        skill = result.updated_raw_results[0]["skill"]
+        assert skill["skillMdPath"] == "skills/parent/SKILL.md"
+        assert skill["files"] == [{"path": "child/notes.md", "content": "notes"}]
+        assert [
+            item["skill"]["skillMdPath"] for item in result.deleted_raw_results
+        ] == ["skills/parent/child/SKILL.md"]
+
+    async def test_nested_skill_file_change_skips_parent(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/parent/child/notes.md"]),
+            tree=[
+                "skills/parent/SKILL.md",
+                "skills/parent/child/SKILL.md",
+                "skills/parent/child/notes.md",
+            ],
+            contents={"skills/parent/child/notes.md": "notes v2"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert [
+            item["skill"]["skillMdPath"] for item in result.updated_raw_results
+        ] == ["skills/parent/child/SKILL.md"]
+        assert client.tree_calls == [
+            ("skills", "bbb222"),
+            ("skills/parent/child", "bbb222"),
+        ]
+
     async def test_skill_md_edit_skips_owner_detection(
         self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
     ) -> None:
