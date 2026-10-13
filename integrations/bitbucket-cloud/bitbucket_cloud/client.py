@@ -138,17 +138,17 @@ class BitbucketClient:
         except HTTPStatusError as e:
             if e.response.status_code == 404:
                 if raise_on_missing:
-                    raise
+                    raise e
                 logger.warning(
                     f"Requested resource not found: {url}; "
                     f"{self._error_message(e) or 'no message in the response body'}"
                 )
                 return {}
             logger.error(f"Bitbucket API error: {str(e)}")
-            raise
+            raise e
         except HTTPError as e:
             logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
-            raise
+            raise e
 
     async def _fetch_paginated_api_with_rate_limiter(
         self,
@@ -314,7 +314,7 @@ class BitbucketClient:
                     f"Path '{path}' is not in repository {repo_slug}, reporting no contents"
                 )
                 return
-            raise
+            raise e
 
     async def get_pull_requests(
         self, repo_slug: str, params: dict[str, Any] = {}
@@ -364,6 +364,6 @@ class BitbucketClient:
                     f"{path} is not in {repo} on {branch}; {self._error_message(e)}"
                 )
                 return None
-            raise
+            raise e
         logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
         return response.text
