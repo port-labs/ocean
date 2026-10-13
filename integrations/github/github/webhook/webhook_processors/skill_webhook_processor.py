@@ -11,7 +11,7 @@ from github.core.exporters.file_exporter.utils import (
     group_files_by_status,
 )
 from github.core.exporters.skill_exporter import SkillExporter
-from github.core.exporters.skill_exporter.references import (
+from github.core.exporters.skill_exporter.skill_folder import (
     glob_base_dir,
     skill_dir_prefix,
 )
@@ -75,7 +75,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
 
         rest_client = await create_github_client_for_org(organization)
         exporter = SkillExporter(
-            rest_client, include_references=selector.include_references
+            rest_client, include_skill_folder=selector.include_skill_folder
         )
         diff_data = await exporter.fetch_commit_diff(
             organization, repo_name, before_sha, after_sha
@@ -87,8 +87,8 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         )
         deleted_paths = {file_info["filename"] for file_info in deleted_files}
         updated_paths = {file_info["filename"] for file_info in updated_files}
-        if selector.include_references:
-            updated_paths |= await self._skills_with_changed_references(
+        if selector.include_skill_folder:
+            updated_paths |= await self._skills_with_changed_folders(
                 exporter,
                 organization,
                 repo_name,
@@ -127,8 +127,8 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                 blob_sha=blob_sha,
             )
 
-        # A skill that can no longer be built (unreadable, or over the references
-        # size limit) is removed, as a resync would drop it.
+        # A skill that can no longer be built (unreadable, or over the skill
+        # folder size limit) is removed, as a resync would drop it.
         deleted_raw_results = [
             deleted_skill(file_info["filename"], file_info.get("sha"))
             for file_info in deleted_files
@@ -147,7 +147,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
             deleted_raw_results=deleted_raw_results,
         )
 
-    async def _skills_with_changed_references(
+    async def _skills_with_changed_folders(
         self,
         exporter: SkillExporter,
         organization: str,

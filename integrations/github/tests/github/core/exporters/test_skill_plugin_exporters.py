@@ -8,8 +8,8 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.plugin_exporter.core import PluginExporter
 from github.core.exporters.skill_exporter.core import SkillExporter
-from github.core.exporters.skill_exporter.references import MAX_SKILL_BUNDLE_SIZE
-from github.core.exporters.skill_exporter.utils import SkillReference
+from github.core.exporters.skill_exporter.skill_folder import MAX_SKILL_BUNDLE_SIZE
+from github.core.exporters.skill_exporter.utils import SkillFile
 from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
@@ -180,10 +180,10 @@ class _FakeContentFetcher:
         return {"path": file["file_path"], "content": f"content of {file['file_path']}"}
 
 
-def _exporter_with_references(
+def _exporter_with_skill_folder(
     rest_client: GithubRestClient, tree: List[Dict[str, Any]]
 ) -> tuple[SkillExporter, _FakeContentFetcher]:
-    exporter = SkillExporter(rest_client, include_references=True)
+    exporter = SkillExporter(rest_client, include_skill_folder=True)
     fetcher = _FakeContentFetcher()
     exporter.get_tree_recursive = AsyncMock(return_value=(tree, False))  # type: ignore[method-assign]
     exporter.process_graphql_files = fetcher.graphql  # type: ignore[method-assign]
@@ -191,8 +191,8 @@ def _exporter_with_references(
     return exporter, fetcher
 
 
-class TestSkillExporterReferences:
-    async def test_flag_off_skips_reference_fetching(
+class TestSkillExporterSkillFolder:
+    async def test_flag_off_skips_skill_folder_fetching(
         self, rest_client: GithubRestClient
     ) -> None:
         async def fake_files(
@@ -210,10 +210,10 @@ class TestSkillExporterReferences:
                 )
             ]
 
-        assert batches[0][0]["skill"]["references"] is None
+        assert batches[0][0]["skill"]["files"] is None
         exporter.get_tree_recursive.assert_not_called()
 
-    async def test_flag_on_bundles_sorted_relative_references(
+    async def test_flag_on_bundles_sorted_relative_files(
         self, rest_client: GithubRestClient
     ) -> None:
         tree = [
@@ -223,7 +223,7 @@ class TestSkillExporterReferences:
             _sized_blob("skills/hello/scripts/big.py", size=200_000),
             _sized_blob("skills/hello/assets/logo.png"),
         ]
-        exporter, fetcher = _exporter_with_references(rest_client, tree)
+        exporter, fetcher = _exporter_with_skill_folder(rest_client, tree)
 
         async def fake_files(
             _self: RestFileExporter, _options: Any
@@ -238,7 +238,7 @@ class TestSkillExporterReferences:
                 )
             ]
 
-        assert batches[0][0]["skill"]["references"] == [
+        assert batches[0][0]["skill"]["files"] == [
             {
                 "path": "references/a.md",
                 "content": "content of skills/hello/references/a.md",
@@ -261,16 +261,14 @@ class TestSkillExporterReferences:
     async def test_skill_over_size_limit_is_dropped_without_fetching(
         self, rest_client: GithubRestClient
     ) -> None:
-        reference_size_at_limit = MAX_SKILL_BUNDLE_SIZE - len(SKILL_MD.encode())
+        file_size_at_limit = MAX_SKILL_BUNDLE_SIZE - len(SKILL_MD.encode())
         tree = [
             _sized_blob("skills/fits/SKILL.md"),
-            _sized_blob("skills/fits/references/api.md", size=reference_size_at_limit),
+            _sized_blob("skills/fits/references/api.md", size=file_size_at_limit),
             _sized_blob("skills/big/SKILL.md"),
-            _sized_blob(
-                "skills/big/references/huge.md", size=reference_size_at_limit + 1
-            ),
+            _sized_blob("skills/big/references/huge.md", size=file_size_at_limit + 1),
         ]
-        exporter, fetcher = _exporter_with_references(rest_client, tree)
+        exporter, fetcher = _exporter_with_skill_folder(rest_client, tree)
 
         async def fake_files(
             _self: RestFileExporter, _options: Any
@@ -300,14 +298,14 @@ class TestSkillExporterReferences:
         [warning_call] = mock_logger.warning.call_args_list
         assert "skills/big/SKILL.md" in warning_call.args[0]
 
-    async def test_references_are_read_at_given_ref(
+    async def test_skill_folder_is_read_at_given_ref(
         self, rest_client: GithubRestClient
     ) -> None:
         tree = [
             _sized_blob("skills/hello/SKILL.md"),
             _sized_blob("skills/hello/references/api.md"),
         ]
-        exporter, fetcher = _exporter_with_references(rest_client, tree)
+        exporter, fetcher = _exporter_with_skill_folder(rest_client, tree)
 
         item = await exporter.build_skill_item(
             skill_md_path="skills/hello/SKILL.md",
@@ -329,7 +327,7 @@ class TestSkillExporterReferences:
     async def test_truncated_repo_tree_falls_back_to_skill_folder_tree(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter, fetcher = _exporter_with_references(rest_client, [])
+        exporter, fetcher = _exporter_with_skill_folder(rest_client, [])
         exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
             side_effect=[
                 ([_sized_blob("skills/hello/SKILL.md")], True),
@@ -345,7 +343,7 @@ class TestSkillExporterReferences:
             ]
         )
 
-        references = await exporter.fetch_references(
+        files = await exporter.fetch_skill_folder_files(
             organization="test-org",
             repo_name="repo1",
             ref="main",
@@ -358,8 +356,8 @@ class TestSkillExporterReferences:
             "repo1",
             "main:skills/hello",
         )
-        assert references == [
-            SkillReference(
+        assert files == [
+            SkillFile(
                 path="references/api.md",
                 content="content of skills/hello/references/api.md",
             )
@@ -369,12 +367,12 @@ class TestSkillExporterReferences:
     async def test_truncated_tree_for_root_skill_uses_repo_tree(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter, _ = _exporter_with_references(rest_client, [])
+        exporter, _ = _exporter_with_skill_folder(rest_client, [])
         exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
             return_value=([_sized_blob("SKILL.md"), _sized_blob("notes.md")], True)
         )
 
-        references = await exporter.fetch_references(
+        files = await exporter.fetch_skill_folder_files(
             organization="test-org",
             repo_name="repo1",
             ref="main",
@@ -383,7 +381,7 @@ class TestSkillExporterReferences:
         )
 
         exporter.get_tree_recursive.assert_called_once()
-        assert [reference.path for reference in references or []] == ["notes.md"]
+        assert [file.path for file in files or []] == ["notes.md"]
 
 
 def _tree(*paths: str) -> List[Dict[str, Any]]:

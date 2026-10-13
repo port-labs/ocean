@@ -8,13 +8,13 @@ from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     determine_api_client_type_by_file_size,
 )
-from github.core.exporters.skill_exporter.references import (
+from github.core.exporters.skill_exporter.skill_folder import (
     MAX_SKILL_BUNDLE_SIZE,
-    select_reference_files,
+    select_skill_folder_files,
     skill_dir_prefix,
 )
 from github.core.exporters.skill_exporter.utils import (
-    SkillReference,
+    SkillFile,
     build_skill_raw_item,
 )
 from github.core.options import ListFileSearchOptions
@@ -26,10 +26,10 @@ class SkillExporter(RestFileExporter):
     """Discovers SKILL.md files and emits normalized skill entities."""
 
     def __init__(
-        self, client: GithubRestClient, include_references: bool = False
+        self, client: GithubRestClient, include_skill_folder: bool = False
     ) -> None:
         super().__init__(client)
-        self.include_references = include_references
+        self.include_skill_folder = include_skill_folder
 
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
@@ -83,21 +83,21 @@ class SkillExporter(RestFileExporter):
         blob_sha: Optional[str] = None,
         ref: Optional[str] = None,
     ) -> Optional[dict[str, Any]]:
-        """Build the skill raw item, or None if its references bundle is too large.
+        """Build the skill raw item, or None if its skill folder is too large.
 
-        References are read at `ref` (defaults to `branch`). Pass a commit SHA
+        Folder files are read at `ref` (defaults to `branch`). Pass a commit SHA
         when the branch tree may already be cached from an earlier event.
         """
-        references = None
-        if self.include_references:
-            references = await self.fetch_references(
+        files = None
+        if self.include_skill_folder:
+            files = await self.fetch_skill_folder_files(
                 organization=organization,
                 repo_name=repository["name"],
                 ref=ref or branch,
                 skill_md_path=skill_md_path,
                 skill_md_size=len(content.encode("utf-8")),
             )
-            if references is None:
+            if files is None:
                 return None
 
         return build_skill_raw_item(
@@ -108,10 +108,10 @@ class SkillExporter(RestFileExporter):
             organization=organization,
             path_globs=path_globs,
             blob_sha=blob_sha,
-            references=references,
+            files=files,
         )
 
-    async def fetch_references(
+    async def fetch_skill_folder_files(
         self,
         *,
         organization: str,
@@ -119,11 +119,11 @@ class SkillExporter(RestFileExporter):
         ref: str,
         skill_md_path: str,
         skill_md_size: int,
-    ) -> Optional[list[SkillReference]]:
+    ) -> Optional[list[SkillFile]]:
         """Fetch the text files in the skill folder at `ref` (branch or commit
         SHA), sorted by relative path.
 
-        Returns None when SKILL.md plus its references exceed the bundle limit.
+        Returns None when SKILL.md plus its folder files exceed the bundle limit.
         """
         prefix = skill_dir_prefix(skill_md_path)
         tree, truncated = await self.get_tree_recursive(organization, repo_name, ref)
@@ -131,13 +131,13 @@ class SkillExporter(RestFileExporter):
             tree = await self._get_skill_folder_tree(
                 organization, repo_name, ref, prefix
             )
-        entries = select_reference_files(tree, skill_md_path)
+        entries = select_skill_folder_files(tree, skill_md_path)
 
         bundle_size = skill_md_size + sum(entry.get("size", 0) for entry in entries)
         if bundle_size > MAX_SKILL_BUNDLE_SIZE:
             logger.warning(
                 f"Skipping skill {skill_md_path} in {organization}/{repo_name}@{ref}: "
-                f"SKILL.md and its {len(entries)} reference files total {bundle_size} bytes, "
+                f"SKILL.md and its {len(entries)} folder files total {bundle_size} bytes, "
                 f"over the {MAX_SKILL_BUNDLE_SIZE} byte limit"
             )
             return None
@@ -146,7 +146,7 @@ class SkillExporter(RestFileExporter):
             organization, repo_name, ref, entries
         )
         return [
-            SkillReference(path=path.removeprefix(prefix), content=content)
+            SkillFile(path=path.removeprefix(prefix), content=content)
             for path, content in sorted(contents.items())
         ]
 

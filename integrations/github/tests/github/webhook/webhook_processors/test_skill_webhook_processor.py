@@ -22,7 +22,7 @@ from github.webhook.webhook_processors.skill_webhook_processor import (
     SkillWebhookProcessor,
 )
 from github.core.exporters.skill_exporter import SkillExporter
-from github.core.exporters.skill_exporter.utils import SkillReference
+from github.core.exporters.skill_exporter.utils import SkillFile
 from github.helpers.utils import ObjectKind
 from github.core.options import FileContentOptions
 
@@ -76,14 +76,14 @@ def exporter() -> SkillExporter:
     exporter.fetch_commit_diff = AsyncMock(return_value={"files": []})  # type: ignore[method-assign]
     exporter.get_resource = AsyncMock(return_value=None)  # type: ignore[method-assign]
     exporter.get_tree_recursive = AsyncMock(return_value=([], False))  # type: ignore[method-assign]
-    exporter.fetch_references = AsyncMock(return_value=[])  # type: ignore[method-assign]
+    exporter.fetch_skill_folder_files = AsyncMock(return_value=[])  # type: ignore[method-assign]
     return exporter
 
 
 @contextmanager
 def use_exporter(exporter: SkillExporter) -> Iterator[None]:
-    def build(_client: Any, include_references: bool = False) -> SkillExporter:
-        exporter.include_references = include_references
+    def build(_client: Any, include_skill_folder: bool = False) -> SkillExporter:
+        exporter.include_skill_folder = include_skill_folder
         return exporter
 
     with (
@@ -194,7 +194,7 @@ class TestSkillWebhookProcessor:
 
         skill = result.updated_raw_results[0]["skill"]
         assert skill["blob_sha"] == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-        assert skill["references"] is None
+        assert skill["files"] is None
 
         exporter.get_resource.assert_called_once_with(  # type: ignore[attr-defined]
             FileContentOptions(
@@ -240,14 +240,14 @@ class TestSkillWebhookProcessor:
         )
         exporter.get_resource.assert_not_called()  # type: ignore[attr-defined]
 
-    async def test_reference_change_rebuilds_skill_when_flag_on(
+    async def test_folder_file_change_rebuilds_skill_when_flag_on(
         self,
         skill_webhook_processor: SkillWebhookProcessor,
         resource_config: GithubSkillResourceConfig,
         payload: EventPayload,
         exporter: SkillExporter,
     ) -> None:
-        resource_config.selector.include_references = True
+        resource_config.selector.include_skill_folder = True
         exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
             "files": [
                 {"filename": "skills/hello/references/api.md", "status": "modified"}
@@ -265,8 +265,8 @@ class TestSkillWebhookProcessor:
             "content": "---\nname: hello\n---\n# Hi",
             "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
         }
-        exporter.fetch_references.return_value = [  # type: ignore[attr-defined]
-            SkillReference(path="references/api.md", content="# API v2")
+        exporter.fetch_skill_folder_files.return_value = [  # type: ignore[attr-defined]
+            SkillFile(path="references/api.md", content="# API v2")
         ]
 
         with use_exporter(exporter):
@@ -276,19 +276,19 @@ class TestSkillWebhookProcessor:
 
         [updated] = result.updated_raw_results
         assert updated["skill"]["skillMdPath"] == "skills/hello/SKILL.md"
-        assert updated["skill"]["references"] == [
+        assert updated["skill"]["files"] == [
             {"path": "references/api.md", "content": "# API v2"}
         ]
         assert result.deleted_raw_results == []
         exporter.get_tree_recursive.assert_called_once_with(  # type: ignore[attr-defined]
             "test-org", "test-repo", payload["after"]
         )
-        exporter.fetch_references.assert_called_once()  # type: ignore[attr-defined]
-        fetch_kwargs = exporter.fetch_references.call_args.kwargs  # type: ignore[attr-defined]
+        exporter.fetch_skill_folder_files.assert_called_once()  # type: ignore[attr-defined]
+        fetch_kwargs = exporter.fetch_skill_folder_files.call_args.kwargs  # type: ignore[attr-defined]
         assert fetch_kwargs["skill_md_path"] == "skills/hello/SKILL.md"
         assert fetch_kwargs["ref"] == payload["after"]
 
-    async def test_reference_change_ignored_when_flag_off(
+    async def test_folder_file_change_ignored_when_flag_off(
         self,
         skill_webhook_processor: SkillWebhookProcessor,
         resource_config: GithubSkillResourceConfig,
@@ -317,7 +317,7 @@ class TestSkillWebhookProcessor:
         payload: EventPayload,
         exporter: SkillExporter,
     ) -> None:
-        resource_config.selector.include_references = True
+        resource_config.selector.include_skill_folder = True
         exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
             "files": [
                 {"filename": "skills/hello/SKILL.md", "status": "removed"},
@@ -342,7 +342,7 @@ class TestSkillWebhookProcessor:
         payload: EventPayload,
         exporter: SkillExporter,
     ) -> None:
-        resource_config.selector.include_references = True
+        resource_config.selector.include_skill_folder = True
         exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
             "files": [{"filename": "skills/hello/child/SKILL.md", "status": "removed"}]
         }
@@ -372,7 +372,7 @@ class TestSkillWebhookProcessor:
         payload: EventPayload,
         exporter: SkillExporter,
     ) -> None:
-        resource_config.selector.include_references = True
+        resource_config.selector.include_skill_folder = True
         exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
             "files": [{"filename": "skills/hello/SKILL.md", "status": "modified"}]
         }
@@ -394,7 +394,7 @@ class TestSkillWebhookProcessor:
         payload: EventPayload,
         exporter: SkillExporter,
     ) -> None:
-        resource_config.selector.include_references = True
+        resource_config.selector.include_skill_folder = True
         exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
             "files": [
                 {"filename": "README.md", "status": "modified"},
@@ -418,12 +418,12 @@ class TestSkillWebhookProcessor:
         payload: EventPayload,
         exporter: SkillExporter,
     ) -> None:
-        resource_config.selector.include_references = True
+        resource_config.selector.include_skill_folder = True
         exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
             "files": [{"filename": "skills/hello/SKILL.md", "status": "modified"}]
         }
         exporter.get_resource.return_value = {"content": "# Hi"}  # type: ignore[attr-defined]
-        exporter.fetch_references.return_value = None  # type: ignore[attr-defined]
+        exporter.fetch_skill_folder_files.return_value = None  # type: ignore[attr-defined]
 
         with use_exporter(exporter):
             result = await skill_webhook_processor.handle_event(

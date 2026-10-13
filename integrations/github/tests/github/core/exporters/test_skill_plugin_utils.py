@@ -1,9 +1,9 @@
 from typing import Any
 
-from github.core.exporters.skill_exporter.references import (
-    MAX_REFERENCE_DEPTH,
+from github.core.exporters.skill_exporter.skill_folder import (
+    MAX_SKILL_FOLDER_DEPTH,
     glob_base_dir,
-    select_reference_files,
+    select_skill_folder_files,
     skill_dir_prefix,
 )
 from github.core.exporters.skill_exporter.utils import (
@@ -148,10 +148,10 @@ def _blob(path: str, size: int = 10, mode: str = "100644") -> dict[str, Any]:
 
 
 def _selected_paths(tree: list[dict[str, Any]], skill_md_path: str) -> list[str]:
-    return [entry["path"] for entry in select_reference_files(tree, skill_md_path)]
+    return [entry["path"] for entry in select_skill_folder_files(tree, skill_md_path)]
 
 
-class TestSkillReferences:
+class TestSelectSkillFolderFiles:
     def test_skill_dir_prefix(self) -> None:
         assert skill_dir_prefix("skills/hello/SKILL.md") == "skills/hello/"
         assert skill_dir_prefix("SKILL.md") == ""
@@ -204,8 +204,8 @@ class TestSkillReferences:
         ]
 
     def test_respects_depth_limit(self) -> None:
-        allowed = "skills/hello/" + "d/" * MAX_REFERENCE_DEPTH + "ok.md"
-        too_deep = "skills/hello/" + "d/" * (MAX_REFERENCE_DEPTH + 1) + "deep.md"
+        allowed = "skills/hello/" + "d/" * MAX_SKILL_FOLDER_DEPTH + "ok.md"
+        too_deep = "skills/hello/" + "d/" * (MAX_SKILL_FOLDER_DEPTH + 1) + "deep.md"
         tree = [_blob("skills/hello/SKILL.md"), _blob(allowed), _blob(too_deep)]
         assert _selected_paths(tree, "skills/hello/SKILL.md") == [allowed]
 

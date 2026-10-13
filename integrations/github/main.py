@@ -1342,7 +1342,7 @@ async def resync_skills(
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
     skill_exporter = SkillExporter(
-        rest_client, include_references=selector.include_references
+        rest_client, include_skill_folder=selector.include_skill_folder
     )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
 

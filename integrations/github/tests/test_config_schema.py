@@ -9,13 +9,13 @@ def test_skill_path_defaults_omit_unset_repository_filters() -> None:
     assert defaults == [{"path": path} for path in DEFAULT_SKILL_PATHS]
 
 
-def test_skill_include_references_defaults_to_false() -> None:
+def test_skill_include_skill_folder_defaults_to_false() -> None:
     properties = GithubSkillSelector.schema()["properties"]
 
-    assert properties["includeReferences"]["default"] is False
-    assert GithubSkillSelector(query="true").include_references is False
+    assert properties["includeSkillFolder"]["default"] is False
+    assert GithubSkillSelector(query="true").include_skill_folder is False
     assert (
-        GithubSkillSelector(query="true", includeReferences=True).include_references
+        GithubSkillSelector(query="true", includeSkillFolder=True).include_skill_folder
         is True
     )
 

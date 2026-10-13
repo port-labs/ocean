@@ -45,7 +45,7 @@ TEXT_FILE_EXTENSIONS: frozenset[str] = frozenset(
     }
 )
 MAX_SKILL_BUNDLE_SIZE = 1024 * 1024
-MAX_REFERENCE_DEPTH = 5
+MAX_SKILL_FOLDER_DEPTH = 5
 # Git tree mode for symlinks: their "content" is a target path that may point
 # outside the skill folder, so they are never bundled.
 SYMLINK_MODE = "120000"
@@ -63,7 +63,7 @@ def glob_base_dir(pattern: str) -> str:
     return literal[: literal.rfind("/") + 1]
 
 
-def select_reference_files(
+def select_skill_folder_files(
     tree: list[dict[str, Any]], skill_md_path: str
 ) -> list[dict[str, Any]]:
     """Pick the text files in a skill's folder from an already fetched git tree.
@@ -90,7 +90,7 @@ def select_reference_files(
     for entry in candidates:
         relative_path = entry["path"].removeprefix(prefix)
         if (
-            relative_path.count("/") <= MAX_REFERENCE_DEPTH
+            relative_path.count("/") <= MAX_SKILL_FOLDER_DEPTH
             and PurePosixPath(relative_path).suffix.lower() in TEXT_FILE_EXTENSIONS
             and not entry["path"].startswith(nested_skill_prefixes)
         ):

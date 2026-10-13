@@ -8,7 +8,7 @@
     "skillMdPath": "packages/agent-kit/skills/release-notes/SKILL.md",
     "root": "packages/agent-kit/skills",
     "blob_sha": "356a192b7913b04c54574d18c28d46e6395428ab",
-    "references": null
+    "files": null
   },
   "__repository": {
     "name": "agent-monorepo",
