@@ -416,7 +416,14 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_base_sha(
         self, organization: str, repo_name: str, branch: str, until: datetime
     ) -> Optional[str]:
-        """Return the newest commit on ``branch`` at or before ``until``."""
+        """Return a candidate base commit on ``branch`` at or before ``until``.
+
+        Uses List Commits ``until``, which filters by *committer date* among
+        reachable commits — not the historical branch tip at ``until``. Pushes or
+        merges that introduce older commits can therefore yield a base that makes
+        compare look identical or incomplete; callers must treat those outcomes as
+        untrusted and fall back to a full tree scan.
+        """
         resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
         params = {
             "sha": branch,
@@ -437,8 +444,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> Optional[set[str]]:
         """Paths of files added or modified on ``branch`` since ``since``.
 
-        Returns None when the diff cannot be trusted (no base commit, rewritten
-        history, truncated compare), so the caller falls back to a full tree scan.
+        Returns None when the diff cannot be trusted (no base commit, identical /
+        rewritten history, truncated compare), so the caller falls back to a full
+        tree scan.
         """
         result = await self._fetch_changed_paths_since(
             organization, repo_name, branch, since
@@ -459,7 +467,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
-        if diff.get("status") not in ("ahead", "identical"):
+        if diff.get("status") != "ahead":
             logger.info(
                 f"Falling back to full scan for repository {repo_name}@{branch} in organization {organization}: compare status '{diff.get('status')}'"
             )

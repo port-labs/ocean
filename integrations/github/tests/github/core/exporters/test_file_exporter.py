@@ -1618,6 +1618,7 @@ class TestRestFileExporterIncremental:
         "compare_response",
         [
             {"status": "diverged", "files": []},
+            {"status": "identical", "files": []},
             {"files": []},
             {
                 "status": "ahead",
@@ -1626,7 +1627,7 @@ class TestRestFileExporterIncremental:
                 ],
             },
         ],
-        ids=["diverged", "missing-status", "truncated"],
+        ids=["diverged", "identical", "missing-status", "truncated"],
     )
     async def test_get_changed_paths_since_untrusted_diff_falls_back(
         self, rest_client: GithubRestClient, compare_response: Dict[str, Any]
@@ -1815,15 +1816,20 @@ class TestRestFileExporterIncremental:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "responses",
+    "responses,expected",
     [
-        [[{"sha": "base-sha"}], {"status": "identical", "files": []}],
-        [[]],
+        (
+            [[{"sha": "base-sha"}], {"status": "ahead", "files": []}],
+            set(),
+        ),
+        ([[]], None),
     ],
     ids=["no-changes", "fallback"],
 )
 async def test_get_changed_paths_since_caches_empty_results(
-    rest_client: GithubRestClient, responses: List[Any]
+    rest_client: GithubRestClient,
+    responses: List[Any],
+    expected: set[str] | None,
 ) -> None:
     """Empty ({}) and fallback (None) results must be cached so extra patterns reuse them."""
     exporter = RestFileExporter(rest_client)
@@ -1841,6 +1847,7 @@ async def test_get_changed_paths_since_caches_empty_results(
             "test-org", repo_name, "main", INCREMENTAL_SINCE
         )
 
+    assert first == expected
     assert first == second
     assert mock_request.await_count == len(responses)
 
