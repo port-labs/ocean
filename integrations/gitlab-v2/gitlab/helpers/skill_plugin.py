@@ -165,6 +165,7 @@ def build_skill_object(
     skill_md_path: str,
     content: str,
     path_globs: list[str],
+    files: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     frontmatter, body = _parse_skill_markdown(content)
     path_obj = Path(skill_md_path)
@@ -187,6 +188,7 @@ def build_skill_object(
         "path": skill_dir,
         "skillMdPath": skill_md_path,
         "root": infer_skill_root(skill_md_path, path_globs),
+        "files": files,
     }
 
 
@@ -205,6 +207,7 @@ def build_skill_delete_stub(
         "path": str(path_obj.parent).replace("\\", "/"),
         "skillMdPath": skill_md_path,
         "root": infer_skill_root(skill_md_path, path_globs),
+        "files": None,
     }
 
 

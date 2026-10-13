@@ -16,12 +16,34 @@ class FakeGitLabClient:
         self,
         files_by_path: dict[str, list[dict[str, Any]]] | None = None,
         projects: list[dict[str, Any]] | None = None,
+        tree: list[dict[str, Any]] | None = None,
+        folder_contents: dict[str, str] | None = None,
     ) -> None:
         self.files_by_path = files_by_path or {}
         self.projects = projects or []
         self.projects_by_id = {str(p["id"]): p for p in self.projects}
         self.search_calls: list[dict[str, Any]] = []
         self.pattern_search_calls: list[dict[str, Any]] = []
+        self.tree = tree or []
+        self.folder_contents = folder_contents or {}
+        self.tree_calls: list[tuple[str, str]] = []
+        self.rest = self
+
+    async def get_repository_tree(
+        self,
+        project: dict[str, Any],
+        path: str,
+        ref: str = "main",
+        *,
+        recursive: Optional[bool] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        self.tree_calls.append((path, ref))
+        yield [entry for entry in self.tree if entry["path"].startswith(f"{path}/")]
+
+    async def get_file_data(
+        self, project_id: str, file_path: str, ref: str
+    ) -> dict[str, Any]:
+        return {"content": self.folder_contents[file_path]}
 
     async def search_files(
         self,
@@ -164,6 +186,50 @@ async def test_resync_skills_walks_configured_globs_with_tree_strategy() -> None
     assert skill["name"] == "hello"
     assert skill["skillMdPath"] == ".cursor/skills/hello/SKILL.md"
     assert skill["root"] == ".cursor/skills"
+    assert skill["files"] is None
+    assert client.tree_calls == []
+
+
+@pytest.mark.asyncio
+async def test_resync_skills_attaches_folder_files_and_drops_oversized() -> None:
+    selector = GitLabSkillSelector(
+        query="true",
+        paths=[GitLabSkillPath(path="skills/**/SKILL.md")],
+        includeSkillFolder=True,
+    )
+    skill_files = [
+        {
+            "path": f"skills/{name}/SKILL.md",
+            "content": SKILL_CONTENT,
+            "ref": "main",
+            "project_id": 1,
+        }
+        for name in ("hello", "huge")
+    ]
+    client = FakeGitLabClient(
+        files_by_path={"skills/**/SKILL.md": skill_files},
+        projects=[PROJECT],
+        tree=[
+            {"type": "blob", "path": "skills/hello/SKILL.md"},
+            {"type": "blob", "path": "skills/hello/references/api.md"},
+            {"type": "blob", "path": "skills/huge/SKILL.md"},
+            {"type": "blob", "path": "skills/huge/data.csv"},
+        ],
+        folder_contents={
+            "skills/hello/references/api.md": "# API",
+            "skills/huge/data.csv": "x" * (1024 * 1024),
+        },
+    )
+
+    batches = [batch async for batch in resync_skills(client, selector, None)]  # type: ignore[arg-type]
+
+    skills = [item["skill"] for batch in batches for item in batch]
+    assert [skill["skillMdPath"] for skill in skills] == ["skills/hello/SKILL.md"]
+    assert skills[0]["files"] == [{"path": "references/api.md", "content": "# API"}]
+    assert sorted(client.tree_calls) == [
+        ("skills/hello", "main"),
+        ("skills/huge", "main"),
+    ]
 
 
 @pytest.mark.asyncio
