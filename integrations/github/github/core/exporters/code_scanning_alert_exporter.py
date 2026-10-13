@@ -1,21 +1,14 @@
-from typing import cast, Optional
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from typing import cast
+from github.core.exporters.base_alert_exporter import BaseSecurityAlertExporter
 from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
     enrich_with_organization,
 )
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.core.ocean_types import RAW_ITEM
 from loguru import logger
-from github.core.options import (
-    ListCodeScanningAlertOptions,
-    SingleCodeScanningAlertOptions,
-)
-from github.clients.http.rest_client import GithubRestClient
-from port_ocean.core.incremental.strategies import (
-    ClientSideCutoffStrategy,
-    paginate_with_strategy,
-)
+from github.core.options import SingleCodeScanningAlertOptions
+from port_ocean.core.incremental.strategies import ClientSideCutoffStrategy
 
 CODE_SCANNING_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="updated_at",
@@ -23,11 +16,23 @@ CODE_SCANNING_INCREMENTAL = ClientSideCutoffStrategy(
 )
 
 
-class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
+class RestCodeScanningAlertExporter(BaseSecurityAlertExporter):
+
+    @property
+    def alert_type_name(self) -> str:
+        return "code scanning"
+
+    @property
+    def resource_path(self) -> str:
+        return "code-scanning/alerts"
+
+    @property
+    def incremental_strategy(self) -> ClientSideCutoffStrategy:
+        return CODE_SCANNING_INCREMENTAL
 
     async def get_resource[ExporterOptionsT: SingleCodeScanningAlertOptions](
         self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    ) -> RAW_ITEM | None:
 
         repo_name, organization, params = parse_github_options(dict(options))
         alert_number = params["alert_number"]
@@ -47,33 +52,3 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         return enrich_with_organization(
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
-
-    async def get_paginated_resources[ExporterOptionsT: ListCodeScanningAlertOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get all code scanning alerts in the repository with pagination."""
-
-        repo_name, organization, params = parse_github_options(dict(options))
-        incremental_cursor = params.pop("updated_since", None)
-        request_params = CODE_SCANNING_INCREMENTAL.merge_params(
-            params, incremental_cursor
-        )
-
-        async for alerts in paginate_with_strategy(
-            self.client.send_paginated_request(
-                f"{self.client.base_url}/repos/{organization}/{repo_name}/code-scanning/alerts",
-                request_params,
-            ),
-            cursor=incremental_cursor,
-            strategy=CODE_SCANNING_INCREMENTAL,
-        ):
-            logger.info(
-                f"Fetched batch of {len(alerts)} code scanning alerts from repository {repo_name} from {organization}"
-            )
-            batch_data = [
-                enrich_with_organization(
-                    enrich_with_repository(alert, cast(str, repo_name)), organization
-                )
-                for alert in alerts
-            ]
-            yield batch_data
