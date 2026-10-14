@@ -8,12 +8,14 @@ from newrelic_integration.overrides import (
     NewRelicAlertResourceConfig,
     NewRelicServiceLevelResourceConfig,
     NewRelicAlertConditionResourceConfig,
+    NewRelicServiceDependencyResourceConfig,
 )
 
 NewRelicAnyResourceConfig = (
     NewRelicAlertResourceConfig
     | NewRelicServiceLevelResourceConfig
     | NewRelicAlertConditionResourceConfig
+    | NewRelicServiceDependencyResourceConfig
     | NewRelicCustomResourceConfig
 )
 

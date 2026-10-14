@@ -8,6 +8,8 @@ from newrelic_integration.core.issues import IssuesHandler, IssueState
 from newrelic_integration.webhook.registry import register_live_events_webhooks
 from newrelic_integration.core.service_levels import ServiceLevelsHandler
 from newrelic_integration.core.alert_conditions import AlertConditionsHandler
+from newrelic_integration.core.service_dependencies import ServiceDependenciesHandler
+from newrelic_integration.webhook.constants import SERVICE_DEPENDENCY_KIND
 
 from newrelic_integration.utils import get_port_resource_configuration_by_port_kind
 
@@ -25,6 +27,8 @@ async def enrich_service_level(
 
 @ocean.on_resync()
 async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == SERVICE_DEPENDENCY_KIND:
+        return
     with logger.contextualize(resource_kind=kind):
         port_resource_configuration = (
             await get_port_resource_configuration_by_port_kind(kind)
@@ -84,6 +88,15 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             enriched_service_levels = await asyncio.gather(*tasks)
             yield enriched_service_levels
+
+
+@ocean.on_resync(kind=SERVICE_DEPENDENCY_KIND)
+async def resync_service_dependencies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    with logger.contextualize(resource_kind=kind):
+        async for (
+            dependencies
+        ) in ServiceDependenciesHandler().list_service_dependencies(kind):
+            yield dependencies
 
 
 @ocean.on_resync(kind="newRelicAlertCondition")
