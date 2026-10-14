@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add incremental sync for skills. Incremental runs reuse the file kind's incremental flow, only scanning repositories pushed since the cursor and fetching SKILL.md files that changed on the branch. Deleted skills are removed on the next full resync or by the push webhook.

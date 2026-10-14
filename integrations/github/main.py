@@ -1324,12 +1324,14 @@ async def resync_files(
         yield file_results
 
 
+@ocean.on_incremental_resync(ObjectKind.SKILL)
 @ocean.on_resync(ObjectKind.SKILL)
 @_resync_per_authenticator
 async def resync_skills(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Agent Skills (SKILL.md) using glob path discovery."""
+    """Resync Agent Skills (SKILL.md); incremental runs only fetch changed skills in pushed repos."""
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubSkillResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1362,7 +1364,9 @@ async def resync_skills(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(file_patterns)
+    repo_path_map = await pattern_builder.build(
+        file_patterns, updated_since=sync_cursor
+    )
 
     async for skills in skill_exporter.get_paginated_resources(repo_path_map):
         yield skills

@@ -403,3 +403,57 @@ async def test_resync_folders_passes_incremental_cursor(github_main: Any) -> Non
                 [batch async for batch in github_main.resync_folders("folder")]
 
     pattern_builder.build.assert_awaited_once_with([folder], updated_since=cursor)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_skills_passes_cursor_to_builder(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    skill_path = MagicMock(
+        path=".claude/skills/**/SKILL.md",
+        organization="allowed",
+        repos=None,
+        exclude_archived=False,
+    )
+    skill_exporter = MagicMock()
+    skill_exporter.get_paginated_resources.return_value = _aiter_one([{"skill": {}}])
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(github_main, "SkillExporter", return_value=skill_exporter),
+        patch.object(
+            github_main, "FilePatternMappingBuilder", return_value=pattern_builder
+        ),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(kind="skill", selector=MagicMock(paths=[skill_path]))
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [b async for b in github_main.resync_skills("skill")]
+                else:
+                    batches = [b async for b in github_main.resync_skills("skill")]
+
+    assert batches == [[{"skill": {}}]]
+    pattern_builder.build.assert_awaited_once()
+    assert pattern_builder.build.await_args is not None
+    file_patterns = pattern_builder.build.await_args.args[0]
+    assert [p.path for p in file_patterns] == [".claude/skills/**/SKILL.md"]
+    assert pattern_builder.build.await_args.kwargs == {"updated_since": cursor}
