@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate that a configured GitHub organization is accessible during PAT probe mode, preventing false positives for invalid or inaccessible orgs.
 
 ### Features
+
 - Discover agent plugins at any directory depth and emit one plugin entity per plugin root.
 Repository-root plugins keep an empty path so existing identifiers stay stable, marketplace files no longer create
 entities on their own, and selector.maxDepth can cap how deep discovery searches
