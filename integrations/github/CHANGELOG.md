@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.20.0 (2026-10-14)
+
+
+### Features
+
+- Added Pull Request comment actions (create, edit, delete), enabling Port Workflows to manage GitHub Pull Request comments directly
+
+
 ## 6.19.0 (2026-10-14)
 
 
