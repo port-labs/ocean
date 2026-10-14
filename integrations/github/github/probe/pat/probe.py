@@ -59,7 +59,9 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             return
 
         granted_scopes = expand_pat_scopes(self._parse_scopes(user_response))
-        organizations = await self._get_organizations(authenticator, user_response, granted_scopes)
+        organizations = await self._get_organizations(
+            authenticator, user_response, granted_scopes
+        )
         if organizations is None:
             return
 
@@ -101,8 +103,10 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
                 authenticator, user_response, authenticator.organization, granted_scopes
             )
 
-        if 'read:org' not in granted_scopes:
-            await self.context.fail(f"Token does not have the 'read:org' scope, unable to fetch accessible organizations")
+        if "read:org" not in granted_scopes:
+            await self.context.fail(
+                "Token does not have the 'read:org' scope, unable to fetch accessible organizations"
+            )
             return None
         headers = (await authenticator.get_headers()).as_dict()
         github_host = ocean.integration_config["github_host"].rstrip("/")
@@ -152,8 +156,10 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         ):
             return [login]
 
-        if 'read:org' not in granted_scopes:
-            await self.context.fail(f"Token does not have the 'read:org' scope, unable to validate access to org {authenticator.organization}")
+        if "read:org" not in granted_scopes:
+            await self.context.fail(
+                f"Token does not have the 'read:org' scope, unable to validate access to org {authenticator.organization}"
+            )
             return None
 
         github_host = ocean.integration_config["github_host"].rstrip("/")
