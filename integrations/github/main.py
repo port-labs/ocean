@@ -434,17 +434,19 @@ async def resync_packages(
                 yield packages
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW)
 @ocean.on_resync(ObjectKind.WORKFLOW)
 @_resync_per_authenticator
 async def resync_workflows(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all workflows for specified Github repositories"""
+    """Resync workflows; incremental runs only cover repos pushed since the cursor."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -458,17 +460,23 @@ async def resync_workflows(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
+                pushed_since=sync_cursor,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
                 options=repo_options
             ):
+
                 tasks = []
                 for repo in repositories:
                     tasks.append(
                         workflow_exporter.get_paginated_resources(
                             options=ListWorkflowOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, None
+                                ),
                             )
                         )
                     )
@@ -1377,7 +1385,9 @@ async def resync_plugins(
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
-    plugin_exporter = PluginExporter(rest_client, selector.providers)
+    plugin_exporter = PluginExporter(
+        rest_client, selector.providers, max_depth=selector.max_depth
+    )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_selector = CompositeRepositorySelector(app_config.repository_type)
 
