@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.18.4 (2026-10-14)
+
+
+### Bug Fixes
+
+- Validate that a configured GitHub organization is accessible during PAT probe mode, preventing false positives for invalid or inaccessible orgs.
+
+
 ## 6.18.3 (2026-10-13)
 
 
