@@ -65,25 +65,6 @@ def register_retry_config_callback(
     _RETRY_CONFIG_CALLBACK = retry_config_callback
 
 
-def _resolve_sync_tier_mode(apply_sync_tier_jitter: bool) -> Optional[str]:
-    """EventType for this pod's mode (logging only). None when jitter is off or undetectable."""
-    if not apply_sync_tier_jitter:
-        return None
-    try:
-        listener = ocean.config.event_listener
-        if ocean.config.integration.incremental_sync_enabled:
-            return EventType.INCREMENTAL_RESYNC
-        if listener.should_resync:
-            return EventType.RESYNC
-        if listener.should_process_webhooks:
-            return EventType.HTTP_REQUEST
-        if listener.should_run_actions:
-            return EventType.ACTION_RUN
-        return None
-    except Exception:
-        return None
-
-
 def _derive_sync_tier_multiplier(apply_sync_tier_jitter: bool) -> float:
     """This pod's sync-tier backoff multiplier, derived once from settings already loaded
     by the time any client/RetryConfig is constructed. One flag per mode, checked in order
@@ -510,21 +491,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             self._logger.error(
                 f"Request {request.method} {request.url} failed with an HTTP error: {str(error)}"
             )
-
-    def _sync_tier_log_suffix(self, sleep_time: float) -> str:
-        """Per-request visibility into the sync-tier jitter decision: which mode this
-        pod resolved to, the multiplier and ceiling that applied, and the final sleep
-        time -- so a tier not actually differentiating (e.g. clamped to the same
-        ceiling as every other tier) is visible from the logs alone, not just inferred.
-        """
-        config = self._retry_config
-        mode = _resolve_sync_tier_mode(config.apply_sync_tier_jitter)
-        return (
-            f" [sync_tier={mode or 'none'}"
-            f" jitter={config.sync_tier_multiplier}x"
-            f" max_backoff_wait={config.max_backoff_wait}s"
-            f" wait={sleep_time}s]"
-        )
 
     def _log_before_retry(
         self,
