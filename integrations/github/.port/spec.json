@@ -189,6 +189,22 @@
       "required": false,
       "default": false,
       "description": "Enable for GitHub Enterprise Server versions older than 3.21 that do not support `return_run_details` on workflow dispatch (see https://github.com/github/roadmap/issues/1188). Polls GitHub for the triggered workflow run and serializes dispatches per organization/repository/workflow."
+    },
+    {
+      "name": "identityOauthClientId",
+      "title": "Identity propagation OAuth client ID",
+      "description": "Client ID of the GitHub OAuth app used so workflow actions run as the triggering user. Authorize and token URLs are derived from githubHost.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "identityOauthClientSecret",
+      "title": "Identity propagation OAuth client secret",
+      "description": "Client secret of the GitHub OAuth app used so workflow actions run as the triggering user.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
     }
   ],
   "saas": {
@@ -702,7 +718,105 @@
           "name": "body",
           "title": "Review body",
           "type": "string",
-          "description": "The review comment text (required for REQUEST_CHANGES)"
+          "description": "The review comment text (required for REQUEST_CHANGES and COMMENT)"
+        }
+      ]
+    },
+    {
+      "name": "create_pr_comment",
+      "icon": "Github",
+      "description": "Create a GitHub Pull Request Comment",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "prNumber",
+          "title": "Pull request number",
+          "type": "number",
+          "description": "The number of the pull request to comment on",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "Comment body",
+          "type": "string",
+          "description": "The comment text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "edit_pr_comment",
+      "icon": "Github",
+      "description": "Edit a GitHub Pull Request Comment",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "commentId",
+          "title": "Comment ID",
+          "type": "number",
+          "description": "The ID of the comment to edit",
+          "required": true
+        },
+        {
+          "name": "body",
+          "title": "New body",
+          "type": "string",
+          "description": "The updated comment text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delete_pr_comment",
+      "icon": "Github",
+      "description": "Delete a GitHub Pull Request Comment",
+      "inputs": [
+        {
+          "name": "org",
+          "title": "Organization",
+          "type": "string",
+          "description": "The GitHub organization or user that owns the repository",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "title": "Repository",
+          "type": "string",
+          "description": "The name of the GitHub repository",
+          "required": true
+        },
+        {
+          "name": "commentId",
+          "title": "Comment ID",
+          "type": "number",
+          "description": "The ID of the comment to delete",
+          "required": true
         }
       ]
     }

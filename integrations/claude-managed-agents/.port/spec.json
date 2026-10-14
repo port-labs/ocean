@@ -70,11 +70,19 @@
       "description": "The host of the Claude Console, used to build session links in action run output. If not specified, the default will be https://platform.claude.com."
     },
     {
+      "name": "verifyWebhookSecrets",
+      "type": "boolean",
+      "required": false,
+      "sensitive": false,
+      "default": true,
+      "description": "When true, verify Claude live-event webhook signatures using webhookSigningSecret. On SaaS, the signing secret returned when the webhook is first created is stored as an organization secret and webhookSigningSecret is patched on the integration spec automatically. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+    },
+    {
       "name": "webhookSigningSecret",
       "type": "string",
       "required": false,
       "sensitive": true,
-      "description": "The signing secret from the Claude Console webhook configuration. Required only to enable live events (webhooks). Refer <a href=\"https://platform.claude.com/docs/en/api/typescript/beta/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+      "description": "Claude webhook signing secret used when verifyWebhookSecrets is enabled. On SaaS, Port stores an organization secret and sets this field automatically when the webhook is first registered. For self-hosted, set it manually from the Claude Console (Manage > Webhooks)."
     },
     {
       "name": "githubAuthorizationToken",
@@ -165,7 +173,7 @@
           "name": "reportSessionStatus",
           "title": "Report session status",
           "type": "boolean",
-          "description": "Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires a webhook to be configured on the integration (see webhookSigningSecret); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.",
+          "description": "Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires live events (OCEAN__BASE_URL / webhook registration); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.",
           "default": false,
           "required": false
         }
@@ -188,6 +196,153 @@
           "title": "Session thread ID",
           "type": "string",
           "description": "Optional thread to interrupt. When omitted, every non-archived thread in the session is interrupted.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "create_environment",
+      "icon": "Claude",
+      "description": "Create a new Claude managed environment defining the container configuration for agent sessions",
+      "inputs": [
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "description": "Human-readable name for the environment (max 256 characters)",
+          "required": true
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "Optional description of the environment (max 1024 characters)",
+          "required": false
+        },
+        {
+          "name": "scope",
+          "title": "Scope",
+          "type": "string",
+          "description": "Visibility scope: 'organization' (visible to all accounts) or 'account' (owning account only). Defaults based on organization type.",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Configuration",
+          "type": "jqObject",
+          "description": "Optional environment configuration passed through to the Anthropic API (for example type, networking, packages). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "update_agent",
+      "icon": "Claude",
+      "description": "Update a Claude managed agent's configuration (name, model, system prompt, or advanced settings)",
+      "inputs": [
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "description": "The ID of the agent to update",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "description": "New human-readable name for the agent",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model",
+          "type": "string",
+          "description": "New model identifier, for example claude-opus-4-8",
+          "required": false
+        },
+        {
+          "name": "systemPrompt",
+          "title": "System prompt",
+          "type": "string",
+          "description": "New system prompt for the agent",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced agent configuration passed through to the Anthropic API (for example tools, mcp_servers, skills, metadata, description). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "archive_agent",
+      "icon": "Claude",
+      "description": "Permanently archive a Claude managed agent, making it read-only. Existing sessions continue, but no new sessions can reference the agent after this operation.",
+      "inputs": [
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "description": "The ID of the agent to archive",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "delete_environment",
+      "icon": "Claude",
+      "description": "Permanently delete a Claude managed environment. Sessions already created against this environment are not affected.",
+      "inputs": [
+        {
+          "name": "environmentId",
+          "title": "Environment ID",
+          "type": "string",
+          "description": "The ID of the environment to delete",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "update_environment",
+      "icon": "Claude",
+      "description": "Update a Claude managed environment's configuration (name, description, scope, or advanced settings)",
+      "inputs": [
+        {
+          "name": "environmentId",
+          "title": "Environment ID",
+          "type": "string",
+          "description": "The ID of the environment to update",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "description": "New human-readable name for the environment (max 256 characters)",
+          "required": false
+        },
+        {
+          "name": "description",
+          "title": "Description",
+          "type": "string",
+          "description": "New description for the environment (max 1024 characters)",
+          "required": false
+        },
+        {
+          "name": "scope",
+          "title": "Scope",
+          "type": "string",
+          "description": "Visibility scope: 'organization' (visible to all accounts) or 'account' (owning account only)",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Configuration",
+          "type": "jqObject",
+          "description": "Optional environment configuration passed through to the Anthropic API (for example type, networking, packages). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
           "required": false
         }
       ]

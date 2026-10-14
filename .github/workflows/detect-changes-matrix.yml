@@ -59,6 +59,7 @@ jobs:
               - '!./*.md'
               - '!.github/**'
               - '!docs/**'
+              - '!.vscode/**'
             core_ci_files:
               - '.github/workflows/core-test.yml'
               - '.github/workflows/integration-tests.yml'
@@ -67,8 +68,10 @@ jobs:
               - '.github/workflows/lint.yml'
               - '.github/workflows/detect-changes-matrix.yml'
               - '.github/workflows/actions/build-docker-image/**'
-              - 'scripts/run-smoke-test.sh'
               - 'scripts/smoke-test-base.sh'
+              - 'scripts/smoke-integration.sh'
+              - 'scripts/smoke_configset_cli.py'
+              - 'Makefile'
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'

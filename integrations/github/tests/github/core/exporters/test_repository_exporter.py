@@ -619,6 +619,85 @@ class TestRestRepositoryExporter:
                     },
                 )
 
+    async def test_list_strategy_applies_pushed_since_cursor(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        pages = [
+            [
+                {"id": 1, "name": "pushed-repo", "pushed_at": "2026-06-02T00:00:00Z"},
+                {"id": 2, "name": "idle-repo", "pushed_at": "2026-05-01T00:00:00Z"},
+            ],
+            [{"id": 3, "name": "older-repo", "pushed_at": "2026-04-01T00:00:00Z"}],
+        ]
+        pages_requested = 0
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal pages_requested
+            for page in pages:
+                pages_requested += 1
+                yield page
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    pushed_since=cursor,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert [repo["name"] for batch in repos for repo in batch] == [
+                    "pushed-repo"
+                ]
+                assert pages_requested == 1
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/orgs/test-org/repos",
+                    {"type": "all", "sort": "pushed", "direction": "desc"},
+                )
+
+    async def test_search_strategy_applies_pushed_since_qualifier(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            yield {"items": TEST_REPOS}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                    pushed_since=cursor,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert repos == [TEST_REPOS]
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {"q": "org:test-org code in:name pushed:>=2026-06-01T12:00:00Z"},
+                )
+
     async def test_get_paginated_resources_user_context_builds_user_repos_url(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:

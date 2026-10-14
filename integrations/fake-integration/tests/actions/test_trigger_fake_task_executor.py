@@ -8,7 +8,11 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from actions.constants import TASK_RUNNING_STATUS_LABEL, TRIGGERING_TASK_STATUS_LABEL
+from actions.constants import (
+    LINK_URL,
+    TASK_RUNNING_STATUS_LABEL,
+    TRIGGERING_TASK_STATUS_LABEL,
+)
 from actions.exceptions import MissingExecutionPropertyError, TriggerFakeTaskError
 from actions.trigger_fake_task_executor import TriggerFakeTaskExecutor
 
@@ -67,7 +71,7 @@ class TestTriggerFakeTaskExecutor:
         assert first_log_call.kwargs["status_label"] == TRIGGERING_TASK_STATUS_LABEL
         mock_port_client.update_run_started.assert_awaited_once_with(
             run,
-            TASK_RESPONSE["link"],
+            LINK_URL,
             "fake_task_task-123",
             status_label=TASK_RUNNING_STATUS_LABEL,
         )

@@ -48,6 +48,11 @@ By contributing a new integration, you enable users of the framework to seamless
 
    - Integration: `integrations/<name>/.ocean-release/<unique-name>.yaml`
    - Ocean core: `.ocean-release/core/<unique-name>.yaml`
+   - Combined core + integration PR: `.ocean-release/core/<unique-name>.yaml` is enough for CI
+     when the integration only changes because of core (it still bumps later when ocean is
+     applied to all integrations). If the PR also has integration-specific work, add
+     `integrations/<name>/.ocean-release/` for that work only and do not repeat the core
+     changelog there.
 
    ```yaml
    bump: patch

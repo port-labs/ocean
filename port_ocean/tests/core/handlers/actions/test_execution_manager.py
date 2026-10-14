@@ -416,6 +416,35 @@ class TestExecutionManager:
             mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
+    async def test_worker_survives_a_run_that_fails_before_acknowledgement(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        mock_test_executor: MagicMock,
+    ) -> None:
+        # Arrange
+        failing_run = generate_mock_action_run()
+        healthy_run = generate_mock_action_run()
+        mock_test_executor.is_close_to_rate_limit.side_effect = [
+            RuntimeError("No installation found for organization 'my-org'"),
+            False,
+        ]
+        await execution_manager._add_run_to_queue(failing_run, GLOBAL_SOURCE)
+        await execution_manager._add_run_to_queue(healthy_run, GLOBAL_SOURCE)
+
+        async def handle_both_runs() -> None:
+            with pytest.raises(RuntimeError):
+                await execution_manager._handle_global_queue_once()
+            await execution_manager._handle_global_queue_once()
+
+        # Act
+        await asyncio.create_task(handle_both_runs())
+
+        # Assert
+        mock_port_client.acknowledge_run.assert_called_once_with(healthy_run)
+        mock_test_executor.execute.assert_called_once_with(healthy_run)
+
+    @pytest.mark.asyncio
     async def test_handle_partition_queue_once_should_process_run(
         self,
         execution_manager: ExecutionManager,

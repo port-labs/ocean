@@ -152,6 +152,7 @@ def dependabot_alert_response(repo_name: str, alert_id: int) -> list[dict[str, A
             "state": "open",
             "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/security/dependabot/{alert_id}",
             "security_advisory": {"summary": f"Dependabot alert {alert_id}"},
+            "repository": {"name": repo_name, "archived": False},
         }
     ]
 
@@ -163,6 +164,7 @@ def code_scanning_alert_response(repo_name: str, alert_id: int) -> list[dict[str
             "state": "open",
             "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/security/code-scanning/{alert_id}",
             "rule": {"description": f"Code scanning alert {alert_id}"},
+            "repository": {"name": repo_name, "archived": False},
         }
     ]
 
@@ -176,8 +178,30 @@ def secret_scanning_alert_response(
             "state": "open",
             "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/security/secret-scanning/{alert_id}",
             "secret_type": "custom_pattern",
+            "repository": {"name": repo_name, "archived": False},
         }
     ]
+
+
+def org_dependabot_alerts_response() -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
+    for i, name in enumerate(REPO_NAMES, start=1):
+        alerts.extend(dependabot_alert_response(name, i))
+    return alerts
+
+
+def org_code_scanning_alerts_response() -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
+    for i, name in enumerate(REPO_NAMES, start=1):
+        alerts.extend(code_scanning_alert_response(name, i))
+    return alerts
+
+
+def org_secret_scanning_alerts_response() -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
+    for i, name in enumerate(REPO_NAMES, start=1):
+        alerts.extend(secret_scanning_alert_response(name, i))
+    return alerts
 
 
 def deployment_response(repo_name: str, deployment_id: int) -> list[dict[str, Any]]:

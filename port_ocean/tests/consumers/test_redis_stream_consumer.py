@@ -99,6 +99,8 @@ class TestRedisStreamConsumerConnection:
 
         assert consumer._redis_client_kwargs() == {
             "decode_responses": True,
+            "legacy_responses": True,
+            "socket_timeout": None,
             "username": "redis-user",
             "password": "redis-pass",
         }
@@ -130,6 +132,8 @@ class TestRedisStreamConsumerConnection:
         kwargs = consumer._redis_client_kwargs()
 
         assert kwargs["connection_class"] is SSLConnection
+        assert kwargs["legacy_responses"] is True
+        assert kwargs["socket_timeout"] is None
         assert kwargs["ssl_ca_data"] == ca_pem
         assert kwargs["ssl_certfile"] == consumer._ssl_cert_file
         assert kwargs["ssl_keyfile"] == consumer._ssl_key_file
@@ -279,6 +283,57 @@ class TestRedisStreamConsumerConnection:
         mock_redis.xreadgroup.assert_awaited_once()
         assert mock_redis.xreadgroup.await_args is not None
         assert mock_redis.xreadgroup.await_args.kwargs["count"] == 25
+
+    @pytest.mark.asyncio
+    async def test_read_loop_accepts_unified_dict_response(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            block_ms=100,
+        )
+        mock_redis = AsyncMock()
+        on_message = AsyncMock()
+
+        async def read_once(
+            **_kwargs: object,
+        ) -> dict[str, list[tuple[str, dict[str, str]]]]:
+            consumer._is_running = False
+            return {
+                "stream": [
+                    (
+                        "1-0",
+                        {
+                            "eventId": "evt-1",
+                            "webhookPath": "integration/webhook",
+                            "payload": "{}",
+                            "headers": "{}",
+                        },
+                    )
+                ]
+            }
+
+        mock_redis.xreadgroup = AsyncMock(side_effect=read_once)
+        mock_redis.eval = AsyncMock(return_value=1)
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=on_message,
+                registered_paths={"/webhook"},
+            )
+            consumer._redis = mock_redis
+            consumer._is_running = True
+
+            await consumer._read_loop()
+
+        on_message.assert_awaited_once()
+        assert on_message.await_args is not None
+        assert on_message.await_args.args[0] == "/webhook"
 
     @pytest.mark.asyncio
     async def test_read_loop_recreates_consumer_group_when_stream_missing(

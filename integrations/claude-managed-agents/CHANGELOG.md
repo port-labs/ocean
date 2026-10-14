@@ -7,6 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.2 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 0.10.1 (2026-10-13)
+
+
+### Features
+
+- Add agent, environment, and memory_store live-event webhook processors
+
+
+## 0.10.0 (2026-10-13)
+
+
+### Features
+
+- Upsert Claude Platform webhooks on start and persist signing secrets on SaaS, including integrationSpec backfill when missing
+
+
+## 0.9.3 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 0.9.2 (2026-10-12)
+
+
+### Bug Fixes
+
+- Fix UpdateEnvironmentExecutor calling `.to_dict()` on a plain dict returned by the Anthropic client; add unit tests for archive_agent, update_agent, create_environment, update_environment, and delete_environment executors
+
+
+## 0.9.1 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
+## 0.9.0 (2026-10-11)
+
+
+### Features
+
+- Added an update_environment action that updates a Claude managed environment's configuration with optimistic concurrency
+
+
+## 0.8.0 (2026-10-11)
+
+
+### Features
+
+- Added standard `trigger_agent` completion output fields (`url`, `input_tokens`, `output_tokens`, `cost_usd`) from the Claude session retrieve, using Anthropic list-cost cents converted to USD.
+
+
+## 0.7.0 (2026-10-11)
+
+
+### Features
+
+- Added a delete_environment action that permanently deletes a Claude managed environment and removes it from the catalog
+
+
+## 0.6.1 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
+## 0.6.0 (2026-10-08)
+
+
+### Features
+
+- Added a create_environment action that creates a new Claude managed environment defining the container configuration for agent sessions
+
+
+## 0.5.1 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 0.5.0 (2026-10-07)
+
+
+### Features
+
+- Added an update_agent action that updates a Claude managed agent's name, model, system prompt, or advanced configuration
+
+
+## 0.4.1 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
+## 0.4.0 (2026-10-06)
+
+
+### Features
+
+- Added an archive_agent action that permanently archives a Claude managed agent, making it read-only and preventing new sessions from referencing it
+
+
+## 0.3.5 (2026-10-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.3
+
+
+## 0.3.4 (2026-10-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.2
+
+
+## 0.3.3 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.1
+
+
+## 0.3.2 (2026-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.0
+
+
 ## 0.3.1 (2026-10-01)
 
 

@@ -1,0 +1,18 @@
+# Workflows smoke. Daemon POLLING so claims/webhooks stay up. No catalog resync.
+wait_for_resync: false
+ocean:
+  event_listener:
+    type: POLLING
+    resync_on_start: false
+    interval: 3600
+  actions_processor:
+    enabled: true
+  live_events:
+    is_redis_stream_consumer_enabled: false
+  integration:
+    type: fake-integration
+    config:
+      entity_amount: 1
+      entity_kb_size: 1
+      third_party_batch_size: 1000
+      third_party_latency_ms: 0
