@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.8 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 0.15.7 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 0.15.6 (2026-10-12)
+
+
+### Bug Fixes
+
+- Fixed file-kind live events not deleting entities when an item is removed from a file that uses itemsToParse. Modified files now fetch content from the before commit as deletes and the after commit as upserts.
+
+
+## 0.15.5 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
 ## 0.15.4 (2026-10-11)
 
 
