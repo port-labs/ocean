@@ -99,7 +99,7 @@ async def test_classic_pat_probe_fetches_user_once(
     "port_ocean.core.probe.context.ProbeContext.update_progress",
     new_callable=AsyncMock,
 )
-async def test_classic_pat_probe_with_configured_organization_validates_membership(
+async def test_classic_pat_probe_with_read_org_validates_membership(
     mock_update_progress: AsyncMock,
 ) -> None:
     # Arrange
@@ -112,7 +112,7 @@ async def test_classic_pat_probe_with_configured_organization_validates_membersh
     user_response = httpx.Response(
         200,
         json={"login": "octocat"},
-        headers={"x-oauth-scopes": "repo"},
+        headers={"x-oauth-scopes": "repo, read:org"},
     )
     membership_response = httpx.Response(200, json={"state": "active"})
     mock_client = MagicMock()
@@ -133,6 +133,80 @@ async def test_classic_pat_probe_with_configured_organization_validates_membersh
     )
     assert all(check.scopes == {"org": "my-org"} for check in context.checks)
     assert all(check.status is ProbeCheckStatus.SUCCESS for check in context.checks)
+    mock_update_progress.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_fails_without_read_org_for_configured_organization(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+
+    authenticator = PersonalTokenAuthenticator(
+        "ghp_classic_token", organization="my-org"
+    )
+    user_response = httpx.Response(
+        200,
+        json={"login": "octocat"},
+        headers={"x-oauth-scopes": "repo"},
+    )
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(return_value=user_response)
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    mock_client.get.assert_awaited_once()
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == (
+        "Token does not have the 'read:org' scope, unable to validate access to org my-org"
+    )
+    assert context.checks == []
+    mock_update_progress.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_fails_without_read_org_when_listing_organizations(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+
+    authenticator = PersonalTokenAuthenticator("ghp_classic_token")
+    user_response = httpx.Response(
+        200,
+        json={"login": "octocat"},
+        headers={"x-oauth-scopes": "repo"},
+    )
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(return_value=user_response)
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    mock_client.get.assert_awaited_once()
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == (
+        "Token does not have the 'read:org' scope, unable to fetch accessible organizations"
+    )
+    assert context.checks == []
     mock_update_progress.assert_awaited()
 
 
@@ -190,7 +264,7 @@ async def test_classic_pat_probe_fails_when_configured_organization_membership_i
     user_response = httpx.Response(
         200,
         json={"login": "octocat"},
-        headers={"x-oauth-scopes": "repo"},
+        headers={"x-oauth-scopes": "repo, read:org"},
     )
     membership_response = httpx.Response(200, json={"state": "pending"})
     mock_client = MagicMock()
@@ -229,7 +303,7 @@ async def test_classic_pat_probe_fails_when_configured_organization_is_inaccessi
     user_response = httpx.Response(
         200,
         json={"login": "octocat"},
-        headers={"x-oauth-scopes": "repo"},
+        headers={"x-oauth-scopes": "repo, read:org"},
     )
     membership_response = httpx.Response(404, json={"message": "Not Found"})
     mock_client = MagicMock()
