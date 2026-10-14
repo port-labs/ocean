@@ -3,15 +3,6 @@ from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 
-# Jira's issue search is eventually consistent, so an issue updated moments
-# before a run may not be searchable while that run queries for it. The cursor
-# advances on success either way, so without a margin that update sits below
-# every later bound and is never picked up again. One minute is the staleness
-# Atlassian states for its worklog change feeds, which "do not return worklogs
-# updated during the minute preceding the request"; no equivalent figure is
-# published for the issue search index, so this is chosen to match that, not
-# measured. Ocean's shortest incremental interval is 15 minutes, so it re-covers
-# about 7% of that window.
 SEARCH_INDEX_LAG_MARGIN = timedelta(minutes=1)
 
 _ORDER_BY_PATTERN = re.compile(r"\border\s+by\b", re.IGNORECASE)
@@ -79,8 +70,6 @@ def apply_cursor_to_jql(jql: str | None, cursor: datetime | None) -> str | None:
 
     cursor = _as_utc(cursor)
     now = datetime.now(timezone.utc)
-    # A previous run stored this from its own clock, and under the ONCE listener
-    # that is a different container, so skew can place it ahead of ours.
     if cursor > now:
         logger.warning(
             f"Incremental cursor {cursor.isoformat()} is ahead of now "
