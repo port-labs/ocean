@@ -301,6 +301,7 @@ class ListFolderOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     folders: Required[List[FolderSearchOptions]]
+    updated_since: NotRequired[Optional[datetime]]
 
 
 class SingleCollaboratorOptions(RepositoryIdentifier):

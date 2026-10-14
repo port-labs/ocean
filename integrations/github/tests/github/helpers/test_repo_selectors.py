@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from github.core.options import ListRepositoryOptions
-from github.helpers.repo_selectors import AllRepositorySelector, ExactRepositorySelector
+from github.helpers.repo_selectors import (
+    AllRepositorySelector,
+    ExactRepositorySelector,
+    MemoizedRepositorySelector,
+)
 from integration import RepositorySourceModel
 
 
@@ -197,3 +201,75 @@ class TestPushedSinceFiltering:
             ]
 
         assert results == ["fresh", "unknown"]
+
+
+@pytest.mark.asyncio
+class TestMemoizedRepositorySelector:
+    @staticmethod
+    def _strategy(results: List[Any]) -> MagicMock:
+        """A selector strategy that yields ``results`` and records each call."""
+        strategy = MagicMock()
+
+        def _select(*_: Any, **__: Any) -> AsyncIterator[Any]:
+            async def _gen() -> AsyncIterator[Any]:
+                for result in results:
+                    yield result
+
+            return _gen()
+
+        strategy.select_repos = MagicMock(side_effect=_select)
+        return strategy
+
+    async def test_reuses_listing_including_empty_result(self) -> None:
+        strategy = self._strategy([])
+        memoized = MemoizedRepositorySelector(strategy)
+        selector = RepositorySourceModel.parse_obj({})
+
+        for _ in range(3):
+            assert (
+                await memoized.select_repos(
+                    selector, MagicMock(), "org", "Organization"
+                )
+                == []
+            )
+
+        assert strategy.select_repos.call_count == 1
+
+    async def test_lists_again_for_different_exclude_archived(self) -> None:
+        strategy = self._strategy([("repo1", "main", {})])
+        memoized = MemoizedRepositorySelector(strategy)
+
+        for exclude_archived in (False, True, False):
+            await memoized.select_repos(
+                RepositorySourceModel.parse_obj({"excludeArchived": exclude_archived}),
+                MagicMock(),
+                "org",
+                "Organization",
+            )
+
+        assert strategy.select_repos.call_count == 2
+
+    async def test_explicit_repos_are_not_memoized(self) -> None:
+        strategy = self._strategy([("explicit", "main", {})])
+        memoized = MemoizedRepositorySelector(strategy)
+        selector = RepositorySourceModel.parse_obj({"repos": [{"name": "explicit"}]})
+
+        for _ in range(2):
+            await memoized.select_repos(selector, MagicMock(), "org", "Organization")
+
+        assert strategy.select_repos.call_count == 2
+
+    async def test_forwards_pushed_since(self) -> None:
+        pushed_since = datetime(2026, 10, 1, tzinfo=timezone.utc)
+        strategy = self._strategy([])
+        memoized = MemoizedRepositorySelector(strategy)
+
+        await memoized.select_repos(
+            RepositorySourceModel.parse_obj({}),
+            MagicMock(),
+            "org",
+            "Organization",
+            pushed_since=pushed_since,
+        )
+
+        assert strategy.select_repos.call_args.args[-1] == pushed_since

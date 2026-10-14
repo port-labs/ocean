@@ -1618,7 +1618,6 @@ class TestRestFileExporterIncremental:
         "compare_response",
         [
             {"status": "diverged", "files": []},
-            {"status": "identical", "files": []},
             {"files": []},
             {
                 "status": "ahead",
@@ -1627,7 +1626,7 @@ class TestRestFileExporterIncremental:
                 ],
             },
         ],
-        ids=["diverged", "identical", "missing-status", "truncated"],
+        ids=["diverged", "missing-status", "truncated"],
     )
     async def test_get_changed_paths_since_untrusted_diff_falls_back(
         self, rest_client: GithubRestClient, compare_response: Dict[str, Any]
@@ -1644,6 +1643,27 @@ class TestRestFileExporterIncremental:
             )
 
         assert changed is None
+
+    async def test_get_changed_paths_since_identical_branch_has_no_changes(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """A push to another branch leaves this branch identical: nothing to fetch."""
+        exporter = RestFileExporter(rest_client)
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            AsyncMock(
+                side_effect=[
+                    [{"sha": "base-sha"}],
+                    {"status": "identical", "files": []},
+                ]
+            ),
+        ):
+            changed = await exporter.get_changed_paths_since(
+                "test-org", "inc-repo-identical", "main", INCREMENTAL_SINCE
+            )
+
+        assert changed == set()
 
     async def test_collect_matched_files_incremental_uses_tree_for_changed_matches(
         self, rest_client: GithubRestClient

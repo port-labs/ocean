@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, List, Optional
 
 from loguru import logger
@@ -42,6 +43,11 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
             organization = repo_opts["organization"]
             repo_name = repo_opts["repo_name"]
             folders_patterns = repo_opts["folders"]
+            updated_since = (
+                repo_opts["updated_since"] if "updated_since" in repo_opts else None
+            )
+            # A repo push can be on any branch; only read trees of branches that changed.
+            branch_changed: dict[str, bool] = {}
 
             logger.debug(
                 f"Processing {organization}/{repo_name} with {len(folders_patterns)} folder patterns"
@@ -52,6 +58,18 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                 repo = folder["repo"]
                 branch = folder.get("branch") or repo["default_branch"]
 
+                if updated_since:
+                    if branch not in branch_changed:
+                        branch_changed[branch] = await self._has_commits_since(
+                            organization, repo_name, branch, updated_since
+                        )
+                        if not branch_changed[branch]:
+                            logger.info(
+                                f"Skipping folders for repository {repo_name}@{branch} in organization {organization}: no commits since {updated_since.isoformat()}"
+                            )
+                    if not branch_changed[branch]:
+                        continue
+
                 url = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/trees/{branch}"
                 is_recursive_api_call = self._needs_recursive_search(path)
                 tree = await self._get_tree(url, recursive=is_recursive_api_call)
@@ -60,6 +78,21 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                 )
                 if folders:
                     yield folders
+
+    async def _has_commits_since(
+        self, organization: str, repo_name: str, branch: str, since: datetime
+    ) -> bool:
+        """Whether ``branch`` has commits since ``since`` (by commit date)."""
+        commits = await self.client.send_api_request(
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/commits",
+            params={
+                "sha": branch,
+                "since": since.astimezone(timezone.utc).isoformat(),
+                "per_page": 1,
+            },
+            ignored_errors=self._IGNORED_ERRORS,
+        )
+        return bool(commits)
 
     def _retrieve_relevant_tree(
         self,
@@ -70,7 +103,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         branch: str,
     ) -> list[dict[str, Any]]:
         folders = self._filter_folder_contents(tree, path)
-        logger.info(f"fetched {len(folders)} folders from {repo['name']}")
+        logger.info(
+            f"fetched {len(folders)} folders from {repo['name']}@{branch} with pattern '{path}' from {organization}"
+        )
         if folders:
             formatted = self._enrich_folder_with_repository(
                 organization, folders, repo=repo, branch=branch

@@ -162,3 +162,48 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
                 selector, repo_exporter, org_login, org_type, pushed_since
             ):
                 yield result
+
+
+class MemoizedRepositorySelector:
+    """Lists an org's repositories once per build for selectors without explicit repos.
+
+    Selectors that only differ in path/content options resolve to the same repo
+    list request, so later selectors reuse the first result (including an empty
+    one, which the Ocean cache does not reuse). Add any new selector option that
+    changes the listing request to ``_list_key``.
+    """
+
+    def __init__(self, selector: RepositorySelectorStrategy) -> None:
+        self._selector = selector
+        self._listed: Dict[Tuple[str, bool], List[Tuple[str, str, Dict[str, Any]]]] = {}
+
+    @staticmethod
+    def _list_key(selector: RepoListSelector, org_login: str) -> Tuple[str, bool]:
+        return org_login, selector.exclude_archived
+
+    async def select_repos(
+        self,
+        selector: RepoListSelector,
+        repo_exporter: AbstractGithubExporter[Any],
+        org_login: str,
+        org_type: str,
+        pushed_since: Optional[datetime] = None,
+    ) -> List[Tuple[str, str, Dict[str, Any]]]:
+        """Return (repo_name, branch, repo_obj) tuples, listing the org at most once per key."""
+        if selector.repos:
+            return [
+                repo
+                async for repo in self._selector.select_repos(
+                    selector, repo_exporter, org_login, org_type, pushed_since
+                )
+            ]
+
+        key = self._list_key(selector, org_login)
+        if key not in self._listed:
+            self._listed[key] = [
+                repo
+                async for repo in self._selector.select_repos(
+                    selector, repo_exporter, org_login, org_type, pushed_since
+                )
+            ]
+        return self._listed[key]

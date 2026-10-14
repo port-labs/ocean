@@ -31,7 +31,10 @@ from github.core.options import (
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import GithubClientType, matches_glob_pattern
-from github.helpers.repo_selectors import CompositeRepositorySelector
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+    MemoizedRepositorySelector,
+)
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -182,8 +185,7 @@ class FilePatternMappingBuilder:
         updated_since: datetime | None = None,
     ) -> List[ListFileSearchOptions]:
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
-        # Selectors without explicit repos list the same org repos; list them once.
-        listed_repos: Dict[Tuple[str, bool], List[Tuple[str, str]]] = {}
+        repo_selector = MemoizedRepositorySelector(self.repo_selector)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
@@ -193,24 +195,14 @@ class FilePatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    list_key = (org_login, file_sel.exclude_archived)
-                    if file_sel.repos or list_key not in listed_repos:
-                        repos = [
-                            (repo_name, branch)
-                            async for repo_name, branch, _ in self.repo_selector.select_repos(
-                                file_sel,
-                                self.repo_exporter,
-                                org_login,
-                                org["type"],
-                                pushed_since=updated_since,
-                            )
-                        ]
-                        if not file_sel.repos:
-                            listed_repos[list_key] = repos
-                    else:
-                        repos = listed_repos[list_key]
-
-                    for repo_name, branch in repos:
+                    repos = await repo_selector.select_repos(
+                        file_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org["type"],
+                        pushed_since=updated_since,
+                    )
+                    for repo_name, branch, _ in repos:
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
                                 organization=org_login,

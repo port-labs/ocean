@@ -183,7 +183,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     matched = [m for m in matched if m["path"] in changed_paths]
 
             logger.info(
-                f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
+                f"Matched {len(matched)} files in {repo_name}@{branch} with pattern '{pattern}' from {organization}"
+                + (
+                    f": {[m['path'] for m in matched]}"
+                    if changed_paths is not None and matched
+                    else ""
+                )
             )
 
             for match in matched:
@@ -467,7 +472,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
-        if diff.get("status") != "ahead":
+        # "identical" means the branch is unchanged (the push went to another branch).
+        if diff.get("status") not in ("ahead", "identical"):
             logger.info(
                 f"Falling back to full scan for repository {repo_name}@{branch} in organization {organization}: compare status '{diff.get('status')}'"
             )

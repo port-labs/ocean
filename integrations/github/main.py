@@ -1221,13 +1221,14 @@ async def resync_code_scanning_alerts(
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 @_resync_per_authenticator
 async def resync_folders(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all folders in specified repositories."""
-    logger.info(f"Starting resync for kind: {kind}")
+    """Resync folders; incremental runs only scan repos pushed since the cursor."""
+    sync_cursor = active_incremental_cursor()
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     folders = [
@@ -1267,7 +1268,7 @@ async def resync_folders(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(folders)
+    repo_path_map = await pattern_builder.build(folders, updated_since=sync_cursor)
 
     async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
