@@ -1,5 +1,4 @@
 from typing import Any, AsyncGenerator, Generator
-import httpx
 import pytest
 from unittest.mock import patch, AsyncMock
 from datetime import datetime, UTC, timedelta
@@ -73,20 +72,6 @@ TEST_PULL_REQUESTS = [
         "updated_at": "2025-08-15T15:08:15Z",  # do not change this value
     },
 ]
-
-
-@pytest.fixture(autouse=True)
-def disable_pr_full_resync_hammer(request: pytest.FixtureRequest) -> Generator[None, None, None]:
-    """Full-resync hammer is tested explicitly; disable for all other tests."""
-    if "TestFullResyncPullRequestHammer" in request.node.nodeid:
-        yield
-        return
-    with patch.object(
-        RestPullRequestExporter,
-        "_repeat_list_pulls_for_full_resync",
-        new_callable=AsyncMock,
-    ):
-        yield
 
 
 @pytest.fixture
@@ -1701,90 +1686,3 @@ def test_list_pull_requests_query_order_by_field() -> None:
     )
     assert "field: UPDATED_AT" in closed_query
     assert "CREATED_AT" not in closed_query
-
-
-@pytest.mark.asyncio
-class TestFullResyncPullRequestHammer:
-    async def test_skips_when_incremental_cursor(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        exporter = RestPullRequestExporter(rest_client)
-        with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=[])
-        ) as mock_request:
-            await exporter._repeat_list_pulls_for_full_resync(
-                "test-org",
-                "repo1",
-                {"state": "open"},
-                datetime(2026, 1, 1, tzinfo=UTC),
-            )
-            mock_request.assert_not_called()
-
-    async def test_hammers_configured_repeat_count(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        with patch(
-            "github.core.exporters.pull_request_exporter.core."
-            "_FULL_RESYNC_PULL_REQUEST_API_REPEAT",
-            5,
-        ):
-            exporter = RestPullRequestExporter(rest_client)
-            with patch.object(
-                rest_client, "send_api_request", AsyncMock(return_value=[])
-            ) as mock_request:
-                await exporter._repeat_list_pulls_for_full_resync(
-                    "test-org", "repo1", {"state": "open"}, None
-                )
-                assert mock_request.call_count == 5
-
-    async def test_stops_after_ten_rate_limit_responses(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        async def rate_limited(*_args: Any, **_kwargs: Any) -> None:
-            request = httpx.Request("GET", "https://api.github.com/test")
-            response = httpx.Response(429, request=request)
-            raise httpx.HTTPStatusError(
-                "rate limited", request=request, response=response
-            )
-
-        exporter = RestPullRequestExporter(rest_client)
-        with patch.object(
-            rest_client,
-            "send_api_request",
-            AsyncMock(side_effect=rate_limited),
-        ) as mock_request:
-            await exporter._repeat_list_pulls_for_full_resync(
-                "test-org", "repo1", {"state": "open"}, None
-            )
-            assert mock_request.call_count == 10
-
-    async def test_retries_rate_limit_then_continues_hammer(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        attempt = 0
-
-        async def flaky_then_ok(*_args: Any, **_kwargs: Any) -> list[Any]:
-            nonlocal attempt
-            attempt += 1
-            if attempt <= 2:
-                request = httpx.Request("GET", "https://api.github.com/test")
-                response = httpx.Response(403, request=request)
-                raise httpx.HTTPStatusError(
-                    "rate limited", request=request, response=response
-                )
-            return []
-
-        with patch(
-            "github.core.exporters.pull_request_exporter.core."
-            "_FULL_RESYNC_PULL_REQUEST_API_REPEAT",
-            2,
-        ):
-            exporter = RestPullRequestExporter(rest_client)
-            with patch.object(
-                rest_client, "send_api_request", side_effect=flaky_then_ok
-            ) as mock_request:
-                await exporter._repeat_list_pulls_for_full_resync(
-                    "test-org", "repo1", {"state": "open"}, None
-                )
-                # 2 outer iterations: first needs 3 attempts, second needs 1
-                assert mock_request.call_count == 4
