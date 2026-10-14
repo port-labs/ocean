@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Mapping, Sequence
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol
 
 import httpx
 from anthropic import AsyncAnthropic
-from anthropic.types.beta import UnwrapWebhookEvent
+from anthropic.types.beta import BetaEnvironment
+from anthropic.types.beta.beta_managed_agents_agent import BetaManagedAgentsAgent
+from anthropic.types.beta.beta_managed_agents_memory_store import (
+    BetaManagedAgentsMemoryStore,
+)
+from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
+from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVault
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
 )
@@ -27,10 +33,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-from clients.exceptions import (
-    UnexpectedApiResponseError,
-    WebhookSigningSecretNotConfiguredError,
-)
+from clients.exceptions import UnexpectedApiResponseError
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -88,39 +91,54 @@ class AnthropicClient:
         api_host: str,
         api_key: str,
         console_host: str,
-        webhook_signing_secret: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
         anthropic_version: str | None = None,
     ) -> None:
+        self._api_key = api_key
+        self._anthropic_version = anthropic_version
         self._console_host = console_host.rstrip("/")
-        self._webhook_signing_secret = webhook_signing_secret
         self._page_size = page_size
         self._create_rate_limit_info: RateLimitInfo | None = None
         self._read_rate_limit_info: RateLimitInfo | None = None
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
+        # Shared transport for the SDK and Console admin calls (e.g. webhooks)
+        # so rate-limit hooks apply to every Anthropic HTTP request.
+        self._anthropic_http = OceanAsyncClient(
+            timeout=ocean.config.client_timeout,
+            retry_config=RetryConfig(max_attempts=0),
+            event_hooks={
+                "request": [self._on_request],
+                "response": [self._on_response],
+            },
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
             default_headers=(
                 {"anthropic-version": anthropic_version} if anthropic_version else None
             ),
-            # A dedicated OceanAsyncClient gets us SaaS IP-blocking and consistent
-            # SSL verification. Ocean's own retry layer is disabled (max_attempts=0)
-            # since the Anthropic SDK already retries internally. The request/
-            # response hooks below capture rate limit headers and proactively
-            # pace requests for both the create- and read-endpoint pools, on
-            # every call the client makes (resync, actions, and webhooks alike).
-            http_client=OceanAsyncClient(
-                timeout=ocean.config.client_timeout,
-                retry_config=RetryConfig(max_attempts=0),
-                event_hooks={
-                    "request": [self._on_request],
-                    "response": [self._on_response],
-                },
-            ),
+            # Ocean's retry layer is disabled (max_attempts=0) since the Anthropic
+            # SDK already retries internally.
+            http_client=self._anthropic_http,
         )
+
+    @property
+    def http_client(self) -> OceanAsyncClient:
+        return self._anthropic_http
+
+    @property
+    def async_client(self) -> AsyncAnthropic:
+        return self._client
+
+    @property
+    def api_key(self) -> str:
+        return self._api_key
+
+    @property
+    def anthropic_version(self) -> str | None:
+        return self._anthropic_version
 
     def _rate_limit_lock(self, pool: RateLimitPool) -> asyncio.Lock:
         return (
@@ -243,9 +261,8 @@ class AnthropicClient:
         if batch:
             yield batch
 
-    async def get_session(self, session_id: str) -> dict[str, Any]:
-        session = await self._client.beta.sessions.retrieve(session_id)
-        return session.to_dict(mode="json")
+    async def get_session(self, session_id: str) -> BetaManagedAgentsSession:
+        return await self._client.beta.sessions.retrieve(session_id)
 
     async def get_session_events(
         self,
@@ -281,14 +298,67 @@ class AnthropicClient:
         if batch:
             yield batch
 
-    async def get_vault(self, vault_id: str) -> dict[str, Any]:
-        vault = await self._client.beta.vaults.retrieve(vault_id)
-        return vault.to_dict(mode="json")
+    async def get_vault(self, vault_id: str) -> BetaManagedAgentsVault:
+        return await self._client.beta.vaults.retrieve(vault_id)
 
-    async def archive_agent(self, agent_id: str) -> dict[str, Any]:
+    async def get_memory_store(
+        self, memory_store_id: str
+    ) -> BetaManagedAgentsMemoryStore:
+        logger.info(f"Retrieving Claude memory store '{memory_store_id}'")
+        return await self._client.beta.memory_stores.retrieve(memory_store_id)
+
+    async def create_environment(
+        self,
+        name: str,
+        description: str | None = None,
+        scope: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> BetaEnvironment:
+        payload: dict[str, Any] = {"name": name}
+        if description:
+            payload["description"] = description
+        if scope:
+            payload["scope"] = scope
+        if extra:
+            payload["config"] = extra
+
+        logger.info(f"Creating Claude environment '{name}'")
+        return await self._client.beta.environments.create(**payload)
+
+    async def get_agent(self, agent_id: str) -> BetaManagedAgentsAgent:
+        logger.info(f"Retrieving Claude agent '{agent_id}'")
+        return await self._client.beta.agents.retrieve(agent_id)
+
+    async def update_agent(
+        self,
+        agent_id: str,
+        version: int,
+        payload: dict[str, Any],
+    ) -> BetaManagedAgentsAgent:
+        logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
+        return await self._client.beta.agents.update(
+            agent_id, version=version, **payload
+        )
+
+    async def delete_environment(self, environment_id: str) -> None:
+        logger.info(f"Deleting Claude environment '{environment_id}'")
+        await self._client.beta.environments.delete(environment_id)
+
+    async def get_environment(self, environment_id: str) -> BetaEnvironment:
+        logger.info(f"Retrieving Claude environment '{environment_id}'")
+        return await self._client.beta.environments.retrieve(environment_id)
+
+    async def update_environment(
+        self,
+        environment_id: str,
+        payload: dict[str, Any],
+    ) -> BetaEnvironment:
+        logger.info(f"Updating Claude environment '{environment_id}'")
+        return await self._client.beta.environments.update(environment_id, **payload)
+
+    async def archive_agent(self, agent_id: str) -> BetaManagedAgentsAgent:
         logger.info(f"Archiving Claude agent '{agent_id}'")
-        agent = await self._client.beta.agents.archive(agent_id)
-        return agent.to_dict(mode="json")
+        return await self._client.beta.agents.archive(agent_id)
 
     async def create_agent(
         self,
@@ -296,7 +366,7 @@ class AnthropicClient:
         model: str,
         system: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> BetaManagedAgentsAgent:
         payload: dict[str, Any] = {
             k: v for k, v in (extra or {}).items() if v is not None
         }
@@ -306,15 +376,14 @@ class AnthropicClient:
             payload["system"] = system
 
         logger.info(f"Creating Claude agent '{name}' with model '{model}'")
-        agent = await self._client.beta.agents.create(**payload)
-        return agent.to_dict(mode="json")
+        return await self._client.beta.agents.create(**payload)
 
     async def create_session(
         self,
         agent_id: str,
         environment_id: str,
         extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> BetaManagedAgentsSession:
         payload: dict[str, Any] = {
             k: v for k, v in (extra or {}).items() if v is not None
         }
@@ -324,8 +393,7 @@ class AnthropicClient:
         logger.info(
             f"Creating Claude session for agent '{agent_id}' in environment '{environment_id}'"
         )
-        session = await self._client.beta.sessions.create(**payload)
-        return session.to_dict(mode="json")
+        return await self._client.beta.sessions.create(**payload)
 
     async def send_user_message(
         self, session_id: str, prompt: str
@@ -374,18 +442,3 @@ class AnthropicClient:
                 f"Expected user.interrupt event from send, got {returned_event.type}"
             )
         return returned_event
-
-    def unwrap_webhook(
-        self, payload: str, headers: Mapping[str, str]
-    ) -> UnwrapWebhookEvent:
-        if not self._webhook_signing_secret:
-            raise WebhookSigningSecretNotConfiguredError(
-                "Webhook signing secret is not configured"
-            )
-        return self._client.beta.webhooks.unwrap(
-            payload, headers=headers, key=self._webhook_signing_secret
-        )
-
-    @property
-    def has_webhook_secret(self) -> bool:
-        return bool(self._webhook_signing_secret)

@@ -162,61 +162,62 @@ async def event_context(
         entity_topological_sorter=entity_topological_sorter,
     )
     _event_context_stack.push(new_event)
+    try:
 
-    def _handle_event(triggering_event_id: int) -> None:
-        if (
-            new_event.event_type == EventType.RESYNC
-            and new_event.id != triggering_event_id
+        def _handle_event(triggering_event_id: int) -> None:
+            if (
+                new_event.event_type == EventType.RESYNC
+                and new_event.id != triggering_event_id
+            ):
+                logger.warning("ABORTING RESYNC EVENT DUE TO NEWER RESYNC REQUEST")
+                new_event.abort()
+
+        dispatcher.connect(_handle_event, event_type)
+        dispatcher.send(event_type, triggering_event_id=event.id)
+
+        start_time = get_time(seconds_precision=False)
+        with logger.contextualize(
+            event_trigger_type=event.trigger_type,
+            event_kind=event.event_type,
+            event_id=event.id,
+            event_parent_id=event.parent_id,
+            event_resource_kind=(
+                event.resource_config.kind if event.resource_config else None
+            ),
         ):
-            logger.warning("ABORTING RESYNC EVENT DUE TO NEWER RESYNC REQUEST")
-            new_event.abort()
-
-    dispatcher.connect(_handle_event, event_type)
-    dispatcher.send(event_type, triggering_event_id=event.id)
-
-    start_time = get_time(seconds_precision=False)
-    with logger.contextualize(
-        event_trigger_type=event.trigger_type,
-        event_kind=event.event_type,
-        event_id=event.id,
-        event_parent_id=event.parent_id,
-        event_resource_kind=(
-            event.resource_config.kind if event.resource_config else None
-        ),
-    ):
-        logger.info("Event started")
-        try:
-            yield event
-        except WebhookEventNotSupportedError as e:
-            success = False
-            logger.bind(traceback=traceback.format_exc()).warning(
-                f"Webhook event not supported: {str(e)}"
-            )
-        except BaseException as e:
-            success = False
-            if isinstance(e, KeyboardInterrupt):
+            logger.info("Event started")
+            try:
+                yield event
+            except WebhookEventNotSupportedError as e:
+                success = False
                 logger.bind(traceback=traceback.format_exc()).warning(
-                    "Operation interrupted by user"
+                    f"Webhook event not supported: {str(e)}"
                 )
-            elif isinstance(e, asyncio.CancelledError):
-                logger.bind(traceback=traceback.format_exc()).warning(
-                    "Operation was cancelled"
-                )
+            except BaseException as e:
+                success = False
+                if isinstance(e, KeyboardInterrupt):
+                    logger.bind(traceback=traceback.format_exc()).warning(
+                        "Operation interrupted by user"
+                    )
+                elif isinstance(e, asyncio.CancelledError):
+                    logger.bind(traceback=traceback.format_exc()).warning(
+                        "Operation was cancelled"
+                    )
+                else:
+                    logger.bind(traceback=traceback.format_exc()).error(
+                        f"Event failed with error: {str(e)}"
+                    )
+                raise
             else:
-                logger.bind(traceback=traceback.format_exc()).error(
-                    f"Event failed with error: {str(e)}"
-                )
-            raise
-        else:
-            success = True
-        finally:
-            end_time = get_time(seconds_precision=False)
-            time_elapsed = round(end_time - start_time, 5)
-            logger.bind(
-                success=success,
-                time_elapsed=time_elapsed,
-            ).info("Event finished")
+                success = True
+            finally:
+                end_time = get_time(seconds_precision=False)
+                time_elapsed = round(end_time - start_time, 5)
+                logger.bind(
+                    success=success,
+                    time_elapsed=time_elapsed,
+                ).info("Event finished")
 
-            dispatcher.disconnect(_handle_event, event_type)
-
-    _event_context_stack.pop()
+                dispatcher.disconnect(_handle_event, event_type)
+    finally:
+        _event_context_stack.pop()

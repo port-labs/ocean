@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.19.0 (2026-10-14)
+
+
+### Bug Fixes
+
+- Validate that a configured GitHub organization is accessible during PAT probe mode, preventing false positives for invalid or inaccessible orgs.
+
+### Features
+
+- Discover agent plugins at any directory depth and emit one plugin entity per plugin root.
+Repository-root plugins keep an empty path so existing identifiers stay stable, marketplace files no longer create
+entities on their own, and selector.maxDepth can cap how deep discovery searches
+- Add incremental sync for workflows. Incremental runs only list repositories pushed since the cursor
+(sorted by push time with early stop, or a `pushed:>=` search qualifier when `repoSearch` is set) and fetch workflows
+for those repositories
+
+
+## 6.18.3 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 6.18.2 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 6.18.1 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
+## 6.18.0 (2026-10-11)
+
+
+### Features
+
+- Fetch Dependabot, code-scanning, and secret-scanning alerts via org-level endpoints (one paginated stream per organization) with T2 updated_at cutoff; fall back to per-repo for User accounts.
+
+
+## 6.17.6 (2026-10-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.7
+
+
+## 6.17.5 (2026-10-11)
+
+
+### Improvements
+
+- Log a structured GitHub API request entry with http_request for per-resync HTTP volume in integration logs.
+
+
+## 6.17.4 (2026-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.5
+
+
+## 6.17.3 (2026-10-07)
+
+
+### Improvements
+
+- Include the MCP kind in GitHub test-connection (probe) permission checks
+
+
+## 6.17.2 (2026-10-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.4
+
+
 ## 6.17.1 (2026-10-05)
 
 
