@@ -29,7 +29,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 class McpFileFetch(NamedTuple):
     """Result of trying to read and JSON-parse an mcp.json/.mcp.json at a ref.
 
-    ``ok=False`` covers a missing file, a silently-swallowed 401/403/404 (GitHub's
+    ``ok=False`` covers a missing file, a silently-swallowed 403/404 (GitHub's
     default client behavior returns an empty response for those — indistinguishable
     from "not found"), an oversized/non-file response, and unparsable JSON. Callers
     must not treat ``ok=False`` as "the file has zero servers" — only a confirmed

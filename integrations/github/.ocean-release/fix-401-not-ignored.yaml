@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fail the resync when the GitHub API returns 401 instead of ignoring the error, so invalid credentials surface as a failed sync and entities are preserved rather than deleted.
