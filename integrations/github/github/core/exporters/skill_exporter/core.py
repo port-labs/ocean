@@ -1,9 +1,9 @@
 import asyncio
-from typing import Any, List, Optional
+from typing import Any, Optional
+from urllib.parse import quote
 
 from loguru import logger
 
-from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     determine_api_client_type_by_file_size,
@@ -17,7 +17,7 @@ from github.core.exporters.skill_exporter.utils import (
     SkillFile,
     build_skill_raw_item,
 )
-from github.core.options import ListFileSearchOptions
+from github.core.options import ListSkillSearchOptions
 from github.helpers.utils import GithubClientType
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -25,24 +25,19 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class SkillExporter(RestFileExporter):
     """Discovers SKILL.md files and emits normalized skill entities."""
 
-    def __init__(
-        self, client: GithubRestClient, include_skill_folder: bool = False
-    ) -> None:
-        super().__init__(client)
-        self.include_skill_folder = include_skill_folder
-
-    async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
+    async def get_paginated_resources[ExporterOptionsT: ListSkillSearchOptions](  # type: ignore[override]
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        repositories = options["repositories"]
         path_globs = list(
             dict.fromkeys(
                 file_options["path"]
-                for repo_options in options
+                for repo_options in repositories
                 for file_options in repo_options["files"]
             )
         )
 
-        async for file_batch in super().get_paginated_resources(options):
+        async for file_batch in super().get_paginated_resources(repositories):
             valid_files = []
             for file_obj in file_batch:
                 if isinstance(file_obj.get("content"), str):
@@ -62,6 +57,7 @@ class SkillExporter(RestFileExporter):
                         branch=file_obj["branch"],
                         organization=file_obj["organization"],
                         path_globs=path_globs,
+                        include_skill_folder=options["include_skill_folder"],
                         blob_sha=file_obj.get("metadata", {}).get("sha"),
                     )
                     for file_obj in valid_files
@@ -80,6 +76,7 @@ class SkillExporter(RestFileExporter):
         branch: str,
         organization: str,
         path_globs: list[str],
+        include_skill_folder: bool,
         blob_sha: Optional[str] = None,
         ref: Optional[str] = None,
     ) -> Optional[dict[str, Any]]:
@@ -89,7 +86,7 @@ class SkillExporter(RestFileExporter):
         when the branch tree may already be cached from an earlier event.
         """
         files = None
-        if self.include_skill_folder:
+        if include_skill_folder:
             files = await self.fetch_skill_folder_files(
                 organization=organization,
                 repo_name=repository["name"],
@@ -128,9 +125,7 @@ class SkillExporter(RestFileExporter):
         prefix = skill_dir_prefix(skill_md_path)
         tree, truncated = await self.get_tree_recursive(organization, repo_name, ref)
         if truncated and prefix:
-            tree = await self._get_skill_folder_tree(
-                organization, repo_name, ref, prefix
-            )
+            tree = await self.get_folder_tree(organization, repo_name, ref, prefix)
         entries = select_skill_folder_files(tree, skill_md_path)
 
         bundle_size = skill_md_size + sum(entry.get("size", 0) for entry in entries)
@@ -150,17 +145,24 @@ class SkillExporter(RestFileExporter):
             for path, content in sorted(contents.items())
         ]
 
-    async def _get_skill_folder_tree(
+    async def get_folder_tree(
         self, organization: str, repo_name: str, ref: str, prefix: str
     ) -> list[dict[str, Any]]:
-        """The skill folder's own tree with repo-relative paths.
+        """A folder's own recursive tree, with repo-relative paths.
 
-        Used when GitHub truncates the whole-repo tree: a single folder stays far
-        below the limit, so its listing is complete.
+        Used when GitHub truncates the whole-repo tree: a single folder is
+        usually well below the limit, so its listing is complete. The trees API
+        resolves `<ref>:<folder>` to the folder's tree.
         """
-        folder_tree, _ = await self.get_tree_recursive(
-            organization, repo_name, f"{ref}:{prefix.rstrip('/')}"
+        folder = quote(prefix.rstrip("/"), safe="/")
+        folder_tree, truncated = await self.get_tree_recursive(
+            organization, repo_name, f"{ref}:{folder}"
         )
+        if truncated:
+            logger.warning(
+                f"GitHub truncated the tree of {organization}/{repo_name}@{ref}:"
+                f"{prefix}; some files in it are missing"
+            )
         return [{**entry, "path": f"{prefix}{entry['path']}"} for entry in folder_tree]
 
     async def _fetch_file_contents(

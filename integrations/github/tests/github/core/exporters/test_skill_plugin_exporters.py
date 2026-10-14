@@ -14,6 +14,7 @@ from github.core.options import (
     FileSearchOptions,
     ListFileSearchOptions,
     ListPluginOptions,
+    ListSkillSearchOptions,
     PluginRepositoryOptions,
 )
 from port_ocean.exceptions.core import OceanAbortException
@@ -29,17 +30,24 @@ description: A minimal example
 """
 
 
-def _skill_search_options(*paths: str) -> List[ListFileSearchOptions]:
-    return [
-        ListFileSearchOptions(
-            organization="test-org",
-            repo_name="repo1",
-            files=[
-                FileSearchOptions(organization="test-org", path=path, skip_parsing=True)
-                for path in paths
-            ],
-        )
-    ]
+def _skill_search_options(
+    *paths: str, include_skill_folder: bool = False
+) -> ListSkillSearchOptions:
+    return ListSkillSearchOptions(
+        repositories=[
+            ListFileSearchOptions(
+                organization="test-org",
+                repo_name="repo1",
+                files=[
+                    FileSearchOptions(
+                        organization="test-org", path=path, skip_parsing=True
+                    )
+                    for path in paths
+                ],
+            )
+        ],
+        include_skill_folder=include_skill_folder,
+    )
 
 
 def _file_object(
@@ -184,7 +192,7 @@ class _FakeContentFetcher:
 def _exporter_with_skill_folder(
     rest_client: GithubRestClient, tree: List[Dict[str, Any]]
 ) -> tuple[SkillExporter, _FakeContentFetcher]:
-    exporter = SkillExporter(rest_client, include_skill_folder=True)
+    exporter = SkillExporter(rest_client)
     fetcher = _FakeContentFetcher()
     exporter.get_tree_recursive = AsyncMock(return_value=(tree, False))  # type: ignore[method-assign]
     exporter.process_graphql_files = fetcher.graphql  # type: ignore[method-assign]
@@ -235,7 +243,9 @@ class TestSkillExporterSkillFolder:
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
-                    _skill_search_options("skills/**/SKILL.md")
+                    _skill_search_options(
+                        "skills/**/SKILL.md", include_skill_folder=True
+                    )
                 )
             ]
 
@@ -287,7 +297,9 @@ class TestSkillExporterSkillFolder:
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
-                    _skill_search_options("skills/**/SKILL.md")
+                    _skill_search_options(
+                        "skills/**/SKILL.md", include_skill_folder=True
+                    )
                 )
             ]
 
@@ -315,6 +327,7 @@ class TestSkillExporterSkillFolder:
             branch="main",
             organization="test-org",
             path_globs=["skills/**/SKILL.md"],
+            include_skill_folder=True,
             ref="abc123",
         )
 
@@ -364,6 +377,21 @@ class TestSkillExporterSkillFolder:
             )
         ]
         assert fetcher.graphql_paths == ["skills/hello/references/api.md"]
+
+    async def test_folder_tree_encodes_folder_path(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = SkillExporter(rest_client)
+        exporter.get_tree_recursive = AsyncMock(  # type: ignore[method-assign]
+            return_value=([_sized_blob("SKILL.md")], False)
+        )
+
+        tree = await exporter.get_folder_tree("test-org", "repo1", "main", "skills/c#/")
+
+        exporter.get_tree_recursive.assert_called_once_with(
+            "test-org", "repo1", "main:skills/c%23"
+        )
+        assert [entry["path"] for entry in tree] == ["skills/c#/SKILL.md"]
 
     async def test_truncated_tree_for_root_skill_uses_repo_tree(
         self, rest_client: GithubRestClient

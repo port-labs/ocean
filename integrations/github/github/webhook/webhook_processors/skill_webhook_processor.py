@@ -74,9 +74,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
             )
 
         rest_client = await create_github_client_for_org(organization)
-        exporter = SkillExporter(
-            rest_client, include_skill_folder=selector.include_skill_folder
-        )
+        exporter = SkillExporter(rest_client)
         diff_data = await exporter.fetch_commit_diff(
             organization, repo_name, before_sha, after_sha
         )
@@ -108,6 +106,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
                     after_sha,
                     skill_md_path,
                     path_globs,
+                    selector.include_skill_folder,
                 )
                 for skill_md_path in skill_md_paths
             )
@@ -162,6 +161,8 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         parent's bundle, so it counts; editing a SKILL.md only affects that skill.
         The tree is read at the pushed commit, not the branch: the tree cache
         lives across webhook events, so a branch tree may predate this push.
+        If GitHub truncates the whole-repo tree, each skill root is listed on
+        its own.
         """
         skill_roots = tuple(glob_base_dir(pattern.path) for pattern in patterns)
         changed_paths: set[str] = set()
@@ -178,7 +179,22 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         if not changed_paths:
             return set()
 
-        tree, _ = await exporter.get_tree_recursive(organization, repo_name, commit_sha)
+        tree, truncated = await exporter.get_tree_recursive(
+            organization, repo_name, commit_sha
+        )
+        if truncated and "" in skill_roots:
+            logger.warning(
+                f"GitHub truncated the tree of {organization}/{repo_name}@{commit_sha}; "
+                "skills missing from it are not rebuilt for skill folder changes"
+            )
+        elif truncated:
+            folder_trees = await asyncio.gather(
+                *(
+                    exporter.get_folder_tree(organization, repo_name, commit_sha, root)
+                    for root in set(skill_roots)
+                )
+            )
+            tree = [entry for folder_tree in folder_trees for entry in folder_tree]
         skill_md_paths = {
             entry["path"]
             for pattern in patterns
@@ -202,6 +218,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
         commit_sha: str,
         skill_md_path: str,
         path_globs: list[str],
+        include_skill_folder: bool,
     ) -> Optional[dict[str, Any]]:
         file_data = await exporter.get_resource(
             FileContentOptions(
@@ -220,6 +237,7 @@ class SkillWebhookProcessor(FileWebhookProcessor):
             branch=branch,
             organization=organization,
             path_globs=path_globs,
+            include_skill_folder=include_skill_folder,
             blob_sha=file_data.get("sha"),
             ref=commit_sha,
         )

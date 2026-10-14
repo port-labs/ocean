@@ -82,13 +82,9 @@ def exporter() -> SkillExporter:
 
 @contextmanager
 def use_exporter(exporter: SkillExporter) -> Iterator[None]:
-    def build(_client: Any, include_skill_folder: bool = False) -> SkillExporter:
-        exporter.include_skill_folder = include_skill_folder
-        return exporter
-
     with (
         patch(f"{MODULE}.create_github_client_for_org", return_value=AsyncMock()),
-        patch(f"{MODULE}.SkillExporter", MagicMock(side_effect=build)),
+        patch(f"{MODULE}.SkillExporter", MagicMock(return_value=exporter)),
     ):
         yield
 
@@ -287,6 +283,39 @@ class TestSkillWebhookProcessor:
         fetch_kwargs = exporter.fetch_skill_folder_files.call_args.kwargs  # type: ignore[attr-defined]
         assert fetch_kwargs["skill_md_path"] == "skills/hello/SKILL.md"
         assert fetch_kwargs["ref"] == payload["after"]
+
+    async def test_truncated_repo_tree_lists_skill_roots_when_flag_on(
+        self,
+        skill_webhook_processor: SkillWebhookProcessor,
+        resource_config: GithubSkillResourceConfig,
+        payload: EventPayload,
+        exporter: SkillExporter,
+    ) -> None:
+        resource_config.selector.include_skill_folder = True
+        exporter.fetch_commit_diff.return_value = {  # type: ignore[attr-defined]
+            "files": [
+                {"filename": "skills/hello/references/api.md", "status": "modified"}
+            ]
+        }
+        exporter.get_tree_recursive.return_value = ([], True)  # type: ignore[attr-defined]
+        exporter.get_folder_tree = AsyncMock(  # type: ignore[method-assign]
+            return_value=[
+                _blob("skills/hello/SKILL.md"),
+                _blob("skills/hello/references/api.md"),
+            ]
+        )
+        exporter.get_resource.return_value = {"content": "# Hi"}  # type: ignore[attr-defined]
+
+        with use_exporter(exporter):
+            result = await skill_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        [updated] = result.updated_raw_results
+        assert updated["skill"]["skillMdPath"] == "skills/hello/SKILL.md"
+        exporter.get_folder_tree.assert_called_once_with(
+            "test-org", "test-repo", payload["after"], "skills/"
+        )
 
     async def test_folder_file_change_ignored_when_flag_off(
         self,
