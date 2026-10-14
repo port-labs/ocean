@@ -36,7 +36,7 @@ class AwsPermissionProbe:
             await initialize_aws_account_sessions()
         except Exception as error:
             logger.warning("AWS session initialization failed during probe: {}", error)
-            await self.context.fail("Failed to verify AWS authentication.")
+            await self.context.fail(f"Failed to verify AWS authentication: {error}")
             return
 
         try:
@@ -51,7 +51,7 @@ class AwsPermissionProbe:
                 accounts.append((account, session))
         except (AWSSessionError, Exception) as error:
             logger.warning("Failed to list AWS accounts during probe: {}", error)
-            await self.context.fail("Failed to verify AWS authentication.")
+            await self.context.fail(f"Failed to verify AWS authentication: {error}")
             return
 
         if not accounts:
@@ -127,7 +127,7 @@ class AwsPermissionProbe:
                 )
                 await self._mark_account(
                     account_id,
-                    f"Failed to verify AWS authentication for account {account_id}.",
+                    f"Failed to verify AWS authentication for account {account_id}: {error}",
                 )
                 continue
 
