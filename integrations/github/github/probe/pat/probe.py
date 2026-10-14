@@ -96,7 +96,9 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         user_response: Response,
     ) -> list[str] | None:
         if authenticator.organization:
-            return [authenticator.organization]
+            return await self._validate_configured_organization(
+                authenticator, user_response, authenticator.organization
+            )
 
         headers = (await authenticator.get_headers()).as_dict()
         github_host = ocean.integration_config["github_host"].rstrip("/")
@@ -130,6 +132,49 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             url = next_link.get("url") if next_link else None
             params = None
         return organizations
+
+    async def _validate_configured_organization(
+        self,
+        authenticator: AbstractGitHubAuthenticator,
+        user_response: Response,
+        organization: str,
+    ) -> list[str] | None:
+        user = user_response.json()
+        if (
+            isinstance(user, dict)
+            and isinstance(login := user.get("login"), str)
+            and login.casefold() == organization.casefold()
+        ):
+            return [login]
+
+        github_host = ocean.integration_config["github_host"].rstrip("/")
+        response = await authenticator.client.get(
+            f"{github_host}/user/memberships/orgs/{organization}",
+            headers=(await authenticator.get_headers()).as_dict(),
+            extensions=NO_RETRY,
+        )
+        if response.status_code == 200:
+            membership = response.json()
+            if isinstance(membership, dict) and membership.get("state") == "active":
+                return [organization]
+            await self.context.fail(
+                f"Configured organization '{organization}' has a pending membership "
+                "that has not been accepted yet"
+            )
+            return None
+
+        if response.status_code in (403, 404):
+            await self.context.fail(
+                f"Configured organization '{organization}' was not found "
+                "or the token does not have access to it"
+            )
+            return None
+
+        await self.context.fail(
+            f"Failed to verify organization '{organization}': "
+            f"GitHub API returned {response.status_code}"
+        )
+        return None
 
 
 def expand_pat_scopes(scopes: set[str]) -> set[str]:

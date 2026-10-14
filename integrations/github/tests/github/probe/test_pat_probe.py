@@ -13,7 +13,7 @@ from github.probe.pat.probe import (
     is_fine_grained_pat,
 )
 from port_ocean.core.probe.context import ProbeContext
-from port_ocean.core.probe.models import ProbeCheckStatus
+from port_ocean.core.probe.models import ProbeCheckStatus, ProbeStatus
 
 
 @pytest.mark.parametrize(
@@ -99,9 +99,10 @@ async def test_classic_pat_probe_fetches_user_once(
     "port_ocean.core.probe.context.ProbeContext.update_progress",
     new_callable=AsyncMock,
 )
-async def test_classic_pat_probe_with_configured_organization_skips_org_listing(
+async def test_classic_pat_probe_with_configured_organization_validates_membership(
     mock_update_progress: AsyncMock,
 ) -> None:
+    # Arrange
     context = ProbeContext()
     context.available_kinds = ["repository"]
 
@@ -113,14 +114,137 @@ async def test_classic_pat_probe_with_configured_organization_skips_org_listing(
         json={"login": "octocat"},
         headers={"x-oauth-scopes": "repo"},
     )
+    membership_response = httpx.Response(200, json={"state": "active"})
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(side_effect=[user_response, membership_response])
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    assert mock_client.get.call_count == 2
+    assert mock_client.get.call_args_list[0].args[0].endswith("/user")
+    assert (
+        mock_client.get.call_args_list[1]
+        .args[0]
+        .endswith("/user/memberships/orgs/my-org")
+    )
+    assert all(check.scopes == {"org": "my-org"} for check in context.checks)
+    assert all(check.status is ProbeCheckStatus.SUCCESS for check in context.checks)
+    mock_update_progress.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_with_configured_personal_account_succeeds(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+
+    authenticator = PersonalTokenAuthenticator(
+        "ghp_classic_token", organization="octocat"
+    )
+    user_response = httpx.Response(
+        200,
+        json={"login": "octocat"},
+        headers={"x-oauth-scopes": "repo"},
+    )
     mock_client = MagicMock()
     mock_client.get = AsyncMock(return_value=user_response)
     authenticator._http_client = mock_client
 
+    # Act
     probe = GitHubPatPermissionProbe(context, [authenticator])
     await probe.run()
 
+    # Assert
     mock_client.get.assert_awaited_once()
     assert mock_client.get.call_args.args[0].endswith("/user")
-    assert all(check.scopes == {"org": "my-org"} for check in context.checks)
+    assert all(check.scopes == {"org": "octocat"} for check in context.checks)
+    assert all(check.status is ProbeCheckStatus.SUCCESS for check in context.checks)
+    mock_update_progress.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_fails_when_configured_organization_membership_is_pending(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+
+    authenticator = PersonalTokenAuthenticator(
+        "ghp_classic_token", organization="pending-org"
+    )
+    user_response = httpx.Response(
+        200,
+        json={"login": "octocat"},
+        headers={"x-oauth-scopes": "repo"},
+    )
+    membership_response = httpx.Response(200, json={"state": "pending"})
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(side_effect=[user_response, membership_response])
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == (
+        "Configured organization 'pending-org' has a pending membership "
+        "that has not been accepted yet"
+    )
+    assert context.checks == []
+    mock_update_progress.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_fails_when_configured_organization_is_inaccessible(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+
+    authenticator = PersonalTokenAuthenticator(
+        "ghp_classic_token", organization="wrong-org"
+    )
+    user_response = httpx.Response(
+        200,
+        json={"login": "octocat"},
+        headers={"x-oauth-scopes": "repo"},
+    )
+    membership_response = httpx.Response(404, json={"message": "Not Found"})
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(side_effect=[user_response, membership_response])
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == (
+        "Configured organization 'wrong-org' was not found "
+        "or the token does not have access to it"
+    )
+    assert context.checks == []
     mock_update_progress.assert_awaited()
