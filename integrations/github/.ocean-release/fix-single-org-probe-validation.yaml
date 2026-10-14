@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Validate that a configured GitHub organization is accessible during PAT probe mode, preventing false positives for invalid or inaccessible orgs.
