@@ -41,9 +41,45 @@ async def test_probe_fails_when_session_initialization_fails(
 
     # Assert
     assert probe_context.status is ProbeStatus.FAILED
-    assert probe_context.message == "Failed to verify AWS authentication."
+    assert probe_context.message == "Failed to verify AWS authentication: boom"
     assert probe_context.checks == []
     clear_sessions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_probe_surfaces_error_when_listing_accounts_fails(
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    probe_context.available_kinds = ["AWS::EC2::Instance"]
+
+    async def _failing_accounts() -> AsyncIterator[tuple[dict[str, str], AioSession]]:
+        raise AWSSessionError("cannot list accounts")
+        yield  # pragma: no cover
+
+    with (
+        patch(
+            "aws.probe.probe.initialize_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.clear_aws_account_sessions",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "aws.probe.probe.get_all_account_sessions",
+            return_value=_failing_accounts(),
+        ),
+    ):
+        # Act
+        await AwsPermissionProbe(probe_context).run()
+
+    # Assert
+    assert probe_context.status is ProbeStatus.FAILED
+    assert (
+        probe_context.message
+        == "Failed to verify AWS authentication: cannot list accounts"
+    )
 
 
 @pytest.mark.asyncio
@@ -407,7 +443,7 @@ async def test_probe_continues_when_one_account_identity_fails(
     }
     assert (
         by_account["222233334444"].message
-        == "Failed to verify AWS authentication for account 222233334444."
+        == "Failed to verify AWS authentication for account 222233334444: sts denied"
     )
     assert probe_context.status is not ProbeStatus.FAILED
 
