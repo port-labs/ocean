@@ -83,11 +83,6 @@
     "icon": "Terraform",
     "schema": {
       "properties": {
-        "organization": {
-          "type": "string",
-          "title": "Organization",
-          "description": "The organization within which the workspace belongs to"
-        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -140,6 +135,12 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
+      "organization": {
+        "title": "Terraform Cloud Organization",
+        "target": "terraformCloudOrganization",
+        "required": false,
+        "many": false
+      },
       "currentStateVersion": {
         "title": "Current State Version",
         "target": "terraformCloudStateVersion",

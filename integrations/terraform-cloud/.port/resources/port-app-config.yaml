@@ -43,7 +43,6 @@ resources:
           title: .attributes.name
           blueprint: '"terraformCloudWorkspace"'
           properties:
-            organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
             updatedAt: .attributes."updated-at"
             terraformVersion: .attributes."terraform-version"
@@ -51,8 +50,9 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
-            tags: .__tags
+            tags: .__tags | map(.attributes.name)
           relations:
+            organization: .relationships.organization.data.id
             currentStateVersion: .relationships."current-state-version".data.id
             project: .relationships.project.data.id
   - kind: state-version
