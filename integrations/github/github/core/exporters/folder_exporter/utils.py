@@ -61,7 +61,7 @@ class FolderPatternMappingBuilder:
                             )
                         )
 
-        search_options = [
+        return [
             ListFolderOptions(
                 organization=org,
                 repo_name=repo,
@@ -69,7 +69,3 @@ class FolderPatternMappingBuilder:
             )
             for (org, repo), items in repo_map.items()
         ]
-        if updated_since:
-            for option in search_options:
-                option["updated_since"] = updated_since
-        return search_options

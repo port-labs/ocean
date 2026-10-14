@@ -364,7 +364,6 @@ async def test_folder_pattern_mapping_builder_lists_pushed_repos_once() -> None:
 
     assert len(list_calls) == 1
     assert list_calls[0]["pushed_since"] == pushed_since
-    assert result[0]["updated_since"] == pushed_since
     assert [f["path"] for f in result[0]["folders"]] == ["services/*", "libs/*"]
 
 

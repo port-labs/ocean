@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Add incremental sync for folders. Incremental runs only scan repositories pushed since the cursor (sorted by push time with early stop), and read a branch's tree only when that branch has commits since the cursor. Folder and file selectors list each organization's repositories once per run instead of once per selector. Deleted folders are removed on the next full resync.
+changelog: Add incremental sync for folders. Incremental runs only scan repositories pushed since the cursor (sorted by push time with early stop), and folder and file selectors list each organization's repositories once per run instead of once per selector. Deleted folders are removed on the next full resync.
