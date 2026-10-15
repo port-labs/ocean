@@ -1,5 +1,4 @@
 from collections import defaultdict
-from datetime import datetime
 from typing import Any, Dict, List, Tuple
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -12,6 +11,7 @@ from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
     MemoizedRepositorySelector,
 )
+from github.helpers.repository_change import RepositoryChange
 from integration import FolderSelector
 
 
@@ -29,9 +29,9 @@ class FolderPatternMappingBuilder:
     async def build(
         self,
         folders: List[FolderSelector],
-        updated_since: datetime | None = None,
+        changed_since: RepositoryChange | None = None,
     ) -> List[ListFolderOptions]:
-        """Map each repo to its folder patterns; with ``updated_since`` only repos pushed since then."""
+        """Map each repo to its folder patterns; with ``changed_since`` only repos changed since then."""
         repo_map: Dict[Tuple[str, str], List[FolderSearchOptions]] = defaultdict(list)
         repo_selector = MemoizedRepositorySelector(self.repo_selector)
 
@@ -48,7 +48,7 @@ class FolderPatternMappingBuilder:
                         self.repo_exporter,
                         org_login,
                         org["type"],
-                        pushed_since=updated_since,
+                        changed_since=changed_since,
                     )
                     for repo_name, branch, repo_obj in repos:
                         key = (org_login, repo_name)

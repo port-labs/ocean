@@ -1,3 +1,4 @@
+from github.helpers.repository_change import RepositoryChange
 import binascii
 from datetime import datetime, timezone
 import pytest
@@ -1827,10 +1828,12 @@ class TestRestFileExporterIncremental:
             event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(
                 [GithubFilePattern(organization="test-org", path="**/port.yml")],
-                updated_since=INCREMENTAL_SINCE,
+                changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
-        assert captured_options[0]["pushed_since"] == INCREMENTAL_SINCE
+        assert captured_options[0]["changed_since"] == RepositoryChange.pushed(
+            INCREMENTAL_SINCE
+        )
         assert result[0]["updated_since"] == INCREMENTAL_SINCE
 
 

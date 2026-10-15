@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import binascii
 from collections import defaultdict
-from datetime import datetime
 from enum import StrEnum
 import json
 from pathlib import Path
@@ -35,6 +34,7 @@ from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
     MemoizedRepositorySelector,
 )
+from github.helpers.repository_change import RepositoryChange
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -182,7 +182,7 @@ class FilePatternMappingBuilder:
     async def build(
         self,
         files: List["GithubFilePattern"],
-        updated_since: datetime | None = None,
+        changed_since: RepositoryChange | None = None,
     ) -> List[ListFileSearchOptions]:
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
         repo_selector = MemoizedRepositorySelector(self.repo_selector)
@@ -200,7 +200,7 @@ class FilePatternMappingBuilder:
                         self.repo_exporter,
                         org_login,
                         org["type"],
-                        pushed_since=updated_since,
+                        changed_since=changed_since,
                     )
                     for repo_name, branch, _ in repos:
                         repo_map[(org_login, repo_name)].append(
@@ -220,9 +220,10 @@ class FilePatternMappingBuilder:
             )
             for (org, repo), items in repo_map.items()
         ]
-        if updated_since:
+        if changed_since:
+            # The file exporter diffs each branch against its state at the cursor.
             for option in search_options:
-                option["updated_since"] = updated_since
+                option["updated_since"] = changed_since.since
         return search_options
 
 

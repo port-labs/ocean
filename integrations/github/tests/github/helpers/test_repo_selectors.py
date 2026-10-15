@@ -1,3 +1,4 @@
+from github.helpers.repository_change import RepositoryChange
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -141,12 +142,12 @@ class TestPushedSinceFiltering:
                 repo_exporter,
                 "test-org",
                 "Organization",
-                pushed_since=pushed_since,
+                changed_since=RepositoryChange.pushed(pushed_since),
             )
         ]
 
         called_options = repo_exporter.get_paginated_resources.call_args.args[0]
-        assert called_options["pushed_since"] == pushed_since
+        assert called_options["changed_since"] == RepositoryChange.pushed(pushed_since)
 
     async def test_all_selector_omits_pushed_since_on_full_resync(self) -> None:
         selector = RepositorySourceModel.parse_obj({})
@@ -162,7 +163,7 @@ class TestPushedSinceFiltering:
         ]
 
         called_options = repo_exporter.get_paginated_resources.call_args.args[0]
-        assert "pushed_since" not in called_options
+        assert "changed_since" not in called_options
 
     async def test_exact_selector_skips_repos_not_pushed_since(self) -> None:
         pushed_since = datetime(2026, 10, 1, tzinfo=timezone.utc)
@@ -196,7 +197,7 @@ class TestPushedSinceFiltering:
                     repo_exporter,
                     "test-org",
                     "Organization",
-                    pushed_since=pushed_since,
+                    changed_since=RepositoryChange.pushed(pushed_since),
                 )
             ]
 
@@ -269,7 +270,9 @@ class TestMemoizedRepositorySelector:
             MagicMock(),
             "org",
             "Organization",
-            pushed_since=pushed_since,
+            changed_since=RepositoryChange.pushed(pushed_since),
         )
 
-        assert strategy.select_repos.call_args.args[-1] == pushed_since
+        assert strategy.select_repos.call_args.args[-1] == RepositoryChange.pushed(
+            pushed_since
+        )

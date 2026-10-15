@@ -14,6 +14,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from github.helpers.incremental import resolve_effective_datetime
+from github.helpers.repository_change import RepositoryChange
 from github.helpers.utils import resolve_org_filtered_repos
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -291,8 +292,10 @@ async def resync_repositories(
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                     exclude_archived=repo_config.selector.exclude_archived,
-                    updated_since=resolve_effective_datetime(
-                        sync_cursor, repo_config.selector.updated_since_datetime
+                    changed_since=RepositoryChange.updated(
+                        resolve_effective_datetime(
+                            sync_cursor, repo_config.selector.updated_since_datetime
+                        )
                     ),
                 )
             )
@@ -461,7 +464,7 @@ async def resync_workflows(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
-                pushed_since=sync_cursor,
+                changed_since=RepositoryChange.pushed(sync_cursor),
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -475,9 +478,6 @@ async def resync_workflows(
                             options=ListWorkflowOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                updated_since=resolve_effective_datetime(
-                                    sync_cursor, None
-                                ),
                             )
                         )
                     )
@@ -761,12 +761,13 @@ async def resync_releases(
                     yield releases
 
 
+@ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 @_resync_per_authenticator
 async def resync_tags(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all tags in the organization's repositories."""
+    """Resync tags; incremental runs only list tags of repos pushed since the cursor."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -775,6 +776,8 @@ async def resync_tags(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
+    # Tags carry no timestamps, but pushing a tag updates the repository's pushed_at.
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -785,6 +788,7 @@ async def resync_tags(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
+                changed_since=RepositoryChange.pushed(sync_cursor),
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1269,7 +1273,9 @@ async def resync_folders(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(folders, updated_since=sync_cursor)
+    repo_path_map = await pattern_builder.build(
+        folders, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
     async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1317,7 +1323,9 @@ async def resync_files(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(files, updated_since=sync_cursor)
+    repo_path_map = await pattern_builder.build(
+        files, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1366,7 +1374,7 @@ async def resync_skills(
         repo_type=app_config.repository_type,
     )
     repo_path_map = await pattern_builder.build(
-        file_patterns, updated_since=sync_cursor
+        file_patterns, changed_since=RepositoryChange.pushed(sync_cursor)
     )
 
     async for skills in skill_exporter.get_paginated_resources(repo_path_map):
@@ -1411,7 +1419,7 @@ async def resync_plugins(
                     repo_exporter,
                     org_login,
                     org["type"],
-                    pushed_since=sync_cursor,
+                    changed_since=RepositoryChange.pushed(sync_cursor),
                 )
                 repositories: list[PluginRepositoryOptions] = []
                 for _repo_name, branch, repo_obj in repos:
@@ -1470,7 +1478,7 @@ async def resync_mcp(
         repo_type=app_config.repository_type,
     )
     repo_path_map = await pattern_builder.build(
-        file_patterns, updated_since=sync_cursor
+        file_patterns, changed_since=RepositoryChange.pushed(sync_cursor)
     )
 
     async for servers in mcp_exporter.get_paginated_resources(repo_path_map):

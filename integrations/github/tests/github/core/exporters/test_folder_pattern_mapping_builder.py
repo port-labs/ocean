@@ -1,3 +1,4 @@
+from github.helpers.repository_change import RepositoryChange
 import importlib
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List
@@ -170,7 +171,7 @@ async def test_resync_folders_skips_inaccessible_organizations(
                 ]
 
     assert batches == [[{"id": "1"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_folder], updated_since=None)
+    pattern_builder.build.assert_awaited_once_with([allowed_folder], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -214,7 +215,7 @@ async def test_resync_files_skips_inaccessible_organizations(
                 batches = [batch async for batch in github_main.resync_files("file")]
 
     assert batches == [[{"path": "a.yml"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_file], updated_since=None)
+    pattern_builder.build.assert_awaited_once_with([allowed_file], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -364,10 +365,12 @@ async def test_folder_pattern_mapping_builder_lists_pushed_repos_once() -> None:
     ]
     async with event_context("test_event") as event:
         event.port_app_config = GithubPortAppConfig(repository_type="all", resources=[])
-        result = await builder.build(selectors, updated_since=pushed_since)
+        result = await builder.build(
+            selectors, changed_since=RepositoryChange.pushed(pushed_since)
+        )
 
     assert len(list_calls) == 1
-    assert list_calls[0]["pushed_since"] == pushed_since
+    assert list_calls[0]["changed_since"] == RepositoryChange.pushed(pushed_since)
     assert [f["path"] for f in result[0]["folders"]] == ["services/*", "libs/*"]
 
 
@@ -406,7 +409,9 @@ async def test_resync_folders_passes_incremental_cursor(github_main: Any) -> Non
             ):
                 [batch async for batch in github_main.resync_folders("folder")]
 
-    pattern_builder.build.assert_awaited_once_with([folder], updated_since=cursor)
+    pattern_builder.build.assert_awaited_once_with(
+        [folder], changed_since=RepositoryChange.pushed(cursor)
+    )
 
 
 @pytest.mark.asyncio
@@ -460,7 +465,9 @@ async def test_resync_skills_passes_cursor_to_builder(
     assert pattern_builder.build.await_args is not None
     file_patterns = pattern_builder.build.await_args.args[0]
     assert [p.path for p in file_patterns] == [".claude/skills/**/SKILL.md"]
-    assert pattern_builder.build.await_args.kwargs == {"updated_since": cursor}
+    assert pattern_builder.build.await_args.kwargs == {
+        "changed_since": RepositoryChange.pushed(cursor)
+    }
 
 
 @pytest.mark.asyncio
@@ -528,7 +535,7 @@ async def test_resync_plugins_lists_pushed_repos_once(
 
     # Both path entries reuse a single org listing.
     assert len(list_calls) == 1
-    assert list_calls[0].get("pushed_since") == cursor
+    assert list_calls[0].get("changed_since") == RepositoryChange.pushed(cursor)
     assert batches == [[{"plugin": {"name": "p"}}], [{"plugin": {"name": "p"}}]]
     repositories = plugin_exporter.get_paginated_resources.call_args.args[0][
         "repositories"
@@ -586,4 +593,70 @@ async def test_resync_mcp_passes_cursor_to_builder(
     assert pattern_builder.build.await_args is not None
     file_patterns = pattern_builder.build.await_args.args[0]
     assert [p.path for p in file_patterns] == [".mcp.json"]
-    assert pattern_builder.build.await_args.kwargs == {"updated_since": cursor}
+    assert pattern_builder.build.await_args.kwargs == {
+        "changed_since": RepositoryChange.pushed(cursor)
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_tags_lists_only_pushed_repos(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    repo_options_seen: List[Dict[str, Any]] = []
+
+    def list_repos(options: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+        repo_options_seen.append(options)
+        return _aiter_one([{"name": "repo1", "default_branch": "main"}])
+
+    org_exporter = MagicMock()
+    org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
+        [{"login": "test-org", "type": "Organization"}]
+    )
+    repo_exporter = MagicMock()
+    repo_exporter.get_paginated_resources = list_repos
+    tag_exporter = MagicMock()
+    tag_exporter.get_paginated_resources = MagicMock(
+        side_effect=lambda options: _aiter_one([{"name": "v1.0.0"}])
+    )
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(return_value=[MagicMock()])
+            ),
+        ),
+        patch.object(
+            github_main, "RestOrganizationExporter", return_value=org_exporter
+        ),
+        patch.object(github_main, "RestRepositoryExporter", return_value=repo_exporter),
+        patch.object(github_main, "RestTagExporter", return_value=tag_exporter),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(
+                    kind="tag",
+                    selector=MagicMock(repo_search=None, exclude_archived=False),
+                )
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [b async for b in github_main.resync_tags("tag")]
+                else:
+                    batches = [b async for b in github_main.resync_tags("tag")]
+
+    assert batches == [[{"name": "v1.0.0"}]]
+    assert repo_options_seen[0].get("changed_since") == RepositoryChange.pushed(cursor)
+    tag_options = tag_exporter.get_paginated_resources.call_args.args[0]
+    assert (tag_options["organization"], tag_options["repo_name"]) == (
+        "test-org",
+        "repo1",
+    )

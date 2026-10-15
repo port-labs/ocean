@@ -1,5 +1,4 @@
 from typing import Any, cast, Optional
-from datetime import datetime
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
@@ -37,44 +36,22 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: ListWorkflowOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get all workflows in repository with pagination.
-
-        For incremental sync, filters workflows by updated_at >= updated_since.
-        """
+        """Get all workflows in repository with pagination."""
 
         organization = options["organization"]
         repo_name = options["repo_name"]
         url = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows"
-        updated_since = options["updated_since"] if "updated_since" in options else None
 
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
                 f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {repo_name} from {organization}"
             )
-
-            batch = []
-            for workflow in workflow_batch["workflows"]:
-                # Filter by updated_since if provided (incremental sync)
-                if updated_since:
-                    workflow_updated_at_str = workflow.get("updated_at")
-                    if workflow_updated_at_str:
-                        try:
-                            workflow_updated_at = datetime.fromisoformat(
-                                workflow_updated_at_str.replace("Z", "+00:00")
-                            )
-                            if workflow_updated_at < updated_since:
-                                continue
-                        except (ValueError, AttributeError):
-                            pass
-
-                enriched_workflow = enrich_with_organization(
+            batch = [
+                enrich_with_organization(
                     enrich_with_repository(workflow, repo_name), organization
                 )
-                batch.append(enriched_workflow)
-
+                for workflow in workflow_batch["workflows"]
+            ]
             if batch:
-                logger.info(
-                    f"Incremental sync filtered {len(workflow_batch['workflows'])} workflows to {len(batch)} for {repo_name} from {organization}"
-                )
                 yield batch
