@@ -6,7 +6,11 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.core.exporters.folder_exporter.utils import FolderPatternMappingBuilder
-from integration import FolderSelector, RepositoryBranchMapping
+from integration import (
+    FolderSelector,
+    RepositoryBranchMapping,
+    RepositorySourceModel,
+)
 from port_ocean.context.event import event_context
 from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from port_ocean.context.ocean import ocean
@@ -457,3 +461,78 @@ async def test_resync_skills_passes_cursor_to_builder(
     file_patterns = pattern_builder.build.await_args.args[0]
     assert [p.path for p in file_patterns] == [".claude/skills/**/SKILL.md"]
     assert pattern_builder.build.await_args.kwargs == {"updated_since": cursor}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_plugins_lists_pushed_repos_once(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    list_calls: List[Dict[str, Any]] = []
+
+    def list_repos(options: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+        list_calls.append(options)
+        return _aiter_one([{"name": "repo1", "default_branch": "main"}])
+
+    org_exporter = MagicMock()
+    org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
+        [{"login": "allowed", "type": "Organization"}]
+    )
+    repo_exporter = MagicMock()
+    repo_exporter.get_paginated_resources = list_repos
+    plugin_exporter = MagicMock()
+    plugin_exporter.get_paginated_resources = MagicMock(
+        side_effect=lambda options: _aiter_one([{"plugin": {"name": "p"}}])
+    )
+    paths = [
+        RepositorySourceModel.parse_obj({"organization": "allowed"}),
+        RepositorySourceModel.parse_obj({"organization": "allowed"}),
+    ]
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(
+            github_main, "RestOrganizationExporter", return_value=org_exporter
+        ),
+        patch.object(github_main, "RestRepositoryExporter", return_value=repo_exporter),
+        patch.object(github_main, "PluginExporter", return_value=plugin_exporter),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(
+                    kind="plugin",
+                    selector=MagicMock(paths=paths, providers=["claude"]),
+                )
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [
+                            b async for b in github_main.resync_plugins("plugin")
+                        ]
+                else:
+                    batches = [b async for b in github_main.resync_plugins("plugin")]
+
+    # Both path entries reuse a single org listing.
+    assert len(list_calls) == 1
+    assert list_calls[0].get("pushed_since") == cursor
+    assert batches == [[{"plugin": {"name": "p"}}], [{"plugin": {"name": "p"}}]]
+    repositories = plugin_exporter.get_paginated_resources.call_args.args[0][
+        "repositories"
+    ]
+    assert [(r["repository"]["name"], r["branch"]) for r in repositories] == [
+        ("repo1", "main")
+    ]

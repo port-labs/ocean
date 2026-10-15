@@ -136,6 +136,7 @@ from github.core.exporters.mcp_exporter import (
 )
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
+    MemoizedRepositorySelector,
 )
 from github.core.options import (
     ListOrganizationOptions,
@@ -1372,12 +1373,14 @@ async def resync_skills(
         yield skills
 
 
+@ocean.on_incremental_resync(ObjectKind.PLUGIN)
 @ocean.on_resync(ObjectKind.PLUGIN)
 @_resync_per_authenticator
 async def resync_plugins(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync agent plugin packages detected via provider manifests."""
+    """Resync agent plugin packages; incremental runs only scan repos pushed since the cursor."""
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubPluginResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1393,7 +1396,9 @@ async def resync_plugins(
     repo_exporter = RestRepositoryExporter(rest_client)
     plugin_exporter = PluginExporter(rest_client, selector.providers)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
-    repo_selector = CompositeRepositorySelector(app_config.repository_type)
+    repo_selector = MemoizedRepositorySelector(
+        CompositeRepositorySelector(app_config.repository_type)
+    )
 
     for path in paths:
         async for orgs in org_exporter.get_paginated_resources(
@@ -1401,10 +1406,15 @@ async def resync_plugins(
         ):
             for org in orgs:
                 org_login = org["login"]
+                repos = await repo_selector.select_repos(
+                    path,
+                    repo_exporter,
+                    org_login,
+                    org["type"],
+                    pushed_since=sync_cursor,
+                )
                 repositories: list[PluginRepositoryOptions] = []
-                async for _repo_name, branch, repo_obj in repo_selector.select_repos(
-                    path, repo_exporter, org_login, org["type"]
-                ):
+                for _repo_name, branch, repo_obj in repos:
                     repositories.append(
                         PluginRepositoryOptions(
                             organization=org_login,
