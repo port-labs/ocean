@@ -503,13 +503,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with status code:"
                 f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
-                f"{self._sync_tier_log_suffix(sleep_time)}"
             )
         elif self._logger and error:
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with exception:"
                 f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
-                f"{self._sync_tier_log_suffix(sleep_time)}"
             )
 
     def _should_log_response_size(self, request: httpx.Request) -> bool:
