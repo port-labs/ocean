@@ -215,7 +215,7 @@
           "items": {
             "type": "string"
           },
-          "description": "output returned from state version"
+          "description": "Names of the outputs returned from the state version"
         },
         "vcsCommitUrl": {
           "type": "string",

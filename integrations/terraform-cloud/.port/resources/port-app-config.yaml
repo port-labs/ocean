@@ -73,7 +73,7 @@ resources:
             hostedStateDownloadUrl: .attributes."hosted-state-download-url"
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
             vcsCommitUrl: .attributes."vcs-commit-url"
-            outputData: .__output
+            outputData: .__output | map(.attributes.name)
           relations:
             workspace: .relationships.workspace.data.id
             run: .relationships.run.data.id
