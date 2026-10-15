@@ -440,7 +440,7 @@ async def resync_packages(
 async def resync_workflows(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync workflows; incremental runs only cover repos pushed since the cursor."""
+    """Resync workflows; incremental runs fetch all workflows for repos pushed since the cursor."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -474,9 +474,6 @@ async def resync_workflows(
                             options=ListWorkflowOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                updated_since=resolve_effective_datetime(
-                                    sync_cursor, None
-                                ),
                             )
                         )
                     )
