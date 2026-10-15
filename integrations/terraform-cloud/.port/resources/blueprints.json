@@ -199,13 +199,13 @@
         },
         "hostedStateDownloadUrl": {
           "type": "string",
-          "title": "Download Url",
+          "title": "State Download Url",
           "format": "url",
           "description": "Hosted state version download url "
         },
         "hostedJsonDownloadUrl": {
           "type": "string",
-          "title": "Download Url",
+          "title": "JSON State Download Url",
           "format": "url",
           "description": "Url for downloading state version in json format"
         },

@@ -96,11 +96,7 @@ class TerraformClient:
 
         except Exception as e:
             logger.error(
-                "Request failed",
-                error=str(e),
-                url=url,
-                method=method,
-                params=query_params,
+                f"Request {method} {url} with params {query_params} failed: {e}"
             )
             raise
 
@@ -173,12 +169,14 @@ class TerraformClient:
         async for tags in self.get_paginated_resources(endpoint):
             yield tags
 
-    async def get_state_version_output(self, state_version_id: str) -> dict[str, Any]:
+    async def get_state_version_output(
+        self, state_version_id: str
+    ) -> list[dict[str, Any]]:
         logger.info(f"Fetching state version output for ID: {state_version_id}")
         outputs = await self.send_api_request(
             endpoint=f"state-versions/{state_version_id}/outputs"
         )
-        return outputs.get("data", {})
+        return outputs["data"]
 
     async def get_paginated_workspaces(
         self,

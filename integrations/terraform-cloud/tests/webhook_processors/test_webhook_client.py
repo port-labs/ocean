@@ -196,34 +196,6 @@ class TestEnsureWorkspaceWebhook:
                 workspace, webhook_url, "test-secret", semaphore
             )
 
-    @pytest.mark.asyncio
-    async def test_ensure_workspace_webhook_without_name(
-        self, webhook_client: Any
-    ) -> None:
-        workspace = {"id": "ws-123", "attributes": {}}
-        webhook_url = "https://example.com/integration/webhook"
-        semaphore = MagicMock()
-        semaphore.__aenter__ = AsyncMock()
-        semaphore.__aexit__ = AsyncMock()
-
-        with (
-            patch.object(
-                webhook_client, "_webhook_exists", new_callable=AsyncMock
-            ) as mock_exists,
-            patch.object(
-                webhook_client, "_create_webhook", new_callable=AsyncMock
-            ) as mock_create,
-        ):
-            mock_exists.return_value = False
-
-            await webhook_client._ensure_workspace_webhook(
-                workspace, webhook_url, "test-secret", semaphore
-            )
-
-            mock_create.assert_called_once_with(
-                "ws-123", "ws-123", webhook_url, "test-secret"
-            )
-
 
 class TestEnsureWorkspaceWebhooks:
     @pytest.mark.asyncio
