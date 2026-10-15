@@ -5,6 +5,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.29-dev (2026-10-15)
+
+
+### Features
+
+- Testing out auto merge bump
+
+
+## 0.2.28-dev (2026-10-15)
+
+
+### Features
+
+- Testing out auto merge bump
+
+
+## 0.2.27-dev (2026-10-15)
+
+
+### Features
+
+- Testing out auto merge bump
+
+
 ## 0.2.26-dev (2026-10-15)
 
 
