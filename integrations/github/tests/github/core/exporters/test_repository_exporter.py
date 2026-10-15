@@ -1,3 +1,4 @@
+from github.helpers.repository_change import RepositoryChange
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 import pytest
@@ -599,7 +600,7 @@ class TestRestRepositoryExporter:
                     organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     search_params=RepoSearchParams(query="code in:name"),
-                    updated_since=cursor,
+                    changed_since=RepositoryChange.updated(cursor),
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -648,7 +649,7 @@ class TestRestRepositoryExporter:
                     organization="test-org",
                     organization_type="Organization",
                     type=mock_port_app_config.repository_type,
-                    pushed_since=cursor,
+                    changed_since=RepositoryChange.pushed(cursor),
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -684,7 +685,7 @@ class TestRestRepositoryExporter:
                     organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     search_params=RepoSearchParams(query="code in:name"),
-                    pushed_since=cursor,
+                    changed_since=RepositoryChange.pushed(cursor),
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
