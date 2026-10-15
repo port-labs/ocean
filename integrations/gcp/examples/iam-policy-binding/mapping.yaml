@@ -1,0 +1,19 @@
+resources:
+  - kind: cloudresourcemanager.googleapis.com/Project
+    selector:
+      query: "true"
+      api: searchAllIamPolicies
+      policyQuery: memberTypes:serviceAccount
+    port:
+      entity:
+        mappings:
+          identifier: .resource + "/" + .role + "/" + .member
+          title: .member + " " + .role
+          blueprint: '"gcpIamPolicyBinding"'
+          properties:
+            role: .role
+            member: .member
+            resource: .resource
+            assetType: .asset_type
+          relations:
+            project: .__project.name

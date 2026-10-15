@@ -1,0 +1,37 @@
+{
+  "identifier": "gcpIamPolicyBinding",
+  "title": "GCP IAM Policy Binding",
+  "icon": "GoogleCloud",
+  "schema": {
+    "properties": {
+      "role": {
+        "title": "Role",
+        "type": "string"
+      },
+      "member": {
+        "title": "Member",
+        "type": "string"
+      },
+      "resource": {
+        "title": "Resource",
+        "type": "string"
+      },
+      "assetType": {
+        "title": "Asset Type",
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "project": {
+      "title": "Project",
+      "target": "gcpProject",
+      "required": false,
+      "many": false
+    }
+  }
+}

@@ -42,6 +42,24 @@ class GCPResourceSelector(Selector):
             "Note that this setting does not affect resources fetched from the cloud asset API"
         ),
     )
+    api: Literal["searchAllResources", "searchAllIamPolicies"] = Field(
+        default="searchAllResources",
+        title="API",
+        description=(
+            "searchAllResources (default) syncs the resources of this kind, using the kind's usual API. "
+            "searchAllIamPolicies syncs the explicit IAM allow-policy bindings set on resources of this kind instead, "
+            "one item per resource, role and member. Inherited access is not included."
+        ),
+    )
+    policy_query: str | None = Field(
+        default=None,
+        alias="policyQuery",
+        title="IAM Policy Query",
+        description=(
+            "Only used with api: searchAllIamPolicies. Server-side filter on the bindings, e.g. memberTypes:serviceAccount. "
+            "See <a target='_blank' href='https://cloud.google.com/asset-inventory/docs/searching-iam-policies'>IAM policy search syntax</a>."
+        ),
+    )
 
 
 class GCPTopicResourceConfig(ResourceConfig):

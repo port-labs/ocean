@@ -19,6 +19,7 @@ from gcp_core.search.resource_searches import (
     list_all_subscriptions_per_project,
     list_all_topics_per_project,
     search_all_folders,
+    search_all_iam_policies,
     search_all_organizations,
     search_all_projects,
     search_all_resources,
@@ -28,6 +29,7 @@ from gcp_core.utils import (
     get_current_resource_config,
     get_credentials_json,
     resolve_request_controllers,
+    uses_search_all_iam_policies,
 )
 
 
@@ -88,24 +90,32 @@ async def setup_application_default_credentials() -> None:
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if uses_search_all_iam_policies(get_current_resource_config()):
+        return
     async for batch in search_all_folders():
         yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.ORGANIZATION)
 async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if uses_search_all_iam_policies(get_current_resource_config()):
+        return
     async for batch in search_all_organizations():
         yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if uses_search_all_iam_policies(get_current_resource_config()):
+        return
     async for batch in search_all_projects():
         yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if uses_search_all_iam_policies(get_current_resource_config()):
+        return
     topic_rate_limiter, _ = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
         list_all_topics_per_project,
@@ -117,6 +127,8 @@ async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.SUBSCRIPTION)
 async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if uses_search_all_iam_policies(get_current_resource_config()):
+        return
     topic_rate_limiter, _ = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
         list_all_subscriptions_per_project,
@@ -138,6 +150,35 @@ async def resync_cloud_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if uses_search_all_iam_policies(get_current_resource_config()):
+        rate_limiter, semaphore = await resolve_request_controllers(
+            "searchAllIamPolicies"
+        )
+        search_kwargs: dict[str, typing.Any] = {
+            "asset_type": kind,
+            "rate_limiter": rate_limiter,
+            "semaphore": semaphore,
+            "policy_query": getattr(
+                get_current_resource_config().selector, "policy_query", None
+            ),
+        }
+        if kind in (
+            AssetTypesWithSpecialHandling.ORGANIZATION,
+            AssetTypesWithSpecialHandling.FOLDER,
+        ):
+            # Organization and folder policies sit above every project, so only an organization scope sees them.
+            async for organizations in search_all_organizations():
+                for organization in organizations:
+                    async for batch in search_all_iam_policies(
+                        organization, **search_kwargs
+                    ):
+                        yield batch
+            return
+        async for batch in iterate_per_available_project(
+            search_all_iam_policies, **search_kwargs
+        ):
+            yield batch
+        return
     if kind in AssetTypesWithSpecialHandling:
         logger.debug("Kind already has a specific handling, skipping")
         return
