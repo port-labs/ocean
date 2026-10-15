@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.54.0 (2026-10-13)
+
+
+### Features
+
+- Add opt-in live-event payload logging requiring both OCEAN__LIVE_EVENTS__PAYLOAD_LOGGING_ENABLED (default false) and org feature flag LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED. When gates are off, live-event timestamp logs use compact identifiers; when both gates are on, full masked payloads log at DEBUG for all timestamp types including finish.
+
+
+## 0.53.9 (2026-10-12)
+
+
+### Bug Fixes
+
+- Retry patch_integration(spec) while SaaS is updating; add get/upsert organization secret helpers
+
+
 ## 0.53.8 (2026-10-12)
 
 

@@ -81,7 +81,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             ) from error
 
-        version = current.get("version")
+        version = current.version
         if not isinstance(version, int):
             raise ActionExecutionError(
                 f"Agent {agent_id} returned an unexpected version: {version!r}",
@@ -102,7 +102,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
 
         logger.info(f"Updated Claude agent {agent_id} for run {run.id}")
 
-        await self.register_entity(ObjectKind.AGENT, agent, run)
+        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json"), run)
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id
