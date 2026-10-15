@@ -77,16 +77,6 @@ class AssetFeedProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        content_type = getattr(resource_config.selector, "content_type", None)
-        if isinstance(content_type, str) and content_type.upper() != "RESOURCE":
-            logger.info(
-                "Skipping live event because contentType "
-                f"{content_type} is updated by resync. Real-time feeds apply to RESOURCE only."
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
 

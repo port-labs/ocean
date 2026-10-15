@@ -11,11 +11,10 @@ from port_ocean.utils.signal import signal_handler
 
 from gcp_core.cloud_function.resync import resync_cloud_function_resources
 from gcp_core.overrides import (
-    CloudAssetContentType,
     GCPCloudFunctionResourceConfig,
     GCPCloudResourceSelector,
 )
-from gcp_core.search.asset_content import iter_cloud_asset_content
+from gcp_core.search.cloud_asset_registry import get_api
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     list_all_subscriptions_per_project,
@@ -29,35 +28,8 @@ from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
     get_current_resource_config,
     get_credentials_json,
-    resolve_asset_content_controllers,
     resolve_request_controllers,
 )
-
-
-async def _non_resource_content_iterator(
-    kind: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE | None:
-    """Return a Cloud Asset content iterator when contentType is not RESOURCE."""
-    resource_config = get_current_resource_config()
-    selector = getattr(resource_config, "selector", None)
-    content_type = (
-        getattr(selector, "content_type", None) or CloudAssetContentType.RESOURCE
-    )
-    if content_type == CloudAssetContentType.RESOURCE:
-        return None
-    asset_query = getattr(selector, "asset_query", None)
-    if not isinstance(asset_query, str) or not asset_query.strip():
-        asset_query = None
-    rate_limiter, semaphore = await resolve_asset_content_controllers(
-        str(content_type), asset_query
-    )
-    return iter_cloud_asset_content(
-        kind,
-        str(content_type),
-        asset_query,
-        rate_limiter,
-        semaphore,
-    )
 
 
 async def _resolve_resync_method_for_resource(
@@ -115,46 +87,31 @@ async def setup_application_default_credentials() -> None:
     logger.info("Created Application Default Credentials configuration")
 
 
-async def _yield_kind_or_content(
-    kind: str, resource_iterator: ASYNC_GENERATOR_RESYNC_TYPE
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    content = await _non_resource_content_iterator(kind)
-    if content is not None:
-        async for batch in content:
-            yield batch
-        return
-    async for batch in resource_iterator:
-        yield batch
-
-
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in _yield_kind_or_content(kind, search_all_folders()):
+    async for batch in search_all_folders():
         yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.ORGANIZATION)
 async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in _yield_kind_or_content(kind, search_all_organizations()):
+    async for batch in search_all_organizations():
         yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in _yield_kind_or_content(kind, search_all_projects()):
+    async for batch in search_all_projects():
         yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     topic_rate_limiter, _ = await resolve_request_controllers(kind)
-    async for batch in _yield_kind_or_content(
-        kind,
-        iterate_per_available_project(
-            list_all_topics_per_project,
-            asset_type=kind,
-            topic_rate_limiter=topic_rate_limiter,
-        ),
+    async for batch in iterate_per_available_project(
+        list_all_topics_per_project,
+        asset_type=kind,
+        topic_rate_limiter=topic_rate_limiter,
     ):
         yield batch
 
@@ -162,13 +119,10 @@ async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.SUBSCRIPTION)
 async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     topic_rate_limiter, _ = await resolve_request_controllers(kind)
-    async for batch in _yield_kind_or_content(
-        kind,
-        iterate_per_available_project(
-            list_all_subscriptions_per_project,
-            asset_type=kind,
-            topic_rate_limiter=topic_rate_limiter,
-        ),
+    async for batch in iterate_per_available_project(
+        list_all_subscriptions_per_project,
+        asset_type=kind,
+        topic_rate_limiter=topic_rate_limiter,
     ):
         yield batch
 
@@ -188,21 +142,17 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in AssetTypesWithSpecialHandling:
         logger.debug("Kind already has a specific handling, skipping")
         return
-    content = await _non_resource_content_iterator(kind)
-    if content is not None:
-        async for batch in content:
+    cloud_asset_api = get_api(kind)
+    if cloud_asset_api is not None:
+        async for batch in cloud_asset_api.fetch(get_current_resource_config()):
             yield batch
         return
-    selector = get_current_resource_config().selector
-    asset_query = getattr(selector, "asset_query", None)
-    search_query = asset_query if isinstance(asset_query, str) and asset_query else None
     asset_rate_limiter, asset_semaphore = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
         search_all_resources,
         asset_type=kind,
         rate_limiter=asset_rate_limiter,
         semaphore=asset_semaphore,
-        search_query=search_query,
     ):
         yield batch
 

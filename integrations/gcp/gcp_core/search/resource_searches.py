@@ -84,10 +84,6 @@ async def search_all_resources_in_project(
         }
         if asset_name:
             search_all_resources_request["query"] = f"name={asset_name}"
-        else:
-            search_query = kwargs.get("search_query")
-            if isinstance(search_query, str) and search_query:
-                search_all_resources_request["query"] = search_query
 
         async_assets_client = get_asset_client()
         try:

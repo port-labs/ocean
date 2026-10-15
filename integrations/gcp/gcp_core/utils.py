@@ -17,8 +17,6 @@ from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
 from gcp_core.helpers.ratelimiter.overrides import (
-    ListAssetsQpmPerProject,
-    SearchAllIamPoliciesQpmPerProject,
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
     ProjectGetRequestsPerMinutePerProject,
@@ -30,8 +28,6 @@ from port_ocean.utils.async_http import http_async_client
 from httpx import HTTPError
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
-search_all_iam_policies_qpm_per_project = SearchAllIamPoliciesQpmPerProject()
-list_assets_qpm_per_project = ListAssetsQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 project_get_requests_per_minute_per_project = ProjectGetRequestsPerMinutePerProject()
 
@@ -254,38 +250,6 @@ async def resolve_request_controllers(
 ) -> Tuple[FixedWindowLimiter, "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
     return await get_quotas_for_project(service_account_project_id, kind)
-
-
-async def resolve_asset_content_controllers(
-    content_type: str,
-    asset_query: str | None,
-) -> Tuple[FixedWindowLimiter, "BoundedSemaphore"]:
-    """Rate-limit the API that actually serves a non-RESOURCE content type.
-
-    IAM_POLICY with a server-side query uses searchAllIamPolicies (400/minute
-    by default). Every other non-RESOURCE read uses listAssets (100/minute
-    by default).
-    """
-    project_id = get_service_account_project_id()
-    limiter_source = (
-        search_all_iam_policies_qpm_per_project
-        if content_type == "IAM_POLICY" and asset_query
-        else list_assets_qpm_per_project
-    )
-    try:
-        return (
-            await limiter_source.limiter(project_id),
-            await limiter_source.semaphore(project_id),
-        )
-    except Exception as error:
-        logger.warning(
-            "Failed to compute Cloud Asset content quota. "
-            f"Will use the default for {limiter_source.quota_id}. Error: {str(error)}"
-        )
-        return (
-            await limiter_source.default_rate_limiter(),
-            await limiter_source.default_semaphore(),
-        )
 
 
 async def _get_oauth_token(scope: str = CLOUD_QUOTAS_SCOPE) -> Optional[str]:

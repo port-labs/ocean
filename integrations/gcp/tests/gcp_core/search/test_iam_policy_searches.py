@@ -12,6 +12,7 @@ from port_ocean.context.ocean import PortOceanContext, initialize_port_ocean_con
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 EXAMPLES = Path(__file__).resolve().parents[3] / "examples" / "iam-policy-binding"
+EXTRA_PROJECT_FIELD = "__project"
 
 
 @pytest.fixture(autouse=True)
@@ -33,197 +34,66 @@ def _project_scope() -> dict[str, Any]:
     }
 
 
-def test_iam_policy_search_result_uses_the_list_assets_block() -> None:
-    from gcp_core.search.asset_content import iam_policy_search_result_to_asset
+def test_expand_bindings_into_member_entities() -> None:
+    from gcp_core.search.iam_policies import expand_iam_policy_bindings
 
     scope = _project_scope()
-    asset = iam_policy_search_result_to_asset(
-        {
-            "resource": "//cloudresourcemanager.googleapis.com/projects/my-project",
-            "asset_type": "cloudresourcemanager.googleapis.com/Project",
-            "project": "projects/123",
-            "folders": ["folders/111"],
-            "organization": "organizations/222",
-            "policy": {
-                "bindings": [
-                    {
-                        "role": "roles/container.developer",
-                        "members": [
-                            "serviceAccount:app@my-project.iam.gserviceaccount.com"
-                        ],
-                    }
-                ]
-            },
-        },
+    entities = expand_iam_policy_bindings(
+        [
+            {
+                "resource": "//cloudresourcemanager.googleapis.com/projects/my-project",
+                "asset_type": "cloudresourcemanager.googleapis.com/Project",
+                "project": "projects/123456789",
+                "folders": ["folders/111"],
+                "organization": "organizations/222",
+                "policy": {
+                    "bindings": [
+                        {
+                            "role": "roles/viewer",
+                            "members": [
+                                "serviceAccount:app@my-project.iam.gserviceaccount.com",
+                                "allUsers",
+                            ],
+                        },
+                        {
+                            "role": "roles/owner",
+                            "members": ["user:alex@example.com"],
+                            "condition": {
+                                "expression": "request.time < timestamp('2026-01-01T00:00:00Z')",
+                                "title": "until",
+                                "description": "",
+                                "location": "",
+                            },
+                        },
+                        {"role": "", "members": ["user:ignored@example.com"]},
+                        {"role": "roles/editor", "members": []},
+                    ]
+                },
+            }
+        ],
         scope,
-        "__project",
     )
 
-    assert asset["name"].startswith("//cloudresourcemanager.googleapis.com/")
-    assert asset["iam_policy"]["bindings"][0]["role"] == "roles/container.developer"
-    assert "policy" not in asset
-    assert asset["__project"] == scope
-    assert asset["project"] == "projects/123"
+    assert [entity["member"] for entity in entities] == [
+        "serviceAccount:app@my-project.iam.gserviceaccount.com",
+        "allUsers",
+        "user:alex@example.com",
+    ]
+    assert entities[0]["member_type"] == "serviceAccount"
+    assert entities[0]["role"] == "roles/viewer"
+    assert entities[0]["condition"] is None
+    assert entities[0][EXTRA_PROJECT_FIELD] == scope
+    assert entities[2]["condition"]["expression"].startswith("request.time")
+    assert entities[2]["member_id"] == "alex@example.com"
 
 
 @pytest.mark.asyncio
-async def test_default_resource_search_does_not_send_a_query(
+async def test_search_uses_search_all_iam_policies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from gcp_core.search import resource_searches
+    from gcp_core.search import iam_policies
 
     captured: list[dict[str, Any]] = []
-
-    async def fake_paginated_query(
-        client: Any,
-        method: str,
-        request: dict[str, Any],
-        parse_fn: Any,
-        rate_limiter: Any = None,
-        timeout: Any = None,
-        page_size: int = 100,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        del client, parse_fn, rate_limiter, timeout, page_size
-        captured.append({"method": method, "request": dict(request)})
-        if False:
-            yield []
-
-    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
-    monkeypatch.setattr(resource_searches, "get_asset_client", lambda: MagicMock())
-
-    async for _ in resource_searches.search_all_resources_in_project(
-        _project_scope(),
-        "compute.googleapis.com/Instance",
-        BoundedSemaphore(1),
-    ):
-        pass
-
-    assert captured[0]["method"] == "search_all_resources"
-    assert "query" not in captured[0]["request"]
-    assert captured[0]["request"]["asset_types"] == ["compute.googleapis.com/Instance"]
-
-
-@pytest.mark.asyncio
-async def test_resource_search_sends_server_side_query(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from gcp_core.search import resource_searches
-
-    captured: list[dict[str, Any]] = []
-
-    async def fake_paginated_query(
-        client: Any,
-        method: str,
-        request: dict[str, Any],
-        parse_fn: Any,
-        rate_limiter: Any = None,
-        timeout: Any = None,
-        page_size: int = 100,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        del client, parse_fn, rate_limiter, timeout, page_size
-        captured.append(dict(request))
-        if False:
-            yield []
-
-    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
-    monkeypatch.setattr(resource_searches, "get_asset_client", lambda: MagicMock())
-
-    async for _ in resource_searches.search_all_resources_in_project(
-        _project_scope(),
-        "compute.googleapis.com/Instance",
-        BoundedSemaphore(1),
-        search_query="labels.env:prod",
-    ):
-        pass
-
-    assert captured[0]["query"] == "labels.env:prod"
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("content_type", "method", "page_size"),
-    [
-        ("IAM_POLICY", "list_assets", 1000),
-        ("ORG_POLICY", "list_assets", 1000),
-        ("ACCESS_POLICY", "list_assets", 1000),
-        ("OS_INVENTORY", "list_assets", 1000),
-        ("RELATIONSHIP", "list_assets", 1000),
-    ],
-)
-async def test_content_type_without_query_uses_list_assets(
-    monkeypatch: pytest.MonkeyPatch,
-    content_type: str,
-    method: str,
-    page_size: int,
-) -> None:
-    from gcp_core.search import asset_content
-
-    captured: list[dict[str, Any]] = []
-
-    async def fake_paginated_query(
-        client: Any,
-        called_method: str,
-        request: dict[str, Any],
-        parse_fn: Any,
-        rate_limiter: Any = None,
-        timeout: Any = None,
-        page_size: int = 100,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        del client, parse_fn, rate_limiter, timeout
-        captured.append(
-            {
-                "method": called_method,
-                "request": dict(request),
-                "page_size": page_size,
-            }
-        )
-        if False:
-            yield []
-
-    monkeypatch.setattr(asset_content, "paginated_query", fake_paginated_query)
-    monkeypatch.setattr(asset_content, "get_asset_client", lambda: MagicMock())
-
-    async for _ in asset_content.fetch_cloud_asset_content_in_scope(
-        _project_scope(),
-        BoundedSemaphore(1),
-        "compute.googleapis.com/Instance",
-        content_type,
-    ):
-        pass
-
-    assert captured[0]["method"] == method
-    assert captured[0]["page_size"] == page_size
-    assert captured[0]["request"]["content_type"] == content_type
-    assert captured[0]["request"]["parent"] == "projects/my-project"
-    assert "query" not in captured[0]["request"]
-
-
-@pytest.mark.asyncio
-async def test_iam_policy_query_uses_search_all_iam_policies(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from gcp_core.search import asset_content
-
-    captured: list[dict[str, Any]] = []
-
-    class FakeResponse:
-        def __init__(self) -> None:
-            self.results = [
-                {
-                    "resource": "//compute.googleapis.com/projects/my-project/zones/z/instances/vm",
-                    "asset_type": "compute.googleapis.com/Instance",
-                    "project": "projects/123",
-                    "policy": {
-                        "bindings": [
-                            {
-                                "role": "roles/compute.viewer",
-                                "members": ["serviceAccount:app@example.com"],
-                            }
-                        ]
-                    },
-                }
-            ]
-            self.next_page_token = ""
 
     async def fake_paginated_query(
         client: Any,
@@ -238,103 +108,170 @@ async def test_iam_policy_query_uses_search_all_iam_policies(
         captured.append(
             {"method": method, "request": dict(request), "page_size": page_size}
         )
-        response = FakeResponse()
         monkeypatch.setattr(
-            asset_content, "parse_protobuf_messages", lambda results: results
+            "gcp_core.utils.parse_protobuf_messages", lambda results: results
         )
-        yield parse_fn(response)
-
-    monkeypatch.setattr(asset_content, "paginated_query", fake_paginated_query)
-    monkeypatch.setattr(asset_content, "get_asset_client", lambda: MagicMock())
-
-    batches = [
-        batch
-        async for batch in asset_content.fetch_cloud_asset_content_in_scope(
-            _project_scope(),
-            BoundedSemaphore(1),
-            "compute.googleapis.com/Instance",
-            "IAM_POLICY",
-            asset_query="memberTypes:serviceAccount",
+        yield parse_fn(
+            MagicMock(
+                results=[
+                    {
+                        "resource": "//compute.googleapis.com/projects/my-project/zones/z/instances/vm",
+                        "asset_type": "compute.googleapis.com/Instance",
+                        "project": "projects/123",
+                        "policy": {
+                            "bindings": [
+                                {
+                                    "role": "roles/compute.viewer",
+                                    "members": [
+                                        f"serviceAccount:sa-{index}@example.com"
+                                        for index in range(101)
+                                    ],
+                                }
+                            ]
+                        },
+                    }
+                ]
+            )
         )
+
+    monkeypatch.setattr(iam_policies, "paginated_query", fake_paginated_query)
+    monkeypatch.setattr(iam_policies, "get_asset_client", lambda: MagicMock())
+
+    batches: list[list[dict[str, Any]]] = []
+    async for batch in iam_policies._search_project(
+        _project_scope(),
+        BoundedSemaphore(1),
+        ["compute.googleapis.com/Instance", "iam.googleapis.com/ServiceAccount"],
+        policy_query="memberTypes:serviceAccount",
+    ):
+        batches.append(batch)
+
+    assert captured == [
+        {
+            "method": "search_all_iam_policies",
+            "request": {
+                "scope": "projects/my-project",
+                "asset_types": [
+                    "compute.googleapis.com/Instance",
+                    "iam.googleapis.com/ServiceAccount",
+                ],
+                "query": "memberTypes:serviceAccount",
+            },
+            "page_size": 500,
+        }
     ]
-
-    assert captured[0]["method"] == "search_all_iam_policies"
-    assert captured[0]["page_size"] == 500
-    assert captured[0]["request"]["query"] == "memberTypes:serviceAccount"
-    assert captured[0]["request"]["scope"] == "projects/my-project"
-    assert batches[0][0]["iam_policy"]["bindings"][0]["role"] == "roles/compute.viewer"
-    assert batches[0][0]["__project"]["name"] == "projects/my-project"
+    assert [len(batch) for batch in batches] == [100, 1]
+    assert batches[0][0]["role"] == "roles/compute.viewer"
 
 
 @pytest.mark.asyncio
-async def test_folder_asset_type_is_not_listed_inside_projects(
+async def test_search_omits_blank_policy_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from gcp_core.search import asset_content
+    from gcp_core.search import iam_policies
 
-    seen: list[tuple[str, str]] = []
+    captured: list[dict[str, Any]] = []
 
-    async def fake_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
-        yield [{"name": "folders/7"}]
-
-    async def fake_fetch(
-        scope: dict[str, Any],
-        semaphore: BoundedSemaphore,
-        asset_type: str,
-        content_type: str,
-        asset_query: str | None = None,
+    async def fake_paginated_query(
+        client: Any,
+        method: str,
+        request: dict[str, Any],
+        parse_fn: Any,
         rate_limiter: Any = None,
-        scope_field: str = "__project",
+        timeout: Any = None,
+        page_size: int = 100,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        del semaphore, asset_query, rate_limiter
-        seen.append((scope["name"], scope_field))
-        yield [{"asset_type": asset_type, "content_type": content_type}]
+        del client, method, parse_fn, rate_limiter, timeout, page_size
+        captured.append(dict(request))
+        if False:
+            yield []
 
-    async def unexpected_projects(
-        *args: Any, **kwargs: Any
+    monkeypatch.setattr(iam_policies, "paginated_query", fake_paginated_query)
+    monkeypatch.setattr(iam_policies, "get_asset_client", lambda: MagicMock())
+
+    async for _ in iam_policies._search_project(
+        _project_scope(),
+        BoundedSemaphore(1),
+        ["iam.googleapis.com/ServiceAccount"],
+        policy_query=None,
+    ):
+        pass
+
+    assert "query" not in captured[0]
+
+
+@pytest.mark.asyncio
+async def test_fetch_iterates_projects_and_not_folders(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gcp_core.overrides import GCPPortAppConfig
+    from gcp_core.search import iam_policies
+
+    seen: list[list[str]] = []
+
+    async def fake_iterate(
+        fn: Any, *args: Any, **kwargs: Any
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        del args, kwargs
-        raise AssertionError("project iteration must not run for folder asset types")
+        del fn, args
+        seen.append(list(kwargs["asset_types"]))
+        yield [{"resource": "projects/my-project"}]
+
+    async def unexpected_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise AssertionError("folder scope must not be searched")
         yield []
 
-    monkeypatch.setattr(asset_content, "search_all_folders", fake_folders)
-    monkeypatch.setattr(asset_content, "fetch_cloud_asset_content_in_scope", fake_fetch)
     monkeypatch.setattr(
-        "gcp_core.search.iterators.iterate_per_available_project",
-        unexpected_projects,
+        "gcp_core.search.iterators.iterate_per_available_project", fake_iterate
+    )
+    monkeypatch.setattr(
+        iam_policies,
+        "_rate_limit",
+        AsyncMock(return_value=(MagicMock(), BoundedSemaphore(1))),
+    )
+    monkeypatch.setattr(
+        "gcp_core.search.resource_searches.search_all_folders", unexpected_folders
+    )
+
+    config = GCPPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "iam.googleapis.com/Policy",
+                    "selector": {
+                        "query": "true",
+                        "assetTypes": ["iam.googleapis.com/ServiceAccount"],
+                        "policyQuery": "memberTypes:serviceAccount",
+                    },
+                    "port": {
+                        "entity": {
+                            "mappings": {
+                                "identifier": ".member",
+                                "blueprint": '"gcpIamPolicyBinding"',
+                            }
+                        }
+                    },
+                }
+            ]
+        }
     )
 
     batches = [
-        batch
-        async for batch in asset_content.iter_cloud_asset_content(
-            "cloudresourcemanager.googleapis.com/Folder",
-            "IAM_POLICY",
-            None,
-            rate_limiter=MagicMock(),
-            semaphore=BoundedSemaphore(1),
-        )
+        batch async for batch in iam_policies.fetch_iam_policies(config.resources[0])
     ]
 
-    assert seen == [("folders/7", "__folder")]
-    assert batches == [
-        [
-            {
-                "asset_type": "cloudresourcemanager.googleapis.com/Folder",
-                "content_type": "IAM_POLICY",
-            }
-        ]
-    ]
+    assert seen == [["iam.googleapis.com/ServiceAccount"]]
+    assert batches == [[{"resource": "projects/my-project"}]]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "error",
-    [PermissionDenied("missing permission"), NotFound("scope missing")],
+    [PermissionDenied("missing permission"), NotFound("project missing")],
 )
-async def test_content_search_swallows_permission_and_not_found(
+async def test_search_swallows_permission_and_not_found(
     monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:
-    from gcp_core.search import asset_content
+    from gcp_core.search import iam_policies
 
     async def fake_paginated_query(
         *args: Any, **kwargs: Any
@@ -342,16 +279,15 @@ async def test_content_search_swallows_permission_and_not_found(
         raise error
         yield []
 
-    monkeypatch.setattr(asset_content, "paginated_query", fake_paginated_query)
-    monkeypatch.setattr(asset_content, "get_asset_client", lambda: MagicMock())
+    monkeypatch.setattr(iam_policies, "paginated_query", fake_paginated_query)
+    monkeypatch.setattr(iam_policies, "get_asset_client", lambda: MagicMock())
 
     batches = [
         batch
-        async for batch in asset_content.fetch_cloud_asset_content_in_scope(
+        async for batch in iam_policies._search_project(
             _project_scope(),
             BoundedSemaphore(1),
-            "compute.googleapis.com/Instance",
-            "ORG_POLICY",
+            ["cloudresourcemanager.googleapis.com/Project"],
         )
     ]
 
@@ -359,10 +295,10 @@ async def test_content_search_swallows_permission_and_not_found(
 
 
 @pytest.mark.asyncio
-async def test_content_search_reraises_unexpected_errors(
+async def test_search_reraises_unexpected_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from gcp_core.search import asset_content
+    from gcp_core.search import iam_policies
 
     async def fake_paginated_query(
         *args: Any, **kwargs: Any
@@ -370,44 +306,54 @@ async def test_content_search_reraises_unexpected_errors(
         raise ValueError("boom")
         yield []
 
-    monkeypatch.setattr(asset_content, "paginated_query", fake_paginated_query)
-    monkeypatch.setattr(asset_content, "get_asset_client", lambda: MagicMock())
+    monkeypatch.setattr(iam_policies, "paginated_query", fake_paginated_query)
+    monkeypatch.setattr(iam_policies, "get_asset_client", lambda: MagicMock())
 
     with pytest.raises(ValueError, match="boom"):
-        async for _ in asset_content.fetch_cloud_asset_content_in_scope(
+        async for _ in iam_policies._search_project(
             _project_scope(),
             BoundedSemaphore(1),
-            "compute.googleapis.com/Instance",
-            "RELATIONSHIP",
+            ["cloudresourcemanager.googleapis.com/Project"],
         ):
             pass
 
 
-def test_example_matches_items_to_parse_mapping() -> None:
+def test_example_raw_matches_expanded_binding_and_mapping() -> None:
     import jq  # type: ignore[import-not-found]
+
+    from gcp_core.search.iam_policies import expand_iam_policy_bindings
 
     raw = json.loads((EXAMPLES / "raw.json").read_text())
     expected = json.loads((EXAMPLES / "expected.json").read_text())
-    binding = raw["iam_policy"]["bindings"][0]
-    parsed = {key: value for key, value in raw.items() if key != "iam_policy"}
-    parsed["item"] = binding
+    scope = raw[EXTRA_PROJECT_FIELD]
+    policies = [
+        {
+            "resource": raw["resource"],
+            "asset_type": raw["asset_type"],
+            "project": raw["project"],
+            "folders": raw["folders"],
+            "organization": raw["organization"],
+            "policy": {"bindings": [{"role": raw["role"], "members": [raw["member"]]}]},
+        }
+    ]
 
+    assert expand_iam_policy_bindings(policies, scope) == [raw]
     mapped = {
         "identifier": jq.compile(
-            '.name + "|" + .item.role + "|" + (.item.members | join(","))'
+            '.resource + "|" + .role + "|" + .member + "|" + (.condition.expression // "")'
         )
-        .input_value(parsed)
+        .input_value(raw)
         .first(),
-        "title": jq.compile(".item.role").input_value(parsed).first(),
-        "blueprint": jq.compile('"gcpIamPolicyBinding"').input_value(parsed).first(),
+        "title": jq.compile(".member").input_value(raw).first(),
+        "blueprint": jq.compile('"gcpIamPolicyBinding"').input_value(raw).first(),
         "properties": {
-            "role": jq.compile(".item.role").input_value(parsed).first(),
-            "members": jq.compile(".item.members").input_value(parsed).first(),
-            "resource": jq.compile(".name").input_value(parsed).first(),
-            "assetType": jq.compile(".asset_type").input_value(parsed).first(),
+            "role": jq.compile(".role").input_value(raw).first(),
+            "member": jq.compile(".member").input_value(raw).first(),
+            "resource": jq.compile(".resource").input_value(raw).first(),
+            "assetType": jq.compile(".asset_type").input_value(raw).first(),
         },
         "relations": {
-            "project": jq.compile(".__project.name").input_value(parsed).first(),
+            "project": jq.compile(".__project.name").input_value(raw).first(),
         },
     }
     assert mapped == expected

@@ -20,11 +20,7 @@ An integration used to import gcp resources into Port.
 - resourcemanager.projects.list
 - resourcemanager.folders.get
 - resourcemanager.folders.list
-- cloudasset.assets.searchAllIamPolicies (only when `selector.contentType` is `IAM_POLICY` and `selector.assetQuery` is set)
-- cloudasset.assets.listIamPolicy (for `contentType: IAM_POLICY` without `assetQuery`)
-- cloudasset.assets.listOrgPolicy (for `contentType: ORG_POLICY`)
-- cloudasset.assets.listAccessPolicy (for `contentType: ACCESS_POLICY`)
-- cloudasset.assets.listOSInventories (for `contentType: OS_INVENTORY`)
+- cloudasset.assets.searchAllIamPolicies (only for the `iam.googleapis.com/Policy` kind)
 
 #### Suggested way of achieving this
 
@@ -32,58 +28,42 @@ An integration used to import gcp resources into Port.
 2. Create a role in the scope you want the integration to run (= Make sure you selected the right resource in the top left corner).
 3. Grant the role to the service account (can be done via the Manage Resources in IAM)
 
-### Cloud Asset content types
+### IAM allow policy bindings
 
-`selector.contentType` chooses which Cloud Asset Inventory record to read for an asset kind. The default is `RESOURCE`, which keeps the current `searchAllResources` sync and the same raw resource shape.
+Kind `iam.googleapis.com/Policy` syncs explicit IAM allow-policy bindings from Cloud Asset Inventory [`searchAllIamPolicies`](https://cloud.google.com/asset-inventory/docs/reference/rest/v1/TopLevel/searchAllIamPolicies). Each raw item is one binding member on one resource (`resource`, `role`, `member`). It does not call Policy Analyzer and does not include inherited access.
 
-| contentType | API | Raw block to expand | Server-side `assetQuery` |
-| --- | --- | --- | --- |
-| `RESOURCE` (default) | `searchAllResources` | The resource itself | Yes. [Resource search syntax](https://cloud.google.com/asset-inventory/docs/searching-resources). Kinds that use Pub/Sub or Resource Manager for `RESOURCE` (topics, subscriptions, projects, folders, organizations) reject `assetQuery`. |
-| `IAM_POLICY` | `listAssets`, or `searchAllIamPolicies` when `assetQuery` is set | `iam_policy` | Yes. [IAM policy search syntax](https://cloud.google.com/asset-inventory/docs/searching-iam-policies). Example: `memberTypes:serviceAccount`. |
-| `ORG_POLICY` | `listAssets` | `org_policy` (a list; one resource can have several constraints) | No. Config validation fails if `assetQuery` is set. |
-| `ACCESS_POLICY` | `listAssets` | `access_policy`, `access_level`, or `service_perimeter` | No. Config validation fails if `assetQuery` is set. |
-| `OS_INVENTORY` | `listAssets` | `os_inventory` | No. Config validation fails if `assetQuery` is set. |
-| `RELATIONSHIP` | `listAssets` | `related_asset` | No. Config validation fails if `assetQuery` is set. |
+Other GCP kinds stay on `searchAllResources` or their product APIs. This kind is separate so those mappings keep the same raw shape.
 
-`selector.assetQuery` is the Cloud Asset API query. `selector.query` stays the JQ filter applied after the integration returns data. `listAssets` has no query parameter, so `assetQuery` is rejected for `ORG_POLICY`, `ACCESS_POLICY`, `OS_INVENTORY`, and `RELATIONSHIP` instead of being ignored.
+`selector.assetTypes` is required. Policies are read once per accessible project, the same scope as other resource kinds. `selector.policyQuery` is optional and is sent only to `searchAllIamPolicies`. It is not the JQ `selector.query`, and it is not applied to any other Cloud Asset API. Example: `memberTypes:serviceAccount`. See the [IAM policy search syntax](https://cloud.google.com/asset-inventory/docs/searching-iam-policies).
 
-Non-`RESOURCE` records are explicit inventory, not Policy Analyzer effective or inherited access. Project asset types are read once per accessible project. `cloudresourcemanager.googleapis.com/Folder` and `cloudresourcemanager.googleapis.com/Organization` are read on those folder and organization scopes.
+`searchAllIamPolicies` defaults to 400 requests per minute per consumer project. The integration rate-limits that quota separately from `searchAllResources` and uses a page size of 500.
 
-Use `itemsToParse` to expand a repeated block such as `.iam_policy.bindings` or `.org_policy`. `itemsToParse` walks one array, so an IAM binding's `members` array stays on the entity.
-
-`searchAllResources` and `searchAllIamPolicies` default to 400 requests per minute per consumer project. `listAssets` defaults to 100 requests per minute per consumer project, and also 800 per minute and 650,000 per day per organization. The integration rate-limits each API on its own quota and uses a page size of 1000 for `listAssets`.
-
-Extra setup:
-
-- `OS_INVENTORY` requires [VM Manager OS inventory](https://cloud.google.com/compute/docs/instances/os-inventory-management) to be collected for the VMs.
-- `RELATIONSHIP` requires Security Command Center Premium or Enterprise. `listAssets` then returns each supported relationship for the asset type. An asset type with no relationships makes that request fail, and the kind resync fails instead of deleting entities.
-- `ACCESS_POLICY` reads Access Context Manager access policies, access levels, and service perimeters.
-
-Workload Identity, the `iam.gke.io/gcp-service-account` annotation from a Kubernetes service account to a Google service account, is not in these records.
+Real-time asset feeds stay on `--content-type=resource` and update resource kinds. They do not update `iam.googleapis.com/Policy`; that kind is resync-only. Workload Identity (`iam.gke.io/gcp-service-account` on a Kubernetes service account) is not an IAM allow policy.
 
 ```yaml
-- kind: cloudresourcemanager.googleapis.com/Project
+- kind: iam.googleapis.com/Policy
   selector:
     query: 'true'
-    contentType: IAM_POLICY
-    assetQuery: memberTypes:serviceAccount
+    assetTypes:
+      - cloudresourcemanager.googleapis.com/Project
+      - iam.googleapis.com/ServiceAccount
+    policyQuery: memberTypes:serviceAccount
   port:
-    itemsToParse: .iam_policy.bindings
     entity:
       mappings:
-        identifier: .name + "|" + .item.role + "|" + (.item.members | join(","))
-        title: .item.role
+        identifier: .resource + "|" + .role + "|" + .member + "|" + (.condition.expression // "")
+        title: .member
         blueprint: '"gcpIamPolicyBinding"'
         properties:
-          role: .item.role
-          members: .item.members
-          resource: .name
+          role: .role
+          member: .member
+          resource: .resource
           assetType: .asset_type
         relations:
           project: .__project.name
 ```
 
-`contentType: IAM_POLICY` on `cloudresourcemanager.googleapis.com/Project` is the allow policy attached to the project. The same content type on `iam.googleapis.com/ServiceAccount` is the allow policy attached to that service account. `assetQuery: memberTypes:serviceAccount` keeps Google service account principals. Project-scoped assets include `__project`. Folder-scoped assets include `__folder`, and organization-scoped assets include `__organization`.
+`assetTypes` selects the resource the allow policy is attached to. `policyQuery: memberTypes:serviceAccount` keeps Google service account principals. A project asset type plus that query is which service accounts have which role on which project. Include the condition expression in the identifier when the same member and role can appear twice on one resource. Project-scoped results include `__project`.
 
 ### Real time requirements
 
@@ -109,8 +89,6 @@ Workload Identity, the `iam.gke.io/gcp-service-account` annotation from a Kubern
     - **FOLDER/ORGANIZATION/PROJECT**  - This depends on what resolution you want the real time events for. **NOTICE that for each unique folder/project you’ll have to create another topic+subscription+feed.**
     - **CONDITION_EXPRESSION** - Quote surrounded query that controls what types of events create a feed event. For more information: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes-with-condition
         - Suggestion: `"'<YOUR PROJECT/FOLDER/ORGANIZATION ID>' in temporal_asset.asset.ancestors"`
-
-Real-time feeds stay on `--content-type=resource`. A live event updates mappings whose `contentType` is `RESOURCE` (the default). Mappings with any other `contentType` ignore the event and stay on the resync schedule. The integration does not apply IAM policy, organization policy, access policy, OS inventory, or relationship feed payloads.
 
 ### Starting up Ocean
 

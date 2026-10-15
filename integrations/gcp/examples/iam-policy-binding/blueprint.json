@@ -8,12 +8,9 @@
         "title": "Role",
         "type": "string"
       },
-      "members": {
-        "title": "Members",
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+      "member": {
+        "title": "Member",
+        "type": "string"
       },
       "resource": {
         "title": "Resource",
