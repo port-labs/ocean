@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Follow nested label children pages during resync and webhook updates, and fail when one label exceeds 1000 children.

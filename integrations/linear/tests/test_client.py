@@ -4,8 +4,12 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from linear.client import LinearClient
+from linear.client.constants import MAX_LABEL_CHILDREN
 from linear.core.exporters import DocumentExporter
 from linear.core.exporters.document_exporter import GetDocumentOptions
+from linear.core.exporters.label_exporter import GetLabelOptions, LabelExporter
+from linear.core.exceptions import LinearApiError
+from linear.queries import QUERIES
 from linear.webhook.webhook_client import LinearWebhookClient
 
 
@@ -96,3 +100,400 @@ class TestDocumentExporter:
 
         assert result == document
         mock_execute_template.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+class TestLinearLabelChildrenPagination:
+    async def test_follows_multiple_children_pages(
+        self, linear_client: LinearClient
+    ) -> None:
+        label = {
+            "id": "label-1",
+            "children": {
+                "edges": [{"node": {"id": "child-1"}}],
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+            },
+        }
+        mock_execute = AsyncMock(
+            side_effect=[
+                {"issueLabel": label},
+                {
+                    "issueLabel": {
+                        "children": {
+                            "edges": [{"node": {"id": "child-2"}}],
+                            "pageInfo": {"hasNextPage": True, "endCursor": "cursor-2"},
+                        }
+                    }
+                },
+                {
+                    "issueLabel": {
+                        "children": {
+                            "edges": [{"node": {"id": "child-3"}}],
+                            "pageInfo": {"hasNextPage": False, "endCursor": "cursor-3"},
+                        }
+                    }
+                },
+            ]
+        )
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            result = await LabelExporter(linear_client).get_resource(
+                GetLabelOptions(resource_id="label-1")
+            )
+        assert [edge["node"]["id"] for edge in result["children"]["edges"]] == [
+            "child-1",
+            "child-2",
+            "child-3",
+        ]
+        assert 'after: "cursor-1"' in mock_execute.await_args_list[1].args[0]
+        assert 'after: "cursor-2"' in mock_execute.await_args_list[2].args[0]
+
+    @pytest.mark.parametrize("cursor", [None, "cursor-1"])
+    async def test_rejects_nonadvancing_children_page(
+        self, linear_client: LinearClient, cursor: str | None
+    ) -> None:
+        label = {
+            "id": "label-1",
+            "children": {
+                "edges": [],
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+            },
+        }
+        mock_execute = AsyncMock(
+            side_effect=[
+                {"issueLabel": label},
+                {
+                    "issueLabel": {
+                        "children": {
+                            "edges": [],
+                            "pageInfo": {"hasNextPage": True, "endCursor": cursor},
+                        }
+                    }
+                },
+            ]
+        )
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            with pytest.raises(LinearApiError, match="pagination did not advance"):
+                await LabelExporter(linear_client).get_resource(
+                    GetLabelOptions(resource_id="label-1")
+                )
+        assert mock_execute.await_count == 2
+
+    async def test_paginates_children_past_inline_window(
+        self, linear_client: LinearClient
+    ) -> None:
+        label_page = {
+            "data": {
+                "issueLabels": {
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "label-1",
+                                "name": "group",
+                                "children": {
+                                    "edges": [
+                                        {"node": {"id": f"child-{i}"}}
+                                        for i in range(50)
+                                    ],
+                                    "pageInfo": {
+                                        "hasNextPage": True,
+                                        "endCursor": "child-cursor-1",
+                                    },
+                                },
+                            }
+                        }
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "label-cursor-1"},
+                }
+            }
+        }
+        children_page = {
+            "data": {
+                "issueLabel": {
+                    "children": {
+                        "edges": [{"node": {"id": "child-50"}}],
+                        "pageInfo": {
+                            "hasNextPage": False,
+                            "endCursor": "child-cursor-2",
+                        },
+                    }
+                }
+            }
+        }
+
+        exporter = LabelExporter(linear_client)
+        mock_execute = AsyncMock(
+            side_effect=[label_page["data"], children_page["data"]]
+        )
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            results = [batch async for batch in exporter.get_paginated_resources()]
+
+        assert len(results) == 1
+        children = results[0][0]["children"]["edges"]
+        assert [edge["node"]["id"] for edge in children][-1] == "child-50"
+        assert len(children) == 51
+        assert mock_execute.await_count == 2
+        assert mock_execute.await_args is not None
+        query = mock_execute.await_args.args[0]
+        assert "issueLabel(id:" in query.replace(" ", "")
+        assert 'after: "child-cursor-1"' in query
+
+    async def test_no_extra_calls_when_children_fit_inline_window(
+        self, linear_client: LinearClient
+    ) -> None:
+        label_page = {
+            "data": {
+                "issueLabels": {
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "label-1",
+                                "name": "group",
+                                "children": {
+                                    "edges": [{"node": {"id": "child-0"}}],
+                                    "pageInfo": {
+                                        "hasNextPage": False,
+                                        "endCursor": "child-cursor-1",
+                                    },
+                                },
+                            }
+                        }
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "label-cursor-1"},
+                }
+            }
+        }
+
+        exporter = LabelExporter(linear_client)
+        mock_execute = AsyncMock(return_value=label_page["data"])
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            results = [batch async for batch in exporter.get_paginated_resources()]
+
+        assert results[0][0]["children"]["edges"] == [{"node": {"id": "child-0"}}]
+        mock_execute.assert_awaited_once()
+
+    async def test_get_single_label_follows_child_pagination(
+        self, linear_client: LinearClient
+    ) -> None:
+        single_label = {
+            "data": {
+                "issueLabel": {
+                    "id": "label-1",
+                    "name": "group",
+                    "children": {
+                        "edges": [{"node": {"id": f"child-{i}"}} for i in range(50)],
+                        "pageInfo": {
+                            "hasNextPage": True,
+                            "endCursor": "child-cursor-1",
+                        },
+                    },
+                }
+            }
+        }
+        children_page = {
+            "data": {
+                "issueLabel": {
+                    "children": {
+                        "edges": [{"node": {"id": "child-50"}}],
+                        "pageInfo": {
+                            "hasNextPage": False,
+                            "endCursor": "child-cursor-2",
+                        },
+                    }
+                }
+            }
+        }
+
+        exporter = LabelExporter(linear_client)
+        mock_execute = AsyncMock(
+            side_effect=[single_label["data"], children_page["data"]]
+        )
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            label = await exporter.get_resource(GetLabelOptions(resource_id="label-1"))
+
+        assert label["id"] == "label-1"
+        children = label["children"]["edges"]
+        assert len(children) == 51
+        assert [edge["node"]["id"] for edge in children][-1] == "child-50"
+        assert mock_execute.await_count == 2
+        assert mock_execute.await_args is not None
+        query = mock_execute.await_args.args[0]
+        assert 'after: "child-cursor-1"' in query
+        assert "first: 50" in query
+
+    async def test_single_label_keeps_children_at_exact_ceiling(
+        self, linear_client: LinearClient
+    ) -> None:
+        edges = [
+            {"node": {"id": f"child-{index}"}} for index in range(MAX_LABEL_CHILDREN)
+        ]
+        single_label = {
+            "issueLabel": {
+                "id": "label-1",
+                "children": {
+                    "edges": edges,
+                    "pageInfo": {"hasNextPage": False, "endCursor": "cursor-1"},
+                },
+            }
+        }
+        mock_execute = AsyncMock(return_value=single_label)
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            label = await LabelExporter(linear_client).get_resource(
+                GetLabelOptions(resource_id="label-1")
+            )
+
+        assert len(label["children"]["edges"]) == MAX_LABEL_CHILDREN
+        mock_execute.assert_awaited_once()
+
+    async def test_single_label_rejects_further_pages_at_ceiling(
+        self, linear_client: LinearClient
+    ) -> None:
+        edges = [
+            {"node": {"id": f"child-{index}"}} for index in range(MAX_LABEL_CHILDREN)
+        ]
+        single_label = {
+            "issueLabel": {
+                "id": "label-1",
+                "children": {
+                    "edges": edges,
+                    "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+                },
+            }
+        }
+        mock_execute = AsyncMock(return_value=single_label)
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            with pytest.raises(
+                LinearApiError, match=f"exceeded {MAX_LABEL_CHILDREN} nodes"
+            ):
+                await LabelExporter(linear_client).get_resource(
+                    GetLabelOptions(resource_id="label-1")
+                )
+
+        mock_execute.assert_awaited_once()
+        assert len(edges) == MAX_LABEL_CHILDREN
+
+    async def test_single_label_rejects_page_that_would_pass_ceiling(
+        self, linear_client: LinearClient
+    ) -> None:
+        edges = [
+            {"node": {"id": f"child-{index}"}}
+            for index in range(MAX_LABEL_CHILDREN - 1)
+        ]
+        single_label = {
+            "issueLabel": {
+                "id": "label-1",
+                "children": {
+                    "edges": edges,
+                    "pageInfo": {"hasNextPage": True, "endCursor": "cursor-1"},
+                },
+            }
+        }
+        overflow_page = {
+            "issueLabel": {
+                "children": {
+                    "edges": [
+                        {"node": {"id": "child-overflow-1"}},
+                        {"node": {"id": "child-overflow-2"}},
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "cursor-2"},
+                }
+            }
+        }
+        mock_execute = AsyncMock(side_effect=[single_label, overflow_page])
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            with pytest.raises(
+                LinearApiError, match=f"exceeded {MAX_LABEL_CHILDREN} nodes"
+            ):
+                await LabelExporter(linear_client).get_resource(
+                    GetLabelOptions(resource_id="label-1")
+                )
+
+        assert mock_execute.await_count == 2
+        assert len(edges) == MAX_LABEL_CHILDREN - 1
+
+    async def test_resync_rejects_further_pages_at_ceiling(
+        self, linear_client: LinearClient
+    ) -> None:
+        edges = [
+            {"node": {"id": f"child-{index}"}} for index in range(MAX_LABEL_CHILDREN)
+        ]
+        label_page = {
+            "issueLabels": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "label-1",
+                            "children": {
+                                "edges": edges,
+                                "pageInfo": {
+                                    "hasNextPage": True,
+                                    "endCursor": "child-cursor-1",
+                                },
+                            },
+                        }
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": "label-cursor-1"},
+            }
+        }
+        exporter = LabelExporter(linear_client)
+        mock_execute = AsyncMock(return_value=label_page)
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            with pytest.raises(
+                LinearApiError, match=f"exceeded {MAX_LABEL_CHILDREN} nodes"
+            ):
+                _ = [batch async for batch in exporter.get_paginated_resources()]
+
+        mock_execute.assert_awaited_once()
+        assert len(edges) == MAX_LABEL_CHILDREN
+
+    async def test_resync_keeps_final_page_that_reaches_ceiling(
+        self, linear_client: LinearClient
+    ) -> None:
+        edges = [
+            {"node": {"id": f"child-{index}"}}
+            for index in range(MAX_LABEL_CHILDREN - 1)
+        ]
+        label_page = {
+            "issueLabels": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "label-1",
+                            "children": {
+                                "edges": edges,
+                                "pageInfo": {
+                                    "hasNextPage": True,
+                                    "endCursor": "child-cursor-1",
+                                },
+                            },
+                        }
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": "label-cursor-1"},
+            }
+        }
+        children_page = {
+            "issueLabel": {
+                "children": {
+                    "edges": [{"node": {"id": "child-last"}}],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "child-cursor-2"},
+                }
+            }
+        }
+        exporter = LabelExporter(linear_client)
+        mock_execute = AsyncMock(side_effect=[label_page, children_page])
+        with patch.object(linear_client.graphql, "execute", mock_execute):
+            results = [batch async for batch in exporter.get_paginated_resources()]
+
+        children = results[0][0]["children"]["edges"]
+        assert len(children) == MAX_LABEL_CHILDREN
+        assert children[-1]["node"]["id"] == "child-last"
+        assert mock_execute.await_count == 2
+
+
+def test_inline_label_children_stay_at_linear_default_page_size() -> None:
+    assert MAX_LABEL_CHILDREN == 1000
+    fields = QUERIES["BASE_LABELS_QUERY_FIELDS"]
+    assert "children {" in fields
+    assert "first:" not in fields
+    assert "first: {{ page_size }}" in QUERIES["GET_LABEL_CHILDREN_PAGE"]
