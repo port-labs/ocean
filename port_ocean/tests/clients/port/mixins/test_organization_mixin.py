@@ -1,7 +1,8 @@
 from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
 
@@ -67,6 +68,32 @@ async def test_is_organization_blocked_returns_false_when_field_missing(
     assert result is False
 
 
+async def test_get_organization_does_not_cache_failed_responses(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_response = mock_client.get.return_value
+    mock_response.status_code = 503
+    mock_response.is_success = False
+    mock_response.json.return_value = {"error": "unavailable"}
+
+    await mocked_org_mixin.get_organization_feature_flags(
+        should_raise=False, should_log=False
+    )
+    assert mock_client.get.call_count == 1
+
+    _set_organization_response(
+        mocked_org_mixin,
+        {"id": "org-123", "featureFlags": ["aa"], "isBlocked": False},
+    )
+    mock_response.is_success = True
+
+    result = await mocked_org_mixin.get_organization_feature_flags()
+
+    assert result == ["aa"]
+    assert mock_client.get.call_count == 2
+
+
 async def test_create_organization_secret_posts_body(
     mocked_org_mixin: OrganizationClientMixin,
 ) -> None:
@@ -113,3 +140,80 @@ async def test_update_organization_secret_patches_body(
     mock_client.patch.assert_awaited_once()
     assert "/organization/secrets/my-secret" in mock_client.patch.await_args.args[0]
     assert mock_client.patch.await_args.kwargs["json"] == {"secretValue": "new-value"}
+
+
+async def test_get_organization_secret_returns_none_on_404(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_client.get = AsyncMock(
+        return_value=MagicMock(status_code=404, is_error=True, text="missing")
+    )
+    mocked_org_mixin.auth.api_url = "https://api.example"
+
+    result = await mocked_org_mixin.get_organization_secret(
+        "missing-secret", should_raise=False
+    )
+
+    assert result is None
+    assert "/organization/secrets/missing-secret" in mock_client.get.await_args.args[0]
+
+
+async def test_get_organization_secret_raises_on_non_404_error(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    response = MagicMock(status_code=500, is_error=True, text="boom")
+    response.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError(
+            "boom",
+            request=httpx.Request("GET", "https://api.example/organization/secrets/x"),
+            response=httpx.Response(500),
+        )
+    )
+    mock_client = cast(MagicMock, mocked_org_mixin.client)
+    mock_client.get = AsyncMock(return_value=response)
+    mocked_org_mixin.auth.api_url = "https://api.example"
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await mocked_org_mixin.get_organization_secret("x", should_raise=False)
+
+
+async def test_upsert_organization_secret_creates_when_missing(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mocked_org_mixin.get_organization_secret = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    mocked_org_mixin.create_organization_secret = AsyncMock(  # type: ignore[method-assign]
+        return_value={"ok": True, "created": True}
+    )
+    mocked_org_mixin.update_organization_secret = AsyncMock()  # type: ignore[method-assign]
+
+    result = await mocked_org_mixin.upsert_organization_secret(
+        secret_name="my-secret",
+        secret_value="value",
+        description="desc",
+    )
+
+    assert result == {"ok": True, "created": True}
+    mocked_org_mixin.create_organization_secret.assert_awaited_once()
+    mocked_org_mixin.update_organization_secret.assert_not_awaited()
+
+
+async def test_upsert_organization_secret_updates_when_present(
+    mocked_org_mixin: OrganizationClientMixin,
+) -> None:
+    mocked_org_mixin.get_organization_secret = AsyncMock(  # type: ignore[method-assign]
+        return_value={"secretName": "my-secret"}
+    )
+    mocked_org_mixin.create_organization_secret = AsyncMock()  # type: ignore[method-assign]
+    mocked_org_mixin.update_organization_secret = AsyncMock(  # type: ignore[method-assign]
+        return_value={"ok": True, "updated": True}
+    )
+
+    result = await mocked_org_mixin.upsert_organization_secret(
+        secret_name="my-secret",
+        secret_value="new-value",
+    )
+
+    assert result == {"ok": True, "updated": True}
+    mocked_org_mixin.update_organization_secret.assert_awaited_once()
+    mocked_org_mixin.create_organization_secret.assert_not_awaited()
