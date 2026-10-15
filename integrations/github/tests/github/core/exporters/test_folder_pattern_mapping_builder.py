@@ -536,3 +536,54 @@ async def test_resync_plugins_lists_pushed_repos_once(
     assert [(r["repository"]["name"], r["branch"]) for r in repositories] == [
         ("repo1", "main")
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_mcp_passes_cursor_to_builder(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    mcp_path = MagicMock(
+        path=".mcp.json", organization="allowed", repos=None, exclude_archived=False
+    )
+    mcp_exporter = MagicMock()
+    mcp_exporter.get_paginated_resources.return_value = _aiter_one([{"server": {}}])
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(github_main, "McpExporter", return_value=mcp_exporter),
+        patch.object(
+            github_main, "FilePatternMappingBuilder", return_value=pattern_builder
+        ),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(kind="mcp", selector=MagicMock(paths=[mcp_path]))
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [b async for b in github_main.resync_mcp("mcp")]
+                else:
+                    batches = [b async for b in github_main.resync_mcp("mcp")]
+
+    assert batches == [[{"server": {}}]]
+    pattern_builder.build.assert_awaited_once()
+    assert pattern_builder.build.await_args is not None
+    file_patterns = pattern_builder.build.await_args.args[0]
+    assert [p.path for p in file_patterns] == [".mcp.json"]
+    assert pattern_builder.build.await_args.kwargs == {"updated_since": cursor}

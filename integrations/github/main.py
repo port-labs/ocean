@@ -1431,12 +1431,14 @@ async def resync_plugins(
                     yield plugins
 
 
+@ocean.on_incremental_resync(ObjectKind.MCP)
 @ocean.on_resync(ObjectKind.MCP)
 @_resync_per_authenticator
 async def resync_mcp(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync MCP servers (mcp.json/.mcp.json) using glob path discovery."""
+    """Resync MCP servers (mcp.json/.mcp.json); incremental runs only fetch changed configs in pushed repos."""
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubMcpResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1467,7 +1469,9 @@ async def resync_mcp(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(file_patterns)
+    repo_path_map = await pattern_builder.build(
+        file_patterns, updated_since=sync_cursor
+    )
 
     async for servers in mcp_exporter.get_paginated_resources(repo_path_map):
         yield servers
