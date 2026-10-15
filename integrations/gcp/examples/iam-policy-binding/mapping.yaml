@@ -1,15 +1,14 @@
 resources:
-  - kind: iam.googleapis.com/Policy
+  - kind: cloudresourcemanager.googleapis.com/Project
     selector:
       query: "true"
-      assetTypes:
-        - cloudresourcemanager.googleapis.com/Project
+      api: searchAllIamPolicies
       policyQuery: memberTypes:serviceAccount
     port:
       entity:
         mappings:
-          identifier: .resource + "|" + .role + "|" + .member + "|" + (.condition.expression // "")
-          title: .member
+          identifier: .resource + "/" + .role + "/" + .member
+          title: .member + " " + .role
           blueprint: '"gcpIamPolicyBinding"'
           properties:
             role: .role

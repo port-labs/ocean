@@ -20,7 +20,7 @@ An integration used to import gcp resources into Port.
 - resourcemanager.projects.list
 - resourcemanager.folders.get
 - resourcemanager.folders.list
-- cloudasset.assets.searchAllIamPolicies (only for the `iam.googleapis.com/Policy` kind)
+- cloudasset.assets.searchAllIamPolicies (only for kinds with `selector.api: searchAllIamPolicies`)
 
 #### Suggested way of achieving this
 
@@ -30,29 +30,23 @@ An integration used to import gcp resources into Port.
 
 ### IAM allow policy bindings
 
-Kind `iam.googleapis.com/Policy` syncs explicit IAM allow-policy bindings from Cloud Asset Inventory [`searchAllIamPolicies`](https://cloud.google.com/asset-inventory/docs/reference/rest/v1/TopLevel/searchAllIamPolicies). Each raw item is one binding member on one resource (`resource`, `role`, `member`). It does not call Policy Analyzer and does not include inherited access.
+Set `selector.api: searchAllIamPolicies` on any kind to sync the explicit IAM allow-policy bindings set on resources of that kind, through Cloud Asset Inventory [`searchAllIamPolicies`](https://cloud.google.com/asset-inventory/docs/reference/rest/v1/TopLevel/searchAllIamPolicies), instead of the resources themselves. Each raw item is one resource, role and member. Inherited access is not included.
 
-Other GCP kinds stay on `searchAllResources` or their product APIs. This kind is separate so those mappings keep the same raw shape.
-
-`selector.assetTypes` is required. Policies are read once per accessible project, the same scope as other resource kinds. `selector.policyQuery` is optional and is sent only to `searchAllIamPolicies`. It is not the JQ `selector.query`, and it is not applied to any other Cloud Asset API. Example: `memberTypes:serviceAccount`. See the [IAM policy search syntax](https://cloud.google.com/asset-inventory/docs/searching-iam-policies).
-
-`searchAllIamPolicies` defaults to 400 requests per minute per consumer project. The integration rate-limits that quota separately from `searchAllResources` and uses a page size of 500.
-
-Real-time asset feeds stay on `--content-type=resource` and update resource kinds. They do not update `iam.googleapis.com/Policy`; that kind is resync-only. Workload Identity (`iam.gke.io/gcp-service-account` on a Kubernetes service account) is not an IAM allow policy.
+- `selector.policyQuery` is an optional server-side filter, e.g. `memberTypes:serviceAccount`. See the [IAM policy search syntax](https://cloud.google.com/asset-inventory/docs/searching-iam-policies).
+- Organization and folder policies are searched per accessible organization; every other kind is searched per accessible project, and its items include `__project`.
+- These blocks are resync-only: asset feeds carry resources, not IAM policies.
 
 ```yaml
-- kind: iam.googleapis.com/Policy
+- kind: cloudresourcemanager.googleapis.com/Project
   selector:
     query: 'true'
-    assetTypes:
-      - cloudresourcemanager.googleapis.com/Project
-      - iam.googleapis.com/ServiceAccount
+    api: searchAllIamPolicies
     policyQuery: memberTypes:serviceAccount
   port:
     entity:
       mappings:
-        identifier: .resource + "|" + .role + "|" + .member + "|" + (.condition.expression // "")
-        title: .member
+        identifier: .resource + "/" + .role + "/" + .member
+        title: .member + " " + .role
         blueprint: '"gcpIamPolicyBinding"'
         properties:
           role: .role
@@ -63,8 +57,6 @@ Real-time asset feeds stay on `--content-type=resource` and update resource kind
           project: .__project.name
 ```
 
-`assetTypes` selects the resource the allow policy is attached to. `policyQuery: memberTypes:serviceAccount` keeps Google service account principals. A project asset type plus that query is which service accounts have which role on which project. Include the condition expression in the identifier when the same member and role can appear twice on one resource. Project-scoped results include `__project`.
-
 ### Real time requirements
 
 1. Create a pubsub topic in a **project**
@@ -73,16 +65,16 @@ Real-time asset feeds stay on `--content-type=resource` and update resource kind
         1. Insert the url to the ocean app on this format: `https://<your-url>/integration/events`
         2. You can use ngrok as a local ingress
 3. Create Assets feed pointing to this topic:
-    
+
     ```
-    gcloud asset feeds create <FEED_ID> 
-    	--pubsub-topic=<your_pubsub_topic> 
+    gcloud asset feeds create <FEED_ID>
+    	--pubsub-topic=<your_pubsub_topic>
     	--asset-types=<ASSET_TYPES>
     	--content-type=resource
-    	--condition-expression=<CONDITION_EXPRESSION> 
+    	--condition-expression=<CONDITION_EXPRESSION>
     	<--folder=FOLDER_ID | --organization=ORGANIZATION_ID | --project=PROJECT_ID>
     ```
-    
+
     - **ASSETS_FEED_TOPIC_NAME** - The name of the topic created for real-time events. The format is: `projects/<your-project-id>/topics/<your-topic-name>`
     - **ASSET_TYPES** - Comma separated list of the types you want to have real-time events for. The types can be found here: https://cloud.google.com/asset-inventory/docs/supported-asset-types . For example, if I want to fetch real-time events for buckets, VM instances and subscriptions, the ASSETS_FEED_ASSETS_TYPES should be:
         - `[storage.googleapis.com/Bucket,compute.googleapis.com/Instance,pubsub.googleapis.com/Subscription]`
@@ -93,13 +85,13 @@ Real-time asset feeds stay on `--content-type=resource` and update resource kind
 ### Starting up Ocean
 
 1. Use service account’s permissions
-    1. Create a key from the Service-account window (this will download a json file) 
+    1. Create a key from the Service-account window (this will download a json file)
     2. export the location of this file in an environment variable:
         1. `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service_account_file.json`
 2. Export Port’s credentials
     1. `export PORT_CLIENT_ID=<your_port_client_id>`
     2. `export PORT_CLIENT_SECRET=<your_port_client_secret>`
-3. Run Ocean! 
+3. Run Ocean!
     1. clone the Ocean repo https://github.com/port-labs/ocean
     2. `cd integrations/gcp`
     3. `ocean sail -l DEBUG`

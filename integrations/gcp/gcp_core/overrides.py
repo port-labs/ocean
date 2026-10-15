@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Literal
 
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic.v1 import Field, BaseModel, root_validator
+from pydantic.v1 import Field, BaseModel
 
 
 class GCPCloudResourceSelector(Selector):
@@ -40,6 +40,24 @@ class GCPResourceSelector(Selector):
             "When True: Preserves the specific API's original format (e.g., camelCase for PubSub). "
             "If not set, defaults to False to maintain existing behavior (snake_case for all APIs)."
             "Note that this setting does not affect resources fetched from the cloud asset API"
+        ),
+    )
+    api: Literal["searchAllResources", "searchAllIamPolicies"] = Field(
+        default="searchAllResources",
+        title="API",
+        description=(
+            "searchAllResources (default) syncs the resources of this kind, using the kind's usual API. "
+            "searchAllIamPolicies syncs the explicit IAM allow-policy bindings set on resources of this kind instead, "
+            "one item per resource, role and member. Inherited access is not included."
+        ),
+    )
+    policy_query: str | None = Field(
+        default=None,
+        alias="policyQuery",
+        title="IAM Policy Query",
+        description=(
+            "Only used with api: searchAllIamPolicies. Server-side filter on the bindings, e.g. memberTypes:serviceAccount. "
+            "See <a target='_blank' href='https://cloud.google.com/asset-inventory/docs/searching-iam-policies'>IAM policy search syntax</a>."
         ),
     )
 
@@ -133,21 +151,9 @@ class GCPCloudFunctionResourceConfig(ResourceConfig):
     )
 
 
-from gcp_core.search.cloud_asset_registry import (  # noqa: E402
-    load_cloud_asset_apis,
-    validate_registered_resources,
-)
-from gcp_core.search.iam_policies import IamPolicyResourceConfig  # noqa: E402
-
-load_cloud_asset_apis()
-
-
 class GCPPortAppConfig(PortAppConfig):
     allow_custom_kinds: ClassVar[bool] = True
 
-    # Registered Cloud Asset API configs stay ahead of GCPResourceConfig.
-    # Adding an API means a new config class here plus register(); resync
-    # dispatch stays in cloud_asset_registry.get_api.
     resources: list[
         GCPCloudResourceConfig
         | GCPTopicResourceConfig
@@ -156,20 +162,12 @@ class GCPPortAppConfig(PortAppConfig):
         | GCPOrganizationResourceConfig
         | GCPFolderResourceConfig
         | GCPCloudFunctionResourceConfig
-        | IamPolicyResourceConfig
         | GCPResourceConfig
     ] = Field(
         title="Resources",
         description="Configuration of resources to be synchronized by this app.",
         default_factory=list,
     )  # type: ignore[assignment]
-
-    @root_validator(pre=True)
-    def _validate_registered_cloud_asset_apis(
-        cls, values: dict[str, Any]
-    ) -> dict[str, Any]:
-        validate_registered_resources(values)
-        return values
 
 
 class ProtoConfig(BaseModel):

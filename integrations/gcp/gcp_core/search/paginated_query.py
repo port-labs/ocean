@@ -16,7 +16,6 @@ async def paginated_query(
     parse_fn: Callable[..., Any],
     rate_limiter: Optional[FixedWindowLimiter] = None,
     timeout: float = DEFAULT_REQUEST_TIMEOUT,
-    page_size: int = PAGE_SIZE,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     General function to handle paginated requests with rate limiting.
@@ -27,13 +26,12 @@ async def paginated_query(
     :param parse_fn: The function to parse the response. This must be a nullary function - apply arguments with `functools.partial` if needed.
     :param rate_limiter: The rate limiter to use for the request. Optional, defaults to None.
     :param timeout: The timeout for the request. Defaults to 120 seconds.
-    :param page_size: Page size sent to the API. Defaults to 100.
     :return: An async generator that yields the parsed items.
     """
     page = 0
     page_token = None
 
-    request["page_size"] = page_size
+    request["page_size"] = PAGE_SIZE
 
     if rate_limiter:
         logger.info(

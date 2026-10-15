@@ -6,8 +6,6 @@
   "organization": "organizations/222",
   "role": "roles/container.developer",
   "member": "serviceAccount:app@my-project.iam.gserviceaccount.com",
-  "member_type": "serviceAccount",
-  "member_id": "app@my-project.iam.gserviceaccount.com",
   "condition": null,
   "__project": {
     "name": "projects/my-project",

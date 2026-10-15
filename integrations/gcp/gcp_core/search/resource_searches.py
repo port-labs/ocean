@@ -115,6 +115,61 @@ async def search_all_resources_in_project(
             )
 
 
+async def search_all_iam_policies(
+    scope: dict[str, Any],
+    asset_type: str,
+    semaphore: BoundedSemaphore = DEFAULT_SEMAPHORE,
+    rate_limiter: FixedWindowLimiter | None = None,
+    policy_query: str | None = None,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Explicit IAM allow-policy bindings set on resources of `asset_type` under `scope` (a project or organization),
+    one item per resource, role and member. Inherited access isn't included.
+    """
+    scope_name = scope["name"]
+    request: dict[str, Any] = {"scope": scope_name, "asset_types": [asset_type]}
+    if policy_query:
+        request["query"] = policy_query
+    project = {EXTRA_PROJECT_FIELD: scope} if scope_name.startswith("projects/") else {}
+
+    def parse_policy_response(response: Any) -> list[dict[str, Any]]:
+        bindings = []
+        for result in parse_protobuf_messages(response.results):
+            policy = result.pop("policy", {})
+            for binding in policy.get("bindings", []):
+                for member in binding.get("members", []):
+                    bindings.append(
+                        {
+                            **result,
+                            "role": binding["role"],
+                            "member": member,
+                            "condition": binding.get("condition"),
+                            **project,
+                        }
+                    )
+        return bindings
+
+    async with semaphore:
+        logger.info(f"Searching IAM policies of {asset_type}'s in {scope_name}")
+        try:
+            async for bindings in paginated_query(
+                get_asset_client(),
+                "search_all_iam_policies",
+                request,
+                parse_policy_response,
+                rate_limiter,
+            ):
+                yield bindings
+        except PermissionDenied as e:
+            logger.error(
+                f"Service account doesn't have permissions to search IAM policies within {scope_name} for kind {asset_type}. Error: {str(e.message)}"
+            )
+        except NotFound as e:
+            logger.info(
+                f"Couldn't perform search_all_iam_policies on {scope_name} since it's deleted. Error: {str(e)}"
+            )
+
+
 async def list_all_topics_per_project(
     project: dict[str, Any], **kwargs: Any
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:

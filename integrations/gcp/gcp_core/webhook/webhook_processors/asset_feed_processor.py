@@ -9,7 +9,7 @@ from gcp_core.errors import (
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
 from gcp_core.overrides import GCPPortAppConfig, ProtoConfig
 from gcp_core.search.resource_searches import feed_event_to_resource
-from gcp_core.utils import resolve_request_controllers
+from gcp_core.utils import resolve_request_controllers, uses_search_all_iam_policies
 from port_ocean.context.event import event as port_event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -72,7 +72,8 @@ class AssetFeedProcessor(BaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         asset_data = await self._get_parsed_event(payload)
-        if not asset_data:
+        # Feeds carry resources, never IAM policies, so IAM policy blocks are resync-only.
+        if not asset_data or uses_search_all_iam_policies(resource_config):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )

@@ -419,3 +419,63 @@ async def test_search_all_resources_in_project_reraises_unexpected_error(
             project, "bigquery.googleapis.com/Table", semaphore
         ):
             pass
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scope, has_project",
+    [({"name": "projects/p"}, True), ({"name": "organizations/1"}, False)],
+)
+async def test_search_all_iam_policies_one_item_per_binding_member(
+    monkeypatch: pytest.MonkeyPatch, scope: dict[str, Any], has_project: bool
+) -> None:
+    from gcp_core.search import resource_searches
+
+    monkeypatch.setattr(
+        resource_searches, "parse_protobuf_messages", lambda results: results
+    )
+    requests: list[dict[str, Any]] = []
+
+    async def fake_paginated_query(
+        client: Any, method: str, request: dict[str, Any], parse_fn: Any, *args: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        requests.append(request)
+        response = MagicMock()
+        response.results = [
+            {
+                "resource": "//iam.googleapis.com/projects/p/serviceAccounts/sa",
+                "asset_type": "iam.googleapis.com/ServiceAccount",
+                "policy": {
+                    "bindings": [
+                        {"role": "roles/owner", "members": ["user:a", "user:b"]},
+                        {"role": "roles/viewer", "members": ["group:c"]},
+                    ]
+                },
+            }
+        ]
+        yield parse_fn(response)
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    results: list[Any] = []
+    async for batch in resource_searches.search_all_iam_policies(
+        scope,
+        "iam.googleapis.com/ServiceAccount",
+        policy_query="memberTypes:user",
+    ):
+        results.extend(batch)
+
+    assert requests == [
+        {
+            "scope": scope["name"],
+            "asset_types": ["iam.googleapis.com/ServiceAccount"],
+            "query": "memberTypes:user",
+        }
+    ]
+    assert [(r["role"], r["member"]) for r in results] == [
+        ("roles/owner", "user:a"),
+        ("roles/owner", "user:b"),
+        ("roles/viewer", "group:c"),
+    ]
+    assert all("policy" not in r for r in results)
+    assert all(("__project" in r) == has_project for r in results)

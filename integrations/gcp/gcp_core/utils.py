@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 from gcp_core.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
+    SearchAllIamPoliciesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
     ProjectGetRequestsPerMinutePerProject,
 )
@@ -28,6 +29,7 @@ from port_ocean.utils.async_http import http_async_client
 from httpx import HTTPError
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
+search_all_iam_policies_qpm_per_project = SearchAllIamPoliciesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 project_get_requests_per_minute_per_project = ProjectGetRequestsPerMinutePerProject()
 
@@ -144,6 +146,10 @@ def get_current_resource_config() -> (
     )
 
 
+def uses_search_all_iam_policies(resource_config: ResourceConfig) -> bool:
+    return getattr(resource_config.selector, "api", None) == "searchAllIamPolicies"
+
+
 def get_credentials_json() -> str:
     credentials_json = ""
     if ocean.integration_config.get("encoded_adc_configuration"):
@@ -224,6 +230,11 @@ async def get_quotas_for_project(
                     )
                 )
                 return (topic_rate_limiter, topic_semaphore)
+            case "searchAllIamPolicies":
+                return (
+                    await search_all_iam_policies_qpm_per_project.limiter(project_id),
+                    await search_all_iam_policies_qpm_per_project.semaphore(project_id),
+                )
             case _:
                 asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
                     project_id
