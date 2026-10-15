@@ -269,6 +269,13 @@ class ListFileSearchOptions(SingleOrganizationOptions):
     files: Required[List[FileSearchOptions]]
 
 
+class ListSkillSearchOptions(TypedDict):
+    """File search options for SKILL.md files and how to build each skill."""
+
+    repositories: Required[List[ListFileSearchOptions]]
+    include_skill_folder: Required[bool]
+
+
 class PluginRepositoryOptions(SingleOrganizationOptions):
     """Options for detecting an agent plugin in a single repository."""
 
