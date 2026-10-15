@@ -40,10 +40,10 @@ class FakeGitLabClient:
         self.tree_calls.append((path, ref))
         yield [entry for entry in self.tree if entry["path"].startswith(f"{path}/")]
 
-    async def get_file_data(
+    async def get_file_content(
         self, project_id: str, file_path: str, ref: str
-    ) -> dict[str, Any]:
-        return {"content": self.folder_contents[file_path]}
+    ) -> Optional[str]:
+        return self.folder_contents[file_path]
 
     async def search_files(
         self,

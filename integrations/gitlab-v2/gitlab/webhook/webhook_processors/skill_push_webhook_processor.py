@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import PurePosixPath
 from typing import Any, cast
 
@@ -80,14 +79,11 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             skill_md_edits = {
                 p for p in modified_files if matches_skill_path(p, applicable_globs)
             }
-            matching_changed |= (
-                await self._skills_with_changed_folders(
-                    project,
-                    payload["after"],
-                    (changed_files | removed_files) - skill_md_edits,
-                    applicable_globs,
-                )
-                - matching_removed
+            matching_changed |= await self._skills_with_changed_folders(
+                project,
+                payload["after"],
+                (changed_files | removed_files) - skill_md_edits,
+                applicable_globs,
             )
         skill_md_paths = sorted(matching_changed)
 
@@ -125,16 +121,8 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 )
             ]
             if selector.include_skill_folder:
-                built = await asyncio.gather(
-                    *(
-                        attach_skill_folder_files(
-                            self._gitlab_webhook_client,
-                            skill_item,
-                            skill_md_content=content,
-                            ref=payload["after"],
-                        )
-                        for skill_item, content in skill_items
-                    )
+                built = await attach_skill_folder_files(
+                    self._gitlab_webhook_client, skill_items, ref=payload["after"]
                 )
                 # Over the size limit: removed, as a resync would drop it.
                 unbuildable_paths = [
@@ -184,13 +172,14 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         skill_roots = _minimize_tree_roots(
             {_literal_tree_prefix(pattern) for pattern in path_globs}
         )
-        root_prefixes = tuple(f"{root}/" if root else "" for root in skill_roots)
-        candidates = {path for path in changed_paths if path.startswith(root_prefixes)}
-        if not candidates:
-            return set()
+        changed_roots = [
+            root
+            for root in skill_roots
+            if any(not root or path.startswith(f"{root}/") for path in changed_paths)
+        ]
 
         skill_md_paths: set[str] = set()
-        for root in skill_roots:
+        for root in changed_roots:
             async for batch in self._gitlab_webhook_client.get_repository_tree(
                 project, root, commit_sha, recursive=True
             ):
@@ -202,7 +191,7 @@ class SkillPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 )
         skill_md_by_prefix = {skill_dir_prefix(path): path for path in skill_md_paths}
         owners: set[str] = set()
-        for path in candidates:
+        for path in changed_paths:
             for parent in map(str, PurePosixPath(path).parents):
                 owner = skill_md_by_prefix.get("" if parent == "." else f"{parent}/")
                 if owner is not None and owner != path:

@@ -1,15 +1,11 @@
-from __future__ import annotations
-
 import asyncio
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from loguru import logger
 
+from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME
-
-if TYPE_CHECKING:
-    from gitlab.clients.gitlab_client import GitLabClient
 
 TEXT_FILE_EXTENSIONS: frozenset[str] = frozenset(
     {
@@ -99,23 +95,30 @@ def select_skill_folder_files(
 
 async def attach_skill_folder_files(
     client: GitLabClient,
-    skill_item: dict[str, Any],
+    skills: list[tuple[dict[str, Any], str]],
     *,
-    skill_md_content: str,
-    ref: str,
-) -> dict[str, Any] | None:
-    """Set `skill.files` on a skill raw item, or None if the skill is too large."""
-    files = await fetch_skill_folder_files(
-        client,
-        project=skill_item["repo"],
-        ref=ref,
-        skill_md_path=skill_item["skill"]["skillMdPath"],
-        skill_md_size=len(skill_md_content.encode("utf-8")),
-    )
-    if files is None:
-        return None
-    skill_item["skill"]["files"] = files
-    return skill_item
+    ref: str | None = None,
+) -> list[dict[str, Any] | None]:
+    """Set `skill.files` on each (skill raw item, SKILL.md content) pair.
+
+    Folder files are read at `ref`, or at each skill's branch. A skill over the
+    size limit comes back as None.
+    """
+
+    async def attach(skill_item: dict[str, Any], content: str) -> dict[str, Any] | None:
+        files = await fetch_skill_folder_files(
+            client,
+            project=skill_item["repo"],
+            ref=ref or skill_item["__branch"],
+            skill_md_path=skill_item["skill"]["skillMdPath"],
+            skill_md_size=len(content.encode("utf-8")),
+        )
+        if files is None:
+            return None
+        skill_item["skill"]["files"] = files
+        return skill_item
+
+    return await asyncio.gather(*(attach(item, content) for item, content in skills))
 
 
 async def fetch_skill_folder_files(
@@ -171,9 +174,7 @@ async def _fetch_text_file(
     client: GitLabClient, project_id: str, file_path: str, ref: str
 ) -> str | None:
     try:
-        file_data = await client.rest.get_file_data(project_id, file_path, ref)
+        return await client.rest.get_file_content(project_id, file_path, ref)
     except UnicodeDecodeError:
         logger.warning(f"Skipping non-UTF-8 skill folder file {file_path}")
         return None
-    content = (file_data or {}).get("content")
-    return content if isinstance(content, str) else None

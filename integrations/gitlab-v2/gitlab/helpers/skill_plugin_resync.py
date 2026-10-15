@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from collections import defaultdict
 from typing import Any, AsyncIterator
@@ -118,18 +117,8 @@ async def _build_skills(
     )
     if not include_skill_folder:
         return [skill_item for skill_item, _ in skills]
-    results = await asyncio.gather(
-        *(
-            attach_skill_folder_files(
-                client,
-                skill_item,
-                skill_md_content=content,
-                ref=skill_item["__branch"],
-            )
-            for skill_item, content in skills
-        )
-    )
-    return [skill_item for skill_item in results if skill_item is not None]
+    built = await attach_skill_folder_files(client, skills)
+    return [skill_item for skill_item in built if skill_item is not None]
 
 
 def _skills_from_files(

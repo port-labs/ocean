@@ -26,14 +26,14 @@ class FakeRest:
         self.contents = contents
         self.file_calls: list[tuple[str, str]] = []
 
-    async def get_file_data(
+    async def get_file_content(
         self, project_id: str, file_path: str, ref: str
-    ) -> dict[str, Any]:
+    ) -> Optional[str]:
         self.file_calls.append((file_path, ref))
         value = self.contents.get(file_path)
         if isinstance(value, BaseException):
             raise value
-        return {} if value is None else {"content": value}
+        return value
 
 
 class FakeFolderClient:

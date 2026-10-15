@@ -84,8 +84,8 @@ def make_folder_client(
         ]
 
     client.get_repository_tree = get_repository_tree
-    client.rest.get_file_data = AsyncMock(
-        side_effect=lambda project_id, path, ref: {"content": (contents or {})[path]}
+    client.rest.get_file_content = AsyncMock(
+        side_effect=lambda project_id, path, ref: (contents or {})[path]
     )
     return client
 
@@ -340,6 +340,24 @@ class TestSkillPushWebhookSkillFolder:
         assert file_batch == [
             {"project_id": "42", "path": "skills/hello/SKILL.md", "ref": "bbb222"}
         ]
+
+    async def test_folder_file_change_lists_only_its_skill_root(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/hello/references/api.md"]),
+            tree=["skills/hello/SKILL.md", "skills/hello/references/api.md"],
+            contents={"skills/hello/references/api.md": "# API"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(
+            payload, make_skill_resource_config(include_skill_folder=True)
+        )
+
+        assert len(result.updated_raw_results) == 1
+        assert client.tree_calls == [("skills", "bbb222"), ("skills/hello", "bbb222")]
 
     async def test_folder_file_change_ignored_when_flag_off(
         self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
