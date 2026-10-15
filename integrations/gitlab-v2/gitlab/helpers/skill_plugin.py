@@ -187,6 +187,7 @@ def build_skill_object(
         "path": skill_dir,
         "skillMdPath": skill_md_path,
         "root": infer_skill_root(skill_md_path, path_globs),
+        "files": None,
     }
 
 
@@ -205,6 +206,7 @@ def build_skill_delete_stub(
         "path": str(path_obj.parent).replace("\\", "/"),
         "skillMdPath": skill_md_path,
         "root": infer_skill_root(skill_md_path, path_globs),
+        "files": None,
     }
 
 

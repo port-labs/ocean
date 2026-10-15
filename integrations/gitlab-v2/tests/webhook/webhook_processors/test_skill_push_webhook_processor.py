@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,6 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 def make_skill_resource_config(
     paths: list[str] | None = None,
     repos: list[str] | None = None,
+    include_skill_folder: bool = False,
 ) -> MagicMock:
     config = MagicMock()
     path_entries = []
@@ -24,12 +25,15 @@ def make_skill_resource_config(
         entry.repos = repos or []
         path_entries.append(entry)
     config.selector.paths = path_entries
+    config.selector.include_skill_folder = include_skill_folder
     config.kind = "skill"
     return config
 
 
 def compare_diffs(
-    added: list[str] | None = None, deleted: list[str] | None = None
+    added: list[str] | None = None,
+    deleted: list[str] | None = None,
+    modified: list[str] | None = None,
 ) -> dict[str, Any]:
     diffs: list[dict[str, Any]] = [
         {"new_path": path, "old_path": path, "new_file": True, "deleted_file": False}
@@ -39,7 +43,51 @@ def compare_diffs(
         {"new_path": path, "old_path": path, "deleted_file": True}
         for path in deleted or []
     )
+    diffs.extend(
+        {"new_path": path, "old_path": path, "new_file": False, "deleted_file": False}
+        for path in modified or []
+    )
     return {"diffs": diffs}
+
+
+SKILL_MD = "---\nname: hello\ndescription: hi\n---\nbody"
+
+
+def make_folder_client(
+    project: dict[str, Any],
+    diffs: dict[str, Any],
+    tree: list[str],
+    contents: dict[str, str] | None = None,
+) -> MagicMock:
+    """Webhook client whose repository holds `tree` at every ref."""
+    client = MagicMock()
+    client.compare_repository = AsyncMock(return_value=diffs)
+    client._process_file_batch = AsyncMock(
+        side_effect=lambda batch, context, skip_parsing: [
+            {**file, "content": SKILL_MD} for file in batch
+        ]
+    )
+    client._enrich_files_with_repos = AsyncMock(
+        side_effect=lambda files: [{"file": file, "repo": project} for file in files]
+    )
+    client.tree_calls = []
+
+    async def get_repository_tree(
+        _project: dict[str, Any], path: str, ref: str, *, recursive: bool
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        client.tree_calls.append((path, ref))
+        prefix = f"{path}/" if path else ""
+        yield [
+            {"type": "blob", "path": entry}
+            for entry in tree
+            if entry.startswith(prefix)
+        ]
+
+    client.get_repository_tree = get_repository_tree
+    client.rest.get_file_content = AsyncMock(
+        side_effect=lambda project_id, path, ref: (contents or {})[path]
+    )
+    return client
 
 
 @pytest.mark.asyncio
@@ -234,3 +282,227 @@ class TestSkillPushWebhookProcessor:
             result.updated_raw_results[0]["skill"]["skillMdPath"]
             == ".cursor/skills/hello/SKILL.md"
         )
+
+
+@pytest.mark.asyncio
+class TestSkillPushWebhookSkillFolder:
+    @pytest.fixture
+    def processor(self) -> SkillPushWebhookProcessor:
+        return SkillPushWebhookProcessor(
+            event=WebhookEvent(
+                trace_id="test-trace-id",
+                headers={"x-gitlab-event": "Push Hook"},
+                payload={},
+            )
+        )
+
+    @pytest.fixture
+    def payload(self) -> dict[str, Any]:
+        return {
+            "object_kind": "push",
+            "before": "aaa111",
+            "after": "bbb222",
+            "ref": "refs/heads/main",
+            "project": {
+                "id": 42,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "commits": [],
+        }
+
+    @staticmethod
+    def _config(include_skill_folder: bool = True) -> MagicMock:
+        return make_skill_resource_config(
+            paths=["skills/**/SKILL.md"], include_skill_folder=include_skill_folder
+        )
+
+    async def test_folder_file_change_rebuilds_skill_at_pushed_commit(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/hello/references/api.md"]),
+            tree=["skills/hello/SKILL.md", "skills/hello/references/api.md"],
+            contents={"skills/hello/references/api.md": "# API v2"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert len(result.updated_raw_results) == 1
+        skill = result.updated_raw_results[0]["skill"]
+        assert skill["skillMdPath"] == "skills/hello/SKILL.md"
+        assert skill["files"] == [{"path": "references/api.md", "content": "# API v2"}]
+        assert result.deleted_raw_results == []
+        assert client.tree_calls == [("skills", "bbb222"), ("skills/hello", "bbb222")]
+        file_batch = client._process_file_batch.call_args.args[0]
+        assert file_batch == [
+            {"project_id": "42", "path": "skills/hello/SKILL.md", "ref": "bbb222"}
+        ]
+
+    async def test_folder_file_change_lists_only_its_skill_root(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/hello/references/api.md"]),
+            tree=["skills/hello/SKILL.md", "skills/hello/references/api.md"],
+            contents={"skills/hello/references/api.md": "# API"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(
+            payload, make_skill_resource_config(include_skill_folder=True)
+        )
+
+        assert len(result.updated_raw_results) == 1
+        assert client.tree_calls == [("skills", "bbb222"), ("skills/hello", "bbb222")]
+
+    async def test_folder_file_change_ignored_when_flag_off(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/hello/references/api.md"]),
+            tree=["skills/hello/SKILL.md", "skills/hello/references/api.md"],
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(
+            payload, self._config(include_skill_folder=False)
+        )
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        assert client.tree_calls == []
+
+    async def test_deleted_skill_folder_is_only_deleted(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(
+                deleted=["skills/hello/SKILL.md", "skills/hello/references/api.md"]
+            ),
+            tree=[],
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert result.updated_raw_results == []
+        assert [
+            item["skill"]["skillMdPath"] for item in result.deleted_raw_results
+        ] == ["skills/hello/SKILL.md"]
+
+    async def test_nested_skill_md_added_rebuilds_parent(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(added=["skills/parent/child/SKILL.md"]),
+            tree=["skills/parent/SKILL.md", "skills/parent/child/SKILL.md"],
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert sorted(
+            item["skill"]["skillMdPath"] for item in result.updated_raw_results
+        ) == ["skills/parent/SKILL.md", "skills/parent/child/SKILL.md"]
+
+    async def test_nested_skill_md_removed_rebuilds_parent(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(deleted=["skills/parent/child/SKILL.md"]),
+            tree=["skills/parent/SKILL.md", "skills/parent/child/notes.md"],
+            contents={"skills/parent/child/notes.md": "notes"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert len(result.updated_raw_results) == 1
+        skill = result.updated_raw_results[0]["skill"]
+        assert skill["skillMdPath"] == "skills/parent/SKILL.md"
+        assert skill["files"] == [{"path": "child/notes.md", "content": "notes"}]
+        assert [
+            item["skill"]["skillMdPath"] for item in result.deleted_raw_results
+        ] == ["skills/parent/child/SKILL.md"]
+
+    async def test_nested_skill_file_change_skips_parent(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/parent/child/notes.md"]),
+            tree=[
+                "skills/parent/SKILL.md",
+                "skills/parent/child/SKILL.md",
+                "skills/parent/child/notes.md",
+            ],
+            contents={"skills/parent/child/notes.md": "notes v2"},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert [
+            item["skill"]["skillMdPath"] for item in result.updated_raw_results
+        ] == ["skills/parent/child/SKILL.md"]
+        assert client.tree_calls == [
+            ("skills", "bbb222"),
+            ("skills/parent/child", "bbb222"),
+        ]
+
+    async def test_skill_md_edit_skips_owner_detection(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/hello/SKILL.md"]),
+            tree=["skills/hello/SKILL.md"],
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert len(result.updated_raw_results) == 1
+        assert client.tree_calls == [("skills/hello", "bbb222")]
+
+    async def test_change_outside_skill_roots_lists_no_tree(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["README.md"]),
+            tree=["README.md", "skills/hello/SKILL.md"],
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        assert client.tree_calls == []
+
+    async def test_oversized_skill_is_deleted(
+        self, processor: SkillPushWebhookProcessor, payload: dict[str, Any]
+    ) -> None:
+        client = make_folder_client(
+            payload["project"],
+            compare_diffs(modified=["skills/hello/data.csv"]),
+            tree=["skills/hello/SKILL.md", "skills/hello/data.csv"],
+            contents={"skills/hello/data.csv": "x" * (1024 * 1024)},
+        )
+        processor._gitlab_webhook_client = client
+
+        result = await processor.handle_event(payload, self._config())
+
+        assert result.updated_raw_results == []
+        assert [
+            item["skill"]["skillMdPath"] for item in result.deleted_raw_results
+        ] == ["skills/hello/SKILL.md"]
