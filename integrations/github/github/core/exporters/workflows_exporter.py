@@ -36,11 +36,7 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: ListWorkflowOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get all workflows in repository with pagination.
-
-        Incremental sync is gated at the repository level via ``pushed_since``;
-        workflow ``updated_at`` is unreliable for YAML file edits.
-        """
+        """Get all workflows in repository with pagination."""
 
         organization = options["organization"]
         repo_name = options["repo_name"]
