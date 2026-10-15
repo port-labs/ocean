@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fix workflow incremental sync missing YAML edits by gating only on repository `pushed_since` and fetching all workflows for those repos. Workflow `updated_at` often does not change when `.github/workflows` files are committed, so filtering on it dropped real changes.
