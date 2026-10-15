@@ -8,7 +8,6 @@ from port_ocean.rate_limiting.coordinator import CentralizedRateLimiter
 from port_ocean.rate_limiting.redis_backend import RedisCentralizedRateLimiterBackend
 from port_ocean.rate_limiting.registry import register_centralized_rate_limiter
 
-_startup_warning_logged = False
 _redis_connection_helper = RedisConnectionHelper()
 
 
@@ -16,8 +15,6 @@ async def setup_centralized_rate_limiter(
     settings: CentralizedRateLimiterSettings,
 ) -> None:
     """Initialize the process-wide centralized rate limiter from Ocean config."""
-    global _startup_warning_logged
-
     if not settings.enabled:
         register_centralized_rate_limiter(
             CentralizedRateLimiter(NoOpCentralizedRateLimiterBackend())
@@ -39,12 +36,10 @@ async def setup_centralized_rate_limiter(
         logger.info("Centralized rate limiter enabled with Redis backend")
     except Exception as error:
         _redis_connection_helper.cleanup()
-        if not _startup_warning_logged:
-            logger.warning(
-                "Failed to connect to centralized rate limiter Redis; using no-op backend",
-                error=str(error),
-            )
-            _startup_warning_logged = True
+        logger.warning(
+            "Failed to connect to centralized rate limiter Redis; using no-op backend",
+            error=str(error),
+        )
         register_centralized_rate_limiter(
             CentralizedRateLimiter(NoOpCentralizedRateLimiterBackend())
         )
