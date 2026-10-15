@@ -45,6 +45,7 @@ from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+from port_ocean.rate_limiting.bootstrap import setup_centralized_rate_limiter
 
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
@@ -380,6 +381,9 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
+                await setup_centralized_rate_limiter(
+                    self.config.centralized_rate_limiter
+                )
                 await self.integration.start()
                 await self._register_addons()
                 await self._setup_status_heartbeat()

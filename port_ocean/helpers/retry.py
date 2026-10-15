@@ -21,7 +21,14 @@ from dateutil.parser import isoparse
 import logging
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.context.ocean import ocean
-from port_ocean.context.event import EventType
+from port_ocean.helpers.sync_tier import (
+    derive_sync_tier_multiplier as _derive_sync_tier_multiplier,
+    resolve_sync_tier_event_mode as _resolve_sync_tier_mode,
+)
+from port_ocean.rate_limiting.transport_hooks import (
+    await_centralized_rate_limit,
+    record_centralized_rate_limit_response,
+)
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
@@ -31,34 +38,6 @@ SKIP_RETRY_EXTENSION_KEY = "skip_retry"
 Request extension that overrides the retry decision for a single request.
 Set it to True to opt out of retries entirely.
 """
-
-# One pod runs one mode (a separate pod per incremental sync, full/partial resync,
-# actions, and live-events). Background sync backs off harder than user-facing work when
-# they share rate-limit pressure on the same token: full/partial resync waits most,
-# incremental sync second. Actions and live-events/webhooks get no extra wait (1.0).
-# Fixed -- not configurable per RetryConfig instance, since this isn't something that
-# varies by integration.
-DEFAULT_SYNC_TIER_MULTIPLIERS: dict[Optional[str], float] = {
-    EventType.RESYNC: 1.25,
-    EventType.INCREMENTAL_RESYNC: 1.10,
-    EventType.HTTP_REQUEST: 1.0,
-    EventType.ACTION_RUN: 1.0,
-}
-
-# A single shared max_backoff_wait (e.g. GitHub's 1800s, so background sync can wait out
-# an hourly rate-limit window) defeats the multiplier above once the header-driven wait
-# already exceeds it: every tier's scaled result clamps to the same ceiling, and the
-# multiplier's differentiation disappears exactly when the quota is most exhausted --
-# confirmed in a real multi-pod run, not just theoretically. HIGH-priority work (actions,
-# live-events) gets its own, much lower ceiling here so it fails fast instead of blocking
-# for the same half hour background sync is willing to wait. Tiers absent from this map
-# (RESYNC, INCREMENTAL_RESYNC) fall back to the integration's own max_backoff_wait,
-# unchanged. Fixed, like the multiplier map above -- not configurable per RetryConfig
-# instance.
-DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT: dict[Optional[str], float] = {
-    EventType.HTTP_REQUEST: 60.0,
-    EventType.ACTION_RUN: 60.0,
-}
 
 
 def register_on_retry_callback(
@@ -80,32 +59,6 @@ def register_retry_config_callback(
     """
     global _RETRY_CONFIG_CALLBACK
     _RETRY_CONFIG_CALLBACK = retry_config_callback
-
-
-def _derive_sync_tier(apply_sync_tier_jitter: bool) -> Optional[str]:
-    """This pod's sync tier (an EventType value), derived once from settings already
-    loaded by the time any client/RetryConfig is constructed -- the single resolution
-    shared by both DEFAULT_SYNC_TIER_MULTIPLIERS and DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT
-    lookups. One flag per mode, checked in order (incremental before plain resync, since
-    incremental_sync_enabled is the more specific condition). Returns None when tier
-    jitter is disabled, none of the modes match, or settings aren't available (e.g. some
-    test contexts) -- callers fall back to each map's own default for that case.
-    """
-    if not apply_sync_tier_jitter:
-        return None
-    try:
-        listener = ocean.config.event_listener
-        if ocean.config.integration.incremental_sync_enabled:
-            return EventType.INCREMENTAL_RESYNC
-        if listener.should_resync:
-            return EventType.RESYNC
-        if listener.should_process_webhooks:
-            return EventType.HTTP_REQUEST
-        if listener.should_run_actions:
-            return EventType.ACTION_RUN
-        return None
-    except Exception:
-        return None
 
 
 class RetryConfig:
@@ -130,10 +83,9 @@ class RetryConfig:
 
         Args:
             max_attempts: Maximum number of retry attempts
-            max_backoff_wait: Maximum backoff wait time in seconds. One ceiling for every
-                sync tier -- override per integration if needed (e.g. GitHub passes 1800s
-                so background sync can wait out its hourly rate-limit window), same as
-                before this feature existed.
+            max_backoff_wait: Maximum backoff wait time in seconds (one ceiling for all
+                sync tiers). Override per integration when honoring long vendor reset
+                windows (e.g. GitHub).
             base_delay: Base delay for exponential backoff
             jitter_ratio: Jitter ratio for backoff (0-0.5)
             respect_retry_after_header: Whether to respect Retry-After header
@@ -143,11 +95,10 @@ class RetryConfig:
             additional_retry_status_codes: Additional status codes to retry (extends system defaults)
             ignore_retry_after_status_codes: Status codes that should ignore Retry-After/rate-limit headers
                 and always fall back to exponential backoff.
-            apply_sync_tier_jitter: Whether to scale the computed sleep time (and lower
-                the backoff ceiling for HIGH-priority work) by this pod's sync tier,
-                auto-detected from settings (see `_derive_sync_tier`). Set to False to
-                opt out, e.g. when an integration already applies its own tier-aware
-                backoff.
+            apply_sync_tier_jitter: Whether to scale the computed sleep time by this pod's
+                sync tier, auto-detected from settings (see `_derive_sync_tier_multiplier`).
+                Set to False to opt out, e.g. when an integration already applies its own
+                tier-aware backoff.
         """
         self.max_attempts = max_attempts
         self.max_backoff_wait = max_backoff_wait
@@ -155,13 +106,7 @@ class RetryConfig:
         self.jitter_ratio = jitter_ratio
         self.respect_retry_after_header = respect_retry_after_header
         self.apply_sync_tier_jitter = apply_sync_tier_jitter
-        self.sync_tier = _derive_sync_tier(apply_sync_tier_jitter)
-        self.sync_tier_multiplier = DEFAULT_SYNC_TIER_MULTIPLIERS.get(
-            self.sync_tier, 1.0
-        )
-        self.sync_tier_max_backoff_wait = DEFAULT_SYNC_TIER_MAX_BACKOFF_WAIT.get(
-            self.sync_tier, max_backoff_wait
-        )
+        self.sync_tier_multiplier = _derive_sync_tier_multiplier(apply_sync_tier_jitter)
 
         # Default retryable methods - always include these unless explicitly overridden
         default_methods = frozenset(
@@ -520,17 +465,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             )
 
     def _sync_tier_log_suffix(self, sleep_time: float) -> str:
-        """Per-request visibility into the sync-tier jitter decision: which mode this
-        pod resolved to, the multiplier and ceiling that applied, and the final sleep
-        time -- so a tier not actually differentiating (e.g. clamped to the same
-        ceiling as every other tier) is visible from the logs alone, not just inferred.
-        """
-        config = self._retry_config
+        if not self._retry_config.apply_sync_tier_jitter:
+            return ""
+        mode = _resolve_sync_tier_mode(True)
+        multiplier = self._retry_config.sync_tier_multiplier
         return (
-            f" [sync_tier={config.sync_tier or 'none'}"
-            f" jitter={config.sync_tier_multiplier}x"
-            f" max_backoff_wait={config.sync_tier_max_backoff_wait}s"
-            f" wait={sleep_time}s]"
+            f" [sync_tier={mode or 'none'} jitter={multiplier}x "
+            f"max_backoff_wait={self._retry_config.max_backoff_wait}s wait={sleep_time}s]"
         )
 
     def _log_before_retry(
@@ -723,7 +664,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
     def _apply_sync_tier_jitter(self, sleep_time: float) -> float:
         scaled = sleep_time * self._retry_config.sync_tier_multiplier
-        return min(scaled, self._retry_config.sync_tier_max_backoff_wait)
+        return min(scaled, self._retry_config.max_backoff_wait)
 
     def _parse_retry_header(self, header_value: str) -> Optional[float]:
         """Parse retry header value and return sleep time in seconds.
@@ -790,8 +731,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             error = None
             response = None
             try:
+                await await_centralized_rate_limit(request)
                 response = await send_method(request)
                 response.request = request
+                await record_centralized_rate_limit_response(request, response)
                 await self.after_retry_async(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
