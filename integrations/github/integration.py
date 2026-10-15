@@ -707,6 +707,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
         default=False,
         description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
     )
+    include_group_mappings: bool = Field(
+        title="Include Team Sync Group Mappings",
+        default=False,
+        description="Include the IdP groups mapped to each team via GET /orgs/{org}/teams/{slug}/team-sync/group-mappings. Only available for organizations using GitHub Enterprise Cloud with team synchronization enabled.",
+    )
 
 
 class GithubTeamConfig(ResourceConfig):
