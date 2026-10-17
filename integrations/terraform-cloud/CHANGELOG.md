@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.135 (2026-10-15)
+
+
+### Bug Fixes
+
+- Added the missing `terraformCloudHealthAssessment` blueprint and mapping, state version and workspace relations, and corrected the `tags` and `outputData` property mappings
+
+
 ## 0.4.134 (2026-10-13)
 
 
