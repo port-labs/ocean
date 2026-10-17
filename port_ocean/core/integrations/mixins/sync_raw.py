@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from graphlib import CycleError
 import inspect
 import typing
+from dataclasses import dataclass
 from typing import AsyncGenerator, Callable, Awaitable, Any, cast
 import httpx
 import json
@@ -67,6 +68,62 @@ from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 10
+
+
+@dataclass(frozen=True)
+class FetchUnit:
+    """One fetch: the block at ``index`` and, when ``grouped``, every other block of
+    its resource. The fetch runs, and reports, under the slot ``{kind}-{index}``."""
+
+    index: int
+    resource: ResourceConfig
+    grouped: bool = False
+
+    @property
+    def kind_identifier(self) -> str:
+        return f"{self.resource.kind}-{self.index}"
+
+
+def _fetch_settings(resource: ResourceConfig) -> tuple[str | None, str | None, bool]:
+    # Integrations may read these while fetching (resource_context), so one fetch can
+    # only serve blocks that agree on them.
+    return (
+        resource.port.items_to_parse,
+        resource.port.items_to_parse_name,
+        resource.port.items_to_parse_top_level_transform,
+    )
+
+
+def group_resources_for_fetch(
+    resources: list[ResourceConfig], dsp_enabled: bool
+) -> list[FetchUnit]:
+    """The fetches of a resync, in block order.
+
+    In DSP mode, blocks sharing a ``resource_id`` are one resource: it is fetched once,
+    under its first (head) block, and the DSP maps the pages through every block of
+    the resource. A resource whose blocks disagree on ``itemsToParse*`` is not grouped:
+    each of its blocks is fetched on its own, as are blocks without an id. Outside DSP
+    mode every block is fetched on its own, as before.
+    """
+    if not dsp_enabled:
+        return [FetchUnit(index, block) for index, block in enumerate(resources)]
+
+    groups: dict[str, list[int]] = {}
+    for index, block in enumerate(resources):
+        if block.resource_id:
+            groups.setdefault(block.resource_id, []).append(index)
+
+    units: list[FetchUnit] = []
+    for index, block in enumerate(resources):
+        group = groups.get(block.resource_id or "", [index])
+        groupable = (
+            len(group) > 1 and len({_fetch_settings(resources[i]) for i in group}) == 1
+        )
+        if not groupable:
+            units.append(FetchUnit(index, block))
+        elif group[0] == index:
+            units.append(FetchUnit(index, block, grouped=True))
+    return units
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
@@ -431,7 +488,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         index: int,
         dsp_enabled: bool = False,
+        grouped: bool = False,
     ) -> tuple[list[Entity], list[Exception]]:
+        # The DSP maps an entry that carries a resource id through every block of that
+        # resource, so only a fetch made for the whole resource may carry it.
+        entry_resource_id = resource_config.resource_id if grouped else None
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
         )
@@ -484,6 +545,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     extraction_timestamp=int(datetime.now().timestamp() * 1000),
                     selector_hash=selector_hash_from_resource(resource_config),
                 )
+                if entry_resource_id:
+                    metadata["resource_id"] = entry_resource_id
                 lakehouse_data_entry = build_lakehouse_data_entry(
                     items=raw_results,
                     metadata=metadata,
@@ -520,6 +583,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             extraction_timestamp=int(datetime.now().timestamp() * 1000),
                             selector_hash=selector_hash_from_resource(resource_config),
                         )
+                        if entry_resource_id:
+                            metadata["resource_id"] = entry_resource_id
                         lakehouse_data_entry = build_lakehouse_data_entry(
                             items=items,
                             metadata=metadata,
@@ -835,6 +900,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         index: int,
         user_agent_type: UserAgentType,
+        grouped: bool = False,
     ) -> tuple[list[Entity], list[Exception]]:
         # create resource context per resource kind, so resync method could have access to the resource
         # config as we might have multiple resources in the same event
@@ -867,7 +933,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type, index, dsp_enabled)
+                self._register_in_batches(
+                    resource, user_agent_type, index, dsp_enabled, grouped
+                )
             )
             event.on_abort(lambda: task.cancel())
 
@@ -929,9 +997,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         index: int,
         user_agent_type: UserAgentType,
+        grouped: bool = False,
     ) -> tuple[list[Entity], list[Exception]]:
         with logger.contextualize(resource_kind=resource.kind, index=index):
-            return await self._process_resource(resource, index, user_agent_type)
+            return await self._process_resource(
+                resource, index, user_agent_type, grouped
+            )
+
+    async def _process_fetch_unit(
+        self, unit: FetchUnit, user_agent_type: UserAgentType
+    ) -> tuple[list[Entity], list[Exception]]:
+        # An ungrouped unit is a single block: call process_resource exactly as before,
+        # so overrides that don't take `grouped` keep working.
+        if unit.grouped:
+            return await self.process_resource(
+                unit.resource, unit.index, user_agent_type, grouped=True
+            )
+        return await self.process_resource(unit.resource, unit.index, user_agent_type)
 
     @TimeMetricWithResourceKind(MetricPhase.RESYNC)
     async def _resync_reconciliation(
@@ -1062,14 +1144,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _handle_resync_abortion(
         self,
         creation_results: list[tuple[list[Entity], list[Exception]]],
-        app_config: Any,
+        fetch_units: list[FetchUnit],
         dsp_enabled: bool = False,
     ) -> None:
         """Handle resync abortion by updating metrics for runtime, pending resources, and reconciliation.
 
         Args:
-            creation_results: Results from entity creation that have been processed so far
-            app_config: The application configuration containing resource definitions
+            creation_results: Results of the fetch units processed so far
+            fetch_units: The resync's fetch units, in processing order
         """
         async with metric_resource_context(MetricResourceKind.RUNTIME):
             ocean.metrics.sync_state = SyncState.ABORTED
@@ -1078,9 +1160,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kinds=[MetricResourceKind.RUNTIME], dsp_enabled=dsp_enabled
             )
 
-        for pending_index in range(len(creation_results), len(app_config.resources)):
-            pending_resource = app_config.resources[pending_index]
-            pending_kind_id = f"{pending_resource.kind}-{pending_index}"
+        for pending_unit in fetch_units[len(creation_results) :]:
+            pending_resource = pending_unit.resource
+            pending_kind_id = pending_unit.kind_identifier
             async with metric_resource_context(pending_kind_id):
                 ocean.metrics.sync_state = SyncState.ABORTED
                 await ocean.metrics.send_metrics_to_webhook(kind=pending_kind_id)
@@ -1128,13 +1210,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         integration_type: str,
         integration_id: str,
         kind_identifier: str,
+        grouped: bool = False,
     ) -> bool:
         """Sync one kind incrementally. Returns True when the cursor was advanced."""
         kind_started_at = time.monotonic()
         try:
             with with_active_incremental_cursor(cursor):
-                entities, errors = await self.process_resource(
-                    resource, index, user_agent_type
+                entities, errors = await self._process_fetch_unit(
+                    FetchUnit(index, resource, grouped), user_agent_type
                 )
 
             if errors:
@@ -1239,13 +1322,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     use_cache=False
                 )
 
-                incremental_resources = [
-                    (index, resource_cfg)
-                    for index, resource_cfg in enumerate(app_config.resources)
-                    if self.event_strategy.incremental.get(resource_cfg.kind)
+                # A grouped resource syncs under its head block, with the head's cursor.
+                incremental_units = [
+                    unit
+                    for unit in group_resources_for_fetch(
+                        app_config.resources, dsp_enabled
+                    )
+                    if self.event_strategy.incremental.get(unit.resource.kind)
                 ]
 
-                if not incremental_resources:
+                if not incremental_units:
                     logger.info(
                         "No kinds registered for incremental sync, skipping",
                         integration_type=integration_type,
@@ -1259,12 +1345,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     integration_type=integration_type,
                     integration_id=integration_id,
                     event_id=event.id,
-                    kinds=[cfg.kind for _, cfg in incremental_resources],
+                    kinds=[unit.resource.kind for unit in incremental_units],
                 )
 
                 cursor_store = CursorStore(ocean.port_client)
                 run_started_at = datetime.now(timezone.utc)
-                kinds_total = len(incremental_resources)
+                kinds_total = len(incremental_units)
 
                 if dsp_enabled:
                     await ocean.app.lifecycle_client.notify_resync_started(
@@ -1275,12 +1361,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         mapping=app_config.to_dsp_lifecycle_mapping(),
                         sync_type=SyncType.INCREMENTAL_RESYNC.value,
                         kind_identifiers=[
-                            f"{resource_cfg.kind}-{index}"
-                            for index, resource_cfg in incremental_resources
+                            unit.kind_identifier for unit in incremental_units
                         ],
                     )
 
-                for index, resource_cfg in incremental_resources:
+                for unit in incremental_units:
+                    index, resource_cfg = unit.index, unit.resource
                     stored_cursor = await cursor_store.get(resource_cfg.kind, index)
                     effective_cursor = stored_cursor or (
                         run_started_at - timedelta(seconds=interval_seconds)
@@ -1288,7 +1374,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     cursor_age_seconds = (
                         run_started_at - effective_cursor
                     ).total_seconds()
-                    kind_identifier = f"{resource_cfg.kind}-{index}"
+                    kind_identifier = unit.kind_identifier
 
                     ocean.metrics.set_metric(
                         name=MetricType.INCREMENTAL_CURSOR_AGE_NAME,
@@ -1317,6 +1403,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         integration_type,
                         integration_id,
                         kind_identifier,
+                        unit.grouped,
                     ):
                         logger.error(
                             "Incremental sync run failed",
@@ -1484,13 +1571,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "DSP mode active: ocean-core will skip transform, load and reconciliation"
                 )
 
-            kinds = [
-                f"{resource.kind}-{index}"
-                for index, resource in enumerate(app_config.resources)
-            ]
+            # In DSP mode a grouped resource is fetched once, under its head block's slot.
+            fetch_units = group_resources_for_fetch(app_config.resources, dsp_enabled)
+            kinds = [unit.kind_identifier for unit in fetch_units]
             blueprints = [
-                resource.port.entity.mappings.blueprint
-                for resource in app_config.resources
+                unit.resource.port.entity.mappings.blueprint for unit in fetch_units
             ]
             ocean.metrics.initialize_metrics(kinds)
             await ocean.metrics.report_sync_metrics(
@@ -1548,12 +1633,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
             try:
-                for index, resource in enumerate(app_config.resources):
-                    logger.bind(resource_kind=resource.kind).info(
-                        f"Starting processing resource {resource.kind} with index {index}"
+                for unit in fetch_units:
+                    logger.bind(resource_kind=unit.resource.kind).info(
+                        f"Starting processing resource {unit.resource.kind} with index {unit.index}"
                     )
                     creation_results.append(
-                        await self.process_resource(resource, index, user_agent_type)
+                        await self._process_fetch_unit(unit, user_agent_type)
                     )
 
             except asyncio.CancelledError as e:
@@ -1564,7 +1649,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
                 await self._handle_resync_abortion(
-                    creation_results, app_config, dsp_enabled=dsp_enabled
+                    creation_results, fetch_units, dsp_enabled=dsp_enabled
                 )
                 if dsp_enabled:
                     await ocean.app.lifecycle_client.notify_resync_aborted(
@@ -1576,7 +1661,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except Exception as e:
                 logger.error(f"Error in resync: {e}")
                 await self._handle_resync_abortion(
-                    creation_results, app_config, dsp_enabled=dsp_enabled
+                    creation_results, fetch_units, dsp_enabled=dsp_enabled
                 )
                 if dsp_enabled:
                     await ocean.app.lifecycle_client.notify_resync_failed(

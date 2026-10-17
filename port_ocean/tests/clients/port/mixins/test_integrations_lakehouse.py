@@ -775,3 +775,36 @@ async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
         await port_client.post_integration_raw_data_batch("sync-1", event)
 
     assert mock_handle_async_request.await_count == 2
+
+
+async def test_post_integration_raw_data_batch_includes_resource_id_when_set(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    event = make_single_entry_lakehouse_batch(
+        [{"name": "repo-one"}], kind="repository", index=0
+    )
+    event["data"][0]["metadata"]["resource_id"] = "res_abc"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            "sync-resource-id", event
+        )
+
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    assert body["data"][0]["metadata"]["resourceId"] == "res_abc"
+
+
+async def test_post_integration_raw_data_batch_omits_resource_id_when_unset(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    event = make_single_entry_lakehouse_batch(
+        [{"name": "repo-one"}], kind="repository", index=0
+    )
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            "sync-no-resource-id", event
+        )
+
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    assert "resourceId" not in body["data"][0]["metadata"]
