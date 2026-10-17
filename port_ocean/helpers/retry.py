@@ -36,7 +36,7 @@ Set it to True to opt out of retries entirely.
 # actions, and live-events). Background sync backs off slightly harder than
 # user-facing work when they share rate-limit pressure on the same token.
 # Fixed -- not configurable per RetryConfig instance.
-DEFAULT_SYNC_TIER_MULTIPLIERS: dict[Optional[str], float] = {
+DEFAULT_SYNC_TIER_MULTIPLIERS: dict[str, float] = {
     EventType.RESYNC: 1.15,
     EventType.INCREMENTAL_RESYNC: 1.07,
     EventType.HTTP_REQUEST: 1.01,
@@ -65,28 +65,35 @@ def register_retry_config_callback(
     _RETRY_CONFIG_CALLBACK = retry_config_callback
 
 
-def _derive_sync_tier_multiplier(apply_sync_tier_jitter: bool) -> float:
-    """This pod's sync-tier backoff multiplier, derived once from settings already loaded
-    by the time any client/RetryConfig is constructed. One flag per mode, checked in order
-    (incremental before plain resync, since incremental_sync_enabled is the more specific
-    condition). Falls back to 1.0 when tier jitter is disabled, none of the modes match,
-    or settings aren't available (e.g. some test contexts).
+def _derive_sync_tier() -> Optional[str]:
+    """Sync tier for this pod, from event-listener settings loaded before RetryConfig
+    construction. One flag per mode, checked in order (incremental before plain resync,
+    since incremental_sync_enabled is the more specific condition). Returns None when no
+    mode matches or settings aren't available (e.g. some test contexts).
     """
-    if not apply_sync_tier_jitter:
-        return 1.0
     try:
         listener = ocean.config.event_listener
         if ocean.config.integration.incremental_sync_enabled:
-            return DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.INCREMENTAL_RESYNC]
+            return EventType.INCREMENTAL_RESYNC
         if listener.should_resync:
-            return DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.RESYNC]
+            return EventType.RESYNC
         if listener.should_process_webhooks:
-            return DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.HTTP_REQUEST]
+            return EventType.HTTP_REQUEST
         if listener.should_run_actions:
-            return DEFAULT_SYNC_TIER_MULTIPLIERS[EventType.ACTION_RUN]
-        return 1.0
+            return EventType.ACTION_RUN
+        return None
     except Exception:
+        return None
+
+
+def _derive_sync_tier_multiplier(apply_sync_tier_jitter: bool) -> float:
+    """Backoff multiplier for this pod's sync tier (see `_derive_sync_tier`)."""
+    if not apply_sync_tier_jitter:
         return 1.0
+    tier = _derive_sync_tier()
+    if tier is None:
+        return 1.0
+    return DEFAULT_SYNC_TIER_MULTIPLIERS[tier]
 
 
 class RetryConfig:
@@ -124,7 +131,7 @@ class RetryConfig:
             ignore_retry_after_status_codes: Status codes that should ignore Retry-After/rate-limit headers
                 and always fall back to exponential backoff.
             apply_sync_tier_jitter: Whether to scale the computed sleep time by this pod's
-                sync tier, auto-detected from settings (see `_derive_sync_tier_multiplier`).
+                sync tier, auto-detected from settings (see `_derive_sync_tier`).
                 Set to False to opt out, e.g. when an integration already applies its own
                 tier-aware backoff.
         """
