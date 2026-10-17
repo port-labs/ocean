@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.20.1 (2026-10-15)
+
+
+### Bug Fixes
+
+- Fix workflow incremental sync missing YAML edits by gating only on repository `pushed_since` and fetching all workflows for those repos. Workflow `updated_at` often does not change when `.github/workflows` files are committed, so filtering on it dropped real changes.
+
+
 ## 6.20.0 (2026-10-14)
 
 
