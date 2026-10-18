@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix folder live events so unset repo branch matches the default branch only
