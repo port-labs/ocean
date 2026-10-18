@@ -5,7 +5,7 @@ import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiting.utils import GitHubRateLimiterConfig
 
 
 # Create a concrete implementation of the abstract class for testing

@@ -8,7 +8,7 @@ from loguru import logger
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.graphql_page_reduction import reduce_graphql_page_size
-from github.clients.rate_limiter.utils import is_rest_rate_limit_response
+from github.clients.rate_limiting.utils import is_rest_rate_limit_response
 
 # Gateway errors that signal a query exceeded GitHub's GraphQL execution budget:
 # gateway timeouts (502/504) and the reverse proxy's client-closed 499. These

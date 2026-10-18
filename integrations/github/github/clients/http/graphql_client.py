@@ -25,7 +25,7 @@ from github.clients.graphql_page_reduction import (
     reduce_graphql_page_size,
 )
 from github.clients.http.base_client import AbstractGithubClient
-from github.clients.rate_limiter.utils import (
+from github.clients.rate_limiting.utils import (
     GitHubRateLimiterConfig,
     extract_graphql_rate_limit_info,
 )
@@ -93,6 +93,10 @@ class GithubGraphQLClient(AbstractGithubClient):
             api_type="graphql",
             max_concurrent=5,
         )
+
+    @property
+    def centralized_rate_limit_pool(self) -> str:
+        return "graphql"
 
     def _handle_graphql_errors(
         self,

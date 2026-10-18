@@ -1,4 +1,5 @@
 from typing import Optional
+from loguru import logger
 
 from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
@@ -19,7 +20,7 @@ def _derive_sync_tier() -> Optional[str]:
     """Sync tier for this pod, from event-listener settings loaded before RetryConfig
     construction. One flag per mode, checked in order (incremental before plain resync,
     since incremental_sync_enabled is the more specific condition). Returns None when no
-    mode matches or settings aren't available (e.g. some test contexts).
+    mode matches or settings aren't available (e.g. some test contexts or bugs).
     """
     try:
         listener = ocean.config.event_listener
@@ -32,7 +33,12 @@ def _derive_sync_tier() -> Optional[str]:
         if listener.should_run_actions:
             return EventType.ACTION_RUN
         return None
-    except Exception:
+    except Exception as error:
+        logger.warning(
+            "Failed to derive sync tier from event listener settings; "
+            "Centralized Rate Limiter will use defaults",
+            error=str(error),
+        )
         return None
 
 

@@ -76,6 +76,18 @@ def active_centralized_rate_limiter():
     return ocean.centralized_rate_limiter
 
 
+def use_centralized_rate_limiting() -> bool:
+    """Redis vendor admission/publish when enabled and limiter is active.
+
+    False when disabled or Redis is unavailable (fail-open). Integrations use local
+    limiter hooks on the wrapper instead.
+    """
+    return (
+        is_centralized_rate_limiter_enabled()
+        and active_centralized_rate_limiter() is not None
+    )
+
+
 async def record_centralized_rate_limit(
     pool: str,
     state: CentralizedRateLimitState,

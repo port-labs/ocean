@@ -42,7 +42,26 @@ class TestRetryConfig:
         )
         assert config.retry_after_headers == ["Retry-After", "x-ratelimit-reset"]
         assert config.ignore_retry_after_status_codes == frozenset()
-        assert config.apply_centralized_rate_limit is False
+        assert config.rate_limiter is None
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_on_send_attempt(self) -> None:
+        limiter = AsyncMock()
+        limiter.acquire = AsyncMock(return_value=True)
+        limiter.record_rate_limit_response = AsyncMock()
+        config = RetryConfig(rate_limiter=limiter)
+        transport = RetryTransport(wrapped_transport=Mock())
+        transport._retry_config = config
+        request = httpx.Request("GET", "https://example.com")
+        response = httpx.Response(200, request=request)
+
+        async def send(_request: httpx.Request) -> httpx.Response:
+            return response
+
+        result = await transport._retry_operation_async(request, send)
+        assert result is response
+        limiter.acquire.assert_awaited_once()
+        limiter.record_rate_limit_response.assert_awaited_once_with(response)
 
     def test_custom_configuration(self) -> None:
         """Test RetryConfig with custom parameters."""

@@ -7,10 +7,9 @@ from httpx import Response
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiter.limiter import GitHubRateLimiter
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
-from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
-
+from github.clients.rate_limiting.utils import GitHubRateLimiterConfig, RateLimitInfo
+from github.clients.rate_limiting.registry import GitHubRateLimiterRegistry
+from github.clients.rate_limiting.rate_limit_wrapper import GitHubRateLimitWrapper
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
         AbstractGitHubAuthenticator,
@@ -27,14 +26,21 @@ class AbstractGithubClient(ABC):
         self.github_host = github_host
         self.authenticator = authenticator
         self.kwargs = kwargs
-        self.rate_limiter: GitHubRateLimiter = GitHubRateLimiterRegistry.get_limiter(
+        raw_limiter = GitHubRateLimiterRegistry.get_limiter(
             host=github_host,
             config=self.rate_limiter_config,
             scope=authenticator.rate_limit_scope,
         )
-        self.authenticator.set_rate_limit_notifier(
-            self.rate_limiter.notify_rate_limited
+        self.rate_limiter: GitHubRateLimitWrapper = GitHubRateLimitWrapper(
+            raw_limiter,
+            pool=self.centralized_rate_limit_pool,
+            api_type=self.rate_limiter_config.api_type,
         )
+        self.authenticator.configure_rate_limiting(rate_limiter=self.rate_limiter)
+
+    @property
+    def centralized_rate_limit_pool(self) -> str:
+        return "rest"
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
@@ -124,13 +130,16 @@ class AbstractGithubClient(ABC):
                 logger.bind(http_request=1).info("GitHub API request")
 
                 logger.debug(f"Successfully fetched {method} {resource}")
-                await self.rate_limiter.on_response(response, resource)
+                await self.rate_limiter.record_rate_limit_response(
+                    response, context=resource
+                )
                 return response
 
             except httpx.HTTPStatusError as e:
                 response = e.response
-                await self.rate_limiter.on_response(response, resource)
-
+                await self.rate_limiter.record_rate_limit_response(
+                    response, context=resource
+                )
                 is_rate_limit = self.rate_limiter.is_rate_limit_response(response)
                 if not is_rate_limit:
                     if self._should_ignore_error(

@@ -353,8 +353,8 @@ class CentralizedRateLimiterSettings(BaseOceanModel):
     enabled: bool = Field(
         default=False,
         description=(
-            "When true, integrations that set RetryConfig.apply_centralized_rate_limit "
-            "consult Redis before outbound third-party calls. "
+            "When true, vendor rate-limit wrappers consult Redis before outbound "
+            "third-party calls (via RetryTransport hooks). "
             "Configure redis connection via nested redis settings "
             "(OCEAN__CENTRALIZED_RATE_LIMITER__REDIS__*)."
         ),

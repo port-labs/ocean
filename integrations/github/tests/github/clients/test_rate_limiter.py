@@ -11,12 +11,12 @@ import httpx
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
-from github.clients.rate_limiter.utils import (
+from github.clients.rate_limiting.utils import (
     GitHubRateLimiterConfig,
     RateLimitInfo,
     extract_graphql_rate_limit_info,
 )
-from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+from github.clients.rate_limiting.registry import GitHubRateLimiterRegistry
 
 
 @pytest.fixture(params=[("rest", 5), ("graphql", 5), ("search", 5)])
@@ -56,6 +56,9 @@ class _DummyAuthenticator:
         self.client = self
 
     def set_rate_limit_notifier(self, notifier: Any) -> None:
+        pass
+
+    def configure_rate_limiting(self, **kwargs: Any) -> None:
         pass
 
     async def get_headers(self) -> _DummyHeaders:
@@ -498,7 +501,7 @@ class TestRateLimiterLogging:
         )
         client.rate_limiter._initialized = True
 
-        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+        with patch("github.clients.rate_limiting.limiter.logger") as mock_logger:
             mock_bound = Mock()
             mock_logger.bind.return_value = mock_bound
 
@@ -527,7 +530,7 @@ class TestRateLimiterLogging:
             "x-ratelimit-reset": str(int(time.time()) + reset_in),
         }
 
-        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+        with patch("github.clients.rate_limiting.limiter.logger") as mock_logger:
             mock_bound = Mock()
             mock_logger.bind.return_value = mock_bound
 
@@ -547,7 +550,7 @@ class TestRateLimiterLogging:
         client = MockGitHubClient(github_host, client_config)
         info = RateLimitInfo(limit=1000, remaining=0, reset_time=int(time.time()) + 60)
 
-        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+        with patch("github.clients.rate_limiting.limiter.logger") as mock_logger:
             mock_bound = Mock()
             mock_logger.bind.return_value = mock_bound
 
@@ -563,7 +566,7 @@ class TestRateLimiterLogging:
         client = MockGitHubClient(github_host, client_config)
         info = RateLimitInfo(limit=1000, remaining=50, reset_time=int(time.time()) + 60)
 
-        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+        with patch("github.clients.rate_limiting.limiter.logger") as mock_logger:
             mock_bound = Mock()
             mock_logger.bind.return_value = mock_bound
 
@@ -581,7 +584,7 @@ class TestRateLimiterLogging:
             limit=1000, remaining=500, reset_time=int(time.time()) + 60
         )
 
-        with patch("github.clients.rate_limiter.limiter.logger") as mock_logger:
+        with patch("github.clients.rate_limiting.limiter.logger") as mock_logger:
             mock_bound = Mock()
             mock_logger.bind.return_value = mock_bound
 
@@ -600,7 +603,7 @@ class TestRateLimiterLogging:
         )
         client.rate_limiter._initialized = True
 
-        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+        with patch("github.clients.rate_limiting.limiter.ocean") as mock_ocean:
             mock_ocean.integration_config = {
                 "resync_ratelimit_reservation_threshold": 50
             }
@@ -624,7 +627,7 @@ class TestRateLimiterLogging:
         )
         client.rate_limiter._initialized = True
 
-        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+        with patch("github.clients.rate_limiting.limiter.ocean") as mock_ocean:
             mock_ocean.integration_config = {
                 "resync_ratelimit_reservation_threshold": 95
             }
@@ -646,7 +649,7 @@ class TestRateLimiterLogging:
         )
         client.rate_limiter._initialized = True
 
-        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+        with patch("github.clients.rate_limiting.limiter.ocean") as mock_ocean:
             mock_ocean.integration_config = {
                 "resync_ratelimit_reservation_threshold": 50
             }
@@ -673,7 +676,7 @@ class TestRateLimiterLogging:
         )
         client.rate_limiter._initialized = True
 
-        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+        with patch("github.clients.rate_limiting.limiter.ocean") as mock_ocean:
             mock_ocean.integration_config = {
                 "resync_ratelimit_reservation_threshold": "not-a-number"
             }
@@ -694,7 +697,7 @@ class TestRateLimiterLogging:
         )
         client.rate_limiter._initialized = True
 
-        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+        with patch("github.clients.rate_limiting.limiter.ocean") as mock_ocean:
             mock_ocean.integration_config = {
                 "resync_ratelimit_reservation_threshold": -10
             }
