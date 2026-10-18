@@ -2,6 +2,12 @@ from typing import Any, Optional
 
 import pytest
 
+from github.core.exporters.skill_exporter.skill_folder import (
+    MAX_SKILL_FOLDER_DEPTH,
+    glob_base_dir,
+    select_skill_folder_files,
+    skill_dir_prefix,
+)
 from github.core.exporters.skill_exporter.utils import (
     _build_skill,
     _infer_skill_root,
@@ -139,6 +145,77 @@ description: A minimal example
         assert (
             upserted["skill"]["blob_sha"] == "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
         )
+
+
+def _blob(path: str, size: int = 10, mode: str = "100644") -> dict[str, Any]:
+    return {"type": "blob", "path": path, "size": size, "mode": mode}
+
+
+def _selected_paths(tree: list[dict[str, Any]], skill_md_path: str) -> list[str]:
+    return [entry["path"] for entry in select_skill_folder_files(tree, skill_md_path)]
+
+
+class TestSelectSkillFolderFiles:
+    def test_skill_dir_prefix(self) -> None:
+        assert skill_dir_prefix("skills/hello/SKILL.md") == "skills/hello/"
+        assert skill_dir_prefix("SKILL.md") == ""
+
+    def test_glob_base_dir(self) -> None:
+        assert glob_base_dir("skills/**/SKILL.md") == "skills/"
+        assert glob_base_dir(".claude/skills/*/SKILL.md") == ".claude/skills/"
+        assert glob_base_dir("skills/hello/SKILL.md") == "skills/hello/"
+        assert glob_base_dir("**/SKILL.md") == ""
+        assert glob_base_dir("SKILL.md") == ""
+
+    def test_selects_nested_text_files(self) -> None:
+        tree = [
+            _blob("skills/hello/SKILL.md"),
+            _blob("skills/hello/references/api.md"),
+            _blob("skills/hello/scripts/run.py"),
+            _blob("skills/hello/notes.TXT"),
+            {"type": "tree", "path": "skills/hello/references"},
+        ]
+        assert _selected_paths(tree, "skills/hello/SKILL.md") == [
+            "skills/hello/references/api.md",
+            "skills/hello/scripts/run.py",
+            "skills/hello/notes.TXT",
+        ]
+
+    def test_excludes_non_text_symlinks_and_outside_files(self) -> None:
+        tree = [
+            _blob("skills/hello/SKILL.md"),
+            _blob("skills/hello/assets/logo.png"),
+            _blob("skills/hello/Makefile"),
+            _blob("skills/hello/link.md", mode="120000"),
+            _blob("skills/hello-world/references/api.md"),
+            _blob("skills/other/references/api.md"),
+            _blob("README.md"),
+        ]
+        assert _selected_paths(tree, "skills/hello/SKILL.md") == []
+
+    def test_excludes_files_of_nested_skills(self) -> None:
+        tree = [
+            _blob("skills/parent/SKILL.md"),
+            _blob("skills/parent/references/api.md"),
+            _blob("skills/parent/child/SKILL.md"),
+            _blob("skills/parent/child/references/child.md"),
+        ]
+        assert _selected_paths(tree, "skills/parent/SKILL.md") == [
+            "skills/parent/references/api.md"
+        ]
+        assert _selected_paths(tree, "skills/parent/child/SKILL.md") == [
+            "skills/parent/child/references/child.md"
+        ]
+
+    def test_respects_depth_limit(self) -> None:
+        allowed = "skills/hello/" + "d/" * MAX_SKILL_FOLDER_DEPTH + "ok.md"
+        too_deep = "skills/hello/" + "d/" * (MAX_SKILL_FOLDER_DEPTH + 1) + "deep.md"
+        tree = [_blob("skills/hello/SKILL.md"), _blob(allowed), _blob(too_deep)]
+        assert _selected_paths(tree, "skills/hello/SKILL.md") == [allowed]
+
+    def test_root_level_skill_uses_whole_repository(self) -> None:
+        tree = [_blob("SKILL.md"), _blob("references/api.md")]
+        assert _selected_paths(tree, "SKILL.md") == ["references/api.md"]
 
 
 class TestPluginUtils:
