@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: doc
+changelog: Update README and package metadata to reflect Port's AI software factory positioning

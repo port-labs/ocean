@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "port-ocean"
 version = "0.54.0"
-description = "Port Ocean is a CLI tool for managing your Port projects."
+description = "Port Ocean is a Python framework for building integrations that ingest data into Port, the platform for building your AI software factory."
 readme = "README.md"
-homepage = "https://app.getport.io"
-repository = "https://github.com/port-labs/Port-Ocean"
+homepage = "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/ocean-framework/overview/"
+documentation = "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/ocean-framework/overview/"
+repository = "https://github.com/port-labs/ocean"
 
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>", "Tom Tankilevitch <tom@getport.io>"]
 packages = [
