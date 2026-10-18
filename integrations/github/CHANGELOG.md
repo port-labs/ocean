@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.20.2 (2026-10-18)
+
+
+### Bug Fixes
+
+- Fix folder live events so unset repo branch matches the default branch only
+
+
 ## 6.20.1 (2026-10-15)
 
 
