@@ -16,7 +16,10 @@ PluginProvider = Literal[
     "antigravity",
 ]
 
-# Exact JSON (or marketplace) files to fetch and parse.
+# Vendored copies of a plugin are not authored plugins.
+IGNORED_PATH_SEGMENTS = frozenset({"node_modules", "vendor", ".git", "dist"})
+
+# JSON (or marketplace) files that mark a plugin root, matched as path suffixes.
 PLUGIN_MANIFEST_PATHS: dict[PluginProvider, list[str]] = {
     "claude": [
         ".claude-plugin/plugin.json",
@@ -26,16 +29,19 @@ PLUGIN_MANIFEST_PATHS: dict[PluginProvider, list[str]] = {
     "codex": [".codex-plugin/plugin.json"],
     "agents": [".agents/plugins/marketplace.json"],
     "kimi": [".kimi-plugin/plugin.json"],
+    # Bare filename: matches `gemini-extension.json` at any depth (blobs only).
     "antigravity": ["gemini-extension.json"],
 }
 
 # Manifests that list sibling plugins instead of describing a single plugin.
+# They only add metadata to a plugin root that has the provider's primary manifest.
 PLUGIN_MARKETPLACE_PATHS: dict[PluginProvider, str] = {
     "claude": ".claude-plugin/marketplace.json",
     "agents": ".agents/plugins/marketplace.json",
 }
 
-# Directory markers (non-JSON plugin packaging, e.g. superpowers).
+# Directory markers (non-JSON plugin packaging, e.g. superpowers). The plugin
+# root is the parent of the marker directory.
 PLUGIN_DIRECTORY_PREFIXES: dict[PluginProvider, str] = {
     "opencode": ".opencode/plugins/",
     "pi": ".pi/extensions/",
@@ -71,6 +77,7 @@ class Plugin(BaseModel):
 
     Each detected provider is exposed as an extra top-level key holding its own
     manifest document, so adding a provider does not change this model.
+    `path` is the plugin root: empty for the repository root.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -79,6 +86,7 @@ class Plugin(BaseModel):
     display_name: str = Field(serialization_alias="displayName")
     description: str = ""
     version: Optional[str] = None
+    path: str = ""
     supports: dict[str, bool]
 
 
@@ -92,7 +100,7 @@ class PluginRawItem(BaseModel):
 
 
 class _ResolvedProvider(NamedTuple):
-    """Manifests found for a single provider in one repository."""
+    """Manifests found for a single provider in one plugin root."""
 
     primary: dict[str, Any]
     marketplace: dict[str, Any]
@@ -100,54 +108,44 @@ class _ResolvedProvider(NamedTuple):
     is_directory_only: bool
 
 
-def all_manifest_paths(providers: list[PluginProvider]) -> list[str]:
-    paths: list[str] = []
+def match_marker(
+    path: str, providers: list[PluginProvider]
+) -> Optional[tuple[PluginProvider, str]]:
+    """Provider and plugin root for a blob path that is a plugin marker, else None."""
+    if not IGNORED_PATH_SEGMENTS.isdisjoint(path.split("/")):
+        return None
+    padded = "/" + path  # lets a root-level marker match like a nested one
     for provider in providers:
-        paths.extend(PLUGIN_MANIFEST_PATHS.get(provider, []))
-    return paths
-
-
-def provider_for_manifest_path(path: str) -> Optional[PluginProvider]:
-    normalized = path.strip("/")
-    for provider, manifests in PLUGIN_MANIFEST_PATHS.items():
-        if normalized in manifests:
-            return provider
-    for provider, prefix in PLUGIN_DIRECTORY_PREFIXES.items():
-        if normalized == prefix.rstrip("/") or normalized.startswith(prefix):
-            return provider
+        for marker in PLUGIN_MANIFEST_PATHS.get(provider, []):
+            if padded.endswith("/" + marker):
+                return provider, padded[1 : -len(marker) - 1]
+        prefix = PLUGIN_DIRECTORY_PREFIXES.get(provider)
+        index = padded.find("/" + prefix) if prefix else -1
+        # The marker directory itself does not count, only files inside it.
+        if prefix and index != -1 and len(padded) > index + 1 + len(prefix):
+            return provider, padded[1:index]
     return None
 
 
-def detect_directory_providers(
-    tree_paths: set[str], providers: list[PluginProvider]
-) -> set[PluginProvider]:
-    found: set[PluginProvider] = set()
-    for provider in providers:
-        prefix = PLUGIN_DIRECTORY_PREFIXES.get(provider)
-        if not prefix:
+def find_plugin_roots(
+    blob_paths: Iterable[str],
+    providers: list[PluginProvider],
+    max_depth: Optional[int] = None,
+) -> dict[str, dict[PluginProvider, set[str]]]:
+    """Group marker paths by plugin root, then provider.
+
+    Depth is the number of segments in the root (the repository root is 0).
+    """
+    roots: dict[str, dict[PluginProvider, set[str]]] = {}
+    for path in blob_paths:
+        match = match_marker(path, providers)
+        if not match:
             continue
-        bare = prefix.rstrip("/")
-        if any(path == bare or path.startswith(prefix) for path in tree_paths):
-            found.add(provider)
-    return found
-
-
-def path_touches_plugin(path: str, providers: list[PluginProvider]) -> bool:
-    """True if a changed path is a known plugin manifest or under a plugin dir."""
-    provider = provider_for_manifest_path(path)
-    return provider is not None and provider in providers
-
-
-def empty_plugin(*, name: str, display_name: Optional[str] = None) -> Plugin:
-    """Shape of a plugin with no manifests left, used for webhook-driven deletes."""
-    return Plugin.model_validate(
-        {
-            "name": name,
-            "display_name": display_name or name,
-            "supports": {provider: False for provider in DEFAULT_PLUGIN_PROVIDERS},
-            **{provider: {} for provider in DEFAULT_PLUGIN_PROVIDERS},
-        }
-    )
+        provider, root = match
+        if max_depth is not None and root and root.count("/") + 1 > max_depth:
+            continue
+        roots.setdefault(root, {}).setdefault(provider, set()).add(path)
+    return roots
 
 
 def build_plugin_raw_item(
@@ -171,12 +169,14 @@ def normalize_plugin(
     repository: dict[str, Any],
     manifests: dict[str, Any],
     providers: list[PluginProvider],
+    path: str = "",
     directory_supports: Optional[set[PluginProvider]] = None,
 ) -> Optional[Plugin]:
     """
-    Merge provider manifests into a normalized plugin.
+    Merge the provider manifests of one plugin root into a normalized plugin.
 
-    `manifests` maps repo-relative path -> parsed JSON (dict).
+    `manifests` maps marker path relative to the root -> parsed JSON (dict).
+    `path` is the plugin root (empty for the repository root).
     `directory_supports` marks providers detected via directory markers only.
     """
     resolved = _resolve_providers(manifests, providers, directory_supports or set())
@@ -204,6 +204,7 @@ def normalize_plugin(
             "version": _first(
                 _str_field(r.primary, "version") for r in resolved.values()
             ),
+            "path": path,
             "supports": {
                 provider: provider in resolved for provider in DEFAULT_PLUGIN_PROVIDERS
             },
@@ -229,6 +230,11 @@ def _resolve_providers(
         )
         if provider_manifests:
             resolved[provider] = provider_manifests
+
+    # A marketplace file never creates a plugin on its own: marketplace-only
+    # providers (agents) only annotate a root that another provider makes a plugin.
+    if not any(r.primary or r.is_directory_only for r in resolved.values()):
+        return {}
     return resolved
 
 
@@ -250,26 +256,23 @@ def _resolve_provider(
     primary = _as_dict(manifests.get(primary_path)) if primary_path else {}
     marketplace = _as_dict(manifests.get(marketplace_path)) if marketplace_path else {}
 
-    # A marketplace-only repo still describes a plugin through its first entry.
-    if not primary and marketplace:
-        entries = [
-            entry
-            for entry in marketplace.get("plugins") or []
-            if isinstance(entry, dict)
-        ]
-        primary = entries[0] if entries else {}
-
-    if primary or marketplace:
+    if primary:
         return _ResolvedProvider(
             primary=primary,
             marketplace=marketplace,
-            document=primary if primary_path else marketplace,
+            document=primary,
             is_directory_only=False,
         )
 
     if has_directory_marker:
         return _ResolvedProvider(
             primary={}, marketplace={}, document={}, is_directory_only=True
+        )
+
+    # A provider whose only manifest is a marketplace (agents) has no primary file.
+    if marketplace and primary_path is None:
+        return _ResolvedProvider(
+            primary={}, marketplace=marketplace, document={}, is_directory_only=False
         )
 
     return None
