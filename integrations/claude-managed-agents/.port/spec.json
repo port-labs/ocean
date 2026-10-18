@@ -4,6 +4,7 @@
   "icon": "Claude",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ai-agents/claude-managed-agents",
   "recommendedInstallationMethod": "Saas",
+  "defaultInstallationId": "claude-mngd-agnts",
   "formMappingEnabled": true,
   "features": [
     {
