@@ -1,6 +1,6 @@
 # HubSpot Integration for Port Ocean
 
-Integrate your HubSpot CRM with Port to track contacts, companies, deals, and feature requests directly in the platform for building your AI software factory.
+Integrate your HubSpot CRM with Port to track contacts, companies, deals, and feature requests directly in Port.
 
 ## Overview
 

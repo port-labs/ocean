@@ -1,6 +1,6 @@
 # Canny Integration for Port Ocean
 
-Integrate your Canny feedback board with Port to track feature requests, manage priorities, and understand customer feedback directly in the platform for building your AI software factory.
+Integrate your Canny feedback board with Port to track feature requests, manage priorities, and understand customer feedback directly in Port.
 
 ## Overview
 
