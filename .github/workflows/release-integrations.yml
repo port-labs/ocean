@@ -318,7 +318,6 @@ jobs:
           # Versioned specs for all versions including -dev.
           # Stable index entries are not overwritten by -dev (see regexp above).
           # integ-service filters -dev from the catalog UI listing.
-          index_dirty=false
           while IFS=$'\t' read -r type version staging_dir integration_dir has_schemas; do
               [[ -n "$type" ]] || continue
 
@@ -361,8 +360,8 @@ jobs:
               fi
 
               if [ "$should_release_latest_version" = true ]; then
-                index_dirty=true
-
+                # Upload latest objects, then index immediately so a mid-loop failure cannot
+                # leave newer latest pointers without a matching index entry.
                 aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_dest"
                 echo "Successfully uploaded $integration_latest_spec_dest to s3 bucket."
                 aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
@@ -379,15 +378,11 @@ jobs:
                     aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_latest_dest"
                     echo "Successfully uploaded $port_app_config_ui_schema_latest_dest to s3 bucket."
                 fi
+
+                aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+                echo "Successfully uploaded $index_file to s3 bucket."
               fi
           done <"$candidates_file"
-
-          if [ "$index_dirty" = true ]; then
-              aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
-              echo "Successfully uploaded $index_file to s3 bucket."
-          else
-              echo "No index.json updates for this release set; leaving remote index unchanged."
-          fi
 
   notify-on-failure:
     runs-on: ubuntu-latest
