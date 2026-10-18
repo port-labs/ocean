@@ -23,7 +23,5 @@ RUN apt-get update \
         libtool \
         curl \
         librdkafka-dev \
-        python3 \
-        python3-pip \
-        python3-poetry \
-    && apt-get clean
+    && apt-get clean \
+    && /usr/local/bin/python3.13 -m pip install --no-cache-dir 'poetry>=2.0.0,<3.0.0'
