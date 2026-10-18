@@ -324,13 +324,13 @@ jobs:
           done <file_list.txt
 
           # Phase 2: pull index.json late, patch only released types, upload latest + index once.
-          if aws s3 ls "s3://$aws_s3_bucket/$index_file" >/dev/null 2>&1; then
-              aws s3 cp "s3://$aws_s3_bucket/$index_file" "$index_file"
-              echo "Successfully fetched global index file from s3 bucket (late pull)."
-          else
-              echo "Index file does not exist in the S3 bucket, Creating new one..."
-              echo "[]" >"$index_file"
+          # Must successfully fetch the existing catalog index — never bootstrap from [] on a
+          # partial release, or a missing/failed fetch would publish a truncated index.
+          if ! aws s3 cp "s3://$aws_s3_bucket/$index_file" "$index_file"; then
+              echo "::error:: Failed to fetch s3://$aws_s3_bucket/$index_file. Aborting to avoid overwriting the catalog with a partial index."
+              exit 1
           fi
+          echo "Successfully fetched global index file from s3 bucket (late pull)."
 
           index_dirty=false
           while IFS=$'\t' read -r type version staging_dir integration_dir has_schemas; do
