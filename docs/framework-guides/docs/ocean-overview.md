@@ -42,7 +42,7 @@ This documentation is meant to describe two main use cases for the Ocean framewo
 
 ### Why Ocean?
 
-Port aims to be the hub for everything developers, platform, DevOps teams and other personas require in an organization, by providing an open developer portal. Because Port aims to be such a central element of an organization's R&D, it aims to truly be a virtual Port - providing a safe, organized and intuitive way to store data, enable visibility, provide self-service actions, and expose scorecards, initiatives and insights.
+Port aims to be the hub for everything developers, platform, DevOps teams and other personas require in an organization, as the platform for building your AI software factory. Because Port aims to be such a central element of an organization's R&D, it aims to truly be a virtual Port - providing a safe, organized and intuitive way to store data, enable visibility, provide self-service actions, and expose scorecards, initiatives and insights.
 
 To build on this goal, Port follows a theme of nautical elements, including in its name, design, names of internal services and teams in the R&D department.
 
