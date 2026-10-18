@@ -5,13 +5,11 @@ from typing import Literal, Optional
 
 import httpx
 
-from github.clients.rate_limiting.limiter import GitHubRateLimiter
-from github.clients.rate_limiting.utils import (
+from github.clients.rate_limiter.limiter import GitHubRateLimiter
+from github.clients.rate_limiter.utils import (
     RateLimitInfo,
     RateLimiterRequiredHeaders,
     extract_graphql_rate_limit_info,
-    is_graphql_rate_limit_response,
-    is_rest_rate_limit_response,
 )
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
@@ -57,44 +55,30 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
         await self._limiter.notify_rate_limited(response)
 
     @staticmethod
-    def _state_from_headers(
-        headers: RateLimiterRequiredHeaders,
-    ) -> Optional[CentralizedRateLimitState]:
-        if not (
-            headers.x_ratelimit_limit
-            and headers.x_ratelimit_remaining
-            and headers.x_ratelimit_reset
-        ):
-            return None
-        return CentralizedRateLimitState(
-            remaining=int(headers.x_ratelimit_remaining),
-            limit=int(headers.x_ratelimit_limit),
-            reset_at=float(headers.x_ratelimit_reset),
-        )
-
-    def _parse_centralized_state(
-        self, response: httpx.Response, context: str
-    ) -> Optional[CentralizedRateLimitState]:
-        if self._api_type == "rest":
-            return self._state_from_headers(
-                RateLimiterRequiredHeaders(**response.headers)
-            )
-        state = self._state_from_headers(RateLimiterRequiredHeaders(**response.headers))
-        if state is not None:
-            return state
-        info = extract_graphql_rate_limit_info(response)
-        if info is None:
-            return None
+    def _centralized_state_from_info(
+        info: RateLimitInfo,
+    ) -> CentralizedRateLimitState:
         return CentralizedRateLimitState(
             remaining=info.remaining,
             limit=info.limit,
             reset_at=float(info.reset_time),
         )
 
+    def _parse_centralized_state(
+        self, response: httpx.Response, context: str
+    ) -> Optional[CentralizedRateLimitState]:
+        headers = RateLimiterRequiredHeaders(**response.headers)
+        info = self._limiter._parse_rate_limit_headers(headers)
+        if info is not None:
+            return self._centralized_state_from_info(info)
+        if self._api_type == "graphql":
+            info = extract_graphql_rate_limit_info(response)
+            if info is not None:
+                return self._centralized_state_from_info(info)
+        return None
+
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
-        if self._api_type == "rest":
-            return is_rest_rate_limit_response(response)
-        return is_graphql_rate_limit_response(response)
+        return self._limiter.is_rate_limit_response(response)
 
     def _local_is_close_to_rate_limit(self) -> bool:
         info = self._limiter.rate_limit_info

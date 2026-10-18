@@ -3,7 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiting.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from loguru import logger
 
 PAGE_SIZE = 100

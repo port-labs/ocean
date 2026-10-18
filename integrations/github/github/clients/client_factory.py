@@ -10,7 +10,7 @@ from github.clients.auth.github_app.installation_registry import (
 from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.clients.http.rest_client import GithubRestClient
-from github.clients.rate_limiting.registry import GitHubRateLimiterRegistry
+from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 from github.clients.utils import integration_config
 from github.helpers.utils import GithubClientType
 

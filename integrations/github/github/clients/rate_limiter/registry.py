@@ -2,8 +2,8 @@ from typing import Dict
 from threading import Lock
 
 
-from github.clients.rate_limiting.limiter import GitHubRateLimiter
-from github.clients.rate_limiting.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiter.limiter import GitHubRateLimiter
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 
 
 class GitHubRateLimiterRegistry:

@@ -3,7 +3,7 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 if TYPE_CHECKING:
-    from github.clients.rate_limiting.utils import RateLimitInfo
+    from github.clients.rate_limiter.utils import RateLimitInfo
 
 
 class AuthenticationException(OceanAbortException):

@@ -7,7 +7,7 @@ from typing import Optional, Any, Type
 
 import httpx
 from loguru import logger
-from github.clients.rate_limiting.utils import (
+from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
     RateLimitInfo,
     RateLimiterRequiredHeaders,

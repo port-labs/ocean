@@ -10,7 +10,7 @@ from pydantic.v1 import BaseModel, Field, validator
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from github.clients.rate_limiting.utils import is_rest_rate_limit_response
+from github.clients.rate_limiter.utils import is_rest_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
 
 REPOSITORY_VALUES_BATCH_SIZE = 100

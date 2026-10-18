@@ -25,7 +25,7 @@ from github.clients.graphql_page_reduction import (
     reduce_graphql_page_size,
 )
 from github.clients.http.base_client import AbstractGithubClient
-from github.clients.rate_limiting.utils import (
+from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
     extract_graphql_rate_limit_info,
 )

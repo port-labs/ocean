@@ -16,7 +16,7 @@ def _reset_github_client_cache() -> Iterator[None]:
     from github.clients.auth.github_app.installation_registry import (
         reset_authenticators_by_org,
     )
-    from github.clients.rate_limiting.registry import GitHubRateLimiterRegistry
+    from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
     client_factory._clients.clear()
     reset_authenticators_by_org()

@@ -12,7 +12,7 @@ from github.actions.abstract_github_executor import (
 from github.actions.external_custom_properties.abstract_executor import (
     AbstractExternalCustomPropertiesExecutor,
 )
-from github.clients.rate_limiting.utils import RateLimitInfo
+from github.clients.rate_limiter.utils import RateLimitInfo
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.core.models import IntegrationRun
 

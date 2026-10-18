@@ -7,9 +7,9 @@ from httpx import Response
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
-from github.clients.rate_limiting.utils import GitHubRateLimiterConfig, RateLimitInfo
-from github.clients.rate_limiting.registry import GitHubRateLimiterRegistry
-from github.clients.rate_limiting.rate_limit_wrapper import GitHubRateLimitWrapper
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
+from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+from github.clients.rate_limiter.rate_limit_wrapper import GitHubRateLimitWrapper
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
         AbstractGitHubAuthenticator,
