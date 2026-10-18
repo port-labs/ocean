@@ -61,7 +61,7 @@ Port's Ocean integrations allows you to ingest a variety of objects resources pr
 integration allows you to perform extract, transform, load (ETL) on data from the 3rd-party API responses into the desired software
 catalog entities and data model.
 
-The Ocean framework uses the resource mapping to describe the ETL process to load data into Port. The
+The Ocean framework uses the resource mapping to describe the ETL process to load data into the developer portal. The
 approach reflects a middle-ground between an overly opinionated 3rd-party application visualization that might not work
 for everyone and a too-broad approach that could introduce unneeded complexity or force developers to implement the additional mapping on their own.
 
