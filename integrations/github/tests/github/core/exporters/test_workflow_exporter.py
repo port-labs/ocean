@@ -89,3 +89,41 @@ async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
         mock_request.assert_called_once_with(
             f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows"
         )
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resources_returns_all_workflows_regardless_of_updated_at(
+    rest_client: GithubRestClient,
+) -> None:
+    """YAML edits often leave workflow updated_at stale; exporter must not filter on it."""
+    stale_workflows = {
+        "total_count": 2,
+        "workflows": [
+            {
+                **TEST_DATA["workflows"][0],
+                "updated_at": "2020-01-08T23:50:21.000-08:00",
+            },
+            {
+                **TEST_DATA["workflows"][1],
+                "updated_at": "2020-01-08T23:50:21.000-08:00",
+            },
+        ],
+    }
+    options: ListWorkflowOptions = {"organization": "test-org", "repo_name": "test"}
+    exporter = RestWorkflowExporter(rest_client)
+
+    async def mock_paginated_request(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        yield stale_workflows
+
+    with patch.object(
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+    ):
+        async with event_context("test_event"):
+            batches = [
+                batch async for batch in exporter.get_paginated_resources(options)
+            ]
+
+    assert len(batches) == 1
+    assert len(batches[0]) == 2
