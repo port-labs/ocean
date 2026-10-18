@@ -283,3 +283,65 @@ class TestFolderWebhookProcessor:
         )
         mock_extract_changed_files.assert_called_once_with([])
         mock_exporter_instance.get_paginated_resources.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "selector_branch,push_branch,default_branch,expected",
+        [
+            (None, "main", "main", True),
+            (None, "feature", "main", False),
+            ("main", "main", "main", True),
+            ("main", "feature", "main", False),
+            ("default", "main", "main", True),
+            ("default", "feature", "main", False),
+        ],
+    )
+    async def test_has_matched_repo_branch_semantics(
+        self,
+        folder_webhook_processor: FolderWebhookProcessor,
+        selector_branch: str | None,
+        push_branch: str,
+        default_branch: str,
+        expected: bool,
+    ) -> None:
+        pattern = FolderSelector(
+            organization="test-org",
+            path="docs/*",
+            repos=[
+                RepositoryBranchMapping(name="test-repo", branch=selector_branch),
+            ],
+        )
+        repository = {
+            "name": "test-repo",
+            "default_branch": default_branch,
+        }
+
+        assert (
+            folder_webhook_processor._has_matched_repo(
+                pattern, "test-org", repository, push_branch
+            )
+            is expected
+        )
+
+    async def test_has_matched_repo_empty_repos_means_default_branch_only(
+        self,
+        folder_webhook_processor: FolderWebhookProcessor,
+    ) -> None:
+        pattern = FolderSelector(
+            organization="test-org",
+            path="docs/*",
+            repos=None,
+        )
+        repository = {"name": "test-repo", "default_branch": "main"}
+
+        assert (
+            folder_webhook_processor._has_matched_repo(
+                pattern, "test-org", repository, "main"
+            )
+            is True
+        )
+        assert (
+            folder_webhook_processor._has_matched_repo(
+                pattern, "test-org", repository, "feature"
+            )
+            is False
+        )
