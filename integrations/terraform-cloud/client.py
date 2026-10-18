@@ -80,9 +80,7 @@ class TerraformClient:
 
         try:
             async with self.rate_limiter:
-                logger.debug(
-                    f"Requesting {method} {url} with params: {query_params} and body: {json_data}"
-                )
+                logger.debug(f"Requesting {method} {url} with params: {query_params}")
 
                 response = await self.client.request(
                     method=method,
@@ -98,12 +96,7 @@ class TerraformClient:
 
         except Exception as e:
             logger.error(
-                "Request failed",
-                error=str(e),
-                url=url,
-                method=method,
-                params=query_params,
-                body=json_data,
+                f"Request {method} {url} with params {query_params} failed: {e}"
             )
             raise
 
@@ -176,12 +169,14 @@ class TerraformClient:
         async for tags in self.get_paginated_resources(endpoint):
             yield tags
 
-    async def get_state_version_output(self, state_version_id: str) -> dict[str, Any]:
+    async def get_state_version_output(
+        self, state_version_id: str
+    ) -> list[dict[str, Any]]:
         logger.info(f"Fetching state version output for ID: {state_version_id}")
         outputs = await self.send_api_request(
             endpoint=f"state-versions/{state_version_id}/outputs"
         )
-        return outputs.get("data", {})
+        return outputs["data"]
 
     async def get_paginated_workspaces(
         self,
@@ -349,11 +344,17 @@ class TerraformClient:
     async def get_current_health_assessment_for_workspace(
         self,
         workspace_id: str,
-    ) -> dict[str, Any]:
-        assessment = await self.send_api_request(
-            f"workspaces/{workspace_id}/current-assessment-result"
-        )
-        return assessment.get("data", {})
+    ) -> dict[str, Any] | None:
+        try:
+            assessment = await self.send_api_request(
+                f"workspaces/{workspace_id}/current-assessment-result"
+            )
+            return assessment.get("data")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Workspace {workspace_id} has no assessment result yet")
+                return None
+            raise
 
     async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
         assessment = await self.send_api_request(f"assessment-results/{assessment_id}")
