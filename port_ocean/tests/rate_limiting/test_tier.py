@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from port_ocean.rate_limiting.models import SyncTier
-from port_ocean.rate_limiting.tier import derive_sync_tier
+from port_ocean.rate_limiting.utils import derive_sync_tier
 
 
 def test_derive_sync_tier_resync_is_low() -> None:

@@ -1,21 +1,11 @@
+from port_ocean.rate_limiting.constants import DEFAULT_RATE_LIMIT_POOL
 from port_ocean.rate_limiting.models import (
     AcquireResult,
     CentralizedRateLimitState,
     RateLimitAcquireDecision,
     SyncTier,
 )
-from port_ocean.rate_limiting.registry import (
-    clear_centralized_rate_limiter,
-    get_centralized_rate_limiter,
-    register_centralized_rate_limiter,
+from port_ocean.rate_limiting.utils import (
+    is_centralized_rate_limiter_enabled,
+    record_centralized_rate_limit,
 )
-
-__all__ = [
-    "AcquireResult",
-    "CentralizedRateLimitState",
-    "RateLimitAcquireDecision",
-    "SyncTier",
-    "clear_centralized_rate_limiter",
-    "get_centralized_rate_limiter",
-    "register_centralized_rate_limiter",
-]

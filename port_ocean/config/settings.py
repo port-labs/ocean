@@ -353,23 +353,13 @@ class CentralizedRateLimiterSettings(BaseOceanModel):
     enabled: bool = Field(
         default=False,
         description=(
-            "When true, RetryTransport consults Redis before outbound third-party calls. "
+            "When true, integrations that set RetryConfig.apply_centralized_rate_limit "
+            "consult Redis before outbound third-party calls. "
             "Configure redis connection via nested redis settings "
             "(OCEAN__CENTRALIZED_RATE_LIMITER__REDIS__*)."
         ),
     )
     redis: RedisConnectionSettings = Field(default_factory=RedisConnectionSettings)
-    org_scope: str | None = Field(
-        default=None,
-        description=(
-            "Optional org segment for Redis keys. Defaults to the Port client_id."
-        ),
-    )
-    max_acquire_wait_seconds: float = Field(
-        default=3600.0,
-        ge=0,
-        description="Maximum seconds to wait in centralized acquire before sending anyway.",
-    )
 
 
 class IntegrationConfiguration(BaseOceanSettings):

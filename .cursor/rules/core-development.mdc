@@ -32,6 +32,9 @@ Core Development Guidelines
    - Create new directories when needed
    - Maintain consistent naming conventions
    - Organize code logically
+   - When you add or delete files, `git add` (or `git add -u` for deletions) those
+     paths before finishing the task so new work is staged for the PR. Do not leave
+     new `port_ocean/` or test files untracked after creating them.
 
 3. Testing Requirements
    - Write unit tests for all changes
@@ -52,6 +55,10 @@ Core Development Guidelines
    - Follow PEP 8 guidelines
    - Keep functions focused and small
    - Minimize code duplication
+   - Avoid module-level mutable globals for runtime state; prefer passing
+     dependencies, storing state on `Ocean` / context objects, or constructor
+     injection. Use module globals only when they are the established pattern
+     (e.g. process-wide context proxies) and there is no clearer alternative.
 
 6. Python Features
    - Use async/await effectively

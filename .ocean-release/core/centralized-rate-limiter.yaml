@@ -4,5 +4,6 @@ changelog: >-
   Added optional Redis-backed centralized rate limiting in ocean-core. When enabled,
   RetryTransport coordinates cross-pod admission by sync tier (HIGH/MEDIUM/LOW) using
   OCEAN__CENTRALIZED_RATE_LIMITER__REDIS__* (same connection model as live-events Redis).
-  Integrations can set per-request pools
-  later via request extensions; local limiters and retry backoff remain as fallback.
+  Integrations publish parsed vendor rate-limit state via record_centralized_rate_limit
+  and configure RetryConfig.centralized_rate_limit_pool per HTTP client; local limiters
+  and retry backoff remain as fallback.

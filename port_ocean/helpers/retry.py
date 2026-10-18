@@ -23,12 +23,10 @@ from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.sync_tier import (
     derive_sync_tier_multiplier as _derive_sync_tier_multiplier,
-    resolve_sync_tier_event_mode as _resolve_sync_tier_mode,
 )
-from port_ocean.rate_limiting.transport_hooks import (
-    await_centralized_rate_limit,
-    record_centralized_rate_limit_response,
-)
+from port_ocean.rate_limiting.constants import DEFAULT_RATE_LIMIT_POOL
+from port_ocean.rate_limiting.utils import is_centralized_rate_limiter_enabled
+from port_ocean.rate_limiting.utils import await_centralized_rate_limit
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
@@ -77,6 +75,8 @@ class RetryConfig:
         additional_retry_status_codes: Optional[Iterable[int]] = None,
         ignore_retry_after_status_codes: Optional[Iterable[int]] = None,
         apply_sync_tier_jitter: bool = True,
+        centralized_rate_limit_pool: str = DEFAULT_RATE_LIMIT_POOL,
+        apply_centralized_rate_limit: bool = False,
     ):
         """
         Initialize retry configuration.
@@ -96,9 +96,15 @@ class RetryConfig:
             ignore_retry_after_status_codes: Status codes that should ignore Retry-After/rate-limit headers
                 and always fall back to exponential backoff.
             apply_sync_tier_jitter: Whether to scale the computed sleep time by this pod's
-                sync tier, auto-detected from settings (see `_derive_sync_tier_multiplier`).
+                sync tier, auto-detected from settings (see `port_ocean.helpers.sync_tier`).
                 Set to False to opt out, e.g. when an integration already applies its own
                 tier-aware backoff.
+            centralized_rate_limit_pool: Redis pool segment for cross-pod rate limiting
+                (set per HTTP client, e.g. REST vs GraphQL — same idea as integration
+                local limiter registry keys).
+            apply_centralized_rate_limit: When True, RetryTransport waits on centralized
+                acquire before each outbound attempt. Default False; opt in per vendor client.
+                Integrations may still call record_centralized_rate_limit when enabled.
         """
         self.max_attempts = max_attempts
         self.max_backoff_wait = max_backoff_wait
@@ -107,6 +113,8 @@ class RetryConfig:
         self.respect_retry_after_header = respect_retry_after_header
         self.apply_sync_tier_jitter = apply_sync_tier_jitter
         self.sync_tier_multiplier = _derive_sync_tier_multiplier(apply_sync_tier_jitter)
+        self.centralized_rate_limit_pool = centralized_rate_limit_pool
+        self.apply_centralized_rate_limit = apply_centralized_rate_limit
 
         # Default retryable methods - always include these unless explicitly overridden
         default_methods = frozenset(
@@ -464,16 +472,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 f"Request {request.method} {request.url} failed with an HTTP error: {str(error)}"
             )
 
-    def _sync_tier_log_suffix(self, sleep_time: float) -> str:
-        if not self._retry_config.apply_sync_tier_jitter:
-            return ""
-        mode = _resolve_sync_tier_mode(True)
-        multiplier = self._retry_config.sync_tier_multiplier
-        return (
-            f" [sync_tier={mode or 'none'} jitter={multiplier}x "
-            f"max_backoff_wait={self._retry_config.max_backoff_wait}s wait={sleep_time}s]"
-        )
-
     def _log_before_retry(
         self,
         request: httpx.Request,
@@ -485,13 +483,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with status code:"
                 f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
-                f"{self._sync_tier_log_suffix(sleep_time)}"
             )
         elif self._logger and error:
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with exception:"
                 f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
-                f"{self._sync_tier_log_suffix(sleep_time)}"
             )
 
     def _should_log_response_size(self, request: httpx.Request) -> bool:
@@ -731,10 +727,15 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             error = None
             response = None
             try:
-                await await_centralized_rate_limit(request)
+                if (
+                    self._retry_config.apply_centralized_rate_limit
+                    and is_centralized_rate_limiter_enabled()
+                ):
+                    await await_centralized_rate_limit(
+                        self._retry_config.centralized_rate_limit_pool,
+                    )
                 response = await send_method(request)
                 response.request = request
-                await record_centralized_rate_limit_response(request, response)
                 await self.after_retry_async(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
