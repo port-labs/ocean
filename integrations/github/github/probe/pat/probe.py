@@ -58,13 +58,15 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         if user_response is None:
             return
 
-        granted_scopes = self._parse_scopes(user_response)
-        organizations = await self._get_organizations(authenticator, user_response)
+        granted_scopes = expand_pat_scopes(self._parse_scopes(user_response))
+        organizations = await self._get_organizations(
+            authenticator, user_response, granted_scopes
+        )
         if organizations is None:
             return
 
         checks = await self.context.add_scopes(*org_scopes(organizations))  # type: ignore[arg-type]
-        permissions = {scope: "granted" for scope in expand_pat_scopes(granted_scopes)}
+        permissions = {scope: "granted" for scope in granted_scopes}
         await self._resolve_checks(checks, permissions)
 
     async def _fetch_user(
@@ -94,10 +96,18 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         self,
         authenticator: AbstractGitHubAuthenticator,
         user_response: Response,
+        granted_scopes: set[str],
     ) -> list[str] | None:
         if authenticator.organization:
-            return [authenticator.organization]
+            return await self._validate_configured_organization(
+                authenticator, user_response, authenticator.organization, granted_scopes
+            )
 
+        if "read:org" not in granted_scopes:
+            await self.context.fail(
+                "Token does not have the 'read:org' scope, unable to fetch accessible organizations"
+            )
+            return None
         headers = (await authenticator.get_headers()).as_dict()
         github_host = ocean.integration_config["github_host"].rstrip("/")
         organizations: list[str] = []
@@ -130,6 +140,56 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             url = next_link.get("url") if next_link else None
             params = None
         return organizations
+
+    async def _validate_configured_organization(
+        self,
+        authenticator: AbstractGitHubAuthenticator,
+        user_response: Response,
+        organization: str,
+        granted_scopes: set[str],
+    ) -> list[str] | None:
+        user = user_response.json()
+        if (
+            isinstance(user, dict)
+            and isinstance(login := user.get("login"), str)
+            and login.casefold() == organization.casefold()
+        ):
+            return [login]
+
+        if "read:org" not in granted_scopes:
+            await self.context.fail(
+                f"Token does not have the 'read:org' scope, unable to validate access to org {authenticator.organization}"
+            )
+            return None
+
+        github_host = ocean.integration_config["github_host"].rstrip("/")
+        response = await authenticator.client.get(
+            f"{github_host}/user/memberships/orgs/{organization}",
+            headers=(await authenticator.get_headers()).as_dict(),
+            extensions=NO_RETRY,
+        )
+        if response.status_code == 200:
+            membership = response.json()
+            if isinstance(membership, dict) and membership.get("state") == "active":
+                return [organization]
+            await self.context.fail(
+                f"Configured organization '{organization}' has a pending membership "
+                "that has not been accepted yet"
+            )
+            return None
+
+        if response.status_code in (403, 404):
+            await self.context.fail(
+                f"Configured organization '{organization}' was not found "
+                "or the token does not have access to it"
+            )
+            return None
+
+        await self.context.fail(
+            f"Failed to verify organization '{organization}': "
+            f"GitHub API returned {response.status_code}"
+        )
+        return None
 
 
 def expand_pat_scopes(scopes: set[str]) -> set[str]:
