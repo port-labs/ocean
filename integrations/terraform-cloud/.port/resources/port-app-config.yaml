@@ -43,7 +43,6 @@ resources:
           title: .attributes.name
           blueprint: '"terraformCloudWorkspace"'
           properties:
-            organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
             updatedAt: .attributes."updated-at"
             terraformVersion: .attributes."terraform-version"
@@ -51,8 +50,9 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
-            tags: .__tags
+            tags: .__tags | map(.attributes.name)
           relations:
+            organization: .relationships.organization.data.id
             currentStateVersion: .relationships."current-state-version".data.id
             project: .relationships.project.data.id
   - kind: state-version
@@ -73,7 +73,10 @@ resources:
             hostedStateDownloadUrl: .attributes."hosted-state-download-url"
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
             vcsCommitUrl: .attributes."vcs-commit-url"
-            outputData: .__output
+            outputData: .__output | map(.attributes.name)
+          relations:
+            workspace: .relationships.workspace.data.id
+            run: .relationships.run.data.id
   - kind: run
     selector:
       query: "true"
@@ -95,3 +98,26 @@ resources:
             source: .attributes.source
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
+  - kind: health-assessment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .type + "-" + .id
+          blueprint: '"terraformCloudHealthAssessment"'
+          properties:
+            createdAt: .attributes."created-at"
+            succeeded: .attributes.succeeded
+            allChecksSucceeded: .attributes."all-checks-succeeded"
+            drifted: .attributes.drifted
+            checksErrored: .attributes."checks-errored"
+            checksFailed: .attributes."checks-failed"
+            checksPassed: .attributes."checks-passed"
+            checksUnknown: .attributes."checks-unknown"
+            resourcesDrifted: .attributes."resources-drifted"
+            resourcesUndrifted: .attributes."resources-undrifted"
+            errorMessage: .attributes."error-message"
+          relations:
+            workspace: .relationships.workspace.data.id
