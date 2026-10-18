@@ -112,8 +112,6 @@ class ListTeamOptions(BaseUserOptions):
 class ListWorkflowOptions(RepositoryIdentifier):
     """Options for workflows"""
 
-    updated_since: NotRequired[Optional[datetime]]
-
 
 class SingleWorkflowOptions(ListWorkflowOptions):
     workflow_id: Required[str]
