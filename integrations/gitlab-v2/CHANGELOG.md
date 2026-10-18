@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.16.0 (2026-10-18)
+
+
+### Features
+
+- Added an opt-in `includeSkillFolder` selector to the `skill` kind that bundles every text file in the skill folder into `skill.files` as a list of `{path, content}`, on both resync and push webhooks. Skills whose SKILL.md and folder files exceed 1MB in total are skipped with a warning.
+
+
 ## 0.15.8 (2026-10-13)
 
 
