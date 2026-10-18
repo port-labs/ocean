@@ -1,6 +1,6 @@
 # HubSpot Integration for Port Ocean
 
-Integrate your HubSpot CRM with Port to track contacts, companies, deals, and feature requests directly in your internal developer portal.
+Integrate your HubSpot CRM with Port to track contacts, companies, deals, and feature requests directly in the platform for building your AI software factory.
 
 ## Overview
 
@@ -79,7 +79,7 @@ kubectl logs -l app.kubernetes.io/instance=port-ocean-hubspot --follow
 
 ## Use Cases
 
-- **Sales Pipeline Visibility**: Track deals and their stages in your developer portal
+- **Sales Pipeline Visibility**: Track deals and their stages in Port
 - **Customer Context**: See which contacts and companies are associated with features
 - **Product Roadmap**: Manage feature requests with voting and prioritization
 - **Stakeholder Updates**: Generate reports on pipeline health and feature progress
