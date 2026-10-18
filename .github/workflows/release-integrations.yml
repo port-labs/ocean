@@ -271,7 +271,9 @@ jobs:
           echo "Uploading specs for released integrations only:"
           cat file_list.txt
 
-          # Phase 1: upload versioned artifacts (no index.json yet — pull it late below).
+          # Phase 1: stage specs/schemas locally only (no S3 writes yet).
+          # Expensive docker work happens before the late index pull; uploads wait until
+          # index.json is successfully fetched so a failed pull cannot leave orphans.
           while IFS= read -r file; do
               [[ -n "$file" ]] || continue
 
@@ -279,27 +281,12 @@ jobs:
               type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
               version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              integration_folder="$type"
-              version_folder="$integration_folder/$version"
               staging_dir="$staging_root/$type/$version"
               mkdir -p "$staging_dir"
 
               integration_spec="$staging_dir/spec.json"
-              integration_spec_dest="$version_folder/spec.json"
-
-              port_app_config_schema="$staging_dir/port_app_config.json"
-              port_app_config_schema_dest="$version_folder/port_app_config.json"
-              port_app_config_ui_schema="$staging_dir/port_app_config.ui.json"
-              port_app_config_ui_schema_dest="$version_folder/port_app_config.ui.json"
-
               convert_spec_to_json "$file" "$temp_file"
               jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
-
-              # Versioned specs for all versions including -dev.
-              # Stable index entries are not overwritten by -dev (see phase 2 regexp).
-              # integ-service filters -dev from the catalog UI listing.
-              aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_dest"
-              echo "Successfully uploaded $integration_spec_dest to s3 bucket."
 
               has_schemas=false
               SCHEMA_CLI_COMMANDS=(
@@ -311,10 +298,6 @@ jobs:
                 )
 
               if "${SCHEMA_CLI_COMMANDS[@]}"; then
-                  aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
-                  echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
-                  aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_dest"
-                  echo "Successfully uploaded $port_app_config_ui_schema_dest to s3 bucket."
                   has_schemas=true
               else
                 echo "::warning:: Docker port-app-config schema command failed for $type:$version, skipping schema upload to s3."
@@ -323,8 +306,7 @@ jobs:
               printf '%s\t%s\t%s\t%s\t%s\n' "$type" "$version" "$staging_dir" "$integration_dir" "$has_schemas" >>"$candidates_file"
           done <file_list.txt
 
-          # Phase 2: pull index.json late, patch only released types, upload latest + index once.
-          # Must successfully fetch the existing catalog index — never bootstrap from [] on a
+          # Phase 2: pull index.json late. Must succeed — never bootstrap from [] on a
           # partial release, or a missing/failed fetch would publish a truncated index.
           if ! aws s3 cp "s3://$aws_s3_bucket/$index_file" "$index_file"; then
               echo "::error:: Failed to fetch s3://$aws_s3_bucket/$index_file. Aborting to avoid overwriting the catalog with a partial index."
@@ -332,19 +314,37 @@ jobs:
           fi
           echo "Successfully fetched global index file from s3 bucket (late pull)."
 
+          # Phase 3: upload versioned + latest artifacts and patch index for released types only.
+          # Versioned specs for all versions including -dev.
+          # Stable index entries are not overwritten by -dev (see regexp above).
+          # integ-service filters -dev from the catalog UI listing.
           index_dirty=false
           while IFS=$'\t' read -r type version staging_dir integration_dir has_schemas; do
               [[ -n "$type" ]] || continue
 
               integration_folder="$type"
+              version_folder="$integration_folder/$version"
               integration_spec="$staging_dir/spec.json"
+              integration_spec_dest="$version_folder/spec.json"
               integration_latest_spec_dest="$integration_folder/spec.json"
               integration_latest_spec_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
               port_app_config_schema="$staging_dir/port_app_config.json"
               port_app_config_ui_schema="$staging_dir/port_app_config.ui.json"
+              port_app_config_schema_dest="$version_folder/port_app_config.json"
+              port_app_config_ui_schema_dest="$version_folder/port_app_config.ui.json"
               port_app_config_schema_latest_dest="$integration_folder/port_app_config.json"
               port_app_config_ui_schema_latest_dest="$integration_folder/port_app_config.ui.json"
               static_examples_folder_dest="$integration_folder/examples/"
+
+              aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_dest"
+              echo "Successfully uploaded $integration_spec_dest to s3 bucket."
+
+              if [ "$has_schemas" = true ]; then
+                  aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
+                  echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
+                  aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_dest"
+                  echo "Successfully uploaded $port_app_config_ui_schema_dest to s3 bucket."
+              fi
 
               latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
 
