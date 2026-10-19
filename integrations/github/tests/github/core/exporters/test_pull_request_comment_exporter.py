@@ -103,7 +103,7 @@ class TestPullRequestCommentExporter:
         assert "__body" not in comment
         assert "__author" not in comment
         mock_request.assert_called_once_with(
-            f"{rest_client.base_url}/repos/test-org/repo1/issues/7/comments/11"
+            f"{rest_client.base_url}/repos/test-org/repo1/issues/comments/11"
         )
 
     async def test_get_resource_skips_empty_review_summary(
