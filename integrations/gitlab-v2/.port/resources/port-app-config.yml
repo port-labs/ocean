@@ -80,23 +80,3 @@ resources:
             reviewers: .reviewers | map(.name)
           relations:
             project: .references.full // "" | gsub("!.+"; "")
-  - kind: merge-request-comment
-    selector:
-      query: 'true'
-      states:
-        - opened
-    port:
-      entity:
-        mappings:
-          identifier: .__commentId
-          title: .__body // "" | .[0:120]
-          blueprint: '"gitlabMergeRequestComment"'
-          properties:
-            body: .__body
-            author: .__author
-            createdAt: .__createdAt
-            updatedAt: .__updatedAt
-            url: .__url
-            commentType: .__commentType
-          relations:
-            mergeRequest: .__mergeRequestId | tostring

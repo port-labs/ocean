@@ -208,58 +208,5 @@
         "many": false
       }
     }
-  },
-  {
-    "identifier": "gitlabMergeRequestComment",
-    "title": "Merge Request Comment",
-    "icon": "GitVersion",
-    "description": "A comment or diff note on a GitLab merge request",
-    "schema": {
-      "properties": {
-        "body": {
-          "title": "Body",
-          "type": "string",
-          "description": "Comment text"
-        },
-        "author": {
-          "title": "Author",
-          "type": "string",
-          "description": "GitLab username of the comment author"
-        },
-        "createdAt": {
-          "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "url": {
-          "title": "URL",
-          "type": "string",
-          "format": "url"
-        },
-        "commentType": {
-          "title": "Comment Type",
-          "type": "string",
-          "description": "comment for discussion notes, review for diff notes",
-          "enum": ["comment", "review"]
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "mergeRequest": {
-        "title": "Merge Request",
-        "target": "gitlabMergeRequest",
-        "required": false,
-        "many": false
-      }
-    }
   }
 ]

@@ -21,9 +21,6 @@
           "kind": "merge-request"
         },
         {
-          "kind": "merge-request-comment"
-        },
-        {
           "kind": "releases"
         },
         {

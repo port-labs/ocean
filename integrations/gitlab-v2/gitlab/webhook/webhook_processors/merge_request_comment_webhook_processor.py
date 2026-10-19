@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -8,15 +8,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from gitlab.helpers.merge_request_comments import (
-    is_human_merge_request_note,
-    normalize_merge_request_note,
-)
+from gitlab.helpers.merge_request_comments import merge_request_within_comments_age
 from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
-from integration import GitlabMergeRequestCommentResourceConfig
+from integration import GitlabMergeRequestResourceConfig
 
 
 class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -24,7 +21,7 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
     hooks = ["Note Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.MERGE_REQUEST_COMMENT]
+        return [ObjectKind.MERGE_REQUEST]
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not await super().should_process_event(event):
@@ -35,46 +32,84 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         attributes = payload.get("object_attributes")
         merge_request = payload.get("merge_request")
+        project = payload.get("project")
         return (
             isinstance(attributes, dict)
             and bool(attributes.get("id"))
             and isinstance(merge_request, dict)
             and merge_request.get("id") is not None
+            and merge_request.get("iid") is not None
+            and isinstance(project, dict)
+            and project.get("id") is not None
         )
-
-    def _note_from_payload(self, payload: EventPayload) -> dict[str, Any]:
-        attributes = payload["object_attributes"]
-        user_raw = payload.get("user")
-        user: dict[str, Any] = user_raw if isinstance(user_raw, dict) else {}
-        return {
-            **attributes,
-            "body": attributes.get("note") or attributes.get("body") or "",
-            "author": {"username": user.get("username") or user.get("name") or ""},
-            "url": attributes.get("url"),
-        }
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        config = cast(GitlabMergeRequestCommentResourceConfig, resource_config)
-        merge_request = payload["merge_request"]
-        note = self._note_from_payload(payload)
-        normalized = normalize_merge_request_note(note, merge_request)
-        state = merge_request.get("state")
-        logger.info(
-            f"Processing merge request note {normalized['__commentId']} in state {state}"
+        config = cast(GitlabMergeRequestResourceConfig, resource_config)
+        selector = config.selector
+        empty = WebhookEventRawResults(
+            updated_raw_results=[], deleted_raw_results=[]
         )
 
-        if state not in config.selector.states or not is_human_merge_request_note(
-            note, config.selector.include_system_notes
-        ):
-            if note.get("system") and not config.selector.include_system_notes:
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[normalized]
+        if not selector.include_comments:
+            logger.debug(
+                "Skipping merge request note event; includeComments is false"
             )
+            return empty
+
+        merge_request_payload = payload["merge_request"]
+        if not merge_request_within_comments_age(
+            merge_request_payload, selector.comments_max_age_days
+        ):
+            logger.info(
+                "Skipping merge request note event; merge request is outside "
+                f"commentsMaxAgeDays={selector.comments_max_age_days}"
+            )
+            return empty
+
+        project_id = payload["project"]["id"]
+        merge_request_iid = merge_request_payload["iid"]
+        state = merge_request_payload.get("state")
+        logger.info(
+            f"Handling merge request note webhook for project {project_id} "
+            f"merge request {merge_request_iid} (state={state})"
+        )
+
+        if state not in selector.states:
+            logger.info(
+                f"Skipping merge request {merge_request_iid}; state {state} is not "
+                f"in configured states {selector.states}"
+            )
+            return empty
+
+        merge_request = await self._gitlab_webhook_client.get_merge_request(
+            project_id, merge_request_iid
+        )
+        if not merge_request:
+            logger.warning(
+                f"Merge request {merge_request_iid} in project {project_id} "
+                "was not found, skipping upsert"
+            )
+            return empty
+
+        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
+            enriched = await self._gitlab_webhook_client.enrich_merge_requests(
+                [merge_request],
+                enrich_with_commits=selector.enrich_with_commits,
+                enrich_with_review_discussion=selector.enrich_with_review_discussion,
+                max_concurrent=1,
+            )
+            merge_request = enriched[0] if enriched else merge_request
+
+        commented = await self._gitlab_webhook_client.attach_merge_request_comments(
+            [merge_request],
+            comments_max_age_days=selector.comments_max_age_days,
+            max_concurrent=1,
+        )
+        merge_request = commented[0] if commented else merge_request
+
         return WebhookEventRawResults(
-            updated_raw_results=[normalized], deleted_raw_results=[]
+            updated_raw_results=[merge_request],
+            deleted_raw_results=[],
         )
