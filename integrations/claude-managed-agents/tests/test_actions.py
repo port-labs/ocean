@@ -918,7 +918,6 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
 async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_identity() -> (
     None
 ):
-    """No executionIdentity on claim → do not plant a vault (no fallback identity)."""
     client_mock = MagicMock()
     client_mock.get_agent = AsyncMock(return_value=_managed_agent())
     client_mock.create_session = AsyncMock(return_value=_sdk_session())
@@ -949,7 +948,6 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
 
     ensure_vault.assert_not_awaited()
     client_mock.create_session.assert_awaited_once()
-    # Session config must not gain vault_ids when identity is absent.
     extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
     assert "vault_ids" not in extra
 
@@ -1131,7 +1129,6 @@ async def test_trigger_agent_executor_starts_session() -> None:
     ):
         await executor.execute(run)
 
-    # Legacy / non-managed agent: no Port MCP stamps or vault attach.
     client_mock.create_session.assert_awaited_once_with(
         "agent_1",
         "env_1",

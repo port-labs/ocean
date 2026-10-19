@@ -31,7 +31,6 @@ _PORT_MCP_TOOLSET: dict[str, Any] = {
 
 
 def resolve_port_mcp_url(api_base_url: str | None = None) -> str:
-    """Derive the matching Port MCP endpoint from the configured Port API URL."""
     if not api_base_url:
         return DEFAULT_PORT_MCP_URL
     parsed = urlparse(api_base_url)
@@ -57,7 +56,6 @@ def _port_mcp_url() -> str:
 
 
 def port_mcp_enabled(value: Any) -> bool | None:
-    """Return the flag, or None when the value is not a boolean, 0/1, or true/1/yes."""
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
@@ -158,7 +156,6 @@ async def ensure_port_mcp_vault(
     identity_id: str,
     access_token: str,
 ) -> str:
-    """Get or create the identity vault and rotate its Port MCP bearer token."""
     name = f"port-mcp-{identity_type}-{identity_id}"
     vault = None
     async for batch in client.list_vaults():
