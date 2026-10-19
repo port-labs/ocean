@@ -94,7 +94,7 @@
     },
     {
       "name": "maxConcurrentSessionStreams",
-      "type": "number",
+      "type": "integer",
       "required": false,
       "sensitive": false,
       "default": 10,
@@ -102,7 +102,7 @@
     },
     {
       "name": "flushIntervalSeconds",
-      "type": "number",
+      "type": "integer",
       "required": false,
       "sensitive": false,
       "default": 5,
@@ -110,7 +110,7 @@
     },
     {
       "name": "flushBatchSize",
-      "type": "number",
+      "type": "integer",
       "required": false,
       "sensitive": false,
       "default": 100,
