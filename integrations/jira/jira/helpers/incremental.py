@@ -1,9 +1,7 @@
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from loguru import logger
-
-SEARCH_INDEX_LAG_MARGIN = timedelta(minutes=1)
 
 _ORDER_BY_PATTERN = re.compile(r"\border\s+by\b", re.IGNORECASE)
 _QUOTED_PATTERN = re.compile(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'")
@@ -26,7 +24,10 @@ def _split_order_by(jql: str) -> tuple[str, str]:
 def _as_utc(value: datetime) -> datetime:
     """Normalise a cursor whose type does not promise an offset.
 
-    Mirrors the private ``port_ocean.utils.relative_time._as_utc``.
+    The cursor API stores the timestamp string verbatim — a naive value written
+    by anything other than core is handed back naive — and ``timestamp()`` would
+    read that as container-local. Mirrors the private
+    ``port_ocean.utils.relative_time._as_utc``.
     """
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
@@ -34,7 +35,7 @@ def _as_utc(value: datetime) -> datetime:
 
 
 def _window_from_cursor(cursor: datetime) -> str:
-    """Build the ``updated`` lower bound for ``cursor``, less the lag margin.
+    """Build the ``updated`` lower bound for ``cursor``.
 
     The bound is unquoted epoch milliseconds, which JQL reads as an instant:
     "if you omit the quote-marks, the number you supply will be interpreted as
@@ -43,8 +44,7 @@ def _window_from_cursor(cursor: datetime) -> str:
     fetched per sync and the value floored to the minute literals carry.
     https://support.atlassian.com/jira-software-cloud/docs/jql-fields/
     """
-    bound = cursor - SEARCH_INDEX_LAG_MARGIN
-    return f"updated >= {int(bound.timestamp() * 1000)}"
+    return f"updated >= {int(cursor.timestamp() * 1000)}"
 
 
 def apply_cursor_to_jql(jql: str | None, cursor: datetime | None) -> str | None:
@@ -59,10 +59,12 @@ def apply_cursor_to_jql(jql: str | None, cursor: datetime | None) -> str | None:
     re-evaluates the JQL on every page request and a relative bound walks
     forward mid-run, dropping issues from later pages.
 
-    Search is eventually consistent, so the bound also carries
-    :data:`SEARCH_INDEX_LAG_MARGIN`. That page's own remedy, ``reconcileIssues``,
-    does not fit a window query: it reconciles up to 50 named issue ids, and a
-    window does not know which ids it is waiting for.
+    Search is eventually consistent, and the bound carries no margin for it:
+    measured lag was below the HTTP round trip (under 1.5s for 5/5 issues), and
+    a change missed by that much is picked up by the scheduled full resync. The
+    documented remedy is ``reconcileIssues``, which does not fit a window query
+    anyway — it reconciles up to 50 named issue ids, and a window does not know
+    which ids it is waiting for.
     https://developer.atlassian.com/cloud/jira/platform/search-and-reconcile/
     """
     if cursor is None:

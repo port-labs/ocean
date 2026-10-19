@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
-from jira.helpers.incremental import SEARCH_INDEX_LAG_MARGIN, apply_cursor_to_jql
+from jira.helpers.incremental import apply_cursor_to_jql
 
 CURSOR = datetime(2026, 10, 13, 15, 45, 45, tzinfo=timezone.utc)
-# The cursor less the search-lag margin, as unquoted epoch milliseconds.
-BOUND = "updated >= 1791906285000"
+# The cursor as unquoted epoch milliseconds.
+BOUND = "updated >= 1791906345000"
 
 
 def test_returns_jql_unchanged_on_full_resync() -> None:
@@ -20,16 +20,20 @@ def test_bound_is_unquoted_epoch_milliseconds() -> None:
     assert '"' not in result.split("AND")[-1]
 
 
-def test_bound_is_the_cursor_less_the_lag_margin() -> None:
-    expected = int((CURSOR - SEARCH_INDEX_LAG_MARGIN).timestamp() * 1000)
-    assert apply_cursor_to_jql("", CURSOR) == f"updated >= {expected}"
+def test_bound_is_the_cursor_itself_with_no_margin() -> None:
+    """A margin would re-fetch data the cursor already covered; the full resync
+    is what covers a change the search index was late to surface."""
+    assert (
+        apply_cursor_to_jql("", CURSOR)
+        == f"updated >= {int(CURSOR.timestamp() * 1000)}"
+    )
 
 
 def test_bound_keeps_sub_minute_precision() -> None:
     """Epoch bounds need no flooring, so a second's difference still moves them."""
     later = apply_cursor_to_jql("", CURSOR + timedelta(seconds=1))
     assert later != BOUND
-    assert later == "updated >= 1791906286000"
+    assert later == "updated >= 1791906346000"
 
 
 def test_a_naive_cursor_is_read_as_utc_not_container_local() -> None:
