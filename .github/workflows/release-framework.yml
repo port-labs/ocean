@@ -69,6 +69,9 @@ jobs:
     needs: tag-main
     if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
@@ -102,8 +105,17 @@ jobs:
             sleep 2
           done
 
+      - name: Trigger apply-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run apply-release.yml \
+            --ref main \
+            -f version="${{ env.VERSION }}" \
+            -f actor="${{ github.actor }}"
+
       - name: Send internal release notification
-        if: env.VERSION != ''
+        if: success()
         continue-on-error: true
         uses: fjogeleit/http-request-action@v2
         with:
@@ -149,6 +161,48 @@ jobs:
                   "text": {
                     "type": "mrkdwn",
                     "text": "Happy sailing! :ocean: :heart:"
+                  }
+                }
+              ]
+            }
+
+      - name: Send Slack failure notification
+        if: failure()
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v2
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Ocean framework release failed!* :x:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Triggered by:* <https://github.com/${{ github.actor }}|${{ github.actor }}>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Version:* `${{ env.VERSION || needs.tag-main.outputs.current_tag }}`"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
                   }
                 }
               ]

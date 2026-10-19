@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.14 (2026-10-19)
+
+
+### Improvements
+
+- Supply Jira-specific compact live-event log identifiers via JiraAbstractWebhookProcessor when dual-gated payload logging is enabled in Ocean core.
+
+
 ## 0.15.13 (2026-10-19)
 
 
