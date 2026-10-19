@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.21.3 (2026-10-19)
+
+
+### Bug Fixes
+
+- Fail the resync when the GitHub API returns 401 instead of ignoring the error, so invalid credentials surface as a failed sync and entities are preserved rather than deleted.
+
+
 ## 6.21.2 (2026-10-19)
 
 
