@@ -11,7 +11,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.pull_request_comment_exporter import (
     RestPullRequestCommentExporter,
-    pull_request_within_comments_age,
 )
 from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
@@ -36,8 +35,8 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
     """Refresh a pull request's ``__comments`` when comment-related events fire.
 
     Matching kind is ``pull-request`` (not a dedicated comment kind). Only runs
-    when ``includeComments`` is true and the PR passes ``commentsMaxAgeDays``.
-    Never deletes the pull request because a comment changed.
+    when ``includeComments`` is true. Never deletes the pull request because a
+    comment changed.
     """
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
@@ -97,15 +96,6 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         if not await self.should_process_repo_search(payload, resource_config):
-            return empty
-
-        if not pull_request_within_comments_age(
-            parent, config.selector.comments_max_age_days
-        ):
-            logger.info(
-                f"Skipping comments refresh for {organization}/{repo_name}#{pr_number}: "
-                f"outside commentsMaxAgeDays={config.selector.comments_max_age_days}"
-            )
             return empty
 
         is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
