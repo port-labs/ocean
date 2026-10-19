@@ -19,7 +19,7 @@ def _workflow_run(*, port_access_token: str | None) -> WorkflowNodeRun:
         id="wfnr_1",
         node_uid="wfn_1",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        portAccessToken=port_access_token,
+        port_access_token=port_access_token,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
             installationId="inst",
