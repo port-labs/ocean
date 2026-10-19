@@ -81,7 +81,7 @@ from anthropic.types.beta.beta_managed_agents_session_usage import (
 from clients.anthropic_client import RateLimitInfo
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from port_ocean.helpers.aes_gcm import encrypt_aes256_gcm
+from port_ocean.tests.helpers.aes_gcm import encrypt_aes256_gcm
 
 T = TypeVar("T", bound=AbstractAnthropicExecutor)
 
