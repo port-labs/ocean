@@ -46,7 +46,6 @@ class ObjectKind(StrEnum):
     WORKFLOW = "workflow"
     WORKFLOW_RUN = "workflow-run"
     PULL_REQUEST = "pull-request"
-    PULL_REQUEST_COMMENT = "pull-request-comment"
     ISSUE = "issue"
     RELEASE = "release"
     TAG = "tag"
