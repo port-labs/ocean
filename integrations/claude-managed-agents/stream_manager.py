@@ -57,6 +57,7 @@ class StreamManager:
         self._buffers: dict[str, list[WorkflowNodeRunLog]] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._tracked: set[str] = set()
+        self._flushed_any: set[str] = set()
 
         self._shutdown = asyncio.Event()
         self._flush_task: asyncio.Task[None] | None = None
@@ -111,10 +112,13 @@ class StreamManager:
                 await task
 
         await self._flush(session_id)
+
+        had_any_logs = session_id in self._flushed_any
+        self._flushed_any.discard(session_id)
         self._runs.pop(session_id, None)
         self._buffers.pop(session_id, None)
 
-        return was_tracked
+        return was_tracked and had_any_logs
 
     async def start(self) -> None:
         """Start the background flush loop.  Call once from ``on_start()``."""
@@ -145,6 +149,7 @@ class StreamManager:
 
         for session_id in list(self._runs.keys()):
             await self._flush(session_id)
+        self._flushed_any.clear()
 
     async def _stream_session(self, session_id: str) -> None:
         """Open a live SSE stream for ``session_id`` and accumulate log entries.
@@ -218,6 +223,11 @@ class StreamManager:
         if run is not None:
             try:
                 await ocean.port_client.post_run_logs(run, buf)
+                self._flushed_any.add(session_id)
+                logger.info(
+                    f"StreamManager: flushed {len(buf)} log(s) "
+                    f"for session {session_id} to run {run.id}"
+                )
             except Exception as exc:
                 logger.warning(
                     f"StreamManager: failed to flush {len(buf)} log(s) "
