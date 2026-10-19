@@ -208,5 +208,58 @@
                 "many": false
             }
         }
+    },
+    {
+        "identifier": "githubPullRequestComment",
+        "title": "Pull Request Comment",
+        "icon": "Github",
+        "description": "A comment on a GitHub pull request, including conversation comments, inline review comments, and review summaries.",
+        "schema": {
+            "properties": {
+                "body": {
+                    "title": "Body",
+                    "type": "string",
+                    "description": "Comment text"
+                },
+                "author": {
+                    "title": "Author",
+                    "type": "string",
+                    "description": "GitHub login of the comment author"
+                },
+                "createdAt": {
+                    "title": "Created At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updatedAt": {
+                    "title": "Updated At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "url": {
+                    "title": "URL",
+                    "type": "string",
+                    "format": "url"
+                },
+                "commentType": {
+                    "title": "Comment Type",
+                    "type": "string",
+                    "description": "comment, review, or review-summary",
+                    "enum": ["comment", "review", "review-summary"]
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "pullRequest": {
+                "title": "Pull Request",
+                "target": "githubPullRequest",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]
