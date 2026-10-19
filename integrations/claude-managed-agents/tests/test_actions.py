@@ -1956,6 +1956,21 @@ async def test_update_agent_executor_requires_at_least_one_update_field() -> Non
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "properties",
+    [{"enablePortMcp": False}, {"enablePortMcp": "false"}, {"config": {}}],
+)
+async def test_update_agent_executor_rejects_updates_with_empty_payload(
+    properties: dict[str, Any],
+) -> None:
+    executor = _build_executor(UpdateAgentExecutor, MagicMock())
+    run = MagicMock()
+    run.execution_properties = {"agentId": "agent_1", **properties}
+    with pytest.raises(InvalidActionParametersException, match="at least one"):
+        await executor.execute(run)
+
+
+@pytest.mark.asyncio
 async def test_update_agent_executor_requires_agent_id() -> None:
     executor = _build_executor(UpdateAgentExecutor, MagicMock())
     run = MagicMock()

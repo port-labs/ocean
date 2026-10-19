@@ -38,13 +38,13 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
                 self.name,
                 self.model,
                 self.systemPrompt,
-                self.config is not None,
-                self.enablePortMcp is not None,
+                self.config,
+                self.enablePortMcp is True,
             ]
         ):
             raise ValueError(
                 "at least one of name, model, systemPrompt, config, or "
-                "enablePortMcp must be provided"
+                "enablePortMcp=true must be provided"
             )
         return self
 
