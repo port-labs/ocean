@@ -9,7 +9,7 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from port_ocean.helpers.aes_gcm import encrypt_aes256_gcm
+from port_ocean.tests.helpers.aes_gcm import encrypt_aes256_gcm
 
 _ORG_SECRET = "x" * 40
 
