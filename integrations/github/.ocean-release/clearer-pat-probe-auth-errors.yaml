@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Clarify GitHub PAT and App probe auth failures for rate limits and invalid credentials
