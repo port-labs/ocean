@@ -66,6 +66,7 @@ from actions.port_mcp import (
     ensure_port_mcp_vault,
     environment_allows_port_mcp,
     is_port_mcp_managed,
+    port_mcp_enabled,
     prepare_port_mcp_session_config,
     resolve_port_mcp_url,
 )
@@ -666,8 +667,26 @@ def test_apply_port_mcp_to_agent_config_is_idempotent() -> None:
     assert len(twice["tools"]) == 1
 
 
+@pytest.mark.parametrize(
+    ("value", "enabled"),
+    [
+        (True, True),
+        (False, False),
+        (1, True),
+        (0, False),
+        ("1", True),
+        (" yes ", True),
+        ("false", False),
+        (2, None),
+    ],
+)
+def test_port_mcp_enabled(value: Any, enabled: bool | None) -> None:
+    assert port_mcp_enabled(value) is enabled
+
+
 @pytest.mark.asyncio
-async def test_create_agent_executor_wires_port_mcp_when_flag_true() -> None:
+@pytest.mark.parametrize("flag", [True, "true", "1", 1])
+async def test_create_agent_executor_wires_port_mcp_when_flag_true(flag: Any) -> None:
     client_mock = MagicMock()
     client_mock.create_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(CreateAgentExecutor, client_mock)
@@ -677,7 +696,7 @@ async def test_create_agent_executor_wires_port_mcp_when_flag_true() -> None:
     run.execution_properties = {
         "name": "n",
         "model": "m",
-        "enablePortMcp": True,
+        "enablePortMcp": flag,
         "config": {"description": "d"},
     }
 
