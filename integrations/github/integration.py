@@ -630,17 +630,6 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "by default so existing resyncs do not call the comments API."
         ),
     )
-    comments_max_age_days: int = Field(
-        title="Comments Max Age Days",
-        alias="commentsMaxAgeDays",
-        default=30,
-        ge=1,
-        description=(
-            "Only pull requests whose `updated_at` is within this many days get a "
-            "comments API call. Older pull requests are returned with no comments "
-            "fetch. When a pull request qualifies, all of its comments are fetched."
-        ),
-    )
 
     @property
     def updated_after(self) -> Optional[datetime]:

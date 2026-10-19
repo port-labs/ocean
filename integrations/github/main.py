@@ -648,10 +648,11 @@ async def resync_pull_requests(
                         *tasks, context=kind
                     ):
                         if comment_exporter is not None:
-                            pull_requests = await comment_exporter.attach_comments_to_pull_requests(
-                                pull_requests,
-                                organization=org_name,
-                                comments_max_age_days=config.selector.comments_max_age_days,
+                            pull_requests = (
+                                await comment_exporter.attach_comments_to_pull_requests(
+                                    pull_requests,
+                                    organization=org_name,
+                                )
                             )
                         yield pull_requests
                 except ExceptionGroup as page_errors:

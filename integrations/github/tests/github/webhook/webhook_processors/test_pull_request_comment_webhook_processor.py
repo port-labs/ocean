@@ -29,7 +29,6 @@ def resource_config() -> GithubPullRequestConfig:
             query="true",
             states=["open"],
             includeComments=True,
-            commentsMaxAgeDays=30,
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -258,7 +257,7 @@ class TestPullRequestCommentWebhookProcessor:
         assert result.deleted_raw_results == []
         assert result.updated_raw_results[0]["__comments"] == []
 
-    async def test_handle_event_noops_when_pr_outside_age_window(
+    async def test_handle_event_fetches_comments_when_pr_updated_at_is_old(
         self,
         processor: PullRequestCommentWebhookProcessor,
         resource_config: GithubPullRequestConfig,
@@ -266,18 +265,43 @@ class TestPullRequestCommentWebhookProcessor:
         processor.event.headers = {"x-github-event": "issue_comment"}
         payload = _issue_comment_payload()
         payload["issue"]["updated_at"] = "2020-01-01T00:00:00Z"
+        fetched_pr = _fetched_pull_request()
+        fetched_pr["updated_at"] = "2020-01-01T00:00:00Z"
+        comments = [
+            {
+                "id": 11,
+                "body": "Please add a test",
+                "user": {"login": "reviewer"},
+                "__commentId": "repo1/7/comment/11",
+                "__commentType": "comment",
+            }
+        ]
+
+        mock_pr_exporter = MagicMock()
+        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
+        mock_comment_exporter = MagicMock()
+        mock_comment_exporter.fetch_all_comments = AsyncMock(return_value=comments)
 
         with (
             patch(
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.create_github_client_for_org",
                 new_callable=AsyncMock,
-            ) as mock_client,
+                return_value=MagicMock(),
+            ),
+            patch(
+                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
+                return_value=mock_pr_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
+                return_value=mock_comment_exporter,
+            ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
             ),
         ):
             result = await processor.handle_event(payload, resource_config)
 
-        mock_client.assert_not_called()
-        assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
+        assert result.updated_raw_results[0]["__comments"] == comments
+        mock_comment_exporter.fetch_all_comments.assert_awaited_once()
