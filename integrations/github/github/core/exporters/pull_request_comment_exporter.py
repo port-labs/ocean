@@ -13,7 +13,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 CommentType = Literal["comment", "review", "review-summary"]
 
 _COMMENT_ENDPOINTS: dict[CommentType, str] = {
-    "comment": "issues/{pr_number}/comments/{comment_id}",
+    # GET .../issues/comments/{id} (not nested under the issue/PR number)
+    "comment": "issues/comments/{comment_id}",
     "review": "pulls/comments/{comment_id}",
     "review-summary": "pulls/{pr_number}/reviews/{comment_id}",
 }
