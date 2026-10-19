@@ -3,11 +3,7 @@ from typing import cast
 from loguru import logger
 from initialize_client import get_or_create_jira_client
 from jira.client import COMMENT_WEBHOOK_EVENTS
-from jira.comments import (
-    attach_comments_to_issues,
-    issue_has_updated_field,
-    issue_updated_within_days,
-)
+from jira.comments import attach_comments_to_issues
 from jira.overrides import JiraIssueConfig
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -59,22 +55,7 @@ class IssueCommentWebhookProcessor(JiraAbstractWebhookProcessor):
         )
 
         client = get_or_create_jira_client()
-        issue = payload["issue"]
-        if not issue_has_updated_field(issue):
-            issue = await client.get_single_issue(issue_key)
-
-        if not issue_updated_within_days(issue, config.selector.comments_max_age_days):
-            logger.info(
-                f"Issue {issue_key} is outside commentsMaxAgeDays="
-                f"{config.selector.comments_max_age_days}; skipping"
-            )
-            return empty
-
-        enriched = await attach_comments_to_issues(
-            client,
-            [issue],
-            config.selector.comments_max_age_days,
-        )
+        enriched = await attach_comments_to_issues(client, [payload["issue"]])
         return WebhookEventRawResults(
             updated_raw_results=enriched,
             deleted_raw_results=[],

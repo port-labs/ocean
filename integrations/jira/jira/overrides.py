@@ -61,18 +61,8 @@ class JiraIssueSelector(Selector):
         description=(
             "When true, attach each issue's comments under `__comments` so they can "
             "be mapped with itemsToParse. Defaults to false so existing resyncs and "
-            "the default mapping do not call the comments API."
-        ),
-    )
-    comments_max_age_days: int = Field(
-        alias="commentsMaxAgeDays",
-        title="Comments Max Age Days",
-        default=30,
-        ge=1,
-        description=(
-            "Only issues whose fields.updated is within this many days get a "
-            "comments API call. Older issues are returned with no comments fetch. "
-            "When an issue qualifies, all of its comments are fetched."
+            "the default mapping do not call the comments API. Selection of which "
+            "issues get comments is controlled by this block's JQL/query."
         ),
     )
 
