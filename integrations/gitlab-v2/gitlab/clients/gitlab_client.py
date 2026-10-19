@@ -279,9 +279,7 @@ class GitLabClient:
         *,
         comments_max_age_days: int,
     ) -> dict[str, Any]:
-        if not merge_request_within_comments_age(
-            merge_request, comments_max_age_days
-        ):
+        if not merge_request_within_comments_age(merge_request, comments_max_age_days):
             return merge_request
         merge_request["__comments"] = await self.get_merge_request_comments(
             merge_request

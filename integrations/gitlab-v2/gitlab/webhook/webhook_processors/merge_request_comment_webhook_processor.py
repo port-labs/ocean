@@ -48,14 +48,10 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         config = cast(GitlabMergeRequestResourceConfig, resource_config)
         selector = config.selector
-        empty = WebhookEventRawResults(
-            updated_raw_results=[], deleted_raw_results=[]
-        )
+        empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
         if not selector.include_comments:
-            logger.debug(
-                "Skipping merge request note event; includeComments is false"
-            )
+            logger.debug("Skipping merge request note event; includeComments is false")
             return empty
 
         merge_request_payload = payload["merge_request"]

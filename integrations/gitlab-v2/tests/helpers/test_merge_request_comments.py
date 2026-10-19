@@ -95,9 +95,7 @@ def test_age_gate_skips_missing_or_old_updated_at() -> None:
     assert merge_request_within_comments_age(MERGE_REQUEST, 30) is True
     assert merge_request_within_comments_age(OLD_MERGE_REQUEST, 30) is False
     assert merge_request_within_comments_age({"id": 1}, 30) is False
-    assert (
-        merge_request_within_comments_age({"updated_at": "not-a-date"}, 30) is False
-    )
+    assert merge_request_within_comments_age({"updated_at": "not-a-date"}, 30) is False
 
 
 @pytest.mark.asyncio
@@ -140,11 +138,13 @@ def _processor() -> MergeRequestCommentWebhookProcessor:
 def _config(*, include_comments: bool = True) -> GitlabMergeRequestResourceConfig:
     return GitlabMergeRequestResourceConfig(
         kind="merge-request",
-        selector=GitlabMergeRequestSelector(
-            query="true",
-            states=["opened"],
-            include_comments=include_comments,
-            comments_max_age_days=30,
+        selector=GitlabMergeRequestSelector.parse_obj(
+            {
+                "query": "true",
+                "states": ["opened"],
+                "includeComments": include_comments,
+                "commentsMaxAgeDays": 30,
+            }
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
