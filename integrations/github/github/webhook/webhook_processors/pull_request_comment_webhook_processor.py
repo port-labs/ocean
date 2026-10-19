@@ -8,11 +8,20 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.pull_request_comment_exporter import (
-    CommentType,
-    normalize_pull_request_comment,
+    RestPullRequestCommentExporter,
+    pull_request_within_comments_age,
 )
-from github.helpers.utils import ObjectKind
+from github.core.exporters.pull_request_exporter import (
+    GraphQLPullRequestExporter,
+    RestPullRequestExporter,
+)
+from github.core.options import (
+    ListPullRequestCommentOptions,
+    SinglePullRequestOptions,
+)
+from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import (
     PULL_REQUEST_COMMENT_EVENTS,
     PULL_REQUEST_REVIEW_EVENTS,
@@ -20,24 +29,17 @@ from github.webhook.events import (
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
-from integration import GithubPullRequestCommentConfig
-
-
-def _comment_source(
-    payload: EventPayload,
-) -> tuple[str, dict[str, Any], CommentType] | None:
-    """Return the header event, raw comment, and normalized type for this payload."""
-    header = payload.get("__github_event")
-    if header == "issue_comment" and "pull_request" in payload.get("issue", {}):
-        return header, payload["comment"], "comment"
-    if header == "pull_request_review_comment":
-        return header, payload["comment"], "review"
-    if header == "pull_request_review":
-        return header, payload["review"], "review-summary"
-    return None
+from integration import GithubPullRequestConfig
 
 
 class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
+    """Refresh a pull request's ``__comments`` when comment-related events fire.
+
+    Matching kind is ``pull-request`` (not a dedicated comment kind). Only runs
+    when ``includeComments`` is true and the PR passes ``commentsMaxAgeDays``.
+    Never deletes the pull request because a comment changed.
+    """
+
     async def _validate_payload(self, payload: EventPayload) -> bool:
         if payload.get("action") not in (
             *PULL_REQUEST_COMMENT_EVENTS,
@@ -64,10 +66,10 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
         return False
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.PULL_REQUEST_COMMENT]
+        return [ObjectKind.PULL_REQUEST]
 
     def _parent_pull_request(
-        self, payload: EventPayload, header: str
+        self, payload: EventPayload, header: str | None
     ) -> dict[str, Any]:
         if header == "issue_comment":
             return payload["issue"]
@@ -76,52 +78,78 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        header = self.event.headers.get("x-github-event")
-        payload_with_header = {**payload, "__github_event": header}
-        source = _comment_source(payload_with_header)
-        if source is None:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+        empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        config = cast(GithubPullRequestConfig, resource_config)
+        if not config.selector.include_comments:
+            return empty
 
-        event_name, raw_comment, comment_type = source
-        parent = self._parent_pull_request(payload, event_name)
+        header = self.event.headers.get("x-github-event")
+        parent = self._parent_pull_request(payload, header)
         repo = payload["repository"]
+        repo_name = repo["name"]
         organization = self.get_webhook_payload_organization(payload)["login"]
-        config = cast(GithubPullRequestCommentConfig, resource_config)
+        pr_number = parent["number"]
         action = payload["action"]
 
         logger.info(
-            f"Processing {event_name} {action} on {organization}/{repo['name']}#{parent.get('number')}"
+            f"Processing {header} {action} for comments on "
+            f"{organization}/{repo_name}#{pr_number}"
         )
 
         if not await self.should_process_repo_search(payload, resource_config):
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+            return empty
 
-        normalized = normalize_pull_request_comment(
-            raw_comment,
-            organization=organization,
-            repo_name=repo["name"],
-            pull_request_id=parent["id"],
-            pull_request_number=parent["number"],
-            comment_type=comment_type,
-        )
-        state = parent.get("state")
-        tracked = state in config.selector.states
-        drop = (
-            action in ("deleted", "dismissed")
-            or not tracked
-            or (
-                comment_type == "review-summary"
-                and not (raw_comment.get("body") or "").strip()
+        if not pull_request_within_comments_age(
+            parent, config.selector.comments_max_age_days
+        ):
+            logger.info(
+                f"Skipping comments refresh for {organization}/{repo_name}#{pr_number}: "
+                f"outside commentsMaxAgeDays={config.selector.comments_max_age_days}"
+            )
+            return empty
+
+        is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
+        pr_exporter = (
+            GraphQLPullRequestExporter(
+                await create_github_client_for_org(
+                    organization, GithubClientType.GRAPHQL
+                )
+            )
+            if is_graphql_api
+            else RestPullRequestExporter(
+                await create_github_client_for_org(organization)
             )
         )
-        if drop:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[normalized]
+        data_to_upsert = await pr_exporter.get_resource(
+            SinglePullRequestOptions(
+                organization=organization,
+                repo_name=repo_name,
+                pr_number=pr_number,
+                repo=repo if is_graphql_api else None,
+                enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                exclude_graphql_fields=config.selector.exclude_graphql_fields,
             )
+        )
+        if not data_to_upsert:
+            logger.warning(
+                f"No pull request data for {organization}/{repo_name}#{pr_number}; "
+                "skipping comments refresh"
+            )
+            return empty
+
+        comment_exporter = RestPullRequestCommentExporter(
+            await create_github_client_for_org(organization)
+        )
+        comments = await comment_exporter.fetch_all_comments(
+            ListPullRequestCommentOptions(
+                organization=organization,
+                repo_name=repo_name,
+                pr_number=pr_number,
+                pull_request_id=data_to_upsert["id"],
+            )
+        )
+        data_to_upsert["__comments"] = comments
+
         return WebhookEventRawResults(
-            updated_raw_results=[normalized], deleted_raw_results=[]
+            updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
