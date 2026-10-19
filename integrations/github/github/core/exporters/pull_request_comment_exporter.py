@@ -9,11 +9,7 @@ from github.core.options import (
     ListPullRequestCommentOptions,
     SinglePullRequestCommentOptions,
 )
-from github.helpers.utils import (
-    enrich_with_organization,
-    enrich_with_repository,
-    parse_timestamp,
-)
+from github.helpers.utils import parse_timestamp
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 CommentType = Literal["comment", "review", "review-summary"]
@@ -44,39 +40,22 @@ def pull_request_within_comments_age(
 def normalize_pull_request_comment(
     raw: dict[str, Any],
     *,
-    organization: str,
     repo_name: str,
-    pull_request_id: int,
     pull_request_number: int,
     comment_type: CommentType,
 ) -> dict[str, Any]:
-    """Attach the fields an itemsToParse comment mapping reads.
+    """Keep raw GitHub comment fields and attach only derived identifiers.
 
     Conversation comments, inline review comments, and review bodies come from
-    different GitHub APIs. The normalized keys keep one shape for mapping.
-    ``__commentId`` includes the PR number and comment type because GitHub
-    comment id spaces collide across those APIs.
+    different GitHub APIs. Map from the raw fields (``body``, ``user.login``,
+    ``created_at`` / ``submitted_at``, ``html_url``). ``__commentId`` includes
+    the PR number and comment type because GitHub comment id spaces collide.
     """
-    author = (raw.get("user") or {}).get("login") or ""
-    created_at = raw.get("created_at") or raw.get("submitted_at")
-    comment_id = f"{repo_name}/{pull_request_number}/{comment_type}/{raw['id']}"
-    enriched = enrich_with_organization(
-        enrich_with_repository(dict(raw), repo_name), organization
-    )
-    enriched.update(
-        {
-            "__commentId": comment_id,
-            "__body": raw.get("body") or "",
-            "__author": author,
-            "__createdAt": created_at,
-            "__updatedAt": raw.get("updated_at") or created_at,
-            "__url": raw.get("html_url") or "",
-            "__commentType": comment_type,
-            "__pullRequestId": pull_request_id,
-            "__pullRequestNumber": pull_request_number,
-        }
-    )
-    return enriched
+    return {
+        **raw,
+        "__commentId": f"{repo_name}/{pull_request_number}/{comment_type}/{raw['id']}",
+        "__commentType": comment_type,
+    }
 
 
 class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
@@ -109,9 +88,7 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
             return None
         return normalize_pull_request_comment(
             response,
-            organization=organization,
             repo_name=repo_name,
-            pull_request_id=options["pull_request_id"],
             pull_request_number=pr_number,
             comment_type=comment_type,
         )
@@ -122,7 +99,6 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         repo_name = options["repo_name"]
         pr_number = options["pr_number"]
-        pull_request_id = options["pull_request_id"]
         repo_url = self._repo_url(organization, repo_name)
 
         list_endpoints: tuple[tuple[str, CommentType, bool], ...] = (
@@ -135,9 +111,7 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
                 normalized = [
                     normalize_pull_request_comment(
                         item,
-                        organization=organization,
                         repo_name=repo_name,
-                        pull_request_id=pull_request_id,
                         pull_request_number=pr_number,
                         comment_type=comment_type,
                     )

@@ -11,14 +11,14 @@
     entity:
       mappings:
         identifier: .item.__commentId
-        title: .item.__body // "" | .[0:120]
+        title: .item.body // "" | .[0:120]
         blueprint: '"githubPullRequestComment"'
         properties:
-          body: .item.__body
-          author: .item.__author
-          createdAt: .item.__createdAt
-          updatedAt: .item.__updatedAt
-          url: .item.__url
+          body: .item.body
+          author: .item.user.login
+          createdAt: .item.created_at // .item.submitted_at
+          updatedAt: .item.updated_at // .item.submitted_at
+          url: .item.html_url // .item.url
           commentType: .item.__commentType
         relations:
           pullRequest: .head.repo.name + (.id|tostring)
