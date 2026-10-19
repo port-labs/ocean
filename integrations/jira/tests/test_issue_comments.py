@@ -132,7 +132,10 @@ def test_adf_to_plain_text_keeps_mentions_breaks_and_attr_nodes() -> None:
                         "attrs": {"url": "https://example.atlassian.net/browse/TEST-1"},
                     },
                     {"type": "text", "text": " "},
-                    {"type": "status", "attrs": {"text": "In Progress", "color": "blue"}},
+                    {
+                        "type": "status",
+                        "attrs": {"text": "In Progress", "color": "blue"},
+                    },
                 ],
             }
         ],
