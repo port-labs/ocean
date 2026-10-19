@@ -8,6 +8,7 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
     check_single_path,
     check_and_load_file_prefix,
     process_file_changes,
+    process_file_value,
 )
 
 # Test data
@@ -176,6 +177,73 @@ async def test_process_file_changes_plain_text_content() -> None:
     assert updated[0]["content"] == "18"
     assert updated[0]["metadata"]["path"] == ".nvmrc"
     mock_init.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_nested_file_reference_resolves_to_null_when_its_content_is_missing() -> (
+    None
+):
+    """The property carrying the reference is the only thing lost, not the entity."""
+    client = AsyncMock()
+    client.get_repository_files.return_value = None
+
+    resolved = await process_file_value(
+        "file://values.yaml", "charts", "test-repo", "main", client
+    )
+
+    assert resolved is None
+
+
+@pytest.mark.asyncio
+async def test_a_nested_file_reference_resolves_to_its_content() -> None:
+    """The reference is replaced by the file's content when Bitbucket returns it."""
+    client = AsyncMock()
+    client.get_repository_files.return_value = "replicas: 2\n"
+
+    resolved = await process_file_value(
+        "file://values.yaml", "charts", "test-repo", "main", client
+    )
+
+    assert resolved == "replicas: 2\n"
+
+
+@pytest.mark.asyncio
+async def test_process_file_changes_skips_a_file_whose_content_cannot_be_read() -> None:
+    """A push must not overwrite a good entity with empty content."""
+    plain_diff_stat: Dict[str, Any] = {
+        "new": {"path": ".nvmrc"},
+        "old": {"path": ".nvmrc"},
+        "status": "modified",
+        "commit": {"hash": "new_hash"},
+    }
+
+    async def mock_retrieve_diff_stat(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [plain_diff_stat]
+
+    mock_webhook_client = AsyncMock()
+    mock_webhook_client.retrieve_diff_stat = mock_retrieve_diff_stat
+    mock_webhook_client.get_repository_files.return_value = None
+
+    mock_selector = MagicMock()
+    mock_selector.files.filenames = [".nvmrc"]
+    mock_selector.files.path = "/"
+
+    with patch("bitbucket_cloud.helpers.file_kind_live_event.init_client") as mock_init:
+        mock_init.return_value = AsyncMock()
+
+        updated, deleted = await process_file_changes(
+            "test-repo",
+            [SAMPLE_CHANGE],
+            mock_selector,
+            False,
+            mock_webhook_client,
+            {"repository": {"name": "test-repo"}},
+        )
+
+    assert updated == []
+    assert deleted == []
 
 
 @pytest.mark.asyncio

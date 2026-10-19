@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bitbucket-cloud"
-version = "0.5.147"
+version = "0.6.0"
 description = "This integration ingest data from bitbucket"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
@@ -86,6 +86,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
+target-version = "py312"
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 
