@@ -1,9 +1,3 @@
-"""aes256-gcm framing matching Port `@port-labs/schema-validator` encrypted inputs.
-
-Wire format: base64(iv[16] || ciphertext || authTag[16]).
-Key material: first 32 UTF-8 bytes of the org client secret.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -21,7 +15,6 @@ def decrypt_aes256_gcm(secret: str, encoded: str) -> str:
 
 
 def encrypt_aes256_gcm(secret: str, plaintext: str) -> str:
-    """Round-trip helper; production encrypt lives in workflow-service."""
     iv = os.urandom(16)
     key = secret[:32].encode("utf-8")
     encryptor = Cipher(algorithms.AES(key), modes.GCM(iv)).encryptor()
