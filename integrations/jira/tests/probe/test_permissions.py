@@ -19,9 +19,7 @@ def test_message_with_required_scopes_appends_scope_list() -> None:
     assert message_with_required_scopes(
         "Failed to verify Jira authentication.",
         ("read:jira-user",),
-    ) == (
-        "Failed to verify Jira authentication. Required scope(s): read:jira-user."
-    )
+    ) == ("Failed to verify Jira authentication. Required scope(s): read:jira-user.")
     assert (
         message_with_required_scopes("Connection failed.", ()) == "Connection failed."
     )
