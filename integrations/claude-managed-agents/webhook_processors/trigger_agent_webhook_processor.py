@@ -45,6 +45,7 @@ from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
     build_session_link,
+    post_interaction_logs,
 )
 from clients.client_factory import create_anthropic_client
 from webhook_processors.abstract_webhook_processor import (
@@ -200,7 +201,11 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             session_id, prior_idle_time, webhook_time
         )
         interaction_failed, log_entries = self._detect_failure_and_log_entries(events)
-        if log_entries:
+        last_error = self._last_error_log_message(log_entries)
+
+        if isinstance(run, WorkflowNodeRun):
+            await post_interaction_logs(run, events)
+        elif log_entries:
             await ocean.port_client.post_run_logs(
                 run,
                 [
@@ -208,7 +213,6 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                     for level, message in log_entries
                 ],
             )
-        last_error = self._last_error_log_message(log_entries)
 
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
         success = webhook_succeeded and not interaction_failed
