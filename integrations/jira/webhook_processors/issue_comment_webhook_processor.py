@@ -1,14 +1,21 @@
+from typing import cast
+
 from loguru import logger
+from initialize_client import get_or_create_jira_client
+from jira.client import COMMENT_WEBHOOK_EVENTS
+from jira.comments import (
+    attach_comments_to_issues,
+    issue_has_updated_field,
+    issue_updated_within_days,
+)
+from jira.overrides import JiraIssueConfig
+from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-
-from jira.client import COMMENT_WEBHOOK_EVENTS
-from jira.comments import normalize_issue_comment
-from kinds import Kinds
 from webhook_processors.jira_abstract_webhook_processor import (
     JiraAbstractWebhookProcessor,
 )
@@ -19,7 +26,7 @@ class IssueCommentWebhookProcessor(JiraAbstractWebhookProcessor):
         return event.payload.get("webhookEvent") in COMMENT_WEBHOOK_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kinds.ISSUE_COMMENT]
+        return [Kinds.ISSUE]
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, str]
@@ -36,18 +43,39 @@ class IssueCommentWebhookProcessor(JiraAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        comment = payload["comment"]
+        config = cast(JiraIssueConfig, resource_config)
+        empty = WebhookEventRawResults(
+            updated_raw_results=[],
+            deleted_raw_results=[],
+        )
+        if not config.selector.include_comments:
+            return empty
+
         issue_key = payload["issue"]["key"]
         webhook_event = payload.get("webhookEvent")
-        normalized = normalize_issue_comment(comment, issue_key)
-        logger.info(f"Processing {webhook_event} for {normalized['__commentId']}")
+        logger.info(
+            f"Processing {webhook_event} for issue {issue_key} "
+            f"(includeComments=true)"
+        )
 
-        if webhook_event == "comment_deleted":
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[normalized],
+        client = get_or_create_jira_client()
+        issue = payload["issue"]
+        if not issue_has_updated_field(issue):
+            issue = await client.get_single_issue(issue_key)
+
+        if not issue_updated_within_days(issue, config.selector.comments_max_age_days):
+            logger.info(
+                f"Issue {issue_key} is outside commentsMaxAgeDays="
+                f"{config.selector.comments_max_age_days}; skipping"
             )
+            return empty
+
+        enriched = await attach_comments_to_issues(
+            client,
+            [issue],
+            config.selector.comments_max_age_days,
+        )
         return WebhookEventRawResults(
-            updated_raw_results=[normalized],
+            updated_raw_results=enriched,
             deleted_raw_results=[],
         )

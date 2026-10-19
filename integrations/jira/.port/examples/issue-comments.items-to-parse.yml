@@ -1,0 +1,22 @@
+# Opt-in. Not part of the default mapping. Create the blueprint yourself.
+- kind: issue
+  selector:
+    query: 'true'
+    includeComments: true
+    commentsMaxAgeDays: 30
+  port:
+    itemsToParse: .__comments
+    entity:
+      mappings:
+        identifier: .item.__commentId
+        title: .item.__body // "" | .[0:120]
+        blueprint: '"jiraIssueComment"'
+        properties:
+          body: .item.__body
+          author: .item.__author
+          createdAt: .item.__createdAt
+          updatedAt: .item.__updatedAt
+          url: .item.__url
+          commentType: .item.__commentType
+        relations:
+          issue: .key

@@ -54,6 +54,27 @@ class JiraIssueSelector(Selector):
         description="Comma-separated list of additional issue properties to expand. Supported values include 'renderedFields', 'names', 'schema', 'transitions', 'operations', 'editmeta', and 'changelog'.",
         default=None,
     )
+    include_comments: bool = Field(
+        alias="includeComments",
+        title="Include Comments",
+        default=False,
+        description=(
+            "When true, attach each issue's comments under `__comments` so they can "
+            "be mapped with itemsToParse. Defaults to false so existing resyncs and "
+            "the default mapping do not call the comments API."
+        ),
+    )
+    comments_max_age_days: int = Field(
+        alias="commentsMaxAgeDays",
+        title="Comments Max Age Days",
+        default=30,
+        ge=1,
+        description=(
+            "Only issues whose fields.updated is within this many days get a "
+            "comments API call. Older issues are returned with no comments fetch. "
+            "When an issue qualifies, all of its comments are fetched."
+        ),
+    )
 
 
 class JiraIssueConfig(ResourceConfig):
@@ -326,31 +347,6 @@ class JiraWorklogSelector(Selector):
     )
 
 
-class JiraIssueCommentSelector(Selector):
-    jql: str = Field(
-        default="(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)",
-        title="JQL Filter",
-        description=(
-            "JQL that selects which issues' comments are fetched. "
-            "Defaults to the same window as the issue kind so comments exist "
-            "for the issues already in the catalog."
-        ),
-    )
-
-
-class JiraIssueCommentResourceConfig(ResourceConfig):
-    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
-
-    kind: Literal["issue-comment"] = Field(
-        title="Jira Issue Comment",
-        description="Jira issue comment resource kind.",
-    )
-    selector: JiraIssueCommentSelector = Field(
-        title="Issue Comment Selector",
-        description="Selector for Jira issue comment resources.",
-    )
-
-
 class JiraWorklogResourceConfig(ResourceConfig):
     probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
 
@@ -418,7 +414,6 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraSprintResourceConfig
         | JiraBacklogResourceConfig
         | JiraEpicResourceConfig
-        | JiraIssueCommentResourceConfig
         | JiraWorklogResourceConfig
         | JiraComponentResourceConfig
     ] = Field(
