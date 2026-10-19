@@ -138,6 +138,13 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             f"(message {user_message.id}) for run {run.id}"
         )
 
+        report_session_status = props.get("reportSessionStatus", False)
+
+        if report_session_status and isinstance(run, WorkflowNodeRun):
+            manager = get_stream_manager()
+            if manager is not None:
+                await manager.track(resolved_session_id, run)
+
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Status updates arrive later via webhooks. Best-effort:
         # never fails the run. Convert to dict only at the catalog boundary.
@@ -163,8 +170,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
-        report_session_status = props.get("reportSessionStatus", False)
-
         if report_session_status:
             try:
                 await self.client.update_session_metadata(
@@ -175,11 +180,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     f"Failed to store portExternalRunId on session "
                     f"{resolved_session_id}: {exc!r}"
                 )
-
-        if report_session_status and isinstance(run, WorkflowNodeRun):
-            manager = get_stream_manager()
-            if manager is not None:
-                manager.track(resolved_session_id, run)
 
         if not report_session_status:
             await ocean.port_client.report_run_completed(

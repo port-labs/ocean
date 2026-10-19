@@ -205,15 +205,17 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         last_error = self._last_error_log_message(log_entries)
 
         manager = get_stream_manager()
-        session_was_streamed = (
-            isinstance(run, WorkflowNodeRun)
-            and manager is not None
-            and await manager.untrack(session_id)
+        streamed_ids: frozenset[str] = (
+            await manager.untrack(session_id) if manager is not None else frozenset()
         )
 
         if isinstance(run, WorkflowNodeRun):
-            if not session_was_streamed:
-                await post_interaction_logs(run, events)
+            events_to_post = (
+                [e for e in events if getattr(e, "id", None) not in streamed_ids]
+                if streamed_ids
+                else events
+            )
+            await post_interaction_logs(run, events_to_post)
         elif log_entries:
             await ocean.port_client.post_run_logs(
                 run,
