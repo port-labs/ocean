@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.13 (2026-10-19)
+
+
+### Improvements
+
+- Include the required API token scope when Jira Test Connection fails on /myself (read:jira-user) or /mypermissions (read:jira-work)
+
+
 ## 0.15.12 (2026-10-18)
 
 
