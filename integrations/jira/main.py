@@ -17,6 +17,7 @@ from jira.helpers.incremental import apply_cursor_to_jql
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
+    JiraIssueCommentResourceConfig,
     JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
@@ -24,6 +25,9 @@ from jira.overrides import (
     JiraBacklogResourceConfig,
     JiraEpicResourceConfig,
     JiraComponentResourceConfig,
+)
+from webhook_processors.issue_comment_webhook_processor import (
+    IssueCommentWebhookProcessor,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
@@ -215,6 +219,25 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield epic_batch
 
 
+@ocean.on_resync(Kinds.ISSUE_COMMENT)
+async def on_resync_issue_comments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraIssueCommentResourceConfig, event.resource_config).selector
+
+    async for issue_batch in client.get_paginated_issues(
+        {"jql": selector.jql, "fields": "key"}
+    ):
+        comment_streams = [
+            client.get_paginated_comments_for_issue(issue["key"])
+            for issue in issue_batch
+            if issue.get("key")
+        ]
+        if not comment_streams:
+            continue
+        async for comment_batch in stream_async_iterators_tasks(*comment_streams):
+            yield comment_batch
+
+
 @ocean.on_incremental_resync(Kinds.WORKLOG)
 @ocean.on_resync(Kinds.WORKLOG)
 async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -266,6 +289,7 @@ async def on_start() -> None:
 
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueCommentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)

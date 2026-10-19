@@ -326,6 +326,31 @@ class JiraWorklogSelector(Selector):
     )
 
 
+class JiraIssueCommentSelector(Selector):
+    jql: str = Field(
+        default="(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)",
+        title="JQL Filter",
+        description=(
+            "JQL that selects which issues' comments are fetched. "
+            "Defaults to the same window as the issue kind so comments exist "
+            "for the issues already in the catalog."
+        ),
+    )
+
+
+class JiraIssueCommentResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
+
+    kind: Literal["issue-comment"] = Field(
+        title="Jira Issue Comment",
+        description="Jira issue comment resource kind.",
+    )
+    selector: JiraIssueCommentSelector = Field(
+        title="Issue Comment Selector",
+        description="Selector for Jira issue comment resources.",
+    )
+
+
 class JiraWorklogResourceConfig(ResourceConfig):
     probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
 
@@ -393,6 +418,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraSprintResourceConfig
         | JiraBacklogResourceConfig
         | JiraEpicResourceConfig
+        | JiraIssueCommentResourceConfig
         | JiraWorklogResourceConfig
         | JiraComponentResourceConfig
     ] = Field(

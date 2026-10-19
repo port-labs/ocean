@@ -1,0 +1,34 @@
+{
+  "id": "10000",
+  "self": "https://example.atlassian.net/rest/api/3/issue/10001/comment/10000",
+  "body": {
+    "type": "doc",
+    "version": 1,
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Please confirm the rollout window."
+          }
+        ]
+      }
+    ]
+  },
+  "author": {
+    "accountId": "712020:test-account-id",
+    "displayName": "Test User",
+    "emailAddress": "test.user@example.com"
+  },
+  "created": "2024-01-15T10:00:00.000+0000",
+  "updated": "2024-01-15T10:00:00.000+0000",
+  "__issueKey": "TEST-1",
+  "__commentId": "TEST-1/10000",
+  "__body": "Please confirm the rollout window.",
+  "__author": "test.user@example.com",
+  "__createdAt": "2024-01-15T10:00:00.000+0000",
+  "__updatedAt": "2024-01-15T10:00:00.000+0000",
+  "__url": "https://example.atlassian.net/browse/TEST-1?focusedCommentId=10000",
+  "__commentType": "comment"
+}
