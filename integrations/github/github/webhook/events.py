@@ -44,6 +44,13 @@ PULL_REQUEST_EVENTS = [
 # Pull request review events (separate GitHub event type: pull_request_review)
 PULL_REQUEST_REVIEW_EVENTS = ["submitted", "edited", "dismissed"]
 
+# Conversation comments, inline review comments, and review summaries
+PULL_REQUEST_COMMENT_UPSERT_EVENTS = ["created", "edited", "submitted"]
+PULL_REQUEST_COMMENT_DELETE_EVENTS = ["deleted"]
+PULL_REQUEST_COMMENT_EVENTS = (
+    PULL_REQUEST_COMMENT_UPSERT_EVENTS + PULL_REQUEST_COMMENT_DELETE_EVENTS
+)
+
 # Check run validation only fires for these PR actions
 CHECK_RUN_PR_ACTIONS = ["opened", "synchronize", "reopened", "edited"]
 
@@ -166,6 +173,8 @@ WEBHOOK_CREATE_EVENTS = [
     "repository",
     "pull_request",
     "pull_request_review",
+    "pull_request_review_comment",
+    "issue_comment",
     "issues",
     "release",
     "create",
