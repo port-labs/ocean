@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
+    build_deployment_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
@@ -153,3 +154,47 @@ def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> Non
         "status": "running",
         "updated_after": CURSOR.isoformat(),
     }
+
+
+def test_deployment_full_resync_keeps_selector_filters() -> None:
+    params = build_deployment_params(
+        {
+            "environment": "production",
+            "status": "success",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "order_by": "finished_at",
+        },
+        cursor=None,
+    )
+
+    assert params == {
+        "environment": "production",
+        "status": "success",
+        "order_by": "updated_at",
+        "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+    }
+
+
+def test_deployment_incremental_overrides_selector_updated_after() -> None:
+    params = build_deployment_params(
+        {
+            "environment": "staging",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+        },
+        cursor=CURSOR,
+    )
+
+    assert params == {
+        "environment": "staging",
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
+    }
+
+
+def test_deployment_without_updated_after_keeps_finished_at_order() -> None:
+    params = build_deployment_params(
+        {"status": "success", "order_by": "finished_at"},
+        cursor=None,
+    )
+
+    assert params == {"status": "success", "order_by": "finished_at"}

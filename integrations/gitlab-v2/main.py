@@ -24,6 +24,7 @@ from gitlab.helpers.utils import (
     enrich_resources_with_project,
 )
 from gitlab.helpers.incremental import (
+    build_deployment_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
@@ -657,6 +658,11 @@ async def _resync_deployments(
     ):
         logger.info(
             f"Processing batch of {len(projects_batch)} projects for deployments"
+            + (
+                f" updated after {params['updated_after']}"
+                if params and "updated_after" in params
+                else ""
+            )
         )
         async for deployments_batch in client.get_deployments(
             projects_batch,
@@ -666,12 +672,18 @@ async def _resync_deployments(
             yield deployments_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPLOYMENT)
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
 async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync project deployments; incremental only fetches those updated since the cursor."""
     selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
+    params = build_deployment_params(
+        selector.generate_query_params() or None,
+        active_incremental_cursor(),
+    )
     async for batch in _resync_deployments(
         selector.include_only_active_projects,
-        selector.generate_query_params() or None,
+        params or None,
     ):
         yield batch
 

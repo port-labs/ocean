@@ -78,8 +78,34 @@ def build_pipeline_params(
     ``updated_after``). Incremental overrides ``updated_after`` with the Ocean
     cursor so status transitions after the last sync are still caught.
     """
+    return merge_updated_after_params(api_query_params, cursor)
+
+
+def build_deployment_params(
+    api_query_params: dict[str, Any] | None,
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects/{id}/deployments``.
+
+    Same T1 as pipelines: selector filters stay; incremental sets
+    ``updated_after`` from the Ocean cursor (overriding selector
+    ``updatedAfter``). GitLab requires ``order_by=updated_at`` whenever
+    ``updated_after`` is sent.
+    """
+    params = merge_updated_after_params(api_query_params, cursor)
+    if "updated_after" in params:
+        params["order_by"] = "updated_at"
+    return params
+
+
+def merge_updated_after_params(
+    api_query_params: dict[str, Any] | None,
+    cursor: datetime | None,
+) -> dict[str, Any]:
     raw = dict(api_query_params or {})
-    selector_updated_after = _parse_optional_iso_datetime(raw.pop("updated_after", None))
+    selector_updated_after = _parse_optional_iso_datetime(
+        raw.pop("updated_after", None)
+    )
     params = {key: value for key, value in raw.items() if value is not None}
     effective = resolve_effective_datetime(cursor, selector_updated_after)
     return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)

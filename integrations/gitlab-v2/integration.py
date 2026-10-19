@@ -731,6 +731,7 @@ class GitlabDeploymentQueryParams(BaseModel):
             "(ISO 8601 with timezone, e.g. 2024-01-15T10:00:00Z). "
             "This controls which deployments are synced into Port — deployments outside "
             "this window will be removed from Port during reconciliation."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
