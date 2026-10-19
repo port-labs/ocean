@@ -61,9 +61,7 @@ class TestGithubAuthenticator:
         ) as mock_fetch_install_token:
             await github_auth.get_token()
 
-            mock_fetch_install_token.assert_called_once_with(
-                "12345", skip_retry=False
-            )
+            mock_fetch_install_token.assert_called_once_with("12345", skip_retry=False)
 
     @pytest.mark.asyncio
     async def test_token_refreshed_on_expiry(
@@ -86,9 +84,7 @@ class TestGithubAuthenticator:
         ) as mock_fetch_install_token:
             await github_auth.get_headers()
 
-            mock_fetch_install_token.assert_called_once_with(
-                "12345", skip_retry=False
-            )
+            mock_fetch_install_token.assert_called_once_with("12345", skip_retry=False)
             assert github_auth.cached_installation_token == mock_new_token
 
     @pytest.mark.asyncio

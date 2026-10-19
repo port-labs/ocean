@@ -19,7 +19,9 @@ def test_format_github_request_error_rate_limit_from_headers() -> None:
         unauthorized_hint="unused",
     )
 
-    assert message == "Failed to fetch installation token: GitHub API rate limit exceeded"
+    assert (
+        message == "Failed to fetch installation token: GitHub API rate limit exceeded"
+    )
 
 
 def test_format_github_request_error_forbidden_not_rate_limit() -> None:

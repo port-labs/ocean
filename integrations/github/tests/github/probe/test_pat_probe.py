@@ -337,7 +337,9 @@ def test_format_authenticated_user_error_rate_limit_from_headers() -> None:
 
     message = format_authenticated_user_error(response)
 
-    assert message == "Failed to fetch authenticated user: GitHub API rate limit exceeded"
+    assert (
+        message == "Failed to fetch authenticated user: GitHub API rate limit exceeded"
+    )
 
 
 def test_format_authenticated_user_error_forbidden_not_rate_limit() -> None:
