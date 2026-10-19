@@ -26,6 +26,7 @@ from gitlab.helpers.utils import (
 from gitlab.helpers.incremental import (
     build_issue_params,
     build_merge_request_params,
+    build_pipeline_params,
     resolve_effective_datetime,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
@@ -221,17 +222,22 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield issues_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.PIPELINE)
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync project pipelines; incremental only fetches pipelines updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(PipelineResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
+    sync_cursor = active_incremental_cursor()
 
-    params = (
+    params = build_pipeline_params(
         selector.api_query_params.generate_query_params()
         if selector.api_query_params
-        else None
+        else None,
+        sync_cursor,
     )
+
     async for projects_batch in client.get_projects(
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
@@ -239,14 +245,21 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
-        logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for pipelines"
+            + (
+                f" updated after {params['updated_after']}"
+                if "updated_after" in params
+                else ""
+            )
+        )
         project_map = {
             str(project["id"]): {"path_with_namespace": project["path_with_namespace"]}
             for project in projects_batch
         }
 
         async for pipelines_batch in client.get_projects_resource(
-            projects_batch, "pipelines", params=params
+            projects_batch, "pipelines", params=params or None
         ):
             if pipelines_batch:
                 enriched_pipelines = enrich_resources_with_project(

@@ -247,6 +247,7 @@ class GitLabClient:
             "GET", f"groups/{group_id}/{members_api}/{member_id}"
         )
 
+    @cache_iterator_result()
     async def get_projects(
         self,
         params: Optional[dict[str, Any]] = None,
@@ -256,6 +257,10 @@ class GitLabClient:
         included_files: Optional[list[str]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
+
+        Results are cached for the duration of the current Ocean resync so kinds
+        that fan out from projects (pipelines, jobs, tags, …) with the same
+        params reuse one ``GET /projects`` pagination.
 
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)

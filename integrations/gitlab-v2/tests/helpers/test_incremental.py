@@ -4,6 +4,7 @@ from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
     build_issue_params,
     build_merge_request_params,
+    build_pipeline_params,
     resolve_effective_datetime,
 )
 
@@ -105,3 +106,50 @@ def test_mr_incremental_applies_cursor_to_merged_over_lookback() -> None:
     )
 
     assert params == {"state": "merged", "updated_after": CURSOR.isoformat()}
+
+
+def test_pipeline_full_resync_keeps_selector_filters() -> None:
+    params = build_pipeline_params(
+        {
+            "status": "success",
+            "ref": "main",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+        },
+        cursor=None,
+    )
+
+    assert params == {
+        "status": "success",
+        "ref": "main",
+        "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+    }
+
+
+def test_pipeline_full_resync_without_time_filter() -> None:
+    assert build_pipeline_params({"status": "failed"}, cursor=None) == {
+        "status": "failed"
+    }
+
+
+def test_pipeline_incremental_overrides_selector_updated_after() -> None:
+    params = build_pipeline_params(
+        {
+            "scope": "finished",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+        },
+        cursor=CURSOR,
+    )
+
+    assert params == {
+        "scope": "finished",
+        "updated_after": CURSOR.isoformat(),
+    }
+
+
+def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> None:
+    params = build_pipeline_params({"status": "running"}, cursor=CURSOR)
+
+    assert params == {
+        "status": "running",
+        "updated_after": CURSOR.isoformat(),
+    }

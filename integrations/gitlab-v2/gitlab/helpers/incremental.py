@@ -58,3 +58,28 @@ def build_merge_request_params(
         lookback_updated_after if state != "opened" else None,
     )
     return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)
+
+
+def _parse_optional_iso_datetime(value: str | datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def build_pipeline_params(
+    api_query_params: dict[str, Any] | None,
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects/{id}/pipelines``.
+
+    Full resync keeps selector ``apiQueryParams`` (including optional
+    ``updated_after``). Incremental overrides ``updated_after`` with the Ocean
+    cursor so status transitions after the last sync are still caught.
+    """
+    raw = dict(api_query_params or {})
+    selector_updated_after = _parse_optional_iso_datetime(raw.pop("updated_after", None))
+    params = {key: value for key, value in raw.items() if value is not None}
+    effective = resolve_effective_datetime(cursor, selector_updated_after)
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)

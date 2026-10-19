@@ -52,6 +52,9 @@ class SearchQuery(BaseModel):
     )
 
 
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
 class PipelineQueryParams(BaseModel):
     """Gitlab API query params that filters returned pipelines"""
 
@@ -132,7 +135,11 @@ class PipelineQueryParams(BaseModel):
     updated_after: str | None = Field(
         default=None,
         title="Updated After",
-        description="Return only pipelines updated after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        description=(
+            "Return only pipelines updated after this timestamp. Expected in ISO 8601 "
+            "format (e.g. 2019-03-15T08:00:00Z)."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
         regex=ISO_8601_DATETIME_REGEX,
     )
     updated_before: str | None = Field(
@@ -499,9 +506,6 @@ class GitlabFolderSelector(ProjectSelector):
         title="Folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
-
-
-_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
 
 
 class GitlabMergeRequestSelector(GroupSelector):
