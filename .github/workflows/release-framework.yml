@@ -115,7 +115,7 @@ jobs:
             -f actor="${{ github.actor }}"
 
       - name: Send internal release notification
-        if: success() && env.VERSION != ''
+        if: success()
         continue-on-error: true
         uses: fjogeleit/http-request-action@v2
         with:
