@@ -272,7 +272,9 @@ async def test_webhook_system_note_upserts_when_include_comments_true() -> None:
         return_value=[{**fetched_mr, "__comments": [system_comment]}]
     )
 
-    result = await processor.handle_event(system_payload, _config(include_comments=True))
+    result = await processor.handle_event(
+        system_payload, _config(include_comments=True)
+    )
     assert result.updated_raw_results[0]["__comments"][0]["__commentId"] == "99/304"
     assert result.updated_raw_results[0]["__comments"][0]["system"] is True
     assert result.updated_raw_results[0]["__comments"][0]["__commentType"] == "comment"
