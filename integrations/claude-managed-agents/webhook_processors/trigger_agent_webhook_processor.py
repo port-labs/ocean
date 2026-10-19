@@ -45,9 +45,9 @@ from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
     build_session_link,
+    post_interaction_logs,
 )
 from clients.client_factory import create_anthropic_client
-from session_logs import InteractionLogReconciler
 from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
@@ -204,7 +204,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         last_error = self._last_error_log_message(log_entries)
 
         if isinstance(run, WorkflowNodeRun):
-            await InteractionLogReconciler().post_logs_from_events(run, events)
+            await post_interaction_logs(run, events)
         elif log_entries:
             await ocean.port_client.post_run_logs(
                 run,
