@@ -85,11 +85,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         if config.selector.include_comments:
-            issues = await attach_comments_to_issues(
-                client,
-                issues,
-                config.selector.comments_max_age_days,
-            )
+            issues = await attach_comments_to_issues(client, issues)
         yield issues
 
 

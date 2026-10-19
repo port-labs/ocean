@@ -7,7 +7,6 @@
     # Replace with your own JQL so only selected issues are fetched for comments.
     jql: 'key in (PROJ-1, PROJ-2)'
     includeComments: true
-    commentsMaxAgeDays: 30
   port:
     itemsToParse: .__comments
     entity:

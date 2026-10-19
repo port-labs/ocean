@@ -67,11 +67,7 @@ class IssueWebhookProcessor(JiraAbstractWebhookProcessor):
             data_to_delete.append(payload["issue"])
         else:
             if config.selector.include_comments:
-                issues = await attach_comments_to_issues(
-                    client,
-                    issues,
-                    config.selector.comments_max_age_days,
-                )
+                issues = await attach_comments_to_issues(client, issues)
             data_to_update.extend(issues)
 
         return WebhookEventRawResults(
