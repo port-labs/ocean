@@ -1,7 +1,11 @@
-# Opt-in. Not part of the default mapping. Create the blueprint yourself.
+# includeComments is only a boolean; to limit which issues get comments,
+# add this as another issue block and filter with that block's selector;
+# leave the default issue block unchanged.
 - kind: issue
   selector:
     query: 'true'
+    # Replace with your own JQL so only selected issues are fetched for comments.
+    jql: 'key in (PROJ-1, PROJ-2)'
     includeComments: true
     commentsMaxAgeDays: 30
   port:
