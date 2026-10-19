@@ -2130,6 +2130,15 @@ async def test_refresh_rejects_owned_session_without_execution_identity() -> Non
 
 
 @pytest.mark.asyncio
+async def test_refresh_skips_unowned_session_with_execution_identity() -> None:
+    client = MagicMock()
+    await refresh_port_mcp_session(
+        client, _workflow_run_with_port_mcp(), _sdk_session(metadata={})
+    )
+    client.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_update_agent_executor_maps_system_prompt_to_system_field() -> None:
     """systemPrompt in execution properties must arrive as `system` in the API payload."""
     client_mock = MagicMock()
