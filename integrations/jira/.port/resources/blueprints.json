@@ -217,5 +217,57 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "jiraIssueComment",
+    "title": "Jira Issue Comment",
+    "icon": "Jira",
+    "description": "A comment on a Jira issue",
+    "schema": {
+      "properties": {
+        "body": {
+          "title": "Body",
+          "type": "string",
+          "description": "Comment text"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string",
+          "description": "Email or display name of the comment author"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "commentType": {
+          "title": "Comment Type",
+          "type": "string",
+          "enum": ["comment"]
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "issue": {
+        "title": "Issue",
+        "target": "jiraIssue",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
