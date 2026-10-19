@@ -14,10 +14,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from jira.helpers.incremental import apply_cursor_to_jql
+from jira.comments import attach_comments_to_issues
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
-    JiraIssueCommentResourceConfig,
     JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
@@ -84,6 +84,12 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params["expand"] = config.selector.expand
     async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
+        if config.selector.include_comments:
+            issues = await attach_comments_to_issues(
+                client,
+                issues,
+                config.selector.comments_max_age_days,
+            )
         yield issues
 
 
@@ -217,25 +223,6 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for epic_batch in stream_async_iterators_tasks(*epic_streams):
             logger.info(f"Received epic batch with {len(epic_batch)} epics")
             yield epic_batch
-
-
-@ocean.on_resync(Kinds.ISSUE_COMMENT)
-async def on_resync_issue_comments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = get_or_create_jira_client()
-    selector = cast(JiraIssueCommentResourceConfig, event.resource_config).selector
-
-    async for issue_batch in client.get_paginated_issues(
-        {"jql": selector.jql, "fields": "key"}
-    ):
-        comment_streams = [
-            client.get_paginated_comments_for_issue(issue["key"])
-            for issue in issue_batch
-            if issue.get("key")
-        ]
-        if not comment_streams:
-            continue
-        async for comment_batch in stream_async_iterators_tasks(*comment_streams):
-            yield comment_batch
 
 
 @ocean.on_incremental_resync(Kinds.WORKLOG)
