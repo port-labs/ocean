@@ -7,7 +7,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
@@ -19,6 +19,7 @@ from actions.utils import (
     normalize_session_config,
 )
 from integration import ObjectKind
+from stream_manager import get_stream_manager
 from webhook_processors.registry import WEBHOOK_PATH
 from webhook_processors.trigger_agent_webhook_processor import (
     TriggerAgentWebhookProcessor,
@@ -162,7 +163,25 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
-        if not props.get("reportSessionStatus", False):
+        report_session_status = props.get("reportSessionStatus", False)
+
+        if report_session_status:
+            try:
+                await self.client.update_session_metadata(
+                    resolved_session_id, {"portExternalRunId": external_id}
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Failed to store portExternalRunId on session "
+                    f"{resolved_session_id}: {exc!r}"
+                )
+
+        if report_session_status and isinstance(run, WorkflowNodeRun):
+            manager = get_stream_manager()
+            if manager is not None:
+                manager.track(resolved_session_id, run)
+
+        if not report_session_status:
             await ocean.port_client.report_run_completed(
                 run,
                 True,

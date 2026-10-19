@@ -7,6 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from actions.registry import register_action_executors
 from clients.client_factory import create_webhook_client
+from stream_manager import init_stream_manager, reattach_active_sessions
 from exporter_factory import (
     create_agents_exporter,
     create_environments_exporter,
@@ -109,6 +110,10 @@ async def on_start() -> None:
         return
 
     await create_webhook_client().upsert_webhook(base_url)
+
+    manager = init_stream_manager()
+    await manager.start()
+    await reattach_active_sessions(manager)
 
 
 register_live_events_webhooks()

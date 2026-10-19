@@ -264,6 +264,26 @@ class AnthropicClient:
     async def get_session(self, session_id: str) -> BetaManagedAgentsSession:
         return await self._client.beta.sessions.retrieve(session_id)
 
+    async def update_session_metadata(
+        self, session_id: str, metadata: dict[str, str | None]
+    ) -> None:
+        await self._client.beta.sessions.update(session_id, metadata=metadata)
+
+    async def list_active_sessions(
+        self,
+    ) -> AsyncGenerator[list[BetaManagedAgentsSession], None]:
+        paginator = await self._client.beta.sessions.list(
+            statuses=["running", "rescheduling"],
+        )
+        batch: list[BetaManagedAgentsSession] = []
+        async for session in paginator:
+            batch.append(session)
+            if len(batch) >= self._page_size:
+                yield batch
+                batch = []
+        if batch:
+            yield batch
+
     async def get_session_events(
         self,
         session_id: str,
