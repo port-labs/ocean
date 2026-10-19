@@ -7,7 +7,6 @@ import pytest
 from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.merge_request_comments import (
     is_human_merge_request_note,
-    merge_request_within_comments_age,
     normalize_merge_request_note,
 )
 from gitlab.helpers.utils import ObjectKind
@@ -104,22 +103,14 @@ def test_system_notes_are_skipped() -> None:
     assert is_human_merge_request_note({**NOTE, "body": "  "}) is False
 
 
-def test_age_gate_skips_missing_or_old_updated_at() -> None:
-    assert merge_request_within_comments_age(MERGE_REQUEST, 30) is True
-    assert merge_request_within_comments_age(OLD_MERGE_REQUEST, 30) is False
-    assert merge_request_within_comments_age({"id": 1}, 30) is False
-    assert merge_request_within_comments_age({"updated_at": "not-a-date"}, 30) is False
-
-
 @pytest.mark.asyncio
-async def test_recent_mr_attaches_human_notes_and_skips_system() -> None:
+async def test_attaches_human_notes_and_skips_system() -> None:
     client = GitLabClient.__new__(GitLabClient)
     client.get_merge_request_notes = AsyncMock(  # type: ignore[method-assign]
         return_value=[NOTE, DIFF_NOTE, SYSTEM_NOTE]
     )
     result = await client.attach_merge_request_comments(
         [MERGE_REQUEST.copy()],
-        comments_max_age_days=30,
         max_concurrent=1,
     )
     comments = result[0]["__comments"]
@@ -130,18 +121,28 @@ async def test_recent_mr_attaches_human_notes_and_skips_system() -> None:
 
 
 @pytest.mark.asyncio
-async def test_old_mr_makes_no_notes_api_call() -> None:
+@pytest.mark.parametrize(
+    "merge_request",
+    [
+        OLD_MERGE_REQUEST,
+        {**MERGE_REQUEST, "updated_at": None},
+        {k: v for k, v in MERGE_REQUEST.items() if k != "updated_at"},
+        {**MERGE_REQUEST, "updated_at": "not-a-date"},
+    ],
+)
+async def test_comments_load_for_old_missing_or_unparseable_updated_at(
+    merge_request: dict[str, Any],
+) -> None:
     client = GitLabClient.__new__(GitLabClient)
     client.get_merge_request_notes = AsyncMock(  # type: ignore[method-assign]
-        side_effect=AssertionError("notes API must not be called for old MRs")
+        return_value=[NOTE]
     )
     result = await client.attach_merge_request_comments(
-        [OLD_MERGE_REQUEST.copy()],
-        comments_max_age_days=30,
+        [merge_request.copy()],
         max_concurrent=1,
     )
-    assert "__comments" not in result[0]
-    client.get_merge_request_notes.assert_not_called()
+    assert result[0]["__comments"][0]["__commentId"] == "99/302"
+    client.get_merge_request_notes.assert_awaited_once()
 
 
 def _processor() -> MergeRequestCommentWebhookProcessor:
@@ -156,7 +157,6 @@ def _config(*, include_comments: bool = True) -> GitlabMergeRequestResourceConfi
                 "query": "true",
                 "states": ["opened"],
                 "includeComments": include_comments,
-                "commentsMaxAgeDays": 30,
             }
         ),
         port=PortResourceConfig(
@@ -241,19 +241,3 @@ async def test_webhook_ignores_issue_notes() -> None:
     issue_event.payload = _payload()
     issue_event.payload["object_attributes"]["noteable_type"] = "Issue"
     assert await processor.should_process_event(issue_event) is False
-
-
-@pytest.mark.asyncio
-async def test_webhook_noops_when_mr_outside_age_window() -> None:
-    processor = _processor()
-    processor._gitlab_webhook_client = MagicMock()
-    processor._gitlab_webhook_client.get_merge_request = AsyncMock()
-    processor._gitlab_webhook_client.attach_merge_request_comments = AsyncMock()
-
-    result = await processor.handle_event(
-        _payload(merge_request=OLD_MERGE_REQUEST.copy()),
-        _config(include_comments=True),
-    )
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == []
-    processor._gitlab_webhook_client.get_merge_request.assert_not_called()

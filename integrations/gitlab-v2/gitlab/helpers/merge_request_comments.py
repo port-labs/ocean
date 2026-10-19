@@ -1,7 +1,4 @@
-from datetime import datetime, timedelta, timezone
 from typing import Any
-
-from dateutil import parser
 
 
 def normalize_merge_request_note(
@@ -42,20 +39,3 @@ def is_human_merge_request_note(
     if body is None:
         body = note.get("note") or ""
     return bool(str(body).strip())
-
-
-def merge_request_within_comments_age(
-    merge_request: dict[str, Any], comments_max_age_days: int
-) -> bool:
-    """Return True when updated_at is parseable and within the comments window."""
-    updated_at = merge_request.get("updated_at")
-    if not updated_at:
-        return False
-    try:
-        parsed = parser.parse(str(updated_at))
-    except (TypeError, ValueError, OverflowError):
-        return False
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=comments_max_age_days)
-    return parsed >= cutoff

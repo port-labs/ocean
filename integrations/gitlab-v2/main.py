@@ -322,7 +322,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if include_comments:
                     merge_requests_batch = await client.attach_merge_request_comments(
                         merge_requests_batch,
-                        comments_max_age_days=selector.comments_max_age_days,
                         max_concurrent=DEFAULT_MAX_CONCURRENT,
                     )
                 yield merge_requests_batch

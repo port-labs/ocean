@@ -8,7 +8,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from gitlab.helpers.merge_request_comments import merge_request_within_comments_age
 from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
@@ -55,15 +54,6 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
             return empty
 
         merge_request_payload = payload["merge_request"]
-        if not merge_request_within_comments_age(
-            merge_request_payload, selector.comments_max_age_days
-        ):
-            logger.info(
-                "Skipping merge request note event; merge request is outside "
-                f"commentsMaxAgeDays={selector.comments_max_age_days}"
-            )
-            return empty
-
         project_id = payload["project"]["id"]
         merge_request_iid = merge_request_payload["iid"]
         state = merge_request_payload.get("state")
@@ -100,7 +90,6 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         commented = await self._gitlab_webhook_client.attach_merge_request_comments(
             [merge_request],
-            comments_max_age_days=selector.comments_max_age_days,
             max_concurrent=1,
         )
         merge_request = commented[0] if commented else merge_request

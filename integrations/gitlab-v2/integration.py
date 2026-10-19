@@ -549,18 +549,6 @@ class GitlabMergeRequestSelector(GroupSelector):
             "resyncs and the default mapping do not call the comments API."
         ),
     )
-    comments_max_age_days: int = Field(
-        default=30,
-        alias="commentsMaxAgeDays",
-        title="Comments Max Age Days",
-        ge=1,
-        description=(
-            "Only merge requests whose updated_at is within this many days get a "
-            "notes API call. Older merge requests are returned with no comments "
-            "fetch. When a merge request qualifies, fetch all human notes. "
-            "Defaults to 30."
-        ),
-    )
 
     @property
     def updated_after_datetime(self) -> datetime:
