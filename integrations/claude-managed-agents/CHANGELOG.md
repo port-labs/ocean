@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.1 (2026-10-19)
+
+
+### Improvements
+
+- Added `defaultInstallationId` (`claude-mngd-agnts`) to the integration spec so Port can default the installation identifier to a value within the 20-character limit
+
+
 ## 0.11.0 (2026-10-19)
 
 
