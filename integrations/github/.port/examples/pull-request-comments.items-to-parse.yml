@@ -1,7 +1,9 @@
-# Opt-in. Not part of the default mapping. Create the blueprint yourself.
+# includeComments is only a boolean; to limit which pull requests get comments,
+# add this as another pull-request block and filter with selector.query;
+# leave the default pull-request block unchanged.
 - kind: pull-request
   selector:
-    query: 'true'
+    query: '.labels.isAi == true'
     includeComments: true
     commentsMaxAgeDays: 30
   port:
