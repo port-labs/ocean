@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
+from actions.port_mcp import apply_port_mcp_to_agent_config
 from integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -21,29 +22,36 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     model: str | None = None
     systemPrompt: str | None = None
     config: dict[str, Any] | None = None
+    enablePortMcp: bool | None = None
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
-        if not any([self.name, self.model, self.systemPrompt, self.config]):
+        if not any(
+            [
+                self.name,
+                self.model,
+                self.systemPrompt,
+                self.config is not None,
+                self.enablePortMcp is not None,
+            ]
+        ):
             raise ValueError(
-                "at least one of name, model, systemPrompt, or config must be provided"
+                "at least one of name, model, systemPrompt, config, or "
+                "enablePortMcp must be provided"
             )
         return self
 
     def to_request_payload(self) -> dict[str, Any]:
-        """Return only the fields that should be sent to the Anthropic API.
+        payload = self.model_dump(
+            exclude={"agentId", "config", "enablePortMcp"}, exclude_none=True
+        )
+        if "systemPrompt" in payload:
+            payload["system"] = payload.pop("systemPrompt")
 
-        Omits agentId (routing key, not an API field), drops None/empty values,
-        and maps systemPrompt → system to match the API field name.
-        """
-        rename = {"systemPrompt": "system"}
-        return {
-            rename.get(field, field): value
-            for field, value in self.model_dump(
-                exclude={"agentId"}, exclude_none=True
-            ).items()
-            if value
-        }
+        config = self.config or {}
+        if self.enablePortMcp is True:
+            config = apply_port_mcp_to_agent_config(config)
+        return {**payload, **config}
 
 
 class UpdateAgentExecutor(AbstractAnthropicExecutor):
