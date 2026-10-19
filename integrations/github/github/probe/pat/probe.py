@@ -5,9 +5,14 @@ from port_ocean.core.probe import KindPermissionVerdict
 from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.helpers.api_error_messages import format_github_request_error
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
 
 NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
+
+_FETCH_USER_UNAUTHORIZED_HINT = (
+    "Please verify the personal access token is valid and not expired."
+)
 
 _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
     "repo": {
@@ -79,9 +84,7 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
             extensions=NO_RETRY,
         )
         if not response.is_success:
-            await self.context.fail(
-                f"Failed to fetch authenticated user: GitHub API returned {response.status_code}"
-            )
+            await self.context.fail(format_authenticated_user_error(response))
             return None
         return response
 
@@ -202,3 +205,12 @@ def expand_pat_scopes(scopes: set[str]) -> set[str]:
                 expanded.add(implied)
                 pending.append(implied)
     return expanded
+
+
+def format_authenticated_user_error(response: Response) -> str:
+    """Build a user-facing failure message for a failed GET /user probe request."""
+    return format_github_request_error(
+        response,
+        action="Failed to fetch authenticated user",
+        unauthorized_hint=_FETCH_USER_UNAUTHORIZED_HINT,
+    )
