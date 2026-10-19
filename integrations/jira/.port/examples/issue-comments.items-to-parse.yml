@@ -17,10 +17,9 @@
         blueprint: '"jiraIssueComment"'
         properties:
           body: .item.__body
-          author: .item.__author
-          createdAt: .item.__createdAt
-          updatedAt: .item.__updatedAt
+          author: .item.author.emailAddress // .item.author.displayName // .item.author.accountId
+          createdAt: .item.created
+          updatedAt: .item.updated
           url: .item.__url
-          commentType: .item.__commentType
         relations:
           issue: .key

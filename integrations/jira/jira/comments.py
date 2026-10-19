@@ -39,9 +39,12 @@ def adf_to_plain_text(body: Any) -> str:
 
 
 def normalize_issue_comment(comment: dict[str, Any], issue_key: str) -> dict[str, Any]:
-    """Attach the fields shared by the comment blueprint across integrations."""
-    author_raw = comment.get("author")
-    author: dict[str, Any] = author_raw if isinstance(author_raw, dict) else {}
+    """Keep raw Jira comment fields and add only justified transforms.
+
+    ``__commentId`` prefixes the issue key because comment ids are not unique
+    across issues. ``__body`` flattens ADF (``body`` is not a string). ``__url``
+    is the browse URL; Jira's payload only has the REST ``self`` link.
+    """
     comment_id = str(comment.get("id") or "")
     self_url = str(comment.get("self") or "")
     host = ""
@@ -54,22 +57,11 @@ def normalize_issue_comment(comment: dict[str, Any], issue_key: str) -> dict[str
         if host and comment_id
         else self_url
     )
-    author_name = (
-        author.get("emailAddress")
-        or author.get("displayName")
-        or author.get("accountId")
-        or ""
-    )
     return {
         **comment,
-        "__issueKey": issue_key,
         "__commentId": f"{issue_key}/{comment_id}",
         "__body": adf_to_plain_text(comment.get("body")).strip(),
-        "__author": author_name,
-        "__createdAt": comment.get("created"),
-        "__updatedAt": comment.get("updated"),
         "__url": url,
-        "__commentType": "comment",
     }
 
 

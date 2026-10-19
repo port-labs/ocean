@@ -119,16 +119,21 @@ def test_adf_to_plain_text_flattens_paragraphs() -> None:
 def test_normalize_issue_comment_sets_shared_fields() -> None:
     normalized = normalize_issue_comment(COMMENT, "TEST-1")
     assert normalized["__commentId"] == "TEST-1/10000"
-    assert normalized["__issueKey"] == "TEST-1"
     assert normalized["__body"] == "Please confirm the rollout window."
-    assert normalized["__author"] == "test.user@example.com"
-    assert normalized["__commentType"] == "comment"
     assert (
         normalized["__url"]
         == "https://example.atlassian.net/browse/TEST-1?focusedCommentId=10000"
     )
     assert normalized["id"] == "10000"
     assert normalized["body"] == ADF_BODY
+    assert normalized["author"] == COMMENT["author"]
+    assert normalized["created"] == COMMENT["created"]
+    assert normalized["updated"] == COMMENT["updated"]
+    assert "__issueKey" not in normalized
+    assert "__author" not in normalized
+    assert "__createdAt" not in normalized
+    assert "__updatedAt" not in normalized
+    assert "__commentType" not in normalized
 
 
 def test_issue_selector_include_comments_defaults_false() -> None:
