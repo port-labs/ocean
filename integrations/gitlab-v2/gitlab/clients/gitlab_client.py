@@ -13,6 +13,10 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
+from gitlab.helpers.merge_request_comments import (
+    is_human_merge_request_note,
+    normalize_merge_request_note,
+)
 from gitlab.helpers.utils import (
     build_search_query,
     parse_file_content,
@@ -222,6 +226,27 @@ class GitLabClient:
         ):
             notes.extend(batch)
         return notes
+
+    async def get_merge_request_comments(
+        self,
+        merge_request: dict[str, Any],
+        include_system_notes: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Return normalized human comments for one merge request."""
+        project_id = merge_request.get("project_id")
+        merge_request_iid = merge_request.get("iid")
+        if (
+            project_id is None
+            or merge_request_iid is None
+            or merge_request.get("id") is None
+        ):
+            return []
+        notes = await self.get_merge_request_notes(project_id, merge_request_iid)
+        return [
+            normalize_merge_request_note(note, merge_request)
+            for note in notes
+            if is_human_merge_request_note(note, include_system_notes)
+        ]
 
     async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(

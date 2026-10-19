@@ -557,6 +557,48 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
     )
 
 
+class GitlabMergeRequestCommentSelector(GroupSelector):
+    states: List[Literal["opened", "closed", "merged"]] = Field(
+        alias="states",
+        title="States",
+        description="Only ingest comments on merge requests in these states.",
+        default=["opened"],
+    )
+    updated_after: float = Field(
+        alias="updatedAfter",
+        title="Updated After (Days)",
+        description=(
+            "Number of days to look back for closed or merged merge requests "
+            "whose comments are fetched. Open merge requests ignore this window."
+        ),
+        default=90,
+    )
+    include_system_notes: bool = Field(
+        alias="includeSystemNotes",
+        title="Include System Notes",
+        default=False,
+        description=(
+            "Include GitLab system notes such as label and status changes. "
+            "Defaults to false so the catalog keeps human discussion."
+        ),
+    )
+
+    @property
+    def updated_after_datetime(self) -> datetime:
+        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
+
+
+class GitlabMergeRequestCommentResourceConfig(ResourceConfig):
+    kind: Literal["merge-request-comment"] = Field(
+        title="GitLab Merge Request Comment",
+        description="GitLab merge request comment resource kind.",
+    )
+    selector: GitlabMergeRequestCommentSelector = Field(
+        title="Merge Request Comment Selector",
+        description="Selector for GitLab merge request comments and diff notes.",
+    )
+
+
 class TagResourceConfig(ResourceConfig):
     kind: Literal["tag"] = Field(
         title="GitLab Tag",
@@ -831,6 +873,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitLabSkillResourceConfig
         | GitLabPluginResourceConfig
         | GitlabMergeRequestResourceConfig
+        | GitlabMergeRequestCommentResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig
         | PipelineResourceConfig
