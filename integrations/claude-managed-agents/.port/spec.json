@@ -166,6 +166,7 @@
       "name": "trigger_agent",
       "icon": "Claude",
       "description": "Trigger a Claude managed agent by starting or continuing a session and sending a user message",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "agentId",
