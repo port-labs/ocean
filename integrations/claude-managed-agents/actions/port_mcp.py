@@ -277,7 +277,6 @@ async def prepare_port_mcp_session_config(
 async def refresh_port_mcp_session(
     client: Any, run: IntegrationRun, session: Any
 ) -> None:
-    claim = _port_mcp_claim(run)
     metadata = (
         session.metadata if isinstance(getattr(session, "metadata", None), dict) else {}
     )
@@ -285,14 +284,15 @@ async def refresh_port_mcp_session(
         metadata.get(PORT_IDENTITY_TYPE_KEY),
         metadata.get(PORT_IDENTITY_ID_KEY),
     )
-    if not claim:
-        if owner != (None, None):
-            raise ActionExecutionError(
-                f"Cannot continue session {session.id}: owned by {owner[0]}:{owner[1]} "
-                "without an execution identity",
-                status_label=PORT_MCP_FAILED_STATUS_LABEL,
-            )
+    if owner == (None, None):
         return
+    claim = _port_mcp_claim(run)
+    if not claim:
+        raise ActionExecutionError(
+            f"Cannot continue session {session.id}: owned by {owner[0]}:{owner[1]} "
+            "without an execution identity",
+            status_label=PORT_MCP_FAILED_STATUS_LABEL,
+        )
     identity_type, identity_id, access_token = claim
     if owner != (identity_type, identity_id):
         raise ActionExecutionError(
