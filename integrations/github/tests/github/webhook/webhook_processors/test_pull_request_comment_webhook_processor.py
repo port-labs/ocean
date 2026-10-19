@@ -172,8 +172,13 @@ class TestPullRequestCommentWebhookProcessor:
         fetched_pr = _fetched_pull_request()
         comments = [
             {
+                "id": 11,
+                "body": "Please add a test",
+                "html_url": "https://github.com/test-org/repo1/pull/7#issuecomment-11",
+                "created_at": "2026-10-01T00:00:00Z",
+                "updated_at": "2026-10-02T00:00:00Z",
+                "user": {"login": "reviewer"},
                 "__commentId": "repo1/7/comment/11",
-                "__body": "Please add a test",
                 "__commentType": "comment",
             }
         ]
