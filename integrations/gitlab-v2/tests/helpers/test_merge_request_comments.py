@@ -6,7 +6,7 @@ import pytest
 
 from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.merge_request_comments import (
-    is_human_merge_request_note,
+    has_merge_request_note_body,
     normalize_merge_request_note,
 )
 from gitlab.helpers.utils import ObjectKind
@@ -97,14 +97,14 @@ def test_normalize_uses_webhook_note_field() -> None:
     assert "__author" not in normalized
 
 
-def test_system_notes_are_skipped() -> None:
-    assert is_human_merge_request_note(SYSTEM_NOTE) is False
-    assert is_human_merge_request_note(SYSTEM_NOTE, True) is True
-    assert is_human_merge_request_note({**NOTE, "body": "  "}) is False
+def test_empty_body_notes_are_skipped() -> None:
+    assert has_merge_request_note_body(SYSTEM_NOTE) is True
+    assert has_merge_request_note_body({**NOTE, "body": "  "}) is False
+    assert has_merge_request_note_body({**NOTE, "body": None, "note": ""}) is False
 
 
 @pytest.mark.asyncio
-async def test_attaches_human_notes_and_skips_system() -> None:
+async def test_attaches_all_notes_including_system() -> None:
     client = GitLabClient.__new__(GitLabClient)
     client.get_merge_request_notes = AsyncMock(  # type: ignore[method-assign]
         return_value=[NOTE, DIFF_NOTE, SYSTEM_NOTE]
@@ -114,9 +114,15 @@ async def test_attaches_human_notes_and_skips_system() -> None:
         max_concurrent=1,
     )
     comments = result[0]["__comments"]
-    assert [comment["__commentId"] for comment in comments] == ["99/302", "99/303"]
+    assert [comment["__commentId"] for comment in comments] == [
+        "99/302",
+        "99/303",
+        "99/304",
+    ]
     assert comments[0]["__commentType"] == "comment"
     assert comments[1]["__commentType"] == "review"
+    assert comments[2]["__commentType"] == "comment"
+    assert comments[2]["system"] is True
     client.get_merge_request_notes.assert_awaited_once()
 
 
@@ -231,6 +237,47 @@ async def test_webhook_noops_when_include_comments_false() -> None:
     assert result.deleted_raw_results == []
     processor._gitlab_webhook_client.get_merge_request.assert_not_called()
     processor._gitlab_webhook_client.attach_merge_request_comments.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_webhook_system_note_upserts_when_include_comments_true() -> None:
+    processor = _processor()
+    event = MagicMock()
+    event.headers = {"x-gitlab-event": "Note Hook"}
+    system_payload = _payload(
+        object_attributes={
+            "id": 304,
+            "note": "changed the description",
+            "noteable_type": "MergeRequest",
+            "created_at": "2026-10-01T00:00:00.000Z",
+            "updated_at": "2026-10-01T00:00:00.000Z",
+            "system": True,
+            "type": None,
+            "url": (
+                "https://gitlab.example.com/group/project/-/merge_requests/1#note_304"
+            ),
+        }
+    )
+    event.payload = system_payload
+    assert await processor.should_process_event(event) is True
+
+    fetched_mr = MERGE_REQUEST.copy()
+    system_comment = normalize_merge_request_note(SYSTEM_NOTE, MERGE_REQUEST)
+    processor._gitlab_webhook_client = MagicMock()
+    processor._gitlab_webhook_client.get_merge_request = AsyncMock(
+        return_value=fetched_mr
+    )
+    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
+    processor._gitlab_webhook_client.attach_merge_request_comments = AsyncMock(
+        return_value=[{**fetched_mr, "__comments": [system_comment]}]
+    )
+
+    result = await processor.handle_event(system_payload, _config(include_comments=True))
+    assert result.updated_raw_results[0]["__comments"][0]["__commentId"] == "99/304"
+    assert result.updated_raw_results[0]["__comments"][0]["system"] is True
+    assert result.updated_raw_results[0]["__comments"][0]["__commentType"] == "comment"
+    assert result.deleted_raw_results == []
+    processor._gitlab_webhook_client.attach_merge_request_comments.assert_awaited_once()
 
 
 @pytest.mark.asyncio

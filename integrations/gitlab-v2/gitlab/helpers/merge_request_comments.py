@@ -30,11 +30,8 @@ def normalize_merge_request_note(
     return normalized
 
 
-def is_human_merge_request_note(
-    note: dict[str, Any], include_system_notes: bool = False
-) -> bool:
-    if note.get("system") and not include_system_notes:
-        return False
+def has_merge_request_note_body(note: dict[str, Any]) -> bool:
+    """Return True when the note has non-empty body or note text."""
     body = note.get("body")
     if body is None:
         body = note.get("note") or ""

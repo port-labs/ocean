@@ -14,7 +14,7 @@ from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.merge_request_comments import (
-    is_human_merge_request_note,
+    has_merge_request_note_body,
     normalize_merge_request_note,
 )
 from gitlab.helpers.utils import (
@@ -230,9 +230,8 @@ class GitLabClient:
     async def get_merge_request_comments(
         self,
         merge_request: dict[str, Any],
-        include_system_notes: bool = False,
     ) -> list[dict[str, Any]]:
-        """Return normalized human comments for one merge request."""
+        """Return normalized comments for one merge request, including system notes."""
         project_id = merge_request.get("project_id")
         merge_request_iid = merge_request.get("iid")
         if (
@@ -245,7 +244,7 @@ class GitLabClient:
         return [
             normalize_merge_request_note(note, merge_request)
             for note in notes
-            if is_human_merge_request_note(note, include_system_notes)
+            if has_merge_request_note_body(note)
         ]
 
     async def attach_merge_request_comments(
@@ -254,7 +253,7 @@ class GitLabClient:
         *,
         max_concurrent: int = 10,
     ) -> list[dict[str, Any]]:
-        """Attach __comments (human notes) on every merge request in the batch."""
+        """Attach __comments on every merge request in the batch."""
         if not batch:
             return batch
 
