@@ -35,6 +35,9 @@
           "kind": "pull-request"
         },
         {
+          "kind": "pull-request-comment"
+        },
+        {
           "kind": "issue"
         },
         {

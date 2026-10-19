@@ -45,6 +45,9 @@ from github.core.exporters.deployment_status_exporter import (
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
+from github.core.exporters.pull_request_comment_exporter import (
+    RestPullRequestCommentExporter,
+)
 from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
@@ -76,6 +79,7 @@ from github.core.options import (
     ListDeploymentStatusesOptions,
     ListEnvironmentsOptions,
     ListIssueOptions,
+    ListPullRequestCommentOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
     ListTeamOptions,
@@ -105,6 +109,7 @@ from integration import (
     GithubReleaseConfig,
     GithubIssueConfig,
     GithubPortAppConfig,
+    GithubPullRequestCommentConfig,
     GithubPullRequestConfig,
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
@@ -650,6 +655,99 @@ async def resync_pull_requests(
                             ],
                         },
                     )
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
+
+
+@ocean.on_incremental_resync(ObjectKind.PULL_REQUEST_COMMENT)
+@ocean.on_resync(ObjectKind.PULL_REQUEST_COMMENT)
+@_resync_per_authenticator
+async def resync_pull_request_comments(
+    kind: str, authenticator: AbstractGitHubAuthenticator
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync conversation comments, review comments, and review summaries."""
+
+    rest_client = create_github_client(authenticator)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    pull_request_exporter = RestPullRequestExporter(rest_client)
+    comment_exporter = RestPullRequestCommentExporter(rest_client)
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    config = cast(GithubPullRequestCommentConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
+    fetch_errors: list[Exception] = []
+
+    async for organizations in org_exporter.get_paginated_resources():
+        for org in organizations:
+            org_name = org["login"]
+            repo_options = ListRepositoryOptions(
+                organization=org_name,
+                organization_type=org["type"],
+                type=port_app_config.repository_type,
+                search_params=config.selector.repo_search,
+                exclude_archived=config.selector.exclude_archived,
+            )
+
+            async for repos in repository_exporter.get_paginated_resources(
+                options=repo_options
+            ):
+                for repo in repos:
+                    try:
+                        async for (
+                            pull_requests
+                        ) in pull_request_exporter.get_paginated_resources(
+                            ListPullRequestOptions(
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                states=list(config.selector.states),
+                                incremental_cursor=sync_cursor,
+                                updated_after=resolve_effective_datetime(
+                                    sync_cursor, config.selector.updated_after
+                                ),
+                                max_results=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.effective_max_results
+                                ),
+                                closed_after=(
+                                    None
+                                    if sync_cursor is not None
+                                    else config.selector.closed_after
+                                ),
+                            )
+                        ):
+                            tasks = [
+                                comment_exporter.get_paginated_resources(
+                                    ListPullRequestCommentOptions(
+                                        organization=org_name,
+                                        repo_name=repo["name"],
+                                        pr_number=pull_request["number"],
+                                        pull_request_id=pull_request["id"],
+                                    )
+                                )
+                                for pull_request in pull_requests
+                            ]
+                            if not tasks:
+                                continue
+                            async for comments in stream_independent_async_iterators(
+                                *tasks, context=kind
+                            ):
+                                yield comments
+                    except ExceptionGroup as page_errors:
+                        fetch_errors.extend(page_errors.exceptions)
+                        logger.error(
+                            f"{len(page_errors.exceptions)} pull request(s) failed "
+                            f"fetching comments in {org_name}/{repo['name']}",
+                            extra={
+                                "failed_pull_requests": [
+                                    str(error) for error in page_errors.exceptions
+                                ],
+                            },
+                        )
 
     if fetch_errors:
         raise ExceptionGroup(
