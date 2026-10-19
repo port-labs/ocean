@@ -56,6 +56,17 @@ def _port_mcp_url() -> str:
         return DEFAULT_PORT_MCP_URL
 
 
+def port_mcp_enabled(value: Any) -> bool | None:
+    """Return the flag, or None when the value is not a boolean, 0/1, or true/1/yes."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes"}
+    if isinstance(value, int) and value in (0, 1):
+        return value == 1
+    return None
+
+
 def is_port_mcp_managed(metadata: Any) -> bool:
     return (
         isinstance(metadata, dict)

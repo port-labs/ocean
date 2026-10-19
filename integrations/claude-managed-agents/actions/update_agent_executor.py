@@ -8,7 +8,7 @@ from pydantic import Field, field_validator, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import apply_port_mcp_to_agent_config
+from actions.port_mcp import apply_port_mcp_to_agent_config, port_mcp_enabled
 from integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -27,9 +27,12 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     @field_validator("enablePortMcp", mode="before")
     @classmethod
     def _coerce_enable_port_mcp(cls, value: Any) -> Any:
-        if isinstance(value, str):
-            return value.lower() in {"true", "1", "yes"}
-        return value
+        if value is None:
+            return None
+        enabled = port_mcp_enabled(value)
+        if enabled is None:
+            raise ValueError("enablePortMcp must be a boolean")
+        return enabled
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
