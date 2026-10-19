@@ -110,4 +110,4 @@ async def post_interaction_logs(
     """
     logs = [log for event in events if (log := format_session_event(event)) is not None]
     if logs:
-        await ocean.port_client.post_wf_node_run_logs(run.id, logs, should_raise=False)
+        await ocean.port_client.post_run_logs(run, logs)
