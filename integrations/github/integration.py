@@ -619,6 +619,28 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "This option will be ignored if the api selector is set to rest."
         ),
     )
+    include_comments: bool = Field(
+        title="Include Comments",
+        alias="includeComments",
+        default=False,
+        description=(
+            "When enabled, attach conversation comments, inline review comments, "
+            "and non-empty review summaries to each pull request under `__comments`. "
+            "Use with an itemsToParse mapping to create comment entities. Disabled "
+            "by default so existing resyncs do not call the comments API."
+        ),
+    )
+    comments_max_age_days: int = Field(
+        title="Comments Max Age Days",
+        alias="commentsMaxAgeDays",
+        default=30,
+        ge=1,
+        description=(
+            "Only pull requests whose `updated_at` is within this many days get a "
+            "comments API call. Older pull requests are returned with no comments "
+            "fetch. When a pull request qualifies, all of its comments are fetched."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:
@@ -645,7 +667,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
 class GithubPullRequestConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
         "pat": ("repo",),
-        "app": ("pull_requests",),
+        "app": ("pull_requests", "issues"),
     }
 
     selector: GithubPullRequestSelector = Field(
@@ -655,87 +677,6 @@ class GithubPullRequestConfig(ResourceConfig):
     kind: Literal[ObjectKind.PULL_REQUEST] = Field(
         title="Github Pull Request",
         description="Github pull request resource kind.",
-    )
-
-
-class GithubPullRequestCommentSelector(RepoSearchSelector):
-    states: list[Literal["open", "closed"]] = Field(
-        title="Pull request states",
-        default=["open"],
-        description=(
-            "Only ingest comments on pull requests in these states. "
-            "Matches the pull request kind: open by default."
-        ),
-    )
-    max_results: Optional[int] = Field(
-        title="Max merged pull requests",
-        alias="maxResults",
-        default=None,
-        ge=1,
-        description=(
-            "Max number of closed pull requests whose comments are fetched. "
-            "Defaults to 100 for the days lookback. Closed pull requests are "
-            "only retrieved when 'closed' is included in states."
-        ),
-    )
-    since: int = Field(
-        title="Closed PRs Lookback Days",
-        default=60,
-        ge=1,
-        description=(
-            "Number of days back for comments on closed pull requests."
-            + _INCREMENTAL_SYNC_SELECTOR_NOTE
-        ),
-    )
-    closed_since_date: Optional[str] = Field(
-        title="Closed PRs Since Date",
-        alias="closedSinceDate",
-        default=None,
-        description=(
-            "Only ingest comments on pull requests closed on or after this "
-            "absolute date (ISO-8601). Overrides the 'since' days lookback."
-            + _INCREMENTAL_SYNC_SELECTOR_NOTE
-        ),
-    )
-
-    @property
-    def updated_after(self) -> Optional[datetime]:
-        if self.closed_since_date is not None:
-            return None
-        return days_ago(self.since)
-
-    @property
-    def closed_after(self) -> Optional[datetime]:
-        if self.closed_since_date is None:
-            return None
-        parsed = datetime.fromisoformat(self.closed_since_date)
-        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
-
-    @property
-    def effective_max_results(self) -> Optional[int]:
-        if self.max_results is not None:
-            return self.max_results
-        if self.closed_since_date is not None:
-            return None
-        return 100
-
-
-class GithubPullRequestCommentConfig(ResourceConfig):
-    probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
-        "pat": ("repo",),
-        "app": ("pull_requests", "issues"),
-    }
-
-    selector: GithubPullRequestCommentSelector = Field(
-        title="Pull request comment selector",
-        description=(
-            "Selector for pull request conversation comments, inline review "
-            "comments, and review summaries."
-        ),
-    )
-    kind: Literal[ObjectKind.PULL_REQUEST_COMMENT] = Field(
-        title="Github Pull Request Comment",
-        description="Github pull request comment resource kind.",
     )
 
 
@@ -1383,7 +1324,6 @@ class GithubPortAppConfig(PortAppConfig):
     resources: list[
         GithubRepositoryConfig
         | GithubPullRequestConfig
-        | GithubPullRequestCommentConfig
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
