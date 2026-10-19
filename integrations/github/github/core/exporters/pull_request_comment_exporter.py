@@ -1,7 +1,6 @@
 from typing import Any, Literal, Optional, cast
 
 from loguru import logger
-from port_ocean.utils.relative_time import days_ago
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -9,7 +8,6 @@ from github.core.options import (
     ListPullRequestCommentOptions,
     SinglePullRequestCommentOptions,
 )
-from github.helpers.utils import parse_timestamp
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 CommentType = Literal["comment", "review", "review-summary"]
@@ -19,22 +17,6 @@ _COMMENT_ENDPOINTS: dict[CommentType, str] = {
     "review": "pulls/comments/{comment_id}",
     "review-summary": "pulls/{pr_number}/reviews/{comment_id}",
 }
-
-
-def pull_request_within_comments_age(
-    pull_request: dict[str, Any], max_age_days: int
-) -> bool:
-    """True when ``updated_at`` parses and is within ``max_age_days``.
-
-    Missing or unparseable ``updated_at`` means the comments API must not be called.
-    """
-    updated_at = pull_request.get("updated_at")
-    if not isinstance(updated_at, str) or not updated_at:
-        return False
-    parsed = parse_timestamp(updated_at)
-    if parsed is None:
-        return False
-    return parsed >= days_ago(max_age_days)
 
 
 def normalize_pull_request_comment(
@@ -139,21 +121,14 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
         pull_requests: list[dict[str, Any]],
         *,
         organization: str,
-        comments_max_age_days: int,
     ) -> list[dict[str, Any]]:
-        """Set ``__comments`` on PRs that pass the age gate; skip the API otherwise.
+        """Fetch all comments for every pull request and set ``__comments``.
 
-        PRs that fail the age gate (or lack a parseable ``updated_at``) are
-        returned unchanged with no ``__comments`` key and no HTTP call.
+        Parent selection is owned by the resource block's existing selector
+        controls; this method does not apply any date gate.
         """
         enriched: list[dict[str, Any]] = []
         for pull_request in pull_requests:
-            if not pull_request_within_comments_age(
-                pull_request, comments_max_age_days
-            ):
-                enriched.append(pull_request)
-                continue
-
             repo_name = cast(str, pull_request.get("__repository") or "")
             if not repo_name:
                 logger.warning(
