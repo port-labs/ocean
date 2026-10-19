@@ -69,6 +69,9 @@ jobs:
     needs: tag-main
     if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
@@ -101,6 +104,15 @@ jobs:
             echo "Waiting for package ${{ env.VERSION }} to be available on PyPI..."
             sleep 2
           done
+
+      - name: Trigger apply-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run apply-release.yml \
+            --ref main \
+            -f version="${{ env.VERSION }}" \
+            -f actor="${{ github.actor }}"
 
       - name: Send internal release notification
         if: env.VERSION != ''

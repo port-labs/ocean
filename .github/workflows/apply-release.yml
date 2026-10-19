@@ -1,12 +1,16 @@
 name: Apply release
 
 on:
-  workflow_run:
-    workflows:
-      - Release framework
-    types:
-      - completed
   workflow_dispatch:
+    inputs:
+      version:
+        description: Ocean framework version to apply to all integrations
+        required: true
+        type: string
+      actor:
+        description: GitHub username that triggered the release (optional; defaults to workflow actor)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -14,7 +18,6 @@ permissions:
 jobs:
   create_branch_and_open_pr:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code
@@ -28,10 +31,14 @@ jobs:
       - name: Install Poetry
         run: pipx install 'poetry>=2.0.0,<3.0.0'
 
-      - name: Get package version
+      - name: Resolve package version
         id: version
         run: |
-          version=$(pip index --no-cache-dir versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()')
+          version="${{ inputs.version }}"
+          if [ -z "$version" ]; then
+            echo "::error::version input is required"
+            exit 1
+          fi
           pr_name="[Integration] Apply Ocean version $version to all integrations"
           branch_name="apply-ocean-$version-to-all-integrations"
           echo "Branch Name: $branch_name"
@@ -43,10 +50,10 @@ jobs:
       - name: Resolve GitHub actor
         id: github_actor
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "login=${{ github.actor }}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.actor }}" ]; then
+            echo "login=${{ inputs.actor }}" >> "$GITHUB_OUTPUT"
           else
-            echo "login=${{ github.event.workflow_run.actor.login }}" >> "$GITHUB_OUTPUT"
+            echo "login=${{ github.actor }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Resolve Port user from GitHub username
