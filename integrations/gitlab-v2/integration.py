@@ -501,6 +501,9 @@ class GitlabFolderSelector(ProjectSelector):
     )
 
 
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
 class GitlabMergeRequestSelector(GroupSelector):
     states: List[Literal["opened", "closed", "merged"]] = Field(
         alias="states",
@@ -514,6 +517,8 @@ class GitlabMergeRequestSelector(GroupSelector):
         description=(
             "Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)."
             " Note: large values may cause rate limiting."
+            " Applies to closed/merged on full resync; opened has no time filter on full resync."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
         ),
         default=90,
     )
@@ -588,9 +593,6 @@ class GitLabFoldersResourceConfig(ResourceConfig):
         title="Folder Selector",
         description="Selector for the GitLab folder resource.",
     )
-
-
-_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
 
 
 class IssueSelector(GroupSelector):

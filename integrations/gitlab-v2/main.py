@@ -1,5 +1,5 @@
 from itertools import batched
-from typing import cast, Any, Dict
+from typing import cast, Any
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -25,6 +25,7 @@ from gitlab.helpers.utils import (
 )
 from gitlab.helpers.incremental import (
     build_issue_params,
+    build_merge_request_params,
     resolve_effective_datetime,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
@@ -285,13 +286,16 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield jobs_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.MERGE_REQUEST)
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync group MRs; incremental runs only fetch MRs updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(GitlabMergeRequestResourceConfig, event.resource_config).selector
 
     states = selector.states
-    updated_after = selector.updated_after_datetime
+    sync_cursor = active_incremental_cursor()
+    lookback_updated_after = selector.updated_after_datetime
     include_only_active_groups = selector.include_only_active_groups
     enrich_with_commits = selector.enrich_with_commits
     enrich_with_review_discussion = selector.enrich_with_review_discussion
@@ -301,13 +305,17 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         for state in states:
+            params = build_merge_request_params(
+                state, sync_cursor, lookback_updated_after
+            )
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
-                + (f" updated after {updated_after}" if state != "opened" else "")
+                + (
+                    f" updated after {params['updated_after']}"
+                    if "updated_after" in params
+                    else ""
+                )
             )
-            params: Dict[str, Any] = {"state": state}
-            if state != "opened":
-                params["updated_after"] = updated_after
 
             async for merge_requests_batch in client.get_groups_resource(
                 groups_batch, "merge_requests", params=params

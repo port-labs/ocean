@@ -10,6 +10,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from port_ocean.utils.cache import cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
@@ -315,11 +316,16 @@ class GitLabClient:
             if active_batch:
                 yield active_batch
 
+    @cache_iterator_result()
     async def get_groups(
         self,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
+
+        Results are cached for the duration of the current Ocean resync so
+        kinds that fan out from groups (issues, merge-requests, folders, …)
+        reuse one ``GET /groups`` pagination instead of repeating it.
 
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)

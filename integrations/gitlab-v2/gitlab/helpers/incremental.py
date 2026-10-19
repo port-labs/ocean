@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 
 from gitlab.clients.options import IssueOptions
 
-# GitLab filters group issues server-side by the issue's updated_at.
-ISSUE_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
+# GitLab filters list endpoints server-side by the resource's updated_at.
+UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
+
+MergeRequestState = Literal["opened", "closed", "merged"]
 
 
 def resolve_effective_datetime(
@@ -37,4 +39,22 @@ def build_issue_params(
         for key, value in options.items()
         if value is not None and key != "updated_after"
     }
-    return ISSUE_INCREMENTAL.merge_params(params, updated_after)
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, updated_after)
+
+
+def build_merge_request_params(
+    state: MergeRequestState,
+    cursor: datetime | None,
+    lookback_updated_after: datetime,
+) -> dict[str, Any]:
+    """Query params for ``GET /groups/{id}/merge_requests``.
+    Full behavior: ``opened`` has no time filter;
+    ``closed`` / ``merged`` use the selector lookback window. 
+    Incremental applies the Ocean cursor as ``updated_after`` for every state 
+    """
+    params: dict[str, Any] = {"state": state}
+    effective = resolve_effective_datetime(
+        cursor,
+        lookback_updated_after if state != "opened" else None,
+    )
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)

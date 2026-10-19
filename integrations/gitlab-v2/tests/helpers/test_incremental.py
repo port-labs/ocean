@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
     build_issue_params,
+    build_merge_request_params,
     resolve_effective_datetime,
 )
 
@@ -69,3 +70,38 @@ def test_build_issue_params_ignores_options_updated_after_field() -> None:
     params = build_issue_params(options, updated_after=CURSOR)
 
     assert params["updated_after"] == CURSOR.isoformat()
+
+
+def test_mr_full_resync_opened_has_no_time_filter() -> None:
+    params = build_merge_request_params(
+        "opened", cursor=None, lookback_updated_after=SELECTOR_UPDATED_AFTER
+    )
+
+    assert params == {"state": "opened"}
+
+
+def test_mr_full_resync_closed_uses_lookback() -> None:
+    params = build_merge_request_params(
+        "closed", cursor=None, lookback_updated_after=SELECTOR_UPDATED_AFTER
+    )
+
+    assert params == {
+        "state": "closed",
+        "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+    }
+
+
+def test_mr_incremental_applies_cursor_to_opened() -> None:
+    params = build_merge_request_params(
+        "opened", cursor=CURSOR, lookback_updated_after=SELECTOR_UPDATED_AFTER
+    )
+
+    assert params == {"state": "opened", "updated_after": CURSOR.isoformat()}
+
+
+def test_mr_incremental_applies_cursor_to_merged_over_lookback() -> None:
+    params = build_merge_request_params(
+        "merged", cursor=CURSOR, lookback_updated_after=SELECTOR_UPDATED_AFTER
+    )
+
+    assert params == {"state": "merged", "updated_after": CURSOR.isoformat()}
