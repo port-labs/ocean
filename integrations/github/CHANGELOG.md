@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.21.2 (2026-10-19)
+
+
+### Improvements
+
+- Supply GitHub-specific compact live-event log identifiers via get_live_event_log_identifiers on webhook processors when dual-gated payload logging is enabled in Ocean core.
+
+
+## 6.21.1 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 6.21.0 (2026-10-18)
+
+
+### Features
+
+- Added an opt-in `includeSkillFolder` selector to the `skill` kind that bundles every text file in the skill folder into `skill.files` as a list of `{path, content}`, on both resync and push webhooks. Skills whose SKILL.md and folder files exceed 1MB in total are skipped with a warning.
+
+
+## 6.20.2 (2026-10-18)
+
+
+### Bug Fixes
+
+- Fix folder live events so unset repo branch matches the default branch only
+
+
+## 6.20.1 (2026-10-15)
+
+
+### Bug Fixes
+
+- Fix workflow incremental sync missing YAML edits by gating only on repository `pushed_since` and fetching all workflows for those repos. Workflow `updated_at` often does not change when `.github/workflows` files are committed, so filtering on it dropped real changes.
+
+
+## 6.20.0 (2026-10-14)
+
+
+### Features
+
+- Added Pull Request comment actions (create, edit, delete), enabling Port Workflows to manage GitHub Pull Request comments directly
+
+
+## 6.19.0 (2026-10-14)
+
+
+### Bug Fixes
+
+- Validate that a configured GitHub organization is accessible during PAT probe mode, preventing false positives for invalid or inaccessible orgs.
+
+### Features
+
+- Discover agent plugins at any directory depth and emit one plugin entity per plugin root.
+Repository-root plugins keep an empty path so existing identifiers stay stable, marketplace files no longer create
+entities on their own, and selector.maxDepth can cap how deep discovery searches
+- Add incremental sync for workflows. Incremental runs only list repositories pushed since the cursor
+(sorted by push time with early stop, or a `pushed:>=` search qualifier when `repoSearch` is set) and fetch workflows
+for those repositories
+
+
 ## 6.18.3 (2026-10-13)
 
 

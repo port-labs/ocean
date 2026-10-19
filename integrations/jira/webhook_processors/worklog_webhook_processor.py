@@ -7,14 +7,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from jira.client import WORKLOG_WEBHOOK_EVENTS
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
+from webhook_processors.jira_abstract_webhook_processor import (
+    JiraAbstractWebhookProcessor,
 )
 
 from initialize_client import get_or_create_jira_client
 
 
-class WorklogWebhookProcessor(AbstractWebhookProcessor):
+class WorklogWebhookProcessor(JiraAbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return event.payload.get("webhookEvent") in WORKLOG_WEBHOOK_EVENTS
 
