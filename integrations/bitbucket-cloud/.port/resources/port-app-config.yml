@@ -44,7 +44,7 @@ resources:
           properties:
             creator: ".author.display_name"
             assignees: "[.participants[].user.display_name]"
-            reviewers: "[.reviewers[].display_name]"
+            reviewers: "[.reviewers[].user.display_name]"
             status: ".state"
             createdAt: ".created_on"
             updatedAt: ".updated_on"
