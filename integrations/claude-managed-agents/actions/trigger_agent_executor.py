@@ -12,6 +12,11 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.exceptions import InvalidActionParametersException
+from actions.port_mcp import (
+    is_port_mcp_managed,
+    prepare_port_mcp_session_config,
+    refresh_port_mcp_session,
+)
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
@@ -100,6 +105,11 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         if not (agent_id and prompt):
             raise InvalidActionParametersException("agentId and prompt are required")
+        new_environment_id = environment_id if isinstance(environment_id, str) else ""
+        if not session_id and not new_environment_id:
+            raise InvalidActionParametersException(
+                "environmentId is required when starting a new session"
+            )
 
         await ocean.port_client.post_run_log(
             run,
@@ -112,17 +122,25 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             should_raise=False,
         )
 
+        agent = await self.client.get_agent(agent_id)
+        managed = is_port_mcp_managed(getattr(agent, "metadata", None))
+
         if session_id:
             session = await self._ensure_session_continuable(session_id)
+            if managed:
+                await refresh_port_mcp_session(self.client, run, session)
         else:
-            if not environment_id:
-                raise InvalidActionParametersException(
-                    "environmentId is required when starting a new session"
-                )
             api_config = await normalize_session_config(config)
+            if managed:
+                api_config = await prepare_port_mcp_session_config(
+                    self.client,
+                    run,
+                    new_environment_id,
+                    api_config,
+                )
             session = await self.client.create_session(
                 agent_id,
-                environment_id,
+                new_environment_id,
                 extra=api_config or None,
             )
             if not session.id:

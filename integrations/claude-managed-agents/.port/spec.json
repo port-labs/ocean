@@ -151,6 +151,14 @@
           "type": "jqObject",
           "description": "Optional advanced agent configuration passed through to the Anthropic API (for example tools, mcp_servers, skills, metadata, description). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
           "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities.",
+          "default": false,
+          "required": false
         }
       ]
     },
@@ -298,6 +306,14 @@
           "title": "Additional configuration",
           "type": "jqObject",
           "description": "Optional advanced agent configuration passed through to the Anthropic API (for example tools, mcp_servers, skills, metadata, description). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities.",
+          "default": false,
           "required": false
         }
       ]
