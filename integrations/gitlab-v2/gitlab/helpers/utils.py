@@ -40,6 +40,7 @@ class ObjectKind(StrEnum):
     GROUP = "group"
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
+    MERGE_REQUEST_COMMENT = "merge-request-comment"
     GROUP_WITH_MEMBERS = "group-with-members"
     PROJECT_WITH_MEMBERS = "project-with-members"
     MEMBER = "member"
