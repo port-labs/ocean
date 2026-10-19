@@ -112,8 +112,6 @@ class ListTeamOptions(BaseUserOptions):
 class ListWorkflowOptions(RepositoryIdentifier):
     """Options for workflows"""
 
-    updated_since: NotRequired[Optional[datetime]]
-
 
 class SingleWorkflowOptions(ListWorkflowOptions):
     workflow_id: Required[str]
@@ -267,6 +265,13 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class ListSkillSearchOptions(TypedDict):
+    """File search options for SKILL.md files and how to build each skill."""
+
+    repositories: Required[List[ListFileSearchOptions]]
+    include_skill_folder: Required[bool]
 
 
 class PluginRepositoryOptions(SingleOrganizationOptions):

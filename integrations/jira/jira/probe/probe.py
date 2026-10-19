@@ -2,7 +2,12 @@ from httpx import HTTPStatusError, RequestError
 from port_ocean.context.ocean import ocean
 
 from initialize_client import get_or_create_jira_client
-from jira.probe.permissions import JiraKindPermissionVerdict
+from jira.probe.permissions import (
+    MYPERMISSIONS_REQUIRED_SCOPES,
+    MYSELF_REQUIRED_SCOPES,
+    JiraKindPermissionVerdict,
+    message_with_required_scopes,
+)
 from kinds import Kinds
 from port_ocean.core.probe import ProbeContext, ProbeCheck, ProbeCheckStatus
 
@@ -27,7 +32,12 @@ class JiraPermissionProbe:
         try:
             await self.client.verify_current_user()
         except (HTTPStatusError, RequestError):
-            await self.context.fail("Failed to verify Jira authentication.")
+            await self.context.fail(
+                message_with_required_scopes(
+                    "Failed to verify Jira authentication.",
+                    MYSELF_REQUIRED_SCOPES,
+                )
+            )
             return
 
         checks = await self.context.setup_unscoped_checks()
@@ -39,9 +49,12 @@ class JiraPermissionProbe:
         except HTTPStatusError as error:
             await self._fail_permission_checks(
                 checks,
-                (
-                    f"Jira returned HTTP {error.response.status_code} "
-                    "while fetching user permissions"
+                message_with_required_scopes(
+                    (
+                        f"Jira returned HTTP {error.response.status_code} "
+                        "while fetching user permissions."
+                    ),
+                    MYPERMISSIONS_REQUIRED_SCOPES,
                 ),
             )
         except RequestError as error:

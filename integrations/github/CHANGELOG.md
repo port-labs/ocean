@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.21.1 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 6.21.0 (2026-10-18)
+
+
+### Features
+
+- Added an opt-in `includeSkillFolder` selector to the `skill` kind that bundles every text file in the skill folder into `skill.files` as a list of `{path, content}`, on both resync and push webhooks. Skills whose SKILL.md and folder files exceed 1MB in total are skipped with a warning.
+
+
+## 6.20.2 (2026-10-18)
+
+
+### Bug Fixes
+
+- Fix folder live events so unset repo branch matches the default branch only
+
+
+## 6.20.1 (2026-10-15)
+
+
+### Bug Fixes
+
+- Fix workflow incremental sync missing YAML edits by gating only on repository `pushed_since` and fetching all workflows for those repos. Workflow `updated_at` often does not change when `.github/workflows` files are committed, so filtering on it dropped real changes.
+
+
 ## 6.20.0 (2026-10-14)
 
 
