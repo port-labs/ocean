@@ -55,6 +55,7 @@ from actions.update_environment_executor import (
 from actions.types import TriggerAgentSessionOutput, list_cost_to_usd
 from actions.port_mcp import (
     DEFAULT_PORT_MCP_URL,
+    refresh_port_mcp_session,
     PORT_IDENTITY_ID_KEY,
     PORT_IDENTITY_TYPE_KEY,
     PORT_MCP_METADATA_KEY,
@@ -586,6 +587,9 @@ def test_resolve_port_mcp_url_maps_region() -> None:
     assert resolve_port_mcp_url("https://api.getport.io") == DEFAULT_PORT_MCP_URL
     assert resolve_port_mcp_url("https://api.port.io") == DEFAULT_PORT_MCP_URL
     assert resolve_port_mcp_url("https://api.us.port.io") == "https://mcp.us.port.io/v1"
+    assert (
+        resolve_port_mcp_url("https://api.us.getport.io") == "https://mcp.us.port.io/v1"
+    )
     assert (
         resolve_port_mcp_url("https://api.stg-01.getport.io")
         == "https://mcp.stg-01.getport.io/v1"
@@ -2057,6 +2061,57 @@ async def test_update_agent_executor_wires_port_mcp_when_flag_true() -> None:
     assert any(s.get("name") == PORT_MCP_SERVER_NAME for s in payload["mcp_servers"])
     assert "enablePortMcp" not in payload
     assert "config" not in payload
+
+
+@pytest.mark.asyncio
+async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> None:
+    current = _sdk_agent(version=1)
+    current.tools = [{"type": "agent_toolset_20260401", "name": "existing"}]
+    current.mcp_servers = [
+        {"type": "url", "name": "other", "url": "https://example.com"}
+    ]
+    current.metadata = {"keep": "yes"}
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=current)
+    client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
+    executor = _build_executor(UpdateAgentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"agentId": "agent_1", "enablePortMcp": "true"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.update_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    payload = client_mock.update_agent.await_args.kwargs["payload"]
+    assert any(tool.get("name") == "existing" for tool in payload["tools"])
+    assert any(server.get("name") == "other" for server in payload["mcp_servers"])
+    assert any(
+        server.get("name") == PORT_MCP_SERVER_NAME for server in payload["mcp_servers"]
+    )
+    assert payload["metadata"]["keep"] == "yes"
+
+
+@pytest.mark.asyncio
+async def test_refresh_rejects_owned_session_without_execution_identity() -> None:
+    session = _sdk_session(
+        metadata={
+            PORT_IDENTITY_TYPE_KEY: "actor",
+            PORT_IDENTITY_ID_KEY: "user@example.com",
+        }
+    )
+    run = _workflow_run_with_port_mcp()
+    run.execution_identity = None
+
+    with pytest.raises(ActionExecutionError, match="without an execution identity"):
+        await refresh_port_mcp_session(MagicMock(), run, session)
 
 
 @pytest.mark.asyncio

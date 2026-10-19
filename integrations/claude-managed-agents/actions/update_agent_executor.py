@@ -4,7 +4,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
@@ -23,6 +23,13 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     systemPrompt: str | None = None
     config: dict[str, Any] | None = None
     enablePortMcp: bool | None = None
+
+    @field_validator("enablePortMcp", mode="before")
+    @classmethod
+    def _coerce_enable_port_mcp(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return value.lower() in {"true", "1", "yes"}
+        return value
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
@@ -48,10 +55,36 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
         if "systemPrompt" in payload:
             payload["system"] = payload.pop("systemPrompt")
 
-        config = self.config or {}
-        if self.enablePortMcp is True:
-            config = apply_port_mcp_to_agent_config(config)
-        return {**payload, **config}
+        return {**payload, **(self.config or {})}
+
+    def with_port_mcp(self, payload: dict[str, Any], current: Any) -> dict[str, Any]:
+        if self.enablePortMcp is not True:
+            return payload
+        config = dict(self.config or {})
+        for key, current_value in (
+            ("tools", getattr(current, "tools", None)),
+            ("mcp_servers", getattr(current, "mcp_servers", None)),
+        ):
+            if key not in config:
+                config[key] = _as_dicts(current_value)
+        metadata = getattr(current, "metadata", None)
+        if "metadata" not in config and isinstance(metadata, dict):
+            config["metadata"] = dict(metadata)
+        return {**payload, **apply_port_mcp_to_agent_config(config)}
+
+
+def _as_dicts(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for item in value:
+        if isinstance(item, dict):
+            items.append(dict(item))
+        elif hasattr(item, "model_dump"):
+            dumped = item.model_dump(mode="json", exclude_none=True)
+            if isinstance(dumped, dict):
+                items.append(dumped)
+    return items
 
 
 class UpdateAgentExecutor(AbstractAnthropicExecutor):
@@ -100,7 +133,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
             agent = await self.client.update_agent(
                 agent_id,
                 version=version,
-                payload=inputs.to_request_payload(),
+                payload=inputs.with_port_mcp(inputs.to_request_payload(), current),
             )
         except Exception as error:
             raise ActionExecutionError(

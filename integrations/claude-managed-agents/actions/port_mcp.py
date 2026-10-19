@@ -35,8 +35,13 @@ def resolve_port_mcp_url(api_base_url: str | None = None) -> str:
     if not api_base_url:
         return DEFAULT_PORT_MCP_URL
     parsed = urlparse(api_base_url)
-    if parsed.hostname == "api.getport.io":
-        return DEFAULT_PORT_MCP_URL
+    legacy_host = {
+        "api.getport.io": "mcp.port.io",
+        "api.us.getport.io": "mcp.us.port.io",
+    }.get(parsed.hostname or "")
+    if legacy_host:
+        netloc = f"{legacy_host}:{parsed.port}" if parsed.port else legacy_host
+        return f"{parsed.scheme or 'https'}://{netloc}/v1"
     if not parsed.hostname or not parsed.hostname.startswith("api."):
         return DEFAULT_PORT_MCP_URL
     hostname = f"mcp.{parsed.hostname.removeprefix('api.')}"
@@ -273,10 +278,6 @@ async def refresh_port_mcp_session(
     client: Any, run: IntegrationRun, session: Any
 ) -> None:
     claim = _port_mcp_claim(run)
-    if not claim:
-        return
-    identity_type, identity_id, access_token = claim
-
     metadata = (
         session.metadata if isinstance(getattr(session, "metadata", None), dict) else {}
     )
@@ -284,6 +285,15 @@ async def refresh_port_mcp_session(
         metadata.get(PORT_IDENTITY_TYPE_KEY),
         metadata.get(PORT_IDENTITY_ID_KEY),
     )
+    if not claim:
+        if owner != (None, None):
+            raise ActionExecutionError(
+                f"Cannot continue session {session.id}: owned by {owner[0]}:{owner[1]} "
+                "without an execution identity",
+                status_label=PORT_MCP_FAILED_STATUS_LABEL,
+            )
+        return
+    identity_type, identity_id, access_token = claim
     if owner != (identity_type, identity_id):
         raise ActionExecutionError(
             f"Cannot continue session {session.id}: owned by {owner[0]}:{owner[1]}, "
