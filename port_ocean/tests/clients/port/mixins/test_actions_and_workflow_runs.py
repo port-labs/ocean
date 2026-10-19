@@ -87,6 +87,33 @@ def test_workflow_node_run_parses_claim_and_lookup_shapes(raw: dict[str, Any]) -
     assert run.action_type == "dispatch_workflow"
 
 
+def test_workflow_node_run_parses_port_mcp_claim_fields() -> None:
+    run = WorkflowNodeRun.parse_obj(
+        {
+            "identifier": "wfnr_port_mcp",
+            "nodeUid": "node-port-mcp",
+            "status": WorkflowNodeRunStatus.IN_PROGRESS,
+            "portAccessToken": "aes256gcm.ciphertext",
+            "executionIdentity": {
+                "type": "actor",
+                "identifier": "user@example.com",
+            },
+            "config": {
+                "type": "INTEGRATION_ACTION",
+                "installationId": "claude",
+                "integrationProvider": "claude-managed-agents",
+                "integrationInvocationType": "trigger_agent",
+                "integrationActionExecutionProperties": {},
+            },
+        }
+    )
+    assert run.port_access_token == "aes256gcm.ciphertext"
+    assert run.execution_identity == {
+        "type": "actor",
+        "identifier": "user@example.com",
+    }
+
+
 @pytest.fixture
 def actions_client() -> ActionsAndWorkflowRunsClientMixin:
     return ActionsAndWorkflowRunsClientMixin(auth=MagicMock(), client=MagicMock())
