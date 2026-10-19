@@ -6,6 +6,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from gitlab.actions.registry import register_actions_executors
 from gitlab.oauth.registry import register_oauth_provider
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -21,6 +22,10 @@ from gitlab.helpers.utils import (
     ObjectKind,
     build_search_query,
     enrich_resources_with_project,
+)
+from gitlab.helpers.incremental import (
+    build_issue_params,
+    resolve_effective_datetime,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
 from integration import (
@@ -186,19 +191,21 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield groups_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.ISSUE)
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync group issues; incremental runs only fetch issues updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(GitlabIssueResourceConfig, event.resource_config).selector
-
-    options: IssueOptions = IssueOptions(
-        issue_type=selector.issue_type,
-        labels=selector.labels,
-        non_archived=selector.non_archived,
-        state=selector.state,
-        updated_after=(
-            selector.updated_after_datetime if selector.updated_after else None
+    sync_cursor = active_incremental_cursor()
+    params = build_issue_params(
+        IssueOptions(
+            issue_type=selector.issue_type,
+            labels=selector.labels,
+            non_archived=selector.non_archived,
+            state=selector.state,
         ),
+        resolve_effective_datetime(sync_cursor, selector.updated_after_datetime),
     )
 
     async for groups_batch in client.get_groups(
@@ -207,9 +214,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
     ):
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
-        params: dict[str, Any] = {
-            key: value for key, value in options.items() if value is not None
-        }
         async for issues_batch in client.get_groups_resource(
             groups_batch, "issues", params=params
         ):

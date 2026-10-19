@@ -590,6 +590,9 @@ class GitLabFoldersResourceConfig(ResourceConfig):
     )
 
 
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
 class IssueSelector(GroupSelector):
     issue_type: Optional[Literal["issue", "incident", "test_case", "task"]] = Field(
         default=None,
@@ -619,17 +622,20 @@ class IssueSelector(GroupSelector):
         default=None,
         alias="updatedAfter",
         title="Updated After (Days)",
-        description="Filter issues updated within the last N days (e.g. 30 to fetch issues updated in the last 30 days). Note: large values may cause rate limiting.\n\nSee <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#issues-configuration-options'>issues configuration options</a> for more details.",
+        description=(
+            "Filter issues updated within the last N days (e.g. 30 to fetch issues "
+            "updated in the last 30 days). Note: large values may cause rate limiting."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+            + "\n\nSee <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#issues-configuration-options'>issues configuration options</a> for more details."
+        ),
     )
 
     @property
-    def updated_after_datetime(self) -> str:
-        """Convert the created_after days to a timezone-aware datetime object in ISO 8601 format"""
-        if not self.updated_after:
-            return datetime.now(timezone.utc).isoformat()
-        return (
-            datetime.now(timezone.utc) - timedelta(days=self.updated_after)
-        ).isoformat()
+    def updated_after_datetime(self) -> Optional[datetime]:
+        """Selector window as a UTC datetime, or None when ``updatedAfter`` is unset."""
+        if self.updated_after is None:
+            return None
+        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
 
 
 class GitlabIssueResourceConfig(ResourceConfig):
