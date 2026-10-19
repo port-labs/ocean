@@ -15,6 +15,8 @@ PAGE_SIZE = 100
 RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
     limit=BitbucketRateLimiterConfig.LIMIT, window=BitbucketRateLimiterConfig.WINDOW
 )
+# The Source API's 404 body carries only this message, and it is observed, not published.
+ABSENT_PATH_MESSAGE = "No such file or directory"
 
 
 class BitbucketClient:
@@ -33,6 +35,23 @@ class BitbucketClient:
         except (JSONDecodeError, KeyError, TypeError):
             return None
         return message if isinstance(message, str) else None
+
+    @staticmethod
+    def _is_absent_path(error: HTTPStatusError) -> bool:
+        """Whether a Source API error says the path is not in the repository.
+
+        An absent path, an unresolvable ref and a repository that cannot be read all
+        answer 404, so the status alone cannot tell them apart. Only the error's own
+        message decides, and only its start - it carries the path after the phrase. An
+        unrecognised message is not absence.
+        """
+        if error.response.status_code != 404:
+            return False
+        message = BitbucketClient._error_message(error)
+        if message is not None and message.startswith(ABSENT_PATH_MESSAGE):
+            return True
+        logger.warning(f"404 from {error.request.url} is not an absent path: {message}")
+        return False
 
     def __init__(
         self,
@@ -258,19 +277,44 @@ class BitbucketClient:
         path: str,
         max_depth: int,
         params: Optional[dict[str, Any]] = None,
+        raise_on_missing: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get contents of a directory."""
-        # Least to most specific: the module default, then what the caller passed as
-        # params, then what it named in the signature.
+        """Get contents of a directory.
+
+        Left alone, any 404 reports no contents, as every other endpoint on this client
+        does and as the folder kind's two callers expect. raise_on_missing instead fails
+        on an unresolvable ref or a repository that cannot be read - which also answer
+        404 - and tolerates only a path this repository does not have. With an empty
+        path nothing is tolerated, which is what the file kind's default configuration
+        resolves to: there, every 404 is a failure.
+        """
+        # Least to most specific: module default, the caller's params, then what it named.
         params = {"pagelen": PAGE_SIZE, **(params or {}), "max_depth": max_depth}
-        async for contents in self._fetch_paginated_api_with_rate_limiter(
-            f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
-            params=params,
-        ):
-            logger.info(
-                f"Fetched directory contents batch with {len(contents)} contents"
-            )
-            yield contents
+        first_page_seen = False
+        try:
+            async for contents in self._fetch_paginated_api_with_rate_limiter(
+                f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/src/{branch}/{path}",
+                params=params,
+                raise_on_missing=raise_on_missing,
+            ):
+                first_page_seen = True
+                logger.info(
+                    f"Fetched directory contents batch with {len(contents)} contents"
+                )
+                yield contents
+        except HTTPStatusError as e:
+            # A root cannot legitimately 404, and past the first page the path provably existed.
+            if (
+                raise_on_missing
+                and path
+                and not first_page_seen
+                and self._is_absent_path(e)
+            ):
+                logger.warning(
+                    f"Path '{path}' is not in repository {repo_slug}, reporting no contents"
+                )
+                return
+            raise e
 
     async def get_pull_requests(
         self, repo_slug: str, params: dict[str, Any] = {}
@@ -315,28 +359,11 @@ class BitbucketClient:
                 raise_on_missing=True,
             )
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if self._is_absent_path(e):
+                logger.warning(
+                    f"{path} is not in {repo} on {branch}; {self._error_message(e)}"
+                )
                 return None
-            raise
+            raise e
         logger.info(f"Retrieved file content for {repo}/{branch}/{path}")
         return response.text
-
-    async def search_files(
-        self,
-        search_query: str,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Search for files using Bitbucket's search API."""
-        params = {
-            "pagelen": 300,
-            "search_query": search_query,
-            "fields": "+values.file.commit.repository.mainbranch.name",
-        }
-
-        async for results in self._send_paginated_api_request(
-            f"{self.base_url}/workspaces/{self.workspace}/search/code",
-            params=params,
-        ):
-            logger.info(
-                f"Fetched batch of {len(results)} matching files from workspace {self.workspace}"
-            )
-            yield results
