@@ -85,10 +85,12 @@ class TestPullRequestCommentExporter:
         assert comment is not None
         assert comment["__commentId"] == "repo1/7/comment/11"
         assert comment["__commentType"] == "comment"
-        assert comment["__author"] == "reviewer"
-        assert comment["__pullRequestId"] == 700
-        assert comment["__repository"] == "repo1"
-        assert comment["__organization"] == "test-org"
+        assert comment["body"] == "Please add a test"
+        assert comment["user"]["login"] == "reviewer"
+        assert comment["created_at"] == "2026-10-01T00:00:00Z"
+        assert comment["html_url"].endswith("#issuecomment-11")
+        assert "__body" not in comment
+        assert "__author" not in comment
         mock_request.assert_called_once_with(
             f"{rest_client.base_url}/repos/test-org/repo1/issues/7/comments/11"
         )
@@ -147,8 +149,9 @@ class TestPullRequestCommentExporter:
             "repo1/7/review/22",
             "repo1/7/review-summary/33",
         ]
-        assert comments[2]["__createdAt"] == "2026-10-01T02:00:00Z"
-        assert comments[2]["__body"] == "Changes requested"
+        assert comments[2]["submitted_at"] == "2026-10-01T02:00:00Z"
+        assert "created_at" not in comments[2]
+        assert comments[2]["body"] == "Changes requested"
 
     async def test_attach_comments_recent_pr_includes_every_type_skips_empty_review(
         self, rest_client: GithubRestClient
@@ -233,18 +236,25 @@ class TestPullRequestCommentExporter:
         assert "__comments" not in enriched[0]
 
 
-def test_normalize_pull_request_comment_uses_submitted_at_for_reviews() -> None:
+def test_normalize_pull_request_comment_keeps_raw_review_fields() -> None:
     normalized = normalize_pull_request_comment(
         REVIEW,
-        organization="test-org",
         repo_name="repo1",
-        pull_request_id=700,
         pull_request_number=7,
         comment_type="review-summary",
     )
-    assert normalized["__createdAt"] == "2026-10-01T02:00:00Z"
-    assert normalized["__updatedAt"] == "2026-10-01T02:00:00Z"
-    assert normalized["__url"].endswith("#pullrequestreview-33")
+    assert normalized["__commentId"] == "repo1/7/review-summary/33"
+    assert normalized["__commentType"] == "review-summary"
+    assert normalized["submitted_at"] == "2026-10-01T02:00:00Z"
+    assert "created_at" not in normalized
+    assert "updated_at" not in normalized
+    assert normalized["html_url"].endswith("#pullrequestreview-33")
+    assert normalized["user"]["login"] == "reviewer"
+    assert "__createdAt" not in normalized
+    assert "__updatedAt" not in normalized
+    assert "__url" not in normalized
+    assert "__body" not in normalized
+    assert "__author" not in normalized
 
 
 def test_pull_request_within_comments_age() -> None:
