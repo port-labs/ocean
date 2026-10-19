@@ -1,6 +1,7 @@
 from typing import Any, Literal, Optional, cast
 
 from loguru import logger
+from port_ocean.utils.relative_time import days_ago
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -8,7 +9,11 @@ from github.core.options import (
     ListPullRequestCommentOptions,
     SinglePullRequestCommentOptions,
 )
-from github.helpers.utils import enrich_with_organization, enrich_with_repository
+from github.helpers.utils import (
+    enrich_with_organization,
+    enrich_with_repository,
+    parse_timestamp,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 CommentType = Literal["comment", "review", "review-summary"]
@@ -20,6 +25,22 @@ _COMMENT_ENDPOINTS: dict[CommentType, str] = {
 }
 
 
+def pull_request_within_comments_age(
+    pull_request: dict[str, Any], max_age_days: int
+) -> bool:
+    """True when ``updated_at`` parses and is within ``max_age_days``.
+
+    Missing or unparseable ``updated_at`` means the comments API must not be called.
+    """
+    updated_at = pull_request.get("updated_at")
+    if not isinstance(updated_at, str) or not updated_at:
+        return False
+    parsed = parse_timestamp(updated_at)
+    if parsed is None:
+        return False
+    return parsed >= days_ago(max_age_days)
+
+
 def normalize_pull_request_comment(
     raw: dict[str, Any],
     *,
@@ -29,10 +50,12 @@ def normalize_pull_request_comment(
     pull_request_number: int,
     comment_type: CommentType,
 ) -> dict[str, Any]:
-    """Attach the fields the default comment mapping reads.
+    """Attach the fields an itemsToParse comment mapping reads.
 
     Conversation comments, inline review comments, and review bodies come from
-    different GitHub APIs. The normalized keys keep one blueprint shape.
+    different GitHub APIs. The normalized keys keep one shape for mapping.
+    ``__commentId`` includes the PR number and comment type because GitHub
+    comment id spaces collide across those APIs.
     """
     author = (raw.get("user") or {}).get("login") or ""
     created_at = raw.get("created_at") or raw.get("submitted_at")
@@ -127,3 +150,53 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
                         f"items for {organization}/{repo_name}#{pr_number}"
                     )
                     yield normalized
+
+    async def fetch_all_comments(
+        self, options: ListPullRequestCommentOptions
+    ) -> list[dict[str, Any]]:
+        """Collect every comment type for one pull request into a single list."""
+        comments: list[dict[str, Any]] = []
+        async for batch in self.get_paginated_resources(options):
+            comments.extend(batch)
+        return comments
+
+    async def attach_comments_to_pull_requests(
+        self,
+        pull_requests: list[dict[str, Any]],
+        *,
+        organization: str,
+        comments_max_age_days: int,
+    ) -> list[dict[str, Any]]:
+        """Set ``__comments`` on PRs that pass the age gate; skip the API otherwise.
+
+        PRs that fail the age gate (or lack a parseable ``updated_at``) are
+        returned unchanged with no ``__comments`` key and no HTTP call.
+        """
+        enriched: list[dict[str, Any]] = []
+        for pull_request in pull_requests:
+            if not pull_request_within_comments_age(
+                pull_request, comments_max_age_days
+            ):
+                enriched.append(pull_request)
+                continue
+
+            repo_name = cast(str, pull_request.get("__repository") or "")
+            if not repo_name:
+                logger.warning(
+                    "Skipping comments fetch: pull request is missing __repository"
+                )
+                enriched.append(pull_request)
+                continue
+
+            comments = await self.fetch_all_comments(
+                ListPullRequestCommentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    pr_number=pull_request["number"],
+                    pull_request_id=pull_request["id"],
+                )
+            )
+            with_comments = dict(pull_request)
+            with_comments["__comments"] = comments
+            enriched.append(with_comments)
+        return enriched
