@@ -112,6 +112,39 @@ def test_adf_to_plain_text_flattens_paragraphs() -> None:
     assert adf_to_plain_text(None) == ""
 
 
+def test_adf_to_plain_text_keeps_mentions_breaks_and_attr_nodes() -> None:
+    body = {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "mention", "attrs": {"id": "abc", "text": "@Alice"}},
+                    {"type": "text", "text": " please review"},
+                    {"type": "hardBreak"},
+                    {"type": "emoji", "attrs": {"shortName": ":thumbsup:"}},
+                    {"type": "text", "text": " "},
+                    {"type": "date", "attrs": {"timestamp": "1700000000000"}},
+                    {"type": "text", "text": " "},
+                    {
+                        "type": "inlineCard",
+                        "attrs": {"url": "https://example.atlassian.net/browse/TEST-1"},
+                    },
+                    {"type": "text", "text": " "},
+                    {"type": "status", "attrs": {"text": "In Progress", "color": "blue"}},
+                ],
+            }
+        ],
+    }
+    assert adf_to_plain_text(body) == (
+        "@Alice please review\n"
+        ":thumbsup: 1700000000000 "
+        "https://example.atlassian.net/browse/TEST-1 "
+        "In Progress\n"
+    )
+
+
 def test_normalize_issue_comment_sets_shared_fields() -> None:
     normalized = normalize_issue_comment(COMMENT, "TEST-1")
     assert normalized["__commentId"] == "TEST-1/10000"

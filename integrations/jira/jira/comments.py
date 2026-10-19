@@ -19,6 +19,22 @@ class _CommentsClient(Protocol):
     ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
 
 
+def _attr_node_text(node_type: str, attrs: dict[str, Any]) -> str:
+    """Visible text for ADF inline nodes that store their value in attrs."""
+    if node_type == "mention":
+        return str(attrs.get("text") or attrs.get("id") or "")
+    if node_type == "emoji":
+        return str(attrs.get("shortName") or attrs.get("text") or "")
+    if node_type == "date":
+        timestamp = attrs.get("timestamp")
+        return str(timestamp) if timestamp is not None else ""
+    if node_type in {"inlineCard", "blockCard", "embedCard"}:
+        return str(attrs.get("url") or "")
+    if node_type == "status":
+        return str(attrs.get("text") or "")
+    return ""
+
+
 def adf_to_plain_text(body: Any) -> str:
     """Flatten a Jira ADF document, wiki string, or missing body into text."""
     if body is None:
@@ -29,10 +45,18 @@ def adf_to_plain_text(body: Any) -> str:
         return "".join(adf_to_plain_text(item) for item in body)
     if not isinstance(body, dict):
         return ""
-    if body.get("type") == "text":
+    node_type = body.get("type")
+    if node_type == "text":
         return str(body.get("text") or "")
+    if node_type == "hardBreak":
+        return "\n"
+    attrs = body.get("attrs")
+    if isinstance(attrs, dict) and node_type:
+        attr_text = _attr_node_text(str(node_type), attrs)
+        if attr_text:
+            return attr_text
     text = "".join(adf_to_plain_text(child) for child in body.get("content") or [])
-    if body.get("type") in _BLOCK_NODE_TYPES and text and not text.endswith("\n"):
+    if node_type in _BLOCK_NODE_TYPES and text and not text.endswith("\n"):
         return text + "\n"
     return text
 
