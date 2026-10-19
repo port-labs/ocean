@@ -15,6 +15,7 @@ from wcmatch import glob
 
 from gitlab.helpers.merge_request_comments import (
     is_human_merge_request_note,
+    merge_request_within_comments_age,
     normalize_merge_request_note,
 )
 from gitlab.helpers.utils import (
@@ -247,6 +248,45 @@ class GitLabClient:
             for note in notes
             if is_human_merge_request_note(note, include_system_notes)
         ]
+
+    async def attach_merge_request_comments(
+        self,
+        batch: list[dict[str, Any]],
+        *,
+        comments_max_age_days: int,
+        max_concurrent: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Attach __comments on merge requests within the comments age window."""
+        if not batch:
+            return batch
+
+        logger.info(
+            f"Attaching comments on up to {len(batch)} merge requests "
+            f"(commentsMaxAgeDays={comments_max_age_days})"
+        )
+        return await self._enrich_batch(
+            batch,
+            partial(
+                self._attach_merge_request_comments,
+                comments_max_age_days=comments_max_age_days,
+            ),
+            max_concurrent,
+        )
+
+    async def _attach_merge_request_comments(
+        self,
+        merge_request: dict[str, Any],
+        *,
+        comments_max_age_days: int,
+    ) -> dict[str, Any]:
+        if not merge_request_within_comments_age(
+            merge_request, comments_max_age_days
+        ):
+            return merge_request
+        merge_request["__comments"] = await self.get_merge_request_comments(
+            merge_request
+        )
+        return merge_request
 
     async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(

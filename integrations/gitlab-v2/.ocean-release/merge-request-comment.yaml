@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Add a merge-request-comment kind for merge request discussion and diff notes
+changelog: Attach merge request comments with includeComments and map them with itemsToParse

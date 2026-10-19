@@ -33,7 +33,6 @@ from integration import (
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
     GitlabProjectWithMembersResourceConfig,
-    GitlabMergeRequestCommentResourceConfig,
     GitlabMergeRequestResourceConfig,
     PipelineResourceConfig,
     JobResourceConfig,
@@ -295,6 +294,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_groups = selector.include_only_active_groups
     enrich_with_commits = selector.enrich_with_commits
     enrich_with_review_discussion = selector.enrich_with_review_discussion
+    include_comments = selector.include_comments
     needs_enrichment = enrich_with_commits or enrich_with_review_discussion
 
     async for groups_batch in client.get_groups(
@@ -319,47 +319,13 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         enrich_with_review_discussion=enrich_with_review_discussion,
                         max_concurrent=DEFAULT_MAX_CONCURRENT,
                     )
-                yield merge_requests_batch
-
-
-@ocean.on_resync(ObjectKind.MERGE_REQUEST_COMMENT)
-async def on_resync_merge_request_comments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_gitlab_client()
-    selector = cast(
-        GitlabMergeRequestCommentResourceConfig, event.resource_config
-    ).selector
-
-    async for groups_batch in client.get_groups(
-        params=build_group_params(
-            include_only_active_groups=selector.include_only_active_groups
-        )
-    ):
-        for state in selector.states:
-            params: Dict[str, Any] = {"state": state}
-            if state != "opened":
-                params["updated_after"] = selector.updated_after_datetime
-            async for merge_requests_batch in client.get_groups_resource(
-                groups_batch, "merge_requests", params=params
-            ):
-
-                async def _comments_for_merge_request(
-                    merge_request: Dict[str, Any],
-                ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-                    comments = await client.get_merge_request_comments(
-                        merge_request,
-                        include_system_notes=selector.include_system_notes,
+                if include_comments:
+                    merge_requests_batch = await client.attach_merge_request_comments(
+                        merge_requests_batch,
+                        comments_max_age_days=selector.comments_max_age_days,
+                        max_concurrent=DEFAULT_MAX_CONCURRENT,
                     )
-                    if comments:
-                        yield comments
-
-                tasks = [
-                    _comments_for_merge_request(merge_request)
-                    for merge_request in merge_requests_batch
-                ]
-                if not tasks:
-                    continue
-                async for comments_batch in stream_async_iterators_tasks(*tasks):
-                    yield comments_batch
+                yield merge_requests_batch
 
 
 @ocean.on_resync(ObjectKind.TAG)

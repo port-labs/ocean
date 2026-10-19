@@ -539,6 +539,28 @@ class GitlabMergeRequestSelector(GroupSelector):
             "events (100 notes per page). Defaults to false."
         ),
     )
+    include_comments: bool = Field(
+        default=False,
+        alias="includeComments",
+        title="Include Comments",
+        description=(
+            "When true, fetch human merge request notes and attach them under "
+            "__comments for itemsToParse mappings. Defaults to false so existing "
+            "resyncs and the default mapping do not call the comments API."
+        ),
+    )
+    comments_max_age_days: int = Field(
+        default=30,
+        alias="commentsMaxAgeDays",
+        title="Comments Max Age Days",
+        ge=1,
+        description=(
+            "Only merge requests whose updated_at is within this many days get a "
+            "notes API call. Older merge requests are returned with no comments "
+            "fetch. When a merge request qualifies, fetch all human notes. "
+            "Defaults to 30."
+        ),
+    )
 
     @property
     def updated_after_datetime(self) -> datetime:
@@ -554,48 +576,6 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
     selector: GitlabMergeRequestSelector = Field(
         title="Merge Request Selector",
         description="Selector for the GitLab merge request resource.",
-    )
-
-
-class GitlabMergeRequestCommentSelector(GroupSelector):
-    states: List[Literal["opened", "closed", "merged"]] = Field(
-        alias="states",
-        title="States",
-        description="Only ingest comments on merge requests in these states.",
-        default=["opened"],
-    )
-    updated_after: float = Field(
-        alias="updatedAfter",
-        title="Updated After (Days)",
-        description=(
-            "Number of days to look back for closed or merged merge requests "
-            "whose comments are fetched. Open merge requests ignore this window."
-        ),
-        default=90,
-    )
-    include_system_notes: bool = Field(
-        alias="includeSystemNotes",
-        title="Include System Notes",
-        default=False,
-        description=(
-            "Include GitLab system notes such as label and status changes. "
-            "Defaults to false so the catalog keeps human discussion."
-        ),
-    )
-
-    @property
-    def updated_after_datetime(self) -> datetime:
-        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
-
-
-class GitlabMergeRequestCommentResourceConfig(ResourceConfig):
-    kind: Literal["merge-request-comment"] = Field(
-        title="GitLab Merge Request Comment",
-        description="GitLab merge request comment resource kind.",
-    )
-    selector: GitlabMergeRequestCommentSelector = Field(
-        title="Merge Request Comment Selector",
-        description="Selector for GitLab merge request comments and diff notes.",
     )
 
 
@@ -873,7 +853,6 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitLabSkillResourceConfig
         | GitLabPluginResourceConfig
         | GitlabMergeRequestResourceConfig
-        | GitlabMergeRequestCommentResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig
         | PipelineResourceConfig

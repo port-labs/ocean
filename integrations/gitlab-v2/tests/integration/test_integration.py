@@ -338,6 +338,8 @@ def test_merge_request_selector_enrichment_flags_default_false() -> None:
 
     assert selector.enrich_with_commits is False
     assert selector.enrich_with_review_discussion is False
+    assert selector.include_comments is False
+    assert selector.comments_max_age_days == 30
 
 
 def test_merge_request_selector_enrichment_flags_accept_aliases() -> None:
@@ -346,8 +348,12 @@ def test_merge_request_selector_enrichment_flags_accept_aliases() -> None:
             "query": "true",
             "enrichWithCommits": True,
             "enrichWithReviewDiscussion": True,
+            "includeComments": True,
+            "commentsMaxAgeDays": 14,
         }
     )
 
     assert selector.enrich_with_commits is True
     assert selector.enrich_with_review_discussion is True
+    assert selector.include_comments is True
+    assert selector.comments_max_age_days == 14
