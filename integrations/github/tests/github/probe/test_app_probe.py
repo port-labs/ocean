@@ -1,3 +1,5 @@
+import httpx
+import jwt
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,9 +12,35 @@ from github.probe.app.permissions import AppKindPermissionVerdict
 from github.probe.app.probe import (
     MISSING_PERMISSIONS_MESSAGE,
     GitHubAppPermissionProbe,
+    format_app_probe_auth_error,
 )
 from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import ProbeCheckStatus, ProbeStatus
+
+
+def _authentication_exception_from_response(
+    response: httpx.Response,
+) -> AuthenticationException:
+    request = httpx.Request(
+        "POST", "https://api.github.com/app/installations/1/access_tokens"
+    )
+    response = httpx.Response(
+        response.status_code,
+        headers=response.headers,
+        json=response.json() if response.content else None,
+        request=request,
+    )
+    http_error = httpx.HTTPStatusError(
+        "error",
+        request=request,
+        response=response,
+    )
+    try:
+        raise AuthenticationException(
+            f"Failed to fetch installation token: {http_error}"
+        ) from http_error
+    except AuthenticationException as error:
+        return error
 
 
 @pytest.mark.parametrize(
@@ -101,6 +129,73 @@ async def test_app_probe_fails_org_checks_when_permissions_are_missing(
     mock_update_progress.assert_awaited()
 
 
+def test_format_app_probe_auth_error_from_http_cause_rate_limit() -> None:
+    response = httpx.Response(
+        403,
+        json={"message": "API rate limit exceeded"},
+        headers={
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1710000000",
+        },
+    )
+    error = _authentication_exception_from_response(response)
+
+    message = format_app_probe_auth_error(error)
+
+    assert (
+        message == "Failed to fetch installation token: GitHub API rate limit exceeded"
+    )
+
+
+def test_format_app_probe_auth_error_from_http_cause_unauthorized() -> None:
+    response = httpx.Response(401, json={"message": "Bad credentials"})
+    error = _authentication_exception_from_response(response)
+
+    message = format_app_probe_auth_error(error)
+
+    assert message == (
+        "Failed to fetch installation token: GitHub App credentials are "
+        "invalid. Please verify the GitHub App ID and private key are correct."
+    )
+
+
+def test_format_app_probe_auth_error_without_http_cause_falls_back() -> None:
+    message = format_app_probe_auth_error(
+        AuthenticationException("installation not found")
+    )
+
+    assert message == "Failed to fetch installation token: installation not found"
+
+
+def test_format_app_probe_auth_error_rewrites_jwt_key_failure() -> None:
+    message = format_app_probe_auth_error(
+        jwt.InvalidKeyError("Could not parse the provided public key."),
+        action="Failed to list GitHub App installations",
+    )
+
+    assert message == (
+        "Failed to list GitHub App installations: GitHub App credentials are "
+        "invalid. Please verify the GitHub App ID and private key are correct."
+    )
+
+
+def test_format_app_probe_auth_error_http_401_matches_local_credentials_message() -> (
+    None
+):
+    http_message = format_app_probe_auth_error(
+        _authentication_exception_from_response(
+            httpx.Response(401, json={"message": "Bad credentials"})
+        ),
+        action="Failed to list GitHub App installations",
+    )
+    local_message = format_app_probe_auth_error(
+        jwt.InvalidKeyError("Could not parse the provided public key."),
+        action="Failed to list GitHub App installations",
+    )
+
+    assert http_message == local_message
+
+
 @pytest.mark.asyncio
 @patch(
     "port_ocean.core.probe.context.ProbeContext.update_progress",
@@ -112,8 +207,8 @@ async def test_app_probe_fails_org_checks_when_token_fetch_raises_authentication
     context = ProbeContext()
     context.available_kinds = ["repository"]
     authenticator = _app_authenticator("my-org")
-    authenticator.get_token.side_effect = AuthenticationException(
-        "installation not found"
+    authenticator.get_token.side_effect = _authentication_exception_from_response(
+        httpx.Response(401, json={"message": "Bad credentials"})
     )
 
     probe = GitHubAppPermissionProbe(context, [authenticator])
@@ -124,7 +219,10 @@ async def test_app_probe_fails_org_checks_when_token_fetch_raises_authentication
     assert len(context.checks) == 1
     assert context.checks[0].scopes == {"org": "my-org"}
     assert context.checks[0].status is ProbeCheckStatus.FAILURE
-    assert context.checks[0].message == "installation not found"
+    assert context.checks[0].message == (
+        "Failed to fetch installation token: GitHub App credentials are "
+        "invalid. Please verify the GitHub App ID and private key are correct."
+    )
     mock_update_progress.assert_awaited()
 
 
