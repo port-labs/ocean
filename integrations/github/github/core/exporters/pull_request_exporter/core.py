@@ -64,7 +64,7 @@ OPEN_PULL_REQUEST_INCREMENTAL_GRAPHQL = ClientSideCutoffStrategy(
 )
 _UNRECOVERED_FIELD = object()
 
-# Full-resync only: repeat the first list-PRs REST call (rate-limit / limiter testing).
+# Repeat the first list-PRs REST call on full and incremental resync (rate-limit / limiter testing).
 _FULL_RESYNC_PULL_REQUEST_API_REPEAT = 5000
 _FULL_RESYNC_PULL_REQUEST_RATE_LIMIT_RETRIES = 10
 _RATE_LIMIT_STOP_STATUS_CODES = frozenset({403, 429})
@@ -144,14 +144,11 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         organization: str,
         repo_name: str,
         request_params: dict[str, Any],
-        incremental_cursor: Optional[datetime],
     ) -> None:
-        if incremental_cursor is not None:
-            return
         endpoint = self._build_pull_request_paginated_endpoint(organization, repo_name)
         params = {**request_params, "per_page": 100}
         logger.warning(
-            f"[Rest] Full resync: repeating list pulls GET {organization}/{repo_name} "
+            f"[Rest] Repeating list pulls GET {organization}/{repo_name} "
             f"{_FULL_RESYNC_PULL_REQUEST_API_REPEAT} times (same params)"
         )
         for _ in range(_FULL_RESYNC_PULL_REQUEST_API_REPEAT):
@@ -184,7 +181,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             {"state": "open"}, incremental_cursor
         )
         await self._repeat_list_pulls_for_full_resync(
-            organization, repo_name, request_params, incremental_cursor
+            organization, repo_name, request_params
         )
 
         async for pull_requests in paginate_with_strategy(

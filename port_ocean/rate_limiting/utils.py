@@ -1,6 +1,7 @@
 """Shared helpers for centralized rate limiting."""
 
 import asyncio
+import time
 from typing import Any, Mapping
 
 from loguru import logger
@@ -98,6 +99,28 @@ async def record_centralized_rate_limit(
     limiter = active_centralized_rate_limiter()
     if limiter is None:
         return
+    # TODO(rl-local-test): remove after centralized rate limiter load-test validation
+    tier = derive_sync_tier()
+    ratio = round((state.remaining or 0) / state.limit, 3) if state.limit else None
+    reset_in_seconds = (
+        round(state.reset_at - time.time(), 3) if state.reset_at else None
+    )
+    logger.info(
+        "Centralized rate limiter recorded response "
+        f"pool={pool} tier={tier.value} remaining={state.remaining} "
+        f"limit={state.limit} ratio={ratio} reset_at={state.reset_at} "
+        f"reset_in_seconds={reset_in_seconds} is_rate_limited={is_rate_limited} "
+        f"integration={ocean.config.integration.identifier}",
+        pool=pool,
+        tier=tier.value,
+        remaining=state.remaining,
+        limit=state.limit,
+        ratio=ratio,
+        reset_at=state.reset_at,
+        reset_in_seconds=reset_in_seconds,
+        is_rate_limited=is_rate_limited,
+        integration_identifier=ocean.config.integration.identifier,
+    )
     await limiter.record_response(pool, state, is_rate_limited=is_rate_limited)
 
 
@@ -126,10 +149,14 @@ async def await_centralized_rate_limit(pool: str) -> None:
         if wait_seconds <= 0:
             return
 
-        logger.debug(
-            "Centralized rate limiter blocked request",
+        # TODO(rl-local-test): remove after centralized rate limiter load-test validation
+        logger.info(
+            "Centralized rate limiter blocked request "
+            f"pool={pool} tier={tier.value} wait_seconds={wait_seconds:.3f} "
+            f"integration={ocean.config.integration.identifier}",
             pool=pool,
             tier=tier.value,
             wait_seconds=wait_seconds,
+            integration_identifier=ocean.config.integration.identifier,
         )
         await asyncio.sleep(wait_seconds)

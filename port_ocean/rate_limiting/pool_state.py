@@ -7,7 +7,7 @@ from port_ocean.rate_limiting.constants import DEFAULT_RATE_LIMITED_BLOCK_SECOND
 from port_ocean.rate_limiting.models import CentralizedRateLimitState, SyncTier
 from port_ocean.rate_limiting.utils import decode_redis_hash
 
-LOW_REMAINING_RATIO_CEILING = 0.40
+LOW_REMAINING_RATIO_CEILING = 0.25
 MEDIUM_REMAINING_RATIO_CEILING = 0.10
 
 

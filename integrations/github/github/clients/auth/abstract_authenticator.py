@@ -83,6 +83,14 @@ class AbstractGitHubAuthenticator(ABC):
     def configure_rate_limiting(self, *, rate_limiter: RateLimitWrapper) -> None:
         self._rate_limiter = rate_limiter
 
+    @property
+    def _transport_rate_limit_notifier(
+        self,
+    ) -> Callable[[httpx.Response], Coroutine[Any, Any, None]] | None:
+        if self._rate_limiter is None:
+            return self._rate_limit_notifier
+        return self._rate_limiter.notify_transport_rate_limit_retry
+
     async def _get_headers_dict(self) -> Dict[str, str]:
         return (await self.get_headers()).as_dict()
 
@@ -116,7 +124,7 @@ class AbstractGitHubAuthenticator(ABC):
             GitHubRetryTransport,
             retry_config=retry_config,
             transport_kwargs={
-                "rate_limit_notifier": self._rate_limiter.notify_transport_rate_limit_retry,
+                "rate_limit_notifier": self._transport_rate_limit_notifier,
                 "token_refresher": self._get_headers_dict,
             },
             timeout=ocean.config.client_timeout,

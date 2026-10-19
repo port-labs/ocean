@@ -20,7 +20,7 @@ def test_untracked_pool_when_limit_missing() -> None:
 
 def test_tier_low_backs_off_when_ratio_at_ceiling() -> None:
     state = pool_state_from_redis_hash(
-        {b"remaining": b"40", b"limit": b"100"},
+        {b"remaining": b"25", b"limit": b"100"},
     )
     assert should_back_off_for_sync_tier(SyncTier.LOW, state) is True
 
