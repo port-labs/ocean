@@ -1,7 +1,9 @@
-# Opt-in. Not part of the default mapping. Create the blueprint yourself.
+# includeComments is only a boolean; to limit which merge requests get comments,
+# add this as another merge-request block and filter with selector.query;
+# leave the default merge-request block unchanged.
 - kind: merge-request
   selector:
-    query: 'true'
+    query: .labels.isAi == true
     includeComments: true
     commentsMaxAgeDays: 30
   port:
