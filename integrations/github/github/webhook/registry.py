@@ -8,6 +8,9 @@ from github.webhook.webhook_processors.folder_webhook_processor import (
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.webhook.webhook_processors.pull_request_comment_webhook_processor import (
+    PullRequestCommentWebhookProcessor,
+)
 from github.webhook.webhook_processors.pull_request_webhook_processor import (
     PullRequestWebhookProcessor,
 )
@@ -97,6 +100,7 @@ def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, PortAppConfigWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, RepositoryWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestCommentWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestReviewWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, ReleaseWebhookProcessor)

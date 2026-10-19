@@ -77,3 +77,23 @@ resources:
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .__repository
+  - kind: pull-request-comment
+    selector:
+      query: 'true'
+      states:
+        - open
+    port:
+      entity:
+        mappings:
+          identifier: .__commentId
+          title: .__body // "" | .[0:120]
+          blueprint: '"githubPullRequestComment"'
+          properties:
+            body: .__body
+            author: .__author
+            createdAt: .__createdAt
+            updatedAt: .__updatedAt
+            url: .__url
+            commentType: .__commentType
+          relations:
+            pullRequest: .__repository + (.__pullRequestId | tostring)
