@@ -6,8 +6,8 @@
   "formMappingEnabled": true,
   "testConnectionAvailable": true,
   "testConnectionScopes": [
-    { "key": "account", "title": "Account" },
-    { "key": "region", "title": "Region" }
+    {"key": "account", "title": "Account"},
+    {"key": "region", "title": "Region"}
   ],
   "features": [
     {
