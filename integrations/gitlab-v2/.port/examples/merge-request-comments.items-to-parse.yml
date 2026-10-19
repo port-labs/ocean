@@ -11,14 +11,14 @@
     entity:
       mappings:
         identifier: .item.__commentId
-        title: .item.__body // "" | .[0:120]
+        title: .item.body // "" | .[0:120]
         blueprint: '"gitlabMergeRequestComment"'
         properties:
-          body: .item.__body
-          author: .item.__author
-          createdAt: .item.__createdAt
-          updatedAt: .item.__updatedAt
-          url: .item.__url
+          body: .item.body
+          author: .item.author.username // .item.author.name
+          createdAt: .item.created_at
+          updatedAt: .item.updated_at // .item.created_at
+          url: .item.url
           commentType: .item.__commentType
         relations:
           mergeRequest: .id | tostring

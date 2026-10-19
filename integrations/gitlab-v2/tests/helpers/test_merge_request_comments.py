@@ -65,10 +65,18 @@ def test_normalize_discussion_and_diff_notes() -> None:
     review = normalize_merge_request_note(DIFF_NOTE, MERGE_REQUEST)
     assert discussion["__commentId"] == "99/302"
     assert discussion["__commentType"] == "comment"
-    assert discussion["__author"] == "reviewer"
+    assert discussion["body"] == "Please split this change."
+    assert discussion["author"]["username"] == "reviewer"
+    assert discussion["created_at"] == "2026-10-01T00:00:00.000Z"
     assert discussion["__url"].endswith("#note_302")
+    assert "url" not in discussion
+    assert "__body" not in discussion
+    assert "__author" not in discussion
+    assert "__createdAt" not in discussion
+    assert "__updatedAt" not in discussion
+    assert "__mergeRequestId" not in discussion
     assert review["__commentType"] == "review"
-    assert review["__mergeRequestId"] == 99
+    assert review["body"] == "Rename this variable."
 
 
 def test_normalize_uses_webhook_note_field() -> None:
@@ -79,10 +87,15 @@ def test_normalize_uses_webhook_note_field() -> None:
         "created_at": "2026-10-01T00:00:00.000Z",
         "system": False,
         "type": None,
+        "url": "https://gitlab.example.com/group/project/-/merge_requests/1#note_305",
     }
     normalized = normalize_merge_request_note(webhook_note, MERGE_REQUEST)
-    assert normalized["__body"] == "From webhook payload"
-    assert normalized["__author"] == "alice"
+    assert normalized["body"] == "From webhook payload"
+    assert normalized["author"]["name"] == "alice"
+    assert normalized["url"].endswith("#note_305")
+    assert "__url" not in normalized
+    assert "__body" not in normalized
+    assert "__author" not in normalized
 
 
 def test_system_notes_are_skipped() -> None:
