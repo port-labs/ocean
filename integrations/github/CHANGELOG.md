@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.21.3 (2026-10-19)
+
+
+### Bug Fixes
+
+- Fail the resync when the GitHub API returns 401 instead of ignoring the error, so invalid credentials surface as a failed sync and entities are preserved rather than deleted.
+
+
+## 6.21.2 (2026-10-19)
+
+
+### Improvements
+
+- Supply GitHub-specific compact live-event log identifiers via get_live_event_log_identifiers on webhook processors when dual-gated payload logging is enabled in Ocean core.
+
+
+## 6.21.1 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 6.21.0 (2026-10-18)
+
+
+### Features
+
+- Added an opt-in `includeSkillFolder` selector to the `skill` kind that bundles every text file in the skill folder into `skill.files` as a list of `{path, content}`, on both resync and push webhooks. Skills whose SKILL.md and folder files exceed 1MB in total are skipped with a warning.
+
+
+## 6.20.2 (2026-10-18)
+
+
+### Bug Fixes
+
+- Fix folder live events so unset repo branch matches the default branch only
+
+
 ## 6.20.1 (2026-10-15)
 
 

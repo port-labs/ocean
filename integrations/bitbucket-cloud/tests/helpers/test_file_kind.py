@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
+from httpx import HTTPStatusError, Request, Response
 from bitbucket_cloud.helpers.file_kind import (
     build_search_terms,
     extract_filename_extension,
@@ -7,6 +8,7 @@ from bitbucket_cloud.helpers.file_kind import (
     validate_file_match,
 )
 from integration import BitbucketFilePattern
+from bitbucket_cloud.helpers.exceptions import BitbucketFileWalkError
 from typing import AsyncGenerator, Dict, Any, List
 
 
@@ -96,7 +98,11 @@ async def test_process_file_patterns() -> None:
             "file": {
                 "path": "src/test.py",
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         }
@@ -146,6 +152,187 @@ async def test_process_file_patterns() -> None:
             assert len(results) == 1
             assert results[0]["content"] == "file content"
             assert results[0]["metadata"]["path"] == "src/test.py"
+
+
+@pytest.mark.asyncio
+async def test_process_file_patterns_keeps_readable_files_when_one_cannot_be_read() -> (
+    None
+):
+    """One unreadable file must not discard the rest, and must still end the kind in error."""
+    results = [
+        {
+            "path_matches": [{"match": "a.yaml"}],
+            "file": {
+                "path": "a.yaml",
+                "commit": {
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
+                },
+            },
+        },
+        {
+            "path_matches": [{"match": "b.yaml"}],
+            "file": {
+                "path": "b.yaml",
+                "commit": {
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
+                },
+            },
+        },
+    ]
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield results
+
+    async def mock_get_repository_files(
+        repo: str, branch: str, path: str
+    ) -> str | None:
+        return None if path == "a.yaml" else "content of b"
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = mock_get_repository_files
+        mock_init_client.return_value = mock_client
+
+        pattern = BitbucketFilePattern(
+            path="/", filenames=["a.yaml", "b.yaml"], skipParsing=True
+        )
+
+        yielded: List[Dict[str, Any]] = []
+        with pytest.raises(BitbucketFileWalkError) as raised:
+            async for batch in process_file_patterns(pattern):
+                yielded.extend(batch)
+
+    assert [item["metadata"]["path"] for item in yielded] == ["b.yaml"]
+    assert "1 file could not be read" in str(raised.value)
+    cause = raised.value.__cause__
+    assert isinstance(cause, ExceptionGroup)
+    assert [str(error) for error in cause.exceptions] == [
+        "Bitbucket returned no content for a.yaml in repository test-repo on branch main"
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [403, 500, 555])
+async def test_process_file_patterns_collects_a_failure_about_one_file(
+    status: int,
+) -> None:
+    """A refused repository or a server fault on one file keeps the rest of the walk."""
+    results = [
+        {
+            "path_matches": [{"match": "a.yaml"}],
+            "file": {
+                "path": "a.yaml",
+                "commit": {
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
+                },
+            },
+        },
+        {
+            "path_matches": [{"match": "b.yaml"}],
+            "file": {
+                "path": "b.yaml",
+                "commit": {
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
+                },
+            },
+        },
+    ]
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield results
+
+    failed = Response(status, request=Request("GET", "https://example/src"))
+
+    async def mock_get_repository_files(repo: str, branch: str, path: str) -> str:
+        if path == "a.yaml":
+            raise HTTPStatusError(f"{status}", request=failed.request, response=failed)
+        return "content of b"
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = mock_get_repository_files
+        mock_init_client.return_value = mock_client
+
+        pattern = BitbucketFilePattern(
+            path="/", filenames=["a.yaml", "b.yaml"], skipParsing=True
+        )
+
+        yielded: List[Dict[str, Any]] = []
+        with pytest.raises(BitbucketFileWalkError) as raised:
+            async for batch in process_file_patterns(pattern):
+                yielded.extend(batch)
+
+    assert [item["metadata"]["path"] for item in yielded] == ["b.yaml"]
+    cause = raised.value.__cause__
+    assert isinstance(cause, ExceptionGroup)
+    assert isinstance(cause.exceptions[0], HTTPStatusError)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [401, 429])
+async def test_process_file_patterns_stops_when_the_credential_or_quota_is_gone(
+    status: int,
+) -> None:
+    """These affect every repository still to be walked, so the walk does not continue."""
+    results = [
+        {
+            "path_matches": [{"match": "a.yaml"}],
+            "file": {
+                "path": "a.yaml",
+                "commit": {
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
+                },
+            },
+        }
+    ]
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield results
+
+    response = Response(status, request=Request("GET", "https://example/src"))
+
+    async def mock_get_repository_files(repo: str, branch: str, path: str) -> str:
+        raise HTTPStatusError(f"{status}", request=response.request, response=response)
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = mock_get_repository_files
+        mock_init_client.return_value = mock_client
+
+        pattern = BitbucketFilePattern(path="/", filenames=["a.yaml"], skipParsing=True)
+
+        with pytest.raises(HTTPStatusError):
+            async for _ in process_file_patterns(pattern):
+                pass
 
 
 @pytest.mark.asyncio
@@ -203,6 +390,7 @@ async def test_process_file_patterns_ingests_dotfiles() -> None:
                     "commit": {
                         "repository": {
                             "name": "test-repo",
+                            "full_name": "test-workspace/test-repo",
                             "mainbranch": {"name": "main"},
                         }
                     },
@@ -284,7 +472,11 @@ async def test_process_file_patterns_skip_non_matching() -> None:
             "file": {
                 "path": "other/test.py",  # Different path than expected
                 "commit": {
-                    "repository": {"name": "test-repo", "mainbranch": {"name": "main"}}
+                    "repository": {
+                        "name": "test-repo",
+                        "full_name": "test-workspace/test-repo",
+                        "mainbranch": {"name": "main"},
+                    }
                 },
             },
         }
@@ -327,3 +519,42 @@ async def test_process_file_patterns_skip_non_matching() -> None:
 
             # Verify no results due to path mismatch
             assert not results
+
+
+@pytest.mark.asyncio
+async def test_a_renamed_repository_is_addressed_by_its_real_slug() -> None:
+    """The display name is not the slug once a repository is renamed or punctuated."""
+    renamed = {
+        "path_matches": [{"match": "port.yml"}],
+        "file": {
+            "path": "port.yml",
+            "commit": {
+                "repository": {
+                    "name": "Payments Service (legacy)",
+                    "full_name": "test-workspace/payments-api",
+                    "mainbranch": {"name": "main"},
+                }
+            },
+        },
+    }
+
+    async def mock_search_files(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [renamed]
+
+    with patch("bitbucket_cloud.helpers.file_kind.init_client") as mock_init_client:
+        mock_client = AsyncMock()
+        mock_client.search_files = mock_search_files
+        mock_client.get_repository_files = AsyncMock(return_value="content: yes\n")
+        mock_init_client.return_value = mock_client
+
+        file_pattern = BitbucketFilePattern(
+            path="/", filenames=["port.yml"], skipParsing=True
+        )
+        async for _ in process_file_patterns(file_pattern):
+            pass
+
+    mock_client.get_repository_files.assert_called_once_with(
+        "payments-api", "main", "port.yml"
+    )
