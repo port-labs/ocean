@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fail the File Kind validation check when Port rejects the entity
