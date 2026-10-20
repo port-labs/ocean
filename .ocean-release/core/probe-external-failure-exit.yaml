@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Do not fail the probe CLI/CI job when the probe reports an external (third-party) failure; only internal failures exit non-zero
