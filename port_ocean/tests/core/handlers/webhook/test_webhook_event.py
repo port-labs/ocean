@@ -143,8 +143,8 @@ def test_setTimestamp_logsTraceIdAtTopLevelExtra(
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Added To Queue"
     assert extra["webhook_path"] == "/webhook"
-    assert "payload" not in extra
-    assert "headers" not in extra
+    assert extra["payload"] == sample_payload
+    assert isinstance(extra["headers"], dict)
     assert "payload_b64" not in extra
     assert extra.get("extra") is None
 
@@ -196,8 +196,11 @@ def test_setTimestamp_configOnFeatureFlagOff_logsCompactOnly() -> None:
     assert record.levelno == logging.INFO
 
     assert extra["timestamp_type"] == "Started Processing"
-    assert "payload" not in extra
-    assert extra["headers"] == {"x-github-event": "pull_request"}
+    assert extra["payload"] == payload
+    headers_logged = extra["headers"]
+    assert isinstance(headers_logged, dict)
+    assert headers_logged["x-github-event"] == "pull_request"
+    assert headers_logged["authorization"] == "[REDACTED]"
     assert "payload_b64" not in extra
 
 
@@ -249,8 +252,8 @@ def test_setTimestamp_startedProcessing_logsCompactIdentifiersByDefault(
     assert extra["trace_id"] == "test-trace-id"
     assert extra["timestamp_type"] == "Started Processing"
     assert extra["webhook_path"] == "/webhook"
-    assert "payload" not in extra
-    assert "headers" not in extra
+    assert extra["payload"] == sample_payload
+    assert isinstance(extra["headers"], dict)
     assert "payload_b64" not in extra
 
 
@@ -273,11 +276,12 @@ def test_setTimestamp_startedProcessing_logsProcessorSuppliedIdentifiers() -> No
 
     extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
-    assert extra["headers"] == {
-        "x-github-event": "pull_request",
-        "x-github-delivery": "delivery-id",
-    }
-    assert extra["payload"] == {"action": "opened", "repo": "org/repo"}
+    headers_logged = extra["headers"]
+    assert isinstance(headers_logged, dict)
+    assert headers_logged["x-github-event"] == "pull_request"
+    assert headers_logged["x-github-delivery"] == "delivery-id"
+    assert headers_logged["x-hub-signature-256"] == "[REDACTED]"
+    assert extra["event_identifiers"] == {"action": "opened", "repo": "org/repo"}
 
 
 def test_setTimestamp_startedProcessing_logsFullPayloadWhenBothGatesOn() -> None:
@@ -335,8 +339,11 @@ def test_setTimestamp_finishedProcessing_follows_same_gating_as_started() -> Non
         event, LiveEventTimestamp.FinishedProcessingWithError
     )
     assert record_compact.levelno == logging.INFO
-    assert extra_compact["payload"] == {"kind": "issue"}
-    assert extra_compact["headers"] == {"x-github-event": "pull_request"}
+    assert extra_compact["event_identifiers"] == {"kind": "issue"}
+    headers_compact = extra_compact["headers"]
+    assert isinstance(headers_compact, dict)
+    assert headers_compact["x-github-event"] == "pull_request"
+    assert "payload_b64" in extra_compact
 
 
 class TestWebhookRequestAdapter:
