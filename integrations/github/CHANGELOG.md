@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.21.4 (2026-10-20)
+
+
+### Bug Fixes
+
+- Fail the File Kind validation check when Port rejects the entity
+
+
 ## 6.21.3 (2026-10-19)
 
 
