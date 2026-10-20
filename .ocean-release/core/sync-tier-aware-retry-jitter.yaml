@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added sync-tier-aware backoff jitter to RetryTransport, auto-detected per pod from event-listener settings. Full/partial resync backs off more than incremental sync, and actions/live-events are unaffected, so background sync yields to user-facing work when they share rate-limit pressure on the same token. Configurable via RetryConfig.apply_sync_tier_jitter.
