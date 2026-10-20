@@ -465,10 +465,7 @@ class TestFileValidation:
 
         mock_update_check.assert_called_once()
         assert mock_update_check.call_args.args[4] == "failure"
-        assert (
-            "resource not found"
-            in mock_update_check.call_args.args[7]
-        )
+        assert "resource not found" in mock_update_check.call_args.args[7]
 
     async def test_validate_pull_request_files_fails_check_on_port_422(
         self,
