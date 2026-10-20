@@ -162,6 +162,57 @@ class TestPullRequestCommentWebhookProcessor:
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
 
+    async def test_handle_event_refreshes_review_stats_without_comments(
+        self,
+        processor: PullRequestCommentWebhookProcessor,
+        resource_config_comments_off: GithubPullRequestConfig,
+    ) -> None:
+        resource_config_comments_off.selector.include_review_stats = True
+        processor.event.headers = {"x-github-event": "issue_comment"}
+        fetched_pr = _fetched_pull_request()
+        stats = {
+            "humanApprovals": 0,
+            "humanComments": 1,
+            "botComments": 0,
+            "firstHumanReview": None,
+            "firstApproval": None,
+            "waitOnHumanHours": None,
+        }
+
+        mock_pr_exporter = MagicMock()
+        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
+        mock_comment_exporter = MagicMock()
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
+            return_value=[{**fetched_pr, "__reviewStats": stats}]
+        )
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.create_github_client_for_org",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
+            patch(
+                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
+                return_value=mock_pr_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
+                return_value=mock_comment_exporter,
+            ),
+            patch.object(
+                processor, "should_process_repo_search", AsyncMock(return_value=True)
+            ),
+        ):
+            result = await processor.handle_event(
+                _issue_comment_payload(), resource_config_comments_off
+            )
+
+        assert result.deleted_raw_results == []
+        assert result.updated_raw_results[0]["__reviewStats"] == stats
+        assert "__comments" not in result.updated_raw_results[0]
+        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()
+
     async def test_handle_event_returns_pull_request_with_comments_when_enabled(
         self,
         processor: PullRequestCommentWebhookProcessor,
