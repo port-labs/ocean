@@ -15,8 +15,8 @@ from loguru import logger
 
 import httpx
 
-# 30 minutes × full-resync tier multiplier (1.15) — room for scaled hourly-reset waits.
-GITHUB_RETRY_MAX_BACKOFF = 30 * 60 * 1.15
+# 30 minutes × full-resync tier multiplier (1.25) — room for scaled hourly-reset waits.
+GITHUB_RETRY_MAX_BACKOFF = 30 * 60 * 1.25
 
 
 class GitHubToken(BaseModel):

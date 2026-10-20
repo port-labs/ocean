@@ -1247,30 +1247,30 @@ class TestSyncTierJitter:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
             transport = self._transport()
-            assert transport._calculate_sleep(1, {}) == pytest.approx(1.15)
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.25)
 
     def test_incremental_pod_scales_exponential_backoff(self) -> None:
         with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = True
             transport = self._transport()
-            assert transport._calculate_sleep(1, {}) == pytest.approx(1.07)
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.10)
 
-    def test_webhooks_pod_scales_slightly(self) -> None:
+    def test_webhooks_pod_does_not_stretch_backoff(self) -> None:
         with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(
                 should_process_webhooks=True
             )
             mock_ocean.config.integration.incremental_sync_enabled = False
             transport = self._transport()
-            assert transport._calculate_sleep(1, {}) == pytest.approx(1.01)
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.00)
 
-    def test_actions_pod_scales_slightly(self) -> None:
+    def test_actions_pod_does_not_stretch_backoff(self) -> None:
         with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_run_actions=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
             transport = self._transport()
-            assert transport._calculate_sleep(1, {}) == pytest.approx(1.01)
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.00)
 
     def test_tier_jitter_also_scales_retry_after_header_path(self) -> None:
         with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
@@ -1279,30 +1279,30 @@ class TestSyncTierJitter:
             transport = self._transport()
             assert transport._calculate_sleep(
                 1, {"Retry-After": "10"}
-            ) == pytest.approx(11.5)
+            ) == pytest.approx(12.5)
 
     def test_scaled_sleep_is_still_clamped_to_max_backoff_wait(self) -> None:
         with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
             transport = self._transport(base_delay=50.0, max_backoff_wait=55.0)
-            # 50.0 * 1.15 == 57.5, should be clamped to max_backoff_wait
+            # 50.0 * 1.25 == 62.5, should be clamped to max_backoff_wait
             assert transport._calculate_sleep(1, {}) == 55.0
 
     def test_high_priority_tiers_use_smallest_multiplier(self) -> None:
         assert sync_tier_module.DEFAULT_SYNC_TIER_MULTIPLIERS[
             EventType.HTTP_REQUEST
-        ] == pytest.approx(1.01)
+        ] == pytest.approx(1.00)
         assert sync_tier_module.DEFAULT_SYNC_TIER_MULTIPLIERS[
             EventType.ACTION_RUN
-        ] == pytest.approx(1.01)
+        ] == pytest.approx(1.00)
 
     def test_retry_config_stores_derived_multiplier(self) -> None:
         with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
             mock_ocean.config.event_listener = self._listener(should_resync=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
             config = RetryConfig(max_backoff_wait=2070.0)
-            assert config.sync_tier_multiplier == pytest.approx(1.15)
+            assert config.sync_tier_multiplier == pytest.approx(1.25)
             assert config.max_backoff_wait == 2070.0
 
     def test_retry_config_action_run_uses_high_tier_multiplier(self) -> None:
@@ -1310,4 +1310,4 @@ class TestSyncTierJitter:
             mock_ocean.config.event_listener = self._listener(should_run_actions=True)
             mock_ocean.config.integration.incremental_sync_enabled = False
             config = RetryConfig(max_backoff_wait=2070.0)
-            assert config.sync_tier_multiplier == pytest.approx(1.01)
+            assert config.sync_tier_multiplier == pytest.approx(1.00)
