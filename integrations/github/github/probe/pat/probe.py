@@ -1,3 +1,5 @@
+import re
+
 from github.probe.pat.permissions import PatKindPermissionVerdict
 from httpx import Response
 from port_ocean.context.ocean import ocean
@@ -8,6 +10,12 @@ from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticat
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
 
 NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
+
+_FINE_GRAINED_PAT_PREFIX = "github_pat_"
+# github_pat_ + 22 alnum + _ + 59 alnum (93 chars total)
+_FINE_GRAINED_PAT_RE = re.compile(
+    rf"^{_FINE_GRAINED_PAT_PREFIX}[A-Za-z0-9]{{22}}_[A-Za-z0-9]{{59}}$"
+)
 
 _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
     "repo": {
@@ -34,12 +42,18 @@ _IMPLIED_PAT_SCOPES: dict[str, set[str]] = {
 
 FINE_GRAINED_PAT_MESSAGE = (
     "Your token is valid, but permission verification is not available for "
-    "fine-grained personal access tokens because GitHub does not expose granted scopes."
+    "fine-grained personal access tokens because GitHub does not expose granted scopes. "
+    "You may still be able to ingest data."
+)
+
+MALFORMED_FINE_GRAINED_PAT_MESSAGE = (
+    "The token starts with 'github_pat_' but does not match the expected "
+    "fine-grained personal access token format. Please ensure your token is valid."
 )
 
 
 def is_fine_grained_pat(token: str) -> bool:
-    return token.startswith("github_pat_")
+    return bool(_FINE_GRAINED_PAT_RE.fullmatch(token))
 
 
 class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
@@ -50,7 +64,10 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
     async def run(self) -> None:
         authenticator = self.authenticators[0]
         token = (await authenticator.get_token()).token
-        if is_fine_grained_pat(token):
+        if token.startswith(_FINE_GRAINED_PAT_PREFIX):
+            if not is_fine_grained_pat(token):
+                await self.context.fail(MALFORMED_FINE_GRAINED_PAT_MESSAGE)
+                return
             self.context.message = FINE_GRAINED_PAT_MESSAGE
             return
 
