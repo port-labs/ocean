@@ -7,7 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
-from jira.comments import normalize_issue_comment
+from jira.comments import attach_comments_to_issues, normalize_issue_comment
 from jira.overrides import (
     JiraEpicAPIQueryParams,
     JiraWorklogAPIQueryParams,
@@ -730,7 +730,10 @@ class JiraClient(OAuthClient):
             body = {**body, "nextPageToken": next_page_token}
 
     async def get_paginated_issues(
-        self, params: dict[str, Any] | None = None
+        self,
+        params: dict[str, Any] | None = None,
+        *,
+        include_comments: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
@@ -747,6 +750,8 @@ class JiraClient(OAuthClient):
         async for issues in self._get_paginated_data_using_next_page_token(
             url, body, "issues"
         ):
+            if include_comments:
+                issues = await attach_comments_to_issues(self, issues)
             yield issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:

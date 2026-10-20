@@ -1,9 +1,8 @@
-from typing import cast
+from typing import Any, cast
 
 from loguru import logger
 from initialize_client import get_or_create_jira_client
 from jira.client import COMMENT_WEBHOOK_EVENTS
-from jira.comments import attach_comments_to_issues
 from jira.overrides import JiraIssueConfig
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -40,12 +39,11 @@ class IssueCommentWebhookProcessor(JiraAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         config = cast(JiraIssueConfig, resource_config)
-        empty = WebhookEventRawResults(
-            updated_raw_results=[],
-            deleted_raw_results=[],
-        )
         if not config.selector.include_comments:
-            return empty
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
 
         issue_key = payload["issue"]["key"]
         webhook_event = payload.get("webhookEvent")
@@ -54,9 +52,35 @@ class IssueCommentWebhookProcessor(JiraAbstractWebhookProcessor):
             f"(includeComments=true)"
         )
 
+        jql = f"key = {issue_key}"
+        if config.selector.jql:
+            jql = f"({config.selector.jql}) AND key = {issue_key}"
+
+        params: dict[str, Any] = {
+            "jql": jql,
+            "fields": config.selector.fields,
+            "expand": config.selector.expand,
+        }
+        issue_id = payload["issue"].get("id")
+        if issue_id is not None:
+            params["reconcileIssues"] = [int(issue_id)]
+
         client = get_or_create_jira_client()
-        enriched = await attach_comments_to_issues(client, [payload["issue"]])
+        issues: list[dict[str, Any]] = []
+        async for batch in client.get_paginated_issues(params, include_comments=True):
+            issues.extend(batch)
+
+        if not issues:
+            logger.info(
+                f"Issue {issue_key} did not match the selector JQL, "
+                "skipping comment refresh"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
+
         return WebhookEventRawResults(
-            updated_raw_results=enriched,
+            updated_raw_results=issues,
             deleted_raw_results=[],
         )
