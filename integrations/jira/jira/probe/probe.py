@@ -4,8 +4,8 @@ from port_ocean.context.ocean import ocean
 from initialize_client import get_or_create_jira_client
 from jira.probe.permissions import (
     MYPERMISSIONS_REQUIRED_SCOPES,
-    MYSELF_REQUIRED_SCOPES,
     JiraKindPermissionVerdict,
+    authentication_failure_message,
     message_with_required_scopes,
 )
 from kinds import Kinds
@@ -31,12 +31,17 @@ class JiraPermissionProbe:
 
         try:
             await self.client.verify_current_user()
-        except (HTTPStatusError, RequestError):
+        except HTTPStatusError as error:
             await self.context.fail(
-                message_with_required_scopes(
-                    "Failed to verify Jira authentication.",
-                    MYSELF_REQUIRED_SCOPES,
+                authentication_failure_message(
+                    status_code=error.response.status_code,
                 )
+            )
+            return
+        except RequestError as error:
+            await self.context.fail(
+                "Jira could not be reached while verifying authentication: "
+                f"{error}"
             )
             return
 
