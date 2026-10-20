@@ -1,5 +1,6 @@
 description: Plain integration for Port Ocean
 icon: Plain
+formMappingEnabled: true
 features:
   - type: exporter
     section: Project management
