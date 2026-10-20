@@ -1,11 +1,10 @@
 import base64
 import os
 import tempfile
-from typing import Any
+from typing import Any, Self
 from urllib.parse import urlparse
 
 from pydantic import ConfigDict, Field, model_validator
-from typing import Self
 
 from port_ocean.config.base import BaseOceanModel, sensitive_field
 from redis.asyncio.connection import SSLConnection

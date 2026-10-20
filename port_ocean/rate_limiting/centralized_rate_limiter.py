@@ -1,12 +1,12 @@
 """Cross-pod centralized rate limiter (Redis + no-op fallback)."""
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
-from redis.asyncio import Redis
 
 from port_ocean.context.ocean import ocean
+from port_ocean.consumers.redis_client import RedisClient
 from port_ocean.consumers.redis_connection import RedisConnectionHelper
 from port_ocean.consumers.redis_stream_utils import is_redis_connection_error
 from port_ocean.rate_limiting.models import (
@@ -17,16 +17,14 @@ from port_ocean.rate_limiting.models import (
 )
 from port_ocean.rate_limiting.pool_state import (
     PoolRedisState,
+    pool_redis_key,
     pool_state_from_redis_hash,
     record_hash_mapping,
     should_back_off_for_sync_tier,
-)
-from port_ocean.rate_limiting.redis_lua_scripts import RESERVE_POOL_SLOT_SCRIPT
-from port_ocean.rate_limiting.utils import (
-    pool_redis_key,
     wait_seconds_until_quota_reset,
     wait_seconds_while_pool_blocked,
 )
+from port_ocean.rate_limiting.redis_lua_scripts import RESERVE_POOL_SLOT_SCRIPT
 
 
 class CentralizedRateLimiter:
@@ -35,7 +33,7 @@ class CentralizedRateLimiter:
     def __init__(
         self,
         org_id: str,
-        redis_client: Redis | None = None,
+        redis_client: RedisClient | None = None,
         redis_connection_helper: RedisConnectionHelper | None = None,
     ) -> None:
         if not org_id:
@@ -73,8 +71,16 @@ class CentralizedRateLimiter:
     def _redis_key_for_pool(self, pool: str) -> str:
         return pool_redis_key(self._org_id, ocean.config.integration.identifier, pool)
 
+    def _require_redis(self) -> RedisClient:
+        # Drops None so hgetall/evalsha type-check. RedisClient covers cluster too.
+        if self._redis is None:
+            raise RuntimeError(
+                "Centralized rate limiter Redis client is not initialized"
+            )
+        return self._redis
+
     async def _fetch_pool_state(self, key: str) -> PoolRedisState:
-        raw_hash = await self._redis.hgetall(key)
+        raw_hash = await self._require_redis().hgetall(key)
         return pool_state_from_redis_hash(raw_hash)
 
     def _sleep_seconds_for_pool(self, state: PoolRedisState, now: float) -> float:
@@ -97,8 +103,11 @@ class CentralizedRateLimiter:
 
     async def _try_decrement_remaining(self, key: str, now: float) -> bool:
         """Reserve Lua returns 1 if a slot was taken, 0 otherwise (see RESERVE_POOL_SLOT_SCRIPT)."""
-        raw: list[Any] = await self._redis.evalsha(
-            self._reserve_sha,
+        reserve_sha = self._reserve_sha  # local so mypy sees str, not str | None
+        if reserve_sha is None:
+            raise RuntimeError("Centralized rate limiter Redis script is not loaded")
+        raw: list[Any] = await self._require_redis().evalsha(
+            reserve_sha,
             1,
             key,
             str(now),
@@ -147,7 +156,8 @@ class CentralizedRateLimiter:
         now = time.time()
         mapping = record_hash_mapping(state, is_rate_limited=is_rate_limited, now=now)
         try:
-            await self._redis.hset(key, mapping=mapping)
+            # redis-py's hset mapping type does not accept dict[str, str].
+            await self._require_redis().hset(key, mapping=cast(Any, mapping))
         except Exception as error:
             if is_redis_connection_error(error):
                 logger.warning(
