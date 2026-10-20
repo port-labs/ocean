@@ -23,9 +23,7 @@ def _options() -> IssueOptions:
 
 
 def test_resolve_effective_datetime_prefers_cursor() -> None:
-    assert (
-        resolve_effective_datetime(CURSOR, SELECTOR_UPDATED_AFTER) == CURSOR
-    )
+    assert resolve_effective_datetime(CURSOR, SELECTOR_UPDATED_AFTER) == CURSOR
 
 
 def test_resolve_effective_datetime_falls_back_to_selector() -> None:

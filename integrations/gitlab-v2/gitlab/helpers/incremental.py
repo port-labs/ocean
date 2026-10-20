@@ -49,8 +49,8 @@ def build_merge_request_params(
 ) -> dict[str, Any]:
     """Query params for ``GET /groups/{id}/merge_requests``.
     Full behavior: ``opened`` has no time filter;
-    ``closed`` / ``merged`` use the selector lookback window. 
-    Incremental applies the Ocean cursor as ``updated_after`` for every state 
+    ``closed`` / ``merged`` use the selector lookback window.
+    Incremental applies the Ocean cursor as ``updated_after`` for every state
     """
     params: dict[str, Any] = {"state": state}
     effective = resolve_effective_datetime(

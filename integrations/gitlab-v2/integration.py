@@ -137,8 +137,7 @@ class PipelineQueryParams(BaseModel):
         title="Updated After",
         description=(
             "Return only pipelines updated after this timestamp. Expected in ISO 8601 "
-            "format (e.g. 2019-03-15T08:00:00Z)."
-            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+            "format (e.g. 2019-03-15T08:00:00Z)." + _INCREMENTAL_SYNC_SELECTOR_NOTE
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )

@@ -233,9 +233,11 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sync_cursor = active_incremental_cursor()
 
     params = build_pipeline_params(
-        selector.api_query_params.generate_query_params()
-        if selector.api_query_params
-        else None,
+        (
+            selector.api_query_params.generate_query_params()
+            if selector.api_query_params
+            else None
+        ),
         sync_cursor,
     )
 
