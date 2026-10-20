@@ -52,7 +52,7 @@
       "required": false,
       "type": "url",
       "default": "https://core-api.uk.plain.com/graphql/v1",
-      "description": "Plain GraphQL endpoint. The UK host is the one that resolves."
+      "description": "Plain GraphQL API endpoint"
     },
     {
       "name": "webhookSecret",
