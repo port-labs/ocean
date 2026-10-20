@@ -44,7 +44,8 @@ Never commit the key, secrets or `.env`.
    - Frontend: `https://frontend-pr-21000.cde-01.port.io`
    - API (`OCEAN__PORT__BASE_URL`): `https://api-pr-21000.cde-01.port.io`
    - Swagger: `https://port-api-pr-21000.cde-01.port.io/swagger/static/index.html`
-3. Log in to the frontend, open a workflow, and click "Add node": an "Integration actions → Devin" category with Create / Send message / Terminate / Archive should be there. Pushing to the Port branch redeploys the env.
+3. Log in to the frontend, open a workflow, and click "Add node": an "Integration actions → Devin" category with Create / Send message / Terminate / Archive should be there.
+4. Pushes to the Port branch do **not** redeploy the env. After pushing a Port fix, remove and re-add the `preview` label (the workflow runs on `labeled`) and wait for the "Preview Environment Ready" comment to update.
 
 ## 4. Run the integration locally
 
@@ -131,7 +132,7 @@ Rules:
 
 - Run `make lint` and `make test` in `integrations/devin` after every change, and add a regression test for every behavior fix. The in-memory fakes are in `tests/fakes.py`.
 - For the Port repo, run `yarn workspace frontend lint`, `yarn workspace frontend test:component:agent <path>` and `yarn workspace frontend typecheck`.
-- Commit to the existing branches with descriptive messages; no force pushes.
+- Commit to the existing branches with descriptive messages; no force pushes. Re-apply the `preview` label after pushing Port changes (see section 3).
 - Don't add config knobs or rework the tag-based design without flagging it in the report.
 
 **Fallbacks.** If server-side tag filtering doesn't work (S2), first change the encoding in `tags.py`. If it still fails, change only the query step of `tick()` to scan `GET /sessions?updated_after=<now - window>` and filter by tag client-side; completion logic stays as is.
