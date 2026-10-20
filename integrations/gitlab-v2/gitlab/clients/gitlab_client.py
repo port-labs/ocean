@@ -227,52 +227,6 @@ class GitLabClient:
             notes.extend(batch)
         return notes
 
-    async def get_merge_request_comments(
-        self,
-        merge_request: dict[str, Any],
-    ) -> list[dict[str, Any]]:
-        """Return normalized comments for one merge request, including system notes."""
-        project_id = merge_request.get("project_id")
-        merge_request_iid = merge_request.get("iid")
-        if (
-            project_id is None
-            or merge_request_iid is None
-            or merge_request.get("id") is None
-        ):
-            return []
-        notes = await self.get_merge_request_notes(project_id, merge_request_iid)
-        return [
-            normalize_merge_request_note(note, merge_request)
-            for note in notes
-            if has_merge_request_note_body(note)
-        ]
-
-    async def attach_merge_request_comments(
-        self,
-        batch: list[dict[str, Any]],
-        *,
-        max_concurrent: int = 10,
-    ) -> list[dict[str, Any]]:
-        """Attach __comments on every merge request in the batch."""
-        if not batch:
-            return batch
-
-        logger.info(f"Attaching comments on up to {len(batch)} merge requests")
-        return await self._enrich_batch(
-            batch,
-            self._attach_merge_request_comments,
-            max_concurrent,
-        )
-
-    async def _attach_merge_request_comments(
-        self,
-        merge_request: dict[str, Any],
-    ) -> dict[str, Any]:
-        merge_request["__comments"] = await self.get_merge_request_comments(
-            merge_request
-        )
-        return merge_request
-
     async def get_issue(self, project_id: int, issue_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/issues/{issue_id}"
@@ -1002,16 +956,25 @@ class GitLabClient:
         *,
         enrich_with_commits: bool = False,
         enrich_with_review_discussion: bool = False,
+        include_comments: bool = False,
         max_concurrent: int = 10,
     ) -> list[dict[str, Any]]:
-        """Attach opt-in raw commits and notes from GitLab onto a merge-request batch."""
-        if not batch or not (enrich_with_commits or enrich_with_review_discussion):
+        """Attach opt-in commits, notes, and comments onto a merge-request batch.
+
+        Notes are fetched once when either review discussion or comments is on.
+        ``__notes`` is written only for review discussion. ``__comments`` is written
+        only for comments.
+        """
+        if not batch or not (
+            enrich_with_commits or enrich_with_review_discussion or include_comments
+        ):
             return batch
 
         logger.info(
             f"Enriching {len(batch)} merge requests "
             f"(commits={enrich_with_commits}, "
-            f"reviewDiscussion={enrich_with_review_discussion})"
+            f"reviewDiscussion={enrich_with_review_discussion}, "
+            f"comments={include_comments})"
         )
         return await self._enrich_batch(
             batch,
@@ -1019,6 +982,7 @@ class GitLabClient:
                 self._attach_merge_request_enrichment,
                 enrich_with_commits=enrich_with_commits,
                 enrich_with_review_discussion=enrich_with_review_discussion,
+                include_comments=include_comments,
             ),
             max_concurrent,
         )
@@ -1029,6 +993,7 @@ class GitLabClient:
         *,
         enrich_with_commits: bool,
         enrich_with_review_discussion: bool,
+        include_comments: bool,
     ) -> dict[str, Any]:
         project_id = merge_request.get("project_id")
         iid = merge_request.get("iid")
@@ -1037,6 +1002,8 @@ class GitLabClient:
                 "Skipping merge request enrichment; missing project_id or iid "
                 f"(id={merge_request.get('id')!r})"
             )
+            if include_comments:
+                merge_request["__comments"] = []
             return merge_request
 
         try:
@@ -1045,7 +1012,7 @@ class GitLabClient:
                 fetchers.append(
                     ("commits", self.get_merge_request_commits(project_id, iid))
                 )
-            if enrich_with_review_discussion:
+            if enrich_with_review_discussion or include_comments:
                 fetchers.append(
                     ("notes", self.get_merge_request_notes(project_id, iid))
                 )
@@ -1056,6 +1023,16 @@ class GitLabClient:
             )
 
             for (label, _), result in zip(fetchers, results):
+                if label == "notes":
+                    self._apply_merge_request_notes(
+                        merge_request,
+                        result,
+                        project_id=project_id,
+                        iid=iid,
+                        enrich_with_review_discussion=enrich_with_review_discussion,
+                        include_comments=include_comments,
+                    )
+                    continue
                 field = _MR_ENRICHMENT_FIELDS[label]
                 if not isinstance(result, list):
                     logger.warning(
@@ -1070,8 +1047,40 @@ class GitLabClient:
                 f"Merge request enrichment failed for merge request "
                 f"{project_id}!{iid}: {e}"
             )
+            if include_comments and "__comments" not in merge_request:
+                merge_request["__comments"] = []
 
         return merge_request
+
+    def _apply_merge_request_notes(
+        self,
+        merge_request: dict[str, Any],
+        notes: list[dict[str, Any]] | BaseException,
+        *,
+        project_id: Any,
+        iid: Any,
+        enrich_with_review_discussion: bool,
+        include_comments: bool,
+    ) -> None:
+        if not isinstance(notes, list):
+            logger.warning(
+                f"notes enrichment failed for merge request "
+                f"{project_id}!{iid}: {notes}"
+            )
+            if enrich_with_review_discussion:
+                merge_request["__notes"] = None
+            if include_comments:
+                merge_request["__comments"] = []
+            return
+
+        if enrich_with_review_discussion:
+            merge_request["__notes"] = notes
+        if include_comments:
+            merge_request["__comments"] = [
+                normalize_merge_request_note(note, merge_request)
+                for note in notes
+                if has_merge_request_note_body(note)
+            ]
 
     async def _enrich_batch(
         self,

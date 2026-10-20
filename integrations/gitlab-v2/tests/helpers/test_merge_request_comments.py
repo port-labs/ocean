@@ -109,8 +109,9 @@ async def test_attaches_all_notes_including_system() -> None:
     client.get_merge_request_notes = AsyncMock(  # type: ignore[method-assign]
         return_value=[NOTE, DIFF_NOTE, SYSTEM_NOTE]
     )
-    result = await client.attach_merge_request_comments(
+    result = await client.enrich_merge_requests(
         [MERGE_REQUEST.copy()],
+        include_comments=True,
         max_concurrent=1,
     )
     comments = result[0]["__comments"]
@@ -143,8 +144,9 @@ async def test_comments_load_for_old_missing_or_unparseable_updated_at(
     client.get_merge_request_notes = AsyncMock(  # type: ignore[method-assign]
         return_value=[NOTE]
     )
-    result = await client.attach_merge_request_comments(
+    result = await client.enrich_merge_requests(
         [merge_request.copy()],
+        include_comments=True,
         max_concurrent=1,
     )
     assert result[0]["__comments"][0]["__commentId"] == "99/302"
@@ -213,8 +215,7 @@ async def test_webhook_returns_merge_request_kind_with_comments() -> None:
     processor._gitlab_webhook_client.get_merge_request = AsyncMock(
         return_value=fetched_mr
     )
-    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
-    processor._gitlab_webhook_client.attach_merge_request_comments = AsyncMock(
+    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock(
         return_value=[{**fetched_mr, "__comments": [{"__commentId": "99/302"}]}]
     )
 
@@ -222,7 +223,13 @@ async def test_webhook_returns_merge_request_kind_with_comments() -> None:
     assert result.updated_raw_results[0]["__comments"][0]["__commentId"] == "99/302"
     assert result.deleted_raw_results == []
     processor._gitlab_webhook_client.get_merge_request.assert_awaited_once()
-    processor._gitlab_webhook_client.attach_merge_request_comments.assert_awaited_once()
+    processor._gitlab_webhook_client.enrich_merge_requests.assert_awaited_once()
+    assert (
+        processor._gitlab_webhook_client.enrich_merge_requests.await_args.kwargs[
+            "include_comments"
+        ]
+        is True
+    )
 
 
 @pytest.mark.asyncio
@@ -230,13 +237,13 @@ async def test_webhook_noops_when_include_comments_false() -> None:
     processor = _processor()
     processor._gitlab_webhook_client = MagicMock()
     processor._gitlab_webhook_client.get_merge_request = AsyncMock()
-    processor._gitlab_webhook_client.attach_merge_request_comments = AsyncMock()
+    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
 
     result = await processor.handle_event(_payload(), _config(include_comments=False))
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
     processor._gitlab_webhook_client.get_merge_request.assert_not_called()
-    processor._gitlab_webhook_client.attach_merge_request_comments.assert_not_called()
+    processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -267,8 +274,7 @@ async def test_webhook_system_note_upserts_when_include_comments_true() -> None:
     processor._gitlab_webhook_client.get_merge_request = AsyncMock(
         return_value=fetched_mr
     )
-    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
-    processor._gitlab_webhook_client.attach_merge_request_comments = AsyncMock(
+    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock(
         return_value=[{**fetched_mr, "__comments": [system_comment]}]
     )
 
@@ -279,7 +285,13 @@ async def test_webhook_system_note_upserts_when_include_comments_true() -> None:
     assert result.updated_raw_results[0]["__comments"][0]["system"] is True
     assert result.updated_raw_results[0]["__comments"][0]["__commentType"] == "comment"
     assert result.deleted_raw_results == []
-    processor._gitlab_webhook_client.attach_merge_request_comments.assert_awaited_once()
+    processor._gitlab_webhook_client.enrich_merge_requests.assert_awaited_once()
+    assert (
+        processor._gitlab_webhook_client.enrich_merge_requests.await_args.kwargs[
+            "include_comments"
+        ]
+        is True
+    )
 
 
 @pytest.mark.asyncio

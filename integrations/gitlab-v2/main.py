@@ -295,7 +295,9 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     enrich_with_commits = selector.enrich_with_commits
     enrich_with_review_discussion = selector.enrich_with_review_discussion
     include_comments = selector.include_comments
-    needs_enrichment = enrich_with_commits or enrich_with_review_discussion
+    needs_enrichment = (
+        enrich_with_commits or enrich_with_review_discussion or include_comments
+    )
 
     async for groups_batch in client.get_groups(
         params=build_group_params(include_only_active_groups=include_only_active_groups)
@@ -317,11 +319,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         merge_requests_batch,
                         enrich_with_commits=enrich_with_commits,
                         enrich_with_review_discussion=enrich_with_review_discussion,
-                        max_concurrent=DEFAULT_MAX_CONCURRENT,
-                    )
-                if include_comments:
-                    merge_requests_batch = await client.attach_merge_request_comments(
-                        merge_requests_batch,
+                        include_comments=include_comments,
                         max_concurrent=DEFAULT_MAX_CONCURRENT,
                     )
                 yield merge_requests_batch
