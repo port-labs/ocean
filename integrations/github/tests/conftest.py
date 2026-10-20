@@ -42,6 +42,8 @@ def disable_centralized_rate_limiting() -> Generator[None, None, None]:
     """GitHub unit tests exercise the local limiter; keep centralized path off."""
     targets = (
         "port_ocean.rate_limiting.utils.use_centralized_rate_limiting",
+        # Wrapper imports the name directly, so the utils patch does not reach it.
+        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
     )
     patches = [patch(target, return_value=False) for target in targets]
     for p in patches:

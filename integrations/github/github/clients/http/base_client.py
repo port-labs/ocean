@@ -31,12 +31,17 @@ class AbstractGithubClient(ABC):
             config=self.rate_limiter_config,
             scope=authenticator.rate_limit_scope,
         )
-        self.rate_limiter: GitHubRateLimitWrapper = GitHubRateLimitWrapper(
+        self._rate_limiter = GitHubRateLimitWrapper(
             raw_limiter,
             pool=self.centralized_rate_limit_pool,
             api_type=self.rate_limiter_config.api_type,
         )
-        self.authenticator.configure_rate_limiting(rate_limiter=self.rate_limiter)
+        self.authenticator.configure_rate_limiting(rate_limiter=self._rate_limiter)
+
+    @property
+    def rate_limiter(self) -> GitHubRateLimitWrapper:
+        # Property so spec mocks see it. An __init__ assignment would hide it.
+        return self._rate_limiter
 
     @property
     def centralized_rate_limit_pool(self) -> str:

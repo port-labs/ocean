@@ -99,9 +99,8 @@ class TestDispatchWorkflowExecutor:
         self, mock_rest_client: MagicMock
     ) -> None:
         run = make_run({"org": "port-labs"})
-        mock_rest_client.get_rate_limit_status.return_value = MagicMock(
-            remaining=19, seconds_until_reset=42
-        )
+        mock_rest_client.rate_limiter.is_close_to_rate_limit.return_value = True
+        mock_rest_client.rate_limiter.seconds_until_rate_limit_reset.return_value = 42
 
         with patch(
             "github.actions.abstract_github_executor.create_github_client_for_org",

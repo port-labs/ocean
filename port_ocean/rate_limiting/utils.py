@@ -2,57 +2,22 @@
 
 import asyncio
 import time
-from typing import Any, Mapping
 
 from loguru import logger
 
 from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.sync_tier import _derive_sync_tier
-from port_ocean.rate_limiting.constants import REDIS_KEY_PREFIX
+from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
 from port_ocean.rate_limiting.models import (
     CentralizedRateLimitState,
     RateLimitAcquireDecision,
     SyncTier,
 )
 
-DEFAULT_QUOTA_RESET_WAIT_SECONDS = 1.0
-
 
 def is_centralized_rate_limiter_enabled() -> bool:
     return ocean.config.centralized_rate_limiter.enabled
-
-
-def decode_redis_hash(raw: Mapping[Any, Any]) -> dict[str, str]:
-    decoded: dict[str, str] = {}
-    for key, value in raw.items():
-        k = key.decode() if isinstance(key, bytes) else str(key)
-        v = value.decode() if isinstance(value, bytes) else str(value)
-        decoded[k] = v
-    return decoded
-
-
-def pool_redis_key(org_id: str, integration_identifier: str, pool: str) -> str:
-    return f"{REDIS_KEY_PREFIX}:{org_id}:{integration_identifier}:{pool}"
-
-
-def wait_seconds_while_pool_blocked(blocked_until: float, now: float) -> float | None:
-    """Seconds left in a vendor block window, or None if not blocked."""
-    if blocked_until > now:
-        return blocked_until - now
-    return None
-
-
-def wait_seconds_until_quota_reset(
-    reset_at: float,
-    now: float,
-    *,
-    default: float = DEFAULT_QUOTA_RESET_WAIT_SECONDS,
-) -> float:
-    """Sleep hint when quota is tight: vendor reset time, or a small default."""
-    if reset_at > now:
-        return reset_at - now
-    return default
 
 
 def derive_sync_tier() -> SyncTier:
@@ -67,12 +32,9 @@ def derive_sync_tier() -> SyncTier:
     return SyncTier.MEDIUM
 
 
-def active_centralized_rate_limiter():
-    if (
-        not ocean.initialized
-        or ocean.centralized_rate_limiter is None
-        or not is_centralized_rate_limiter_enabled()
-    ):
+def active_centralized_rate_limiter() -> CentralizedRateLimiter | None:
+    # Enabled check first: a test Ocean may not have the limiter attribute.
+    if not ocean.initialized or not is_centralized_rate_limiter_enabled():
         return None
     return ocean.centralized_rate_limiter
 
