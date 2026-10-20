@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Clarify Test Connection auth failures by guiding users on bad URL (404) vs credentials/scope (401)
