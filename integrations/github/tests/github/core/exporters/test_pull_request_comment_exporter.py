@@ -6,6 +6,7 @@ import pytest
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.pull_request_exporter.utils import (
+    attach_comments_if_requested,
     attach_pull_request_comments,
     get_pull_request_comment,
     iter_pull_request_comments,
@@ -249,6 +250,43 @@ class TestPullRequestCommentExporter:
         assert mock_request.call_count == 3
         assert "__comments" in enriched[0]
         assert len(enriched[0]["__comments"]) == 4
+
+    async def test_review_stats_without_comments_omits_comments_field(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        pull_request = {
+            "id": 700,
+            "number": 7,
+            "created_at": "2026-10-01T00:00:00Z",
+            "draft": False,
+            "__repository": "repo1",
+        }
+
+        def side_effect(
+            url: str, params: dict[str, Any] | None = None
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            if url.endswith("/issues/7/timeline"):
+                return _async_batches([])
+            return _mock_paginated_for_pr_7(url, params)
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=side_effect
+        ) as mock_request:
+            enriched = await attach_comments_if_requested(
+                rest_client,
+                [pull_request],
+                organization="test-org",
+                include_comments=False,
+                include_review_stats=True,
+            )
+
+        assert mock_request.call_count == 4
+        assert "__comments" not in enriched[0]
+        stats = enriched[0]["__reviewStats"]
+        assert stats["humanComments"] == 3
+        assert stats["botComments"] == 0
+        assert stats["humanApprovals"] == 0
+        assert stats["firstHumanReview"] == "2026-10-01T01:00:00Z"
 
 
 def test_normalize_pull_request_comment_keeps_raw_review_fields() -> None:

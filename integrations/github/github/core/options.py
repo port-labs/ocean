@@ -46,6 +46,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
     include_comments: NotRequired[bool]
+    include_review_stats: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -63,6 +64,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
     include_comments: NotRequired[bool]
+    include_review_stats: NotRequired[bool]
 
 
 class ListPullRequestCommentOptions(RepositoryIdentifier):

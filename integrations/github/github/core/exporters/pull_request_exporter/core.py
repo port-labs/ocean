@@ -73,6 +73,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> Optional[RAW_ITEM]:
         options_dict = dict(options)
         include_comments = bool(options_dict.pop("include_comments", False))
+        include_review_stats = bool(options_dict.pop("include_review_stats", False))
         repo_name, organization, params = parse_github_options(options_dict)
         pr_number = params["pr_number"]
 
@@ -98,6 +99,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             [pull_request],
             organization=organization,
             include_comments=include_comments,
+            include_review_stats=include_review_stats,
         )
         return enriched[0]
 
@@ -108,6 +110,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         options_dict = dict(options)
         include_comments = bool(options_dict.pop("include_comments", False))
+        include_review_stats = bool(options_dict.pop("include_review_stats", False))
         repo_name, organization, extras = parse_github_options(options_dict)
         states = extras["states"]
         max_results = extras["max_results"]
@@ -131,6 +134,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                     open_batch,
                     organization=organization,
                     include_comments=include_comments,
+                    include_review_stats=include_review_stats,
                 )
 
         if "closed" in states:
@@ -149,6 +153,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                     closed_batch,
                     organization=organization,
                     include_comments=include_comments,
+                    include_review_stats=include_review_stats,
                 )
 
     def _build_pull_request_paginated_endpoint(
@@ -242,6 +247,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> Optional[RAW_ITEM]:
         options_dict = dict(options)
         include_comments = bool(options_dict.pop("include_comments", False))
+        include_review_stats = bool(options_dict.pop("include_review_stats", False))
         repo_name, organization, params = parse_github_options(options_dict)
         pr_number: int = params["pr_number"]
         repo = params["repo"]
@@ -282,6 +288,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             [pull_request],
             organization=organization,
             include_comments=include_comments,
+            include_review_stats=include_review_stats,
         )
         return enriched[0]
 
@@ -291,6 +298,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         options_dict = dict(options)
         _, organization, extras = parse_github_options(options_dict)
         include_comments = bool(extras.pop("include_comments", False))
+        include_review_stats = bool(extras.pop("include_review_stats", False))
         states = extras["states"]
         max_results = extras["max_results"]
         incremental_cursor = extras.pop("incremental_cursor", None)
@@ -315,6 +323,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     batch,
                     organization=organization,
                     include_comments=include_comments,
+                    include_review_stats=include_review_stats,
                 )
 
         if "closed" in states:
@@ -334,6 +343,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     batch,
                     organization=organization,
                     include_comments=include_comments,
+                    include_review_stats=include_review_stats,
                 )
 
     def _build_pr_queries(

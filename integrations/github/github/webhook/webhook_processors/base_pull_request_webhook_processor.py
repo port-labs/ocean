@@ -70,6 +70,7 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             rest_client = (
                 await create_github_client_for_org(organization)
                 if config.selector.include_comments
+                or config.selector.include_review_stats
                 else None
             )
             exporter: AbstractGithubExporter[Any] = GraphQLPullRequestExporter(
@@ -91,6 +92,7 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
                 include_comments=config.selector.include_comments,
+                include_review_stats=config.selector.include_review_stats,
             )
         )
         if not data_to_upsert:

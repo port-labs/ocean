@@ -631,6 +631,7 @@ async def resync_pull_requests(
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
                                 include_comments=config.selector.include_comments,
+                                include_review_stats=config.selector.include_review_stats,
                             )
                         )
                     )

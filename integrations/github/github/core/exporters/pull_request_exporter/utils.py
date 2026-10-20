@@ -4,6 +4,7 @@ from typing import Any, AsyncIterator, Callable, Literal, Optional, cast
 from loguru import logger
 
 from github.clients.http.rest_client import GithubRestClient
+from github.core.exporters.pull_request_review_stats import compute_review_stats
 from github.core.options import (
     ListPullRequestCommentOptions,
     SinglePullRequestCommentOptions,
@@ -223,18 +224,84 @@ async def attach_pull_request_comments(
     return enriched
 
 
+async def fetch_pull_request_timeline(
+    client: GithubRestClient, organization: str, repo_name: str, pr_number: int
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    endpoint = (
+        f"{_repo_url(client, organization, repo_name)}/issues/{pr_number}/timeline"
+    )
+    async for batch in client.send_paginated_request(endpoint):
+        events.extend(batch)
+    return events
+
+
+async def enrich_pull_requests(
+    client: GithubRestClient,
+    pull_requests: list[dict[str, Any]],
+    *,
+    organization: str,
+    include_comments: bool,
+    include_review_stats: bool,
+) -> list[dict[str, Any]]:
+    """Attach ``__comments`` and/or ``__reviewStats``.
+
+    Comments are fetched once when either flag is set. ``__comments`` is written
+    only for ``include_comments``. ``__reviewStats`` is written only for
+    ``include_review_stats``.
+    """
+    if not include_comments and not include_review_stats:
+        return pull_requests
+
+    enriched: list[dict[str, Any]] = []
+    for pull_request in pull_requests:
+        repo_name = cast(str, pull_request.get("__repository") or "")
+        if not repo_name:
+            logger.warning(
+                "Skipping comment enrichment: pull request is missing __repository"
+            )
+            enriched.append(pull_request)
+            continue
+        comments = await fetch_all_pull_request_comments(
+            client,
+            ListPullRequestCommentOptions(
+                organization=organization,
+                repo_name=repo_name,
+                pr_number=pull_request["number"],
+                pull_request_id=pull_request["id"],
+            ),
+        )
+        updated = dict(pull_request)
+        if include_comments:
+            updated["__comments"] = comments
+        if include_review_stats:
+            timeline = await fetch_pull_request_timeline(
+                client, organization, repo_name, pull_request["number"]
+            )
+            updated["__reviewStats"] = compute_review_stats(
+                comments, pull_request, timeline
+            )
+        enriched.append(updated)
+    return enriched
+
+
 async def attach_comments_if_requested(
     client: GithubRestClient | None,
     pull_requests: list[dict[str, Any]],
     *,
     organization: str,
     include_comments: bool,
+    include_review_stats: bool = False,
 ) -> list[dict[str, Any]]:
-    if not include_comments or not pull_requests:
+    if (not include_comments and not include_review_stats) or not pull_requests:
         return pull_requests
     if client is None:
-        logger.warning("Skipping pull request comments; no REST client")
+        logger.warning("Skipping pull request comment enrichment; no REST client")
         return pull_requests
-    return await attach_pull_request_comments(
-        client, pull_requests, organization=organization
+    return await enrich_pull_requests(
+        client,
+        pull_requests,
+        organization=organization,
+        include_comments=include_comments,
+        include_review_stats=include_review_stats,
     )

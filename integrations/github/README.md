@@ -40,3 +40,33 @@ Limit that block with `repoSearch` and `states`. The integration applies both be
 ```
 
 Comment items keep GitHub's raw fields. `__commentId` is `{repo}/{prNumber}/{commentType}/{id}`. `__commentType` is `comment`, `review`, or `review-summary`.
+
+## Pull request review stats
+
+`includeReviewStats` defaults to false, is independent of `includeComments`, and is not part of the default mapping. Add another `pull-request` block for the pull requests that should store review numbers, and leave the default block unchanged.
+
+Limit that block with `repoSearch` and `states`. The integration applies both before it calls the review and timeline APIs. A bot is a GitHub user whose type is `Bot`.
+
+```yaml
+- kind: pull-request
+  selector:
+    query: 'true'
+    repoSearch:
+      query: 'org:my-org'
+    states:
+      - open
+    includeReviewStats: true
+  port:
+    entity:
+      mappings:
+        identifier: .head.repo.name + (.id|tostring)
+        title: .title
+        blueprint: '"githubPullRequest"'
+        properties:
+          humanApprovals: .__reviewStats.humanApprovals
+          humanComments: .__reviewStats.humanComments
+          botComments: .__reviewStats.botComments
+          firstHumanReview: .__reviewStats.firstHumanReview
+          firstApproval: .__reviewStats.firstApproval
+          waitOnHumanHours: .__reviewStats.waitOnHumanHours
+```
