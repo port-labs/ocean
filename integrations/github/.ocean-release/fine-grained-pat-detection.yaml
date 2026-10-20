@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Detect fine-grained PATs by documented format and fail clearly when a github_pat_ token is malformed
