@@ -27,13 +27,7 @@ def build_issue_params(
     options: IssueOptions,
     updated_after: Optional[datetime],
 ) -> dict[str, Any]:
-    """Query params for ``GET /groups/{id}/issues``.
-
-    ``updated_after`` should already be resolved via
-    :func:`resolve_effective_datetime` (cursor wins over selector), matching
-    GitHub's issue exporter which receives a single effective datetime and
-    merges it with :class:`ServerSideTimestampStrategy`.
-    """
+    """Query params for ``GET /groups/{id}/issues``."""
     params = {
         key: value
         for key, value in options.items()
@@ -47,11 +41,7 @@ def build_merge_request_params(
     cursor: datetime | None,
     lookback_updated_after: datetime,
 ) -> dict[str, Any]:
-    """Query params for ``GET /groups/{id}/merge_requests``.
-    Full behavior: ``opened`` has no time filter;
-    ``closed`` / ``merged`` use the selector lookback window.
-    Incremental applies the Ocean cursor as ``updated_after`` for every state
-    """
+    """Query params for ``GET /groups/{id}/merge_requests``."""
     params: dict[str, Any] = {"state": state}
     effective = resolve_effective_datetime(
         cursor,
@@ -72,12 +62,7 @@ def build_pipeline_params(
     api_query_params: dict[str, Any] | None,
     cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/pipelines``.
-
-    Full resync keeps selector ``apiQueryParams`` (including optional
-    ``updated_after``). Incremental overrides ``updated_after`` with the Ocean
-    cursor so status transitions after the last sync are still caught.
-    """
+    """Query params for ``GET /projects/{id}/pipelines``."""
     return merge_updated_after_params(api_query_params, cursor)
 
 
@@ -85,13 +70,15 @@ def build_deployment_params(
     api_query_params: dict[str, Any] | None,
     cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/deployments``.
+    """Query params for ``GET /projects/{id}/deployments``."""
+    raw = dict(api_query_params or {})
+    if "finished_after" in raw or "finished_before" in raw:
+        # GitLab rejects mixing a finished window with updated_after.
+        raw.pop("updated_after", None)
+        params = {key: value for key, value in raw.items() if value is not None}
+        params["order_by"] = "finished_at"
+        return params
 
-    Same T1 as pipelines: selector filters stay; incremental sets
-    ``updated_after`` from the Ocean cursor (overriding selector
-    ``updatedAfter``). GitLab requires ``order_by=updated_at`` whenever
-    ``updated_after`` is sent.
-    """
     params = merge_updated_after_params(api_query_params, cursor)
     if "updated_after" in params:
         params["order_by"] = "updated_at"

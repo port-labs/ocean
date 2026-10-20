@@ -196,3 +196,39 @@ def test_deployment_without_updated_after_keeps_finished_at_order() -> None:
     )
 
     assert params == {"status": "success", "order_by": "finished_at"}
+
+
+def test_deployment_incremental_with_finished_window_skips_cursor() -> None:
+    params = build_deployment_params(
+        {
+            "status": "success",
+            "finished_after": "2024-01-01T00:00:00Z",
+            "finished_before": "2024-06-01T00:00:00Z",
+            "order_by": "finished_at",
+        },
+        cursor=CURSOR,
+    )
+
+    assert params == {
+        "status": "success",
+        "finished_after": "2024-01-01T00:00:00Z",
+        "finished_before": "2024-06-01T00:00:00Z",
+        "order_by": "finished_at",
+    }
+
+
+def test_deployment_finished_window_drops_selector_updated_after() -> None:
+    params = build_deployment_params(
+        {
+            "status": "success",
+            "finished_after": "2024-01-01T00:00:00Z",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+        },
+        cursor=None,
+    )
+
+    assert params == {
+        "status": "success",
+        "finished_after": "2024-01-01T00:00:00Z",
+        "order_by": "finished_at",
+    }
