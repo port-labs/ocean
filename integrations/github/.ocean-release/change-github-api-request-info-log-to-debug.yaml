@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Changed the per-request "GitHub API request" info log to debug in order to reduce integration log volume.
