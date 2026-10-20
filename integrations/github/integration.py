@@ -624,10 +624,31 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="includeComments",
         default=False,
         description=(
-            "When enabled, attach conversation comments, inline review comments, "
-            "and non-empty review summaries to each pull request under `__comments`. "
-            "Use with an itemsToParse mapping to create comment entities. Disabled "
-            "by default so existing resyncs do not call the comments API."
+            "When enabled, attach every conversation comment, inline review comment, "
+            "and review — including empty-body approvals — to each pull request under "
+            "`__comments`. Use with an itemsToParse mapping to create comment entities. "
+            "Disabled by default so existing resyncs do not call the comments API."
+        ),
+    )
+    include_review_stats: bool = Field(
+        title="Include Review Stats",
+        alias="includeReviewStats",
+        default=False,
+        description=(
+            "When enabled, store per-pull-request review numbers under `__reviewStats`: "
+            "human approvals (including empty-body approvals), human comments, bot comments, "
+            "the first human review, the first approval, and hours waited on a human. "
+            "A user is a bot when GitHub reports type Bot, or when their login is listed in botLogins. "
+            "Disabled by default."
+        ),
+    )
+    bot_logins: list[str] = Field(
+        title="Bot Logins",
+        alias="botLogins",
+        default_factory=list,
+        description=(
+            "GitHub logins to treat as bots for review stats, in addition to accounts "
+            "whose GitHub user type is Bot."
         ),
     )
 
