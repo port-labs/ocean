@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.1.5 (2026-10-20)
+
+
+### Features
+
+- Added account and region scopes (ordered by priority) to spec file for test connection visual enrichment
+
+
 ## 3.1.4 (2026-10-18)
 
 
