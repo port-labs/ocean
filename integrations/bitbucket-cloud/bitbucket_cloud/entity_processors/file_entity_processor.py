@@ -1,4 +1,5 @@
 from typing import Any, Optional
+from httpx import HTTPError
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 from initialize_client import init_client
@@ -15,10 +16,13 @@ class FileEntityProcessor(JQEntityProcessor):
         """Helper method to fetch and process file content."""
         try:
             bitbucket_client = init_client()
-            return await bitbucket_client.get_repository_files(
+            content = await bitbucket_client.get_repository_files(
                 repo_slug, ref, file_path
             )
-        except Exception as e:
+            if content is None:
+                logger.warning(f"Resolving {file_path} in {repo_slug} to null")
+            return content
+        except HTTPError as e:
             logger.error(
                 f"Failed to get file content for {file_path} in repository {repo_slug} in branch {ref}: {e}"
             )

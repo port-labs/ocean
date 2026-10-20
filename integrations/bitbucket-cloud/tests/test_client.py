@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient, HTTPStatusError, Request, Response
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator, AsyncGenerator
 from bitbucket_cloud.client import BitbucketClient, PULL_REQUEST_PAGE_SIZE
@@ -250,7 +250,303 @@ async def test_get_directory_contents(mock_client: BitbucketClient) -> None:
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/src/main/",
                 params={"max_depth": 2, "pagelen": 100},
+                raise_on_missing=False,
             )
+
+
+@pytest.mark.asyncio
+async def test_get_directory_contents_keeps_its_defaults_when_the_caller_passes_params(
+    mock_client: BitbucketClient,
+) -> None:
+    """A caller supplying a query must not lose the page size or the depth limit."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_fetch_paginated_api_with_rate_limiter"
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncIterator[list[dict[str, Any]]]:
+                yield [{"type": "commit_file", "path": "README.md", "size": 22}]
+
+            mock_paginated.return_value = mock_generator()
+            async for _ in mock_client.get_directory_contents(
+                "test-repo", "main", "", 10000, params={"q": 'type="commit_file"'}
+            ):
+                pass
+
+            sent = mock_paginated.call_args.kwargs["params"]
+            assert sent["pagelen"] == 100
+            assert sent["max_depth"] == 10000
+            assert sent["q"] == 'type="commit_file"'
+
+
+@pytest.mark.asyncio
+async def test_paginated_request_keeps_page_size_when_the_caller_passes_params() -> (
+    None
+):
+    """Every kind that lists repositories passes a params dict, which must keep pagelen."""
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token="token1",
+    )
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "_send_api_request", new_callable=AsyncMock
+            ) as mock_request,
+            patch.object(client, "_update_authorization_header"),
+        ):
+            mock_request.return_value = {"values": [{"slug": "repo-1"}], "next": None}
+
+            async for _ in client._fetch_paginated_api_with_rate_limiter(
+                f"{client.base_url}/repositories/test_workspace",
+                params={"role": "member"},
+            ):
+                pass
+
+            sent = mock_request.call_args.kwargs["params"]
+            assert sent["pagelen"] == 100
+            assert sent["role"] == "member"
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_returns_none_when_the_file_is_absent(
+    mock_client: BitbucketClient,
+) -> None:
+    """A file Bitbucket says is not there is None, not an empty string and not a crash."""
+    error = _src_404('{"error": {"message": "No such file or directory: CODEOWNERS"}}')
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_file_api_request_with_rate_limiter",
+            new_callable=AsyncMock,
+            side_effect=error,
+        ):
+            assert (
+                await mock_client.get_repository_files(
+                    "test-repo", "main", "CODEOWNERS"
+                )
+                is None
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_raises_when_the_repository_cannot_be_read(
+    mock_client: BitbucketClient,
+) -> None:
+    """The content endpoint answers 404 for that too, and it is not an absent file."""
+    error = _src_404(
+        '{"error": {"message": "You may not have access to this repository or it no '
+        'longer exists in this workspace."}}'
+    )
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_file_api_request_with_rate_limiter",
+            new_callable=AsyncMock,
+            side_effect=error,
+        ):
+            with pytest.raises(HTTPStatusError):
+                await mock_client.get_repository_files("test-repo", "main", "port.yml")
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_reraises_anything_other_than_a_404(
+    mock_client: BitbucketClient,
+) -> None:
+    """Only absence is tolerated; an auth or server failure must surface."""
+    response = MagicMock()
+    response.status_code = 403
+    error = HTTPStatusError("403 Forbidden", request=MagicMock(), response=response)
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_file_api_request_with_rate_limiter",
+            new_callable=AsyncMock,
+            side_effect=error,
+        ):
+            with pytest.raises(HTTPStatusError):
+                await mock_client.get_repository_files("test-repo", "main", "x.yaml")
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_swallows_a_404_by_default_and_raises_on_request(
+    mock_client: BitbucketClient,
+) -> None:
+    """Every existing caller keeps today's behaviour; only an opt-in sees the error."""
+    response = MagicMock()
+    response.status_code = 404
+    response.raise_for_status.side_effect = HTTPStatusError(
+        "404 Not Found", request=MagicMock(), response=response
+    )
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client.client, "request", new_callable=AsyncMock, return_value=response
+        ):
+            assert await mock_client._send_api_request("https://example/x") == {}
+            with pytest.raises(HTTPStatusError):
+                await mock_client._send_api_request(
+                    "https://example/x", raise_on_missing=True
+                )
+
+
+def _src_404(body: str) -> HTTPStatusError:
+    """A Source API 404 with one of the bodies Bitbucket actually returns."""
+    response = Response(404, text=body, request=Request("GET", "https://example/src"))
+    return HTTPStatusError("404 Not Found", request=response.request, response=response)
+
+
+ABSENT_DIRECTORY = '{"error": {"message": "No such file or directory: charts/"}}'
+ABSENT_FILE = '{"error": {"message": "No such file or directory: port.yml"}}'
+UNRESOLVABLE_REF = '{"error": {"message": "Commit not found"}}'
+UNREADABLE_REPOSITORY = (
+    '{"error": {"message": "You may not have access to this repository or it no '
+    'longer exists in this workspace."}}'
+)
+UNRECOGNISED = '{"error": {"message": "Something new from Atlassian"}}'
+
+
+@pytest.mark.asyncio
+async def test_a_tolerated_absent_path_reports_no_contents(
+    mock_client: BitbucketClient,
+) -> None:
+    """A configured sub-path the repository does not have is not a failure."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            side_effect=_src_404(ABSENT_DIRECTORY),
+        ):
+            batches = [
+                batch
+                async for batch in mock_client.get_directory_contents(
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
+                )
+            ]
+    assert batches == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body", [UNRESOLVABLE_REF, UNREADABLE_REPOSITORY, UNRECOGNISED]
+)
+async def test_only_an_absent_path_is_tolerated(
+    mock_client: BitbucketClient, body: str
+) -> None:
+    """An unresolvable ref, an unreadable repository and an unknown body all raise."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            side_effect=_src_404(body),
+        ):
+            with pytest.raises(HTTPStatusError):
+                async for _ in mock_client.get_directory_contents(
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
+                ):
+                    pass
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("label", "body"),
+    [
+        (
+            "the phrase inside another error's data",
+            '{"error": {"message": "Commit not found", '
+            '"data": {"shas": ["No such file or directory"]}}}',
+        ),
+        ("a body that is not Bitbucket's error shape", "Invalid pagelen"),
+        ("a 404 with no body at all", ""),
+    ],
+)
+async def test_only_the_errors_own_message_decides_absence(
+    mock_client: BitbucketClient, label: str, body: str
+) -> None:
+    """The phrase appears in other errors' data, so the raw body would match wrongly."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            side_effect=_src_404(body),
+        ):
+            with pytest.raises(HTTPStatusError):
+                async for _ in mock_client.get_directory_contents(
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
+                ):
+                    pass
+
+
+@pytest.mark.asyncio
+async def test_an_absent_path_raises_when_nothing_may_be_absent(
+    mock_client: BitbucketClient,
+) -> None:
+    """Nothing can legitimately be missing at the root of a repository with commits."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            side_effect=_src_404(ABSENT_FILE),
+        ):
+            with pytest.raises(HTTPStatusError):
+                async for _ in mock_client.get_directory_contents(
+                    "test-repo", "main", "", 10000, raise_on_missing=True
+                ):
+                    pass
+
+
+@pytest.mark.asyncio
+async def test_an_absent_path_part_way_through_a_listing_raises(
+    mock_client: BitbucketClient,
+) -> None:
+    """Past the first page the path provably existed, so a 404 is a truncated listing."""
+    first_page = {
+        "values": [{"type": "commit_file", "path": "charts/a.yaml", "size": 1}],
+        "next": "https://example/src?page=2",
+    }
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            side_effect=[first_page, _src_404(ABSENT_DIRECTORY)],
+        ):
+            batches = []
+            with pytest.raises(HTTPStatusError):
+                async for batch in mock_client.get_directory_contents(
+                    "test-repo", "main", "charts", 10000, raise_on_missing=True
+                ):
+                    batches.append(batch)
+
+    assert len(batches) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_folder_callers_keep_the_client_wide_behaviour(
+    mock_client: BitbucketClient,
+) -> None:
+    """Without a policy a 404 still reports no contents, as it does on every endpoint."""
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client, "_send_api_request", new_callable=AsyncMock, return_value={}
+        ):
+            batches = [
+                batch
+                async for batch in mock_client.get_directory_contents(
+                    "test-repo", "main", "charts", 2
+                )
+            ]
+    assert batches == []
 
 
 @pytest.mark.asyncio
