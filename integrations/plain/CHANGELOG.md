@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.6-beta (2026-10-20)
+
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+- Converted `.port/spec.yaml` to `.port/spec.json` and added `title` and `docs`
+
+
 ## 0.1.5-beta (2026-10-20)
 
 
