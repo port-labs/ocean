@@ -40,8 +40,7 @@ class JiraPermissionProbe:
             return
         except RequestError as error:
             await self.context.fail(
-                "Jira could not be reached while verifying authentication: "
-                f"{error}"
+                "Jira could not be reached while verifying authentication: " f"{error}"
             )
             return
 
