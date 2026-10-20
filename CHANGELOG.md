@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.54.1 (2026-10-18)
+
+
+### Improved Documentation
+
+- Update README and package metadata to reflect Port's AI software factory positioning
+
+
 ## 0.54.0 (2026-10-13)
 
 

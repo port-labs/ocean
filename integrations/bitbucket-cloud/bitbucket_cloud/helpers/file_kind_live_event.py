@@ -60,6 +60,12 @@ async def process_file_value(
     file_meta = Path(value.replace(FILE_PROPERTY_PREFIX, ""))
     file_path = f"{parent_directory}/{file_meta}"
     bitbucket_file = await client.get_repository_files(repository, hash, file_path)
+    # This file is a reference held inside another file whose own content was read, so
+    # the entity is still valid with this one property null. process_file_changes skips
+    # instead, because there the missing file *is* the entity's content.
+    if bitbucket_file is None:
+        logger.warning(f"Resolving {file_path} in {repository} to null")
+        return None
 
     return (
         parse_file(bitbucket_file, file_path)
@@ -241,6 +247,12 @@ async def process_file_changes(
                     raw_data = await webhook_client.get_repository_files(
                         repository, new_hash, file_path
                     )
+                    if raw_data is None:
+                        logger.warning(
+                            f"Leaving the existing entity for {file_path} in "
+                            f"{repository} alone"
+                        )
+                        continue
 
                     if not skip_parsing:
                         raw_data = parse_file(raw_data, file_path)

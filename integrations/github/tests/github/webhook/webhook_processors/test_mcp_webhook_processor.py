@@ -250,7 +250,7 @@ class TestMcpWebhookProcessor:
         resource_config: GithubMcpResourceConfig,
         payload: EventPayload,
     ) -> None:
-        """Regression test: GitHub's client silently swallows 401/403/404 into
+        """Regression test: GitHub's client silently swallows 403/404 into
         an empty response, indistinguishable from "file not found". If the
         *current*-branch fetch for a file the diff says still exists comes
         back empty/failed, we must not treat that as "zero servers" and wipe

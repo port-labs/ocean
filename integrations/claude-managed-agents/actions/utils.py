@@ -1,6 +1,19 @@
-from typing import Any
+from typing import Any, Literal
 
+from anthropic.types.beta.sessions.beta_managed_agents_agent_message_event import (
+    BetaManagedAgentsAgentMessageEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_session_error_event import (
+    BetaManagedAgentsSessionErrorEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
+    BetaManagedAgentsSessionEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
+    BetaManagedAgentsTextBlock,
+)
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunLog
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 EXTERNAL_ID_PREFIX = "claude_session"
@@ -57,3 +70,44 @@ async def normalize_session_config(config: dict[str, Any]) -> dict[str, Any]:
     working = dict(config)
     _inject_github_authorization_tokens(working)
     return working
+
+
+def format_session_event(
+    event: BetaManagedAgentsSessionEvent,
+) -> WorkflowNodeRunLog | None:
+    """Return a log entry for ``event``, or ``None`` if the event type is not logged.
+
+    ``agent.message`` events become INFO lines; ``session.error`` events become
+    WARN (retrying) or ERROR (exhausted).  All other event types are ignored.
+    """
+    if isinstance(event, BetaManagedAgentsAgentMessageEvent):
+        text = "\n".join(
+            block.text
+            for block in event.content
+            if isinstance(block, BetaManagedAgentsTextBlock)
+        )
+        if text:
+            return WorkflowNodeRunLog(level="INFO", message=text)
+    elif isinstance(event, BetaManagedAgentsSessionErrorEvent):
+        level: Literal["WARN", "ERROR"] = (
+            "WARN" if event.error.retry_status.type == "retrying" else "ERROR"
+        )
+        return WorkflowNodeRunLog(
+            level=level,
+            message=f"Session error ({event.error.type}): {event.error.message}",
+        )
+    return None
+
+
+async def post_interaction_logs(
+    run: WorkflowNodeRun,
+    events: list[BetaManagedAgentsSessionEvent],
+) -> None:
+    """Format interaction events and post any resulting log lines to ``run``.
+
+    Only ``agent.message`` and ``session.error`` events produce log lines.
+    Best-effort: never raises.
+    """
+    logs = [log for event in events if (log := format_session_event(event)) is not None]
+    if logs:
+        await ocean.port_client.post_run_logs(run, logs)
