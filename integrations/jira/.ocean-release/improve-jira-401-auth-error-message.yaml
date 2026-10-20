@@ -1,3 +1,3 @@
 bump: patch
 changelog-type: improvement
-changelog: Clarify Test Connection 401 errors by asking users to verify the Jira URL, email, and an API token with the required scope
+changelog: Clarify Test Connection auth failures by guiding users on bad URL (404) vs credentials/scope (401)
