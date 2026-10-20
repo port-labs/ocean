@@ -60,9 +60,7 @@ class JiraIssueSelector(Selector):
         default=False,
         description=(
             "When true, attach each issue's comments under `__comments` so they can "
-            "be mapped with itemsToParse. Defaults to false so existing resyncs and "
-            "the default mapping do not call the comments API. Selection of which "
-            "issues get comments is controlled by this block's JQL/query."
+            "be mapped with itemsToParse."
         ),
     )
 
