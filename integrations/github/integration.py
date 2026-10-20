@@ -630,6 +630,18 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "Disabled by default so existing resyncs do not call the comments API."
         ),
     )
+    include_review_stats: bool = Field(
+        title="Include Review Stats",
+        alias="includeReviewStats",
+        default=False,
+        description=(
+            "When enabled, store per-pull-request review numbers under `__reviewStats`: "
+            "human approvals (including empty-body approvals), human comments, bot comments, "
+            "the first human review, the first approval, and hours waited on a human. "
+            "A user is a bot when GitHub reports type Bot. Independent of includeComments. "
+            "Disabled by default."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:

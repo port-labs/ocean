@@ -246,7 +246,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = updated_pr_data
         mock_comment_exporter = MagicMock()
-        mock_comment_exporter.attach_comments_to_pull_requests = AsyncMock(
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
             return_value=[{**updated_pr_data, "__comments": comments}]
         )
 
@@ -265,4 +265,4 @@ class TestPullRequestWebhookProcessor:
             )
 
         assert result.updated_raw_results[0]["__comments"] == comments
-        mock_comment_exporter.attach_comments_to_pull_requests.assert_awaited_once()
+        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()

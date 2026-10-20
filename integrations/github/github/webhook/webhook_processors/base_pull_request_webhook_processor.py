@@ -110,13 +110,16 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[data_to_upsert],
             )
 
-        if config.selector.include_comments:
+        selector = config.selector
+        if selector.include_comments or selector.include_review_stats:
             comment_exporter = RestPullRequestCommentExporter(
                 await create_github_client_for_org(organization)
             )
-            enriched = await comment_exporter.attach_comments_to_pull_requests(
+            enriched = await comment_exporter.enrich_pull_requests(
                 [data_to_upsert],
                 organization=organization,
+                include_comments=selector.include_comments,
+                include_review_stats=selector.include_review_stats,
             )
             data_to_upsert = enriched[0]
 

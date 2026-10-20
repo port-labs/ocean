@@ -16,10 +16,7 @@ from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
 )
-from github.core.options import (
-    ListPullRequestCommentOptions,
-    SinglePullRequestOptions,
-)
+from github.core.options import SinglePullRequestOptions
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import (
     PULL_REQUEST_COMMENT_EVENTS,
@@ -32,11 +29,11 @@ from integration import GithubPullRequestConfig
 
 
 class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
-    """Refresh a pull request's ``__comments`` when comment-related events fire.
+    """Refresh a pull request when comment-related events fire.
 
-    Matching kind is ``pull-request`` (not a dedicated comment kind). Only runs
-    when ``includeComments`` is true. Never deletes the pull request because a
-    comment changed.
+    Matching kind is ``pull-request`` (not a dedicated comment kind). Runs when
+    ``includeComments`` or ``includeReviewStats`` is true. Never deletes the
+    pull request because a comment changed.
     """
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
@@ -79,7 +76,10 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
     ) -> WebhookEventRawResults:
         empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
         config = cast(GithubPullRequestConfig, resource_config)
-        if not config.selector.include_comments:
+        if (
+            not config.selector.include_comments
+            and not config.selector.include_review_stats
+        ):
             return empty
 
         header = self.event.headers.get("x-github-event")
@@ -130,15 +130,13 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
         comment_exporter = RestPullRequestCommentExporter(
             await create_github_client_for_org(organization)
         )
-        comments = await comment_exporter.fetch_all_comments(
-            ListPullRequestCommentOptions(
-                organization=organization,
-                repo_name=repo_name,
-                pr_number=pr_number,
-                pull_request_id=data_to_upsert["id"],
-            )
+        enriched = await comment_exporter.enrich_pull_requests(
+            [data_to_upsert],
+            organization=organization,
+            include_comments=config.selector.include_comments,
+            include_review_stats=config.selector.include_review_stats,
         )
-        data_to_upsert["__comments"] = comments
+        data_to_upsert = enriched[0]
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
