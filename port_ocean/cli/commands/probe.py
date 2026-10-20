@@ -82,4 +82,4 @@ def probe(
     except Exception as error:
         raise click.ClickException(f"Probe failed: {error}") from error
 
-    console.print("Probe succeeded")
+    console.print("Probe complete")
