@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.18 (2026-10-20)
+
+
+### Improvements
+
+- Clarify Test Connection auth failures by guiding users on bad URL (404) vs credentials/scope (401)
+
+
+## 0.15.17 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.15.16 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
 ## 0.15.15 (2026-10-20)
 
 

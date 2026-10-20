@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.1 (2026-10-20)
+
+
+### Bug Fixes
+
+- Do not fail the probe CLI/CI job when the probe reports an external (third-party) failure; only internal failures exit non-zero
+
+
 ## 0.55.0 (2026-10-20)
 
 
