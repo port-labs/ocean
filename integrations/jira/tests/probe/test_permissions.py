@@ -38,9 +38,17 @@ def test_authentication_failure_message_for_401_mentions_url_email_and_scopes() 
     )
 
 
-def test_authentication_failure_message_for_other_status_includes_http_code() -> None:
+def test_authentication_failure_message_for_404_points_at_url() -> None:
+    # Act + Assert
+    assert authentication_failure_message(status_code=404) == (
+        "Could not find the Jira site at the configured URL, "
+        "please ensure the Jira URL is correct."
+    )
+
+
+def test_authentication_failure_message_for_other_status_avoids_http_jargon() -> None:
     # Act + Assert
     assert authentication_failure_message(status_code=500) == (
-        "Failed to verify Jira authentication (HTTP 500). "
-        "Required scope(s): read:jira-user."
+        "Could not verify the connection to Jira. "
+        "Ensure the Jira URL is correct and that Jira is reachable."
     )

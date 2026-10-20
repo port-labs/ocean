@@ -88,6 +88,30 @@ async def test_probe_fails_when_authentication_returns_401(
 
 
 @pytest.mark.asyncio
+async def test_probe_fails_when_authentication_returns_404(
+    mock_jira_probe: MockJiraProbe,
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    client = mock_jira_probe.configure_client(
+        verify_current_user=AsyncMock(side_effect=http_status_error(404)),
+    )
+    probe_context.available_kinds = ["project", "user"]
+
+    # Act
+    await JiraPermissionProbe(probe_context).run()
+
+    # Assert
+    assert probe_context.status is ProbeStatus.FAILED
+    assert probe_context.message == (
+        "Could not find the Jira site at the configured URL, "
+        "please ensure the Jira URL is correct."
+    )
+    assert probe_context.checks == []
+    client.get_current_user_permissions.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_probe_fails_when_authentication_endpoint_is_unreachable(
     mock_jira_probe: MockJiraProbe,
     probe_context: ProbeContext,

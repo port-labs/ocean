@@ -8,6 +8,7 @@ from port_ocean.core.probe import KindPermissionVerdict, PermissionCombination
 MYSELF_REQUIRED_SCOPES = ("read:jira-user",)
 MYPERMISSIONS_REQUIRED_SCOPES = ("read:jira-work",)
 
+
 def message_with_required_scopes(message: str, scopes: tuple[str, ...]) -> str:
     if not scopes:
         return message
@@ -27,7 +28,7 @@ def _credentials_hint_with_scopes(scopes: tuple[str, ...]) -> str:
 
 def authentication_failure_message(
     *,
-    status_code: int | None = None,
+    status_code: int,
     scopes: tuple[str, ...] = MYSELF_REQUIRED_SCOPES,
 ) -> str:
     # Jira returns the same 401 for a bad URL, email, token, or missing scoped-token
@@ -37,11 +38,16 @@ def authentication_failure_message(
             "Failed to verify Jira authentication. "
             f"{_credentials_hint_with_scopes(scopes)}"
         )
-    if status_code is not None:
-        message = f"Failed to verify Jira authentication (HTTP {status_code})."
-    else:
-        message = "Failed to verify Jira authentication."
-    return message_with_required_scopes(message, scopes)
+    # A mistyped site URL often surfaces as 404 on /myself; scopes are unrelated.
+    if status_code == 404:
+        return (
+            "Could not find the Jira site at the configured URL, "
+            "please ensure the Jira URL is correct."
+        )
+    return (
+        "Could not verify the connection to Jira. "
+        "Ensure the Jira URL is correct and that Jira is reachable."
+    )
 
 
 class JiraKindPermissionVerdict(KindPermissionVerdict):
