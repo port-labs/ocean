@@ -260,3 +260,44 @@ class TestPullRequestWebhookProcessor:
 
         assert result.updated_raw_results == [fetched_pr]
         assert result.deleted_raw_results == []
+
+    async def test_handle_event_attaches_comments_on_pull_request_webhook(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+    ) -> None:
+        resource_config.selector.include_comments = True
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "open"}
+        payload = {
+            "action": "synchronize",
+            "pull_request": pr_data,
+            "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
+        }
+        updated_pr_data = {**pr_data, "__repository": "test-repo"}
+        comments = [{"id": 9, "__commentType": "comment"}]
+        mock_comment_exporter = MagicMock()
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
+            return_value=[{**updated_pr_data, "__comments": comments}]
+        )
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.base_pull_request_webhook_processor.fetch_single_pull_request",
+                new=AsyncMock(return_value=updated_pr_data),
+            ),
+            patch(
+                "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestCommentExporter",
+                return_value=mock_comment_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.base_pull_request_webhook_processor.create_github_client_for_org",
+                new=AsyncMock(),
+            ),
+        ):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert result.updated_raw_results[0]["__comments"] == comments
+        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()

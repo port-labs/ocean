@@ -185,7 +185,9 @@ class TestPullRequestCommentWebhookProcessor:
         mock_pr_exporter = MagicMock()
         mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
         mock_comment_exporter = MagicMock()
-        mock_comment_exporter.fetch_all_comments = AsyncMock(return_value=comments)
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
+            return_value=[{**fetched_pr, "__comments": comments}]
+        )
 
         with (
             patch(
@@ -214,7 +216,7 @@ class TestPullRequestCommentWebhookProcessor:
         updated = result.updated_raw_results[0]
         assert updated["id"] == 700
         assert updated["__comments"] == comments
-        mock_comment_exporter.fetch_all_comments.assert_awaited_once()
+        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()
 
     async def test_handle_event_deleted_comment_still_returns_pr_with_comments(
         self,
@@ -230,8 +232,8 @@ class TestPullRequestCommentWebhookProcessor:
         mock_pr_exporter = MagicMock()
         mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
         mock_comment_exporter = MagicMock()
-        mock_comment_exporter.fetch_all_comments = AsyncMock(
-            return_value=remaining_comments
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
+            return_value=[{**fetched_pr, "__comments": remaining_comments}]
         )
 
         with (
@@ -280,7 +282,9 @@ class TestPullRequestCommentWebhookProcessor:
         mock_pr_exporter = MagicMock()
         mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
         mock_comment_exporter = MagicMock()
-        mock_comment_exporter.fetch_all_comments = AsyncMock(return_value=comments)
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
+            return_value=[{**fetched_pr, "__comments": comments}]
+        )
 
         with (
             patch(
@@ -304,4 +308,4 @@ class TestPullRequestCommentWebhookProcessor:
 
         assert result.deleted_raw_results == []
         assert result.updated_raw_results[0]["__comments"] == comments
-        mock_comment_exporter.fetch_all_comments.assert_awaited_once()
+        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()
