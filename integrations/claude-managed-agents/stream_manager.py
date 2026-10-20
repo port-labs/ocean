@@ -12,7 +12,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_terminated
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun, WorkflowNodeRunLog
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
 
 from actions.utils import format_session_event
 from clients.client_factory import create_anthropic_client

@@ -36,10 +36,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from port_ocean.core.models import (
-    WorkflowNodeRun,
-    WorkflowNodeRunLog,
-)
+from port_ocean.core.models import WorkflowNodeRun
 
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
