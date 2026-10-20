@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: feature
-changelog: Added account and region scopes (ordered by priority) to spec file for test connection visual enrichment
