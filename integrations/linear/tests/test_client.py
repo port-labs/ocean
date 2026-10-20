@@ -178,9 +178,7 @@ class TestLinearLabelChildrenPagination:
         with patch.object(linear_client.graphql, "execute", mock_execute):
             with pytest.raises(LinearApiError, match="pagination did not advance"):
                 await LabelExporter(linear_client).get_resource(
-                    GetLabelOptions(
-                        resource_id="label-1", include_label_children=True
-                    )
+                    GetLabelOptions(resource_id="label-1", include_label_children=True)
                 )
         assert mock_execute.await_count == 2
 
