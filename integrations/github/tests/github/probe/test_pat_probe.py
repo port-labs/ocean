@@ -8,6 +8,7 @@ from github.clients.auth.personal_access_token_authenticator import (
 )
 from github.probe.pat.probe import (
     FINE_GRAINED_PAT_MESSAGE,
+    MALFORMED_FINE_GRAINED_PAT_MESSAGE,
     GitHubPatPermissionProbe,
     expand_pat_scopes,
     is_fine_grained_pat,
@@ -16,15 +17,26 @@ from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import ProbeCheckStatus, ProbeStatus
 
 
+_VALID_FINE_GRAINED_PAT = (
+    "github_pat_" + ("a" * 22) + "_" + ("b" * 59)
+)
+
+
 @pytest.mark.parametrize(
     "token, expected",
     [
-        ("github_pat_abc123", True),
-        ("ghp_classic_token", False),
+        (_VALID_FINE_GRAINED_PAT, True),
+        ("github_pat_abc123", False),
+        ("github_pat_" + ("a" * 22) + "_" + ("b" * 58), False),
+        ("github_pat_" + ("a" * 22) + "_" + ("b" * 60), False),
+        ("github_pat_" + ("a" * 21) + "_" + ("b" * 59), False),
+        ("github_pat_" + ("a" * 22) + ("b" * 59), False),
+        ("ghp_classic_token_with_enough_padding_here!", False),
         ("", False),
     ],
 )
 def test_is_fine_grained_pat(token: str, expected: bool) -> None:
+    # Act + Assert
     assert is_fine_grained_pat(token) is expected
 
 
@@ -46,17 +58,46 @@ def test_expand_pat_scopes_leaves_unmapped_scopes_unchanged() -> None:
 
 @pytest.mark.asyncio
 async def test_fine_grained_pat_probe_sets_message_without_api_calls() -> None:
+    # Arrange
     context = ProbeContext()
-    authenticator = PersonalTokenAuthenticator("github_pat_test_token")
+    authenticator = PersonalTokenAuthenticator(_VALID_FINE_GRAINED_PAT)
     mock_client = MagicMock()
     mock_client.get = AsyncMock()
     authenticator._http_client = mock_client
 
+    # Act
     probe = GitHubPatPermissionProbe(context, [authenticator])
     await probe.run()
 
+    # Assert
     assert context.message == FINE_GRAINED_PAT_MESSAGE
     mock_client.get.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_malformed_fine_grained_pat_probe_fails_without_api_calls(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    authenticator = PersonalTokenAuthenticator("github_pat_abc123")
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock()
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == MALFORMED_FINE_GRAINED_PAT_MESSAGE
+    mock_client.get.assert_not_called()
+    mock_update_progress.assert_awaited()
 
 
 @pytest.mark.asyncio
