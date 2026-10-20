@@ -36,14 +36,15 @@ Set it to True to opt out of retries entirely.
 """
 
 # One pod runs one mode (a separate pod per incremental sync, full/partial resync,
-# actions, and live-events). Background sync backs off slightly harder than
-# user-facing work when they share rate-limit pressure on the same token.
-# Fixed -- not configurable per RetryConfig instance.
+# actions, and live-events). Extra backoff matches the centralized remaining-ratio
+# ceilings: full resync 0.25 (×1.25), incremental 0.10 (×1.10). Live events and
+# actions use 1.00, so their retries are not stretched. Fixed -- not configurable
+# per RetryConfig instance.
 DEFAULT_SYNC_TIER_MULTIPLIERS: dict[str, float] = {
-    EventType.RESYNC: 1.15,
-    EventType.INCREMENTAL_RESYNC: 1.07,
-    EventType.HTTP_REQUEST: 1.01,
-    EventType.ACTION_RUN: 1.01,
+    EventType.RESYNC: 1.25,
+    EventType.INCREMENTAL_RESYNC: 1.10,
+    EventType.HTTP_REQUEST: 1.00,
+    EventType.ACTION_RUN: 1.00,
 }
 
 
