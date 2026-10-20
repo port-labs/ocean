@@ -1,12 +1,10 @@
 # Opt-in. Not part of the default mapping.
-# includeReviewStats is only a boolean. botLogins adds logins treated as bots
-# beyond accounts whose GitHub type is Bot.
+# includeReviewStats is its own boolean and does not require includeComments.
+# Bots are GitHub accounts whose user type is Bot.
 - kind: pull-request
   selector:
     query: 'true'
     includeReviewStats: true
-    botLogins:
-      - my-ci-user
   port:
     entity:
       mappings:

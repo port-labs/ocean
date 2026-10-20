@@ -14,14 +14,9 @@ def _parse_timestamp(value: Any) -> datetime | None:
     return parsed
 
 
-def is_bot_user(user: Any, bot_logins: set[str]) -> bool:
-    """GitHub Bot accounts, plus logins the selector lists explicitly."""
-    if not isinstance(user, dict):
-        return False
-    if user.get("type") == "Bot":
-        return True
-    login = user.get("login")
-    return isinstance(login, str) and login.lower() in bot_logins
+def is_bot_user(user: Any) -> bool:
+    """GitHub accounts whose user type is Bot."""
+    return isinstance(user, dict) and user.get("type") == "Bot"
 
 
 def _event_times(timeline: list[dict[str, Any]], event_name: str) -> list[datetime]:
@@ -58,7 +53,6 @@ def compute_review_stats(
     comments: list[dict[str, Any]],
     pull_request: dict[str, Any],
     timeline: list[dict[str, Any]],
-    bot_logins: set[str],
 ) -> dict[str, Any]:
     """Per-pull-request review numbers. Comments stay on the raw objects.
 
@@ -72,7 +66,7 @@ def compute_review_stats(
     first_approval: tuple[datetime, str] | None = None
 
     for comment in comments:
-        bot = is_bot_user(comment.get("user"), bot_logins)
+        bot = is_bot_user(comment.get("user"))
         comment_type = comment.get("__commentType")
         timestamp = _parse_timestamp(
             comment.get("submitted_at") or comment.get("created_at")
@@ -107,7 +101,7 @@ def compute_review_stats(
     for comment in comments:
         if comment.get("__commentType") != "review":
             continue
-        if is_bot_user(comment.get("user"), bot_logins):
+        if is_bot_user(comment.get("user")):
             continue
         timestamp = _parse_timestamp(comment.get("created_at"))
         raw_timestamp = comment.get("created_at")

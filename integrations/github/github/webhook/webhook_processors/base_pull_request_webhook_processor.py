@@ -120,7 +120,6 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 organization=organization,
                 include_comments=selector.include_comments,
                 include_review_stats=selector.include_review_stats,
-                bot_logins=list(selector.bot_logins),
             )
             data_to_upsert = enriched[0]
 

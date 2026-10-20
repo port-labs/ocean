@@ -164,14 +164,17 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
         organization: str,
         include_comments: bool,
         include_review_stats: bool,
-        bot_logins: list[str],
     ) -> list[dict[str, Any]]:
-        """Attach ``__comments`` and/or ``__reviewStats`` for one resource block."""
+        """Attach ``__comments`` and/or ``__reviewStats`` for one resource block.
+
+        The two flags are independent. Comments are fetched once when either is set.
+        ``__comments`` is written only for ``include_comments``. ``__reviewStats`` is
+        written only for ``include_review_stats``.
+        """
         if not include_comments and not include_review_stats:
             return pull_requests
 
         enriched: list[dict[str, Any]] = []
-        normalized_bots = {login.lower() for login in bot_logins}
         for pull_request in pull_requests:
             repo_name = cast(str, pull_request.get("__repository") or "")
             if not repo_name:
@@ -196,7 +199,7 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
                     organization, repo_name, pull_request["number"]
                 )
                 updated["__reviewStats"] = compute_review_stats(
-                    comments, pull_request, timeline, normalized_bots
+                    comments, pull_request, timeline
                 )
             enriched.append(updated)
         return enriched
