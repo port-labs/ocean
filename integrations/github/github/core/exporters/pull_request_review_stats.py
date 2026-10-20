@@ -1,8 +1,24 @@
+"""Per-pull-request review numbers stored on ``__reviewStats``.
+
+- ``humanComments`` / ``botComments``: conversation comments, inline comments,
+  and review bodies that contain text. A bot is a GitHub user of type ``Bot``.
+- ``humanApprovals``: non-bot ``APPROVED`` reviews, including empty bodies.
+- ``firstHumanReview``: earliest non-bot submitted review or inline comment.
+  Pending reviews are skipped. Conversation comments do not move this.
+- ``firstApproval``: earliest non-bot ``APPROVED`` review.
+- ``waitOnHumanHours``: hours from the earliest ``ready_for_review``, otherwise
+  the earliest ``review_requested``, otherwise ``created_at`` when the pull
+  request is not a draft, until ``firstHumanReview``. Null when either side
+  is missing.
+"""
+
 from datetime import datetime, timezone
 from typing import Any
 
+_Moment = tuple[datetime, str]
 
-def _parse_timestamp(value: Any) -> datetime | None:
+
+def _parse_time(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
     try:
@@ -14,34 +30,9 @@ def _parse_timestamp(value: Any) -> datetime | None:
     return parsed
 
 
-def is_bot_user(user: Any) -> bool:
-    """GitHub accounts whose user type is Bot."""
+def _is_bot(comment: dict[str, Any]) -> bool:
+    user = comment.get("user")
     return isinstance(user, dict) and user.get("type") == "Bot"
-
-
-def _event_times(timeline: list[dict[str, Any]], event_name: str) -> list[datetime]:
-    times: list[datetime] = []
-    for event in timeline:
-        if event.get("event") != event_name:
-            continue
-        parsed = _parse_timestamp(event.get("created_at"))
-        if parsed is not None:
-            times.append(parsed)
-    return times
-
-
-def _wait_start(
-    pull_request: dict[str, Any], timeline: list[dict[str, Any]]
-) -> datetime | None:
-    ready = _event_times(timeline, "ready_for_review")
-    if ready:
-        return min(ready)
-    requested = _event_times(timeline, "review_requested")
-    if requested:
-        return min(requested)
-    if pull_request.get("draft") is True:
-        return None
-    return _parse_timestamp(pull_request.get("created_at"))
 
 
 def _has_text(comment: dict[str, Any]) -> bool:
@@ -49,72 +40,83 @@ def _has_text(comment: dict[str, Any]) -> bool:
     return isinstance(body, str) and bool(body.strip())
 
 
+def _moment(comment: dict[str, Any]) -> _Moment | None:
+    raw = comment.get("submitted_at") or comment.get("created_at")
+    parsed = _parse_time(raw)
+    if parsed is None or not isinstance(raw, str):
+        return None
+    return parsed, raw
+
+
+def _earlier(current: _Moment | None, candidate: _Moment | None) -> _Moment | None:
+    if candidate is None:
+        return current
+    if current is None or candidate[0] < current[0]:
+        return candidate
+    return current
+
+
+def _earliest_event(timeline: list[dict[str, Any]], name: str) -> datetime | None:
+    earliest: datetime | None = None
+    for event in timeline:
+        if event.get("event") != name:
+            continue
+        moment = _parse_time(event.get("created_at"))
+        if moment is not None and (earliest is None or moment < earliest):
+            earliest = moment
+    return earliest
+
+
+def _wait_start(
+    pull_request: dict[str, Any], timeline: list[dict[str, Any]]
+) -> datetime | None:
+    ready = _earliest_event(timeline, "ready_for_review")
+    if ready is not None:
+        return ready
+    requested = _earliest_event(timeline, "review_requested")
+    if requested is not None:
+        return requested
+    if pull_request.get("draft") is True:
+        return None
+    return _parse_time(pull_request.get("created_at"))
+
+
 def compute_review_stats(
     comments: list[dict[str, Any]],
     pull_request: dict[str, Any],
     timeline: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Per-pull-request review numbers. Comments stay on the raw objects.
-
-    Empty-body approvals still count. A review summary with text counts as a
-    comment as well as an approval when its state is APPROVED.
-    """
     human_approvals = 0
     human_comments = 0
     bot_comments = 0
-    first_human_review: tuple[datetime, str] | None = None
-    first_approval: tuple[datetime, str] | None = None
+    first_human_review: _Moment | None = None
+    first_approval: _Moment | None = None
 
     for comment in comments:
-        bot = is_bot_user(comment.get("user"))
-        comment_type = comment.get("__commentType")
-        timestamp = _parse_timestamp(
-            comment.get("submitted_at") or comment.get("created_at")
-        )
-        raw_timestamp = comment.get("submitted_at") or comment.get("created_at")
+        kind = comment.get("__commentType")
+        moment = _moment(comment)
         state = str(comment.get("state") or "").upper()
+        bot = _is_bot(comment)
 
-        if _has_text(comment) and comment_type in {
-            "comment",
-            "review",
-            "review-summary",
-        }:
+        if _has_text(comment):
             if bot:
                 bot_comments += 1
             else:
                 human_comments += 1
 
-        if comment_type != "review-summary" or bot or timestamp is None:
+        if bot or moment is None:
             continue
-        if not isinstance(raw_timestamp, str):
-            continue
-        if state == "PENDING":
-            continue
-        if first_human_review is None or timestamp < first_human_review[0]:
-            first_human_review = (timestamp, raw_timestamp)
-        if state == "APPROVED":
+        if kind == "review" or (kind == "review-summary" and state != "PENDING"):
+            first_human_review = _earlier(first_human_review, moment)
+        if kind == "review-summary" and state == "APPROVED":
             human_approvals += 1
-            if first_approval is None or timestamp < first_approval[0]:
-                first_approval = (timestamp, raw_timestamp)
-
-    # Inline review comments are review activity even without a submitted summary.
-    for comment in comments:
-        if comment.get("__commentType") != "review":
-            continue
-        if is_bot_user(comment.get("user")):
-            continue
-        timestamp = _parse_timestamp(comment.get("created_at"))
-        raw_timestamp = comment.get("created_at")
-        if timestamp is None or not isinstance(raw_timestamp, str):
-            continue
-        if first_human_review is None or timestamp < first_human_review[0]:
-            first_human_review = (timestamp, raw_timestamp)
+            first_approval = _earlier(first_approval, moment)
 
     wait_hours = None
     start = _wait_start(pull_request, timeline)
     if start is not None and first_human_review is not None:
-        elapsed = (first_human_review[0] - start).total_seconds() / 3600
-        wait_hours = round(max(elapsed, 0.0), 2)
+        elapsed_hours = (first_human_review[0] - start).total_seconds() / 3600
+        wait_hours = round(max(elapsed_hours, 0.0), 2)
 
     return {
         "humanApprovals": human_approvals,
