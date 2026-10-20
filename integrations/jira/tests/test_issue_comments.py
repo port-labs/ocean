@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -214,6 +215,39 @@ async def _attach_with_one_comment(
     ) as mock_comments:
         await attach_comments_to_issues(jira_client, issues)
     return mock_comments
+
+
+@pytest.mark.asyncio
+async def test_attach_comments_fetches_at_most_ten_issues_at_once() -> None:
+    in_flight = 0
+    peak = 0
+    at_cap = asyncio.Event()
+    release = asyncio.Event()
+
+    class _Client:
+        def get_paginated_comments_for_issue(
+            self, _issue_key: str
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            async def _pages() -> AsyncGenerator[list[dict[str, Any]], None]:
+                nonlocal in_flight, peak
+                in_flight += 1
+                peak = max(peak, in_flight)
+                if peak == 10:
+                    at_cap.set()
+                await release.wait()
+                in_flight -= 1
+                yield []
+
+            return _pages()
+
+    issues = [{"key": f"TEST-{index}"} for index in range(12)]
+    task = asyncio.create_task(attach_comments_to_issues(_Client(), issues))
+    await asyncio.wait_for(at_cap.wait(), timeout=1)
+    assert peak == 10
+    release.set()
+    await task
+    assert peak == 10
+    assert all("__comments" in issue for issue in issues)
 
 
 @pytest.mark.asyncio
