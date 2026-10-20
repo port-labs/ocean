@@ -270,7 +270,7 @@ class FileValidationService:
             if validation_response is False:
                 error_message = (
                     f"Port validation failed for entity '{identifier}': "
-                    "related entity or blueprint not found"
+                    "resource not found"
                 )
                 logger.error(error_message)
                 return {

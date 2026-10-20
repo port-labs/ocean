@@ -360,7 +360,7 @@ class TestFileValidation:
 
         assert result["success"] is False
         assert result["errors"]
-        assert "related entity or blueprint not found" in result["errors"][0]
+        assert "resource not found" in result["errors"][0]
         assert mock_upsert.call_args.kwargs["should_raise"] is True
 
     async def test_validate_entity_against_port_false_on_422(
@@ -466,7 +466,7 @@ class TestFileValidation:
         mock_update_check.assert_called_once()
         assert mock_update_check.call_args.args[4] == "failure"
         assert (
-            "related entity or blueprint not found"
+            "resource not found"
             in mock_update_check.call_args.args[7]
         )
 
