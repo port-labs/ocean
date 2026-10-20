@@ -42,7 +42,10 @@ def format_app_probe_auth_error(
     if isinstance(root, jwt.PyJWTError) or isinstance(error, jwt.PyJWTError):
         return f"{action}: {_APP_INVALID_CREDENTIALS_MESSAGE}"
 
-    return f"{action}: {error}"
+    message = str(error)
+    if message.startswith(f"{action}:"):
+        return message
+    return f"{action}: {message}"
 
 
 class GitHubAppPermissionProbe(GitHubPermissionProbeFlow):

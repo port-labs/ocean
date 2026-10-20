@@ -167,6 +167,16 @@ def test_format_app_probe_auth_error_without_http_cause_falls_back() -> None:
     assert message == "Failed to fetch installation token: installation not found"
 
 
+def test_format_app_probe_auth_error_avoids_double_prefixing_auth_exception() -> None:
+    message = format_app_probe_auth_error(
+        AuthenticationException(
+            "Failed to fetch installation token: Connection timeout"
+        )
+    )
+
+    assert message == "Failed to fetch installation token: Connection timeout"
+
+
 def test_format_app_probe_auth_error_rewrites_jwt_key_failure() -> None:
     message = format_app_probe_auth_error(
         jwt.InvalidKeyError("Could not parse the provided public key."),
