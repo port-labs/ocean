@@ -133,6 +133,7 @@ def test_setTimestamp_logsTraceIdAtTopLevelExtra(
         original_request=None,
     )
     event.webhook_path = "/webhook"
+    event.log_full_payload = True
 
     record, extra = _capture_set_timestamp_record(
         event, LiveEventTimestamp.AddedToQueue
@@ -187,7 +188,7 @@ def test_setTimestamp_configOnFeatureFlagOff_logsCompactOnly() -> None:
         original_request=None,
     )
     event.webhook_path = "/webhook"
-    event.log_full_payload = False
+    event.log_full_payload = True
 
     record, extra = _capture_set_timestamp_record(
         event, LiveEventTimestamp.StartedProcessing
@@ -241,6 +242,7 @@ def test_setTimestamp_startedProcessing_logsCompactIdentifiersByDefault(
         original_request=None,
     )
     event.webhook_path = "/webhook"
+    event.log_full_payload = True
 
     extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
 
@@ -266,6 +268,7 @@ def test_setTimestamp_startedProcessing_logsProcessorSuppliedIdentifiers() -> No
         original_request=None,
     )
     event.webhook_path = "/webhook"
+    event.log_full_payload = True
     event.merge_live_event_log_identifiers({"action": "opened", "repo": "org/repo"})
 
     extra = _capture_set_timestamp_extra(event, LiveEventTimestamp.StartedProcessing)
@@ -326,7 +329,7 @@ def test_setTimestamp_finishedProcessing_follows_same_gating_as_started() -> Non
     assert "payload" not in extra
     assert "payload_b64" in extra
 
-    event.log_full_payload = False
+    event.log_full_payload = True
     event.merge_live_event_log_identifiers({"kind": "issue"})
     record_compact, extra_compact = _capture_set_timestamp_record(
         event, LiveEventTimestamp.FinishedProcessingWithError
