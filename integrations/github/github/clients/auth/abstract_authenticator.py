@@ -9,6 +9,7 @@ from dateutil.parser import parse
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 from port_ocean.utils.cache import cache_coroutine_result
 from loguru import logger
 
@@ -55,6 +56,7 @@ class AbstractGitHubAuthenticator(ABC):
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ] = None
+    _rate_limiter: Optional[RateLimitWrapper] = None
 
     @property
     @abstractmethod
@@ -77,6 +79,17 @@ class AbstractGitHubAuthenticator(ABC):
         self, notifier: Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ) -> None:
         self._rate_limit_notifier = notifier
+
+    def configure_rate_limiting(self, *, rate_limiter: RateLimitWrapper) -> None:
+        self._rate_limiter = rate_limiter
+
+    @property
+    def _transport_rate_limit_notifier(
+        self,
+    ) -> Callable[[httpx.Response], Coroutine[Any, Any, None]] | None:
+        if self._rate_limiter is None:
+            return self._rate_limit_notifier
+        return self._rate_limiter.notify_transport_rate_limit_retry
 
     async def _get_headers_dict(self) -> Dict[str, str]:
         return (await self.get_headers()).as_dict()
@@ -105,12 +118,13 @@ class AbstractGitHubAuthenticator(ABC):
             max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
             base_delay=1.0,
             max_attempts=10,
+            rate_limiter=self._rate_limiter,
         )
         return OceanAsyncClient(
             GitHubRetryTransport,
             retry_config=retry_config,
             transport_kwargs={
-                "rate_limit_notifier": self._rate_limit_notifier,
+                "rate_limit_notifier": self._transport_rate_limit_notifier,
                 "token_refresher": self._get_headers_dict,
             },
             timeout=ocean.config.client_timeout,
