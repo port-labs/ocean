@@ -624,10 +624,8 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="includeComments",
         default=False,
         description=(
-            "When enabled, attach every conversation comment, inline review comment, "
-            "and review — including empty-body approvals — to each pull request under "
-            "`__comments`. Use with an itemsToParse mapping to create comment entities. "
-            "Disabled by default so existing resyncs do not call the comments API."
+            "When true, attach each pull request's comments under `__comments` so "
+            "they can be mapped with itemsToParse."
         ),
     )
     include_review_stats: bool = Field(
