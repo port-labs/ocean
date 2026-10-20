@@ -88,6 +88,11 @@ def normalize_issue_comment(comment: dict[str, Any], issue_key: str) -> dict[str
     }
 
 
+# Match the Jira HTTP client cap so a large issue batch cannot open one
+# comment fetch per issue at the same time.
+_MAX_CONCURRENT_COMMENT_FETCHES = 10
+
+
 async def fetch_all_comments_for_issue(
     client: _CommentsClient, issue_key: str
 ) -> list[dict[str, Any]]:
@@ -106,11 +111,14 @@ async def attach_comments_to_issues(
     if not with_keys:
         return issues
 
+    semaphore = asyncio.Semaphore(_MAX_CONCURRENT_COMMENT_FETCHES)
+
+    async def _fetch_one(issue_key: str) -> list[dict[str, Any]]:
+        async with semaphore:
+            return await fetch_all_comments_for_issue(client, issue_key)
+
     comment_lists = await asyncio.gather(
-        *[
-            fetch_all_comments_for_issue(client, str(issue["key"]))
-            for issue in with_keys
-        ]
+        *[_fetch_one(str(issue["key"])) for issue in with_keys]
     )
     for issue, comments in zip(with_keys, comment_lists):
         issue["__comments"] = comments
