@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enabled formMappingEnabled flag
 - Converted `.port/spec.yaml` to `.port/spec.json` and added `title` and `docs`
+- Bumped ocean version to ^0.55.0
 
 
 ## 0.1.4-beta (2026-10-18)
