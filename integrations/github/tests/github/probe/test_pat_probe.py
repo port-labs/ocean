@@ -16,10 +16,7 @@ from github.probe.pat.probe import (
 from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import ProbeCheckStatus, ProbeStatus
 
-
-_VALID_FINE_GRAINED_PAT = (
-    "github_pat_" + ("a" * 22) + "_" + ("b" * 59)
-)
+_VALID_FINE_GRAINED_PAT = "github_pat_" + ("a" * 22) + "_" + ("b" * 59)
 
 
 @pytest.mark.parametrize(
