@@ -544,10 +544,8 @@ class GitlabMergeRequestSelector(GroupSelector):
         alias="includeComments",
         title="Include Comments",
         description=(
-            "When true, fetch merge request notes (including system notes) and "
-            "attach them under __comments for itemsToParse mappings. Defaults to "
-            "false so existing resyncs and the default mapping do not call the "
-            "comments API."
+            "When true, attach each merge request's comments under `__comments` "
+            "so they can be mapped with itemsToParse."
         ),
     )
 
