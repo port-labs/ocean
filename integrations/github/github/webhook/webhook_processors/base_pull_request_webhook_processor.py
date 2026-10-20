@@ -14,9 +14,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.exporters.pull_request_comment_exporter import (
-    RestPullRequestCommentExporter,
-)
 from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
@@ -69,17 +66,22 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
-        exporter: AbstractGithubExporter[Any] = (
-            GraphQLPullRequestExporter(
+        if is_graphql_api:
+            rest_client = (
+                await create_github_client_for_org(organization)
+                if config.selector.include_comments
+                else None
+            )
+            exporter: AbstractGithubExporter[Any] = GraphQLPullRequestExporter(
                 await create_github_client_for_org(
                     organization, GithubClientType.GRAPHQL
-                )
+                ),
+                rest_client,
             )
-            if is_graphql_api
-            else RestPullRequestExporter(
+        else:
+            exporter = RestPullRequestExporter(
                 await create_github_client_for_org(organization)
             )
-        )
         data_to_upsert = await exporter.get_resource(
             SinglePullRequestOptions(
                 organization=organization,
@@ -88,6 +90,7 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo=repo if is_graphql_api else None,
                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                include_comments=config.selector.include_comments,
             )
         )
         if not data_to_upsert:
@@ -109,16 +112,6 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[data_to_upsert],
             )
-
-        if config.selector.include_comments:
-            comment_exporter = RestPullRequestCommentExporter(
-                await create_github_client_for_org(organization)
-            )
-            enriched = await comment_exporter.attach_comments_to_pull_requests(
-                [data_to_upsert],
-                organization=organization,
-            )
-            data_to_upsert = enriched[0]
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(

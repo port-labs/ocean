@@ -49,9 +49,6 @@ from github.core.exporters.deployment_status_exporter import (
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
-from github.core.exporters.pull_request_comment_exporter import (
-    RestPullRequestCommentExporter,
-)
 from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
@@ -605,7 +602,7 @@ async def resync_pull_requests(
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
-        GraphQLPullRequestExporter(graphql_client)
+        GraphQLPullRequestExporter(graphql_client, rest_client)
         if is_graphql_api
         else RestPullRequestExporter(rest_client)
     )
@@ -653,27 +650,15 @@ async def resync_pull_requests(
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                                include_comments=config.selector.include_comments,
                             )
                         )
                     )
-
-                comment_exporter = (
-                    RestPullRequestCommentExporter(rest_client)
-                    if config.selector.include_comments
-                    else None
-                )
 
                 try:
                     async for pull_requests in stream_independent_async_iterators(
                         *tasks, context=kind
                     ):
-                        if comment_exporter is not None:
-                            pull_requests = (
-                                await comment_exporter.attach_comments_to_pull_requests(
-                                    pull_requests,
-                                    organization=org_name,
-                                )
-                            )
                         yield pull_requests
                 except ExceptionGroup as page_errors:
                     fetch_errors.extend(page_errors.exceptions)

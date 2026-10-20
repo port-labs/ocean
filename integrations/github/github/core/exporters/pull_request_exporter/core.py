@@ -35,6 +35,7 @@ from github.helpers.utils import (
     parse_github_options,
 )
 from github.core.exporters.pull_request_exporter.utils import (
+    attach_comments_if_requested,
     paginate_closed_pull_requests,
 )
 from port_ocean.core.incremental.strategies import (
@@ -70,7 +71,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         options: ExporterOptionsT,
     ) -> Optional[RAW_ITEM]:
-        repo_name, organization, params = parse_github_options(dict(options))
+        options_dict = dict(options)
+        include_comments = bool(options_dict.pop("include_comments", False))
+        repo_name, organization, params = parse_github_options(options_dict)
         pr_number = params["pr_number"]
 
         endpoint = (
@@ -87,16 +90,25 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             f"[Rest] Fetched pull request with identifier: {repo_name}/{pr_number} from {organization}"
         )
 
-        return enrich_with_organization(
+        pull_request = enrich_with_organization(
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
+        enriched = await attach_comments_if_requested(
+            self.client,
+            [pull_request],
+            organization=organization,
+            include_comments=include_comments,
+        )
+        return enriched[0]
 
     async def get_paginated_resources[ExporterOptionsT: ListPullRequestOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all pull requests in the organization's repositories with pagination."""
 
-        repo_name, organization, extras = parse_github_options(dict(options))
+        options_dict = dict(options)
+        include_comments = bool(options_dict.pop("include_comments", False))
+        repo_name, organization, extras = parse_github_options(options_dict)
         states = extras["states"]
         max_results = extras["max_results"]
         incremental_cursor = extras.pop("incremental_cursor", None)
@@ -114,7 +126,12 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             async for open_batch in self._fetch_open_pull_requests(
                 organization, cast(str, repo_name), incremental_cursor
             ):
-                yield open_batch
+                yield await attach_comments_if_requested(
+                    self.client,
+                    open_batch,
+                    organization=organization,
+                    include_comments=include_comments,
+                )
 
         if "closed" in states:
             logger.info(
@@ -127,7 +144,12 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 updated_after,
                 None if incremental_cursor is not None else closed_after,
             ):
-                yield closed_batch
+                yield await attach_comments_if_requested(
+                    self.client,
+                    closed_batch,
+                    organization=organization,
+                    include_comments=include_comments,
+                )
 
     def _build_pull_request_paginated_endpoint(
         self, organization: str, repo_name: str
@@ -207,10 +229,20 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
 
 class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
+    def __init__(
+        self,
+        client: GithubGraphQLClient,
+        rest_client: GithubRestClient | None = None,
+    ) -> None:
+        super().__init__(client)
+        self.rest_client = rest_client
+
     async def get_resource[ExporterOptionsT: SinglePullRequestOptions](
         self, options: ExporterOptionsT
     ) -> Optional[RAW_ITEM]:
-        repo_name, organization, params = parse_github_options(dict(options))
+        options_dict = dict(options)
+        include_comments = bool(options_dict.pop("include_comments", False))
+        repo_name, organization, params = parse_github_options(options_dict)
         pr_number: int = params["pr_number"]
         repo = params["repo"]
         pr_gql_options = PullRequestGraphQLOptions(**params)
@@ -239,17 +271,26 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             return None
 
         pr_node = response["data"]["repository"]["pullRequest"]
-        return self._normalize_pr_node(
+        pull_request = self._normalize_pr_node(
             pr_node,
             repo,
             organization,
             gql_options=pr_gql_options,
         )
+        enriched = await attach_comments_if_requested(
+            self.rest_client,
+            [pull_request],
+            organization=organization,
+            include_comments=include_comments,
+        )
+        return enriched[0]
 
     async def get_paginated_resources[self, ExporterOptionsT: ListPullRequestOptions](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        _, organization, extras = parse_github_options(dict(options))
+        options_dict = dict(options)
+        _, organization, extras = parse_github_options(options_dict)
+        include_comments = bool(extras.pop("include_comments", False))
         states = extras["states"]
         max_results = extras["max_results"]
         incremental_cursor = extras.pop("incremental_cursor", None)
@@ -269,7 +310,12 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 pr_gql_options,
                 incremental_cursor,
             ):
-                yield batch
+                yield await attach_comments_if_requested(
+                    self.rest_client,
+                    batch,
+                    organization=organization,
+                    include_comments=include_comments,
+                )
 
         if "closed" in states:
             logger.info(
@@ -283,7 +329,12 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 None if incremental_cursor is not None else closed_after,
                 pr_gql_options,
             ):
-                yield batch
+                yield await attach_comments_if_requested(
+                    self.rest_client,
+                    batch,
+                    organization=organization,
+                    include_comments=include_comments,
+                )
 
     def _build_pr_queries(
         self,

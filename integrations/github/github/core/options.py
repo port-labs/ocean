@@ -45,6 +45,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     pr_number: Required[int]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
+    include_comments: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -61,6 +62,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
+    include_comments: NotRequired[bool]
 
 
 class ListPullRequestCommentOptions(RepositoryIdentifier):
