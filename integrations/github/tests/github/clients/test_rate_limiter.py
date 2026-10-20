@@ -58,9 +58,6 @@ class _DummyAuthenticator:
     def set_rate_limit_notifier(self, notifier: Any) -> None:
         pass
 
-    def configure_rate_limiting(self, **kwargs: Any) -> None:
-        pass
-
     async def get_headers(self) -> _DummyHeaders:
         return _DummyHeaders()
 

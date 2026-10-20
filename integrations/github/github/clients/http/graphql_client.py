@@ -94,10 +94,6 @@ class GithubGraphQLClient(AbstractGithubClient):
             max_concurrent=5,
         )
 
-    @property
-    def centralized_rate_limit_pool(self) -> str:
-        return "graphql"
-
     def _handle_graphql_errors(
         self,
         response: httpx.Response,
