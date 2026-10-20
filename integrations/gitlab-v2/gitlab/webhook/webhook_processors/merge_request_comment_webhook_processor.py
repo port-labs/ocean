@@ -47,11 +47,11 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         config = cast(GitlabMergeRequestResourceConfig, resource_config)
         selector = config.selector
-        empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
         if not selector.include_comments:
             logger.debug("Skipping merge request note event; includeComments is false")
-            return empty
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         merge_request_payload = payload["merge_request"]
         project_id = payload["project"]["id"]
@@ -67,7 +67,9 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 f"Skipping merge request {merge_request_iid}; state {state} is not "
                 f"in configured states {selector.states}"
             )
-            return empty
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         merge_request = await self._gitlab_webhook_client.get_merge_request(
             project_id, merge_request_iid
@@ -77,22 +79,18 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 f"Merge request {merge_request_iid} in project {project_id} "
                 "was not found, skipping upsert"
             )
-            return empty
-
-        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
-            enriched = await self._gitlab_webhook_client.enrich_merge_requests(
-                [merge_request],
-                enrich_with_commits=selector.enrich_with_commits,
-                enrich_with_review_discussion=selector.enrich_with_review_discussion,
-                max_concurrent=1,
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
-            merge_request = enriched[0] if enriched else merge_request
 
-        commented = await self._gitlab_webhook_client.attach_merge_request_comments(
+        enriched = await self._gitlab_webhook_client.enrich_merge_requests(
             [merge_request],
+            enrich_with_commits=selector.enrich_with_commits,
+            enrich_with_review_discussion=selector.enrich_with_review_discussion,
+            include_comments=True,
             max_concurrent=1,
         )
-        merge_request = commented[0] if commented else merge_request
+        merge_request = enriched[0] if enriched else merge_request
 
         return WebhookEventRawResults(
             updated_raw_results=[merge_request],
