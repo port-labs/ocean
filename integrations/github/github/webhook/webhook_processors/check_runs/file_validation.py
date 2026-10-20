@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, TypedDict, cast
+
+import httpx
 from loguru import logger
 from github.core.exporters.file_exporter.utils import (
     FileObject,
@@ -30,6 +32,24 @@ class ResourceConfigToPatternMapping:
 class MatchedFile:
     resource_config: GithubFileResourceConfig
     file_info: Dict[str, Any]
+
+
+def _format_port_http_error(error: httpx.HTTPStatusError) -> str:
+    """Extract the Port API error message from an HTTP error response."""
+    try:
+        body = error.response.json()
+    except Exception:
+        body = None
+
+    if isinstance(body, dict):
+        message = body.get("message") or body.get("error")
+        if message:
+            return str(message)
+
+    text = error.response.text
+    if text:
+        return text
+    return str(error)
 
 
 class CheckRuns:
@@ -182,8 +202,8 @@ class FileValidationService:
         self, entity: FileObject, resource_config: GithubFileResourceConfig
     ) -> ValidationResult:
         """Validate an entity against Port's API using upsert_entity with validation_only=True."""
+        identifier: Any = "unknown"
         try:
-
             jq_processor = JQEntityProcessor(ocean)
 
             entity_mappings = {
@@ -240,14 +260,30 @@ class FileValidationService:
                 delete_dependent_entities=False,
             )
 
+            # 404 not_found still returns False without raising.
             validation_response = await ocean.port_client.upsert_entity(
                 entity=entity_obj,
                 request_options=request_options,
-                should_raise=False,
+                should_raise=True,
             )
+
+            if validation_response is False:
+                error_message = (
+                    f"Port validation failed for entity '{identifier}': "
+                    "resource not found"
+                )
+                logger.error(error_message)
+                return {
+                    "success": False,
+                    "errors": [error_message],
+                    "response": None,
+                }
 
             return {"success": True, "errors": [], "response": validation_response}
 
+        except httpx.HTTPStatusError as e:
+            error_message = _format_port_http_error(e)
+            return {"success": False, "errors": [error_message], "response": None}
         except Exception as e:
             logger.error(f"Failed to validate entity {identifier}: {str(e)}")
             return {"success": False, "errors": [str(e)], "response": None}
