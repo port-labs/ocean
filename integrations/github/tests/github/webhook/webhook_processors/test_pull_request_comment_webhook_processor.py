@@ -183,9 +183,9 @@ class TestPullRequestCommentWebhookProcessor:
         ]
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.fetch_all_comments = AsyncMock(return_value=comments)
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__comments": comments}
+        )
 
         with (
             patch(
@@ -196,10 +196,6 @@ class TestPullRequestCommentWebhookProcessor:
             patch(
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
-            ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
             ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
@@ -214,7 +210,8 @@ class TestPullRequestCommentWebhookProcessor:
         updated = result.updated_raw_results[0]
         assert updated["id"] == 700
         assert updated["__comments"] == comments
-        mock_comment_exporter.fetch_all_comments.assert_awaited_once()
+        called_opts = mock_pr_exporter.get_resource.await_args.args[0]
+        assert called_opts["include_comments"] is True
 
     async def test_handle_event_deleted_comment_still_returns_pr_with_comments(
         self,
@@ -228,10 +225,8 @@ class TestPullRequestCommentWebhookProcessor:
         remaining_comments: list[dict[str, Any]] = []
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.fetch_all_comments = AsyncMock(
-            return_value=remaining_comments
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__comments": remaining_comments}
         )
 
         with (
@@ -243,10 +238,6 @@ class TestPullRequestCommentWebhookProcessor:
             patch(
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
-            ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
             ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
@@ -278,9 +269,9 @@ class TestPullRequestCommentWebhookProcessor:
         ]
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.fetch_all_comments = AsyncMock(return_value=comments)
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__comments": comments}
+        )
 
         with (
             patch(
@@ -292,10 +283,6 @@ class TestPullRequestCommentWebhookProcessor:
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
             ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
-            ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
             ),
@@ -304,4 +291,5 @@ class TestPullRequestCommentWebhookProcessor:
 
         assert result.deleted_raw_results == []
         assert result.updated_raw_results[0]["__comments"] == comments
-        mock_comment_exporter.fetch_all_comments.assert_awaited_once()
+        called_opts = mock_pr_exporter.get_resource.await_args.args[0]
+        assert called_opts["include_comments"] is True

@@ -9,17 +9,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from github.clients.client_factory import create_github_client_for_org
-from github.core.exporters.pull_request_comment_exporter import (
-    RestPullRequestCommentExporter,
-)
 from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
 )
-from github.core.options import (
-    ListPullRequestCommentOptions,
-    SinglePullRequestOptions,
-)
+from github.core.options import SinglePullRequestOptions
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import (
     PULL_REQUEST_COMMENT_EVENTS,
@@ -99,16 +93,16 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
             return empty
 
         is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
+        rest_client = await create_github_client_for_org(organization)
         pr_exporter = (
             GraphQLPullRequestExporter(
                 await create_github_client_for_org(
                     organization, GithubClientType.GRAPHQL
-                )
+                ),
+                rest_client,
             )
             if is_graphql_api
-            else RestPullRequestExporter(
-                await create_github_client_for_org(organization)
-            )
+            else RestPullRequestExporter(rest_client)
         )
         data_to_upsert = await pr_exporter.get_resource(
             SinglePullRequestOptions(
@@ -118,6 +112,7 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo=repo if is_graphql_api else None,
                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                include_comments=True,
             )
         )
         if not data_to_upsert:
@@ -126,19 +121,6 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
                 "skipping comments refresh"
             )
             return empty
-
-        comment_exporter = RestPullRequestCommentExporter(
-            await create_github_client_for_org(organization)
-        )
-        comments = await comment_exporter.fetch_all_comments(
-            ListPullRequestCommentOptions(
-                organization=organization,
-                repo_name=repo_name,
-                pr_number=pr_number,
-                pull_request_id=data_to_upsert["id"],
-            )
-        )
-        data_to_upsert["__comments"] = comments
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

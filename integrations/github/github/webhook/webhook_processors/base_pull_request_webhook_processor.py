@@ -11,10 +11,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.clients.client_factory import create_github_client_for_org
-from github.core.exporters.pull_request_comment_exporter import (
-    RestPullRequestCommentExporter,
-)
 from github.core.exporters.pull_request_exporter import fetch_single_pull_request
 from github.core.exporters.pull_request_exporter.utils import (
     matches_pull_request_selector_states,
@@ -91,16 +87,6 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[data_to_upsert],
             )
-
-        if config.selector.include_comments:
-            comment_exporter = RestPullRequestCommentExporter(
-                await create_github_client_for_org(organization)
-            )
-            enriched = await comment_exporter.attach_comments_to_pull_requests(
-                [data_to_upsert],
-                organization=organization,
-            )
-            data_to_upsert = enriched[0]
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(
