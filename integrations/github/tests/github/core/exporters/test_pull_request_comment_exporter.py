@@ -106,7 +106,7 @@ class TestPullRequestCommentExporter:
             f"{rest_client.base_url}/repos/test-org/repo1/issues/comments/11"
         )
 
-    async def test_get_resource_skips_empty_review_summary(
+    async def test_get_resource_keeps_empty_review_summary(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestPullRequestCommentExporter(rest_client)
@@ -123,7 +123,9 @@ class TestPullRequestCommentExporter:
                     comment_type="review-summary",
                 )
             )
-        assert comment is None
+        assert comment is not None
+        assert comment["__commentId"] == "repo1/7/review-summary/34"
+        assert comment["body"] == "  "
 
     async def test_get_paginated_resources_yields_all_comment_types(
         self, rest_client: GithubRestClient
@@ -148,12 +150,13 @@ class TestPullRequestCommentExporter:
             "repo1/7/comment/11",
             "repo1/7/review/22",
             "repo1/7/review-summary/33",
+            "repo1/7/review-summary/34",
         ]
         assert comments[2]["submitted_at"] == "2026-10-01T02:00:00Z"
         assert "created_at" not in comments[2]
         assert comments[2]["body"] == "Changes requested"
 
-    async def test_attach_comments_includes_every_type_skips_empty_review(
+    async def test_attach_comments_includes_every_type_and_empty_review(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestPullRequestCommentExporter(rest_client)
@@ -179,6 +182,7 @@ class TestPullRequestCommentExporter:
             "repo1/7/comment/11",
             "repo1/7/review/22",
             "repo1/7/review-summary/33",
+            "repo1/7/review-summary/34",
         ]
 
     async def test_attach_comments_fetches_when_pr_updated_at_is_old(
@@ -202,7 +206,7 @@ class TestPullRequestCommentExporter:
 
         assert mock_request.call_count == 3
         assert "__comments" in enriched[0]
-        assert len(enriched[0]["__comments"]) == 3
+        assert len(enriched[0]["__comments"]) == 4
 
     async def test_attach_comments_fetches_when_updated_at_missing(
         self, rest_client: GithubRestClient
@@ -220,7 +224,7 @@ class TestPullRequestCommentExporter:
 
         assert mock_request.call_count == 3
         assert "__comments" in enriched[0]
-        assert len(enriched[0]["__comments"]) == 3
+        assert len(enriched[0]["__comments"]) == 4
 
     async def test_attach_comments_fetches_when_updated_at_unparseable(
         self, rest_client: GithubRestClient
@@ -243,7 +247,7 @@ class TestPullRequestCommentExporter:
 
         assert mock_request.call_count == 3
         assert "__comments" in enriched[0]
-        assert len(enriched[0]["__comments"]) == 3
+        assert len(enriched[0]["__comments"]) == 4
 
 
 def test_normalize_pull_request_comment_keeps_raw_review_fields() -> None:

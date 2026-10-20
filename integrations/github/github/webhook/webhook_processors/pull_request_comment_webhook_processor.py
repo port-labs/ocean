@@ -16,10 +16,7 @@ from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
 )
-from github.core.options import (
-    ListPullRequestCommentOptions,
-    SinglePullRequestOptions,
-)
+from github.core.options import SinglePullRequestOptions
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.webhook.events import (
     PULL_REQUEST_COMMENT_EVENTS,
@@ -130,15 +127,14 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
         comment_exporter = RestPullRequestCommentExporter(
             await create_github_client_for_org(organization)
         )
-        comments = await comment_exporter.fetch_all_comments(
-            ListPullRequestCommentOptions(
-                organization=organization,
-                repo_name=repo_name,
-                pr_number=pr_number,
-                pull_request_id=data_to_upsert["id"],
-            )
+        enriched = await comment_exporter.enrich_pull_requests(
+            [data_to_upsert],
+            organization=organization,
+            include_comments=config.selector.include_comments,
+            include_review_stats=config.selector.include_review_stats,
+            bot_logins=list(config.selector.bot_logins),
         )
-        data_to_upsert["__comments"] = comments
+        data_to_upsert = enriched[0]
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
