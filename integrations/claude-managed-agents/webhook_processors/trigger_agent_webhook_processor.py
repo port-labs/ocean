@@ -36,13 +36,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from port_ocean.core.models import WorkflowNodeRun
+from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunLog
 
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
     build_session_link,
-    post_interaction_logs,
 )
 from clients.client_factory import create_anthropic_client
 from stream_manager import get_stream_manager
@@ -202,7 +201,15 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         last_error = self._last_error_log_message(log_entries)
 
         await get_stream_manager().untrack(session_id)
-        await post_interaction_logs(run, events)
+
+        if log_entries:
+            await ocean.port_client.post_run_logs(
+                run,
+                [
+                    WorkflowNodeRunLog(level=level, message=message)
+                    for level, message in log_entries
+                ],
+            )
 
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
         success = webhook_succeeded and not interaction_failed

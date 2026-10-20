@@ -545,7 +545,7 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
         await processor.handle_event(payload, None)
 
     logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
-    assert [log.level for log in logs] == ["ERROR", "INFO"]
+    assert [log.level for log in logs] == ["ERROR"]
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
         run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
     )
