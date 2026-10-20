@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.22.4 (2026-10-20)
+
+
+### Improvements
+
+- Changed the per-request "GitHub API request" info log to debug in order to reduce integration log volume. (#8593417)
+
+
+## 6.22.3 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 6.22.2 (2026-10-20)
+
+
+### Improvements
+
+- Detect fine-grained PATs by documented format and fail clearly when a github_pat_ token is malformed
+
+
+## 6.22.1 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
 ## 6.22.0 (2026-10-20)
 
 
