@@ -1,12 +1,16 @@
 import asyncio
+import base64
 import json
+import os
 import socket
+import tempfile
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
 
 from loguru import logger
+from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
@@ -14,7 +18,6 @@ from port_ocean.consumers.redis_client import (
     RedisClient,
     create_redis_client_with_retry,
 )
-from port_ocean.consumers.redis_connection import RedisConnectionHelper
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
@@ -57,7 +60,8 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._consumer_group = self._resolve_consumer_group()
         self._registered_paths = registered_paths or set()
         self._redis: RedisClient | None = None
-        self._redis_connection_helper = RedisConnectionHelper()
+        self._ssl_cert_file: str | None = None
+        self._ssl_key_file: str | None = None
         self._is_running = False
         self._read_task: asyncio.Task[None] | None = None
         self._consumer_name = (
@@ -69,14 +73,72 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         integration = ocean.config.integration
         return f"{integration.type}.{integration.identifier}"
 
+    def _decode_base64_pem(self, value: str) -> str:
+        return base64.b64decode(value).decode()
+
+    def _materialize_client_tls_files(self) -> tuple[str | None, str | None]:
+        if not self._settings.cert or not self._settings.private_key:
+            return None, None
+
+        cert_pem = self._decode_base64_pem(self._settings.cert)
+        key_pem = self._decode_base64_pem(self._settings.private_key)
+
+        cert_fd, cert_path = tempfile.mkstemp(suffix=".pem", prefix="redis-cert-")
+        key_fd, key_path = tempfile.mkstemp(suffix=".pem", prefix="redis-key-")
+        with os.fdopen(cert_fd, "w") as cert_file:
+            cert_file.write(cert_pem)
+        with os.fdopen(key_fd, "w") as key_file:
+            key_file.write(key_pem)
+
+        self._ssl_cert_file = cert_path
+        self._ssl_key_file = key_path
+        return cert_path, key_path
+
+    def _cleanup_tls_files(self) -> None:
+        for path in (self._ssl_cert_file, self._ssl_key_file):
+            if path and os.path.exists(path):
+                os.unlink(path)
+        self._ssl_cert_file = None
+        self._ssl_key_file = None
+
+    def _redis_client_kwargs(self) -> dict[str, Any]:
+        """Connection kwargs for redis-py, including auth and TLS for cloud Redis."""
+        self._cleanup_tls_files()
+        # redis-py 8 speaks RESP3 by default but keeps legacy Python shapes
+        # unless legacy_responses is disabled. Pin the legacy shapes the stream
+        # parsers expect. socket_timeout stays unset: the 8.x default of 5s
+        # aborts blocking XREADGROUP before a longer block interval returns.
+        kwargs: dict[str, Any] = {
+            "decode_responses": True,
+            "legacy_responses": True,
+            "socket_timeout": None,
+        }
+        if self._settings.username:
+            kwargs["username"] = self._settings.username
+        if self._settings.password is not None:
+            kwargs["password"] = self._settings.password
+
+        if not self._settings.enable_tls:
+            return kwargs
+
+        kwargs["connection_class"] = SSLConnection
+        if self._settings.ca:
+            kwargs["ssl_ca_data"] = self._decode_base64_pem(self._settings.ca)
+
+        cert_path, key_path = self._materialize_client_tls_files()
+        if cert_path and key_path:
+            kwargs["ssl_certfile"] = cert_path
+            kwargs["ssl_keyfile"] = key_path
+
+        return kwargs
+
     async def start(self) -> None:
-        client_kwargs = self._redis_connection_helper.client_kwargs(self._settings)
         self._redis = await create_redis_client_with_retry(
             self._settings.url,
             max_retries=self._settings.connection_startup_max_retries,
             initial_backoff_seconds=self._settings.connection_startup_initial_backoff_seconds,
             exponential_base=self._settings.connection_startup_exponential_base,
-            **client_kwargs,
+            **self._redis_client_kwargs(),
         )
         await ensure_consumer_group(
             self._require_redis(),
@@ -117,7 +179,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         if self._redis is not None:
             await self._redis.aclose()
             self._redis = None
-        self._redis_connection_helper.cleanup()
+        self._cleanup_tls_files()
 
     async def _ack(self, message_id: str) -> None:
         if self._redis is None:
