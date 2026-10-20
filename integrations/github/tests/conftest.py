@@ -38,22 +38,6 @@ TEST_INTEGRATION_CONFIG: Dict[str, Any] = {
 
 
 @pytest.fixture(autouse=True)
-def disable_centralized_rate_limiting() -> Generator[None, None, None]:
-    """GitHub unit tests exercise the local limiter; keep centralized path off."""
-    targets = (
-        "port_ocean.rate_limiting.utils.use_centralized_rate_limiting",
-    )
-    patches = [patch(target, return_value=False) for target in targets]
-    for p in patches:
-        p.start()
-    try:
-        yield
-    finally:
-        for p in patches:
-            p.stop()
-
-
-@pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     """Mock the PortOcean context to prevent initialization errors."""
 
