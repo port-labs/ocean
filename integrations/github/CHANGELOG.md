@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.22.0 (2026-10-20)
+
+
+### Features
+
+- Added an opt-in `include_group_mappings` selector to the team kind that fetches the IdP groups mapped to each team via `GET /orgs/{org}/teams/{slug}/team-sync/group-mappings` and exposes them under `__group_mappings`. Supports organizations using GitHub Enterprise Cloud team synchronization (non-EMU). Team membership webhook events now also keep `__external_group` and `__group_mappings` on the upserted team when `include_external_group` or `include_group_mappings` is enabled.
+
+
+## 6.21.5 (2026-10-20)
+
+
+### Features
+
+- Added org scope to spec file for test connection visual enrichment
+
+
+## 6.21.4 (2026-10-20)
+
+
+### Bug Fixes
+
+- Fail the File Kind validation check when Port rejects the entity
+
+
+## 6.21.3 (2026-10-19)
+
+
+### Bug Fixes
+
+- Fail the resync when the GitHub API returns 401 instead of ignoring the error, so invalid credentials surface as a failed sync and entities are preserved rather than deleted.
+
+
+## 6.21.2 (2026-10-19)
+
+
+### Improvements
+
+- Supply GitHub-specific compact live-event log identifiers via get_live_event_log_identifiers on webhook processors when dual-gated payload logging is enabled in Ocean core.
+
+
+## 6.21.1 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
 ## 6.21.0 (2026-10-18)
 
 
