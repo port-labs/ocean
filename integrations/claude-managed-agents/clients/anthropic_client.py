@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Any, Literal, Protocol, TypeVar, cast
+from typing import Any, Literal, Protocol, cast
 
 import httpx
 from anthropic import AsyncAnthropic, Omit
@@ -70,23 +70,6 @@ class _ToDictModel(Protocol):
     def to_dict(
         self, *, mode: Literal["json", "python"] = ...
     ) -> dict[str, object]: ...
-
-
-_T = TypeVar("_T")
-
-
-async def _batch_pages(
-    paginator: AsyncIterable[_T], page_size: int
-) -> AsyncGenerator[list[_T], None]:
-    """Yield items from *paginator* in fixed-size batches of *page_size*."""
-    batch: list[_T] = []
-    async for item in paginator:
-        batch.append(item)
-        if len(batch) >= page_size:
-            yield batch
-            batch = []
-    if batch:
-        yield batch
 
 
 class _SessionEventsListParams(BaseModel):
@@ -272,7 +255,13 @@ class AnthropicClient:
         when a dict representation is needed.
         """
         paginator = await list_call
-        async for batch in _batch_pages(paginator, self._page_size):
+        batch: list[_ToDictModel] = []
+        async for item in paginator:
+            batch.append(item)
+            if len(batch) >= self._page_size:
+                yield batch
+                batch = []
+        if batch:
             yield batch
 
     async def get_session(self, session_id: str) -> BetaManagedAgentsSession:
