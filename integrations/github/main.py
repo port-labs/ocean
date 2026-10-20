@@ -657,7 +657,6 @@ async def resync_pull_requests(
                                 organization=org_name,
                                 include_comments=config.selector.include_comments,
                                 include_review_stats=config.selector.include_review_stats,
-                                bot_logins=list(config.selector.bot_logins),
                             )
                         yield pull_requests
                 except ExceptionGroup as page_errors:

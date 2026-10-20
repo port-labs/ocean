@@ -638,17 +638,8 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "When enabled, store per-pull-request review numbers under `__reviewStats`: "
             "human approvals (including empty-body approvals), human comments, bot comments, "
             "the first human review, the first approval, and hours waited on a human. "
-            "A user is a bot when GitHub reports type Bot, or when their login is listed in botLogins. "
+            "A user is a bot when GitHub reports type Bot. Independent of includeComments. "
             "Disabled by default."
-        ),
-    )
-    bot_logins: list[str] = Field(
-        title="Bot Logins",
-        alias="botLogins",
-        default_factory=list,
-        description=(
-            "GitHub logins to treat as bots for review stats, in addition to accounts "
-            "whose GitHub user type is Bot."
         ),
     )
 
