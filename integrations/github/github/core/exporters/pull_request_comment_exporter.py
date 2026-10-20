@@ -4,7 +4,6 @@ from loguru import logger
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.exporters.pull_request_review_stats import compute_review_stats
 from github.core.options import (
     ListPullRequestCommentOptions,
     SinglePullRequestCommentOptions,
@@ -144,62 +143,4 @@ class RestPullRequestCommentExporter(AbstractGithubExporter[GithubRestClient]):
             with_comments = dict(pull_request)
             with_comments["__comments"] = comments
             enriched.append(with_comments)
-        return enriched
-
-    async def fetch_timeline(
-        self, organization: str, repo_name: str, pr_number: int
-    ) -> list[dict[str, Any]]:
-        events: list[dict[str, Any]] = []
-        endpoint = (
-            f"{self._repo_url(organization, repo_name)}/issues/{pr_number}/timeline"
-        )
-        async for batch in self.client.send_paginated_request(endpoint):
-            events.extend(batch)
-        return events
-
-    async def enrich_pull_requests(
-        self,
-        pull_requests: list[dict[str, Any]],
-        *,
-        organization: str,
-        include_comments: bool,
-        include_review_stats: bool,
-    ) -> list[dict[str, Any]]:
-        """Attach ``__comments`` and/or ``__reviewStats`` for one resource block.
-
-        The two flags are independent. Comments are fetched once when either is set.
-        ``__comments`` is written only for ``include_comments``. ``__reviewStats`` is
-        written only for ``include_review_stats``.
-        """
-        if not include_comments and not include_review_stats:
-            return pull_requests
-
-        enriched: list[dict[str, Any]] = []
-        for pull_request in pull_requests:
-            repo_name = cast(str, pull_request.get("__repository") or "")
-            if not repo_name:
-                logger.warning(
-                    "Skipping comment enrichment: pull request is missing __repository"
-                )
-                enriched.append(pull_request)
-                continue
-            comments = await self.fetch_all_comments(
-                ListPullRequestCommentOptions(
-                    organization=organization,
-                    repo_name=repo_name,
-                    pr_number=pull_request["number"],
-                    pull_request_id=pull_request["id"],
-                )
-            )
-            updated = dict(pull_request)
-            if include_comments:
-                updated["__comments"] = comments
-            if include_review_stats:
-                timeline = await self.fetch_timeline(
-                    organization, repo_name, pull_request["number"]
-                )
-                updated["__reviewStats"] = compute_review_stats(
-                    comments, pull_request, timeline
-                )
-            enriched.append(updated)
         return enriched
