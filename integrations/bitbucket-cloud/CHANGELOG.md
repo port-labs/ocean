@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.1 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.6.0 (2026-10-19)
+
+
+### Improvements
+
+- - The `file` kind now discovers files by listing each repository through Bitbucket's Source API with a server-side filter, instead of querying the workspace code search API that Atlassian deprecates on 2026-11-01 with no replacement.
+- A workspace without a code search index now ingests its files. Previously the search request answered 404, which was read as no results, so the kind produced nothing and its existing entities were reconciled away on every resync.
+- Files that code search never indexed are now ingested. Files above 1 MB are skipped, and the file, its size and the limit are logged.
+- The `repos` field is now matched against each repository's slug, its display name, and its display name with spaces hyphenated, case-insensitively, where it was previously sent to the code search API as a repository qualifier. A configured value that matched nothing before may now match.
+- Filename and path matching are unchanged. The server-side filter is a substring match, so a configured filename that is a suffix of another file's name can now reach the matcher from more places - a configured `port.yml` also accepts `airport.yml`, as it already did wherever discovery surfaced one.
+
+
 ## 0.5.148 (2026-10-19)
 
 

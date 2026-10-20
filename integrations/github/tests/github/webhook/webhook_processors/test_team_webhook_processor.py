@@ -352,6 +352,64 @@ class TestTeamWebhookProcessor:
         assert result.updated_raw_results == [enriched_team]
         assert result.deleted_raw_results == []
 
+    async def test_handle_event_with_group_mappings_enrichment(
+        self,
+        team_webhook_processor: TeamWebhookProcessor,
+    ) -> None:
+        team_data = {
+            "id": 1,
+            "name": "test-repo",
+            "slug": "test-team",
+            "description": "Test team",
+            "node_id": "NODE_1",
+        }
+        payload = {
+            "action": "created",
+            "team": team_data,
+            "organization": {"login": "test-org"},
+        }
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSelector(
+                members=False, include_group_mappings=True, query="true"
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+        group_mapping = {
+            "group_id": "111a1a11-aaa1-1aaa-11a1-a1a1a1a1a1aa",
+            "group_name": "saml-azuread-test",
+            "group_description": "A group of Developers working on AzureAD SAML SSO",
+        }
+        enriched_team = {**team_data, "__group_mappings": [group_mapping]}
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.create_github_client_for_org"
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
+                new=AsyncMock(return_value=dict(team_data)),
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.enrich_teams_with_group_mappings",
+                new=AsyncMock(return_value=[enriched_team]),
+            ) as mock_enrich,
+        ):
+            result = await team_webhook_processor.handle_event(payload, resource_config)
+
+        mock_enrich.assert_awaited_once()
+        assert result.updated_raw_results == [enriched_team]
+        assert result.deleted_raw_results == []
+
     @pytest.mark.parametrize(
         "payload,expected",
         [

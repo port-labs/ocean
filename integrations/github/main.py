@@ -415,6 +415,11 @@ async def resync_teams(
                         rest_client
                     ).enrich_teams_with_external_group(teams, org_name)
 
+                if selector.include_group_mappings:
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_teams_with_group_mappings(teams, org_name)
+
                 yield teams
 
 
