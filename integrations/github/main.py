@@ -637,9 +637,13 @@ async def resync_pull_requests(
                         )
                     )
 
+                needs_comment_enrichment = (
+                    config.selector.include_comments
+                    or config.selector.include_review_stats
+                )
                 comment_exporter = (
                     RestPullRequestCommentExporter(rest_client)
-                    if config.selector.include_comments
+                    if needs_comment_enrichment
                     else None
                 )
 
@@ -648,11 +652,12 @@ async def resync_pull_requests(
                         *tasks, context=kind
                     ):
                         if comment_exporter is not None:
-                            pull_requests = (
-                                await comment_exporter.attach_comments_to_pull_requests(
-                                    pull_requests,
-                                    organization=org_name,
-                                )
+                            pull_requests = await comment_exporter.enrich_pull_requests(
+                                pull_requests,
+                                organization=org_name,
+                                include_comments=config.selector.include_comments,
+                                include_review_stats=config.selector.include_review_stats,
+                                bot_logins=list(config.selector.bot_logins),
                             )
                         yield pull_requests
                 except ExceptionGroup as page_errors:

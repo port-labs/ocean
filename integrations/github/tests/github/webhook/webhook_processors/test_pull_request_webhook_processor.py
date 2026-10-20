@@ -227,3 +227,42 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.assert_called_once()
         called_opts = mock_exporter.get_resource.call_args.args[0]
         assert called_opts["exclude_graphql_fields"] == ["additions", "changedFiles"]
+
+    async def test_handle_event_attaches_comments_on_pull_request_webhook(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+    ) -> None:
+        resource_config.selector.include_comments = True
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "open"}
+        payload = {
+            "action": "synchronize",
+            "pull_request": pr_data,
+            "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
+        }
+        updated_pr_data = {**pr_data, "__repository": "test-repo"}
+        comments = [{"id": 9, "__commentType": "comment"}]
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = updated_pr_data
+        mock_comment_exporter = MagicMock()
+        mock_comment_exporter.enrich_pull_requests = AsyncMock(
+            return_value=[{**updated_pr_data, "__comments": comments}]
+        )
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
+                return_value=mock_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestCommentExporter",
+                return_value=mock_comment_exporter,
+            ),
+        ):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert result.updated_raw_results[0]["__comments"] == comments
+        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()

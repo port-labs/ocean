@@ -1,0 +1,22 @@
+# Opt-in. Not part of the default mapping.
+# includeReviewStats is only a boolean. botLogins adds logins treated as bots
+# beyond accounts whose GitHub type is Bot.
+- kind: pull-request
+  selector:
+    query: 'true'
+    includeReviewStats: true
+    botLogins:
+      - my-ci-user
+  port:
+    entity:
+      mappings:
+        identifier: .head.repo.name + (.id|tostring)
+        title: .title
+        blueprint: '"githubPullRequest"'
+        properties:
+          humanApprovals: .__reviewStats.humanApprovals
+          humanComments: .__reviewStats.humanComments
+          botComments: .__reviewStats.botComments
+          firstHumanReview: .__reviewStats.firstHumanReview
+          firstApproval: .__reviewStats.firstApproval
+          waitOnHumanHours: .__reviewStats.waitOnHumanHours

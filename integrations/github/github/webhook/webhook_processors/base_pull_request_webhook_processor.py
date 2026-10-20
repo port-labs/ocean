@@ -14,6 +14,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from github.core.exporters.pull_request_comment_exporter import (
+    RestPullRequestCommentExporter,
+)
 from github.core.exporters.pull_request_exporter import (
     GraphQLPullRequestExporter,
     RestPullRequestExporter,
@@ -106,6 +109,20 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[data_to_upsert],
             )
+
+        selector = config.selector
+        if selector.include_comments or selector.include_review_stats:
+            comment_exporter = RestPullRequestCommentExporter(
+                await create_github_client_for_org(organization)
+            )
+            enriched = await comment_exporter.enrich_pull_requests(
+                [data_to_upsert],
+                organization=organization,
+                include_comments=selector.include_comments,
+                include_review_stats=selector.include_review_stats,
+                bot_logins=list(selector.bot_logins),
+            )
+            data_to_upsert = enriched[0]
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(
