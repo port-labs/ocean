@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Clarify Test Connection 401 errors by noting that a bad Jira URL or email can cause the same failure as a missing API token scope
