@@ -141,9 +141,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         report_session_status = props.get("reportSessionStatus", False)
 
         if report_session_status and isinstance(run, WorkflowNodeRun):
-            manager = get_stream_manager()
-            if manager is not None:
-                await manager.track(resolved_session_id, run)
+            await get_stream_manager().track(resolved_session_id, run)
 
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Status updates arrive later via webhooks. Best-effort:
@@ -172,8 +170,9 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         if report_session_status:
             try:
-                await self.client.update_session_metadata(
-                    resolved_session_id, {"portExternalRunId": external_id}
+                await self.client.update_session(
+                    resolved_session_id,
+                    metadata={"portExternalRunId": external_id},
                 )
             except Exception as exc:
                 logger.warning(
@@ -181,7 +180,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     f"{resolved_session_id}: {exc!r}"
                 )
 
-        if not report_session_status:
+        else:
             await ocean.port_client.report_run_completed(
                 run,
                 True,

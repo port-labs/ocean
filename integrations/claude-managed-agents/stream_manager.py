@@ -131,6 +131,10 @@ class StreamManager:
 
         return flushed
 
+    @property
+    def max_concurrent(self) -> int:
+        return self._max_concurrent
+
     async def start(self) -> None:
         """Start the background flush loop.  Call once from ``on_start()``."""
         self._flush_task = asyncio.create_task(
@@ -159,7 +163,13 @@ class StreamManager:
             await asyncio.gather(*tasks, return_exceptions=True)
 
         for session_id in list(self._runs.keys()):
-            await self._flush(session_id)
+            try:
+                await self._flush(session_id)
+            except Exception as exc:
+                logger.warning(
+                    f"StreamManager: error flushing session {session_id} during stop: {exc!r}"
+                )
+            await asyncio.sleep(0)
         self._flushed_event_ids.clear()
 
     async def _stream_session(self, session_id: str) -> None:
@@ -206,7 +216,7 @@ class StreamManager:
 
                 await self._flush(session_id)
                 try:
-                    await asyncio.sleep(_INITIAL_RECONNECT_BACKOFF)
+                    await asyncio.sleep(backoff)
                 except asyncio.CancelledError:
                     await self._flush(session_id)
                     raise
@@ -259,7 +269,13 @@ class StreamManager:
             except asyncio.CancelledError:
                 break
             for session_id in list(self._runs.keys()):
-                await self._flush(session_id)
+                try:
+                    await self._flush(session_id)
+                except Exception as exc:
+                    logger.warning(
+                        f"StreamManager: error flushing session {session_id} in flush loop: {exc!r}"
+                    )
+                await asyncio.sleep(0)
 
 
 _manager: StreamManager | None = None
@@ -278,7 +294,7 @@ async def reattach_active_sessions(manager: StreamManager) -> None:
     count = 0
     try:
         client = create_anthropic_client()
-        async for batch in client.list_active_sessions():
+        async for batch in client.list_active_sessions(limit=manager.max_concurrent):
             for session in batch:
                 external_id = session.metadata.get("portExternalRunId")
                 if not external_id:
@@ -302,22 +318,19 @@ async def reattach_active_sessions(manager: StreamManager) -> None:
     logger.info(f"StreamManager: reattached {count} session(s)")
 
 
-def init_stream_manager() -> StreamManager:
-    """Create and cache the global :class:`StreamManager`, reading config from ocean.
+def get_stream_manager() -> StreamManager:
+    """Return the global :class:`StreamManager`, creating it on first call.
 
-    Call once from ``on_start()``, then call ``await manager.start()`` to
-    launch the flush loop.
+    Configuration is read from ``ocean.integration_config`` once at
+    initialisation time.  Call ``await get_stream_manager().start()`` from
+    ``on_start()`` to launch the background flush loop.
     """
     global _manager
-    config = ocean.integration_config
-    _manager = StreamManager(
-        max_concurrent=int(config.get("max_concurrent_session_streams", 10)),
-        flush_interval=float(config.get("flush_interval_seconds", 5.0)),
-        flush_batch_size=int(config.get("flush_batch_size", 100)),
-    )
-    return _manager
-
-
-def get_stream_manager() -> StreamManager | None:
-    """Return the global :class:`StreamManager`, or ``None`` if not yet initialized."""
+    if _manager is None:
+        config = ocean.integration_config
+        _manager = StreamManager(
+            max_concurrent=int(config.get("max_concurrent_session_streams", 10)),
+            flush_interval=float(config.get("flush_interval_seconds", 5.0)),
+            flush_batch_size=int(config.get("flush_batch_size", 25)),
+        )
     return _manager

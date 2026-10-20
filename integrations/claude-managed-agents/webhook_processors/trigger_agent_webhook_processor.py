@@ -204,10 +204,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         interaction_failed, log_entries = self._detect_failure_and_log_entries(events)
         last_error = self._last_error_log_message(log_entries)
 
-        manager = get_stream_manager()
-        streamed_ids: frozenset[str] = (
-            await manager.untrack(session_id) if manager is not None else frozenset()
-        )
+        streamed_ids = await get_stream_manager().untrack(session_id)
 
         if isinstance(run, WorkflowNodeRun):
             events_to_post = (

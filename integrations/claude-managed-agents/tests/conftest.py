@@ -1,7 +1,7 @@
 """Pytest configuration and fixtures."""
 
 from collections.abc import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -12,8 +12,14 @@ def _mock_ocean_context() -> Generator[None, None, None]:
     mock_ocean = MagicMock()
     mock_ocean.app.is_saas.return_value = False
     mock_ocean.config.client_timeout = 60
+
+    mock_manager = MagicMock()
+    mock_manager.untrack = AsyncMock(return_value=frozenset())
+    mock_manager.track = AsyncMock(return_value=True)
+
     with (
         patch("port_ocean.helpers.async_client.ocean", mock_ocean, create=True),
         patch("clients.anthropic_client.ocean", mock_ocean, create=True),
+        patch("stream_manager._manager", mock_manager),
     ):
         yield

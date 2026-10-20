@@ -113,7 +113,7 @@
       "type": "integer",
       "required": false,
       "sensitive": false,
-      "default": 100,
+      "default": 25,
       "description": "Maximum number of log entries posted to Port in a single flush. Acts as a safety cap during event bursts."
     }
   ],
