@@ -12,7 +12,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_terminated
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunLog
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun, WorkflowNodeRunLog
 
 from actions.utils import format_session_event
 from clients.client_factory import create_anthropic_client
@@ -53,16 +53,15 @@ class StreamManager:
         self._flush_interval = flush_interval
         self._flush_batch_size = flush_batch_size
 
-        self._runs: dict[str, WorkflowNodeRun] = {}
-        self._buffers: dict[str, list[tuple[str | None, WorkflowNodeRunLog]]] = {}
+        self._runs: dict[str, IntegrationRun] = {}
+        self._buffers: dict[str, list[WorkflowNodeRunLog]] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._tracked: set[str] = set()
-        self._flushed_event_ids: dict[str, set[str]] = {}
 
         self._shutdown = asyncio.Event()
         self._flush_task: asyncio.Task[None] | None = None
 
-    async def track(self, session_id: str, run: WorkflowNodeRun) -> bool:
+    async def track(self, session_id: str, run: IntegrationRun) -> bool:
         """Register ``session_id`` for live streaming.
 
         Returns ``False`` (and logs a warning) when the concurrency cap is
@@ -88,12 +87,10 @@ class StreamManager:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await old_task
             await self._flush(session_id)
-            self._flushed_event_ids.pop(session_id, None)
 
         self._tracked.add(session_id)
         self._runs[session_id] = run
         self._buffers[session_id] = []
-        self._flushed_event_ids[session_id] = set()
 
         task = asyncio.create_task(
             self._stream_session(session_id),
@@ -105,15 +102,13 @@ class StreamManager:
         logger.info(f"StreamManager: tracking session {session_id} for run {run.id}")
         return True
 
-    async def untrack(self, session_id: str) -> frozenset[str]:
-        """Stop streaming ``session_id``, flush remaining buffer, and return
-        the set of event IDs that were successfully flushed to Port.
+    async def untrack(self, session_id: str) -> None:
+        """Stop streaming ``session_id`` and flush any remaining buffer.
 
-        The webhook processor passes this set to :func:`post_interaction_logs`
-        so it can skip events already covered by the stream while still
-        backfilling any gap (reconnection window, failed flush, restart).
-        An empty set means nothing was streamed, so the full batch reconciliation
-        runs as a fallback.
+        Called by the webhook processor on a terminal webhook. After this
+        returns, :func:`post_interaction_logs` runs a full reconciliation pass
+        to cover any events the stream may have missed (reconnection gaps,
+        failed flushes, pod restarts).
         """
         self._tracked.discard(session_id)
 
@@ -125,11 +120,8 @@ class StreamManager:
 
         await self._flush(session_id)
 
-        flushed = frozenset(self._flushed_event_ids.pop(session_id, set()))
         self._runs.pop(session_id, None)
         self._buffers.pop(session_id, None)
-
-        return flushed
 
     @property
     def max_concurrent(self) -> int:
@@ -170,7 +162,6 @@ class StreamManager:
                     f"StreamManager: error flushing session {session_id} during stop: {exc!r}"
                 )
             await asyncio.sleep(0)
-        self._flushed_event_ids.clear()
 
     async def _stream_session(self, session_id: str) -> None:
         """Open a live SSE stream for ``session_id`` and accumulate log entries.
@@ -202,7 +193,7 @@ class StreamManager:
                         if log is not None:
                             buf = self._buffers.get(session_id)
                             if buf is not None:
-                                buf.append((getattr(event, "id", None), log))
+                                buf.append(log)
                                 if len(buf) >= self._flush_batch_size:
                                     await self._flush(session_id)
 
@@ -246,18 +237,15 @@ class StreamManager:
         self._buffers[session_id] = []
         run = self._runs.get(session_id)
         if run is not None:
-            logs = [log for _, log in buf]
-            event_ids = {eid for eid, _ in buf if eid is not None}
             try:
-                await ocean.port_client.post_run_logs(run, logs)
-                self._flushed_event_ids.setdefault(session_id, set()).update(event_ids)
+                await ocean.port_client.post_run_logs(run, buf)
                 logger.debug(
-                    f"StreamManager: flushed {len(logs)} log(s) "
+                    f"StreamManager: flushed {len(buf)} log(s) "
                     f"for session {session_id} to run {run.id}"
                 )
             except Exception as exc:
                 logger.warning(
-                    f"StreamManager: failed to flush {len(logs)} log(s) "
+                    f"StreamManager: failed to flush {len(buf)} log(s) "
                     f"for session {session_id}: {exc!r}"
                 )
 
@@ -304,7 +292,6 @@ async def reattach_active_sessions(manager: StreamManager) -> None:
                     if (
                         run is not None
                         and ocean.port_client.is_run_in_progress(run)
-                        and isinstance(run, WorkflowNodeRun)
                         and await manager.track(session.id, run)
                     ):
                         count += 1

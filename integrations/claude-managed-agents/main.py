@@ -7,6 +7,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from actions.registry import register_action_executors
 from clients.client_factory import create_webhook_client
+from port_ocean.utils.signal import signal_handler
+
 from stream_manager import get_stream_manager, reattach_active_sessions
 from exporter_factory import (
     create_agents_exporter,
@@ -114,6 +116,7 @@ async def on_start() -> None:
     if ocean.app.config.event_listener.should_run_actions:
         manager = get_stream_manager()
         await manager.start()
+        signal_handler.register(manager.stop)
         await reattach_active_sessions(manager)
 
 

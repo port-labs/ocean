@@ -204,23 +204,8 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         interaction_failed, log_entries = self._detect_failure_and_log_entries(events)
         last_error = self._last_error_log_message(log_entries)
 
-        streamed_ids = await get_stream_manager().untrack(session_id)
-
-        if isinstance(run, WorkflowNodeRun):
-            events_to_post = (
-                [e for e in events if getattr(e, "id", None) not in streamed_ids]
-                if streamed_ids
-                else events
-            )
-            await post_interaction_logs(run, events_to_post)
-        elif log_entries:
-            await ocean.port_client.post_run_logs(
-                run,
-                [
-                    WorkflowNodeRunLog(level=level, message=message)
-                    for level, message in log_entries
-                ],
-            )
+        await get_stream_manager().untrack(session_id)
+        await post_interaction_logs(run, events)
 
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
         success = webhook_succeeded and not interaction_failed

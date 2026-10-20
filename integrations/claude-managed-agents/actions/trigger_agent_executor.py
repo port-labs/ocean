@@ -7,7 +7,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
@@ -140,7 +140,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         report_session_status = props.get("reportSessionStatus", False)
 
-        if report_session_status and isinstance(run, WorkflowNodeRun):
+        if report_session_status:
             await get_stream_manager().track(resolved_session_id, run)
 
         # Reflect the session in the catalog (no-op if the `session` kind is
