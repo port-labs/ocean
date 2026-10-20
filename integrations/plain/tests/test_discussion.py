@@ -33,8 +33,8 @@ def test_discussion_queries_select_channel_and_message_fields() -> None:
 
 def test_discussion_kinds_are_registered_in_spec() -> None:
     kinds = exporter_kinds()
-    assert "kind: discussion\n" in kinds
-    assert "kind: discussion-message" in kinds
+    assert "discussion" in kinds
+    assert "discussion-message" in kinds
 
 
 def test_discussion_mapping_keeps_slack_and_email_fields_when_present() -> None:
