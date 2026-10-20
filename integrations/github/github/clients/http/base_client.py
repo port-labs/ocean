@@ -117,7 +117,9 @@ class AbstractGithubClient(ABC):
                 )
                 response.raise_for_status()
 
-                logger.bind(http_request=1).debug(f"Successfully fetched {method} {resource}")
+                logger.bind(http_request=1).debug(
+                    f"Successfully fetched {method} {resource}"
+                )
                 await self.rate_limiter.on_response(response, resource)
                 return response
 
