@@ -1,8 +1,8 @@
+import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import yaml  # type: ignore[import-untyped]
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.context.ocean import ocean
 
@@ -21,7 +21,7 @@ ALL_KINDS = (
 
 
 def test_spec_accepts_webhook_secret() -> None:
-    spec = yaml.safe_load(Path(".port/spec.yaml").read_text())
+    spec = json.loads(Path(".port/spec.json").read_text())
     resources = spec["features"][0]["resources"]
     kinds = [resource["kind"] for resource in resources]
     for kind in ALL_KINDS:
