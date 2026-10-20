@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Attach pull request comments with includeComments, keep empty-body reviews, refresh comments on pull request webhooks, and add opt-in includeReviewStats
+changelog: Attach pull request comments with includeComments, keep empty-body reviews, refresh comments and review stats on pull request and comment webhooks, and add opt-in includeReviewStats
