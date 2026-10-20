@@ -69,14 +69,14 @@ def test_review_stats_separate_humans_bots_and_empty_approvals() -> None:
         {"event": "ready_for_review", "created_at": "2026-10-01T00:00:00Z"},
     ]
 
-    stats = compute_review_stats(comments, pull_request, timeline, {"my-ci"})
+    stats = compute_review_stats(comments, pull_request, timeline)
 
     assert stats["humanApprovals"] == 1
-    assert stats["humanComments"] == 1
-    assert stats["botComments"] == 3
-    assert stats["firstHumanReview"] == "2026-10-01T03:00:00Z"
+    assert stats["humanComments"] == 2
+    assert stats["botComments"] == 2
+    assert stats["firstHumanReview"] == "2026-10-01T00:30:00Z"
     assert stats["firstApproval"] == "2026-10-01T03:00:00Z"
-    assert stats["waitOnHumanHours"] == 3.0
+    assert stats["waitOnHumanHours"] == 0.5
 
 
 def test_wait_uses_review_requested_when_the_pull_request_was_never_draft() -> None:
@@ -93,7 +93,6 @@ def test_wait_uses_review_requested_when_the_pull_request_was_never_draft() -> N
         comments,
         {"created_at": "2026-10-01T00:00:00Z", "draft": False},
         [{"event": "review_requested", "created_at": "2026-10-01T12:00:00Z"}],
-        set(),
     )
     assert stats["firstHumanReview"] == "2026-10-02T00:00:00Z"
     assert stats["firstApproval"] is None
@@ -106,7 +105,6 @@ def test_draft_without_ready_event_has_no_wait() -> None:
         [],
         {"created_at": "2026-10-01T00:00:00Z", "draft": True},
         [],
-        set(),
     )
     assert stats["waitOnHumanHours"] is None
     assert stats["firstHumanReview"] is None
