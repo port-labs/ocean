@@ -680,7 +680,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
 class GithubPullRequestConfig(ResourceConfig):
     probe_permissions: ClassVar[dict[str, tuple[str, ...]]] = {
         "pat": ("repo",),
-        "app": ("pull_requests", "issues"),
+        "app": ("pull_requests",),
     }
 
     selector: GithubPullRequestSelector = Field(
