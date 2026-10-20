@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Skip registering resync handlers and action executors, and disable HTTP log ingestion, when running test connection (probe)
