@@ -135,7 +135,6 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
             organization=organization,
             include_comments=config.selector.include_comments,
             include_review_stats=config.selector.include_review_stats,
-            bot_logins=list(config.selector.bot_logins),
         )
         data_to_upsert = enriched[0]
 
