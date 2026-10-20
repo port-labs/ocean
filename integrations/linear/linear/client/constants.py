@@ -3,8 +3,9 @@ from enum import StrEnum
 
 LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 PAGE_SIZE = 50
-# One label's children pages are appended in memory. Fail past this ceiling
-# instead of retaining an unbounded edge list. 1000 is 20 pages of PAGE_SIZE.
+# One label's children pages are appended in memory. Cap at this ceiling and
+# continue the sync instead of retaining an unbounded edge list.
+# 1000 is 20 pages of PAGE_SIZE.
 MAX_LABEL_CHILDREN = 1000
 
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
