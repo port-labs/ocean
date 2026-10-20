@@ -180,10 +180,8 @@ class TestPullRequestCommentWebhookProcessor:
         }
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.enrich_pull_requests = AsyncMock(
-            return_value=[{**fetched_pr, "__reviewStats": stats}]
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__reviewStats": stats}
         )
 
         with (
@@ -196,10 +194,6 @@ class TestPullRequestCommentWebhookProcessor:
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
             ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
-            ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
             ),
@@ -211,7 +205,9 @@ class TestPullRequestCommentWebhookProcessor:
         assert result.deleted_raw_results == []
         assert result.updated_raw_results[0]["__reviewStats"] == stats
         assert "__comments" not in result.updated_raw_results[0]
-        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()
+        called_opts = mock_pr_exporter.get_resource.await_args.args[0]
+        assert called_opts["include_comments"] is False
+        assert called_opts["include_review_stats"] is True
 
     async def test_handle_event_returns_pull_request_with_comments_when_enabled(
         self,
@@ -234,10 +230,8 @@ class TestPullRequestCommentWebhookProcessor:
         ]
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.enrich_pull_requests = AsyncMock(
-            return_value=[{**fetched_pr, "__comments": comments}]
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__comments": comments}
         )
 
         with (
@@ -249,10 +243,6 @@ class TestPullRequestCommentWebhookProcessor:
             patch(
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
-            ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
             ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
@@ -267,7 +257,8 @@ class TestPullRequestCommentWebhookProcessor:
         updated = result.updated_raw_results[0]
         assert updated["id"] == 700
         assert updated["__comments"] == comments
-        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()
+        called_opts = mock_pr_exporter.get_resource.await_args.args[0]
+        assert called_opts["include_comments"] is True
 
     async def test_handle_event_deleted_comment_still_returns_pr_with_comments(
         self,
@@ -281,10 +272,8 @@ class TestPullRequestCommentWebhookProcessor:
         remaining_comments: list[dict[str, Any]] = []
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.enrich_pull_requests = AsyncMock(
-            return_value=[{**fetched_pr, "__comments": remaining_comments}]
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__comments": remaining_comments}
         )
 
         with (
@@ -296,10 +285,6 @@ class TestPullRequestCommentWebhookProcessor:
             patch(
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
-            ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
             ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
@@ -331,10 +316,8 @@ class TestPullRequestCommentWebhookProcessor:
         ]
 
         mock_pr_exporter = MagicMock()
-        mock_pr_exporter.get_resource = AsyncMock(return_value=fetched_pr)
-        mock_comment_exporter = MagicMock()
-        mock_comment_exporter.enrich_pull_requests = AsyncMock(
-            return_value=[{**fetched_pr, "__comments": comments}]
+        mock_pr_exporter.get_resource = AsyncMock(
+            return_value={**fetched_pr, "__comments": comments}
         )
 
         with (
@@ -347,10 +330,6 @@ class TestPullRequestCommentWebhookProcessor:
                 "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestExporter",
                 return_value=mock_pr_exporter,
             ),
-            patch(
-                "github.webhook.webhook_processors.pull_request_comment_webhook_processor.RestPullRequestCommentExporter",
-                return_value=mock_comment_exporter,
-            ),
             patch.object(
                 processor, "should_process_repo_search", AsyncMock(return_value=True)
             ),
@@ -359,4 +338,5 @@ class TestPullRequestCommentWebhookProcessor:
 
         assert result.deleted_raw_results == []
         assert result.updated_raw_results[0]["__comments"] == comments
-        mock_comment_exporter.enrich_pull_requests.assert_awaited_once()
+        called_opts = mock_pr_exporter.get_resource.await_args.args[0]
+        assert called_opts["include_comments"] is True

@@ -1,7 +1,24 @@
 from datetime import UTC, datetime
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any, AsyncIterator, Callable, Literal, Optional, cast
 
 from loguru import logger
+
+from github.clients.http.rest_client import GithubRestClient
+from github.core.exporters.pull_request_review_stats import compute_review_stats
+from github.core.options import (
+    ListPullRequestCommentOptions,
+    SinglePullRequestCommentOptions,
+)
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+
+CommentType = Literal["comment", "review", "review-summary"]
+
+_COMMENT_ENDPOINTS: dict[CommentType, str] = {
+    # GET .../issues/comments/{id} (not nested under the issue/PR number)
+    "comment": "issues/comments/{comment_id}",
+    "review": "pulls/comments/{comment_id}",
+    "review-summary": "pulls/{pr_number}/reviews/{comment_id}",
+}
 
 
 def filter_prs_by_date(
@@ -78,4 +95,213 @@ async def paginate_closed_pull_requests(
     logger.info(
         f"{log_prefix} Fetched total of {total_count} closed pull requests "
         f"from {organization}/{repo_name}"
+    )
+
+
+def normalize_pull_request_comment(
+    raw: dict[str, Any],
+    *,
+    repo_name: str,
+    pull_request_number: int,
+    comment_type: CommentType,
+) -> dict[str, Any]:
+    """Keep raw GitHub comment fields and attach only derived identifiers.
+
+    Conversation comments, inline review comments, and review bodies come from
+    different GitHub APIs. Map from the raw fields (``body``, ``user.login``,
+    ``created_at`` / ``submitted_at``, ``html_url``). ``__commentId`` includes
+    the PR number and comment type because GitHub comment id spaces collide.
+    """
+    return {
+        **raw,
+        "__commentId": f"{repo_name}/{pull_request_number}/{comment_type}/{raw['id']}",
+        "__commentType": comment_type,
+    }
+
+
+def _repo_url(client: GithubRestClient, organization: str, repo_name: str) -> str:
+    return f"{client.base_url}/repos/{organization}/{repo_name}"
+
+
+async def get_pull_request_comment(
+    client: GithubRestClient, options: SinglePullRequestCommentOptions
+) -> Optional[RAW_ITEM]:
+    organization = options["organization"]
+    repo_name = options["repo_name"]
+    pr_number = options["pr_number"]
+    comment_type = cast(CommentType, options["comment_type"])
+    endpoint = _COMMENT_ENDPOINTS[comment_type].format(
+        pr_number=pr_number, comment_id=options["comment_id"]
+    )
+    response = await client.send_api_request(
+        f"{_repo_url(client, organization, repo_name)}/{endpoint}"
+    )
+    if not response:
+        logger.warning(
+            f"No pull request {comment_type} {options['comment_id']} found "
+            f"for {organization}/{repo_name}#{pr_number}"
+        )
+        return None
+    return normalize_pull_request_comment(
+        response,
+        repo_name=repo_name,
+        pull_request_number=pr_number,
+        comment_type=comment_type,
+    )
+
+
+async def iter_pull_request_comments(
+    client: GithubRestClient, options: ListPullRequestCommentOptions
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    organization = options["organization"]
+    repo_name = options["repo_name"]
+    pr_number = options["pr_number"]
+    repo_url = _repo_url(client, organization, repo_name)
+
+    list_endpoints: tuple[tuple[str, CommentType], ...] = (
+        (f"{repo_url}/issues/{pr_number}/comments", "comment"),
+        (f"{repo_url}/pulls/{pr_number}/comments", "review"),
+        (f"{repo_url}/pulls/{pr_number}/reviews", "review-summary"),
+    )
+    for endpoint, comment_type in list_endpoints:
+        async for batch in client.send_paginated_request(endpoint):
+            normalized = [
+                normalize_pull_request_comment(
+                    item,
+                    repo_name=repo_name,
+                    pull_request_number=pr_number,
+                    comment_type=comment_type,
+                )
+                for item in batch
+            ]
+            if normalized:
+                logger.info(
+                    f"Fetched {len(normalized)} pull request {comment_type} "
+                    f"items for {organization}/{repo_name}#{pr_number}"
+                )
+                yield normalized
+
+
+async def fetch_all_pull_request_comments(
+    client: GithubRestClient, options: ListPullRequestCommentOptions
+) -> list[dict[str, Any]]:
+    """Collect every comment type for one pull request into a single list."""
+    comments: list[dict[str, Any]] = []
+    async for batch in iter_pull_request_comments(client, options):
+        comments.extend(batch)
+    return comments
+
+
+async def attach_pull_request_comments(
+    client: GithubRestClient,
+    pull_requests: list[dict[str, Any]],
+    *,
+    organization: str,
+) -> list[dict[str, Any]]:
+    """Fetch all comments for every pull request and set ``__comments``."""
+    enriched: list[dict[str, Any]] = []
+    for pull_request in pull_requests:
+        repo_name = cast(str, pull_request.get("__repository") or "")
+        if not repo_name:
+            logger.warning(
+                "Skipping comments fetch: pull request is missing __repository"
+            )
+            enriched.append(pull_request)
+            continue
+
+        comments = await fetch_all_pull_request_comments(
+            client,
+            ListPullRequestCommentOptions(
+                organization=organization,
+                repo_name=repo_name,
+                pr_number=pull_request["number"],
+                pull_request_id=pull_request["id"],
+            ),
+        )
+        with_comments = dict(pull_request)
+        with_comments["__comments"] = comments
+        enriched.append(with_comments)
+    return enriched
+
+
+async def fetch_pull_request_timeline(
+    client: GithubRestClient, organization: str, repo_name: str, pr_number: int
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    endpoint = (
+        f"{_repo_url(client, organization, repo_name)}/issues/{pr_number}/timeline"
+    )
+    async for batch in client.send_paginated_request(endpoint):
+        events.extend(batch)
+    return events
+
+
+async def enrich_pull_requests(
+    client: GithubRestClient,
+    pull_requests: list[dict[str, Any]],
+    *,
+    organization: str,
+    include_comments: bool,
+    include_review_stats: bool,
+) -> list[dict[str, Any]]:
+    """Attach ``__comments`` and/or ``__reviewStats``.
+
+    Comments are fetched once when either flag is set. ``__comments`` is written
+    only for ``include_comments``. ``__reviewStats`` is written only for
+    ``include_review_stats``.
+    """
+    if not include_comments and not include_review_stats:
+        return pull_requests
+
+    enriched: list[dict[str, Any]] = []
+    for pull_request in pull_requests:
+        repo_name = cast(str, pull_request.get("__repository") or "")
+        if not repo_name:
+            logger.warning(
+                "Skipping comment enrichment: pull request is missing __repository"
+            )
+            enriched.append(pull_request)
+            continue
+        comments = await fetch_all_pull_request_comments(
+            client,
+            ListPullRequestCommentOptions(
+                organization=organization,
+                repo_name=repo_name,
+                pr_number=pull_request["number"],
+                pull_request_id=pull_request["id"],
+            ),
+        )
+        updated = dict(pull_request)
+        if include_comments:
+            updated["__comments"] = comments
+        if include_review_stats:
+            timeline = await fetch_pull_request_timeline(
+                client, organization, repo_name, pull_request["number"]
+            )
+            updated["__reviewStats"] = compute_review_stats(
+                comments, pull_request, timeline
+            )
+        enriched.append(updated)
+    return enriched
+
+
+async def attach_comments_if_requested(
+    client: GithubRestClient | None,
+    pull_requests: list[dict[str, Any]],
+    *,
+    organization: str,
+    include_comments: bool,
+    include_review_stats: bool = False,
+) -> list[dict[str, Any]]:
+    if (not include_comments and not include_review_stats) or not pull_requests:
+        return pull_requests
+    if client is None:
+        logger.warning("Skipping pull request comment enrichment; no REST client")
+        return pull_requests
+    return await enrich_pull_requests(
+        client,
+        pull_requests,
+        organization=organization,
+        include_comments=include_comments,
+        include_review_stats=include_review_stats,
     )
