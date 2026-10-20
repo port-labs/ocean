@@ -1,7 +1,6 @@
 from typing import cast
 from loguru import logger
 from initialize_client import get_or_create_jira_client
-from jira.comments import attach_comments_to_issues
 from jira.overrides import JiraIssueConfig
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -52,7 +51,8 @@ class IssueWebhookProcessor(JiraAbstractWebhookProcessor):
                 "fields": config.selector.fields,
                 "expand": config.selector.expand,
                 "reconcileIssues": [issue_id],
-            }
+            },
+            include_comments=config.selector.include_comments,
         ):
             issues.extend(batch)
 
@@ -66,8 +66,6 @@ class IssueWebhookProcessor(JiraAbstractWebhookProcessor):
             )
             data_to_delete.append(payload["issue"])
         else:
-            if config.selector.include_comments:
-                issues = await attach_comments_to_issues(client, issues)
             data_to_update.extend(issues)
 
         return WebhookEventRawResults(

@@ -343,6 +343,18 @@ async def test_get_paginated_comments_for_issue(jira_client: JiraClient) -> None
     assert mock_request.await_args.args[1].endswith("/issue/TEST-1/comment")
 
 
+def _issue_pages(
+    issue: dict[str, Any],
+) -> Any:
+    async def pages(
+        _params: dict[str, Any], *, include_comments: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        assert include_comments is True
+        yield [issue]
+
+    return pages
+
+
 @pytest.mark.asyncio
 async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
     comment_processor: IssueCommentWebhookProcessor,
@@ -358,11 +370,10 @@ async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
         },
     }
     config = _issue_config(include_comments=True)
-
-    async def _comment_pages(
-        _issue_key: str,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield [normalize_issue_comment(COMMENT, "TEST-1")]
+    issue = {
+        **payload["issue"],
+        "__comments": [normalize_issue_comment(COMMENT, "TEST-1")],
+    }
 
     assert await comment_processor.should_process_event(MagicMock(payload=payload))
     assert await comment_processor.get_matching_kinds(MagicMock()) == [Kinds.ISSUE]
@@ -371,7 +382,7 @@ async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
         "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
     ) as mock_get_client:
         client = MagicMock()
-        client.get_paginated_comments_for_issue = MagicMock(side_effect=_comment_pages)
+        client.get_paginated_issues = MagicMock(side_effect=_issue_pages(issue))
         mock_get_client.return_value = client
         result = await comment_processor.handle_event(payload, config)
 
@@ -381,6 +392,10 @@ async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
     comments = updated["__comments"]
     assert comments[0]["__commentId"] == "TEST-1/10000"
     assert result.deleted_raw_results == []
+    client.get_paginated_issues.assert_called_once()
+    called_params = client.get_paginated_issues.call_args.args[0]
+    assert called_params["jql"].endswith("AND key = TEST-1")
+    assert client.get_paginated_issues.call_args.kwargs["include_comments"] is True
 
 
 @pytest.mark.asyncio
@@ -422,17 +437,13 @@ async def test_comment_webhook_deleted_still_returns_issue_with_refreshed_commen
         },
     }
     config = _issue_config(include_comments=True)
-
-    async def _comment_pages(
-        _issue_key: str,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield []  # deleted comment absent from refreshed list
+    issue = {**payload["issue"], "__comments": []}
 
     with patch(
         "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
     ) as mock_get_client:
         client = MagicMock()
-        client.get_paginated_comments_for_issue = MagicMock(side_effect=_comment_pages)
+        client.get_paginated_issues = MagicMock(side_effect=_issue_pages(issue))
         mock_get_client.return_value = client
         result = await comment_processor.handle_event(payload, config)
 

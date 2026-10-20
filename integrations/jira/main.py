@@ -14,7 +14,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from jira.helpers.incremental import apply_cursor_to_jql
-from jira.comments import attach_comments_to_issues
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
@@ -82,10 +81,10 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params["fields"] = config.selector.fields
     if config.selector.expand:
         params["expand"] = config.selector.expand
-    async for issues in client.get_paginated_issues(params):
+    async for issues in client.get_paginated_issues(
+        params, include_comments=config.selector.include_comments
+    ):
         logger.info(f"Received issue batch with {len(issues)} issues")
-        if config.selector.include_comments:
-            issues = await attach_comments_to_issues(client, issues)
         yield issues
 
 
