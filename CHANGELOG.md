@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.0 (2026-10-20)
+
+
+### Features
+
+- Added sync-tier-aware backoff jitter to RetryTransport, auto-detected per pod from event-listener settings. Full/partial resync backs off more than incremental sync, and actions/live-events are unaffected, so background sync yields to user-facing work when they share rate-limit pressure on the same token. Configurable via RetryConfig.apply_sync_tier_jitter.
+
+
 ## 0.54.1 (2026-10-18)
 
 
