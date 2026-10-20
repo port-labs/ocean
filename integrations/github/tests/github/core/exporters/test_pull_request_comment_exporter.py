@@ -5,8 +5,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from github.clients.http.rest_client import GithubRestClient
-from github.core.exporters.pull_request_comment_exporter import (
-    RestPullRequestCommentExporter,
+from github.core.exporters.pull_request_exporter.utils import (
+    attach_pull_request_comments,
+    get_pull_request_comment,
+    iter_pull_request_comments,
     normalize_pull_request_comment,
 )
 from github.core.options import (
@@ -78,11 +80,11 @@ class TestPullRequestCommentExporter:
     async def test_get_resource_normalizes_conversation_comment(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=CONVERSATION)
         ) as mock_request:
-            comment = await exporter.get_resource(
+            comment = await get_pull_request_comment(
+                rest_client,
                 SinglePullRequestCommentOptions(
                     organization="test-org",
                     repo_name="repo1",
@@ -90,7 +92,7 @@ class TestPullRequestCommentExporter:
                     pull_request_id=700,
                     comment_id=11,
                     comment_type="comment",
-                )
+                ),
             )
 
         assert comment is not None
@@ -109,11 +111,11 @@ class TestPullRequestCommentExporter:
     async def test_get_resource_keeps_empty_review_summary(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=EMPTY_REVIEW)
         ):
-            comment = await exporter.get_resource(
+            comment = await get_pull_request_comment(
+                rest_client,
                 SinglePullRequestCommentOptions(
                     organization="test-org",
                     repo_name="repo1",
@@ -121,7 +123,7 @@ class TestPullRequestCommentExporter:
                     pull_request_id=700,
                     comment_id=34,
                     comment_type="review-summary",
-                )
+                ),
             )
         assert comment is not None
         assert comment["__commentId"] == "repo1/7/review-summary/34"
@@ -130,19 +132,18 @@ class TestPullRequestCommentExporter:
     async def test_get_paginated_resources_yields_all_comment_types(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
-
         with patch.object(
             rest_client, "send_paginated_request", side_effect=_mock_paginated_for_pr_7
         ):
             comments = []
-            async for batch in exporter.get_paginated_resources(
+            async for batch in iter_pull_request_comments(
+                rest_client,
                 ListPullRequestCommentOptions(
                     organization="test-org",
                     repo_name="repo1",
                     pr_number=7,
                     pull_request_id=700,
-                )
+                ),
             ):
                 comments.extend(batch)
 
@@ -159,7 +160,6 @@ class TestPullRequestCommentExporter:
     async def test_attach_comments_includes_every_type_and_empty_review(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
         pull_request = {
             "id": 700,
             "number": 7,
@@ -171,7 +171,8 @@ class TestPullRequestCommentExporter:
         with patch.object(
             rest_client, "send_paginated_request", side_effect=_mock_paginated_for_pr_7
         ) as mock_request:
-            enriched = await exporter.attach_comments_to_pull_requests(
+            enriched = await attach_pull_request_comments(
+                rest_client,
                 [pull_request],
                 organization="test-org",
             )
@@ -188,7 +189,6 @@ class TestPullRequestCommentExporter:
     async def test_attach_comments_fetches_when_pr_updated_at_is_old(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
         pull_request = {
             "id": 700,
             "number": 7,
@@ -199,7 +199,8 @@ class TestPullRequestCommentExporter:
         with patch.object(
             rest_client, "send_paginated_request", side_effect=_mock_paginated_for_pr_7
         ) as mock_request:
-            enriched = await exporter.attach_comments_to_pull_requests(
+            enriched = await attach_pull_request_comments(
+                rest_client,
                 [pull_request],
                 organization="test-org",
             )
@@ -211,13 +212,13 @@ class TestPullRequestCommentExporter:
     async def test_attach_comments_fetches_when_updated_at_missing(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
         pull_request = {"id": 700, "number": 7, "__repository": "repo1"}
 
         with patch.object(
             rest_client, "send_paginated_request", side_effect=_mock_paginated_for_pr_7
         ) as mock_request:
-            enriched = await exporter.attach_comments_to_pull_requests(
+            enriched = await attach_pull_request_comments(
+                rest_client,
                 [pull_request],
                 organization="test-org",
             )
@@ -229,7 +230,6 @@ class TestPullRequestCommentExporter:
     async def test_attach_comments_fetches_when_updated_at_unparseable(
         self, rest_client: GithubRestClient
     ) -> None:
-        exporter = RestPullRequestCommentExporter(rest_client)
         pull_request = {
             "id": 700,
             "number": 7,
@@ -240,7 +240,8 @@ class TestPullRequestCommentExporter:
         with patch.object(
             rest_client, "send_paginated_request", side_effect=_mock_paginated_for_pr_7
         ) as mock_request:
-            enriched = await exporter.attach_comments_to_pull_requests(
+            enriched = await attach_pull_request_comments(
+                rest_client,
                 [pull_request],
                 organization="test-org",
             )

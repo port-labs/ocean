@@ -195,6 +195,7 @@ class TestPullRequestReviewWebhookProcessor:
                     exclude_graphql_fields=[],
                     include_required_checks_status=False,
                     excluded_required_checks=[],
+                    include_comments=False,
                 )
             )
 
