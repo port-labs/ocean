@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Fixed team membership webhook events dropping `__external_group` and `__group_mappings` from the upserted team when `include_external_group` or `include_group_mappings` is enabled.
