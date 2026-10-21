@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-from urllib.parse import urlparse
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
@@ -31,16 +30,6 @@ def decrypt_run_access_token(run: IntegrationRun) -> str | None:
         raise ActionExecutionError(
             "Failed to decrypt portAccessToken (org clientSecret mismatch?)"
         ) from error
-
-
-def resolve_port_mcp_url(api_base_url: str) -> str:
-    """Map a Port API base URL to the matching Port MCP URL (always normalized)."""
-    parsed = urlparse(api_base_url)
-    if not parsed.hostname or not parsed.hostname.startswith("api."):
-        return "https://mcp.port.io/v1"
-    hostname = f"mcp.{parsed.hostname.removeprefix('api.')}"
-    netloc = f"{hostname}:{parsed.port}" if parsed.port else hostname
-    return f"{parsed.scheme or 'https'}://{netloc}/v1".rstrip("/")
 
 
 def _allowed_execution_identities(action_type: str) -> list[str]:

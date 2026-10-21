@@ -2,10 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from port_ocean.core.handlers.actions.utils import (
-    get_run_access_token,
-    resolve_port_mcp_url,
-)
+from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import (
     ResolvedExecutionIdentity,
     WorkflowIntegrationActionConfig,
@@ -24,28 +21,6 @@ _TRIGGER_AGENT_SPEC = {
         }
     ]
 }
-
-
-def test_resolve_port_mcp_url_maps_region() -> None:
-    assert resolve_port_mcp_url("https://api.getport.io") == "https://mcp.getport.io/v1"
-    assert resolve_port_mcp_url("https://api.port.io") == "https://mcp.port.io/v1"
-    assert resolve_port_mcp_url("https://api.us.port.io") == "https://mcp.us.port.io/v1"
-    assert (
-        resolve_port_mcp_url("https://api.us.getport.io")
-        == "https://mcp.us.getport.io/v1"
-    )
-    assert (
-        resolve_port_mcp_url("https://api.stg-01.getport.io")
-        == "https://mcp.stg-01.getport.io/v1"
-    )
-    assert (
-        resolve_port_mcp_url("http://api.localhost:9080")
-        == "http://mcp.localhost:9080/v1"
-    )
-    assert (
-        resolve_port_mcp_url("https://api.us.port.io/") == "https://mcp.us.port.io/v1"
-    )
-    assert resolve_port_mcp_url("https://example.com") == "https://mcp.port.io/v1"
 
 
 def _workflow_run(
