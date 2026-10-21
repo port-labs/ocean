@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.1.8 (2026-10-21)
+
+
+### Bug Fixes
+
+- Fix AWS::CodeDeploy::DeploymentGroup resync failing with 0 entities when ec2TagSet/onPremisesTagSet are present by typing them as objects to match the AWS API response shape
+
+
 ## 3.1.7 (2026-10-20)
 
 
