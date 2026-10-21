@@ -83,7 +83,7 @@ async def test_paginate_batches_results(client: AnthropicClient) -> None:
 
     batches = [batch async for batch in client.paginate(_list_call())]
 
-    assert batches == [[{"id": "a1"}, {"id": "a2"}], [{"id": "a3"}]]
+    assert batches == [[items[0], items[1]], [items[2]]]
 
 
 @pytest.mark.asyncio

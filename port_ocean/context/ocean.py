@@ -244,6 +244,11 @@ class PortOceanContext:
         self.app.webhook_manager.register_processor(path, processor)
 
     def register_action_executor(self, executor: "AbstractExecutor") -> None:
+        if not self.app.config.event_listener.should_run_actions:
+            logger.debug(
+                f"Using event listener {self.app.config.event_listener.type}, which shouldn't run actions. Skipping action executor setup..."
+            )
+            return
         self.app.execution_manager.register_executor(executor)
 
     def register_oauth_provider(self, provider: "OAuth2Provider") -> None:
