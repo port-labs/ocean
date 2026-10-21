@@ -23,7 +23,7 @@ class Cache(Generic[T]):
     """In-memory cache with TTL expiry and LRU eviction.
 
     Opt-in at call sites — do not wrap ``AnthropicClient`` get methods so those
-    stay fresh. Callers only use :meth:`get_or_fetch`.
+    stay fresh.
     """
 
     def __init__(self, ttl_seconds: float, max_items: int) -> None:
@@ -35,17 +35,7 @@ class Cache(Generic[T]):
         self._max_items = max_items
         self._store: OrderedDict[str, _Entry[T]] = OrderedDict()
 
-    async def get_or_fetch(
-        self, key: str, fetch: Callable[[], Awaitable[T]]
-    ) -> T:
-        cached = self._get(key)
-        if cached is not None:
-            return cached
-        value = await fetch()
-        self._set(key, value)
-        return value
-
-    def _get(self, key: str) -> T | None:
+    def get(self, key: str) -> T | None:
         entry = self._store.get(key)
         if entry is None:
             return None
@@ -55,8 +45,18 @@ class Cache(Generic[T]):
         self._store.move_to_end(key)
         return entry.value
 
-    def _set(self, key: str, value: T) -> None:
+    def set(self, key: str, value: T) -> None:
         self._store[key] = _Entry(value=value, cached_at=_monotonic())
         self._store.move_to_end(key)
         while len(self._store) > self._max_items:
             self._store.popitem(last=False)
+
+    async def get_or_fetch(
+        self, key: str, fetch: Callable[[], Awaitable[T]]
+    ) -> T:
+        cached = self.get(key)
+        if cached is not None:
+            return cached
+        value = await fetch()
+        self.set(key, value)
+        return value
