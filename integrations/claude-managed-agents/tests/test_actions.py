@@ -529,7 +529,10 @@ async def test_create_agent_executor_passes_config_through() -> None:
             {
                 "type": "mcp_toolset",
                 "mcp_server_name": "port",
-                "default_config": {"permission_policy": {"type": "always_allow"}},
+                "default_config": {
+                    "enabled": True,
+                    "permission_policy": {"type": "always_allow"},
+                },
             }
         ],
     }
@@ -1888,7 +1891,10 @@ async def test_update_agent_executor_updates_and_completes() -> None:
                 {
                     "type": "mcp_toolset",
                     "mcp_server_name": PORT_MCP_SERVER_NAME,
-                    "default_config": {"permission_policy": {"type": "always_allow"}},
+                    "default_config": {
+                        "enabled": True,
+                        "permission_policy": {"type": "always_allow"},
+                    },
                 }
             ],
         },
@@ -2179,7 +2185,10 @@ async def test_update_agent_executor_maps_system_prompt_to_system_field() -> Non
                 {
                     "type": "mcp_toolset",
                     "mcp_server_name": PORT_MCP_SERVER_NAME,
-                    "default_config": {"permission_policy": {"type": "always_allow"}},
+                    "default_config": {
+                        "enabled": True,
+                        "permission_policy": {"type": "always_allow"},
+                    },
                 }
             ],
         },
