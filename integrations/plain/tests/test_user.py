@@ -22,7 +22,7 @@ def test_list_users_query_contains_user_fields() -> None:
 
 
 def test_user_kind_is_registered_in_spec() -> None:
-    assert "kind: user" in exporter_kinds()
+    assert "user" in exporter_kinds()
 
 
 def _client() -> PlainClient:

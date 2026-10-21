@@ -1,4 +1,5 @@
 import asyncio
+import time
 import traceback
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -25,7 +26,6 @@ from port_ocean.exceptions.context import (
     ResourceContextNotFoundError,
 )
 from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
-from port_ocean.utils.misc import get_time
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
@@ -175,7 +175,7 @@ async def event_context(
         dispatcher.connect(_handle_event, event_type)
         dispatcher.send(event_type, triggering_event_id=event.id)
 
-        start_time = get_time(seconds_precision=False)
+        start_time = time.time()
         with logger.contextualize(
             event_trigger_type=event.trigger_type,
             event_kind=event.event_type,
@@ -211,7 +211,7 @@ async def event_context(
             else:
                 success = True
             finally:
-                end_time = get_time(seconds_precision=False)
+                end_time = time.time()
                 time_elapsed = round(end_time - start_time, 5)
                 logger.bind(
                     success=success,
