@@ -1,3 +1,5 @@
+from typing import Any, Self
+
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_requires_action import (
     BetaManagedAgentsSessionRequiresAction,
@@ -9,9 +11,10 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
+from pydantic import Field, model_validator
 
+from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.exceptions import InvalidActionParametersException
 from actions.port_mcp import (
     agent_uses_port_mcp,
     prepare_port_mcp_session_config,
@@ -35,6 +38,22 @@ SESSION_RUNNING_STATUS_LABEL = "Session running"
 PROMPT_SENT_STATUS_LABEL = "Prompt sent"
 SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Cannot continue"
 SESSION_START_FAILED_STATUS_LABEL = "Start failed"
+
+
+class TriggerAgentInputs(AbstractAnthropicActionInput):
+    agentId: str = Field(min_length=1)
+    prompt: str = Field(min_length=1)
+    sessionId: str | None = None
+    environmentId: str = ""
+    vaultName: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    reportSessionStatus: bool = False
+
+    @model_validator(mode="after")
+    def require_environment_for_new_session(self) -> Self:
+        if not self.sessionId and not self.environmentId:
+            raise ValueError("environmentId is required when starting a new session")
+        return self
 
 
 class TriggerAgentExecutor(AbstractAnthropicExecutor):
@@ -92,62 +111,41 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         return session
 
     async def execute(self, run: IntegrationRun) -> None:
-        props = run.execution_properties
-        agent_id = props.get("agentId")
-        environment_id = props.get("environmentId")
-        prompt = props.get("prompt")
-        session_id = props.get("sessionId")
-        config = props.get("config")
-        if config is None:
-            config = {}
-        elif not isinstance(config, dict):
-            raise InvalidActionParametersException("config must be an object")
-
-        if not (agent_id and prompt):
-            raise InvalidActionParametersException("agentId and prompt are required")
-        new_environment_id = environment_id if isinstance(environment_id, str) else ""
-        if not session_id and not new_environment_id:
-            raise InvalidActionParametersException(
-                "environmentId is required when starting a new session"
-            )
-        raw_vault_name = props.get("vaultName")
-        if raw_vault_name is None or raw_vault_name == "":
-            vault_name = None
-        elif not isinstance(raw_vault_name, str):
-            raise InvalidActionParametersException("vaultName must be a string")
-        else:
-            vault_name = raw_vault_name.strip() or None
+        inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
         await ocean.port_client.post_run_log(
             run,
             (
-                f"Sending prompt to Claude agent {agent_id} " f"(session {session_id})"
-                if session_id
-                else f"Starting a new session for Claude agent {agent_id}"
+                f"Sending prompt to Claude agent {inputs.agentId} "
+                f"(session {inputs.sessionId})"
+                if inputs.sessionId
+                else f"Starting a new session for Claude agent {inputs.agentId}"
             ),
             status_label=STARTING_STATUS_LABEL,
             should_raise=False,
         )
 
-        uses_port_mcp = await agent_uses_port_mcp(self.client, agent_id)
+        uses_port_mcp = await agent_uses_port_mcp(self.client, inputs.agentId)
 
-        if session_id:
-            session = await self._ensure_session_continuable(session_id)
+        if inputs.sessionId:
+            session = await self._ensure_session_continuable(inputs.sessionId)
             if uses_port_mcp:
-                await refresh_port_mcp_session(self.client, run, session, vault_name)
+                await refresh_port_mcp_session(
+                    self.client, run, session, inputs.vaultName
+                )
         else:
-            api_config = await normalize_session_config(config)
+            api_config = await normalize_session_config(inputs.config)
             if uses_port_mcp:
                 api_config = await prepare_port_mcp_session_config(
                     self.client,
                     run,
-                    new_environment_id,
+                    inputs.environmentId,
                     api_config,
-                    vault_name,
+                    inputs.vaultName,
                 )
             session = await self.client.create_session(
-                agent_id,
-                new_environment_id,
+                inputs.agentId,
+                inputs.environmentId,
                 extra=api_config or None,
             )
             if not session.id:
@@ -156,17 +154,11 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     status_label=SESSION_START_FAILED_STATUS_LABEL,
                 )
 
-        resolved_session_id = session.id
-        user_message = await self.client.send_user_message(resolved_session_id, prompt)
+        user_message = await self.client.send_user_message(session.id, inputs.prompt)
         logger.info(
-            f"Triggered Claude agent {agent_id} via session {resolved_session_id} "
+            f"Triggered Claude agent {inputs.agentId} via session {session.id} "
             f"(message {user_message.id}) for run {run.id}"
         )
-
-        report_session_status = props.get("reportSessionStatus", False)
-
-        if report_session_status:
-            await get_stream_manager().track(resolved_session_id, run)
 
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Status updates arrive later via webhooks. Best-effort:
@@ -175,40 +167,41 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             ObjectKind.SESSION, session.to_dict(mode="json"), run
         )
 
-        external_id = build_external_id(resolved_session_id, user_message.id)
+        external_id = build_external_id(session.id, user_message.id)
         session_url = build_session_link(
             self.client.get_console_host(),
             self.client.get_workspace_id(),
-            resolved_session_id,
+            session.id,
         )
         await ocean.port_client.update_run_started(
             run,
             session_url,
             external_id,
             extra_output=TriggerAgentSessionOutput(
-                session_id=resolved_session_id,
+                session_id=session.id,
                 user_message_event_id=user_message.id,
                 url=session_url,
             ).model_dump(),
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
-        if report_session_status:
+        if inputs.reportSessionStatus:
             try:
                 await self.client.update_session(
-                    resolved_session_id,
+                    session.id,
                     metadata={"portExternalRunId": external_id},
                 )
+                await get_stream_manager().track(session.id, run)
             except Exception as exc:
                 logger.warning(
                     f"Failed to store portExternalRunId on session "
-                    f"{resolved_session_id}: {exc!r}"
+                    f"{session.id}: {exc!r}"
                 )
+            return
 
-        else:
-            await ocean.port_client.report_run_completed(
-                run,
-                True,
-                f"Prompt sent to session {resolved_session_id}",
-                status_label=PROMPT_SENT_STATUS_LABEL,
-            )
+        await ocean.port_client.report_run_completed(
+            run,
+            True,
+            f"Prompt sent to session {session.id}",
+            status_label=PROMPT_SENT_STATUS_LABEL,
+        )

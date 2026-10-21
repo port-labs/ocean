@@ -8,7 +8,7 @@ from pydantic import Field, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import apply_port_mcp_to_agent_config
+from actions.port_mcp import apply_port_mcp_to_update
 from integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -27,54 +27,28 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
         if not any(
-            [
-                self.name,
-                self.model,
-                self.systemPrompt,
-                self.config,
-                self.enablePortMcp is True,
-            ]
+            [self.name, self.model, self.systemPrompt, self.config, self.enablePortMcp]
         ):
             raise ValueError(
-                "at least one of name, model, systemPrompt, config, or "
-                "enablePortMcp=true must be provided"
+                "at least one of name, model, systemPrompt, or config must be provided"
             )
         return self
 
-    def to_request_payload(self) -> dict[str, Any]:
-        payload = self.model_dump(
-            exclude={"agentId", "config", "enablePortMcp"}, exclude_none=True
-        )
-        if "systemPrompt" in payload:
-            payload["system"] = payload.pop("systemPrompt")
+    def to_request_payload(self, current: Any = None) -> dict[str, Any]:
+        """Return only the fields that should be sent to the Anthropic API.
 
-        return {**payload, **(self.config or {})}
-
-    def with_port_mcp(self, payload: dict[str, Any], current: Any) -> dict[str, Any]:
-        if self.enablePortMcp is not True:
-            return payload
-        config = dict(self.config or {})
-        for key, current_value in (
-            ("tools", getattr(current, "tools", None)),
-            ("mcp_servers", getattr(current, "mcp_servers", None)),
-        ):
-            if key not in config:
-                config[key] = _as_dicts(current_value)
-        return {**payload, **apply_port_mcp_to_agent_config(config)}
-
-
-def _as_dicts(value: Any) -> list[dict[str, Any]]:
-    if not isinstance(value, list):
-        return []
-    items: list[dict[str, Any]] = []
-    for item in value:
-        if isinstance(item, dict):
-            items.append(dict(item))
-        elif hasattr(item, "model_dump"):
-            dumped = item.model_dump(mode="json", exclude_none=True)
-            if isinstance(dumped, dict):
-                items.append(dumped)
-    return items
+        Omits agentId (routing key, not an API field), drops None/empty values,
+        and maps systemPrompt → system to match the API field name.
+        """
+        rename = {"systemPrompt": "system"}
+        payload = {
+            rename.get(field, field): value
+            for field, value in self.model_dump(
+                exclude={"agentId", "enablePortMcp"}, exclude_none=True
+            ).items()
+            if value
+        }
+        return apply_port_mcp_to_update(payload, current, self.enablePortMcp)
 
 
 class UpdateAgentExecutor(AbstractAnthropicExecutor):
@@ -123,7 +97,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
             agent = await self.client.update_agent(
                 agent_id,
                 version=version,
-                payload=inputs.with_port_mcp(inputs.to_request_payload(), current),
+                payload=inputs.to_request_payload(current),
             )
         except Exception as error:
             raise ActionExecutionError(

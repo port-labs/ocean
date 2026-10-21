@@ -37,7 +37,7 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         elif not isinstance(extra, dict):
             raise InvalidActionParametersException("config must be an object")
 
-        if props.get("enablePortMcp") is True:
+        if props.get("enablePortMcp", True):
             extra = apply_port_mcp_to_agent_config(extra)
 
         await ocean.port_client.post_run_log(
