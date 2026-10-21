@@ -31,26 +31,16 @@ def _fail(message: str) -> ActionExecutionError:
     return ActionExecutionError(message, status_label=PORT_MCP_FAILED_STATUS_LABEL)
 
 
-def _mcp_url() -> str:
-    return resolve_port_mcp_url(ocean.config.port.base_url)
-
-
-def _as_list(value: Any) -> list[Any]:
-    return list(value) if isinstance(value, list) else []
-
-
-def _is_port_server(server: Any, url: str) -> bool:
-    return (
-        isinstance(server, dict)
-        and isinstance(server.get("url"), str)
-        and server["url"].rstrip("/") == url
-    )
-
-
 def apply_port_mcp_to_agent_config(config: dict[str, Any]) -> dict[str, Any]:
-    url = _mcp_url()
-    servers, tools = _as_list(config.get("mcp_servers")), _as_list(config.get("tools"))
-    if not any(_is_port_server(server, url) for server in servers):
+    url = resolve_port_mcp_url(ocean.config.port.base_url)
+    servers = config.get("mcp_servers")
+    tools = config.get("tools")
+    servers = list(servers) if isinstance(servers, list) else []
+    tools = list(tools) if isinstance(tools, list) else []
+    if not any(
+        isinstance(server, dict) and str(server.get("url") or "").rstrip("/") == url
+        for server in servers
+    ):
         servers.append({"type": "url", "name": PORT_MCP_SERVER_NAME, "url": url})
     if not any(
         isinstance(tool, dict) and tool.get("mcp_server_name") == PORT_MCP_SERVER_NAME
@@ -58,6 +48,18 @@ def apply_port_mcp_to_agent_config(config: dict[str, Any]) -> dict[str, Any]:
     ):
         tools.append(dict(_TOOLSET))
     return {**config, "mcp_servers": servers, "tools": tools}
+
+
+def apply_port_mcp_to_update(
+    payload: dict[str, Any], current: Any, enabled: bool | None
+) -> dict[str, Any]:
+    config = dict(payload.pop("config", None) or {})
+    if enabled is not False:
+        for key in ("tools", "mcp_servers"):
+            existing = getattr(current, key, None)
+            config.setdefault(key, existing if isinstance(existing, list) else [])
+        config = apply_port_mcp_to_agent_config(config)
+    return {**payload, **config}
 
 
 def environment_allows_port_mcp(environment: Any, mcp_url: str) -> bool:
@@ -76,7 +78,7 @@ def environment_allows_port_mcp(environment: Any, mcp_url: str) -> bool:
 async def ensure_environment_allows_port_mcp(
     client: Any, environment_id: str, mcp_url: str | None = None
 ) -> None:
-    url = mcp_url or _mcp_url()
+    url = mcp_url or resolve_port_mcp_url(ocean.config.port.base_url)
     key = (environment_id, url)
     if _ALLOWED_ENVIRONMENTS.get(key, 0) > time.monotonic():
         return
@@ -91,9 +93,12 @@ async def agent_uses_port_mcp(client: Any, agent_id: str) -> bool:
     cached = _AGENTS_WITH_PORT_MCP.get(agent_id)
     if cached and cached[1] > time.monotonic():
         return cached[0]
-    url = _mcp_url()
+    url = resolve_port_mcp_url(ocean.config.port.base_url)
     servers = getattr(await client.get_agent(agent_id), "mcp_servers", None)
-    has = any(_is_port_server(server, url) for server in _as_list(servers))
+    has = any(
+        isinstance(server, dict) and str(server.get("url") or "").rstrip("/") == url
+        for server in (servers if isinstance(servers, list) else [])
+    )
     _AGENTS_WITH_PORT_MCP[agent_id] = (has, time.monotonic() + _TTL)
     return has
 
@@ -129,7 +134,7 @@ async def ensure_port_mcp_vault(
     auth = {
         "type": "static_bearer",
         "token": access_token,
-        "mcp_server_url": _mcp_url(),
+        "mcp_server_url": resolve_port_mcp_url(ocean.config.port.base_url),
     }
     if credential is None:
         await client.create_vault_credential(
@@ -170,7 +175,8 @@ async def prepare_port_mcp_session_config(
         dict(config["metadata"]) if isinstance(config.get("metadata"), dict) else {}
     )
     metadata[PORT_IDENTITY_ID_KEY] = identity_id
-    vault_ids = _as_list(config.get("vault_ids"))
+    vault_ids = config.get("vault_ids")
+    vault_ids = list(vault_ids) if isinstance(vault_ids, list) else []
     if vault_id not in vault_ids:
         vault_ids.append(vault_id)
     return {**config, "metadata": metadata, "vault_ids": vault_ids}
@@ -196,5 +202,6 @@ async def refresh_port_mcp_session(
             f"run is {identity_id}"
         )
     vault_id = await ensure_port_mcp_vault(client, identity_id, token, vault_name)
-    if vault_id not in _as_list(getattr(session, "vault_ids", None)):
+    session_vaults = getattr(session, "vault_ids", None)
+    if vault_id not in (session_vaults if isinstance(session_vaults, list) else []):
         raise _fail(f"Session {session.id} missing Port MCP vault {vault_id}")

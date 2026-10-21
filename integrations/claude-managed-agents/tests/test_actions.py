@@ -1173,7 +1173,7 @@ async def test_trigger_agent_executor_requires_config_object() -> None:
     }
 
     with pytest.raises(
-        InvalidActionParametersException, match="config must be an object"
+        InvalidActionParametersException, match="config"
     ):
         await executor.execute(run)
 
@@ -1870,7 +1870,25 @@ async def test_update_agent_executor_updates_and_completes() -> None:
 
     client_mock.get_agent.assert_awaited_once_with("agent_1")
     client_mock.update_agent.assert_awaited_once_with(
-        "agent_1", version=3, payload={"name": "new-name"}
+        "agent_1",
+        version=3,
+        payload={
+            "name": "new-name",
+            "mcp_servers": [
+                {
+                    "type": "url",
+                    "name": PORT_MCP_SERVER_NAME,
+                    "url": resolve_port_mcp_url("https://api.getport.io"),
+                }
+            ],
+            "tools": [
+                {
+                    "type": "mcp_toolset",
+                    "mcp_server_name": PORT_MCP_SERVER_NAME,
+                    "default_config": {"permission_policy": {"type": "always_allow"}},
+                }
+            ],
+        },
     )
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
@@ -2134,7 +2152,25 @@ async def test_update_agent_executor_maps_system_prompt_to_system_field() -> Non
         await executor.execute(_update_agent_run(name=None, systemPrompt="be helpful"))
 
     client_mock.update_agent.assert_awaited_once_with(
-        "agent_1", version=1, payload={"system": "be helpful"}
+        "agent_1",
+        version=1,
+        payload={
+            "system": "be helpful",
+            "mcp_servers": [
+                {
+                    "type": "url",
+                    "name": PORT_MCP_SERVER_NAME,
+                    "url": resolve_port_mcp_url("https://api.getport.io"),
+                }
+            ],
+            "tools": [
+                {
+                    "type": "mcp_toolset",
+                    "mcp_server_name": PORT_MCP_SERVER_NAME,
+                    "default_config": {"permission_policy": {"type": "always_allow"}},
+                }
+            ],
+        },
     )
 
 
