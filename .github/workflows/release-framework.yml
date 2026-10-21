@@ -13,6 +13,7 @@ env:
 jobs:
   tag-main:
     name: Tag main branch and create release
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
 
@@ -86,7 +87,7 @@ jobs:
   publish_ocean:
     name: Publish framework to PyPI
     needs: tag-main
-    if: needs.tag-main.outputs.release_exists != 'true'
+    if: github.ref == 'refs/heads/main' && needs.tag-main.outputs.release_exists != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
