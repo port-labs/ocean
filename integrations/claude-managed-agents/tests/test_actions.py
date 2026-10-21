@@ -7,6 +7,7 @@ from typing import Any, AsyncIterator, Iterator, TypeVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from port_ocean.config.settings import PortSettings
 
 from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import (
     BetaManagedAgentsUserMessageEvent,
@@ -60,12 +61,12 @@ from actions.port_mcp import (
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_binding,
 )
-from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
 from actions.utils import (
     build_external_id,
     build_session_link,
     normalize_session_config,
 )
+from port_ocean.config.settings import PortSettings
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
 )
@@ -89,9 +90,18 @@ def _build_executor(executor_cls: type[T], client_mock: MagicMock) -> T:
         return executor_cls()
 
 
+def _port_settings(**kwargs: Any) -> PortSettings:
+    return PortSettings(
+        client_id="id",
+        client_secret=kwargs.pop("client_secret", "secret"),
+        base_url="https://api.getport.io",
+        **kwargs,
+    )
+
+
 def _build_mock_ocean() -> MagicMock:
     mock_ocean = MagicMock()
-    mock_ocean.config.port = SimpleNamespace(base_url="https://api.getport.io")
+    mock_ocean.config.port = _port_settings()
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.unregister_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
@@ -173,7 +183,7 @@ def _port_mcp_agent(**kwargs: Any) -> MagicMock:
             {
                 "type": "url",
                 "name": PORT_MCP_SERVER_NAME,
-                "url": resolve_port_mcp_url("https://api.getport.io"),
+                "url": "https://mcp.getport.io/v1",
             }
         ],
         **kwargs,
@@ -183,7 +193,7 @@ def _port_mcp_agent(**kwargs: Any) -> MagicMock:
 @pytest.fixture(autouse=True)
 def _port_mcp_test_context() -> Iterator[None]:
     mock_ocean = MagicMock()
-    mock_ocean.config.port = SimpleNamespace(base_url="https://api.getport.io")
+    mock_ocean.config.port = _port_settings()
     with patch("actions.port_mcp.ocean", mock_ocean):
         yield
 
@@ -522,7 +532,7 @@ async def test_create_agent_executor_passes_config_through() -> None:
             {
                 "type": "url",
                 "name": "port",
-                "url": resolve_port_mcp_url("https://api.getport.io"),
+                "url": "https://mcp.getport.io/v1",
             }
         ],
         "tools": [
@@ -618,7 +628,7 @@ def test_apply_port_mcp_adds_server_and_toolset() -> None:
     assert "metadata" not in result
     assert any(
         s.get("name") == PORT_MCP_SERVER_NAME
-        and s.get("url") == resolve_port_mcp_url("https://api.getport.io")
+        and s.get("url") == "https://mcp.getport.io/v1"
         for s in result["mcp_servers"]
     )
     assert any(
@@ -725,10 +735,7 @@ def _workflow_run_with_port_mcp(
 
 def _mock_ocean_with_client_secret() -> MagicMock:
     mock_ocean = _build_mock_ocean()
-    mock_ocean.config.port = SimpleNamespace(
-        client_secret=_PORT_MCP_ORG_SECRET,
-        base_url="https://api.getport.io",
-    )
+    mock_ocean.config.port = _port_settings(client_secret=_PORT_MCP_ORG_SECRET)
     return mock_ocean
 
 
@@ -764,7 +771,7 @@ async def test_ensure_port_mcp_binding_creates_vault_and_credential() -> None:
     assert auth == {
         "type": "static_bearer",
         "token": "tok_abc",
-        "mcp_server_url": resolve_port_mcp_url("https://api.getport.io"),
+        "mcp_server_url": "https://mcp.getport.io/v1",
     }
     client.beta.vaults.credentials.update.assert_not_awaited()
 
@@ -808,7 +815,7 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
         auth={
             "type": "static_bearer",
             "token": "tok_abc",
-            "mcp_server_url": resolve_port_mcp_url("https://api.getport.io"),
+            "mcp_server_url": "https://mcp.getport.io/v1",
         },
     )
 
@@ -1884,7 +1891,7 @@ async def test_update_agent_executor_updates_and_completes() -> None:
                 {
                     "type": "url",
                     "name": PORT_MCP_SERVER_NAME,
-                    "url": resolve_port_mcp_url("https://api.getport.io"),
+                    "url": "https://mcp.getport.io/v1",
                 }
             ],
             "tools": [
@@ -2178,7 +2185,7 @@ async def test_update_agent_executor_maps_system_prompt_to_system_field() -> Non
                 {
                     "type": "url",
                     "name": PORT_MCP_SERVER_NAME,
-                    "url": resolve_port_mcp_url("https://api.getport.io"),
+                    "url": "https://mcp.getport.io/v1",
                 }
             ],
             "tools": [
