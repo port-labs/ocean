@@ -18,9 +18,6 @@ from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVaul
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
 )
-from anthropic.types.beta.vaults.beta_managed_agents_credential import (
-    BetaManagedAgentsCredential,
-)
 from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event import (
     BetaManagedAgentsUserInterruptEvent,
 )
@@ -328,82 +325,6 @@ class AnthropicClient:
 
     async def get_vault(self, vault_id: str) -> BetaManagedAgentsVault:
         return await self._client.beta.vaults.retrieve(vault_id)
-
-    async def create_vault(
-        self,
-        display_name: str,
-        metadata: dict[str, str] | None = None,
-    ) -> BetaManagedAgentsVault:
-        logger.info(f"Creating Claude vault '{display_name}'")
-        kwargs: dict[str, Any] = {"display_name": display_name}
-        if metadata:
-            kwargs["metadata"] = metadata
-        return await self._client.beta.vaults.create(**kwargs)
-
-    async def _paginate_items(
-        self, list_call: Awaitable[AsyncIterable[Any]]
-    ) -> AsyncGenerator[list[Any], None]:
-        paginator = await list_call
-        batch: list[Any] = []
-        async for item in paginator:
-            batch.append(item)
-            if len(batch) >= self._page_size:
-                yield batch
-                batch = []
-        if batch:
-            yield batch
-
-    async def list_vaults(
-        self, *, include_archived: bool = False
-    ) -> AsyncGenerator[list[BetaManagedAgentsVault], None]:
-        async for batch in self._paginate_items(
-            self._client.beta.vaults.list(include_archived=include_archived)
-        ):
-            yield batch
-
-    async def list_vault_credentials(
-        self, vault_id: str
-    ) -> AsyncGenerator[list[BetaManagedAgentsCredential], None]:
-        async for batch in self._paginate_items(
-            self._client.beta.vaults.credentials.list(vault_id=vault_id)
-        ):
-            yield batch
-
-    async def create_vault_credential(
-        self,
-        vault_id: str,
-        *,
-        auth: dict[str, Any],
-        display_name: str | None = None,
-        metadata: dict[str, str] | None = None,
-    ) -> BetaManagedAgentsCredential:
-        logger.info(f"Creating credential in Claude vault '{vault_id}'")
-        kwargs: dict[str, Any] = {"auth": auth}
-        if display_name is not None:
-            kwargs["display_name"] = display_name
-        if metadata:
-            kwargs["metadata"] = metadata
-        return await self._client.beta.vaults.credentials.create(vault_id, **kwargs)
-
-    async def update_vault_credential(
-        self,
-        vault_id: str,
-        credential_id: str,
-        *,
-        auth: dict[str, Any] | None = None,
-        display_name: str | None = None,
-    ) -> BetaManagedAgentsCredential:
-        logger.info(
-            f"Updating credential '{credential_id}' in Claude vault '{vault_id}'"
-        )
-        kwargs: dict[str, Any] = {}
-        if auth is not None:
-            kwargs["auth"] = auth
-        if display_name is not None:
-            kwargs["display_name"] = display_name
-        return await self._client.beta.vaults.credentials.update(
-            credential_id, vault_id=vault_id, **kwargs
-        )
 
     async def get_memory_store(
         self, memory_store_id: str

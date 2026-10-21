@@ -8,7 +8,7 @@ from pydantic import Field, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import apply_port_mcp_to_update
+from actions.port_mcp import apply_port_mcp
 from integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -48,7 +48,12 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
             ).items()
             if value
         }
-        return apply_port_mcp_to_update(payload, current, self.enablePortMcp)
+        config = apply_port_mcp(
+            payload.pop("config", None),
+            current=current,
+            enabled=self.enablePortMcp,
+        )
+        return {**payload, **config}
 
 
 class UpdateAgentExecutor(AbstractAnthropicExecutor):

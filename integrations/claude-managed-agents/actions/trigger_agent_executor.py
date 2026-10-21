@@ -16,9 +16,9 @@ from pydantic import Field, model_validator
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp import (
-    agent_uses_port_mcp,
-    prepare_port_mcp_session_config,
-    refresh_port_mcp_session,
+    agent_has_port_mcp,
+    attach_port_mcp_vault,
+    reauthorize_port_mcp_session,
 )
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
@@ -125,23 +125,23 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             should_raise=False,
         )
 
-        uses_port_mcp = await agent_uses_port_mcp(self.client, inputs.agentId)
+        uses_port_mcp = await agent_has_port_mcp(self.client, inputs.agentId)
 
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId)
             if uses_port_mcp:
-                await refresh_port_mcp_session(
-                    self.client, run, session, inputs.vaultName
+                await reauthorize_port_mcp_session(
+                    self.client, run, session, vault_name=inputs.vaultName
                 )
         else:
             api_config = await normalize_session_config(inputs.config)
             if uses_port_mcp:
-                api_config = await prepare_port_mcp_session_config(
+                api_config = await attach_port_mcp_vault(
                     self.client,
                     run,
-                    inputs.environmentId,
-                    api_config,
-                    inputs.vaultName,
+                    environment_id=inputs.environmentId,
+                    config=api_config,
+                    vault_name=inputs.vaultName,
                 )
             session = await self.client.create_session(
                 inputs.agentId,
