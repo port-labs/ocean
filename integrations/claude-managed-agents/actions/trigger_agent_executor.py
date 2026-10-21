@@ -97,9 +97,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         run: WorkflowNodeRun,
         vault_name: str | None,
     ) -> PortMcpBinding:
-        ensured_vault_name = (
-            vault_name or f"port-mcp-{run.execution_identity.identifier}"
-        )
+        ensured_vault_name = vault_name or run.execution_identity.identifier
         binding = self._port_mcp_cache.get(ensured_vault_name)
         if binding is None:
             binding = await ensure_port_mcp_binding(
@@ -111,7 +109,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         return binding
 
     async def _ensure_session_continuable(
-        self, session_id: str, run: WorkflowNodeRun
+        self, session_id: str, run: IntegrationRun
     ) -> BetaManagedAgentsSession:
         session = await self.client.get_session(session_id)
         if session.status != "idle":
@@ -140,20 +138,20 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             break
 
         owner = (session.metadata or {}).get(PORT_IDENTITY_ID_KEY)
-        if not owner:
-            raise ActionExecutionError(
-                f"Cannot continue session {session.id}: session wasn't created by Port"
+        if owner:
+            identity = (
+                run.execution_identity if isinstance(run, WorkflowNodeRun) else None
             )
-        if run.execution_identity is None:
-            raise ActionExecutionError(
-                f"Cannot continue session {session.id}: owned by {owner} "
-                "without an execution identity"
-            )
-        if owner != run.execution_identity.identifier:
-            raise ActionExecutionError(
-                f"Cannot continue session {session.id}: owned by {owner}, "
-                f"run is {run.execution_identity.identifier}"
-            )
+            if identity is None:
+                raise ActionExecutionError(
+                    f"Cannot continue session {session.id}: owned by {owner} "
+                    "without an execution identity"
+                )
+            if owner != identity.identifier:
+                raise ActionExecutionError(
+                    f"Cannot continue session {session.id}: owned by {owner}, "
+                    f"run is {identity.identifier}"
+                )
 
         return session
 
@@ -181,10 +179,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             and run.execution_identity is not None
         )
         if inputs.sessionId:
-            if not isinstance(run, WorkflowNodeRun):
-                raise ActionExecutionError(
-                    "Continuing a session requires a workflow node run"
-                )
             session = await self._ensure_session_continuable(inputs.sessionId, run)
             if should_authenticate_port_mcp:
                 await self._resolve_port_mcp_binding(run, inputs.vaultName)

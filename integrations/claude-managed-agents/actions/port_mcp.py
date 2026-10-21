@@ -7,7 +7,6 @@ from anthropic.types.beta import (
     BetaManagedAgentsAgent,
 )
 from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVault
-from anthropic.types.beta.vaults import credential_create_params
 from anthropic.types.beta.vaults.beta_managed_agents_credential import (
     BetaManagedAgentsCredential,
 )
@@ -27,7 +26,6 @@ from port_ocean.core.models import WorkflowNodeRun
 
 PORT_MCP_SERVER_NAME = "port"
 PORT_MCP_CREDENTIAL_NAME = "port-mcp"
-# Request params shape — response model requires resolved `configs`.
 _PORT_TOOLSET: dict[str, Any] = {
     "type": "mcp_toolset",
     "mcp_server_name": PORT_MCP_SERVER_NAME,
@@ -64,7 +62,7 @@ def is_vault_credential_name_matching(
     return credential.display_name == name
 
 
-async def is_agent_configured_with_port_mcp(
+def is_agent_configured_with_port_mcp(
     mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
 ) -> bool:
     port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
@@ -76,13 +74,13 @@ async def is_agent_configured_with_port_mcp(
 
 def attach_port_mcp_settings_to_agent_config(
     proposed_config: dict[str, Any],
-    exitsing_agent: BetaManagedAgentsAgent | None = None,
+    existing_agent: BetaManagedAgentsAgent | None = None,
 ) -> dict[str, Any]:
-    """Attach the Port MCP server + toolset to agent config. Pass ``current``
-    on update to keep existing tools/mcp_servers; ``enabled=False`` no-ops."""
+    """Attach the Port MCP server + toolset to agent config. Pass
+    ``existing_agent`` on update to keep existing tools/mcp_servers."""
     port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
-    agent_servers = exitsing_agent.mcp_servers if exitsing_agent else []
-    agent_tools = exitsing_agent.tools if exitsing_agent else []
+    agent_servers = existing_agent.mcp_servers if existing_agent else []
+    agent_tools = existing_agent.tools if existing_agent else []
     mcp_servers = _merge_mcp_servers_by_url(
         agent_servers,
         cast(
@@ -126,11 +124,11 @@ async def ensure_port_mcp_binding(
         logger.info(f"Creating Port MCP credential '{PORT_MCP_CREDENTIAL_NAME}'")
         credential = await client.beta.vaults.credentials.create(
             vault.id,
-            auth=credential_create_params.Auth(
-                type="static_bearer",
-                token=get_run_access_token(run),
-                mcp_server_url=resolve_port_mcp_url(ocean.config.port.base_url),
-            ),
+            auth={
+                "type": "static_bearer",
+                "token": get_run_access_token(run),
+                "mcp_server_url": resolve_port_mcp_url(ocean.config.port.base_url),
+            },
             display_name=PORT_MCP_CREDENTIAL_NAME,
         )
     else:
@@ -148,8 +146,8 @@ async def remint_port_mcp_credential(
     await client.beta.vaults.credentials.update(
         binding.credential_id,
         vault_id=binding.vault_id,
-        auth=credential_create_params.Auth(
-            type="static_bearer",
-            token=get_run_access_token(run),
-        ),
+        auth={
+            "type": "static_bearer",
+            "token": get_run_access_token(run),
+        },
     )

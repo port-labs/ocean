@@ -36,9 +36,9 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateAgentInputs.from_execution_properties(run.execution_properties)
-        extra = attach_port_mcp_settings_to_agent_config(
-            inputs.config, enabled=inputs.enablePortMcp
-        )
+        extra = inputs.config
+        if inputs.enablePortMcp:
+            extra = attach_port_mcp_settings_to_agent_config(inputs.config)
 
         await ocean.port_client.post_run_log(
             run,
