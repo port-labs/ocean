@@ -7,10 +7,22 @@ import uvicorn
 from port_ocean.bootstrap import load_ocean_app
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialization.initialize import initialize_defaults
+from port_ocean.core.models import EventListenerType
 from port_ocean.core.probe import ProbeMode, ProbeConfig, ProbeReportingMode
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.utils.signal import init_signal_handler
+
+# Probe/test-connection never runs a resync or actions. Match the SaaS TC job's ONCE
+# listener, and force should_resync=False before main.py is imported so @ocean.on_resync*
+# skips registration (ONCE alone still defaults should_resync to True).
+# should_run_actions is already False on ONCE, which skips action executor registration.
+_PROBE_CONFIG_OVERRIDE: Dict[str, Any] = {
+    "event_listener": {
+        "type": EventListenerType.ONCE,
+        "should_resync": False,
+    }
+}
 
 
 def run(
@@ -54,12 +66,14 @@ def run_probe(
     application_settings = ApplicationSettings(log_level=log_level)
 
     init_signal_handler()
+    # Probe/test-connection often runs before the integration exists in Port.
+    # Disable HTTP log ingestion so we don't call get_current_integration / ingest logs.
     setup_logger(
         application_settings.log_level,
-        enable_http_handler=application_settings.enable_http_logging,
+        enable_http_handler=False,
     )
 
-    app = load_ocean_app(path)
+    app = load_ocean_app(path, config_override=_PROBE_CONFIG_OVERRIDE)
     asyncio.run(
         app.integration.run_probe(
             probe_id,
