@@ -19,6 +19,7 @@ from actions.utils import (
     normalize_session_config,
 )
 from integration import ObjectKind
+from stream_manager import get_stream_manager
 from webhook_processors.registry import WEBHOOK_PATH
 from webhook_processors.trigger_agent_webhook_processor import (
     TriggerAgentWebhookProcessor,
@@ -137,6 +138,11 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             f"(message {user_message.id}) for run {run.id}"
         )
 
+        report_session_status = props.get("reportSessionStatus", False)
+
+        if report_session_status:
+            await get_stream_manager().track(resolved_session_id, run)
+
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Status updates arrive later via webhooks. Best-effort:
         # never fails the run. Convert to dict only at the catalog boundary.
@@ -162,7 +168,19 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
-        if not props.get("reportSessionStatus", False):
+        if report_session_status:
+            try:
+                await self.client.update_session(
+                    resolved_session_id,
+                    metadata={"portExternalRunId": external_id},
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Failed to store portExternalRunId on session "
+                    f"{resolved_session_id}: {exc!r}"
+                )
+
+        else:
             await ocean.port_client.report_run_completed(
                 run,
                 True,

@@ -91,6 +91,30 @@
       "required": false,
       "sensitive": true,
       "description": "Optional GitHub personal access token injected into github_repository session resources when authorization_token is omitted. Configure this when workflow forms collect repository URLs only."
+    },
+    {
+      "name": "maxConcurrentSessionStreams",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 10,
+      "description": "Maximum number of Claude sessions that the integration will stream live simultaneously. Tune this in line with the pod's allocated resources."
+    },
+    {
+      "name": "flushIntervalSeconds",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 5,
+      "description": "How often (in seconds) the integration flushes buffered stream events to Port as workflow run logs."
+    },
+    {
+      "name": "flushBatchSize",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 25,
+      "description": "Maximum number of log entries posted to Port in a single flush. Acts as a safety cap during event bursts."
     }
   ],
   "actionsProcessingEnabled": true,
