@@ -14,7 +14,7 @@ def _mock_ocean_context() -> Generator[None, None, None]:
     mock_ocean.config.client_timeout = 60
 
     mock_manager = MagicMock()
-    mock_manager.untrack = AsyncMock(return_value=None)
+    mock_manager.untrack = AsyncMock(return_value=False)
     mock_manager.track = AsyncMock(return_value=True)
 
     with (

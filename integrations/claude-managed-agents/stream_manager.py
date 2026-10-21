@@ -102,14 +102,18 @@ class StreamManager:
         logger.info(f"StreamManager: tracking session {session_id} for run {run.id}")
         return True
 
-    async def untrack(self, session_id: str) -> None:
-        """Stop streaming ``session_id`` and flush any remaining buffer.
+    async def untrack(self, session_id: str) -> bool:
+        """Stop streaming ``session_id``, flush any remaining buffer, and return
+        whether the session was being actively tracked.
 
-        Called by the webhook processor on a terminal webhook. After this
-        returns, :func:`post_interaction_logs` runs a full reconciliation pass
-        to cover any events the stream may have missed (reconnection gaps,
-        failed flushes, pod restarts).
+        Returns ``True`` when the session was registered via :meth:`track` so
+        the caller can trust the stream and skip full log reconciliation.
+        Returns ``False`` when the session was never tracked (e.g. the stream
+        manager was not running, the concurrency cap was reached, or the pod
+        restarted), in which case the caller should run a full reconciliation
+        pass via :func:`post_interaction_logs`.
         """
+        was_tracked = session_id in self._tracked
         self._tracked.discard(session_id)
 
         task = self._tasks.pop(session_id, None)
@@ -122,6 +126,8 @@ class StreamManager:
 
         self._runs.pop(session_id, None)
         self._buffers.pop(session_id, None)
+
+        return was_tracked
 
     @property
     def max_concurrent(self) -> int:
