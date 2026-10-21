@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "bitbucket-cloud"
-version = "0.5.146"
+version = "0.6.3"
 description = "This integration ingest data from bitbucket"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.54.0", extras = ["cli"]}
+port_ocean = {version = "^0.55.2", extras = ["cli"]}
 wcmatch = "^10.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -86,6 +86,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
+target-version = "py312"
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 

@@ -9,7 +9,11 @@ from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
 )
+from github.clients.auth.github_app.installation_registry import (
+    list_installations_authenticators,
+)
 from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
+from github.probe.app.probe import format_app_probe_auth_error
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
@@ -140,6 +144,7 @@ from github.helpers.repo_selectors import (
 from github.core.options import (
     ListOrganizationOptions,
     ListPluginOptions,
+    ListSkillSearchOptions,
     PluginRepositoryOptions,
 )
 from github.enrichments.included_files import (
@@ -234,10 +239,21 @@ async def probe(context: ProbeContext) -> ProbeContext:
         f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
     )
     provider = get_auth_provider()
-    probe_flow = (
-        GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
-    )
-    await probe_flow(context, await provider.list_authenticators()).run()
+    if provider.is_app_auth():
+        try:
+            authenticators = await list_installations_authenticators(skip_retry=True)
+        except Exception as error:
+            await context.fail(
+                format_app_probe_auth_error(
+                    error,
+                    action="Failed to list GitHub App installations",
+                )
+            )
+            return context
+        await GitHubAppPermissionProbe(context, authenticators).run()
+        return context
+
+    await GitHubPatPermissionProbe(context, await provider.list_authenticators()).run()
     return context
 
 
@@ -398,6 +414,11 @@ async def resync_teams(
                     teams = await RestTeamExporter(
                         rest_client
                     ).enrich_teams_with_external_group(teams, org_name)
+
+                if selector.include_group_mappings:
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_teams_with_group_mappings(teams, org_name)
 
                 yield teams
 
@@ -1359,7 +1380,12 @@ async def resync_skills(
     )
     repo_path_map = await pattern_builder.build(file_patterns)
 
-    async for skills in skill_exporter.get_paginated_resources(repo_path_map):
+    async for skills in skill_exporter.get_paginated_resources(
+        ListSkillSearchOptions(
+            repositories=repo_path_map,
+            include_skill_folder=selector.include_skill_folder,
+        )
+    ):
         yield skills
 
 
