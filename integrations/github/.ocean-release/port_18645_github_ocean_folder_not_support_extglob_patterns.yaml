@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Enable EXTGLOB for folder path patterns matching sunset github-app
