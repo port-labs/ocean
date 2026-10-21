@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.19 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 0.15.18 (2026-10-20)
+
+
+### Improvements
+
+- Clarify Test Connection auth failures by guiding users on bad URL (404) vs credentials/scope (401)
+
+
+## 0.15.17 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.15.16 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.15.15 (2026-10-20)
+
+
+### Features
+
+- Added empty scopes to spec file to match new typing requirements for test connection supported integrations
+
+
+## 0.15.14 (2026-10-19)
+
+
+### Improvements
+
+- Supply Jira-specific compact live-event log identifiers via JiraAbstractWebhookProcessor when dual-gated payload logging is enabled in Ocean core.
+
+
+## 0.15.13 (2026-10-19)
+
+
+### Improvements
+
+- Include the required API token scope when Jira Test Connection fails on /myself (read:jira-user) or /mypermissions (read:jira-work)
+
+
+## 0.15.12 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
 ## 0.15.11 (2026-10-13)
 
 

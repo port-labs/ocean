@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.2 (2026-10-21)
+
+
+### Bug Fixes
+
+- Skip registering resync handlers and action executors, and disable HTTP log ingestion, when running test connection (probe)
+
+
+## 0.55.1 (2026-10-20)
+
+
+### Bug Fixes
+
+- Do not fail the probe CLI/CI job when the probe reports an external (third-party) failure; only internal failures exit non-zero
+
+
+## 0.55.0 (2026-10-20)
+
+
+### Features
+
+- Added sync-tier-aware backoff jitter to RetryTransport, auto-detected per pod from event-listener settings. Full/partial resync backs off more than incremental sync, and actions/live-events are unaffected, so background sync yields to user-facing work when they share rate-limit pressure on the same token. Configurable via RetryConfig.apply_sync_tier_jitter.
+
+
+## 0.54.1 (2026-10-18)
+
+
+### Improved Documentation
+
+- Update README and package metadata to reflect Port's AI software factory positioning
+
+
 ## 0.54.0 (2026-10-13)
 
 

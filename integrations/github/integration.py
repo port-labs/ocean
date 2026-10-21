@@ -363,6 +363,16 @@ class GithubSkillSelector(Selector):
             "multi-org filtration."
         ),
     )
+    include_skill_folder: bool = Field(
+        title="Include skill folder",
+        alias="includeSkillFolder",
+        default=False,
+        description=(
+            "Bundle every text file in the skill folder (e.g. references/, "
+            "scripts/) into `skill.files` as a list of `{path, content}`. "
+            "Skills whose SKILL.md and folder files exceed 1MB in total are skipped."
+        ),
+    )
 
     class Config:
         @staticmethod
@@ -706,6 +716,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
         title="Include External IdP Group",
         default=False,
         description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
+    )
+    include_group_mappings: bool = Field(
+        title="Include Team Sync Group Mappings",
+        default=False,
+        description="Include the IdP groups mapped to each team via GET /orgs/{org}/teams/{slug}/team-sync/group-mappings. Only available for organizations using GitHub Enterprise Cloud with team synchronization enabled.",
     )
 
 

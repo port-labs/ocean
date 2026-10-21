@@ -5,6 +5,7 @@
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/jira",
   "formMappingEnabled": true,
   "testConnectionAvailable": true,
+  "testConnectionScopes": [],
   "features": [
     {
       "type": "exporter",

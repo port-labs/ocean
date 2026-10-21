@@ -31,7 +31,7 @@ class StateVersionWebhookProcessor(BaseStateWebhookProcessor):
             logger.warning(
                 f"Failed to fetch output for state version {state_version_id}: {e}"
             )
-            state_version["__output"] = {}
+            state_version["__output"] = []
         return state_version
 
     async def _enrich_with_semaphore(

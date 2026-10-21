@@ -37,11 +37,6 @@ class AbstractGithubClient(ABC):
         )
 
     _DEFAULT_IGNORED_ERRORS = [
-        IgnoredError(
-            status=401,
-            message="Unauthorized access to endpoint — authentication required or token invalid",
-            type="UNAUTHORIZED",
-        ),
         # Note: While GitHub documentation mentions 403 as a rate limit code,
         # in practice 403s are tied to permissions rather than rate limiting.
         # Therefore we ignore 403s rather than retrying them as we do for rate limit errors.
@@ -121,9 +116,10 @@ class AbstractGithubClient(ABC):
                     follow_redirects=True,
                 )
                 response.raise_for_status()
-                logger.bind(http_request=1).info("GitHub API request")
 
-                logger.debug(f"Successfully fetched {method} {resource}")
+                logger.bind(http_request=1).debug(
+                    f"Successfully fetched {method} {resource}"
+                )
                 await self.rate_limiter.on_response(response, resource)
                 return response
 
