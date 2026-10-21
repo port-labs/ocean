@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.0 (2026-10-21)
+
+
+### Features
+
+- Stream agent messages and session errors to Port workflow run logs in near-real-time during trigger_agent sessions.
+
+
 ## 0.11.3 (2026-10-20)
 
 
