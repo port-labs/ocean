@@ -10,6 +10,8 @@ LIMIT_REMAINING_HEADER = "x-ratelimit-remaining"
 LIMIT_RESET_HEADER = "x-ratelimit-reset"
 LIMIT_RETRY_AFTER_HEADER = "retry-after"
 ADO_RATE_LIMIT_WINDOW_SECONDS = 360
+# Full resync stretches the wait by 1.25; the cap must fit a 360s reset.
+ADO_RETRY_MAX_BACKOFF = ADO_RATE_LIMIT_WINDOW_SECONDS * 1.25
 
 
 class AzureDevOpsRateLimiter:
@@ -138,7 +140,7 @@ class AzureDevOpsRateLimiter:
                 logger.bind(
                     rate_limit_wait_seconds=float(retry_wait),
                     rate_limit_reason="retry_after",
-                ).debug(
+                ).warning(
                     f"Rate limit: waiting {retry_wait:.2f}s due to previous rate limit"
                 )
                 await asyncio.sleep(retry_wait)

@@ -1005,7 +1005,7 @@ class TestGetContentLength:
         result = transport._get_content_length(mock_response)
         assert result == 4096
 
-    @patch("port_ocean.helpers.sync_tier.ocean")
+    @patch("port_ocean.helpers.retry.ocean")  # streaming flag is read here
     def test_get_content_length_from_read_when_no_header(
         self, mock_ocean: Mock
     ) -> None:

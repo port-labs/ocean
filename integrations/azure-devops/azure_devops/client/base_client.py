@@ -1,3 +1,5 @@
+import sys
+import time
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
@@ -9,16 +11,74 @@ from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.auth import AuthProvider
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
+    ADO_RETRY_MAX_BACKOFF,
     AzureDevOpsRateLimiter,
+    LIMIT_HEADER,
+    LIMIT_REMAINING_HEADER,
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.client.rate_limit_wrapper import AzureDevOpsRateLimitWrapper
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
+_RATE_LIMIT_LOG_HEADERS = (
+    LIMIT_HEADER,
+    LIMIT_REMAINING_HEADER,
+    LIMIT_RESET_HEADER,
+    LIMIT_RETRY_AFTER_HEADER,
+    "x-ratelimit-resource",
+    "x-ratelimit-delay",
+)
+
+
+def _rate_limit_header_values(response: httpx.Response) -> dict[str, str | None]:
+    values = {name: response.headers.get(name) for name in _RATE_LIMIT_LOG_HEADERS}
+    for key, value in response.headers.items():
+        lowered = key.lower()
+        if "ratelimit" in lowered and lowered not in values:
+            values[lowered] = value
+    return values
+
+
+def _reset_in_seconds(reset_raw: str | None) -> float | None:
+    if reset_raw is None:
+        return None
+    try:
+        return round(float(reset_raw) - time.time(), 3)
+    except ValueError:
+        return None
+
+
+def _log_api_request(
+    response: httpx.Response,
+    method: str,
+    url: str,
+    *,
+    counted: bool,
+    sync_tier_multiplier: float | None,
+) -> None:
+    fields = _rate_limit_header_values(response)
+    reset_in_seconds = _reset_in_seconds(fields.get(LIMIT_RESET_HEADER))
+    header_text = " ".join(f"{name}={value}" for name, value in fields.items())
+    message = (
+        f"Azure DevOps API request {method} {url} status={response.status_code} "
+        f"reset_in_seconds={reset_in_seconds} "
+        f"sync_tier_multiplier={sync_tier_multiplier} {header_text}"
+    )
+    bound = logger.bind(
+        status_code=response.status_code,
+        reset_in_seconds=reset_in_seconds,
+        sync_tier_multiplier=sync_tier_multiplier,
+        **{name.replace("-", "_"): value for name, value in fields.items()},
+    )
+    if counted:
+        bound = bound.bind(http_request=1)
+    # TODO(rl-local-test): remove header dump after centralized rate limiter load-test validation
+    bound.info(message)
 
 
 class HTTPBaseClient:
@@ -27,7 +87,7 @@ class HTTPBaseClient:
         auth_provider: AuthProvider,
     ) -> None:
         self._auth_provider = auth_provider
-        self._rate_limiter = AzureDevOpsRateLimiter()
+        self._rate_limiter = AzureDevOpsRateLimitWrapper(AzureDevOpsRateLimiter())
         self._client = OceanAsyncClient(
             AzureDevOpsRetryTransport,
             transport_kwargs={
@@ -39,9 +99,10 @@ class HTTPBaseClient:
                     LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
-                max_backoff_wait=ADO_RATE_LIMIT_WINDOW_SECONDS,
+                max_backoff_wait=ADO_RETRY_MAX_BACKOFF,
                 base_delay=ADO_RATE_LIMIT_WINDOW_SECONDS,
                 max_attempts=10,
+                rate_limiter=self._rate_limiter,
             ),
             timeout=ocean.config.client_timeout,
         )
@@ -72,7 +133,6 @@ class HTTPBaseClient:
                     headers=headers,
                 )
                 response.raise_for_status()
-                logger.bind(http_request=1).info("Azure DevOps API request")
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:
                 if raise_on_404:
@@ -98,7 +158,22 @@ class HTTPBaseClient:
             raise e
         finally:
             if "response" in locals() and response:
-                await self._rate_limiter.update_from_headers(response.headers)
+                retry_config = getattr(self._client, "_retry_config", None)
+                multiplier = (
+                    retry_config.sync_tier_multiplier
+                    if retry_config is not None
+                    else None
+                )
+                _log_api_request(
+                    response,
+                    method,
+                    url,
+                    counted=sys.exc_info()[0] is None,
+                    sync_tier_multiplier=multiplier,
+                )
+                await self._rate_limiter.record_rate_limit_response(
+                    response, context=url
+                )
         return response
 
     async def _get_paginated_by_top_and_continuation_token(

@@ -1,14 +1,21 @@
-"""Redis pool hash parsing, sync-tier gates, and record field mapping."""
+"""Redis pool hash parsing, sync-tier gates, and record field mapping.
+
+Key and wait helpers live here so utils can import CentralizedRateLimiter
+without an import cycle.
+"""
 
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from port_ocean.rate_limiting.constants import DEFAULT_RATE_LIMITED_BLOCK_SECONDS
+from port_ocean.rate_limiting.constants import (
+    DEFAULT_RATE_LIMITED_BLOCK_SECONDS,
+    REDIS_KEY_PREFIX,
+)
 from port_ocean.rate_limiting.models import CentralizedRateLimitState, SyncTier
-from port_ocean.rate_limiting.utils import decode_redis_hash
 
 LOW_REMAINING_RATIO_CEILING = 0.25
 MEDIUM_REMAINING_RATIO_CEILING = 0.10
+DEFAULT_QUOTA_RESET_WAIT_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -19,6 +26,38 @@ class PoolRedisState:
     remaining: int = 0
     reset_at: float = 0.0
     blocked_until: float = 0.0
+
+
+def decode_redis_hash(raw: Mapping[Any, Any]) -> dict[str, str]:
+    decoded: dict[str, str] = {}
+    for key, value in raw.items():
+        k = key.decode() if isinstance(key, bytes) else str(key)
+        v = value.decode() if isinstance(value, bytes) else str(value)
+        decoded[k] = v
+    return decoded
+
+
+def pool_redis_key(org_id: str, integration_identifier: str, pool: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{org_id}:{integration_identifier}:{pool}"
+
+
+def wait_seconds_while_pool_blocked(blocked_until: float, now: float) -> float | None:
+    """Seconds left in a vendor block window, or None if not blocked."""
+    if blocked_until > now:
+        return blocked_until - now
+    return None
+
+
+def wait_seconds_until_quota_reset(
+    reset_at: float,
+    now: float,
+    *,
+    default: float = DEFAULT_QUOTA_RESET_WAIT_SECONDS,
+) -> float:
+    """Sleep hint when quota is tight: vendor reset time, or a small default."""
+    if reset_at > now:
+        return reset_at - now
+    return default
 
 
 def pool_state_from_redis_hash(raw: Mapping[Any, Any]) -> PoolRedisState:

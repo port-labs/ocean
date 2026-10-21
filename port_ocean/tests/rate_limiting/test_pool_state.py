@@ -6,8 +6,6 @@ from port_ocean.rate_limiting.pool_state import (
     pool_state_from_redis_hash,
     record_hash_mapping,
     should_back_off_for_sync_tier,
-)
-from port_ocean.rate_limiting.utils import (
     wait_seconds_until_quota_reset,
     wait_seconds_while_pool_blocked,
 )

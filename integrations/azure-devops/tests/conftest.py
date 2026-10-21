@@ -1,5 +1,5 @@
 from typing import Any, Generator
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 from integration import GitPortAppConfig
@@ -19,6 +19,24 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 MOCK_ORG_URL = "https://dev.azure.com/test"
 # resourceContainers fragment that satisfies _extract_org_url_from_payload.
 MOCK_RESOURCE_CONTAINERS_ACCOUNT = {"account": {"baseUrl": f"{MOCK_ORG_URL}/"}}
+
+
+@pytest.fixture(autouse=True)
+def disable_centralized_rate_limiting() -> Generator[None, None, None]:
+    """Azure DevOps unit tests exercise the local limiter; keep centralized path off."""
+    targets = (
+        "port_ocean.rate_limiting.utils.use_centralized_rate_limiting",
+        # Wrapper imports the name directly, so the utils patch does not reach it.
+        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
+    )
+    patches = [patch(target, return_value=False) for target in targets]
+    for item in patches:
+        item.start()
+    try:
+        yield
+    finally:
+        for item in patches:
+            item.stop()
 
 
 def mock_client_manager(monkeypatch: Any, mock_client: MagicMock) -> MagicMock:

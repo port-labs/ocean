@@ -15,10 +15,15 @@ async def test_record_centralized_rate_limit_calls_limiter() -> None:
     mock_limiter = MagicMock()
     mock_limiter.record_response = AsyncMock()
 
-    with patch(
-        "port_ocean.rate_limiting.utils.active_centralized_rate_limiter",
-        return_value=mock_limiter,
+    with (
+        patch(
+            "port_ocean.rate_limiting.utils.active_centralized_rate_limiter",
+            return_value=mock_limiter,
+        ),
+        patch("port_ocean.rate_limiting.utils.ocean") as mock_ocean,
     ):
+        # The record log reads this; Ocean is not initialized in this test.
+        mock_ocean.config.integration.identifier = "test"
         await record_centralized_rate_limit(
             "github_rest",
             state,

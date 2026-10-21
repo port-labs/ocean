@@ -10,6 +10,7 @@ from azure_devops.client.base_client import (
 )
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
+    ADO_RETRY_MAX_BACKOFF,
 )
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.context.ocean import PortOceanContext
@@ -31,7 +32,7 @@ def test_base_client_uses_azure_devops_retry_transport(
     assert isinstance(transport, AzureDevOpsRetryTransport)
     assert transport._rate_limiter is mock_client._rate_limiter
     assert transport._retry_config.max_attempts == 10
-    assert transport._retry_config.max_backoff_wait == ADO_RATE_LIMIT_WINDOW_SECONDS
+    assert transport._retry_config.max_backoff_wait == ADO_RETRY_MAX_BACKOFF
 
 
 @pytest.mark.asyncio

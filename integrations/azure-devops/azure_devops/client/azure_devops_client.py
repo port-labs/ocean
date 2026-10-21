@@ -2479,10 +2479,10 @@ class AzureDevopsClient(HTTPBaseClient):
         return run
 
     def is_close_to_rate_limit(self) -> bool:
-        return self._rate_limiter.is_close_to_limit
+        return self._rate_limiter.is_close_to_rate_limit()
 
     def seconds_until_rate_limit_reset(self) -> float:
-        return self._rate_limiter.seconds_until_reset
+        return self._rate_limiter.seconds_until_rate_limit_reset()
 
     async def get_pipeline_stage(
         self, project: dict[str, Any], pipeline_id: str, run_id: str, stage_id: str

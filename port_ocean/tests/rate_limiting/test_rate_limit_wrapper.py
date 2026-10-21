@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+from types import SimpleNamespace, TracebackType
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -24,7 +24,12 @@ class _StubWrapper(RateLimitWrapper):
     ) -> None:
         pass
 
-    async def _local_release(self, exc_type, exc_val, exc_tb) -> None:
+    async def _local_release(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.local_release()
 
     async def _local_ingest_response(
@@ -32,10 +37,12 @@ class _StubWrapper(RateLimitWrapper):
     ) -> None:
         await self.local_ingest(response, context)
 
-    def _parse_centralized_state(self, response, context):
+    def _parse_centralized_state(
+        self, response: httpx.Response, context: str
+    ) -> CentralizedRateLimitState | None:
         return CentralizedRateLimitState(remaining=1, limit=100, reset_at=1.0)
 
-    def _centralized_is_rate_limited(self, response) -> bool:
+    def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return False
 
     def _local_is_close_to_rate_limit(self) -> bool:
