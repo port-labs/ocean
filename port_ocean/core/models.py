@@ -277,6 +277,13 @@ class ActionRun(BaseModel, IntegrationRun):
         return self.status == ActionRunStatus.IN_PROGRESS
 
 
+class ResolvedExecutionIdentity(BaseModel):
+    """Claim-time execution identity (matches Port ResolvedExecutionIdentity)."""
+
+    type: Literal["actor", "service_account"]
+    identifier: str
+
+
 class WorkflowNodeRun(BaseModel, IntegrationRun):
     class WorkflowNode(BaseModel):
         config: WorkflowIntegrationActionConfig
@@ -293,7 +300,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     output: dict[str, Any] = Field(default_factory=dict)
     identity_token: str | None = Field(default=None, alias="identityToken")
     port_access_token: str | None = Field(default=None, alias="portAccessToken")
-    execution_identity: dict[str, Any] | None = Field(
+    execution_identity: ResolvedExecutionIdentity | None = Field(
         default=None, alias="executionIdentity"
     )
 

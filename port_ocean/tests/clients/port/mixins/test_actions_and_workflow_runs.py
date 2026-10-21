@@ -108,10 +108,9 @@ def test_workflow_node_run_parses_port_mcp_claim_fields() -> None:
         }
     )
     assert run.port_access_token == "aes256gcm.ciphertext"
-    assert run.execution_identity == {
-        "type": "actor",
-        "identifier": "user@example.com",
-    }
+    assert run.execution_identity is not None
+    assert run.execution_identity.type == "actor"
+    assert run.execution_identity.identifier == "user@example.com"
 
 
 @pytest.fixture

@@ -60,21 +60,16 @@ def get_run_access_token(run: IntegrationRun) -> str | None:
     No executionIdentity → None.
     Identity present but invalid / missing token → ActionExecutionError.
     """
-    if not isinstance(run, WorkflowNodeRun) or not isinstance(
-        run.execution_identity, dict
-    ):
+    if not isinstance(run, WorkflowNodeRun) or run.execution_identity is None:
         return None
 
     identity = run.execution_identity
-    identity_type = identity.get("type")
     allowed = _allowed_execution_identities(run.action_type)
-    if identity_type not in allowed:
+    if identity.type not in allowed:
         raise ActionExecutionError(
-            f'executionIdentity type "{identity_type}" is not allowed for'
+            f'executionIdentity type "{identity.type}" is not allowed for'
             f" {run.action_type}"
         )
-    if not isinstance(identity.get("identifier"), str):
-        raise ActionExecutionError("executionIdentity must include identifier")
 
     access_token = decrypt_run_access_token(run)
     if not access_token:
