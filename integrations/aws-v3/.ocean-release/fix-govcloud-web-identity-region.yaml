@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed GovCloud role assumption via web identity using the commercial STS endpoint instead of the partition-aware GovCloud region, causing InvalidIdentityToken failures.
