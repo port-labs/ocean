@@ -58,7 +58,6 @@ from actions.port_mcp import (
     PORT_MCP_SERVER_NAME,
     apply_port_mcp,
     attach_port_mcp_vault,
-    environment_allows_port_mcp,
     reauthorize_port_mcp_session,
 )
 from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
@@ -610,22 +609,6 @@ def _cloud_env(
     return SimpleNamespace(config=SimpleNamespace(type="cloud", networking=networking))
 
 
-def test_environment_allows_port_mcp_unrestricted_and_allow_flag() -> None:
-    assert environment_allows_port_mcp(
-        _cloud_env(net_type="unrestricted"), "https://mcp.port.io/v1"
-    )
-    assert environment_allows_port_mcp(
-        _cloud_env(allow_mcp_servers=True), "https://mcp.port.io/v1"
-    )
-    assert environment_allows_port_mcp(
-        _cloud_env(allowed_hosts=["mcp.port.io"]), "https://mcp.port.io/v1"
-    )
-    assert environment_allows_port_mcp(
-        _cloud_env(allowed_hosts=["*.port.io"]), "https://mcp.port.io/v1"
-    )
-    assert not environment_allows_port_mcp(_cloud_env(), "https://mcp.port.io/v1")
-
-
 def test_apply_port_mcp_adds_server_and_toolset() -> None:
     result = apply_port_mcp({"description": "d"})
     assert result["description"] == "d"
@@ -716,17 +699,17 @@ _PORT_MCP_ORG_SECRET = "x" * 32
 def _workflow_run_with_port_mcp(
     *,
     token: str = "tok_abc",
-    identity: dict[str, Any] | None = None,
+    identity: Any = None,
     execution_properties: dict[str, Any] | None = None,
 ) -> MagicMock:
     run = MagicMock(spec=WorkflowNodeRun)
     run.id = "run_1"
     run.action_type = "trigger_agent"
     run.port_access_token = encrypt_aes256_gcm(_PORT_MCP_ORG_SECRET, token)
-    run.execution_identity = identity or {
-        "type": "actor",
-        "identifier": "user@example.com",
-    }
+    run.execution_identity = identity or SimpleNamespace(
+        type="actor",
+        identifier="user@example.com",
+    )
     run.execution_properties = execution_properties or {
         "agentId": "agent_1",
         "environmentId": "env_1",
@@ -747,31 +730,8 @@ def _mock_ocean_with_client_secret() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_attach_port_mcp_vault_fails_before_vault_when_env_blocks() -> None:
-    client = MagicMock()
-    client.get_environment = AsyncMock(return_value=_cloud_env())
-    client.paginate = AsyncMock()
-    mock_ocean = _mock_ocean_with_client_secret()
-
-    with (
-        patch("actions.utils.ocean", mock_ocean),
-        patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
-        pytest.raises(ActionExecutionError, match="blocks Port MCP"),
-    ):
-        await attach_port_mcp_vault(
-            client,
-            _workflow_run_with_port_mcp(),
-            environment_id="env_blocked",
-            config={},
-        )
-
-    client.paginate.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
     client = MagicMock()
-    client.get_environment = AsyncMock(return_value=_cloud_env(net_type="unrestricted"))
     client.paginate = _empty_vault_pages
     created_vault = SimpleNamespace(id="vault_new")
     client.beta.vaults.create = AsyncMock(return_value=created_vault)
@@ -837,7 +797,6 @@ async def test_attach_port_mcp_vault_updates_existing_credential() -> None:
         yield pages.pop(0)
 
     client = MagicMock()
-    client.get_environment = AsyncMock(return_value=_cloud_env(net_type="unrestricted"))
     client.paginate = _paginate
     client.beta.vaults.create = AsyncMock()
     client.beta.vaults.credentials.create = AsyncMock()
@@ -957,7 +916,9 @@ async def test_trigger_agent_managed_port_mcp_fails_without_token() -> None:
     run.id = "run_1"
     run.action_type = "trigger_agent"
     run.port_access_token = None
-    run.execution_identity = {"type": "actor", "identifier": "user@example.com"}
+    run.execution_identity = SimpleNamespace(
+        type="actor", identifier="user@example.com"
+    )
     run.execution_properties = {
         "agentId": "agent_1",
         "environmentId": "env_1",
@@ -1029,7 +990,7 @@ async def test_trigger_agent_managed_port_mcp_rejects_cross_identity_continue() 
     executor = _build_executor(TriggerAgentExecutor, client_mock)
 
     run = _workflow_run_with_port_mcp(
-        identity={"type": "actor", "identifier": "bob@example.com"},
+        identity=SimpleNamespace(type="actor", identifier="bob@example.com"),
         execution_properties={
             "agentId": "agent_1",
             "sessionId": "sess_1",

@@ -1,5 +1,6 @@
 from typing import Any, Self
 
+from anthropic.types.beta import BetaManagedAgentsAgent
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_requires_action import (
     BetaManagedAgentsSessionRequiresAction,
@@ -9,7 +10,9 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
 from port_ocean.core.models import IntegrationRun
+from utils.cache import Cache
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
 
@@ -38,6 +41,10 @@ SESSION_RUNNING_STATUS_LABEL = "Session running"
 PROMPT_SENT_STATUS_LABEL = "Prompt sent"
 SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Cannot continue"
 SESSION_START_FAILED_STATUS_LABEL = "Start failed"
+
+
+_CACHE_TTL_SECONDS = 120
+_CACHE_MAX_ITEMS = 100
 
 
 class TriggerAgentInputs(AbstractAnthropicActionInput):
@@ -72,6 +79,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     ACTION_NAME = "trigger_agent"
     WEBHOOK_PROCESSOR_CLASS = TriggerAgentWebhookProcessor
     WEBHOOK_PATH = WEBHOOK_PATH
+
+    _agent_cache = Cache[BetaManagedAgentsAgent](
+        ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
+    )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         session_id = run.execution_properties.get("sessionId")
@@ -110,6 +121,13 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         return session
 
+    async def _is_agent_configured_with_port_mcp(self, agent_id: str) -> bool:
+        port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
+        agent = await self._agent_cache.get_or_fetch(
+            agent_id, lambda: self.client.get_agent(agent_id)
+        )
+        return any(s.url == port_mcp_url for s in agent.mcp_servers)
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
@@ -125,17 +143,19 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             should_raise=False,
         )
 
-        uses_port_mcp = await agent_has_port_mcp(self.client, inputs.agentId)
+        is_agent_configured_with_port_mcp = (
+            await self._is_agent_configured_with_port_mcp(inputs.agentId)
+        )
 
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId)
-            if uses_port_mcp:
+            if is_agent_configured_with_port_mcp:
                 await reauthorize_port_mcp_session(
                     self.client, run, session, vault_name=inputs.vaultName
                 )
         else:
             api_config = await normalize_session_config(inputs.config)
-            if uses_port_mcp:
+            if is_agent_configured_with_port_mcp:
                 api_config = await attach_port_mcp_vault(
                     self.client,
                     run,
