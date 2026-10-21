@@ -10,7 +10,6 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from utils.cache import Cache
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -42,7 +41,7 @@ SESSION_RUNNING_STATUS_LABEL = "Session running"
 PROMPT_SENT_STATUS_LABEL = "Prompt sent"
 SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Cannot continue"
 SESSION_START_FAILED_STATUS_LABEL = "Start failed"
-
+PORT_IDENTITY_ID_KEY = "port_identity_id"
 
 _CACHE_TTL_SECONDS = 120
 _CACHE_MAX_ITEMS = 100
@@ -92,7 +91,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         return None
 
     async def _ensure_session_continuable(
-        self, session_id: str
+        self, session_id: str, run: WorkflowNodeRun
     ) -> BetaManagedAgentsSession:
         session = await self.client.get_session(session_id)
         if session.status != "idle":
@@ -120,6 +119,22 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     )
             break
 
+        owner = session.metadata.get(PORT_IDENTITY_ID_KEY)
+        if not owner:
+            raise ActionExecutionError(
+                f"Cannot continue session {session.id}: session wasn't created by Port"
+            )
+        if run.execution_identity is None:
+            raise ActionExecutionError(
+                f"Cannot continue session {session.id}: owned by {owner} "
+                "without an execution identity"
+            )
+        if owner != run.execution_identity.identifier:
+            raise ActionExecutionError(
+                f"Cannot continue session {session.id}: owned by {owner}, "
+                f"run is {run.execution_identity.identifier}"
+            )
+
         return session
 
     async def execute(self, run: IntegrationRun) -> None:
@@ -141,7 +156,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
         )
         should_authenticate_port_mcp = (
-            (await is_agent_configured_with_port_mcp(agent))
+            (await is_agent_configured_with_port_mcp(agent.mcp_servers))
             and isinstance(run, WorkflowNodeRun)
             and run.execution_identity is not None
         )

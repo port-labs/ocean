@@ -20,11 +20,10 @@ from port_ocean.core.handlers.actions.utils import (
     resolve_port_mcp_url,
 )
 from clients.anthropic_client import AnthropicClient
+from actions.trigger_agent_executor import PORT_IDENTITY_ID_KEY
 from port_ocean.core.models import WorkflowNodeRun
-from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 PORT_MCP_SERVER_NAME = "port"
-PORT_IDENTITY_ID_KEY = "port_identity_id"
 _PORT_TOOLSET = BetaManagedAgentsMCPToolset(
     type="mcp_toolset",
     mcp_server_name=PORT_MCP_SERVER_NAME,
@@ -151,13 +150,6 @@ async def reauthorize_port_mcp_session(
 ) -> None:
     """Remint the vault credential for a continued session, verifying the
     run's identity still matches the session's owner. No-op if unowned."""
-    owner = session.metadata.get(PORT_IDENTITY_ID_KEY)
-    if owner != run.execution_identity.identifier:
-        raise ActionExecutionError(
-            f"Cannot continue session {session.id}: owned by {owner}, "
-            f"run is {run.execution_identity.identifier}"
-        )
-
     await _upsert_vault(
         client, run.execution_identity.identifier, get_run_access_token(run), vault_name
     )
