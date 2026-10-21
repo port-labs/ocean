@@ -340,32 +340,33 @@ class AnthropicClient:
             kwargs["metadata"] = metadata
         return await self._client.beta.vaults.create(**kwargs)
 
-    async def list_vaults(
-        self, *, include_archived: bool = False
-    ) -> AsyncGenerator[list[BetaManagedAgentsVault], None]:
-        paginator = await self._client.beta.vaults.list(
-            include_archived=include_archived
-        )
-        batch: list[BetaManagedAgentsVault] = []
-        async for vault in paginator:
-            batch.append(vault)
+    async def _paginate_items(
+        self, list_call: Awaitable[AsyncIterable[Any]]
+    ) -> AsyncGenerator[list[Any], None]:
+        paginator = await list_call
+        batch: list[Any] = []
+        async for item in paginator:
+            batch.append(item)
             if len(batch) >= self._page_size:
                 yield batch
                 batch = []
         if batch:
             yield batch
 
+    async def list_vaults(
+        self, *, include_archived: bool = False
+    ) -> AsyncGenerator[list[BetaManagedAgentsVault], None]:
+        async for batch in self._paginate_items(
+            self._client.beta.vaults.list(include_archived=include_archived)
+        ):
+            yield batch
+
     async def list_vault_credentials(
         self, vault_id: str
     ) -> AsyncGenerator[list[BetaManagedAgentsCredential], None]:
-        paginator = await self._client.beta.vaults.credentials.list(vault_id=vault_id)
-        batch: list[BetaManagedAgentsCredential] = []
-        async for credential in paginator:
-            batch.append(credential)
-            if len(batch) >= self._page_size:
-                yield batch
-                batch = []
-        if batch:
+        async for batch in self._paginate_items(
+            self._client.beta.vaults.credentials.list(vault_id=vault_id)
+        ):
             yield batch
 
     async def create_vault_credential(

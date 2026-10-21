@@ -5,7 +5,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.exceptions import InvalidActionParametersException
-from actions.port_mcp import apply_port_mcp_to_agent_config, port_mcp_enabled
+from actions.port_mcp import apply_port_mcp_to_agent_config
 from integration import ObjectKind
 
 CREATING_STATUS_LABEL = "Creating agent"
@@ -37,7 +37,7 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         elif not isinstance(extra, dict):
             raise InvalidActionParametersException("config must be an object")
 
-        if port_mcp_enabled(props.get("enablePortMcp")):
+        if props.get("enablePortMcp") is True:
             extra = apply_port_mcp_to_agent_config(extra)
 
         await ocean.port_client.post_run_log(

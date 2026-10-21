@@ -13,7 +13,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.exceptions import InvalidActionParametersException
 from actions.port_mcp import (
-    is_port_mcp_managed,
+    agent_uses_port_mcp,
     prepare_port_mcp_session_config,
     refresh_port_mcp_session,
 )
@@ -110,6 +110,13 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             raise InvalidActionParametersException(
                 "environmentId is required when starting a new session"
             )
+        raw_vault_name = props.get("vaultName")
+        if raw_vault_name is None or raw_vault_name == "":
+            vault_name = None
+        elif not isinstance(raw_vault_name, str):
+            raise InvalidActionParametersException("vaultName must be a string")
+        else:
+            vault_name = raw_vault_name.strip() or None
 
         await ocean.port_client.post_run_log(
             run,
@@ -122,21 +129,21 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             should_raise=False,
         )
 
-        agent = await self.client.get_agent(agent_id)
-        managed = is_port_mcp_managed(getattr(agent, "metadata", None))
+        uses_port_mcp = await agent_uses_port_mcp(self.client, agent_id)
 
         if session_id:
             session = await self._ensure_session_continuable(session_id)
-            if managed:
-                await refresh_port_mcp_session(self.client, run, session)
+            if uses_port_mcp:
+                await refresh_port_mcp_session(self.client, run, session, vault_name)
         else:
             api_config = await normalize_session_config(config)
-            if managed:
+            if uses_port_mcp:
                 api_config = await prepare_port_mcp_session_config(
                     self.client,
                     run,
                     new_environment_id,
                     api_config,
+                    vault_name,
                 )
             session = await self.client.create_session(
                 agent_id,

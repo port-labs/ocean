@@ -4,11 +4,11 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import apply_port_mcp_to_agent_config, port_mcp_enabled
+from actions.port_mcp import apply_port_mcp_to_agent_config
 from integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -23,16 +23,6 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     systemPrompt: str | None = None
     config: dict[str, Any] | None = None
     enablePortMcp: bool | None = None
-
-    @field_validator("enablePortMcp", mode="before")
-    @classmethod
-    def _coerce_enable_port_mcp(cls, value: Any) -> Any:
-        if value is None:
-            return None
-        enabled = port_mcp_enabled(value)
-        if enabled is None:
-            raise ValueError("enablePortMcp must be a boolean")
-        return enabled
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
@@ -70,9 +60,6 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
         ):
             if key not in config:
                 config[key] = _as_dicts(current_value)
-        metadata = getattr(current, "metadata", None)
-        if "metadata" not in config and isinstance(metadata, dict):
-            config["metadata"] = dict(metadata)
         return {**payload, **apply_port_mcp_to_agent_config(config)}
 
 
