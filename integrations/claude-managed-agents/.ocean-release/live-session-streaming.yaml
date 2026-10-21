@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Stream agent messages and session errors to Port workflow run logs in near-real-time during trigger_agent sessions.
