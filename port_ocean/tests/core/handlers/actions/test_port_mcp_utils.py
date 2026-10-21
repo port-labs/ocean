@@ -7,6 +7,7 @@ from port_ocean.core.handlers.actions.utils import (
     resolve_port_mcp_url,
 )
 from port_ocean.core.models import (
+    ResolvedExecutionIdentity,
     WorkflowIntegrationActionConfig,
     WorkflowNodeRun,
     WorkflowNodeRunStatus,
@@ -50,7 +51,7 @@ def test_resolve_port_mcp_url_maps_region() -> None:
 def _workflow_run(
     *,
     port_access_token: str | None,
-    execution_identity: dict[str, str] | None,
+    execution_identity: ResolvedExecutionIdentity | dict[str, str] | None,
 ) -> WorkflowNodeRun:
     return WorkflowNodeRun(
         id="wfnr_1",
