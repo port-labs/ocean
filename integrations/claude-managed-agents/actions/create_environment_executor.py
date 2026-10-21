@@ -64,7 +64,7 @@ class CreateEnvironmentExecutor(AbstractAnthropicExecutor):
         # `environment` kind mapping (webhooks also keep environments in sync).
         # Best-effort: never fails the run.
         await self.register_entity(
-            ObjectKind.ENVIRONMENT, environment.to_dict(mode="json"), run
+            ObjectKind.ENVIRONMENT, environment.to_dict(mode="json", warnings=False), run
         )
 
         if isinstance(run, WorkflowNodeRun):

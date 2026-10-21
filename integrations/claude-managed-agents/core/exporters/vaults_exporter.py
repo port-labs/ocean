@@ -12,4 +12,4 @@ class VaultsExporter(AbstractAnthropicExporter):
             self.client.beta.vaults.list(include_archived=include_archived)
         ):
             logger.debug(f"Fetched vaults batch with {len(batch)} records")
-            yield [item.to_dict(mode="json") for item in batch]
+            yield [item.to_dict(mode="json", warnings=False) for item in batch]

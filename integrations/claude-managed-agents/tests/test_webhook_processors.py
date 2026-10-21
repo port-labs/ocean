@@ -205,7 +205,7 @@ async def test_agent_upsert_event_fetches_resource() -> None:
         results = await processor.handle_event(payload, None)
     assert results.updated_raw_results == [{"id": "a1", "name": "bot"}]
     client.get_agent.assert_awaited_once_with("a1")
-    agent.to_dict.assert_called_once_with(mode="json")
+    agent.to_dict.assert_called_once_with(mode="json", warnings=False)
 
 
 # --- environment ---
@@ -271,7 +271,7 @@ async def test_memory_store_upsert_event_fetches_resource() -> None:
         results = await processor.handle_event(payload, None)
     assert results.updated_raw_results == [{"id": "ms1", "name": "mem"}]
     client.get_memory_store.assert_awaited_once_with("ms1")
-    memory_store.to_dict.assert_called_once_with(mode="json")
+    memory_store.to_dict.assert_called_once_with(mode="json", warnings=False)
 
 
 # --- trigger agent (action) ---

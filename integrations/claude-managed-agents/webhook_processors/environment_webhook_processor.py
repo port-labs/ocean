@@ -46,6 +46,6 @@ class EnvironmentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             f"Upserting environment {environment_id} from catalog ({event_type})"
         )
         return WebhookEventRawResults(
-            updated_raw_results=[environment.to_dict(mode="json")],
+            updated_raw_results=[environment.to_dict(mode="json", warnings=False)],
             deleted_raw_results=[],
         )

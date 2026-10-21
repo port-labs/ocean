@@ -112,7 +112,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
 
         logger.info(f"Updated Claude agent {agent_id} for run {run.id}")
 
-        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json"), run)
+        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run)
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id

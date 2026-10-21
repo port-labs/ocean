@@ -224,7 +224,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         # not mapped). Status updates arrive later via webhooks. Best-effort:
         # never fails the run. Convert to dict only at the catalog boundary.
         await self.register_entity(
-            ObjectKind.SESSION, session.to_dict(mode="json"), run
+            ObjectKind.SESSION, session.to_dict(mode="json", warnings=False), run
         )
 
         external_id = build_external_id(session.id, user_message.id)
