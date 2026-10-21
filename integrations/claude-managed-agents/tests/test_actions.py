@@ -2138,17 +2138,17 @@ async def test_continue_rejects_owned_session_without_execution_identity() -> No
 
 
 @pytest.mark.asyncio
-async def test_continue_rejects_session_not_created_by_port() -> None:
+async def test_continue_allows_session_without_port_owner() -> None:
     session = _sdk_session(metadata={})
     client = MagicMock()
     client.get_session = AsyncMock(return_value=session)
     client.get_session_events = _empty_session_events
     executor = _build_executor(TriggerAgentExecutor, client)
 
-    with pytest.raises(ActionExecutionError, match="wasn't created by Port"):
-        await executor._ensure_session_continuable(
-            "sess_1", _workflow_run_with_port_mcp()
-        )
+    result = await executor._ensure_session_continuable(
+        "sess_1", _workflow_run_with_port_mcp()
+    )
+    assert result is session
 
 
 @pytest.mark.asyncio

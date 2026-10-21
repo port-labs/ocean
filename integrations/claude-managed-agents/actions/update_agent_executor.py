@@ -1,5 +1,6 @@
 from typing import Any
 
+from anthropic.types.beta import BetaManagedAgentsAgent
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
@@ -34,7 +35,9 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
             )
         return self
 
-    def to_request_payload(self, current: Any = None) -> dict[str, Any]:
+    def to_request_payload(
+        self, existing_agent: BetaManagedAgentsAgent
+    ) -> dict[str, Any]:
         """Return only the fields that should be sent to the Anthropic API.
 
         Omits agentId (routing key, not an API field), drops None/empty values,
@@ -48,11 +51,11 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
             ).items()
             if value
         }
-        config = attach_port_mcp_settings_to_agent_config(
-            payload.pop("config", None),
-            current=current,
-            enabled=self.enablePortMcp,
-        )
+        config = payload.pop("config", None) or {}
+        if self.enablePortMcp:
+            config = attach_port_mcp_settings_to_agent_config(
+                config, existing_agent=existing_agent
+            )
         return {**payload, **config}
 
 
@@ -84,14 +87,14 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
         )
 
         try:
-            current = await self.client.get_agent(agent_id)
+            existing_agent = await self.client.get_agent(agent_id)
         except Exception as error:
             raise ActionExecutionError(
                 f"Failed to retrieve agent {agent_id}: {error}",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             ) from error
 
-        version = current.version
+        version = existing_agent.version
         if not isinstance(version, int):
             raise ActionExecutionError(
                 f"Agent {agent_id} returned an unexpected version: {version!r}",
@@ -102,7 +105,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
             agent = await self.client.update_agent(
                 agent_id,
                 version=version,
-                payload=inputs.to_request_payload(current),
+                payload=inputs.to_request_payload(existing_agent),
             )
         except Exception as error:
             raise ActionExecutionError(
