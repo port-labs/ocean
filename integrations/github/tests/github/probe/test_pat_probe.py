@@ -8,23 +8,33 @@ from github.clients.auth.personal_access_token_authenticator import (
 )
 from github.probe.pat.probe import (
     FINE_GRAINED_PAT_MESSAGE,
+    MALFORMED_FINE_GRAINED_PAT_MESSAGE,
     GitHubPatPermissionProbe,
     expand_pat_scopes,
+    format_authenticated_user_error,
     is_fine_grained_pat,
 )
 from port_ocean.core.probe.context import ProbeContext
 from port_ocean.core.probe.models import ProbeCheckStatus, ProbeStatus
 
+_VALID_FINE_GRAINED_PAT = "github_pat_" + ("a" * 22) + "_" + ("b" * 59)
+
 
 @pytest.mark.parametrize(
     "token, expected",
     [
-        ("github_pat_abc123", True),
-        ("ghp_classic_token", False),
+        (_VALID_FINE_GRAINED_PAT, True),
+        ("github_pat_abc123", False),
+        ("github_pat_" + ("a" * 22) + "_" + ("b" * 58), False),
+        ("github_pat_" + ("a" * 22) + "_" + ("b" * 60), False),
+        ("github_pat_" + ("a" * 21) + "_" + ("b" * 59), False),
+        ("github_pat_" + ("a" * 22) + ("b" * 59), False),
+        ("ghp_classic_token_with_enough_padding_here!", False),
         ("", False),
     ],
 )
 def test_is_fine_grained_pat(token: str, expected: bool) -> None:
+    # Act + Assert
     assert is_fine_grained_pat(token) is expected
 
 
@@ -46,17 +56,46 @@ def test_expand_pat_scopes_leaves_unmapped_scopes_unchanged() -> None:
 
 @pytest.mark.asyncio
 async def test_fine_grained_pat_probe_sets_message_without_api_calls() -> None:
+    # Arrange
     context = ProbeContext()
-    authenticator = PersonalTokenAuthenticator("github_pat_test_token")
+    authenticator = PersonalTokenAuthenticator(_VALID_FINE_GRAINED_PAT)
     mock_client = MagicMock()
     mock_client.get = AsyncMock()
     authenticator._http_client = mock_client
 
+    # Act
     probe = GitHubPatPermissionProbe(context, [authenticator])
     await probe.run()
 
+    # Assert
     assert context.message == FINE_GRAINED_PAT_MESSAGE
     mock_client.get.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_malformed_fine_grained_pat_probe_fails_without_api_calls(
+    mock_update_progress: AsyncMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    authenticator = PersonalTokenAuthenticator("github_pat_abc123")
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock()
+    authenticator._http_client = mock_client
+
+    # Act
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    # Assert
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == MALFORMED_FINE_GRAINED_PAT_MESSAGE
+    mock_client.get.assert_not_called()
+    mock_update_progress.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -321,4 +360,110 @@ async def test_classic_pat_probe_fails_when_configured_organization_is_inaccessi
         "or the token does not have access to it"
     )
     assert context.checks == []
+    mock_update_progress.assert_awaited()
+
+
+def test_format_authenticated_user_error_rate_limit_from_headers() -> None:
+    response = httpx.Response(
+        403,
+        json={"message": "API rate limit exceeded for user ID 1."},
+        headers={
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": "1710000000",
+        },
+    )
+
+    message = format_authenticated_user_error(response)
+
+    assert (
+        message == "Failed to fetch authenticated user: GitHub API rate limit exceeded"
+    )
+
+
+def test_format_authenticated_user_error_forbidden_not_rate_limit() -> None:
+    response = httpx.Response(
+        403,
+        json={"message": "Resource not accessible by personal access token"},
+        headers={"x-ratelimit-remaining": "4990"},
+    )
+
+    message = format_authenticated_user_error(response)
+
+    assert "403" in message
+    assert "not a rate limit error" in message
+    assert "Resource not accessible by personal access token" in message
+    assert "rate limit exceeded" not in message.casefold()
+
+
+def test_format_authenticated_user_error_unauthorized() -> None:
+    response = httpx.Response(401, json={"message": "Bad credentials"})
+
+    message = format_authenticated_user_error(response)
+
+    assert message == (
+        "Failed to fetch authenticated user: GitHub API returned that the "
+        "credentials are invalid. Please verify the personal access token is "
+        "valid and not expired."
+    )
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_fails_with_indicative_401_message(
+    mock_update_progress: AsyncMock,
+) -> None:
+    context = ProbeContext()
+    authenticator = PersonalTokenAuthenticator("ghp_bad_token")
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(
+        return_value=httpx.Response(401, json={"message": "Bad credentials"})
+    )
+    authenticator._http_client = mock_client
+
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    assert context.status is ProbeStatus.FAILED
+    assert context.message == (
+        "Failed to fetch authenticated user: GitHub API returned that the "
+        "credentials are invalid. Please verify the personal access token is "
+        "valid and not expired."
+    )
+    mock_update_progress.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.probe.context.ProbeContext.update_progress",
+    new_callable=AsyncMock,
+)
+async def test_classic_pat_probe_fails_with_indicative_rate_limit_message(
+    mock_update_progress: AsyncMock,
+) -> None:
+    context = ProbeContext()
+    authenticator = PersonalTokenAuthenticator("ghp_classic_token")
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(
+        return_value=httpx.Response(
+            403,
+            json={"message": "API rate limit exceeded"},
+            headers={
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": "1710000000",
+            },
+        )
+    )
+    authenticator._http_client = mock_client
+
+    probe = GitHubPatPermissionProbe(context, [authenticator])
+    await probe.run()
+
+    assert context.status is ProbeStatus.FAILED
+    assert (
+        context.message
+        == "Failed to fetch authenticated user: GitHub API rate limit exceeded"
+    )
     mock_update_progress.assert_awaited()

@@ -211,6 +211,33 @@ class TestRegisterOAuthProvider:
             context.register_oauth_provider(self._provider())
 
 
+class TestRegisterActionExecutor:
+    def test_skips_registration_when_should_run_actions_is_false(
+        self, mock_ocean: Ocean
+    ) -> None:
+        mock_ocean.config.event_listener = MagicMock(
+            type="POLLING", should_run_actions=False
+        )
+        mock_ocean.execution_manager = MagicMock()
+        context = PortOceanContext(mock_ocean)
+
+        context.register_action_executor(MagicMock())
+
+        mock_ocean.execution_manager.register_executor.assert_not_called()
+
+    def test_registers_when_should_run_actions_is_true(self, mock_ocean: Ocean) -> None:
+        mock_ocean.config.event_listener = MagicMock(
+            type="POLLING", should_run_actions=True
+        )
+        mock_ocean.execution_manager = MagicMock()
+        context = PortOceanContext(mock_ocean)
+        executor = MagicMock()
+
+        context.register_action_executor(executor)
+
+        mock_ocean.execution_manager.register_executor.assert_called_once_with(executor)
+
+
 # base_url property tests
 class TestBaseUrl:
     @pytest.mark.parametrize(
