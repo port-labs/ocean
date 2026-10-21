@@ -48,6 +48,13 @@ async def test_get_or_fetch_evicts_lru_when_over_max_items() -> None:
     fetch_a.assert_awaited_once()
 
 
+def test_get_and_set_round_trip() -> None:
+    cache: Cache[str] = Cache(ttl_seconds=60.0, max_items=8)
+    assert cache.get("missing") is None
+    cache.set("k", "v")
+    assert cache.get("k") == "v"
+
+
 def test_rejects_invalid_constructor_args() -> None:
     with pytest.raises(ValueError):
         Cache[Any](ttl_seconds=0, max_items=1)
