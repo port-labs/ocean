@@ -168,7 +168,12 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     self.client, run, session, vault_name=inputs.vaultName
                 )
         else:
-            api_config = await normalize_session_config(inputs.config)
+            api_config = await normalize_session_config(
+                {
+                    **inputs.config,
+                    PORT_IDENTITY_ID_KEY: run.execution_identity.identifier,
+                }
+            )
             if should_authenticate_port_mcp:
                 api_config = await attach_port_mcp_vault_to_session_config(
                     self.client,

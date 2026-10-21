@@ -20,7 +20,6 @@ from port_ocean.core.handlers.actions.utils import (
     resolve_port_mcp_url,
 )
 from clients.anthropic_client import AnthropicClient
-from actions.trigger_agent_executor import PORT_IDENTITY_ID_KEY
 from port_ocean.core.models import WorkflowNodeRun
 
 PORT_MCP_SERVER_NAME = "port"
@@ -95,9 +94,7 @@ async def _upsert_vault(
     )
     if vault is None:
         logger.info(f"Creating Port MCP vault '{name}'")
-        vault = await client.beta.vaults.create(
-            display_name=name, metadata={PORT_IDENTITY_ID_KEY: identity_id}
-        )
+        vault = await client.beta.vaults.create(display_name=name)
 
     credential = await _find(
         client.paginate(client.beta.vaults.credentials.list(vault_id=vault.id)),
@@ -134,10 +131,6 @@ async def attach_port_mcp_vault_to_session_config(
     )
     return {
         **config,
-        "metadata": {
-            **config.get("metadata", {}),
-            PORT_IDENTITY_ID_KEY: run.execution_identity.identifier,
-        },
         "vault_ids": [*config.get("vault_ids", []), vault_id],
     }
 
