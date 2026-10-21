@@ -4,10 +4,10 @@ import asyncio
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 import httpx
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, Omit
 from anthropic.types.beta import BetaEnvironment
 from anthropic.types.beta.beta_managed_agents_agent import BetaManagedAgentsAgent
 from anthropic.types.beta.beta_managed_agents_memory_store import (
@@ -248,13 +248,16 @@ class AnthropicClient:
 
     async def paginate(
         self, list_call: Awaitable[AsyncIterable[_ToDictModel]]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Await an SDK `list(...)` call and yield its records in fixed-size,
-        serialized batches."""
+    ) -> AsyncGenerator[list[_ToDictModel], None]:
+        """Await an SDK `list(...)` call and yield its records in fixed-size batches.
+
+        Callers are responsible for serializing items (e.g. ``item.to_dict(mode="json")``)
+        when a dict representation is needed.
+        """
         paginator = await list_call
-        batch: list[dict[str, Any]] = []
+        batch: list[_ToDictModel] = []
         async for item in paginator:
-            batch.append(item.to_dict(mode="json"))
+            batch.append(item)
             if len(batch) >= self._page_size:
                 yield batch
                 batch = []
@@ -263,6 +266,32 @@ class AnthropicClient:
 
     async def get_session(self, session_id: str) -> BetaManagedAgentsSession:
         return await self._client.beta.sessions.retrieve(session_id)
+
+    async def update_session(
+        self,
+        session_id: str,
+        *,
+        metadata: dict[str, str | None] | None = None,
+        title: str | None = None,
+    ) -> None:
+        kwargs: dict[str, Any] = {}
+        if metadata is not None:
+            kwargs["metadata"] = metadata
+        if title is not None:
+            kwargs["title"] = title
+        await self._client.beta.sessions.update(session_id, **kwargs)
+
+    async def list_active_sessions(
+        self,
+        limit: int | None = None,
+    ) -> AsyncGenerator[list[BetaManagedAgentsSession], None]:
+        async for batch in self.paginate(
+            self._client.beta.sessions.list(
+                statuses=["running", "rescheduling"],
+                limit=limit if limit is not None else Omit(),
+            )
+        ):
+            yield cast(list[BetaManagedAgentsSession], batch)
 
     async def get_session_events(
         self,
@@ -286,17 +315,10 @@ class AnthropicClient:
             limit=limit,
         ).model_dump(exclude_none=True)
 
-        paginator = await self._client.beta.sessions.events.list(
-            session_id, **list_kwargs
-        )
-        batch: list[BetaManagedAgentsSessionEvent] = []
-        async for event in paginator:
-            batch.append(event)
-            if len(batch) >= self._page_size:
-                yield batch
-                batch = []
-        if batch:
-            yield batch
+        async for batch in self.paginate(
+            self._client.beta.sessions.events.list(session_id, **list_kwargs)
+        ):
+            yield cast(list[BetaManagedAgentsSessionEvent], batch)
 
     async def get_vault(self, vault_id: str) -> BetaManagedAgentsVault:
         return await self._client.beta.vaults.retrieve(vault_id)
