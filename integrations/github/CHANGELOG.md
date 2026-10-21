@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.22.6 (2026-10-21)
+
+
+### Improvements
+
+- Clarify GitHub PAT and App probe auth failures for rate limits and invalid credentials
+
+
 ## 6.22.5 (2026-10-21)
 
 
