@@ -8,11 +8,12 @@ from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import ProbeContext
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from webhook_processors.board_webhook_processor import BoardWebhookProcessor
-
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
+from jira.helpers.incremental import apply_cursor_to_jql
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
@@ -62,6 +63,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+@ocean.on_incremental_resync(Kinds.ISSUE)
 @ocean.on_resync(Kinds.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()
@@ -70,8 +72,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(JiraIssueConfig, event.resource_config)
 
     jql = config.selector.jql.strip() if config.selector.jql else ""
-    params["jql"] = jql
-    logger.info(f"Using JQL filter: {jql}")
+    params["jql"] = apply_cursor_to_jql(jql, active_incremental_cursor())
 
     if config.selector.fields:
         params["fields"] = config.selector.fields
@@ -167,12 +168,14 @@ async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield sprint_batch
 
 
+@ocean.on_incremental_resync(Kinds.BACKLOG)
 @ocean.on_resync(Kinds.BACKLOG)
 async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()
     selector = cast(JiraBacklogResourceConfig, event.resource_config).selector
 
-    logger.info(f"Starting backlog resync with JQL filter: '{selector.jql or 'none'}'")
+    jql = apply_cursor_to_jql(selector.jql, active_incremental_cursor())
+    logger.info(f"Starting backlog resync with JQL filter: '{jql or 'none'}'")
 
     async for board_batch in client.get_paginated_boards():
         boards_with_ids = [board for board in board_batch if board.get("id")]
@@ -180,7 +183,7 @@ async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         backlog_streams = [
             client.get_paginated_backlog_for_board(
                 board_id=board["id"],
-                jql=selector.jql,
+                jql=jql,
                 fields=selector.fields,
                 use_software_api=selector.use_software_api,
             )
@@ -212,15 +215,15 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield epic_batch
 
 
+@ocean.on_incremental_resync(Kinds.WORKLOG)
 @ocean.on_resync(Kinds.WORKLOG)
 async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()
     config = cast(JiraWorklogResourceConfig, event.resource_config)
     selector = config.selector
 
-    async for issue_batch in client.get_paginated_issues(
-        {"jql": selector.jql, "fields": "key"}
-    ):
+    jql = apply_cursor_to_jql(selector.jql, active_incremental_cursor())
+    async for issue_batch in client.get_paginated_issues({"jql": jql, "fields": "key"}):
         worklog_streams = [
             client.get_paginated_worklogs_for_issue(
                 issue["key"],

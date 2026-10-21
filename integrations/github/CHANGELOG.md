@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.22.7 (2026-10-21)
+
+
+### Bug Fixes
+
+- Enable EXTGLOB for folder path patterns matching sunset github-app
+
+
 ## 6.22.6 (2026-10-21)
 
 
