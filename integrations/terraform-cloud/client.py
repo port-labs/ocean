@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Optional
 
 import httpx
 from aiolimiter import AsyncLimiter
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from loguru import logger
 
 from port_ocean.context.event import event
@@ -49,6 +50,11 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 NUMBER_OF_REQUESTS = 25
 NUMBER_OF_SECONDS = 1
+# Bounds in-flight per-project team-access requests. The rate limiter already caps
+# throughput at NUMBER_OF_REQUESTS/second, which 10 in-flight requests saturate at
+# any round-trip above ~400ms; more would only queue behind the limiter while holding
+# connections, and the shared http client sets no pool limit of its own.
+MAX_CONCURRENT_PROJECT_ACCESS_FETCHES = 10
 
 
 class TerraformClient:
@@ -103,8 +109,7 @@ class TerraformClient:
     async def get_paginated_resources(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = params or {}
-        params.update({"page[size]": PAGE_SIZE})
+        params = {**(params or {}), "page[size]": PAGE_SIZE}
         next_url = endpoint
 
         while next_url:
@@ -130,7 +135,92 @@ class TerraformClient:
                 break
 
             next_url = next_url.replace(self.api_url + "/", "")
+            # the next link carries page[size] and every filter in its query string
             params = None
+
+    async def get_paginated_organization_resources(
+        self, resource_path: str, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Starting to fetch {resource_path} across all organizations")
+        async for organizations in self.get_paginated_organizations():
+            for organization in organizations:
+                organization_id = organization["id"]
+                logger.info(
+                    f"Fetching {resource_path} for organization ID: {organization_id}"
+                )
+                endpoint = f"organizations/{organization_id}/{resource_path}"
+                async for resources in self.get_paginated_resources(endpoint, params):
+                    if not resources:
+                        logger.debug(
+                            f"No {resource_path} for organization ID: {organization_id}"
+                        )
+                        continue
+                    logger.info(
+                        f"Retrieved {len(resources)} {resource_path} for organization ID: {organization_id}"
+                    )
+                    yield resources
+
+    @cache_iterator_result()
+    async def get_paginated_projects(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.get_paginated_organization_resources("projects"):
+            yield projects
+
+    async def get_paginated_teams(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for teams in self.get_paginated_organization_resources("teams", params):
+            yield teams
+
+    async def get_paginated_organization_memberships(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for memberships in self.get_paginated_organization_resources(
+            "organization-memberships", params
+        ):
+            yield memberships
+
+    async def get_paginated_team_workspace_access(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Starting to fetch team workspace access grants")
+        total_access_records = 0
+        async for access_records in self.get_paginated_resources("team-workspaces"):
+            total_access_records += len(access_records)
+            yield access_records
+        logger.info(f"Total team workspace access grants: {total_access_records}")
+
+    async def get_team_access_for_single_project(
+        self, project_id: str, semaphore: asyncio.BoundedSemaphore
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async with semaphore:
+            async for access_records in self.get_paginated_resources(
+                "team-projects", {"filter[project][id]": project_id}
+            ):
+                if not access_records:
+                    logger.debug(f"No team access on project ID: {project_id}")
+                    continue
+                logger.info(
+                    f"Retrieved {len(access_records)} team project access records for project ID: {project_id}"
+                )
+                yield access_records
+
+    async def get_paginated_team_project_access(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Starting to fetch team project access across all projects")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECT_ACCESS_FETCHES)
+        total_access_records = 0
+        async for projects in self.get_paginated_projects():
+            access_tasks = [
+                self.get_team_access_for_single_project(project["id"], semaphore)
+                for project in projects
+            ]
+            async for access_records in stream_async_iterators_tasks(*access_tasks):
+                total_access_records += len(access_records)
+                yield access_records
+        logger.info(f"Total team project access records: {total_access_records}")
 
     async def get_paginated_organizations(
         self,
@@ -147,9 +237,7 @@ class TerraformClient:
             yield organizations
 
         event.attributes[CacheKeys.ORGANIZATIONS] = all_organizations
-        logger.info(
-            f"Total workspaces retrieved across all organizations: {len(all_organizations)}"
-        )
+        logger.info(f"Total organizations retrieved: {len(all_organizations)}")
 
     async def get_single_workspace(self, workspace_id: str) -> dict[str, Any]:
         logger.info(f"Fetching workspace with ID: {workspace_id}")
@@ -165,7 +253,7 @@ class TerraformClient:
         self, workspace_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching tags for workspace ID: {workspace_id}")
-        endpoint = f"/workspaces/{workspace_id}/relationships/tags"
+        endpoint = f"workspaces/{workspace_id}/relationships/tags"
         async for tags in self.get_paginated_resources(endpoint):
             yield tags
 
@@ -178,52 +266,17 @@ class TerraformClient:
         )
         return outputs["data"]
 
+    @cache_iterator_result()
     async def get_paginated_workspaces(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cache_key = "terraform-cloud-workspace"
-        if cache := event.attributes.get(cache_key):
-            logger.info("Retrieving workspaces data from cache")
-            yield cache
-            return
-
-        all_workspaces = []
-        logger.info("Starting to fetch workspaces across all organizations")
-        async for organizations in self.get_paginated_organizations():
-            for organization in organizations:
-                organization_id = organization["id"]
-                logger.info(
-                    f"Fetching workspaces for organization ID: {organization_id}"
-                )
-                endpoint = f"organizations/{organization_id}/workspaces"
-                async for workspaces in self.get_paginated_resources(endpoint):
-                    num_workspaces = len(workspaces)
-                    logger.info(
-                        f"Retrieved {num_workspaces} workspaces for organization ID: {organization_id}"
-                    )
-                    all_workspaces.extend(workspaces)
-                    yield workspaces
-
-        event.attributes[cache_key] = all_workspaces
+        total_workspaces = 0
+        async for workspaces in self.get_paginated_organization_resources("workspaces"):
+            total_workspaces += len(workspaces)
+            yield workspaces
         logger.info(
-            f"Total workspaces retrieved across all organizations: {len(all_workspaces)}"
+            f"Total workspaces retrieved across all organizations: {total_workspaces}"
         )
-
-    async def get_paginated_projects(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Starting to fetch projects across all organizations")
-        async for organizations in self.get_paginated_organizations():
-            for organization in organizations:
-                organization_id = organization["id"]
-                logger.info(f"Fetching projects for organization ID: {organization_id}")
-                endpoint = f"/organizations/{organization_id}/projects"
-                async for projects in self.get_paginated_resources(endpoint):
-                    num_projects = len(projects)
-                    logger.info(
-                        f"Retrieved {num_projects} projects for organization ID: {organization_id}"
-                    )
-                    yield projects
 
     async def get_paginated_runs_for_workspace(
         self, workspace_id: str

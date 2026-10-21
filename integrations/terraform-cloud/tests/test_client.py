@@ -1,3 +1,5 @@
+import time
+import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
@@ -7,6 +9,7 @@ import pytest
 from client import (
     TerraformClient,
     CacheKeys,
+    MAX_CONCURRENT_PROJECT_ACCESS_FETCHES,
     TERRAFORM_WEBHOOK_EVENTS,
     WorkspaceRunEvents,
     HealthAssessmentEvents,
@@ -256,6 +259,65 @@ class TestGetPaginatedResources:
             assert not resources
 
 
+class TestGetPaginatedResourcesParams:
+    @pytest.mark.asyncio
+    async def test_get_paginated_resources_does_not_mutate_caller_params(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        params = {"filter[status]": "active"}
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {"data": [{"id": "ou-1"}], "links": {}}
+
+            async for _ in terraform_client.get_paginated_resources(
+                "organizations/org-1/organization-memberships", params
+            ):
+                pass
+
+            assert params == {"filter[status]": "active"}
+            assert mock_request.call_args.kwargs["query_params"] == {
+                "filter[status]": "active",
+                "page[size]": 100,
+            }
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_resources_keeps_the_filter_on_later_pages(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        # shape captured live: the next link echoes every filter back
+        next_url = (
+            "https://app.terraform.io/api/v2/organizations/org-1/"
+            "organization-memberships?page%5Bnumber%5D=2&page%5Bsize%5D=1&q=jane"
+        )
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.side_effect = [
+                {"data": [{"id": "ou-1"}], "links": {"next": next_url}},
+                {"data": [{"id": "ou-2"}], "links": {}},
+            ]
+
+            result = []
+            async for batch in terraform_client.get_paginated_resources(
+                "organizations/org-1/organization-memberships",
+                {"q": "jane"},
+            ):
+                result.extend(batch)
+
+            assert [item["id"] for item in result] == ["ou-1", "ou-2"]
+
+            first_call, second_call = mock_request.call_args_list
+            assert first_call.kwargs["query_params"] == {
+                "q": "jane",
+                "page[size]": 100,
+            }
+            assert second_call.kwargs["query_params"] is None
+            assert "q=jane" in second_call.kwargs["endpoint"]
+
+
 class TestGetPaginatedOrganizations:
     @pytest.mark.asyncio
     async def test_get_paginated_organizations_no_cache(
@@ -360,7 +422,7 @@ class TestGetWorkspaceTags:
 
             assert len(tags) == 2
             mock_paginated.assert_called_once_with(
-                "/workspaces/ws-123/relationships/tags"
+                "workspaces/ws-123/relationships/tags"
             )
 
 
@@ -390,15 +452,11 @@ class TestGetPaginatedWorkspaces:
     ) -> None:
         organizations = [{"id": "org-1"}]
         workspaces = [{"id": "ws-1"}]
-        mock_event_context = MagicMock()
-        mock_event_context.attributes = {}
 
         with (
             patch.object(terraform_client, "get_paginated_organizations") as mock_orgs,
             patch.object(terraform_client, "get_paginated_resources") as mock_resources,
-            patch("port_ocean.context.event._get_event_context") as mock_get_context,
         ):
-            mock_get_context.return_value = mock_event_context
 
             async def org_generator() -> Any:
                 yield organizations
@@ -417,13 +475,44 @@ class TestGetPaginatedWorkspaces:
             assert result[0]["id"] == "ws-1"
 
 
-class TestGetPaginatedProjects:
+@pytest.mark.parametrize(
+    "resource_path", ["projects", "teams", "organization-memberships"]
+)
+class TestGetPaginatedOrganizationResources:
     @pytest.mark.asyncio
-    async def test_get_paginated_projects_success(
-        self, terraform_client: TerraformClient
+    async def test_yields_every_resource_and_sends_no_params_by_default(
+        self, terraform_client: TerraformClient, resource_path: str
     ) -> None:
-        organizations = [{"id": "org-1"}]
-        projects = [{"id": "proj-1"}]
+        with (
+            patch.object(terraform_client, "get_paginated_organizations") as mock_orgs,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def org_generator() -> Any:
+                yield [{"id": "org-1"}]
+
+            async def resource_generator() -> Any:
+                yield [{"id": "resource-1"}]
+
+            mock_orgs.return_value = org_generator()
+            mock_resources.return_value = resource_generator()
+
+            result = []
+            async for batch in terraform_client.get_paginated_organization_resources(
+                resource_path
+            ):
+                result.extend(batch)
+
+            assert [item["id"] for item in result] == ["resource-1"]
+            mock_resources.assert_called_once_with(
+                f"organizations/org-1/{resource_path}", None
+            )
+
+    @pytest.mark.asyncio
+    async def test_forwards_the_selector_params_unchanged(
+        self, terraform_client: TerraformClient, resource_path: str
+    ) -> None:
+        params = {"q": "platform"}
 
         with (
             patch.object(terraform_client, "get_paginated_organizations") as mock_orgs,
@@ -431,20 +520,301 @@ class TestGetPaginatedProjects:
         ):
 
             async def org_generator() -> Any:
-                yield organizations
+                yield [{"id": "org-1"}]
 
-            async def project_generator() -> Any:
-                yield projects
+            async def resource_generator() -> Any:
+                yield [{"id": "resource-1"}]
 
             mock_orgs.return_value = org_generator()
-            mock_resources.return_value = project_generator()
+            mock_resources.return_value = resource_generator()
+
+            async for _ in terraform_client.get_paginated_organization_resources(
+                resource_path, params
+            ):
+                pass
+
+            mock_resources.assert_called_once_with(
+                f"organizations/org-1/{resource_path}", params
+            )
+            assert params == {"q": "platform"}
+
+    @pytest.mark.asyncio
+    async def test_fans_out_over_every_organization(
+        self, terraform_client: TerraformClient, resource_path: str
+    ) -> None:
+        with (
+            patch.object(terraform_client, "get_paginated_organizations") as mock_orgs,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def org_generator() -> Any:
+                yield [{"id": "org-1"}, {"id": "org-2"}]
+
+            def resource_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    yield [{"id": "resource-1"}]
+
+                return generator()
+
+            mock_orgs.return_value = org_generator()
+            mock_resources.side_effect = resource_generator
 
             result = []
-            async for batch in terraform_client.get_paginated_projects():
+            async for batch in terraform_client.get_paginated_organization_resources(
+                resource_path
+            ):
                 result.extend(batch)
 
-            assert len(result) == 1
-            assert result[0]["id"] == "proj-1"
+            assert len(result) == 2
+            assert [call.args[0] for call in mock_resources.call_args_list] == [
+                f"organizations/org-1/{resource_path}",
+                f"organizations/org-2/{resource_path}",
+            ]
+
+
+class TestGetPaginatedTeams:
+    @pytest.mark.asyncio
+    async def test_fetches_teams_from_the_organization_path(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "get_paginated_organization_resources"
+        ) as mock_resources:
+
+            async def team_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "team-1"}]
+
+            mock_resources.return_value = team_generator()
+
+            result = []
+            async for batch in terraform_client.get_paginated_teams():
+                result.extend(batch)
+
+            assert result == [{"id": "team-1"}]
+            assert mock_resources.call_args.args == ("teams", None)
+
+    @pytest.mark.asyncio
+    async def test_forwards_selector_params(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "get_paginated_organization_resources"
+        ) as mock_resources:
+
+            async def team_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "team-1"}]
+
+            mock_resources.return_value = team_generator()
+
+            async for _ in terraform_client.get_paginated_teams({"q": "platform"}):
+                pass
+
+            assert mock_resources.call_args.args == ("teams", {"q": "platform"})
+
+
+class TestGetPaginatedOrganizationMemberships:
+    @pytest.mark.asyncio
+    async def test_forwards_selector_params(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "get_paginated_organization_resources"
+        ) as mock_resources:
+
+            async def membership_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "ou-1"}]
+
+            mock_resources.return_value = membership_generator()
+
+            result = []
+            async for batch in terraform_client.get_paginated_organization_memberships(
+                {"filter[status]": "active"}
+            ):
+                result.extend(batch)
+
+            assert result == [{"id": "ou-1"}]
+            assert mock_resources.call_args.args == (
+                "organization-memberships",
+                {"filter[status]": "active"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_passes_no_params_when_selector_is_unset(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "get_paginated_organization_resources"
+        ) as mock_resources:
+
+            async def membership_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "ou-1"}]
+
+            mock_resources.return_value = membership_generator()
+
+            async for _ in terraform_client.get_paginated_organization_memberships():
+                pass
+
+            assert mock_resources.call_args.args == ("organization-memberships", None)
+
+
+class TestGetPaginatedTeamWorkspaceAccess:
+    @pytest.mark.asyncio
+    async def test_lists_grants_without_a_workspace_filter(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "get_paginated_resources"
+        ) as mock_resources:
+
+            async def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "tws-1"}, {"id": "tws-2"}]
+
+            mock_resources.return_value = access_generator()
+
+            result = []
+            async for batch in terraform_client.get_paginated_team_workspace_access():
+                result.extend(batch)
+
+            assert len(result) == 2
+            assert mock_resources.call_args.args == ("team-workspaces",)
+
+
+class TestGetPaginatedTeamProjectAccess:
+    @pytest.mark.asyncio
+    async def test_fetches_access_for_every_project(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with (
+            patch.object(terraform_client, "get_paginated_projects") as mock_projects,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def project_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "prj-1"}, {"id": "prj-2"}]
+
+            def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    yield [{"id": "tprj-1"}]
+
+                return generator()
+
+            mock_projects.return_value = project_generator()
+            mock_resources.side_effect = access_generator
+
+            result = []
+            async for batch in terraform_client.get_paginated_team_project_access():
+                result.extend(batch)
+
+            assert len(result) == 2
+            assert sorted(
+                call.args[1]["filter[project][id]"]
+                for call in mock_resources.call_args_list
+            ) == ["prj-1", "prj-2"]
+            assert {call.args[0] for call in mock_resources.call_args_list} == {
+                "team-projects"
+            }
+
+    @pytest.mark.asyncio
+    async def test_bounds_concurrent_project_fetches(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        project_count = MAX_CONCURRENT_PROJECT_ACCESS_FETCHES * 2
+        in_flight = 0
+        peak_in_flight = 0
+
+        with (
+            patch.object(terraform_client, "get_paginated_projects") as mock_projects,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def project_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": f"prj-{index}"} for index in range(project_count)]
+
+            def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    nonlocal in_flight, peak_in_flight
+                    in_flight += 1
+                    peak_in_flight = max(peak_in_flight, in_flight)
+                    await asyncio.sleep(0.01)
+                    in_flight -= 1
+                    yield [{"id": "tprj-1"}]
+
+                return generator()
+
+            mock_projects.return_value = project_generator()
+            mock_resources.side_effect = access_generator
+
+            result = []
+            async for (
+                access_batch
+            ) in terraform_client.get_paginated_team_project_access():
+                result.extend(access_batch)
+
+            assert len(result) == project_count
+            assert 1 < peak_in_flight <= MAX_CONCURRENT_PROJECT_ACCESS_FETCHES
+
+    @pytest.mark.asyncio
+    async def test_fetches_projects_in_the_same_batch_concurrently(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        project_count = 5
+        fetch_duration = 0.1
+
+        with (
+            patch.object(terraform_client, "get_paginated_projects") as mock_projects,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def project_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": f"prj-{index}"} for index in range(project_count)]
+
+            def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    await asyncio.sleep(fetch_duration)
+                    yield [{"id": "tprj-1"}]
+
+                return generator()
+
+            mock_projects.return_value = project_generator()
+            mock_resources.side_effect = access_generator
+
+            started_at = time.monotonic()
+            result = []
+            async for (
+                access_batch
+            ) in terraform_client.get_paginated_team_project_access():
+                result.extend(access_batch)
+            elapsed = time.monotonic() - started_at
+
+            assert len(result) == project_count
+            assert elapsed < project_count * fetch_duration / 2
+
+    @pytest.mark.asyncio
+    async def test_yields_nothing_when_no_project_has_team_access(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with (
+            patch.object(terraform_client, "get_paginated_projects") as mock_projects,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def project_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "prj-1"}]
+
+            def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    yield []
+
+                return generator()
+
+            mock_projects.return_value = project_generator()
+            mock_resources.side_effect = access_generator
+
+            result = []
+            async for batch in terraform_client.get_paginated_team_project_access():
+                result.extend(batch)
+
+            assert result == []
 
 
 class TestGetPaginatedRunsForWorkspace:
