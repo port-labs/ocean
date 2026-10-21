@@ -57,7 +57,7 @@ class ArchiveAgentExecutor(AbstractAnthropicExecutor):
 
         # Reflect the archived state in the catalog immediately (webhooks also
         # keep agents in sync). Best-effort: never fails the run.
-        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json"), run)
+        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run)
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id

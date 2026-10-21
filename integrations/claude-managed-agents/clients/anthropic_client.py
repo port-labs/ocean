@@ -255,7 +255,7 @@ class AnthropicClient:
     ) -> AsyncGenerator[list[_ToDictModel], None]:
         """Await an SDK `list(...)` call and yield its records in fixed-size batches.
 
-        Callers are responsible for serializing items (e.g. ``item.to_dict(mode="json")``)
+        Callers are responsible for serializing items (e.g. ``item.to_dict(mode="json", warnings=False)``)
         when a dict representation is needed.
         """
         paginator = await list_call
