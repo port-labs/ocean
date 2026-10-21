@@ -8,7 +8,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import apply_port_mcp
+from actions.port_mcp import attach_port_mcp_settings_to_agent_config
 from integration import ObjectKind
 
 CREATING_STATUS_LABEL = "Creating agent"
@@ -36,7 +36,9 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateAgentInputs.from_execution_properties(run.execution_properties)
-        extra = apply_port_mcp(inputs.config, enabled=inputs.enablePortMcp)
+        extra = attach_port_mcp_settings_to_agent_config(
+            inputs.config, enabled=inputs.enablePortMcp
+        )
 
         await ocean.port_client.post_run_log(
             run,

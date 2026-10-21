@@ -56,8 +56,8 @@ from actions.types import TriggerAgentSessionOutput, list_cost_to_usd
 from actions.port_mcp import (
     PORT_IDENTITY_ID_KEY,
     PORT_MCP_SERVER_NAME,
-    apply_port_mcp,
-    attach_port_mcp_vault,
+    attach_port_mcp_settings_to_agent_config,
+    attach_port_mcp_vault_to_session_config,
     reauthorize_port_mcp_session,
 )
 from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
@@ -610,7 +610,7 @@ def _cloud_env(
 
 
 def test_apply_port_mcp_adds_server_and_toolset() -> None:
-    result = apply_port_mcp({"description": "d"})
+    result = attach_port_mcp_settings_to_agent_config({"description": "d"})
     assert result["description"] == "d"
     assert "metadata" not in result
     assert any(
@@ -626,8 +626,8 @@ def test_apply_port_mcp_adds_server_and_toolset() -> None:
 
 
 def test_apply_port_mcp_is_idempotent() -> None:
-    once = apply_port_mcp({})
-    twice = apply_port_mcp(once)
+    once = attach_port_mcp_settings_to_agent_config({})
+    twice = attach_port_mcp_settings_to_agent_config(once)
     assert len(twice["mcp_servers"]) == 1
     assert len(twice["tools"]) == 1
 
@@ -743,7 +743,7 @@ async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
         patch("actions.utils.ocean", mock_ocean),
         patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
     ):
-        config = await attach_port_mcp_vault(
+        config = await attach_port_mcp_vault_to_session_config(
             client,
             _workflow_run_with_port_mcp(),
             environment_id="env_1",
@@ -769,7 +769,7 @@ async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
         patch("actions.utils.ocean", mock_ocean),
         patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
     ):
-        await attach_port_mcp_vault(
+        await attach_port_mcp_vault_to_session_config(
             client,
             _workflow_run_with_port_mcp(),
             environment_id="env_1",
@@ -807,7 +807,7 @@ async def test_attach_port_mcp_vault_updates_existing_credential() -> None:
         patch("actions.utils.ocean", mock_ocean),
         patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
     ):
-        config = await attach_port_mcp_vault(
+        config = await attach_port_mcp_vault_to_session_config(
             client,
             _workflow_run_with_port_mcp(),
             environment_id="env_1",

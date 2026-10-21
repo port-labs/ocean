@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol, cast
 
+from anthropic.resources.beta import AsyncBeta
 import httpx
 from anthropic import AsyncAnthropic, Omit
 from anthropic.types.beta import BetaEnvironment
@@ -242,7 +243,7 @@ class AnthropicClient:
         return self._console_host
 
     @property
-    def beta(self) -> Any:
+    def beta(self) -> AsyncBeta:
         """Direct access to the SDK's Managed Agents namespace, for exporters to
         call the resource they're responsible for. Rate limiting and pacing are
         applied transparently at the transport layer (see `_on_request`/

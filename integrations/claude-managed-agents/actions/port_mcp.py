@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from anthropic.types.beta import (
     BetaManagedAgentsAgent,
     BetaManagedAgentsSession,
+)
+from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+    BetaManagedAgentsMCPServerURLDefinition,
+)
+from anthropic.types.beta.beta_managed_agents_mcp_toolset import (
+    BetaManagedAgentsMCPToolset,
+    BetaManagedAgentsMCPToolsetDefaultConfig,
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -13,69 +20,73 @@ from port_ocean.core.handlers.actions.utils import (
     resolve_port_mcp_url,
 )
 from clients.anthropic_client import AnthropicClient
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 PORT_MCP_SERVER_NAME = "port"
 PORT_IDENTITY_ID_KEY = "port_identity_id"
-PORT_MCP_FAILED_STATUS_LABEL = "Port MCP failed"
-_PORT_TOOLSET = {
-    "type": "mcp_toolset",
-    "mcp_server_name": PORT_MCP_SERVER_NAME,
-    "default_config": {"permission_policy": {"type": "always_allow"}},
-}
+_PORT_TOOLSET = BetaManagedAgentsMCPToolset(
+    type="mcp_toolset",
+    mcp_server_name=PORT_MCP_SERVER_NAME,
+    default_config=BetaManagedAgentsMCPToolsetDefaultConfig(
+        permission_policy={"type": "always_allow"}
+    ),
+)
 
 
-def _fail(message: str) -> ActionExecutionError:
-    return ActionExecutionError(message, status_label=PORT_MCP_FAILED_STATUS_LABEL)
+def _normalize_port_mcp_url(url: str) -> str:
+    return url.replace("getport", "port").rstrip("/")
 
 
-def _merge_lists_by_key(list1: list[Any], list2: list[Any], key: str) -> list[Any]:
-    return list({d[key.rstrip("/")]: d for d in list1 + list2 if key in d}.values())
+def _merge_mcp_servers_by_url(
+    list1: list[BetaManagedAgentsMCPServerURLDefinition],
+    list2: list[BetaManagedAgentsMCPServerURLDefinition],
+) -> list[BetaManagedAgentsMCPServerURLDefinition]:
+    return list({_normalize_port_mcp_url(d.url): d for d in list1 + list2}.values())
 
 
-def apply_port_mcp(
-    config: dict[str, Any] | None = None,
-    agent: BetaManagedAgentsAgent | None = None,
+async def is_agent_configured_with_port_mcp(
+    mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
+) -> bool:
+    port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
+    return any(
+        _normalize_port_mcp_url(s.url) == _normalize_port_mcp_url(port_mcp_url)
+        for s in mcp_servers
+    )
+
+
+def attach_port_mcp_settings_to_agent_config(
+    proposed_config: dict[str, Any],
+    exitsing_agent: BetaManagedAgentsAgent | None = None,
 ) -> dict[str, Any]:
     """Attach the Port MCP server + toolset to agent config. Pass ``current``
     on update to keep existing tools/mcp_servers; ``enabled=False`` no-ops."""
     port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
-    agent_servers = agent.mcp_servers if agent else []
-    agent_tools = agent.tools if agent else []
-    agent_tools = _as_list(config.get("tools"))
-    if not _has_port_server(servers, url):
-        servers.append({"type": "url", "name": PORT_MCP_SERVER_NAME, "url": url})
-    if not any(
-        isinstance(t, dict) and t.get("mcp_server_name") == PORT_MCP_SERVER_NAME
-        for t in tools
-    ):
-        tools.append(dict(_PORT_TOOLSET))
-    return {**config, "mcp_servers": servers, "tools": tools}
-
-
-def _claim(run: IntegrationRun) -> tuple[str | None, str | None]:
-    """Return (access_token, identity_id) the run acts as, or (x, None) if the
-    run has no execution identity (e.g. a classic self-service action run)."""
-    try:
-        token = get_run_access_token(run)
-    except ActionExecutionError as error:
-        raise _fail(str(error)) from error
-    if not isinstance(run, WorkflowNodeRun) or run.execution_identity is None:
-        return token, None
-    return token, run.execution_identity.identifier
-
-
-async def _find(pages: Any, match: Any) -> Any:
-    async for batch in pages:
-        for item in batch:
-            if match(item):
-                return item
-    return None
+    agent_servers = exitsing_agent.mcp_servers if exitsing_agent else []
+    agent_tools = exitsing_agent.tools if exitsing_agent else []
+    mcp_servers = _merge_mcp_servers_by_url(
+        agent_servers,
+        cast(
+            list[BetaManagedAgentsMCPServerURLDefinition],
+            proposed_config.get("mcp_servers", []),
+        ),
+    )
+    if not is_agent_configured_with_port_mcp(mcp_servers):
+        mcp_servers.append(
+            BetaManagedAgentsMCPServerURLDefinition(
+                type="url", name=PORT_MCP_SERVER_NAME, url=port_mcp_url
+            )
+        )
+        return {
+            **proposed_config,
+            "mcp_servers": mcp_servers,
+            "tools": [*agent_tools, _PORT_TOOLSET],
+        }
+    return proposed_config
 
 
 async def _upsert_vault(
-    client: Any, identity_id: str, access_token: str, vault_name: str | None
+    client: AnthropicClient, identity_id: str, access_token: str, vault_name: str | None
 ) -> str:
     """Find or create the user's vault, then (re)mint its Port MCP credential."""
     name = vault_name or f"port-mcp-{identity_id}"
@@ -110,33 +121,31 @@ async def _upsert_vault(
     return vault.id
 
 
-async def attach_port_mcp_vault(
-    client: Any,
-    run: IntegrationRun,
+async def attach_port_mcp_vault_to_session_config(
+    client: AnthropicClient,
+    run: WorkflowNodeRun,
     *,
-    environment_id: str,
     config: dict[str, Any],
     vault_name: str | None = None,
 ) -> dict[str, Any]:
     """Wire a per-user vault into a new session's config; no-op without a
     Port access token/identity on the run."""
-    token, identity_id = _claim(run)
-    if not token or not identity_id:
-        return config
-
-    vault_id = await _upsert_vault(client, identity_id, token, vault_name)
-    raw_metadata = config.get("metadata")
-    metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
-    metadata[PORT_IDENTITY_ID_KEY] = identity_id
-    vault_ids = _as_list(config.get("vault_ids"))
-    if vault_id not in vault_ids:
-        vault_ids.append(vault_id)
-    return {**config, "metadata": metadata, "vault_ids": vault_ids}
+    vault_id = await _upsert_vault(
+        client, run.execution_identity.identifier, get_run_access_token(run), vault_name
+    )
+    return {
+        **config,
+        "metadata": {
+            **config.get("metadata", {}),
+            PORT_IDENTITY_ID_KEY: run.execution_identity.identifier,
+        },
+        "vault_ids": [*config.get("vault_ids", []), vault_id],
+    }
 
 
 async def reauthorize_port_mcp_session(
     client: AnthropicClient,
-    run: IntegrationRun,
+    run: WorkflowNodeRun,
     session: BetaManagedAgentsSession,
     vault_name: str | None = None,
 ) -> None:
@@ -144,7 +153,7 @@ async def reauthorize_port_mcp_session(
     run's identity still matches the session's owner. No-op if unowned."""
     owner = session.metadata.get(PORT_IDENTITY_ID_KEY)
     if owner != run.execution_identity.identifier:
-        raise _fail(
+        raise ActionExecutionError(
             f"Cannot continue session {session.id}: owned by {owner}, "
             f"run is {run.execution_identity.identifier}"
         )

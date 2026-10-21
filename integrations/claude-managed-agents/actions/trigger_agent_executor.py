@@ -11,7 +11,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from utils.cache import Cache
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
@@ -20,7 +20,8 @@ from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp import (
     agent_has_port_mcp,
-    attach_port_mcp_vault,
+    attach_port_mcp_vault_to_session_config,
+    is_agent_configured_with_port_mcp,
     reauthorize_port_mcp_session,
 )
 from actions.types import TriggerAgentSessionOutput
@@ -121,13 +122,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         return session
 
-    async def _is_agent_configured_with_port_mcp(self, agent_id: str) -> bool:
-        port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
-        agent = await self._agent_cache.get_or_fetch(
-            agent_id, lambda: self.client.get_agent(agent_id)
-        )
-        return any(s.url == port_mcp_url for s in agent.mcp_servers)
-
     async def execute(self, run: IntegrationRun) -> None:
         inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
@@ -143,20 +137,25 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             should_raise=False,
         )
 
-        is_agent_configured_with_port_mcp = (
-            await self._is_agent_configured_with_port_mcp(inputs.agentId)
+        agent = await self._agent_cache.get_or_fetch(
+            inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
+        )
+        should_authenticate_port_mcp = (
+            (await is_agent_configured_with_port_mcp(agent))
+            and isinstance(run, WorkflowNodeRun)
+            and run.execution_identity is not None
         )
 
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId)
-            if is_agent_configured_with_port_mcp:
+            if should_authenticate_port_mcp:
                 await reauthorize_port_mcp_session(
                     self.client, run, session, vault_name=inputs.vaultName
                 )
         else:
             api_config = await normalize_session_config(inputs.config)
-            if is_agent_configured_with_port_mcp:
-                api_config = await attach_port_mcp_vault(
+            if should_authenticate_port_mcp:
+                api_config = await attach_port_mcp_vault_to_session_config(
                     self.client,
                     run,
                     environment_id=inputs.environmentId,
