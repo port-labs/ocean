@@ -5,7 +5,6 @@ from typing import Any, cast
 
 from anthropic.types.beta import (
     BetaManagedAgentsAgent,
-    BetaManagedAgentsSession,
 )
 from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVault
 from anthropic.types.beta.vaults.beta_managed_agents_credential import (
