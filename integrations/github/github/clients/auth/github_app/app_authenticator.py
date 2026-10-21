@@ -3,8 +3,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Optional
 
 import jwt
+
+from github.clients.constants import SKIP_RETRY_CONFIG
 from port_ocean.context.ocean import ocean
-from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 
 from github.clients.auth.abstract_authenticator import (
@@ -14,8 +15,6 @@ from github.clients.auth.abstract_authenticator import (
     GitHubAppToken,
 )
 from github.helpers.exceptions import AuthenticationException
-
-_NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
 
 
 class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
@@ -95,7 +94,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             response = await self.client.post(
                 url,
                 headers=headers,
-                extensions=_NO_RETRY if skip_retry else {},
+                extensions=SKIP_RETRY_CONFIG if skip_retry else {},
             )
             response.raise_for_status()
             data = response.json()
@@ -121,7 +120,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
                 url,
                 params={"per_page": self._INSTALLATIONS_PAGE_SIZE},
                 headers=headers,
-                extensions=_NO_RETRY if skip_retry else {},
+                extensions=SKIP_RETRY_CONFIG if skip_retry else {},
             )
             response.raise_for_status()
             page: list[dict[str, Any]] = response.json()
