@@ -16,10 +16,7 @@ from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
 from loguru import logger
 from pydantic import BaseModel
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.actions.utils import (
-    get_run_access_token,
-    resolve_port_mcp_url,
-)
+from port_ocean.core.handlers.actions.utils import get_run_access_token
 from utils.misc import find_first_item_in_generator
 from clients.anthropic_client import AnthropicClient
 from port_ocean.core.models import WorkflowNodeRun
@@ -65,7 +62,7 @@ def is_vault_credential_name_matching(
 def is_agent_configured_with_port_mcp(
     mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
 ) -> bool:
-    port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
+    port_mcp_url = ocean.config.port.mcp_url
     return any(
         _normalize_port_mcp_url(s.url) == _normalize_port_mcp_url(port_mcp_url)
         for s in mcp_servers
@@ -78,7 +75,7 @@ def attach_port_mcp_settings_to_agent_config(
 ) -> dict[str, Any]:
     """Attach the Port MCP server + toolset to agent config. Pass
     ``existing_agent`` on update to keep existing tools/mcp_servers."""
-    port_mcp_url = resolve_port_mcp_url(ocean.config.port.base_url)
+    port_mcp_url = ocean.config.port.mcp_url
     agent_servers = existing_agent.mcp_servers if existing_agent else []
     agent_tools = existing_agent.tools if existing_agent else []
     mcp_servers = _merge_mcp_servers_by_url(
@@ -127,7 +124,7 @@ async def ensure_port_mcp_binding(
             auth={
                 "type": "static_bearer",
                 "token": get_run_access_token(run),
-                "mcp_server_url": resolve_port_mcp_url(ocean.config.port.base_url),
+                "mcp_server_url": ocean.config.port.mcp_url,
             },
             display_name=PORT_MCP_CREDENTIAL_NAME,
         )
