@@ -53,16 +53,13 @@ from actions.update_environment_executor import (
     UpdateEnvironmentExecutor,
 )
 from actions.types import TriggerAgentSessionOutput, list_cost_to_usd
-from actions import port_mcp as port_mcp_module
 from actions.port_mcp import (
-    refresh_port_mcp_session,
     PORT_IDENTITY_ID_KEY,
     PORT_MCP_SERVER_NAME,
-    apply_port_mcp_to_agent_config,
-    ensure_environment_allows_port_mcp,
-    ensure_port_mcp_vault,
+    apply_port_mcp,
+    attach_port_mcp_vault,
     environment_allows_port_mcp,
-    prepare_port_mcp_session_config,
+    reauthorize_port_mcp_session,
 )
 from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
 from actions.utils import (
@@ -186,14 +183,10 @@ def _port_mcp_agent(**kwargs: Any) -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def _port_mcp_test_context() -> Iterator[None]:
-    port_mcp_module._ALLOWED_ENVIRONMENTS.clear()
-    port_mcp_module._AGENTS_WITH_PORT_MCP.clear()
     mock_ocean = MagicMock()
     mock_ocean.config.port = SimpleNamespace(base_url="https://api.getport.io")
     with patch("actions.port_mcp.ocean", mock_ocean):
         yield
-    port_mcp_module._ALLOWED_ENVIRONMENTS.clear()
-    port_mcp_module._AGENTS_WITH_PORT_MCP.clear()
 
 
 async def _empty_vault_pages(*_args: Any, **_kwargs: Any) -> AsyncIterator[list[Any]]:
@@ -420,9 +413,9 @@ async def test_create_agent_executor_creates_and_completes() -> None:
     ):
         await executor.execute(run)
 
-    client_mock.create_agent.assert_awaited_once_with(
-        name="n", model="m", system="s", extra={"description": "d"}
-    )
+    extra = client_mock.create_agent.await_args.kwargs["extra"]
+    assert extra["description"] == "d"
+    assert any(s.get("name") == PORT_MCP_SERVER_NAME for s in extra["mcp_servers"])
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
 
@@ -527,7 +520,11 @@ async def test_create_agent_executor_passes_config_through() -> None:
 
     mcp_config = {
         "mcp_servers": [
-            {"type": "url", "name": "port", "url": "https://mcp.port.io/v1"}
+            {
+                "type": "url",
+                "name": "port",
+                "url": resolve_port_mcp_url("https://api.getport.io"),
+            }
         ],
         "tools": [
             {
@@ -578,6 +575,7 @@ async def test_create_agent_executor_passes_skills_config_through() -> None:
         "model": "m",
         "systemPrompt": "s",
         "config": {"skills": skills},
+        "enablePortMcp": False,
     }
 
     mock_ocean = _build_mock_ocean()
@@ -628,21 +626,8 @@ def test_environment_allows_port_mcp_unrestricted_and_allow_flag() -> None:
     assert not environment_allows_port_mcp(_cloud_env(), "https://mcp.port.io/v1")
 
 
-@pytest.mark.asyncio
-async def test_ensure_environment_allows_port_mcp_caches_success() -> None:
-    client = MagicMock()
-    client.get_environment = AsyncMock(
-        return_value=_cloud_env(allowed_hosts=["mcp.port.io"])
-    )
-
-    await ensure_environment_allows_port_mcp(client, "env_1", "https://mcp.port.io/v1")
-    await ensure_environment_allows_port_mcp(client, "env_1", "https://mcp.port.io/v1")
-
-    assert client.get_environment.await_count == 1
-
-
-def test_apply_port_mcp_to_agent_config_adds_server_and_toolset() -> None:
-    result = apply_port_mcp_to_agent_config({"description": "d"})
+def test_apply_port_mcp_adds_server_and_toolset() -> None:
+    result = apply_port_mcp({"description": "d"})
     assert result["description"] == "d"
     assert "metadata" not in result
     assert any(
@@ -657,9 +642,9 @@ def test_apply_port_mcp_to_agent_config_adds_server_and_toolset() -> None:
     )
 
 
-def test_apply_port_mcp_to_agent_config_is_idempotent() -> None:
-    once = apply_port_mcp_to_agent_config({})
-    twice = apply_port_mcp_to_agent_config(once)
+def test_apply_port_mcp_is_idempotent() -> None:
+    once = apply_port_mcp({})
+    twice = apply_port_mcp(once)
     assert len(twice["mcp_servers"]) == 1
     assert len(twice["tools"]) == 1
 
@@ -762,10 +747,10 @@ def _mock_ocean_with_client_secret() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_prepare_port_mcp_fails_before_vault_when_env_blocks() -> None:
+async def test_attach_port_mcp_vault_fails_before_vault_when_env_blocks() -> None:
     client = MagicMock()
     client.get_environment = AsyncMock(return_value=_cloud_env())
-    client.list_vaults = AsyncMock()
+    client.paginate = AsyncMock()
     mock_ocean = _mock_ocean_with_client_secret()
 
     with (
@@ -773,45 +758,72 @@ async def test_prepare_port_mcp_fails_before_vault_when_env_blocks() -> None:
         patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
         pytest.raises(ActionExecutionError, match="blocks Port MCP"),
     ):
-        await prepare_port_mcp_session_config(
-            client, _workflow_run_with_port_mcp(), "env_blocked", {}
+        await attach_port_mcp_vault(
+            client,
+            _workflow_run_with_port_mcp(),
+            environment_id="env_blocked",
+            config={},
         )
 
-    client.list_vaults.assert_not_called()
+    client.paginate.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_ensure_port_mcp_vault_creates_vault_and_credential() -> None:
+async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
     client = MagicMock()
-    client.list_vaults = _empty_vault_pages
-    client.list_vault_credentials = _empty_vault_pages
+    client.get_environment = AsyncMock(return_value=_cloud_env(net_type="unrestricted"))
+    client.paginate = _empty_vault_pages
     created_vault = SimpleNamespace(id="vault_new")
-    client.create_vault = AsyncMock(return_value=created_vault)
-    client.create_vault_credential = AsyncMock()
-    client.update_vault_credential = AsyncMock()
+    client.beta.vaults.create = AsyncMock(return_value=created_vault)
+    client.beta.vaults.credentials.create = AsyncMock()
+    client.beta.vaults.credentials.update = AsyncMock()
+    mock_ocean = _mock_ocean_with_client_secret()
 
-    vault_id = await ensure_port_mcp_vault(client, "user@example.com", "tok_1")
+    with (
+        patch("actions.utils.ocean", mock_ocean),
+        patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
+    ):
+        config = await attach_port_mcp_vault(
+            client,
+            _workflow_run_with_port_mcp(),
+            environment_id="env_1",
+            config={},
+        )
 
-    assert vault_id == "vault_new"
-    client.create_vault.assert_awaited_once()
-    assert client.create_vault.await_args.args[0] == "port-mcp-user@example.com"
-    auth = client.create_vault_credential.await_args.kwargs["auth"]
+    assert config["vault_ids"] == ["vault_new"]
+    client.beta.vaults.create.assert_awaited_once()
+    assert (
+        client.beta.vaults.create.await_args.kwargs["display_name"]
+        == "port-mcp-user@example.com"
+    )
+    auth = client.beta.vaults.credentials.create.await_args.kwargs["auth"]
     assert auth == {
         "type": "static_bearer",
-        "token": "tok_1",
+        "token": "tok_abc",
         "mcp_server_url": resolve_port_mcp_url("https://api.getport.io"),
     }
-    client.update_vault_credential.assert_not_awaited()
+    client.beta.vaults.credentials.update.assert_not_awaited()
 
-    await ensure_port_mcp_vault(client, "user@example.com", "tok_1", "team-vault")
-    assert client.create_vault.await_args.args[0] == "team-vault"
+    client.beta.vaults.create.reset_mock()
+    with (
+        patch("actions.utils.ocean", mock_ocean),
+        patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
+    ):
+        await attach_port_mcp_vault(
+            client,
+            _workflow_run_with_port_mcp(),
+            environment_id="env_1",
+            config={},
+            vault_name="team-vault",
+        )
+    assert client.beta.vaults.create.await_args.kwargs["display_name"] == "team-vault"
 
 
 @pytest.mark.asyncio
-async def test_ensure_port_mcp_vault_updates_existing_credential() -> None:
+async def test_attach_port_mcp_vault_updates_existing_credential() -> None:
     existing_vault = SimpleNamespace(
         id="vault_1",
-        display_name="port-mcp-bot@sa.io",
+        display_name="port-mcp-user@example.com",
     )
     existing_cred = SimpleNamespace(
         id="cred_1",
@@ -819,30 +831,39 @@ async def test_ensure_port_mcp_vault_updates_existing_credential() -> None:
         archived_at=None,
     )
 
-    async def _vaults(*_a: Any, **_k: Any) -> AsyncIterator[list[Any]]:
-        yield [existing_vault]
+    pages = [[existing_vault], [existing_cred]]
 
-    async def _creds(*_a: Any, **_k: Any) -> AsyncIterator[list[Any]]:
-        yield [existing_cred]
+    async def _paginate(*_a: Any, **_k: Any) -> AsyncIterator[list[Any]]:
+        yield pages.pop(0)
 
     client = MagicMock()
-    client.list_vaults = _vaults
-    client.list_vault_credentials = _creds
-    client.create_vault = AsyncMock()
-    client.create_vault_credential = AsyncMock()
-    client.update_vault_credential = AsyncMock()
+    client.get_environment = AsyncMock(return_value=_cloud_env(net_type="unrestricted"))
+    client.paginate = _paginate
+    client.beta.vaults.create = AsyncMock()
+    client.beta.vaults.credentials.create = AsyncMock()
+    client.beta.vaults.credentials.update = AsyncMock()
+    mock_ocean = _mock_ocean_with_client_secret()
 
-    vault_id = await ensure_port_mcp_vault(client, "bot@sa.io", "tok_2")
+    with (
+        patch("actions.utils.ocean", mock_ocean),
+        patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
+    ):
+        config = await attach_port_mcp_vault(
+            client,
+            _workflow_run_with_port_mcp(),
+            environment_id="env_1",
+            config={},
+        )
 
-    assert vault_id == "vault_1"
-    client.create_vault.assert_not_awaited()
-    client.create_vault_credential.assert_not_awaited()
-    client.update_vault_credential.assert_awaited_once_with(
-        "vault_1",
+    assert config["vault_ids"] == ["vault_1"]
+    client.beta.vaults.create.assert_not_awaited()
+    client.beta.vaults.credentials.create.assert_not_awaited()
+    client.beta.vaults.credentials.update.assert_awaited_once_with(
         "cred_1",
+        vault_id="vault_1",
         auth={
             "type": "static_bearer",
-            "token": "tok_2",
+            "token": "tok_abc",
             "mcp_server_url": resolve_port_mcp_url("https://api.getport.io"),
         },
     )
@@ -865,19 +886,19 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", _noop_event_context),
         patch(
-            "actions.trigger_agent_executor.prepare_port_mcp_session_config",
+            "actions.trigger_agent_executor.attach_port_mcp_vault",
             AsyncMock(
                 return_value={
                     "metadata": {PORT_IDENTITY_ID_KEY: "user@example.com"},
                     "vault_ids": ["vault_port"],
                 }
             ),
-        ) as prepare,
+        ) as ready,
     ):
         await executor.execute(run)
 
-    prepare.assert_awaited_once()
-    assert prepare.await_args.args[4] is None
+    ready.assert_awaited_once()
+    assert ready.await_args.kwargs.get("vault_name") is None
     client_mock.create_session.assert_awaited_once_with(
         "agent_1",
         "env_1",
@@ -916,11 +937,11 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
         patch("actions.trigger_agent_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", _noop_event_context),
-        patch("actions.port_mcp.ensure_port_mcp_vault", AsyncMock()) as ensure_vault,
+        patch("actions.port_mcp._upsert_vault", AsyncMock()) as upsert_vault,
     ):
         await executor.execute(run)
 
-    ensure_vault.assert_not_awaited()
+    upsert_vault.assert_not_awaited()
     client_mock.create_session.assert_awaited_once()
     extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
     assert "vault_ids" not in extra
@@ -983,13 +1004,14 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", _noop_event_context),
         patch(
-            "actions.trigger_agent_executor.refresh_port_mcp_session",
-            AsyncMock(return_value=None),
-        ) as prepare,
+            "actions.trigger_agent_executor.reauthorize_port_mcp_session",
+            AsyncMock(return_value={}),
+        ) as ready,
     ):
         await executor.execute(run)
 
-    prepare.assert_awaited_once()
+    ready.assert_awaited_once()
+    assert ready.await_args.args[2] is session
     client_mock.create_session.assert_not_called()
     client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up")
 
@@ -1172,9 +1194,7 @@ async def test_trigger_agent_executor_requires_config_object() -> None:
         "config": "not-an-object",
     }
 
-    with pytest.raises(
-        InvalidActionParametersException, match="config"
-    ):
+    with pytest.raises(InvalidActionParametersException, match="config"):
         await executor.execute(run)
 
 
@@ -2115,19 +2135,19 @@ async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> Non
 
 
 @pytest.mark.asyncio
-async def test_refresh_rejects_owned_session_without_execution_identity() -> None:
+async def test_reauthorize_rejects_owned_session_without_execution_identity() -> None:
     session = _sdk_session(metadata={PORT_IDENTITY_ID_KEY: "user@example.com"})
     run = _workflow_run_with_port_mcp()
     run.execution_identity = None
 
     with pytest.raises(ActionExecutionError, match="without an execution identity"):
-        await refresh_port_mcp_session(MagicMock(), run, session)
+        await reauthorize_port_mcp_session(MagicMock(), run, session)
 
 
 @pytest.mark.asyncio
-async def test_refresh_skips_unowned_session_with_execution_identity() -> None:
+async def test_reauthorize_skips_unowned_session_with_execution_identity() -> None:
     client = MagicMock()
-    await refresh_port_mcp_session(
+    await reauthorize_port_mcp_session(
         client, _workflow_run_with_port_mcp(), _sdk_session(metadata={})
     )
     client.assert_not_called()
