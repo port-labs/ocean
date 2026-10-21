@@ -1,5 +1,6 @@
 name: Release framework
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -19,6 +20,7 @@ jobs:
     outputs:
       current_tag: ${{ steps.get_current_version.outputs.current_tag }}
       prev_tag: ${{ steps.get_previous_version.outputs.prev_tag }}
+      release_exists: ${{ steps.check_release.outputs.release_exists }}
 
     steps:
       - name: Check out code
@@ -42,8 +44,22 @@ jobs:
           PREV_TAG=$(git show HEAD~1:pyproject.toml 2>/dev/null | grep -E '^version = ".*"' | cut -d'"' -f2 || echo "")
           echo "prev_tag=${PREV_TAG}" >> $GITHUB_ENV
           echo "prev_tag=${PREV_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Check if release already exists
+        id: check_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_TAG="${{ steps.get_current_version.outputs.current_tag }}"
+          if gh release view "v${CURRENT_TAG}" >/dev/null 2>&1; then
+            echo "::notice::Release v${CURRENT_TAG} already exists, exiting without releasing again"
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Tag main
-        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
+        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag && steps.check_release.outputs.release_exists != 'true'
         run: |
           CURRENT_TAG="${{ steps.get_current_version.outputs.current_tag }}"
           git config --local user.email "action@github.com"
@@ -53,7 +69,7 @@ jobs:
           # Explicitly push the tag (not a branch)
           git push origin refs/tags/v${CURRENT_TAG}
       - name: Create GitHub Release
-        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
+        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag && steps.check_release.outputs.release_exists != 'true'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_current_version.outputs.current_tag }}
@@ -67,7 +83,7 @@ jobs:
   publish_ocean:
     name: Publish framework to PyPI
     needs: tag-main
-    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
+    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag && needs.tag-main.outputs.release_exists != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
