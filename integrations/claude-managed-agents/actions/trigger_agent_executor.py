@@ -1,6 +1,6 @@
 from typing import Any, Self
 
-from anthropic.types.beta import BetaManagedAgentsAgent
+from anthropic.types.beta import BetaManagedAgentsAgent, BetaManagedAgentsVault
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_requires_action import (
     BetaManagedAgentsSessionRequiresAction,
@@ -11,14 +11,13 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
-from utils.cache import Cache
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
-
+from utils.cache import Cache
+from utils.misc import find_first_item_in_generator
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp import (
-    agent_has_port_mcp,
     attach_port_mcp_vault_to_session_config,
     is_agent_configured_with_port_mcp,
     reauthorize_port_mcp_session,
@@ -83,12 +82,34 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     _agent_cache = Cache[BetaManagedAgentsAgent](
         ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
     )
+    _vault_cache = Cache[BetaManagedAgentsVault](
+        ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
+    )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         session_id = run.execution_properties.get("sessionId")
         if session_id:
             return session_id
         return None
+
+    async def _resolve_vault(
+        self, execution_identity: str, vault_name: str | None
+    ) -> BetaManagedAgentsVault:
+        name = vault_name or f"port-mcp-{execution_identity}"
+
+        async def fetch() -> BetaManagedAgentsVault:
+            vault = await find_first_item_in_generator(
+                self.client.paginate(
+                    self.client.beta.vaults.list(include_archived=False)
+                ),
+                lambda v: v.display_name == name,
+            )
+            if vault is not None:
+                return vault
+            logger.info(f"Creating Port MCP vault '{name}'")
+            return await self.client.beta.vaults.create(display_name=name)
+
+        return await self._vault_cache.get_or_fetch(name, fetch)
 
     async def _ensure_session_continuable(
         self, session_id: str, run: WorkflowNodeRun
@@ -119,7 +140,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     )
             break
 
-        owner = session.metadata.get(PORT_IDENTITY_ID_KEY)
+        owner = (session.metadata or {}).get(PORT_IDENTITY_ID_KEY)
         if not owner:
             raise ActionExecutionError(
                 f"Cannot continue session {session.id}: session wasn't created by Port"
@@ -156,31 +177,40 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
         )
         should_authenticate_port_mcp = (
-            (await is_agent_configured_with_port_mcp(agent.mcp_servers))
+            is_agent_configured_with_port_mcp(agent.mcp_servers)
             and isinstance(run, WorkflowNodeRun)
             and run.execution_identity is not None
         )
 
         if inputs.sessionId:
-            session = await self._ensure_session_continuable(inputs.sessionId)
-            if should_authenticate_port_mcp:
-                await reauthorize_port_mcp_session(
-                    self.client, run, session, vault_name=inputs.vaultName
+            if not isinstance(run, WorkflowNodeRun):
+                raise ActionExecutionError(
+                    "Continuing a session requires a workflow node run"
                 )
-        else:
-            api_config = await normalize_session_config(
-                {
-                    **inputs.config,
-                    PORT_IDENTITY_ID_KEY: run.execution_identity.identifier,
-                }
-            )
+            session = await self._ensure_session_continuable(inputs.sessionId, run)
             if should_authenticate_port_mcp:
+                vault = await self._resolve_vault(
+                    run.execution_identity.identifier, inputs.vaultName
+                )
+                await reauthorize_port_mcp_session(self.client, run, session, vault)
+        else:
+            api_config = await normalize_session_config(inputs.config)
+            if should_authenticate_port_mcp:
+                vault = await self._resolve_vault(
+                    run.execution_identity.identifier, inputs.vaultName
+                )
+                api_config = {
+                    **api_config,
+                    "metadata": {
+                        **(api_config.get("metadata") or {}),
+                        PORT_IDENTITY_ID_KEY: run.execution_identity.identifier,
+                    },
+                }
                 api_config = await attach_port_mcp_vault_to_session_config(
                     self.client,
                     run,
-                    environment_id=inputs.environmentId,
+                    vault=vault,
                     config=api_config,
-                    vault_name=inputs.vaultName,
                 )
             session = await self.client.create_session(
                 inputs.agentId,

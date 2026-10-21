@@ -58,7 +58,6 @@ from actions.port_mcp import (
     PORT_MCP_SERVER_NAME,
     attach_port_mcp_settings_to_agent_config,
     attach_port_mcp_vault_to_session_config,
-    reauthorize_port_mcp_session,
 )
 from port_ocean.core.handlers.actions.utils import resolve_port_mcp_url
 from actions.utils import (
@@ -730,13 +729,33 @@ def _mock_ocean_with_client_secret() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
+async def test_resolve_vault_creates_when_missing() -> None:
+    from utils.cache import Cache
+    from anthropic.types.beta import BetaManagedAgentsVault
+
     client = MagicMock()
     client.paginate = _empty_vault_pages
-    created_vault = SimpleNamespace(id="vault_new")
+    created_vault = SimpleNamespace(id="vault_new", display_name="port-mcp-user@example.com")
     client.beta.vaults.create = AsyncMock(return_value=created_vault)
+    executor = _build_executor(TriggerAgentExecutor, client)
+    executor._vault_cache = Cache[BetaManagedAgentsVault](ttl_seconds=120, max_items=100)
+
+    vault = await executor._resolve_vault("user@example.com", vault_name=None)
+
+    assert vault.id == "vault_new"
+    assert (
+        client.beta.vaults.create.await_args.kwargs["display_name"]
+        == "port-mcp-user@example.com"
+    )
+
+
+@pytest.mark.asyncio
+async def test_attach_port_mcp_vault_creates_credential_on_vault() -> None:
+    client = MagicMock()
+    client.paginate = _empty_vault_pages
     client.beta.vaults.credentials.create = AsyncMock()
     client.beta.vaults.credentials.update = AsyncMock()
+    vault = SimpleNamespace(id="vault_new")
     mock_ocean = _mock_ocean_with_client_secret()
 
     with (
@@ -746,16 +765,11 @@ async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
         config = await attach_port_mcp_vault_to_session_config(
             client,
             _workflow_run_with_port_mcp(),
-            environment_id="env_1",
+            vault=vault,
             config={},
         )
 
     assert config["vault_ids"] == ["vault_new"]
-    client.beta.vaults.create.assert_awaited_once()
-    assert (
-        client.beta.vaults.create.await_args.kwargs["display_name"]
-        == "port-mcp-user@example.com"
-    )
     auth = client.beta.vaults.credentials.create.await_args.kwargs["auth"]
     assert auth == {
         "type": "static_bearer",
@@ -764,43 +778,23 @@ async def test_attach_port_mcp_vault_creates_vault_and_credential() -> None:
     }
     client.beta.vaults.credentials.update.assert_not_awaited()
 
-    client.beta.vaults.create.reset_mock()
-    with (
-        patch("actions.utils.ocean", mock_ocean),
-        patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
-    ):
-        await attach_port_mcp_vault_to_session_config(
-            client,
-            _workflow_run_with_port_mcp(),
-            environment_id="env_1",
-            config={},
-            vault_name="team-vault",
-        )
-    assert client.beta.vaults.create.await_args.kwargs["display_name"] == "team-vault"
-
 
 @pytest.mark.asyncio
 async def test_attach_port_mcp_vault_updates_existing_credential() -> None:
-    existing_vault = SimpleNamespace(
-        id="vault_1",
-        display_name="port-mcp-user@example.com",
-    )
     existing_cred = SimpleNamespace(
         id="cred_1",
         display_name="port-mcp",
         archived_at=None,
     )
 
-    pages = [[existing_vault], [existing_cred]]
-
     async def _paginate(*_a: Any, **_k: Any) -> AsyncIterator[list[Any]]:
-        yield pages.pop(0)
+        yield [existing_cred]
 
     client = MagicMock()
     client.paginate = _paginate
-    client.beta.vaults.create = AsyncMock()
     client.beta.vaults.credentials.create = AsyncMock()
     client.beta.vaults.credentials.update = AsyncMock()
+    vault = SimpleNamespace(id="vault_1")
     mock_ocean = _mock_ocean_with_client_secret()
 
     with (
@@ -810,12 +804,11 @@ async def test_attach_port_mcp_vault_updates_existing_credential() -> None:
         config = await attach_port_mcp_vault_to_session_config(
             client,
             _workflow_run_with_port_mcp(),
-            environment_id="env_1",
+            vault=vault,
             config={},
         )
 
     assert config["vault_ids"] == ["vault_1"]
-    client.beta.vaults.create.assert_not_awaited()
     client.beta.vaults.credentials.create.assert_not_awaited()
     client.beta.vaults.credentials.update.assert_awaited_once_with(
         "cred_1",
@@ -845,19 +838,26 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", _noop_event_context),
         patch(
-            "actions.trigger_agent_executor.attach_port_mcp_vault",
+            "actions.trigger_agent_executor.get_run_access_token",
+            return_value="tok_abc",
+        ),
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_vault",
+            AsyncMock(return_value=SimpleNamespace(id="vault_port")),
+        ),
+        patch(
+            "actions.trigger_agent_executor.attach_port_mcp_vault_to_session_config",
             AsyncMock(
-                return_value={
-                    "metadata": {PORT_IDENTITY_ID_KEY: "user@example.com"},
-                    "vault_ids": ["vault_port"],
+                side_effect=lambda _c, _r, vault, config: {
+                    **config,
+                    "vault_ids": [vault.id],
                 }
             ),
-        ) as ready,
+        ) as attach,
     ):
         await executor.execute(run)
 
-    ready.assert_awaited_once()
-    assert ready.await_args.kwargs.get("vault_name") is None
+    attach.assert_awaited_once()
     client_mock.create_session.assert_awaited_once_with(
         "agent_1",
         "env_1",
@@ -896,11 +896,14 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
         patch("actions.trigger_agent_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", _noop_event_context),
-        patch("actions.port_mcp._upsert_vault", AsyncMock()) as upsert_vault,
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_vault",
+            AsyncMock(),
+        ) as resolve_vault,
     ):
         await executor.execute(run)
 
-    upsert_vault.assert_not_awaited()
+    resolve_vault.assert_not_awaited()
     client_mock.create_session.assert_awaited_once()
     extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
     assert "vault_ids" not in extra
@@ -965,8 +968,16 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", _noop_event_context),
         patch(
+            "actions.trigger_agent_executor.get_run_access_token",
+            return_value="tok_abc",
+        ),
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_vault",
+            AsyncMock(return_value=SimpleNamespace(id="vault_port")),
+        ),
+        patch(
             "actions.trigger_agent_executor.reauthorize_port_mcp_session",
-            AsyncMock(return_value={}),
+            AsyncMock(),
         ) as ready,
     ):
         await executor.execute(run)
@@ -2096,22 +2107,31 @@ async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> Non
 
 
 @pytest.mark.asyncio
-async def test_reauthorize_rejects_owned_session_without_execution_identity() -> None:
+async def test_continue_rejects_owned_session_without_execution_identity() -> None:
     session = _sdk_session(metadata={PORT_IDENTITY_ID_KEY: "user@example.com"})
+    client = MagicMock()
+    client.get_session = AsyncMock(return_value=session)
+    client.get_session_events = _empty_session_events
+    executor = _build_executor(TriggerAgentExecutor, client)
     run = _workflow_run_with_port_mcp()
     run.execution_identity = None
 
     with pytest.raises(ActionExecutionError, match="without an execution identity"):
-        await reauthorize_port_mcp_session(MagicMock(), run, session)
+        await executor._ensure_session_continuable("sess_1", run)
 
 
 @pytest.mark.asyncio
-async def test_reauthorize_skips_unowned_session_with_execution_identity() -> None:
+async def test_continue_rejects_session_not_created_by_port() -> None:
+    session = _sdk_session(metadata={})
     client = MagicMock()
-    await reauthorize_port_mcp_session(
-        client, _workflow_run_with_port_mcp(), _sdk_session(metadata={})
-    )
-    client.assert_not_called()
+    client.get_session = AsyncMock(return_value=session)
+    client.get_session_events = _empty_session_events
+    executor = _build_executor(TriggerAgentExecutor, client)
+
+    with pytest.raises(ActionExecutionError, match="wasn't created by Port"):
+        await executor._ensure_session_continuable(
+            "sess_1", _workflow_run_with_port_mcp()
+        )
 
 
 @pytest.mark.asyncio
