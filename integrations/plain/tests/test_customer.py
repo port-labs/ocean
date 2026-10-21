@@ -25,7 +25,7 @@ def test_list_customers_query_includes_relation_ids() -> None:
 
 
 def test_customer_kind_is_registered_in_spec() -> None:
-    assert "kind: customer" in exporter_kinds()
+    assert "customer" in exporter_kinds()
 
 
 async def test_get_customers_yields_mocked_pages() -> None:

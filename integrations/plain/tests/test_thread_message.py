@@ -30,7 +30,7 @@ def test_thread_timeline_query_selects_message_fields() -> None:
 
 
 def test_thread_message_kind_is_registered_in_spec() -> None:
-    assert "kind: thread-message" in exporter_kinds()
+    assert "thread-message" in exporter_kinds()
 
 
 def test_thread_message_mapping_resolves_identifier_and_thread() -> None:

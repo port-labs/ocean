@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -7,8 +8,9 @@ import httpx
 from plain.client import PlainClient
 
 
-def exporter_kinds() -> str:
-    return Path(".port/spec.yaml").read_text()
+def exporter_kinds() -> list[str]:
+    spec = json.loads(Path(".port/spec.json").read_text())
+    return [resource["kind"] for resource in spec["features"][0]["resources"]]
 
 
 def node_selection(query: str) -> str:
