@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix AWS::CodeDeploy::DeploymentGroup resync failing with 0 entities when ec2TagSet/onPremisesTagSet are present by typing them as objects to match the AWS API response shape
