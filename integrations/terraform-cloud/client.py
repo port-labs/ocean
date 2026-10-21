@@ -4,12 +4,15 @@ from urllib.parse import urlparse
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from aiolimiter import AsyncLimiter
 from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.cache import cache_iterator_result
-from port_ocean.utils import http_async_client
+
+from rate_limiter import TerraformRateLimiter
+from retry_transport import TerraformRetryTransport
 
 HEALTH_ASSESSMENT_TRIGGER_SCOPE = "assessment"
 
@@ -47,22 +50,27 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-NUMBER_OF_REQUESTS = 25
-NUMBER_OF_SECONDS = 1
 
 
 class TerraformClient:
-    def __init__(self, terraform_base_url: str, auth_token: str) -> None:
+    def __init__(
+        self,
+        terraform_base_url: str,
+        auth_token: str,
+        rate_limiter: Optional[TerraformRateLimiter] = None,
+    ) -> None:
         self.terraform_base_url = terraform_base_url
         self.base_headers = {
             "Authorization": f"Bearer {auth_token}",
             "Content-Type": "application/vnd.api+json",
         }
         self.api_url = f"{self.terraform_base_url}/api/v2"
-        self.client = http_async_client
-        self.client.headers.update(self.base_headers)
-
-        self.rate_limiter = AsyncLimiter(NUMBER_OF_REQUESTS, NUMBER_OF_SECONDS)
+        self.client = OceanAsyncClient(
+            transport_class=TerraformRetryTransport,
+            transport_kwargs={"rate_limiter": rate_limiter or TerraformRateLimiter()},
+            timeout=ocean.config.client_timeout,
+            headers=self.base_headers,
+        )
 
     async def send_api_request(
         self,
@@ -79,20 +87,19 @@ class TerraformClient:
         )
 
         try:
-            async with self.rate_limiter:
-                logger.debug(f"Requesting {method} {url} with params: {query_params}")
+            logger.debug(f"Requesting {method} {url} with params: {query_params}")
 
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=query_params,
-                    json=json_data,
-                    follow_redirects=follow_redirects,
-                )
+            response = await self.client.request(
+                method=method,
+                url=url,
+                params=query_params,
+                json=json_data,
+                follow_redirects=follow_redirects,
+            )
 
-                response.raise_for_status()
-                logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
-                return response.json()
+            response.raise_for_status()
+            logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
+            return response.json()
 
         except Exception as e:
             logger.error(

@@ -15,18 +15,34 @@ class ObjectKind(StrEnum):
     HEALTH_ASSESSMENT = "health-assessment"
 
 
+_client: TerraformClient | None = None
+
+
 def init_terraform_client() -> TerraformClient:
     """
     Initialize Terraform Client
+
+    Cached because the client owns an HTTP connection pool, and live events build one
+    per delivered event. One client per process is also one rate limiter per process,
+    so every caller draws on the same view of the API's budget.
+
+    No fork guard: the only fork is the JQ entity processor's pool
+    (port_ocean/core/handlers/entity_processor/jq_entity_processor.py:421), whose child
+    runs mapping alone and never asks for a client. An entity-processor hook that
+    fetched during mapping would need the os.register_at_fork reset in
+    github/github/clients/client_factory.py:32.
     """
-    config = ocean.integration_config
+    global _client
 
-    terraform_client = TerraformClient(
-        config["terraform_cloud_host"],
-        config["terraform_cloud_token"],
-    )
+    if _client is None:
+        config = ocean.integration_config
 
-    return terraform_client
+        _client = TerraformClient(
+            config["terraform_cloud_host"],
+            config["terraform_cloud_token"],
+        )
+
+    return _client
 
 
 def should_fetch_health_assessment(workspace: dict[str, Any]) -> bool:

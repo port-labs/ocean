@@ -1,7 +1,17 @@
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+import utils
 from utils import init_terraform_client, should_fetch_health_assessment
+
+
+@pytest.fixture(autouse=True)
+def reset_client_cache() -> Generator[None, None, None]:
+    utils._client = None
+    yield
+    utils._client = None
 
 
 class TestInitTerraformClient:
@@ -41,25 +51,19 @@ class TestInitTerraformClient:
 
     @patch("utils.ocean")
     @patch("utils.TerraformClient")
-    def test_init_terraform_client_with_different_hosts(
+    def test_init_terraform_client_is_cached(
         self, mock_terraform_client_class: Any, mock_ocean: Any
     ) -> None:
-        configs = [
-            {
-                "terraform_cloud_host": "https://terraform.example.com",
-                "terraform_cloud_token": "token1",
-            },
-            {
-                "terraform_cloud_host": "https://app.terraform.io",
-                "terraform_cloud_token": "token2",
-            },
-        ]
+        mock_ocean.integration_config = {
+            "terraform_cloud_host": "https://app.terraform.io",
+            "terraform_cloud_token": "test-token",
+        }
 
-        for config in configs:
-            mock_ocean.integration_config = config
-            init_terraform_client()
+        first = init_terraform_client()
+        second = init_terraform_client()
 
-        assert mock_terraform_client_class.call_count == len(configs)
+        assert first is second
+        assert mock_terraform_client_class.call_count == 1
 
 
 def _workspace(
