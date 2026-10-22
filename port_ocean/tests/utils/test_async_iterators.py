@@ -8,6 +8,7 @@ import pytest
 from port_ocean.utils import async_iterators
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils.async_iterators import (
+    find_first_item_in_generator,
     semaphore_async_iterator,
     stream_independent_async_iterators,
     throttle_batch_operation,
@@ -236,3 +237,24 @@ async def test_stream_independent_async_iterators_cleanup_wait_is_bounded(
     assert await anext(iterator) == 0
     await asyncio.wait_for(iterator.aclose(), timeout=1)
     await asyncio.sleep(0.2)
+
+
+async def _batched_pages(*pages: list[int]) -> AsyncGenerator[list[int], None]:
+    for page in pages:
+        yield page
+
+
+async def test_find_first_item_in_generator_returns_match() -> None:
+    result = await find_first_item_in_generator(
+        _batched_pages([1, 2], [3, 4]),
+        lambda item: item == 3,
+    )
+    assert result == 3
+
+
+async def test_find_first_item_in_generator_returns_none_when_missing() -> None:
+    result = await find_first_item_in_generator(
+        _batched_pages([1, 2], [3, 4]),
+        lambda item: item == 99,
+    )
+    assert result is None
