@@ -360,7 +360,7 @@ async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
     comment_processor: IssueCommentWebhookProcessor,
 ) -> None:
     recent = _recent_updated()
-    payload = {
+    payload: dict[str, Any] = {
         "webhookEvent": "comment_created",
         "comment": COMMENT,
         "issue": {
@@ -370,7 +370,7 @@ async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
         },
     }
     config = _issue_config(include_comments=True)
-    issue = {
+    issue: dict[str, Any] = {
         **payload["issue"],
         "__comments": [normalize_issue_comment(COMMENT, "TEST-1")],
     }
@@ -427,7 +427,7 @@ async def test_comment_webhook_noop_when_include_comments_false(
 async def test_comment_webhook_deleted_still_returns_issue_with_refreshed_comments(
     comment_processor: IssueCommentWebhookProcessor,
 ) -> None:
-    payload = {
+    payload: dict[str, Any] = {
         "webhookEvent": "comment_deleted",
         "comment": {"id": "10000"},
         "issue": {
@@ -437,7 +437,7 @@ async def test_comment_webhook_deleted_still_returns_issue_with_refreshed_commen
         },
     }
     config = _issue_config(include_comments=True)
-    issue = {**payload["issue"], "__comments": []}
+    issue: dict[str, Any] = {**payload["issue"], "__comments": []}
 
     with patch(
         "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
