@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.4 (2026-10-22)
+
+
+### Bug Fixes
+
+- Force a rebuild of all integration images to solve potential vulnerability issues
+
+
 ## 0.55.3 (2026-10-21)
 
 
