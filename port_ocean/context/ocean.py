@@ -244,6 +244,16 @@ class PortOceanContext:
         self.app.webhook_manager.register_processor(path, processor)
 
     def register_action_executor(self, executor: "AbstractExecutor") -> None:
+        # WEBHOOKS_ONLY (live-events) still needs executors registered so their
+        # completion webhook processors (e.g. workflow_run finished) are wired.
+        if (
+            not self.app.config.event_listener.should_run_actions
+            and self.app.config.event_listener.type != EventListenerType.WEBHOOKS_ONLY
+        ):
+            logger.debug(
+                f"Using event listener {self.app.config.event_listener.type}, which shouldn't run actions. Skipping action executor setup..."
+            )
+            return
         self.app.execution_manager.register_executor(executor)
 
     def register_oauth_provider(self, provider: "OAuth2Provider") -> None:

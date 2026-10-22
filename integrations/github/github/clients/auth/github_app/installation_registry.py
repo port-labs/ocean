@@ -42,11 +42,13 @@ def _authenticator(
     )
 
 
-async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator]:
+async def _fetch_installations(
+    *, skip_retry: bool = False
+) -> dict[str, GitHubAppInstallationAuthenticator]:
     app_auth = GitHubAppAuthenticator.from_config()
     configured_organization = ocean.integration_config.get("github_organization")
     index: dict[str, GitHubAppInstallationAuthenticator] = {}
-    async for page in app_auth.iter_app_installations():
+    async for page in app_auth.iter_app_installations(skip_retry=skip_retry):
         for installation in page:
             login = installation.get("account", {}).get("login")
             is_suspended = installation.get("suspended_at", None) is not None
@@ -73,24 +75,27 @@ async def _fetch_installations() -> dict[str, GitHubAppInstallationAuthenticator
     return index
 
 
-async def _discover_installations() -> None:
+async def _discover_installations(*, skip_retry: bool = False) -> None:
     global _authenticators_by_org, _discovered_at
     async with _discovery_lock:
         if _is_discovery_fresh():
             return
 
-        _authenticators_by_org = await _fetch_installations()
+        _authenticators_by_org = await _fetch_installations(skip_retry=skip_retry)
         _discovered_at = time.monotonic()
 
 
-async def list_installations_authenticators() -> (
-    list[GitHubAppInstallationAuthenticator]
-):
-    await _discover_installations()
+async def list_installations_authenticators(
+    *, skip_retry: bool = False
+) -> list[GitHubAppInstallationAuthenticator]:
+    await _discover_installations(skip_retry=skip_retry)
     if not _authenticators_by_org:
         raise AuthenticationException("No GitHub App installations found")
 
     authenticators = list(_authenticators_by_org.values())
+    for authenticator in authenticators:
+        # Cached instances are reused across probe/resync; set explicitly each time.
+        authenticator.skip_retry = skip_retry
     logger.info(f"Discovered {len(authenticators)} GitHub App installation(s)")
     return authenticators
 
@@ -108,4 +113,6 @@ async def get_installation_authenticator_for_organization(
                 f"No GitHub App installation found for organization '{organization}'"
             )
 
-    return _authenticators_by_org[normalized_organization]
+    authenticator = _authenticators_by_org[normalized_organization]
+    authenticator.skip_retry = False
+    return authenticator

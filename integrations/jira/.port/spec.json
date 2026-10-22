@@ -246,6 +246,9 @@
     "liveEvents": {
       "enabled": true
     },
+    "incrementalSync": {
+      "enabled": true
+    },
     "oauthConfiguration": {
       "requiredSecrets": [
         {

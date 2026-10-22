@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.4 (2026-10-22)
+
+
+### Bug Fixes
+
+- Force a rebuild of all integration images to solve potential vulnerability issues
+
+
+## 0.55.3 (2026-10-21)
+
+
+### Bug Fixes
+
+- Still register action executors on live-events (WEBHOOKS_ONLY) pods so completion webhooks (e.g. GitHub workflow_run finished) keep calling report_run_completed
+
+
+## 0.55.2 (2026-10-21)
+
+
+### Bug Fixes
+
+- Skip registering resync handlers and action executors, and disable HTTP log ingestion, when running test connection (probe)
+
+
 ## 0.55.1 (2026-10-20)
 
 
