@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.5 (2026-10-22)
+
+
+### Bug Fixes
+
+- port-ocean now requires certifi>=2026.10.19 (GHSA-6q48-6c7w-9gw2) and virtualenv>=21.14.9 (GHSA-5vjq-rrrf-7h2q, GHSA-vxj4-q4g9-crj7, GHSA-c978-59m8-c77v, GHSA-cw65-gx24-rc82, GHSA-43mp-35q3-x3fq). Integrations pick these up through the next Ocean version bump.
+
+
 ## 0.55.4 (2026-10-22)
 
 
