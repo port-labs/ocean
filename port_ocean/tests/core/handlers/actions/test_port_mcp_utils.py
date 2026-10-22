@@ -26,7 +26,7 @@ _TRIGGER_AGENT_SPEC = {
 def _workflow_run(
     *,
     port_access_token: str | None,
-    execution_identity: ResolvedExecutionIdentity | dict[str, str] | None,
+    execution_identity: ResolvedExecutionIdentity | None,
 ) -> WorkflowNodeRun:
     return WorkflowNodeRun(
         id="wfnr_1",
@@ -69,10 +69,10 @@ def test_get_run_access_token_decrypts_token() -> None:
         token = get_run_access_token(
             _workflow_run(
                 port_access_token=ciphertext,
-                execution_identity={
-                    "type": "actor",
-                    "identifier": "user@example.com",
-                },
+                execution_identity=ResolvedExecutionIdentity(
+                    type="actor",
+                    identifier="user@example.com",
+                ),
             )
         )
 
@@ -90,10 +90,10 @@ def test_get_run_access_token_requires_token_when_identity_set() -> None:
         get_run_access_token(
             _workflow_run(
                 port_access_token=None,
-                execution_identity={
-                    "type": "actor",
-                    "identifier": "user@example.com",
-                },
+                execution_identity=ResolvedExecutionIdentity(
+                    type="actor",
+                    identifier="user@example.com",
+                ),
             )
         )
 
@@ -116,9 +116,9 @@ def test_get_run_access_token_rejects_identity_not_in_spec_allowlist() -> None:
         get_run_access_token(
             _workflow_run(
                 port_access_token="tok",
-                execution_identity={
-                    "type": "actor",
-                    "identifier": "user@example.com",
-                },
+                execution_identity=ResolvedExecutionIdentity(
+                    type="actor",
+                    identifier="user@example.com",
+                ),
             )
         )
