@@ -39,10 +39,10 @@ def active_centralized_rate_limiter() -> CentralizedRateLimiter | None:
 
 
 def use_centralized_rate_limiting() -> bool:
-    """Redis vendor admission/publish when enabled and limiter is active.
+    """True when this process should use Redis admission instead of the local limiter.
 
-    False when disabled or Redis is unavailable (fail-open). Integrations use local
-    limiter hooks on the wrapper instead.
+    False when the feature is disabled or setup left the limiter unset. A Redis
+    connection failure at startup does that, so the wrapper keeps the local limiter.
     """
     return (
         is_centralized_rate_limiter_enabled()

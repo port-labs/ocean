@@ -35,9 +35,9 @@ from port_ocean.rate_limiting.redis_lua_scripts import RESERVE_POOL_SLOT_SCRIPT
 class CentralizedRateLimiter:
     """Shared vendor quota for every pod of one integration.
 
-    A Redis client of ``None`` is the no-op limiter: ``acquire`` allows every
-    request and ``record_response`` writes nothing. That is what startup
-    installs when Redis cannot be reached.
+    A Redis client of ``None`` allows every acquire and skips writes. Startup
+    does not install that when Redis cannot be reached. It leaves the limiter
+    unset so the integration keeps its local limiter.
     """
 
     def __init__(

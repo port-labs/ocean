@@ -34,6 +34,7 @@ async def setup_centralized_rate_limiter(
 
     redis_settings = settings.redis
     redis_helper = RedisConnectionHelper()
+    limiter: CentralizedRateLimiter | None = None
     try:
         client_kwargs = redis_helper.client_kwargs(redis_settings)
         redis_client = await create_redis_client_with_retry(
@@ -48,12 +49,16 @@ async def setup_centralized_rate_limiter(
         app.centralized_rate_limiter = limiter
         logger.info("Centralized rate limiter enabled with Redis")
     except Exception as error:
-        redis_helper.cleanup()
+        # Leave the limiter unset so use_centralized_rate_limiting() stays false
+        # and the integration keeps its local limiter.
+        if limiter is not None:
+            await limiter.close()
+        else:
+            redis_helper.cleanup()
         logger.warning(
-            "Failed to connect to centralized rate limiter Redis; using no-op limiter",
+            "Failed to connect to centralized rate limiter Redis; using the local rate limiter",
             error=str(error),
         )
-        app.centralized_rate_limiter = CentralizedRateLimiter(org_id, None)
 
 
 async def teardown_centralized_rate_limiter(app: HasCentralizedRateLimiter) -> None:
