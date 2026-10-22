@@ -25,6 +25,9 @@ from jira.overrides import (
     JiraEpicResourceConfig,
     JiraComponentResourceConfig,
 )
+from webhook_processors.issue_comment_webhook_processor import (
+    IssueCommentWebhookProcessor,
+)
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
@@ -78,7 +81,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params["fields"] = config.selector.fields
     if config.selector.expand:
         params["expand"] = config.selector.expand
-    async for issues in client.get_paginated_issues(params):
+    async for issues in client.get_paginated_issues(
+        params, include_comments=config.selector.include_comments
+    ):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
@@ -266,6 +271,7 @@ async def on_start() -> None:
 
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", IssueCommentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)

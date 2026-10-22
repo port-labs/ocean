@@ -7,6 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
+from jira.comments import attach_comments_to_issues, normalize_issue_comment
 from jira.overrides import (
     JiraEpicAPIQueryParams,
     JiraWorklogAPIQueryParams,
@@ -27,6 +28,12 @@ WORKLOG_WEBHOOK_EVENTS = [
     "worklog_created",
     "worklog_updated",
     "worklog_deleted",
+]
+
+COMMENT_WEBHOOK_EVENTS = [
+    "comment_created",
+    "comment_updated",
+    "comment_deleted",
 ]
 
 SPRINT_DELETED_EVENT = "sprint_deleted"
@@ -63,6 +70,7 @@ WEBHOOK_EVENTS = [
     "board_updated",
     "board_deleted",
     *WORKLOG_WEBHOOK_EVENTS,
+    *COMMENT_WEBHOOK_EVENTS,
     *SPRINT_WEBHOOK_EVENTS,
 ]
 
@@ -80,6 +88,7 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_updated",
     "board_deleted",
     *WORKLOG_WEBHOOK_EVENTS,
+    *COMMENT_WEBHOOK_EVENTS,
     *SPRINT_WEBHOOK_EVENTS,
 ]
 
@@ -721,7 +730,10 @@ class JiraClient(OAuthClient):
             body = {**body, "nextPageToken": next_page_token}
 
     async def get_paginated_issues(
-        self, params: dict[str, Any] | None = None
+        self,
+        params: dict[str, Any] | None = None,
+        *,
+        include_comments: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
@@ -738,6 +750,8 @@ class JiraClient(OAuthClient):
         async for issues in self._get_paginated_data_using_next_page_token(
             url, body, "issues"
         ):
+            if include_comments:
+                issues = await attach_comments_to_issues(self, issues)
             yield issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
@@ -1061,6 +1075,14 @@ class JiraClient(OAuthClient):
             url, "worklogs", initial_params=query_params
         ):
             yield [{**worklog, "__issueKey": issue_key} for worklog in batch]
+
+    async def get_paginated_comments_for_issue(
+        self, issue_key: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch comments for a single issue and normalize them for mapping."""
+        url = f"{self.api_url}/issue/{issue_key}/comment"
+        async for batch in self._get_paginated_data(url, "comments"):
+            yield [normalize_issue_comment(comment, issue_key) for comment in batch]
 
     async def get_paginated_components_for_project(
         self,

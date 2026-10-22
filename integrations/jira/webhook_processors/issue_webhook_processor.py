@@ -51,7 +51,8 @@ class IssueWebhookProcessor(JiraAbstractWebhookProcessor):
                 "fields": config.selector.fields,
                 "expand": config.selector.expand,
                 "reconcileIssues": [issue_id],
-            }
+            },
+            include_comments=config.selector.include_comments,
         ):
             issues.extend(batch)
 
