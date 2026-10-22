@@ -294,7 +294,7 @@ class AzureDevopsClient(HTTPBaseClient):
         excluded_tags: Optional[list[str]] = None,
     ) -> None:
         organization_url = organization_url.rstrip("/")
-        super().__init__(auth_provider)
+        super().__init__(auth_provider, organization_url)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username

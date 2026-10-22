@@ -21,6 +21,7 @@ def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
     mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
     return HTTPBaseClient(
         auth_provider=PatAuthProvider("test_token"),
+        organization_url="https://dev.azure.com/test-org",
     )
 
 

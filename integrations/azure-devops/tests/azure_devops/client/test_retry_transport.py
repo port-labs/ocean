@@ -30,7 +30,9 @@ class TestAzureDevOpsRetryTransport:
     @pytest.mark.asyncio
     async def test_after_retry_async_signals_shared_throttle_on_429(self) -> None:
         limiter = AzureDevOpsRateLimiter()
-        transport = _make_transport(rate_limiter=AzureDevOpsRateLimitWrapper(limiter))
+        transport = _make_transport(
+            rate_limiter=AzureDevOpsRateLimitWrapper(limiter, pool="ocean-sandbox")
+        )
         request = httpx.Request("GET", "https://dev.azure.com/org/_apis/projects")
         response = httpx.Response(
             429,
@@ -77,7 +79,9 @@ class TestAzureDevOpsRetryTransport:
         self,
     ) -> None:
         limiter = AzureDevOpsRateLimiter()
-        transport = _make_transport(rate_limiter=AzureDevOpsRateLimitWrapper(limiter))
+        transport = _make_transport(
+            rate_limiter=AzureDevOpsRateLimitWrapper(limiter, pool="ocean-sandbox")
+        )
         request = httpx.Request("GET", "https://dev.azure.com/org/_apis/projects")
 
         with patch("time.time", return_value=1000.0):
@@ -166,7 +170,7 @@ class TestAzureDevOpsRetryTransport:
     ) -> None:
         requests_seen: list[httpx.Request] = []
         limiter = AzureDevOpsRateLimiter()
-        rate_limiter = AzureDevOpsRateLimitWrapper(limiter)
+        rate_limiter = AzureDevOpsRateLimitWrapper(limiter, pool="ocean-sandbox")
 
         async def handler(request: httpx.Request) -> httpx.Response:
             requests_seen.append(request)

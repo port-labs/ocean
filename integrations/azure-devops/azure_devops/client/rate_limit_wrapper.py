@@ -4,6 +4,7 @@ import time
 from http import HTTPStatus
 from types import TracebackType
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
@@ -16,17 +17,30 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RETRY_AFTER_HEADER,
     AzureDevOpsRateLimiter,
 )
+from azure_devops.misc import extract_org_name_from_url
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 
-ADO_CENTRALIZED_RATE_LIMIT_POOL = "ado"
+
+def centralized_rate_limit_pool(organization_url: str) -> str:
+    """Redis pool for one Azure organization. That name is the VSID scope.
+
+    dev, vsrm, and advsec hosts of the same organization share this pool.
+    A value with ':' would split the Redis key, so an unrecognized URL falls
+    back to its hostname label.
+    """
+    org_name = extract_org_name_from_url(organization_url.strip())
+    if org_name and ":" not in org_name and "/" not in org_name:
+        return org_name
+    host = urlparse(organization_url).hostname or ""
+    return host.split(".")[0] or org_name
 
 
 class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
     def __init__(
         self,
         limiter: AzureDevOpsRateLimiter,
-        pool: str = ADO_CENTRALIZED_RATE_LIMIT_POOL,
+        pool: str,
     ) -> None:
         super().__init__(pool)
         self._limiter = limiter

@@ -3,11 +3,14 @@ from unittest.mock import patch
 import httpx
 
 from azure_devops.client.rate_limiter import AzureDevOpsRateLimiter
-from azure_devops.client.rate_limit_wrapper import AzureDevOpsRateLimitWrapper
+from azure_devops.client.rate_limit_wrapper import (
+    AzureDevOpsRateLimitWrapper,
+    centralized_rate_limit_pool,
+)
 
 
 def _wrapper() -> AzureDevOpsRateLimitWrapper:
-    return AzureDevOpsRateLimitWrapper(AzureDevOpsRateLimiter())
+    return AzureDevOpsRateLimitWrapper(AzureDevOpsRateLimiter(), pool="ocean-sandbox")
 
 
 def test_headers_become_redis_state() -> None:
@@ -69,3 +72,23 @@ def test_429_without_retry_after_uses_ado_window() -> None:
     assert state is not None
     assert state.blocked_until == 1360.0
     assert state.limit is None
+
+
+def test_pool_is_the_azure_organization_name() -> None:
+    assert (
+        centralized_rate_limit_pool("https://dev.azure.com/ocean-sandbox")
+        == "ocean-sandbox"
+    )
+    assert (
+        centralized_rate_limit_pool("https://vsrm.dev.azure.com/ocean-sandbox")
+        == "ocean-sandbox"
+    )
+    assert (
+        centralized_rate_limit_pool("https://advsec.dev.azure.com/ocean-sandbox")
+        == "ocean-sandbox"
+    )
+    assert (
+        centralized_rate_limit_pool("https://ocean-sandbox.visualstudio.com")
+        == "ocean-sandbox"
+    )
+    assert centralized_rate_limit_pool("https://dev.azure.com/oceane2e") == "oceane2e"

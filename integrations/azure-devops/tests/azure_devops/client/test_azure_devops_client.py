@@ -635,6 +635,18 @@ def test_clients_for_same_org_use_client_local_rate_limiters() -> None:
     assert client_1._rate_limiter is not client_2._rate_limiter
 
 
+def test_centralized_pool_follows_azure_organization() -> None:
+    sandbox = AzureDevopsClient(
+        "https://dev.azure.com/ocean-sandbox", MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME
+    )
+    other = AzureDevopsClient(
+        "https://dev.azure.com/oceane2e", MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME
+    )
+
+    assert sandbox._rate_limiter.pool == "ocean-sandbox"
+    assert other._rate_limiter.pool == "oceane2e"
+
+
 @pytest.fixture
 def sample_folder_patterns() -> List[FolderPattern]:
     return [

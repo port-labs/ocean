@@ -18,7 +18,10 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
-from azure_devops.client.rate_limit_wrapper import AzureDevOpsRateLimitWrapper
+from azure_devops.client.rate_limit_wrapper import (
+    AzureDevOpsRateLimitWrapper,
+    centralized_rate_limit_pool,
+)
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 
 PAGE_SIZE = 50
@@ -85,9 +88,13 @@ class HTTPBaseClient:
     def __init__(
         self,
         auth_provider: AuthProvider,
+        organization_url: str,
     ) -> None:
         self._auth_provider = auth_provider
-        self._rate_limiter = AzureDevOpsRateLimitWrapper(AzureDevOpsRateLimiter())
+        self._rate_limiter = AzureDevOpsRateLimitWrapper(
+            AzureDevOpsRateLimiter(),
+            pool=centralized_rate_limit_pool(organization_url),
+        )
         self._client = OceanAsyncClient(
             AzureDevOpsRetryTransport,
             transport_kwargs={
