@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from typing import Protocol
 
 from loguru import logger
 
@@ -9,12 +7,15 @@ from port_ocean.consumers.redis_client import create_redis_client_with_retry
 from port_ocean.consumers.redis_connection import RedisConnectionHelper
 from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
 
-if TYPE_CHECKING:
-    from port_ocean.ocean import Ocean
+
+class HasCentralizedRateLimiter(Protocol):
+    """Host that stores the process limiter. Ocean is the production instance."""
+
+    centralized_rate_limiter: CentralizedRateLimiter | None
 
 
 async def setup_centralized_rate_limiter(
-    app: Ocean,
+    app: HasCentralizedRateLimiter,
     settings: CentralizedRateLimiterSettings,
     *,
     org_id: str,
@@ -55,7 +56,7 @@ async def setup_centralized_rate_limiter(
         app.centralized_rate_limiter = CentralizedRateLimiter(org_id, None)
 
 
-async def teardown_centralized_rate_limiter(app: Ocean) -> None:
+async def teardown_centralized_rate_limiter(app: HasCentralizedRateLimiter) -> None:
     """Release Redis resources opened by setup_centralized_rate_limiter."""
     limiter = app.centralized_rate_limiter
     if limiter is not None:
