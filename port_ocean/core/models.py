@@ -277,6 +277,13 @@ class ActionRun(BaseModel, IntegrationRun):
         return self.status == ActionRunStatus.IN_PROGRESS
 
 
+class ResolvedExecutionIdentity(BaseModel):
+    """Claim-time execution identity (matches Port ResolvedExecutionIdentity)."""
+
+    type: Literal["actor", "service_account"]
+    identifier: str
+
+
 class WorkflowNodeRun(BaseModel, IntegrationRun):
     class WorkflowNode(BaseModel):
         config: WorkflowIntegrationActionConfig
@@ -292,6 +299,10 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     node: WorkflowNode | None = None
     output: dict[str, Any] = Field(default_factory=dict)
     identity_token: str | None = Field(default=None, alias="identityToken")
+    port_access_token: str | None = Field(default=None, alias="portAccessToken")
+    execution_identity: ResolvedExecutionIdentity | None = Field(
+        default=None, alias="executionIdentity"
+    )
 
     @root_validator(skip_on_failure=True)
     def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:
