@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Opt-in includeLabelChildren selector paginates nested label children (capped at 1000) for resync and webhooks without aborting the sync.
