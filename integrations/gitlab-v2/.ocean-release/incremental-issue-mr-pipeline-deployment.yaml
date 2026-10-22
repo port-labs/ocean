@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added incremental sync for project (last_activity_after), issue, merge-request, pipeline, and deployment (updated_after) using the Ocean cursor, plus in-run caching of group and project listings
+changelog: Added incremental sync for project (last_activity_after), tag (active projects then newest-first created_at cutoff), release (projects updated_after then all releases), job (active projects plus pipeline updated_after), issue, merge-request, pipeline, and deployment (updated_after) using the Ocean cursor, plus in-run caching of group and project listings

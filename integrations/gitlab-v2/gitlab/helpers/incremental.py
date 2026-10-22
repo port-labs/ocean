@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    ServerSideTimestampStrategy,
+)
 
 from gitlab.clients.options import IssueOptions
 
@@ -11,6 +14,13 @@ from gitlab.clients.options import IssueOptions
 UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
 LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
     param_key="last_activity_after"
+)
+
+# Tags API has no updated_after; order newest-first and stop on created_at.
+# Lightweight tags often omit created_at — those are kept and do not trigger early-stop.
+TAG_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="created_at",
+    query_params={"order_by": "updated", "sort": "desc"},
 )
 
 MergeRequestState = Literal["opened", "closed", "merged"]
@@ -30,8 +40,34 @@ def build_project_list_params(
     base_params: dict[str, Any],
     cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects``."""
+    """Query params for ``GET /projects`` using ``last_activity_after``."""
     return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
+
+
+def build_project_updated_after_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects`` using ``updated_after``.
+
+    GitLab requires ``order_by=updated_at`` for ``updated_after`` to take effect.
+    Used by release incremental: gate projects, then fetch all releases (releases
+    have no reliable change timestamp).
+    """
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(base_params, cursor)
+    if "updated_after" in params:
+        params["order_by"] = "updated_at"
+    return params
+
+
+def build_tag_list_params(cursor: datetime | None) -> dict[str, Any]:
+    """Query params for ``GET /projects/:id/repository/tags``.
+
+    GitLab has no server-side time filter for tags; on incremental runs this
+    requests newest-first ordering so callers can early-stop with
+    ``TAG_INCREMENTAL``.
+    """
+    return TAG_INCREMENTAL.merge_params({}, cursor)
 
 
 def build_issue_params(
