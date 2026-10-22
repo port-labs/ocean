@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from port_ocean.core.handlers.actions.utils import decrypt_run_access_token
+from port_ocean.core.handlers.actions.utils import _decrypt_run_access_token
 from port_ocean.core.models import (
     WorkflowIntegrationActionConfig,
     WorkflowNodeRun,
@@ -30,8 +30,9 @@ def _workflow_run(*, port_access_token: str | None) -> WorkflowNodeRun:
     )
 
 
-def test_decrypt_run_access_token_returns_none_without_token() -> None:
-    assert decrypt_run_access_token(_workflow_run(port_access_token=None)) is None
+def test_decrypt_run_access_token_requires_token() -> None:
+    with pytest.raises(ActionExecutionError, match="portAccessToken is required"):
+        _decrypt_run_access_token(_workflow_run(port_access_token=None))
 
 
 def test_decrypt_run_access_token_decrypts_ciphertext() -> None:
@@ -41,7 +42,7 @@ def test_decrypt_run_access_token_decrypts_ciphertext() -> None:
     mock_ocean.config.port = SimpleNamespace(client_secret=_ORG_SECRET)
 
     with patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean):
-        assert decrypt_run_access_token(
+        assert _decrypt_run_access_token(
             _workflow_run(port_access_token=ciphertext)
         ) == (plaintext)
 
@@ -55,4 +56,4 @@ def test_decrypt_run_access_token_fails_on_wrong_secret() -> None:
         patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
         pytest.raises(ActionExecutionError, match="decrypt portAccessToken"),
     ):
-        decrypt_run_access_token(_workflow_run(port_access_token=ciphertext))
+        _decrypt_run_access_token(_workflow_run(port_access_token=ciphertext))

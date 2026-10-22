@@ -1,5 +1,5 @@
-from port_ocean.core.handlers.actions.utils import decrypt_aes256_gcm
 from port_ocean.tests.helpers.aes_gcm import encrypt_aes256_gcm
+from port_ocean.utils.aes_gcm import decrypt_aes256_gcm
 
 
 def test_aes256_gcm_round_trip() -> None:

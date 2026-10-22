@@ -23,7 +23,7 @@ async def test_get_or_fetch_refetches_after_ttl(
     cache: TTLCache[str] = TTLCache(ttl_seconds=10.0, max_items=8)
     fetch = AsyncMock(side_effect=["first", "second"])
     now = 1000.0
-    monkeypatch.setattr("port_ocean.utils.ttl_cache._monotonic", lambda: now)
+    monkeypatch.setattr("port_ocean.utils.ttl_cache.time.monotonic", lambda: now)
 
     assert await cache.get_or_fetch("a1", fetch) == "first"
     now = 1011.0
