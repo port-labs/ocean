@@ -1,4 +1,6 @@
+from github.helpers.repository_change import RepositoryChange
 import binascii
+from datetime import datetime, timezone
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import base64
@@ -26,7 +28,9 @@ from github.core.options import (
     ListFileSearchOptions,
 )
 from github.helpers.utils import GithubClientType
+from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.context.event import event_context
+from port_ocean.context.ocean import ocean
 from typing import AsyncGenerator, List, Dict, Any
 
 from integration import GithubFilePattern, RepositoryBranchMapping
@@ -1557,3 +1561,373 @@ class TestFileProcessorMultiDocumentYaml:
         )
 
         assert result["content"] == ["item1", "item2"]
+
+
+INCREMENTAL_SINCE = datetime(2026, 10, 1, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+class TestRestFileExporterIncremental:
+    """Repo names are unique per test because cached methods key on args only."""
+
+    async def test_get_changed_paths_since_returns_non_removed_files(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+        compare_response = {
+            "status": "ahead",
+            "files": [
+                {"filename": "a/port.yml", "status": "modified", "sha": "s1"},
+                {"filename": "b/port.yml", "status": "added", "sha": "s2"},
+                {"filename": "c/port.yml", "status": "removed", "sha": "s3"},
+            ],
+        }
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            AsyncMock(side_effect=[[{"sha": "base-sha"}], compare_response]),
+        ) as mock_request:
+            changed = await exporter.get_changed_paths_since(
+                "test-org", "inc-repo-changed", "main", INCREMENTAL_SINCE
+            )
+
+        assert changed == {"a/port.yml", "b/port.yml"}
+        assert mock_request.await_count == 2
+        base_call, compare_call = mock_request.await_args_list
+        assert base_call.args[0].endswith("/repos/test-org/inc-repo-changed/commits")
+        assert base_call.kwargs["params"]["sha"] == "main"
+        assert base_call.kwargs["params"]["per_page"] == 1
+        assert compare_call.args[0].endswith(
+            "/repos/test-org/inc-repo-changed/compare/base-sha...main"
+        )
+
+    async def test_get_changed_paths_since_no_base_commit_falls_back(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=[])
+        ) as mock_request:
+            changed = await exporter.get_changed_paths_since(
+                "test-org", "inc-repo-no-base", "main", INCREMENTAL_SINCE
+            )
+
+        assert changed is None
+        mock_request.assert_awaited_once()
+
+    @pytest.mark.parametrize(
+        "compare_response",
+        [
+            {"status": "diverged", "files": []},
+            {"files": []},
+            {
+                "status": "ahead",
+                "files": [
+                    {"filename": f"f{i}.yml", "status": "modified"} for i in range(300)
+                ],
+            },
+        ],
+        ids=["diverged", "missing-status", "truncated"],
+    )
+    async def test_get_changed_paths_since_untrusted_diff_falls_back(
+        self, rest_client: GithubRestClient, compare_response: Dict[str, Any]
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+        repo_name = f"inc-repo-untrusted-{compare_response.get('status')}-{len(compare_response['files'])}"
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            AsyncMock(side_effect=[[{"sha": "base-sha"}], compare_response]),
+        ):
+            changed = await exporter.get_changed_paths_since(
+                "test-org", repo_name, "main", INCREMENTAL_SINCE
+            )
+
+        assert changed is None
+
+    async def test_get_changed_paths_since_identical_branch_has_no_changes(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """A push to another branch leaves this branch identical: nothing to fetch."""
+        exporter = RestFileExporter(rest_client)
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            AsyncMock(
+                side_effect=[
+                    [{"sha": "base-sha"}],
+                    {"status": "identical", "files": []},
+                ]
+            ),
+        ):
+            changed = await exporter.get_changed_paths_since(
+                "test-org", "inc-repo-identical", "main", INCREMENTAL_SINCE
+            )
+
+        assert changed == set()
+
+    async def test_collect_matched_files_incremental_uses_tree_for_changed_matches(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Changed matches are routed by tree size, exactly like a full scan."""
+        exporter = RestFileExporter(rest_client)
+        tree = [
+            {"type": "blob", "path": "small.txt", "size": 13, "sha": "s1"},
+            {
+                "type": "blob",
+                "path": "medium.txt",
+                "size": GRAPHQL_MAX_FILE_SIZE + 1,
+                "sha": "s2",
+            },
+            {
+                "type": "blob",
+                "path": "huge.txt",
+                "size": MAX_FILE_SIZE + 1,
+                "sha": "s3",
+            },
+            {"type": "blob", "path": "unchanged.txt", "size": 10, "sha": "s4"},
+            {"type": "commit", "path": "libs.txt", "sha": "s5"},
+        ]
+        tree_mock = AsyncMock(return_value=(tree, False))
+        changed = {"small.txt", "medium.txt", "huge.txt", "libs.txt"}
+        with (
+            patch.object(exporter, "get_tree_recursive", tree_mock),
+            patch.object(
+                exporter, "get_changed_paths_since", AsyncMock(return_value=changed)
+            ),
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
+        ):
+            graphql_files, rest_files = await exporter.collect_matched_files(
+                "repo1",
+                [
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+                updated_since=INCREMENTAL_SINCE,
+            )
+
+        tree_mock.assert_awaited_once()
+        assert [f["file_path"] for f in graphql_files] == ["small.txt"]
+        assert [f["file_path"] for f in rest_files] == ["medium.txt"]
+
+    async def test_collect_matched_files_incremental_skips_tree_without_matches(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+        tree_mock = AsyncMock(return_value=(TEST_TREE_ENTRIES, False))
+        with (
+            patch.object(exporter, "get_tree_recursive", tree_mock),
+            patch.object(
+                exporter,
+                "get_changed_paths_since",
+                AsyncMock(return_value={"src/app.py"}),
+            ),
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
+        ):
+            graphql_files, rest_files = await exporter.collect_matched_files(
+                "repo1",
+                [
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="**/port.yml",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+                updated_since=INCREMENTAL_SINCE,
+            )
+
+        tree_mock.assert_not_awaited()
+        assert graphql_files == []
+        assert rest_files == []
+
+    async def test_collect_matched_files_incremental_falls_back_to_tree(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+        tree_mock = AsyncMock(return_value=(TEST_TREE_ENTRIES, False))
+        with (
+            patch.object(exporter, "get_tree_recursive", tree_mock),
+            patch.object(
+                exporter, "get_changed_paths_since", AsyncMock(return_value=None)
+            ),
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value=TEST_REPO_METADATA),
+            ),
+        ):
+            graphql_files, _ = await exporter.collect_matched_files(
+                "repo1",
+                [
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+                updated_since=INCREMENTAL_SINCE,
+            )
+
+        tree_mock.assert_awaited_once()
+        assert [f["file_path"] for f in graphql_files] == ["test.txt"]
+
+    async def test_get_paginated_resources_passes_updated_since(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+        collect_mock = AsyncMock(return_value=([], []))
+        with patch.object(exporter, "collect_matched_files", collect_mock):
+            async for _ in exporter.get_paginated_resources(
+                [
+                    ListFileSearchOptions(
+                        organization="test-org",
+                        repo_name="repo1",
+                        files=[],
+                        updated_since=INCREMENTAL_SINCE,
+                    )
+                ]
+            ):
+                pass
+
+        collect_mock.assert_awaited_once_with(
+            "repo1", [], updated_since=INCREMENTAL_SINCE
+        )
+
+    async def test_builder_sets_updated_since_and_pushed_since(self) -> None:
+        repo_exporter = MagicMock()
+        org_exporter = MagicMock()
+        captured_options: List[Dict[str, Any]] = []
+
+        async def mock_repos(
+            options: Dict[str, Any],
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            captured_options.append(options)
+            yield [{"name": "repo1", "default_branch": "main"}]
+
+        async def mock_orgs(
+            *_: Any, **__: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [{"login": "test-org", "type": "Organization"}]
+
+        repo_exporter.get_paginated_resources = mock_repos
+        org_exporter.get_paginated_resources = mock_orgs
+
+        builder = FilePatternMappingBuilder(org_exporter, repo_exporter, "all")
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(include_authenticated_user=False)
+            result = await builder.build(
+                [GithubFilePattern(organization="test-org", path="**/port.yml")],
+                changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE),
+            )
+
+        assert captured_options[0]["changed_since"] == RepositoryChange.pushed(
+            INCREMENTAL_SINCE
+        )
+        assert result[0]["updated_since"] == INCREMENTAL_SINCE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "responses,expected",
+    [
+        (
+            [[{"sha": "base-sha"}], {"status": "ahead", "files": []}],
+            set(),
+        ),
+        ([[]], None),
+    ],
+    ids=["no-changes", "fallback"],
+)
+async def test_get_changed_paths_since_caches_empty_results(
+    rest_client: GithubRestClient,
+    responses: List[Any],
+    expected: set[str] | None,
+) -> None:
+    """Empty ({}) and fallback (None) results must be cached so extra patterns reuse them."""
+    exporter = RestFileExporter(rest_client)
+    repo_name = f"inc-repo-cache-{len(responses)}"
+    with (
+        patch.object(ocean.app, "cache_provider", InMemoryCacheProvider()),
+        patch.object(
+            rest_client, "send_api_request", AsyncMock(side_effect=responses)
+        ) as mock_request,
+    ):
+        first = await exporter.get_changed_paths_since(
+            "test-org", repo_name, "main", INCREMENTAL_SINCE
+        )
+        second = await exporter.get_changed_paths_since(
+            "test-org", repo_name, "main", INCREMENTAL_SINCE
+        )
+
+    assert first == expected
+    assert first == second
+    assert mock_request.await_count == len(responses)
+
+
+@pytest.mark.asyncio
+async def test_builder_lists_org_repos_once_for_selectors_without_repos() -> None:
+    repo_exporter = MagicMock()
+    org_exporter = MagicMock()
+    list_calls: List[Dict[str, Any]] = []
+
+    async def mock_repos(
+        options: Dict[str, Any],
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        list_calls.append(options)
+        yield [{"name": "repo1", "default_branch": "main"}]
+
+    async def mock_orgs(
+        *_: Any, **__: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"login": "test-org", "type": "Organization"}]
+
+    repo_exporter.get_paginated_resources = mock_repos
+    org_exporter.get_paginated_resources = mock_orgs
+
+    files = [
+        GithubFilePattern(organization="test-org", path="**/README.md"),
+        GithubFilePattern(organization="test-org", path="**/port.yml"),
+        GithubFilePattern(organization="test-org", path="**/package.json"),
+        GithubFilePattern(
+            organization="test-org", path="**/catalog.yaml", excludeArchived=True
+        ),
+        GithubFilePattern(
+            organization="test-org",
+            path="CODEOWNERS",
+            repos=[RepositoryBranchMapping(name="explicit", branch="dev")],
+        ),
+    ]
+
+    builder = FilePatternMappingBuilder(org_exporter, repo_exporter, "all")
+    with patch(
+        "github.helpers.repo_selectors.get_repository_metadata",
+        AsyncMock(return_value={"name": "explicit", "default_branch": "main"}),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(include_authenticated_user=False)
+            result = await builder.build(files)
+
+    # One listing per (org, excludeArchived); explicit repos don't list the org.
+    assert [call["exclude_archived"] for call in list_calls] == [False, True]
+
+    by_repo = {item["repo_name"]: item["files"] for item in result}
+    assert [f["path"] for f in by_repo["repo1"]] == [
+        "**/README.md",
+        "**/port.yml",
+        "**/package.json",
+        "**/catalog.yaml",
+    ]
+    assert [(f["path"], f["branch"]) for f in by_repo["explicit"]] == [
+        ("CODEOWNERS", "dev")
+    ]

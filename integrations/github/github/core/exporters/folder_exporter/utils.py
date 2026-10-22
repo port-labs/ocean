@@ -7,7 +7,11 @@ from github.core.options import (
     ListOrganizationOptions,
     ListFolderOptions,
 )
-from github.helpers.repo_selectors import CompositeRepositorySelector
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+    MemoizedRepositorySelector,
+)
+from github.helpers.repository_change import RepositoryChange
 from integration import FolderSelector
 
 
@@ -22,8 +26,14 @@ class FolderPatternMappingBuilder:
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
-    async def build(self, folders: List[FolderSelector]) -> List[ListFolderOptions]:
+    async def build(
+        self,
+        folders: List[FolderSelector],
+        changed_since: RepositoryChange | None = None,
+    ) -> List[ListFolderOptions]:
+        """Map each repo to its folder patterns; with ``changed_since`` only repos changed since then."""
         repo_map: Dict[Tuple[str, str], List[FolderSearchOptions]] = defaultdict(list)
+        repo_selector = MemoizedRepositorySelector(self.repo_selector)
 
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
 
@@ -33,14 +43,14 @@ class FolderPatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    org_type = org["type"]
-                    async for (
-                        repo_name,
-                        branch,
-                        repo_obj,
-                    ) in self.repo_selector.select_repos(
-                        folder_sel, self.repo_exporter, org_login, org_type
-                    ):
+                    repos = await repo_selector.select_repos(
+                        folder_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org["type"],
+                        changed_since=changed_since,
+                    )
+                    for repo_name, branch, repo_obj in repos:
                         key = (org_login, repo_name)
                         repo_map[key].append(
                             FolderSearchOptions(
