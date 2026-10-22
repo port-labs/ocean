@@ -84,7 +84,13 @@ def test_mcp_url_maps_region() -> None:
     )
     assert _port("http://api.localhost:9080").mcp_url == "http://mcp.localhost:9080/v1"
     assert _port("https://api.us.port.io/").mcp_url == "https://mcp.us.port.io/v1"
-    assert _port("https://example.com").mcp_url == "https://mcp.port.io/v1"
+    assert _port("http://localhost:3000").mcp_url == "http://mcp.localhost:3000/v1"
+    assert _port("https://example.com").mcp_url == "https://mcp.example.com/v1"
+
+
+def test_mcp_url_requires_hostname() -> None:
+    with pytest.raises(ValidationError, match="Cannot derive mcp_url"):
+        _port("http:///v1")
 
 
 def test_mcp_url_prefers_override() -> None:
