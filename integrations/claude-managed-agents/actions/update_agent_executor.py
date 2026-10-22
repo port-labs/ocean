@@ -1,5 +1,6 @@
 from typing import Any
 
+from anthropic.types.beta import BetaManagedAgentsAgent
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
@@ -8,6 +9,7 @@ from pydantic import Field, model_validator
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
+from actions.port_mcp import attach_port_mcp_settings_to_agent_config
 from integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -21,29 +23,40 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     model: str | None = None
     systemPrompt: str | None = None
     config: dict[str, Any] | None = None
+    enablePortMcp: bool | None = None
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
-        if not any([self.name, self.model, self.systemPrompt, self.config]):
+        if not any(
+            [self.name, self.model, self.systemPrompt, self.config, self.enablePortMcp]
+        ):
             raise ValueError(
                 "at least one of name, model, systemPrompt, or config must be provided"
             )
         return self
 
-    def to_request_payload(self) -> dict[str, Any]:
+    def to_request_payload(
+        self, existing_agent: BetaManagedAgentsAgent
+    ) -> dict[str, Any]:
         """Return only the fields that should be sent to the Anthropic API.
 
         Omits agentId (routing key, not an API field), drops None/empty values,
         and maps systemPrompt → system to match the API field name.
         """
         rename = {"systemPrompt": "system"}
-        return {
+        payload = {
             rename.get(field, field): value
             for field, value in self.model_dump(
-                exclude={"agentId"}, exclude_none=True
+                exclude={"agentId", "enablePortMcp"}, exclude_none=True
             ).items()
             if value
         }
+        config = payload.pop("config", None) or {}
+        if self.enablePortMcp:
+            config = attach_port_mcp_settings_to_agent_config(
+                config, existing_agent=existing_agent
+            )
+        return {**payload, **config}
 
 
 class UpdateAgentExecutor(AbstractAnthropicExecutor):
@@ -74,14 +87,14 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
         )
 
         try:
-            current = await self.client.get_agent(agent_id)
+            existing_agent = await self.client.get_agent(agent_id)
         except Exception as error:
             raise ActionExecutionError(
                 f"Failed to retrieve agent {agent_id}: {error}",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             ) from error
 
-        version = current.version
+        version = existing_agent.version
         if not isinstance(version, int):
             raise ActionExecutionError(
                 f"Agent {agent_id} returned an unexpected version: {version!r}",
@@ -92,7 +105,7 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
             agent = await self.client.update_agent(
                 agent_id,
                 version=version,
-                payload=inputs.to_request_payload(),
+                payload=inputs.to_request_payload(existing_agent),
             )
         except Exception as error:
             raise ActionExecutionError(
@@ -102,7 +115,9 @@ class UpdateAgentExecutor(AbstractAnthropicExecutor):
 
         logger.info(f"Updated Claude agent {agent_id} for run {run.id}")
 
-        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json"), run)
+        await self.register_entity(
+            ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run
+        )
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id

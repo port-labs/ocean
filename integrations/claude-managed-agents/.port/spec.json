@@ -139,6 +139,14 @@
           "required": true
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities.",
+          "default": true,
+          "required": false
+        },
+        {
           "name": "systemPrompt",
           "title": "System prompt",
           "type": "string",
@@ -158,6 +166,7 @@
       "name": "trigger_agent",
       "icon": "Claude",
       "description": "Trigger a Claude managed agent by starting or continuing a session and sending a user message",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "agentId",
@@ -186,6 +195,13 @@
           "type": "string",
           "description": "The user message sent to the agent",
           "required": true
+        },
+        {
+          "name": "vaultName",
+          "title": "Vault name",
+          "type": "string",
+          "description": "Display name of the Claude vault that stores this user's Port MCP credential. Resolved before the run starts, so a workflow expression such as port-mcp-{{ .trigger.by.user.email }} is allowed. The resolved value must be stable and unique per user, and the same value must be sent when continuing the session; a shared name lets later runs overwrite the token. Defaults to port-mcp-{identity id}.",
+          "required": false
         },
         {
           "name": "config",
@@ -284,6 +300,13 @@
           "title": "Model",
           "type": "string",
           "description": "New model identifier, for example claude-opus-4-8",
+          "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities. Omit to leave the agent's MCP config unchanged.",
           "required": false
         },
         {

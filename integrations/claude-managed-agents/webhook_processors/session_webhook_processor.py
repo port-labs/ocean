@@ -41,6 +41,6 @@ class SessionWebhookProcessor(AbstractAnthropicWebhookProcessor):
         session = await client.get_session(session_id)
         logger.info(f"Upserting session {session_id} from catalog ({event_type})")
         return WebhookEventRawResults(
-            updated_raw_results=[session.to_dict(mode="json")],
+            updated_raw_results=[session.to_dict(mode="json", warnings=False)],
             deleted_raw_results=[],
         )
