@@ -17,7 +17,7 @@ from loguru import logger
 from pydantic import BaseModel
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.utils import get_run_access_token
-from port_ocean.utils.async_iterators import find_first_item_in_generator
+from port_ocean.utils.async_iterators import find_first_match_in_generator
 from clients.anthropic_client import AnthropicClient
 from port_ocean.core.models import WorkflowNodeRun
 
@@ -53,10 +53,13 @@ def is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
     return vault.display_name == name
 
 
-def is_vault_credential_name_matching(
-    credential: BetaManagedAgentsCredential, name: str
+def is_vault_credential_url_matching(
+    credential: BetaManagedAgentsCredential, url: str
 ) -> bool:
-    return credential.display_name == name
+    mcp_server_url = credential.auth.mcp_server_url
+    return mcp_server_url is not None and _normalize_port_mcp_url(
+        mcp_server_url
+    ) == _normalize_port_mcp_url(url)
 
 
 def is_agent_configured_with_port_mcp(
@@ -103,7 +106,7 @@ async def ensure_port_mcp_binding(
     client: AnthropicClient, run: WorkflowNodeRun, vault_name: str
 ) -> PortMcpBinding:
     """Find or create the user's vault, then (re)mint its Port MCP credential."""
-    vault = await find_first_item_in_generator(
+    vault = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.list()),
         functools.partial(is_vault_name_matching, name=vault_name),
     )
@@ -111,10 +114,10 @@ async def ensure_port_mcp_binding(
         logger.info(f"Creating Port MCP vault '{vault_name}'")
         vault = await client.beta.vaults.create(display_name=vault_name)
 
-    credential = await find_first_item_in_generator(
+    credential = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.credentials.list(vault_id=vault.id)),
         functools.partial(
-            is_vault_credential_name_matching, name=PORT_MCP_CREDENTIAL_NAME
+            is_vault_credential_url_matching, url=ocean.config.port.mcp_url
         ),
     )
     if credential is None:
