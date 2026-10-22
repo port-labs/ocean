@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add includeReviewAndCheckStatus to attach pull request reviewDecision and checksStatus for detecting changes requested and CI failures

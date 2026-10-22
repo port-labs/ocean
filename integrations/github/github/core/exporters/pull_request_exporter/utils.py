@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import Any, AsyncIterator, Callable, Literal, Optional, cast
 
@@ -238,3 +239,137 @@ async def attach_comments_if_requested(
     return await attach_pull_request_comments(
         client, pull_requests, organization=organization
     )
+
+
+_REVIEW_DECISION_STATES = frozenset({"APPROVED", "CHANGES_REQUESTED", "DISMISSED"})
+_DEFAULT_CONCURRENCY = 10
+
+
+def flatten_graphql_review_and_checks(pr_node: dict[str, Any]) -> None:
+    """Copy GraphQL review/CI fields onto snake_case keys used by mappings."""
+    if "reviewDecision" in pr_node:
+        decision = pr_node.get("reviewDecision")
+        pr_node["review_decision"] = (
+            str(decision).lower() if decision is not None else None
+        )
+
+    if "statusCheckRollup" in pr_node:
+        rollup = pr_node.get("statusCheckRollup") or {}
+        state = rollup.get("state") if isinstance(rollup, dict) else None
+        pr_node["checks_status"] = str(state).lower() if state is not None else None
+
+
+def derive_review_decision_from_reviews(reviews: list[dict[str, Any]]) -> Optional[str]:
+    """Approximate GitHub's reviewDecision from REST review payloads.
+
+    Uses each reviewer's latest decisive review (APPROVED / CHANGES_REQUESTED).
+    DISMISSED clears that reviewer's decision. This mirrors common cases of
+    GraphQL ``reviewDecision`` but does not account for branch protection /
+    CODEOWNERS required-reviewer rules.
+    """
+    latest_by_user: dict[str, str] = {}
+    for review in sorted(reviews, key=lambda item: item.get("submitted_at") or ""):
+        user = (review.get("user") or {}).get("login")
+        state = review.get("state")
+        if not user or state not in _REVIEW_DECISION_STATES:
+            continue
+        if state == "DISMISSED":
+            latest_by_user.pop(user, None)
+        else:
+            latest_by_user[user] = state
+
+    if not latest_by_user:
+        return None
+    if any(state == "CHANGES_REQUESTED" for state in latest_by_user.values()):
+        return "changes_requested"
+    if all(state == "APPROVED" for state in latest_by_user.values()):
+        return "approved"
+    return "review_required"
+
+
+async def _fetch_checks_status(
+    client: GithubRestClient,
+    organization: str,
+    repo_name: str,
+    head_sha: Optional[str],
+) -> Optional[str]:
+    if not head_sha:
+        return None
+    endpoint = (
+        f"{client.base_url}/repos/{organization}/{repo_name}/commits/{head_sha}/status"
+    )
+    response = await client.send_api_request(endpoint)
+    if not response:
+        return None
+    state = response.get("state")
+    return str(state).lower() if state else None
+
+
+async def _fetch_review_decision(
+    client: GithubRestClient,
+    organization: str,
+    repo_name: str,
+    pr_number: Optional[int],
+) -> Optional[str]:
+    if not pr_number:
+        return None
+    endpoint = (
+        f"{client.base_url}/repos/{organization}/{repo_name}/pulls/{pr_number}/reviews"
+    )
+    reviews: list[dict[str, Any]] = []
+    async for page in client.send_paginated_request(endpoint):
+        reviews.extend(page)
+    return derive_review_decision_from_reviews(reviews)
+
+
+async def enrich_pull_request_review_and_checks(
+    client: GithubRestClient,
+    organization: str,
+    repo_name: str,
+    pull_request: dict[str, Any],
+) -> dict[str, Any]:
+    """Attach ``review_decision`` and ``checks_status`` onto one REST PR in-place."""
+    pr_number = pull_request.get("number")
+    head_sha = (pull_request.get("head") or {}).get("sha")
+
+    checks_status, review_decision = await asyncio.gather(
+        _fetch_checks_status(client, organization, repo_name, head_sha),
+        _fetch_review_decision(client, organization, repo_name, pr_number),
+    )
+    pull_request["checks_status"] = checks_status
+    pull_request["review_decision"] = review_decision
+    return pull_request
+
+
+async def attach_review_and_checks_if_requested(
+    client: GithubRestClient,
+    pull_requests: list[dict[str, Any]],
+    *,
+    organization: str,
+    repo_name: str,
+    include_review_and_check_status: bool,
+    concurrency: int = _DEFAULT_CONCURRENCY,
+) -> list[dict[str, Any]]:
+    """Enrich REST PRs when the selector asks for review decision and checks status."""
+    if not include_review_and_check_status or not pull_requests:
+        return pull_requests
+
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _enrich(pr: dict[str, Any]) -> dict[str, Any]:
+        async with semaphore:
+            try:
+                return await enrich_pull_request_review_and_checks(
+                    client, organization, repo_name, pr
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to enrich review/checks status for "
+                    f"{organization}/{repo_name}#{pr.get('number')}",
+                    exc_info=True,
+                )
+                pr.setdefault("review_decision", None)
+                pr.setdefault("checks_status", None)
+                return pr
+
+    return list(await asyncio.gather(*[_enrich(pr) for pr in pull_requests]))
