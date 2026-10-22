@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Add incremental sync for files. Incremental runs only scan repositories pushed since the cursor, diff each branch against its last commit before the cursor with the compare API, and fetch only changed files matching the configured patterns. The recursive tree is fetched only for repositories with matching changes, keeping the same size limits as a full resync. Falls back to a full scan for a repository when the diff cannot be trusted. Deleted files are removed on the next full resync.
