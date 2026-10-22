@@ -628,6 +628,16 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "they can be mapped with itemsToParse."
         ),
     )
+    include_review_and_check_status: bool = Field(
+        title="Include Review And Check Status",
+        alias="includeReviewAndCheckStatus",
+        default=False,
+        description=(
+            "When true, attach review_decision and checks_status on each pull request "
+            "so review and CI outcomes can be mapped. REST makes extra API calls; "
+            "GraphQL flattens fields already returned by the query."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:

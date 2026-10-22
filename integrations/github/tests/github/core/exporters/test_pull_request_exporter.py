@@ -1460,6 +1460,8 @@ class TestGraphQLPullRequestExporterInternals:
             "labels": {"nodes": []},
             "mergeStateStatus": "CLEAN",
             "mergeable": "MERGEABLE",
+            "reviewDecision": "CHANGES_REQUESTED",
+            "statusCheckRollup": {"state": "FAILURE"},
         }
 
         repo = {"name": "repo1"}
@@ -1478,6 +1480,8 @@ class TestGraphQLPullRequestExporterInternals:
         assert normalized["firstCommit"]["oid"] == "firstsha"
         assert normalized["firstCommit"]["committedDate"] == "2025-03-01T08:30:00Z"
         assert normalized["state"] == "open"
+        assert normalized["review_decision"] == "changes_requested"
+        assert normalized["checks_status"] == "failure"
         assert normalized["__repository"] == "repo1"
         assert normalized["__organization"] == "test-org"
 

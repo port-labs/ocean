@@ -91,6 +91,9 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
                 include_comments=config.selector.include_comments,
+                include_review_and_check_status=(
+                    config.selector.include_review_and_check_status
+                ),
             )
         )
         if not data_to_upsert:

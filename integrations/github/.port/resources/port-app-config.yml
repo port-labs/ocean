@@ -51,6 +51,7 @@ resources:
       query: 'true'
       states:
         - "open"
+      includeReviewAndCheckStatus: true
     port:
       entity:
         mappings:
@@ -62,6 +63,8 @@ resources:
             assignees: '[.assignees[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
             reviewers: '[.requested_reviewers[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
             status: ".state"
+            reviewDecision: ".review_decision"
+            checksStatus: ".checks_status"
             closedAt: ".closed_at"
             updatedAt: ".updated_at"
             mergedAt: ".merged_at"

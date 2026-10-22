@@ -194,6 +194,7 @@ class TestPullRequestReviewWebhookProcessor:
                     enrich_with_first_commit=False,
                     exclude_graphql_fields=[],
                     include_comments=False,
+                    include_review_and_check_status=False,
                 )
             )
 

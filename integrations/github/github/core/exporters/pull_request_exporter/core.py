@@ -36,6 +36,8 @@ from github.helpers.utils import (
 )
 from github.core.exporters.pull_request_exporter.utils import (
     attach_comments_if_requested,
+    attach_review_and_checks_if_requested,
+    flatten_graphql_review_and_checks,
     paginate_closed_pull_requests,
 )
 from port_ocean.core.incremental.strategies import (
@@ -73,6 +75,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> Optional[RAW_ITEM]:
         options_dict = dict(options)
         include_comments = bool(options_dict.pop("include_comments", False))
+        include_review_and_check_status = bool(
+            options_dict.pop("include_review_and_check_status", False)
+        )
         repo_name, organization, params = parse_github_options(options_dict)
         pr_number = params["pr_number"]
 
@@ -99,6 +104,13 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             organization=organization,
             include_comments=include_comments,
         )
+        enriched = await attach_review_and_checks_if_requested(
+            self.client,
+            enriched,
+            organization=organization,
+            repo_name=cast(str, repo_name),
+            include_review_and_check_status=include_review_and_check_status,
+        )
         return enriched[0]
 
     async def get_paginated_resources[ExporterOptionsT: ListPullRequestOptions](
@@ -108,6 +120,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         options_dict = dict(options)
         include_comments = bool(options_dict.pop("include_comments", False))
+        include_review_and_check_status = bool(
+            options_dict.pop("include_review_and_check_status", False)
+        )
         repo_name, organization, extras = parse_github_options(options_dict)
         states = extras["states"]
         max_results = extras["max_results"]
@@ -126,11 +141,18 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             async for open_batch in self._fetch_open_pull_requests(
                 organization, cast(str, repo_name), incremental_cursor
             ):
-                yield await attach_comments_if_requested(
+                with_comments = await attach_comments_if_requested(
                     self.client,
                     open_batch,
                     organization=organization,
                     include_comments=include_comments,
+                )
+                yield await attach_review_and_checks_if_requested(
+                    self.client,
+                    with_comments,
+                    organization=organization,
+                    repo_name=cast(str, repo_name),
+                    include_review_and_check_status=include_review_and_check_status,
                 )
 
         if "closed" in states:
@@ -144,11 +166,18 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 updated_after,
                 None if incremental_cursor is not None else closed_after,
             ):
-                yield await attach_comments_if_requested(
+                with_comments = await attach_comments_if_requested(
                     self.client,
                     closed_batch,
                     organization=organization,
                     include_comments=include_comments,
+                )
+                yield await attach_review_and_checks_if_requested(
+                    self.client,
+                    with_comments,
+                    organization=organization,
+                    repo_name=cast(str, repo_name),
+                    include_review_and_check_status=include_review_and_check_status,
                 )
 
     def _build_pull_request_paginated_endpoint(
@@ -242,6 +271,8 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> Optional[RAW_ITEM]:
         options_dict = dict(options)
         include_comments = bool(options_dict.pop("include_comments", False))
+        # GraphQL flattens review/checks in _normalize_pr_node; flag is REST-only.
+        options_dict.pop("include_review_and_check_status", None)
         repo_name, organization, params = parse_github_options(options_dict)
         pr_number: int = params["pr_number"]
         repo = params["repo"]
@@ -291,6 +322,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         options_dict = dict(options)
         _, organization, extras = parse_github_options(options_dict)
         include_comments = bool(extras.pop("include_comments", False))
+        extras.pop("include_review_and_check_status", None)
         states = extras["states"]
         max_results = extras["max_results"]
         incremental_cursor = extras.pop("incremental_cursor", None)
@@ -653,6 +685,8 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         if "mergeable" in pr_node:
             normalized["mergeable"] = pr_node["mergeable"] == "MERGEABLE"
+
+        flatten_graphql_review_and_checks(normalized)
 
         if opts.enrich_with_first_commit:
             self._enrich_with_first_commit(normalized, pr_node)
