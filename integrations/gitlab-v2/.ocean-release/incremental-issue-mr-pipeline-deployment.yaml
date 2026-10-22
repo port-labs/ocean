@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added incremental sync for issue, merge-request, pipeline, and deployment using GitLab updated_after (Ocean cursor), plus in-run caching of group and project listings
+changelog: Added incremental sync for project (last_activity_after), issue, merge-request, pipeline, and deployment (updated_after) using the Ocean cursor, plus in-run caching of group and project listings

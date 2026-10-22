@@ -9,6 +9,9 @@ from gitlab.clients.options import IssueOptions
 
 # GitLab filters list endpoints server-side by the resource's updated_at.
 UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
+LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
+    param_key="last_activity_after"
+)
 
 MergeRequestState = Literal["opened", "closed", "merged"]
 
@@ -21,6 +24,14 @@ def resolve_effective_datetime(
     if cursor is not None:
         return cursor
     return selector_value
+
+
+def build_project_list_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects``."""
+    return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
 
 
 def build_issue_params(

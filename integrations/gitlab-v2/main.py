@@ -28,6 +28,7 @@ from gitlab.helpers.incremental import (
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
+    build_project_list_params,
     resolve_effective_datetime,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
@@ -154,12 +155,14 @@ async def on_start() -> None:
         await project_webhook_factory.create_webhooks_for_personal_projects()
 
 
+@ocean.on_incremental_resync(ObjectKind.PROJECT)
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
     include_only_active_projects = selector.include_only_active_projects
+    sync_cursor = active_incremental_cursor()
     search_queries = (
         [sq.dict() for sq in selector.search_queries]
         if selector.search_queries
@@ -167,8 +170,9 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    params = build_project_params(
-        include_only_active_projects=include_only_active_projects
+    params = build_project_list_params(
+        build_project_params(include_only_active_projects=include_only_active_projects),
+        sync_cursor,
     )
     async for projects_batch in client.get_projects(
         params=params,
@@ -466,6 +470,7 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT_WITH_MEMBERS)
 async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Full resync only — membership changes do not reliably bump last_activity_at."""
     client = create_gitlab_client()
     selector = cast(
         GitlabProjectWithMembersResourceConfig, event.resource_config
