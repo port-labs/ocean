@@ -51,6 +51,9 @@ PULL_REQUEST_COMMENT_EVENTS = (
     PULL_REQUEST_COMMENT_UPSERT_EVENTS + PULL_REQUEST_COMMENT_DELETE_EVENTS
 )
 
+# Refresh pull-request checksStatus when a check suite finishes
+CHECK_SUITE_PR_REFRESH_EVENTS = ["completed", "requested_action", "rerequested"]
+
 # Check run validation only fires for these PR actions
 CHECK_RUN_PR_ACTIONS = ["opened", "synchronize", "reopened", "edited"]
 
@@ -175,6 +178,7 @@ WEBHOOK_CREATE_EVENTS = [
     "pull_request_review",
     "pull_request_review_comment",
     "issue_comment",
+    "check_suite",
     "issues",
     "release",
     "create",

@@ -181,6 +181,7 @@ class TestPullRequestWebhookProcessor:
                         include_required_checks_status=False,
                         excluded_required_checks=[],
                         include_comments=False,
+                        include_review_and_check_status=False,
                     )
                 )
             elif expected_delete:

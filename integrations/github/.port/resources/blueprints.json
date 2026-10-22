@@ -160,6 +160,28 @@
                         "closed": "red"
                     }
                 },
+                "reviewDecision": {
+                    "title": "Review Decision",
+                    "type": "string",
+                    "enum": ["approved", "changes_requested", "review_required"],
+                    "enumColors": {
+                        "approved": "green",
+                        "changes_requested": "red",
+                        "review_required": "yellow"
+                    }
+                },
+                "checksStatus": {
+                    "title": "Checks Status",
+                    "type": "string",
+                    "enum": ["success", "failure", "pending", "error", "expected"],
+                    "enumColors": {
+                        "success": "green",
+                        "failure": "red",
+                        "pending": "yellow",
+                        "error": "red",
+                        "expected": "blue"
+                    }
+                },
                 "closedAt": {
                     "title": "Closed At",
                     "type": "string",
