@@ -306,8 +306,7 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities.",
-          "default": true,
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities. Omit to leave the agent's MCP config unchanged.",
           "required": false
         },
         {

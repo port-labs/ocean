@@ -1885,26 +1885,7 @@ async def test_update_agent_executor_updates_and_completes() -> None:
     client_mock.update_agent.assert_awaited_once_with(
         "agent_1",
         version=3,
-        payload={
-            "name": "new-name",
-            "mcp_servers": [
-                {
-                    "type": "url",
-                    "name": PORT_MCP_SERVER_NAME,
-                    "url": "https://mcp.getport.io/v1",
-                }
-            ],
-            "tools": [
-                {
-                    "type": "mcp_toolset",
-                    "mcp_server_name": PORT_MCP_SERVER_NAME,
-                    "default_config": {
-                        "enabled": True,
-                        "permission_policy": {"type": "always_allow"},
-                    },
-                }
-            ],
-        },
+        payload={"name": "new-name"},
     )
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
@@ -2065,7 +2046,9 @@ async def test_update_agent_executor_raises_on_update_failure() -> None:
 @pytest.mark.asyncio
 async def test_update_agent_executor_wires_port_mcp_when_flag_true() -> None:
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value=_sdk_agent(version=1))
+    current = _sdk_agent(version=1, mcp_servers=[])
+    current.tools = []
+    client_mock.get_agent = AsyncMock(return_value=current)
     client_mock.update_agent = AsyncMock(return_value=_sdk_agent())
     executor = _build_executor(UpdateAgentExecutor, client_mock)
 
@@ -2090,17 +2073,25 @@ async def test_update_agent_executor_wires_port_mcp_when_flag_true() -> None:
     payload = client_mock.update_agent.await_args.kwargs["payload"]
     assert payload["description"] == "d"
     assert "metadata" not in payload
-    assert any(s.get("name") == PORT_MCP_SERVER_NAME for s in payload["mcp_servers"])
+    assert any(
+        getattr(s, "name", None) == PORT_MCP_SERVER_NAME for s in payload["mcp_servers"]
+    )
     assert "enablePortMcp" not in payload
     assert "config" not in payload
 
 
 @pytest.mark.asyncio
 async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> None:
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+
     current = _sdk_agent(version=1)
     current.tools = [{"type": "agent_toolset_20260401", "name": "existing"}]
     current.mcp_servers = [
-        {"type": "url", "name": "other", "url": "https://example.com"}
+        BetaManagedAgentsMCPServerURLDefinition(
+            type="url", name="other", url="https://example.com"
+        )
     ]
     current.metadata = {"keep": "yes"}
     client_mock = MagicMock()
@@ -2124,9 +2115,12 @@ async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> Non
 
     payload = client_mock.update_agent.await_args.kwargs["payload"]
     assert any(tool.get("name") == "existing" for tool in payload["tools"])
-    assert any(server.get("name") == "other" for server in payload["mcp_servers"])
     assert any(
-        server.get("name") == PORT_MCP_SERVER_NAME for server in payload["mcp_servers"]
+        getattr(server, "name", None) == "other" for server in payload["mcp_servers"]
+    )
+    assert any(
+        getattr(server, "name", None) == PORT_MCP_SERVER_NAME
+        for server in payload["mcp_servers"]
     )
 
 
@@ -2179,26 +2173,7 @@ async def test_update_agent_executor_maps_system_prompt_to_system_field() -> Non
     client_mock.update_agent.assert_awaited_once_with(
         "agent_1",
         version=1,
-        payload={
-            "system": "be helpful",
-            "mcp_servers": [
-                {
-                    "type": "url",
-                    "name": PORT_MCP_SERVER_NAME,
-                    "url": "https://mcp.getport.io/v1",
-                }
-            ],
-            "tools": [
-                {
-                    "type": "mcp_toolset",
-                    "mcp_server_name": PORT_MCP_SERVER_NAME,
-                    "default_config": {
-                        "enabled": True,
-                        "permission_policy": {"type": "always_allow"},
-                    },
-                }
-            ],
-        },
+        payload={"system": "be helpful"},
     )
 
 
