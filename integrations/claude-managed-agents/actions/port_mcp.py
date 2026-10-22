@@ -17,7 +17,7 @@ from loguru import logger
 from pydantic import BaseModel
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.utils import get_run_access_token
-from utils.misc import find_first_item_in_generator
+from port_ocean.utils.async_iterators import find_first_item_in_generator
 from clients.anthropic_client import AnthropicClient
 from port_ocean.core.models import WorkflowNodeRun
 

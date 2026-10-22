@@ -13,7 +13,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
-from utils.cache import Cache
+from port_ocean.utils.ttl_cache import TTLCache
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp import (
@@ -79,10 +79,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     WEBHOOK_PROCESSOR_CLASS = TriggerAgentWebhookProcessor
     WEBHOOK_PATH = WEBHOOK_PATH
 
-    _agent_cache = Cache[BetaManagedAgentsAgent](
+    _agent_cache = TTLCache[BetaManagedAgentsAgent](
         ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
     )
-    _port_mcp_cache = Cache[PortMcpBinding](
+    _port_mcp_cache = TTLCache[PortMcpBinding](
         ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
     )
 
