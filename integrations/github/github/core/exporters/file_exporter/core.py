@@ -165,13 +165,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            changed_paths = (
-                await self.get_changed_paths_since(
+            changed_paths = None
+            if updated_since:
+                changed_paths = await self.get_changed_paths_since(
                     organization, repo_name, branch, updated_since
                 )
-                if updated_since
-                else None
-            )
             if changed_paths is not None and not any(
                 match_file_path_against_glob_pattern(path, pattern)
                 for path in changed_paths
