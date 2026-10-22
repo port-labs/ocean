@@ -758,7 +758,9 @@ async def test_ensure_port_mcp_binding_creates_vault_and_credential() -> None:
         patch("actions.port_mcp.get_run_access_token", return_value="tok_abc"),
     ):
         binding = await ensure_port_mcp_binding(
-            client, _workflow_run_with_port_mcp(), vault_name=None
+            client,
+            _workflow_run_with_port_mcp(),
+            vault_name="port-mcp-user@example.com",
         )
 
     assert binding == PortMcpBinding(vault_id="vault_new", credential_id="cred_new")
@@ -784,6 +786,10 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
         id="cred_1",
         display_name="port-mcp",
         archived_at=None,
+        auth=SimpleNamespace(
+            type="static_bearer",
+            mcp_server_url="https://mcp.getport.io/v1",
+        ),
     )
     pages = iter([[existing_vault], [existing_cred]])
 
@@ -802,7 +808,9 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
         patch("actions.port_mcp.get_run_access_token", return_value="tok_abc"),
     ):
         binding = await ensure_port_mcp_binding(
-            client, _workflow_run_with_port_mcp(), vault_name=None
+            client,
+            _workflow_run_with_port_mcp(),
+            vault_name="port-mcp-user@example.com",
         )
 
     assert binding == PortMcpBinding(vault_id="vault_1", credential_id="cred_1")
@@ -814,7 +822,6 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
         auth={
             "type": "static_bearer",
             "token": "tok_abc",
-            "mcp_server_url": "https://mcp.getport.io/v1",
         },
     )
 
