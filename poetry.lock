@@ -3064,4 +3064,4 @@ cli = ["click", "cookiecutter", "jinja2-strcase", "jinja2-time", "jsonref", "ric
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "8179e7edde8f5924c9c76fbc4546649cb62237e7b1924bb9d3675aa85fc2860f"
+content-hash = "2df5539ccc67962d4c54f3ce511b7325d1841e47142b023045e37f0719d31881"
