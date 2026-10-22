@@ -184,12 +184,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     matched = [m for m in matched if m["path"] in changed_paths]
 
             logger.info(
-                f"Matched {len(matched)} files in {repo_name}@{branch} with pattern '{pattern}' from {organization}"
-                + (
-                    f": {[m['path'] for m in matched]}"
-                    if changed_paths is not None and matched
-                    else ""
-                )
+                f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
             )
 
             for match in matched:
