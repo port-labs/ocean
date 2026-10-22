@@ -619,6 +619,15 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "This option will be ignored if the api selector is set to rest."
         ),
     )
+    include_comments: bool = Field(
+        title="Include Comments",
+        alias="includeComments",
+        default=False,
+        description=(
+            "When true, attach each pull request's comments under `__comments` so "
+            "they can be mapped with itemsToParse."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:

@@ -602,7 +602,7 @@ async def resync_pull_requests(
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
-        GraphQLPullRequestExporter(graphql_client)
+        GraphQLPullRequestExporter(graphql_client, rest_client)
         if is_graphql_api
         else RestPullRequestExporter(rest_client)
     )
@@ -650,6 +650,7 @@ async def resync_pull_requests(
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                                include_comments=config.selector.include_comments,
                             )
                         )
                     )
