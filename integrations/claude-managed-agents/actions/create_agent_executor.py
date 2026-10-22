@@ -65,7 +65,9 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         # Reflect the new agent in the catalog immediately via the `agent` kind
         # mapping (webhooks also keep agents in sync). Best-effort: never fails
         # the run.
-        await self.register_entity(ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run)
+        await self.register_entity(
+            ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run
+        )
 
         if isinstance(run, WorkflowNodeRun):
             # Expose the created agent's id as a workflow output so later nodes

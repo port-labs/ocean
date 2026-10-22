@@ -66,7 +66,6 @@ from actions.utils import (
     build_session_link,
     normalize_session_config,
 )
-from port_ocean.config.settings import PortSettings
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
 )
@@ -1008,6 +1007,7 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
     resolve_binding.assert_awaited_once()
     client_mock.create_session.assert_not_called()
     client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up")
+
 
 @pytest.mark.asyncio
 async def test_trigger_agent_managed_port_mcp_rejects_cross_identity_continue() -> None:
