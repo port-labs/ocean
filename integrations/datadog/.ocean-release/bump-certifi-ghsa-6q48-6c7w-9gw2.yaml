@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Bumped certifi to 2026.10.19 to fix GHSA-6q48-6c7w-9gw2
