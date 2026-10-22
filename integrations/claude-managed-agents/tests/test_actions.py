@@ -822,12 +822,12 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None:
-    from utils.cache import Cache
+    from port_ocean.utils.ttl_cache import TTLCache
 
     client = MagicMock()
     client.beta.vaults.credentials.update = AsyncMock()
     executor = _build_executor(TriggerAgentExecutor, client)
-    executor._port_mcp_cache = Cache[PortMcpBinding](ttl_seconds=120, max_items=100)
+    executor._port_mcp_cache = TTLCache[PortMcpBinding](ttl_seconds=120, max_items=100)
     binding = PortMcpBinding(vault_id="vault_1", credential_id="cred_1")
 
     run_1 = _workflow_run_with_port_mcp(token="tok_1")
