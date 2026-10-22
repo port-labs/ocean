@@ -170,14 +170,14 @@ uvloop = ["uvloop (>=0.15.2) ; sys_platform != \"win32\"", "winloop (>=0.5.0) ; 
 
 [[package]]
 name = "certifi"
-version = "2026.6.17"
+version = "2026.10.19"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.7"
 groups = ["main", "dev"]
 files = [
-    {file = "certifi-2026.6.17-py3-none-any.whl", hash = "sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db"},
-    {file = "certifi-2026.6.17.tar.gz", hash = "sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432"},
+    {file = "certifi-2026.10.19-py3-none-any.whl", hash = "sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b"},
+    {file = "certifi-2026.10.19.tar.gz", hash = "sha256:035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae"},
 ]
 
 [[package]]
@@ -2010,14 +2010,14 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "packaging"
-version = "26.2"
+version = "26.3"
 description = "Core utilities for Python packages"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e"},
-    {file = "packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"},
+    {file = "packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"},
+    {file = "packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79"},
 ]
 
 [[package]]
@@ -2067,19 +2067,20 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.55.4"
+version = "0.55.5"
 description = "Port Ocean is a Python framework for building integrations that ingest data into Port, the platform for building your AI software factory."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.55.4-py3-none-any.whl", hash = "sha256:9e28f01b455bffcfacdcb599c6d6958de5aec1c4e2817159046e53e6bb282797"},
-    {file = "port_ocean-0.55.4.tar.gz", hash = "sha256:3eed1a3e646e40d4b948db5f7a647ba4d9f95ad8de461cce012e4ea0b7c3c442"},
+    {file = "port_ocean-0.55.5-py3-none-any.whl", hash = "sha256:f14beab8ac91b481df1c0f8207745b9b4e85b9eef82a770f173d4636e33c2e5a"},
+    {file = "port_ocean-0.55.5.tar.gz", hash = "sha256:35e114e5af56a4bd913f21af89a0d580b99f3c8e0cb7c5c0c81582ef21e4521d"},
 ]
 
 [package.dependencies]
 aiofiles = ">=25.1.0,<26.0.0"
 aiostream = ">=0.5.2,<0.7.0"
+certifi = ">=2026.10.19"
 click = {version = ">=8.5.0,<9.0.0", optional = true, markers = "extra == \"cli\""}
 confluent-kafka = ">=2.15.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
@@ -2113,7 +2114,7 @@ starlette = ">=1.7.0,<2.0"
 tomli = ">=2.0.1,<3.0.0"
 urllib3 = ">=2.8.0,<3.0.0"
 uvicorn = ">=0.54.0,<0.55.0"
-virtualenv = ">=21.14.2,<22.0.0"
+virtualenv = ">=21.14.9,<22.0.0"
 werkzeug = ">=3.1.9,<4.0.0"
 
 [package.extras]
@@ -3129,22 +3130,22 @@ standard = ["httptools (>=0.8.0)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "
 
 [[package]]
 name = "virtualenv"
-version = "21.14.5"
+version = "21.14.12"
 description = "Virtual Python Environment builder"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "virtualenv-21.14.5-py3-none-any.whl", hash = "sha256:b0651e0174982bba17cc6f0aaa2ef496730cb85a3f35eb5d1119d1c904f7d1da"},
-    {file = "virtualenv-21.14.5.tar.gz", hash = "sha256:c4cb6c13e46b57225a999c7e22a09b163393878facc7ac4c059a57f46faa1647"},
+    {file = "virtualenv-21.14.12-py3-none-any.whl", hash = "sha256:7820aeaef23f1f59a96458edfc7f9d3deac937155718de15f1c9a64471e15551"},
+    {file = "virtualenv-21.14.12.tar.gz", hash = "sha256:bbcfb78e36c22ad70c6917c4aecb5e63477d3c138e9f88c946f320e31859c76a"},
 ]
 
 [package.dependencies]
-distlib = ">=0.3.7,<1"
+distlib = ">=0.4.3,<1"
 filelock = {version = ">=3.24.2,<5", markers = "python_version >= \"3.10\""}
-packaging = ">=23.1"
-platformdirs = ">=3.9.1,<5"
-python-discovery = ">=1.6"
+packaging = ">=26.3"
+platformdirs = ">=4.4,<5"
+python-discovery = ">=1.6.1"
 
 [[package]]
 name = "werkzeug"
@@ -3202,4 +3203,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "ruff", "sph
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "9de7cee54555c22dd3f7ce19d6ec72d8dac9dbf2dc506560ab59f784023c101c"
+content-hash = "47022920b91eed97317126ef3bd77c90bbd270f5ab1fd8ba552960317d45be66"
