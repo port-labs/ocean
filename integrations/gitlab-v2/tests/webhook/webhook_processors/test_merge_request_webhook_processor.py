@@ -24,6 +24,7 @@ def _resource_config(
     config.selector.updated_after_datetime = datetime(2022, 1, 1, tzinfo=timezone.utc)
     config.selector.enrich_with_commits = enrich_with_commits
     config.selector.enrich_with_review_discussion = enrich_with_review_discussion
+    config.selector.include_comments = False
     return config
 
 
@@ -183,6 +184,7 @@ class TestMergeRequestWebhookProcessor:
             [fetched_mr],
             enrich_with_commits=True,
             enrich_with_review_discussion=True,
+            include_comments=False,
             max_concurrent=1,
         )
         assert result.updated_raw_results == [enriched_mr]

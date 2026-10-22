@@ -539,6 +539,15 @@ class GitlabMergeRequestSelector(GroupSelector):
             "events (100 notes per page). Defaults to false."
         ),
     )
+    include_comments: bool = Field(
+        default=False,
+        alias="includeComments",
+        title="Include Comments",
+        description=(
+            "When true, attach each merge request's comments under `__comments` "
+            "so they can be mapped with itemsToParse."
+        ),
+    )
 
     @property
     def updated_after_datetime(self) -> datetime:

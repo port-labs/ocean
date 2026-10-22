@@ -44,6 +44,9 @@ from integration import (
 )
 
 from gitlab.webhook.constants import WEBHOOK_PATH
+from gitlab.webhook.webhook_processors.merge_request_comment_webhook_processor import (
+    MergeRequestCommentWebhookProcessor,
+)
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
     MergeRequestWebhookProcessor,
 )
@@ -291,7 +294,10 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_groups = selector.include_only_active_groups
     enrich_with_commits = selector.enrich_with_commits
     enrich_with_review_discussion = selector.enrich_with_review_discussion
-    needs_enrichment = enrich_with_commits or enrich_with_review_discussion
+    include_comments = selector.include_comments
+    needs_enrichment = (
+        enrich_with_commits or enrich_with_review_discussion or include_comments
+    )
 
     async for groups_batch in client.get_groups(
         params=build_group_params(include_only_active_groups=include_only_active_groups)
@@ -313,6 +319,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         merge_requests_batch,
                         enrich_with_commits=enrich_with_commits,
                         enrich_with_review_discussion=enrich_with_review_discussion,
+                        include_comments=include_comments,
                         max_concurrent=DEFAULT_MAX_CONCURRENT,
                     )
                 yield merge_requests_batch
@@ -653,6 +660,7 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ocean.add_webhook_processor(WEBHOOK_PATH, GroupWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, MergeRequestWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, MergeRequestCommentWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, PushWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, PipelineWebhookProcessor)
