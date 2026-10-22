@@ -9,10 +9,6 @@ from typing import Generic, TypeVar
 T = TypeVar("T")
 
 
-def _monotonic() -> float:
-    return time.monotonic()
-
-
 @dataclass(frozen=True)
 class _Entry(Generic[T]):
     value: T
@@ -35,14 +31,14 @@ class TTLCache(Generic[T]):
         entry = self._store.get(key)
         if entry is None:
             return None
-        if _monotonic() - entry.cached_at >= self._ttl:
+        if time.monotonic() - entry.cached_at >= self._ttl:
             self._store.pop(key, None)
             return None
         self._store.move_to_end(key)
         return entry.value
 
     def set(self, key: str, value: T) -> None:
-        self._store[key] = _Entry(value=value, cached_at=_monotonic())
+        self._store[key] = _Entry(value=value, cached_at=time.monotonic())
         self._store.move_to_end(key)
         while len(self._store) > self._max_items:
             self._store.popitem(last=False)

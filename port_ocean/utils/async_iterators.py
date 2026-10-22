@@ -263,7 +263,7 @@ async def stream_independent_async_iterators(
         )
 
 
-async def find_first_item_in_generator(
+async def find_first_match_in_generator(
     generator: typing.AsyncIterator[list[T]],
     match: typing.Callable[[T], bool],
 ) -> T | None:
