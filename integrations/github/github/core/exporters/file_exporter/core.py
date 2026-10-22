@@ -99,11 +99,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         fetch_errors = []
 
         for repo_options in options:
-            repo_name = repo_options["repo_name"]
-            files = repo_options["files"]
+            data = dict(repo_options)
+            repo_name = cast(str, data["repo_name"])
+            files = cast(List[FileSearchOptions], data["files"])
             updated_since = (
-                repo_options["updated_since"]
-                if "updated_since" in repo_options
+                cast(datetime, data["updated_since"])
+                if "updated_since" in data
                 else None
             )
 
