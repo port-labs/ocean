@@ -237,3 +237,21 @@ async def test_build_base_url_removes_trailing_slash(
     url2 = client._build_base_url(None)
     assert not url2.endswith("/"), f"URL should not end with a slash: {url2}"
     assert url2 == "http://jenkins.example.com"
+
+    # Test with non-root context path (fixes #3024)
+    with patch("client.http_async_client", new=mock_ocean_client):
+        context_client = JenkinsClient(
+            "http://jenkins.example.com/jenkins", "user", "token"
+        )
+    folder_job = {
+        "url": "http://jenkins.example.com/jenkins/job/folder/job/child/"
+    }
+    context_url = context_client._build_base_url(folder_job)
+    assert (
+        context_url
+        == "http://jenkins.example.com/jenkins/job/folder/job/child"
+    )
+
+    relative_job = {"url": "/jenkins/job/my-job/"}
+    relative_url = context_client._build_base_url(relative_job)
+    assert relative_url == "http://jenkins.example.com/jenkins/job/my-job"
