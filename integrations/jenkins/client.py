@@ -207,8 +207,17 @@ class JenkinsClient:
         return {"tree": jobs_query + jobs_pagination}
 
     def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
-        job_path = urlparse(parent_job["url"]).path if parent_job else ""
-        return f"{self.jenkins_base_url}{job_path}".rstrip("/")
+        if not parent_job or not parent_job.get("url"):
+            return self.jenkins_base_url
+        url = parent_job["url"].rstrip("/")
+        parsed = urlparse(url)
+        if parsed.scheme and parsed.netloc:
+            return url
+        base_path = urlparse(self.jenkins_base_url).path.rstrip("/")
+        job_path = parsed.path
+        if base_path and job_path.startswith(base_path + "/"):
+            job_path = job_path[len(base_path) :]
+        return f"{self.jenkins_base_url.rstrip('/')}{job_path}".rstrip("/")
 
     def enrich_jobs(
         self, jobs: list[dict[str, Any]], parent_job: dict[str, Any] | None
