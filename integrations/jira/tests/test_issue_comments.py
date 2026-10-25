@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -253,7 +253,9 @@ async def test_attach_comments_fetches_at_most_ten_issues_at_once() -> None:
             return _pages()
 
     issues = [{"key": f"TEST-{index}"} for index in range(12)]
-    task = asyncio.create_task(attach_comments_to_issues(_Client(), issues))
+    task = asyncio.create_task(
+        attach_comments_to_issues(cast(JiraClient, _Client()), issues)
+    )
     await asyncio.wait_for(at_cap.wait(), timeout=1)
     assert peak == 10
     release.set()
