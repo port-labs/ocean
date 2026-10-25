@@ -98,7 +98,7 @@ RUN \
     && apk add --no-cache \
         "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" \
     # Fix security issues
-    && apk upgrade busybox libcrypto3 libssl3 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main/
+    && apk upgrade busybox libcrypto3 libssl3 libcurl brotli-libs --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main/
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
 # Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
