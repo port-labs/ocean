@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.25 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 0.12.24 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 0.12.23 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 0.12.22 (2026-10-22)
+
+
+### Bug Fixes
+
+- Opt-in includeLabelChildren selector paginates nested label children (capped at 1000) for resync and webhooks without aborting the sync.
+
+
+## 0.12.21 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
 ## 0.12.20 (2026-10-21)
 
 
