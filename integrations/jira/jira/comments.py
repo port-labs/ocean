@@ -1,6 +1,8 @@
 import asyncio
-from collections.abc import AsyncGenerator
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from jira.client import JiraClient
 
 _BLOCK_NODE_TYPES = {
     "paragraph",
@@ -11,17 +13,6 @@ _BLOCK_NODE_TYPES = {
     "bulletList",
     "orderedList",
 }
-
-
-class _CommentsPaginationClient(Protocol):
-    api_url: str
-
-    def _get_paginated_data(
-        self,
-        url: str,
-        extract_key: str | None = None,
-        initial_params: dict[str, Any] | None = None,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
 
 
 def _attr_node_text(node_type: str, attrs: dict[str, Any]) -> str:
@@ -99,7 +90,7 @@ _MAX_CONCURRENT_COMMENT_FETCHES = 10
 
 
 async def fetch_all_comments_for_issue(
-    client: _CommentsPaginationClient, issue_key: str
+    client: "JiraClient", issue_key: str
 ) -> list[dict[str, Any]]:
     comments: list[dict[str, Any]] = []
     url = f"{client.api_url}/issue/{issue_key}/comment"
@@ -111,7 +102,7 @@ async def fetch_all_comments_for_issue(
 
 
 async def attach_comments_to_issues(
-    client: _CommentsPaginationClient,
+    client: "JiraClient",
     issues: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Attach `__comments` on every issue that has a key. Mutates and returns issues."""
