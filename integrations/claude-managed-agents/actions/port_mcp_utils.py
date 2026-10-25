@@ -6,6 +6,7 @@ from typing import Any, cast
 from anthropic.types.beta import (
     BetaManagedAgentsAgent,
 )
+from anthropic.types.beta.beta_managed_agents_agent import Tool
 from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVault
 from anthropic.types.beta.vaults.beta_managed_agents_credential import (
     BetaManagedAgentsCredential,
@@ -49,6 +50,12 @@ def _merge_mcp_servers_by_url(
     return list({_normalize_port_mcp_url(d.url): d for d in list1 + list2}.values())
 
 
+def _is_port_mcp_toolset(tool: Tool) -> bool:
+    return (
+        tool.type == "mcp_toolset" and tool.mcp_server_name == PORT_MCP_SERVER_NAME
+    )
+
+
 def is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
     return vault.display_name == name
 
@@ -72,6 +79,15 @@ def is_agent_configured_with_port_mcp(
     )
 
 
+def _swap_stale_port_mcp_config(
+    mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
+    tools: list[Tool],
+) -> tuple[list[BetaManagedAgentsMCPServerURLDefinition], list[Tool]]:
+    servers = [s for s in mcp_servers if s.name != PORT_MCP_SERVER_NAME]
+    refreshed_tools = [t for t in tools if not _is_port_mcp_toolset(t)]
+    return servers, refreshed_tools
+
+
 def attach_port_mcp_settings_to_agent_config(
     proposed_config: dict[str, Any],
     existing_agent: BetaManagedAgentsAgent | None = None,
@@ -89,6 +105,9 @@ def attach_port_mcp_settings_to_agent_config(
         ),
     )
     if not is_agent_configured_with_port_mcp(mcp_servers):
+        mcp_servers, agent_tools = _swap_stale_port_mcp_config(
+            mcp_servers, agent_tools
+        )
         mcp_servers.append(
             BetaManagedAgentsMCPServerURLDefinition(
                 type="url", name=PORT_MCP_SERVER_NAME, url=port_mcp_url

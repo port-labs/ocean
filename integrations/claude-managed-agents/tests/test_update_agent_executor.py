@@ -308,8 +308,11 @@ async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> Non
         BetaManagedAgentsMCPServerURLDefinition,
     )
 
+    existing_tool = MagicMock()
+    existing_tool.type = "agent_toolset_20260401"
+    existing_tool.name = "existing"
     current = sdk_agent(version=1)
-    current.tools = [{"type": "agent_toolset_20260401", "name": "existing"}]
+    current.tools = [existing_tool]
     current.mcp_servers = [
         BetaManagedAgentsMCPServerURLDefinition(
             type="url", name="other", url="https://example.com"
@@ -336,7 +339,7 @@ async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> Non
         await executor.execute(run)
 
     payload = client_mock.update_agent.await_args.kwargs["payload"]
-    assert any(tool.get("name") == "existing" for tool in payload["tools"])
+    assert any(getattr(tool, "name", None) == "existing" for tool in payload["tools"])
     assert any(
         getattr(server, "name", None) == "other" for server in payload["mcp_servers"]
     )

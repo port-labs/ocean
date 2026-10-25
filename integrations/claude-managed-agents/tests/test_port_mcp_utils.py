@@ -108,6 +108,47 @@ def test_apply_port_mcp_is_idempotent() -> None:
     assert len(twice["mcp_servers"]) == 1
     assert len(twice["tools"]) == 1
 
+
+def test_apply_port_mcp_replaces_stale_port_named_server() -> None:
+    from anthropic.types.beta.beta_managed_agents_always_allow_policy import (
+        BetaManagedAgentsAlwaysAllowPolicy,
+    )
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+    from anthropic.types.beta.beta_managed_agents_mcp_toolset import (
+        BetaManagedAgentsMCPToolset,
+    )
+    from anthropic.types.beta.beta_managed_agents_mcp_toolset_default_config import (
+        BetaManagedAgentsMCPToolsetDefaultConfig,
+    )
+
+    stale = BetaManagedAgentsMCPServerURLDefinition(
+        type="url",
+        name=PORT_MCP_SERVER_NAME,
+        url="https://mcp.old-region.example/v1",
+    )
+    stale_toolset = BetaManagedAgentsMCPToolset(
+        type="mcp_toolset",
+        mcp_server_name=PORT_MCP_SERVER_NAME,
+        configs=[],
+        default_config=BetaManagedAgentsMCPToolsetDefaultConfig(
+            enabled=False,
+            permission_policy=BetaManagedAgentsAlwaysAllowPolicy(type="always_allow"),
+        ),
+    )
+    agent = MagicMock()
+    agent.mcp_servers = [stale]
+    agent.tools = [stale_toolset]
+
+    result = attach_port_mcp_settings_to_agent_config({}, existing_agent=agent)
+
+    assert len(result["mcp_servers"]) == 1
+    assert getattr(result["mcp_servers"][0], "url", None) == "https://mcp.getport.io/v1"
+    assert len(result["tools"]) == 1
+    assert result["tools"][0]["mcp_server_name"] == PORT_MCP_SERVER_NAME
+    assert result["tools"][0]["default_config"]["enabled"] is True
+
 @pytest.mark.asyncio
 async def test_ensure_port_mcp_binding_creates_vault_and_credential() -> None:
     client = MagicMock()

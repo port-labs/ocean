@@ -162,7 +162,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     async def _ensure_agent_port_mcp_configured(
         self, agent: BetaManagedAgentsAgent
     ) -> BetaManagedAgentsAgent:
-        if is_agent_configured_with_port_mcp(agent.mcp_servers):
+        if is_agent_configured_with_port_mcp(agent.mcp_servers or []):
             return agent
         updated = await self.client.update_agent(
             agent.id,
