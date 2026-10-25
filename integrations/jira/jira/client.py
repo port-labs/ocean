@@ -7,7 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
-from jira.comments import attach_comments_to_issues, normalize_issue_comment
+from jira.comments import attach_comments_to_issues
 from jira.overrides import (
     JiraEpicAPIQueryParams,
     JiraWorklogAPIQueryParams,
@@ -730,13 +730,11 @@ class JiraClient(OAuthClient):
             body = {**body, "nextPageToken": next_page_token}
 
     async def get_paginated_issues(
-        self,
-        params: dict[str, Any] | None = None,
-        *,
-        include_comments: bool = False,
+        self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
+        include_comments = bool(params.get("includeComments"))
         logger.info(f"Using JQL filter: {params['jql']}")
         url = f"{self.api_url}/search/jql"
 
@@ -1075,14 +1073,6 @@ class JiraClient(OAuthClient):
             url, "worklogs", initial_params=query_params
         ):
             yield [{**worklog, "__issueKey": issue_key} for worklog in batch]
-
-    async def get_paginated_comments_for_issue(
-        self, issue_key: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch comments for a single issue and normalize them for mapping."""
-        url = f"{self.api_url}/issue/{issue_key}/comment"
-        async for batch in self._get_paginated_data(url, "comments"):
-            yield [normalize_issue_comment(comment, issue_key) for comment in batch]
 
     async def get_paginated_components_for_project(
         self,

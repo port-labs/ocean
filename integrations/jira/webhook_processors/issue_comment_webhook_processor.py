@@ -64,10 +64,11 @@ class IssueCommentWebhookProcessor(JiraAbstractWebhookProcessor):
         issue_id = payload["issue"].get("id")
         if issue_id is not None:
             params["reconcileIssues"] = [int(issue_id)]
+        params["includeComments"] = True
 
         client = get_or_create_jira_client()
         issues: list[dict[str, Any]] = []
-        async for batch in client.get_paginated_issues(params, include_comments=True):
+        async for batch in client.get_paginated_issues(params):
             issues.extend(batch)
 
         if not issues:
