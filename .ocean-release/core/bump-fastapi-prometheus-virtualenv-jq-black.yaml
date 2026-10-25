@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Bump fastapi to 0.162.0, prometheus-client to 0.26.0, virtualenv to 21.14.13, jq to 1.13.0, and black to 26.10.1.

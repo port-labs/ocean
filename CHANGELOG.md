@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.55.6 (2026-10-25)
+
+
+### Improvements
+
+- Bump fastapi to 0.162.0, prometheus-client to 0.26.0, virtualenv to 21.14.13, jq to 1.13.0, and black to 26.10.1.
+
+
 ## 0.55.5 (2026-10-22)
 
 
