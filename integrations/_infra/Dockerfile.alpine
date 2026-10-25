@@ -89,7 +89,6 @@ RUN \
         oniguruma-dev \
         ca-certificates \
         openssl \
-        curl \
         acl \
         yaml-dev \
     # Install community librdkafka since the default in alpine is older
