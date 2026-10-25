@@ -25,7 +25,6 @@ from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
     COMPARE_MAX_FILES,
     COMPARE_TRUSTED_STATUSES,
-    FileDiffStatus,
     build_batch_file_query,
     decode_content,
     extract_file_index,
@@ -478,11 +477,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
             return None
 
-        return {
-            file["filename"]
-            for file in files
-            if file.get("status") != FileDiffStatus.REMOVED
-        }
+        return {file["filename"] for file in files}
 
     async def fetch_commit_diff(
         self, organization: str, repo_name: str, before_sha: str, after_sha: str

@@ -1570,7 +1570,7 @@ INCREMENTAL_SINCE = datetime(2026, 10, 1, tzinfo=timezone.utc)
 class TestRestFileExporterIncremental:
     """Repo names are unique per test because cached methods key on args only."""
 
-    async def test_get_changed_paths_since_returns_non_removed_files(
+    async def test_get_changed_paths_since_returns_all_changed_filenames(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
@@ -1594,7 +1594,7 @@ class TestRestFileExporterIncremental:
                 RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
-        assert changed == {"a/port.yml", "b/port.yml"}
+        assert changed == {"a/port.yml", "b/port.yml", "c/port.yml"}
         assert mock_request.await_count == 2
         base_call, compare_call = mock_request.await_args_list
         assert base_call.args[0].endswith("/repos/test-org/inc-repo-changed/commits")
