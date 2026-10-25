@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.1 (2026-10-25)
+
+
+### Bug Fixes
+
+- Removed curl from the integration production images and upgraded Alpine libcurl and brotli-libs.
+
+
+## 0.56.0 (2026-10-25)
+
+
+### Features
+
+- Add workflow claim support for encrypted identity access tokens
+
+
+## 0.55.6 (2026-10-25)
+
+
+### Improvements
+
+- Bump fastapi to 0.162.0, prometheus-client to 0.26.0, virtualenv to 21.14.13, jq to 1.13.0, and black to 26.10.1.
+
+
+## 0.55.5 (2026-10-22)
+
+
+### Bug Fixes
+
+- port-ocean now requires certifi>=2026.10.19 (GHSA-6q48-6c7w-9gw2) and virtualenv>=21.14.9 (GHSA-5vjq-rrrf-7h2q, GHSA-vxj4-q4g9-crj7, GHSA-c978-59m8-c77v, GHSA-cw65-gx24-rc82, GHSA-43mp-35q3-x3fq). Integrations pick these up through the next Ocean version bump.
+
+
 ## 0.55.4 (2026-10-22)
 
 

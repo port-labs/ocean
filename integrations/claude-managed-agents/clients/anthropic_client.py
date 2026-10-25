@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol, cast
 
+from anthropic.resources.beta import AsyncBeta
 import httpx
 from anthropic import AsyncAnthropic, Omit
 from anthropic.types.beta import BetaEnvironment
@@ -68,7 +69,10 @@ class _ToDictModel(Protocol):
     only capability `AnthropicClient.paginate` needs from each page item."""
 
     def to_dict(
-        self, *, mode: Literal["json", "python"] = ...
+        self,
+        *,
+        mode: Literal["json", "python"] = ...,
+        warnings: bool = ...,
     ) -> dict[str, object]: ...
 
 
@@ -239,7 +243,7 @@ class AnthropicClient:
         return self._console_host
 
     @property
-    def beta(self) -> Any:
+    def beta(self) -> AsyncBeta:
         """Direct access to the SDK's Managed Agents namespace, for exporters to
         call the resource they're responsible for. Rate limiting and pacing are
         applied transparently at the transport layer (see `_on_request`/
@@ -251,7 +255,7 @@ class AnthropicClient:
     ) -> AsyncGenerator[list[_ToDictModel], None]:
         """Await an SDK `list(...)` call and yield its records in fixed-size batches.
 
-        Callers are responsible for serializing items (e.g. ``item.to_dict(mode="json")``)
+        Callers are responsible for serializing items (e.g. ``item.to_dict(mode="json", warnings=False)``)
         when a dict representation is needed.
         """
         paginator = await list_call

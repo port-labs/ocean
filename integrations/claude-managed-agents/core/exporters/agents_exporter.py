@@ -12,4 +12,4 @@ class AgentsExporter(AbstractAnthropicExporter):
             self.client.beta.agents.list(include_archived=include_archived)
         ):
             logger.debug(f"Fetched agents batch with {len(batch)} records")
-            yield [item.to_dict(mode="json") for item in batch]
+            yield [item.to_dict(mode="json", warnings=False) for item in batch]

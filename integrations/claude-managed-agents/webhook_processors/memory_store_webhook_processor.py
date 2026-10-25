@@ -46,6 +46,6 @@ class MemoryStoreWebhookProcessor(AbstractAnthropicWebhookProcessor):
             f"Upserting memory store {memory_store_id} from catalog ({event_type})"
         )
         return WebhookEventRawResults(
-            updated_raw_results=[memory_store.to_dict(mode="json")],
+            updated_raw_results=[memory_store.to_dict(mode="json", warnings=False)],
             deleted_raw_results=[],
         )
