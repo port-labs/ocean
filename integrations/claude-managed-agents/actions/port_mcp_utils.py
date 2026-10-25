@@ -56,11 +56,11 @@ def _is_port_mcp_toolset(tool: Tool) -> bool:
     )
 
 
-def is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
+def _is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
     return vault.display_name == name
 
 
-def is_vault_credential_url_matching(
+def _is_vault_credential_url_matching(
     credential: BetaManagedAgentsCredential, url: str
 ) -> bool:
     mcp_server_url = credential.auth.mcp_server_url
@@ -73,7 +73,7 @@ def is_agent_configured_with_port_mcp(
     mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
 ) -> bool:
     port_mcp_url = ocean.config.port.mcp_url
-    return any(
+    return port_mcp_url is not None and any(
         _normalize_port_mcp_url(s.url) == _normalize_port_mcp_url(port_mcp_url)
         for s in mcp_servers
     )
@@ -127,7 +127,7 @@ async def ensure_port_mcp_binding(
     """Find or create the user's vault, then (re)mint its Port MCP credential."""
     vault = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.list()),
-        functools.partial(is_vault_name_matching, name=vault_name),
+        functools.partial(_is_vault_name_matching, name=vault_name),
     )
     if vault is None:
         logger.info(f"Creating Port MCP vault '{vault_name}'")
@@ -136,7 +136,7 @@ async def ensure_port_mcp_binding(
     credential = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.credentials.list(vault_id=vault.id)),
         functools.partial(
-            is_vault_credential_url_matching, url=ocean.config.port.mcp_url
+            _is_vault_credential_url_matching, url=ocean.config.port.mcp_url
         ),
     )
     if credential is None:
