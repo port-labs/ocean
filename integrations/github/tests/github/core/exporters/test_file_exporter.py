@@ -1588,7 +1588,10 @@ class TestRestFileExporterIncremental:
             AsyncMock(side_effect=[[{"sha": "base-sha"}], compare_response]),
         ) as mock_request:
             changed = await exporter.get_changed_paths_since(
-                "test-org", "inc-repo-changed", "main", INCREMENTAL_SINCE
+                "test-org",
+                "inc-repo-changed",
+                "main",
+                RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         assert changed == {"a/port.yml", "b/port.yml"}
@@ -1609,7 +1612,10 @@ class TestRestFileExporterIncremental:
             rest_client, "send_api_request", AsyncMock(return_value=[])
         ) as mock_request:
             changed = await exporter.get_changed_paths_since(
-                "test-org", "inc-repo-no-base", "main", INCREMENTAL_SINCE
+                "test-org",
+                "inc-repo-no-base",
+                "main",
+                RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         assert changed is None
@@ -1640,7 +1646,10 @@ class TestRestFileExporterIncremental:
             AsyncMock(side_effect=[[{"sha": "base-sha"}], compare_response]),
         ):
             changed = await exporter.get_changed_paths_since(
-                "test-org", repo_name, "main", INCREMENTAL_SINCE
+                "test-org",
+                repo_name,
+                "main",
+                RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         assert changed is None
@@ -1661,7 +1670,10 @@ class TestRestFileExporterIncremental:
             ),
         ):
             changed = await exporter.get_changed_paths_since(
-                "test-org", "inc-repo-identical", "main", INCREMENTAL_SINCE
+                "test-org",
+                "inc-repo-identical",
+                "main",
+                RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         assert changed == set()
@@ -1710,7 +1722,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                updated_since=INCREMENTAL_SINCE,
+                changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         tree_mock.assert_awaited_once()
@@ -1744,7 +1756,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                updated_since=INCREMENTAL_SINCE,
+                changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         tree_mock.assert_not_awaited()
@@ -1776,13 +1788,13 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                updated_since=INCREMENTAL_SINCE,
+                changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE),
             )
 
         tree_mock.assert_awaited_once()
         assert [f["file_path"] for f in graphql_files] == ["test.txt"]
 
-    async def test_get_paginated_resources_passes_updated_since(
+    async def test_get_paginated_resources_passes_changed_since(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
@@ -1794,17 +1806,17 @@ class TestRestFileExporterIncremental:
                         organization="test-org",
                         repo_name="repo1",
                         files=[],
-                        updated_since=INCREMENTAL_SINCE,
+                        changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE),
                     )
                 ]
             ):
                 pass
 
         collect_mock.assert_awaited_once_with(
-            "repo1", [], updated_since=INCREMENTAL_SINCE
+            "repo1", [], changed_since=RepositoryChange.pushed(INCREMENTAL_SINCE)
         )
 
-    async def test_builder_sets_updated_since_and_pushed_since(self) -> None:
+    async def test_builder_sets_changed_since(self) -> None:
         repo_exporter = MagicMock()
         org_exporter = MagicMock()
         captured_options: List[Dict[str, Any]] = []
@@ -1834,45 +1846,43 @@ class TestRestFileExporterIncremental:
         assert captured_options[0]["changed_since"] == RepositoryChange.pushed(
             INCREMENTAL_SINCE
         )
-        assert result[0]["updated_since"] == INCREMENTAL_SINCE
+        assert result[0]["changed_since"] == RepositoryChange.pushed(INCREMENTAL_SINCE)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "responses,expected",
-    [
-        (
-            [[{"sha": "base-sha"}], {"status": "ahead", "files": []}],
-            set(),
-        ),
-        ([[]], None),
-    ],
-    ids=["no-changes", "fallback"],
-)
-async def test_get_changed_paths_since_caches_empty_results(
+async def test_get_changed_paths_since_cache_is_keyed_by_field(
     rest_client: GithubRestClient,
-    responses: List[Any],
-    expected: set[str] | None,
 ) -> None:
-    """Empty ({}) and fallback (None) results must be cached so extra patterns reuse them."""
+    """Same repo and cursor time but a different field must not reuse the cached diff."""
     exporter = RestFileExporter(rest_client)
-    repo_name = f"inc-repo-cache-{len(responses)}"
+    responses = [
+        [{"sha": "base-sha"}],
+        {"status": "ahead", "files": [{"filename": "a.yml", "status": "modified"}]},
+        [{"sha": "base-sha"}],
+        {"status": "ahead", "files": [{"filename": "b.yml", "status": "modified"}]},
+    ]
     with (
         patch.object(ocean.app, "cache_provider", InMemoryCacheProvider()),
         patch.object(
             rest_client, "send_api_request", AsyncMock(side_effect=responses)
         ) as mock_request,
     ):
+        pushed = RepositoryChange.pushed(INCREMENTAL_SINCE)
+        updated = RepositoryChange.updated(INCREMENTAL_SINCE)
         first = await exporter.get_changed_paths_since(
-            "test-org", repo_name, "main", INCREMENTAL_SINCE
+            "test-org", "inc-repo-keyed", "main", pushed
         )
-        second = await exporter.get_changed_paths_since(
-            "test-org", repo_name, "main", INCREMENTAL_SINCE
+        cached = await exporter.get_changed_paths_since(
+            "test-org", "inc-repo-keyed", "main", pushed
+        )
+        other_field = await exporter.get_changed_paths_since(
+            "test-org", "inc-repo-keyed", "main", updated
         )
 
-    assert first == expected
-    assert first == second
-    assert mock_request.await_count == len(responses)
+    assert first == {"a.yml"}
+    assert cached == {"a.yml"}
+    assert other_field == {"b.yml"}
+    assert mock_request.await_count == 4
 
 
 @pytest.mark.asyncio

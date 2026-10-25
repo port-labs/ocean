@@ -4,6 +4,7 @@ from urllib.parse import quote
 import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
+from github.helpers.repository_change import RepositoryChange
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
 from github.helpers.exceptions import GitHubTreeFetchError
 from port_ocean.exceptions.core import OceanAbortException
@@ -102,11 +103,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             data = dict(repo_options)
             repo_name = cast(str, data["repo_name"])
             files = cast(List[FileSearchOptions], data["files"])
-            updated_since = (
-                cast(datetime, data["updated_since"])
-                if "updated_since" in data
-                else None
-            )
+            changed_since = cast(Optional[RepositoryChange], data.get("changed_since"))
 
             logger.debug(
                 f"Processing repository {repo_name} with {len(files)} file patterns"
@@ -114,7 +111,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
             try:
                 gql, rest = await self.collect_matched_files(
-                    repo_name, files, updated_since=updated_since
+                    repo_name, files, changed_since=changed_since
                 )
                 graphql_files.extend(gql)
                 rest_files.extend(rest)
@@ -141,7 +138,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         repo_name: str,
         file_patterns: List[FileSearchOptions],
-        updated_since: datetime | None = None,
+        changed_since: RepositoryChange | None = None,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         graphql_files = []
         rest_files = []
@@ -166,9 +163,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
             changed_paths = None
-            if updated_since:
+            if changed_since:
                 changed_paths = await self.get_changed_paths_since(
-                    organization, repo_name, branch, updated_since
+                    organization, repo_name, branch, changed_since
                 )
             if changed_paths is not None and not any(
                 match_file_path_against_glob_pattern(path, pattern)
@@ -438,55 +435,50 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             return None
         return cast(List[Dict[str, Any]], commits)[0]["sha"]
 
+    @cache_coroutine_result()
     async def get_changed_paths_since(
-        self, organization: str, repo_name: str, branch: str, since: datetime
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        changed_since: RepositoryChange,
     ) -> Optional[set[str]]:
-        """Paths of files added or modified on ``branch`` since ``since``.
+        """Paths of files added or modified on ``branch`` since the cursor.
+
+        Cached per (repo, branch, field, since): the field is part of the key, so an
+        ``updated_at`` cursor and a ``pushed_at`` cursor never share a result.
 
         Returns None when the diff cannot be trusted (no base commit, identical /
         rewritten history, truncated compare), so the caller falls back to a full
         tree scan.
         """
-        result = await self._fetch_changed_paths_since(
-            organization, repo_name, branch, since
-        )
-        return result["changed"]
-
-    @cache_coroutine_result()
-    async def _fetch_changed_paths_since(
-        self, organization: str, repo_name: str, branch: str, since: datetime
-    ) -> Dict[str, Optional[set[str]]]:
-        """Wraps the result so an empty set / ``None`` stay truthy and are cached per repo/branch."""
+        since = changed_since.since
         base_sha = await self.get_base_sha(organization, repo_name, branch, since)
         if not base_sha:
             logger.info(
-                f"Falling back to full scan for repository {repo_name}@{branch} in organization {organization}: no base commit before {since.isoformat()}"
+                f"No base commit for {repo_name}@{branch} in {organization} before {since.isoformat()}, falling back to full scan"
             )
-            return {"changed": None}
+            return None
 
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
         # "identical" means the branch is unchanged (the push went to another branch).
         if diff.get("status") not in ("ahead", "identical"):
             logger.info(
-                f"Falling back to full scan for repository {repo_name}@{branch} in organization {organization}: compare status '{diff.get('status')}'"
+                f"Falling back to full scan for {repo_name}@{branch} in {organization}: compare status '{diff.get('status')}'"
             )
-            return {"changed": None}
+            return None
         if len(files) >= COMPARE_MAX_FILES:
             logger.info(
-                f"Falling back to full scan for repository {repo_name}@{branch} in organization {organization}: compare returned {len(files)} files (may be truncated)"
+                f"Falling back to full scan for {repo_name}@{branch} in {organization}: compare returned {len(files)} files (may be truncated)"
             )
-            return {"changed": None}
+            return None
 
-        changed = {
+        return {
             file["filename"]
             for file in files
             if file.get("status") != FileDiffStatus.REMOVED
         }
-        logger.info(
-            f"Fetched {len(changed)} changed files since {since.isoformat()} for repository {repo_name}@{branch} in organization {organization}"
-        )
-        return {"changed": changed}
 
     async def fetch_commit_diff(
         self, organization: str, repo_name: str, before_sha: str, after_sha: str
