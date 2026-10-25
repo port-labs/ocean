@@ -409,31 +409,32 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return batch_files
 
-    async def get_base_sha(
-        self, organization: str, repo_name: str, branch: str, until: datetime
-    ) -> Optional[str]:
-        """Return a candidate base commit on ``branch`` at or before ``until``.
+    async def list_commits_until(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        until: datetime,
+        per_page: int = 30,
+    ) -> List[Dict[str, Any]]:
+        """Commits reachable from ``branch`` with committer date at or before ``until``.
 
-        Uses List Commits ``until``, which filters by *committer date* among
-        reachable commits — not the historical branch tip at ``until``. Pushes or
-        merges that introduce older commits can therefore yield a base that makes
-        compare look identical or incomplete; callers must treat those outcomes as
-        untrusted and fall back to a full tree scan.
+        Filters by *committer date* among reachable commits, not the historical
+        branch tip at ``until``. Callers that build on the result must treat the
+        outcome as untrusted when history was pushed or merged out of order.
         """
         resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
         params = {
             "sha": branch,
             "until": until.astimezone(timezone.utc).isoformat(),
-            "per_page": 1,
+            "per_page": per_page,
         }
         commits = await self.client.send_api_request(
             resource,
             params=params,
             ignored_errors=self._IGNORED_ERRORS,
         )
-        if not commits:
-            return None
-        return cast(List[Dict[str, Any]], commits)[0]["sha"]
+        return cast(List[Dict[str, Any]], commits or [])
 
     @cache_coroutine_result()
     async def get_changed_paths_since(
@@ -453,12 +454,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         tree scan.
         """
         since = changed_since.since
-        base_sha = await self.get_base_sha(organization, repo_name, branch, since)
-        if not base_sha:
+        commits = await self.list_commits_until(
+            organization, repo_name, branch, since, per_page=1
+        )
+        if not commits:
             logger.info(
                 f"No base commit for {repo_name}@{branch} in {organization} before {since.isoformat()}, falling back to full scan"
             )
             return None
+        base_sha = commits[0]["sha"]
 
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
