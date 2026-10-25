@@ -8,7 +8,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import attach_port_mcp_settings_to_agent_config
+from actions.port_mcp_utils import attach_port_mcp_settings_to_agent_config
 from integration import ObjectKind
 
 CREATING_STATUS_LABEL = "Creating agent"

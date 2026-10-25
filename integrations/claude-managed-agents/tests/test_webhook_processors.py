@@ -89,7 +89,7 @@ _STANDARD_COMPLETION = {
 }
 
 
-def _sdk_session(
+def sdk_session(
     *,
     session_id: str = "s1",
     status: str = "idle",
@@ -104,7 +104,7 @@ def _sdk_session(
 
 
 def _stub_session_usage_client(client: MagicMock) -> None:
-    client.get_session = AsyncMock(return_value=_sdk_session())
+    client.get_session = AsyncMock(return_value=sdk_session())
     client.get_console_host = MagicMock(return_value="https://platform.claude.com")
     client.get_workspace_id = MagicMock(return_value=None)
 
@@ -141,7 +141,7 @@ async def test_session_upsert_event_fetches_resource() -> None:
     processor = SessionWebhookProcessor(_event(payload["data"]))
     client = MagicMock()
     client.get_session = AsyncMock(
-        return_value=_sdk_session(status="running", usage=None)
+        return_value=sdk_session(status="running", usage=None)
     )
     with patch(
         "webhook_processors.session_webhook_processor.create_anthropic_client",

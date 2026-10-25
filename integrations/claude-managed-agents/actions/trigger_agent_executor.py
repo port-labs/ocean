@@ -16,7 +16,7 @@ from pydantic import Field, model_validator
 from port_ocean.utils.ttl_cache import TTLCache
 from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp import (
+from actions.port_mcp_utils import (
     PortMcpBinding,
     ensure_port_mcp_binding,
     is_agent_configured_with_port_mcp,
