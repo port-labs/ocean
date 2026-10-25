@@ -3,10 +3,15 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic.v1 import Field, BaseModel
+from pydantic.v1 import Field, BaseModel, ValidationError
+from pydantic.v1.error_wrappers import ErrorWrapper
 from typing import ClassVar, List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
+
+from feature_flags import is_aws_v3_custom_kinds_enabled
+
+AWS_CLOUD_CONTROL_TYPE_PATTERN = r"^AWS::[A-Za-z0-9]+::[A-Za-z0-9]+$"
 
 
 class RegionPolicy(BaseModel):
@@ -426,7 +431,73 @@ class AWSSNSTopicResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCustomKindSelector(Selector):
+    region_policy: RegionPolicy = Field(
+        alias="regionPolicy",
+        default_factory=RegionPolicy,
+        title="Region Policy",
+        description="Controls which AWS regions to include or exclude during resync. "
+        "Set 'allow' to sync only specific regions, or 'deny' to exclude specific regions. "
+        "If both are empty, all regions are synced. "
+        'Example: {"allow": ["us-east-1", "eu-west-1"]} or {"deny": ["cn-north-1"]}.',
+    )
+    max_concurrent_accounts: int = Field(
+        alias="maxConcurrentAccounts",
+        default=5,
+        title="Max Concurrent Accounts",
+        description="Maximum number of AWS accounts to process concurrently. "
+        "Higher values speed up resync but increase API rate limit pressure and memory usage. "
+        "Recommended range: 2-10. Reduce if you encounter throttling errors.",
+        gte=1,
+    )
+    use_get_resource_api: bool = Field(
+        alias="useGetResourceAPI",
+        default=False,
+        title="Use Get Resource API",
+        description="When enabled, uses the AWS Cloud Control GetResource API to fetch full "
+        "resource details instead of relying solely on list results. This makes an additional "
+        "API call per resource, which may increase latency and consume more API rate limit quota.",
+    )
+    resource_scope: Literal["auto", "regional", "global"] = Field(
+        alias="resourceScope",
+        default="auto",
+        title="Resource Scope",
+        description="Whether this Cloud Control type is regional, global, or should be inferred "
+        "automatically during sync.",
+    )
+
+    def is_region_allowed(self, region: str) -> bool:
+        if not self.region_policy.allow and not self.region_policy.deny:
+            return True
+        if region in self.region_policy.deny:
+            return False
+        if region in self.region_policy.allow:
+            return True
+        if self.region_policy.deny and not self.region_policy.allow:
+            return True
+        if self.region_policy.allow and not self.region_policy.deny:
+            return False
+        return False
+
+
+class AWSCustomKindResourceConfig(ResourceConfig):
+    kind: str = Field(
+        title="Custom AWS Resource Kind",
+        description="Map any resource type supported by the "
+        "<a target='_blank' href='https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/supported-resources.html'>"
+        "AWS Cloud Control API</a> by setting kind to the CloudFormation type name "
+        "(for example AWS::IAM::Role).",
+        regex=AWS_CLOUD_CONTROL_TYPE_PATTERN,
+    )
+    selector: AWSCustomKindSelector = Field(
+        title="Selector",
+        description="Selector for the custom AWS Cloud Control resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
+    allow_custom_kinds: ClassVar[bool] = True
+
     resources: List[
         AWSS3BucketResourceConfig
         | AWSEC2InstanceResourceConfig
@@ -461,6 +532,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSDynamoDBTableResourceConfig
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
+        | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
@@ -468,6 +540,34 @@ class AWSPortAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
+async def _ensure_custom_kinds_feature_enabled(config: AWSPortAppConfig) -> None:
+    if not any(isinstance(resource, AWSCustomKindResourceConfig) for resource in config.resources):
+        return
+    if await is_aws_v3_custom_kinds_enabled():
+        return
+    raise ValidationError(
+        [
+            ErrorWrapper(
+                ValueError(
+                    "Custom AWS resource kinds require the "
+                    "AWS_V3_CUSTOM_KINDS_ENABLED organization feature flag"
+                ),
+                loc=("resources",),
+            )
+        ],
+        AWSPortAppConfig,
+    )
+
+
+class AWSAPIPortAppConfig(APIPortAppConfig):
+    CONFIG_CLASS = AWSPortAppConfig
+
+    async def get_port_app_config(self, use_cache: bool = True) -> AWSPortAppConfig:
+        config = await super().get_port_app_config(use_cache=use_cache)
+        await _ensure_custom_kinds_feature_enabled(config)
+        return config
+
+
 class AWSIntegration(BaseIntegration):
-    class AppConfigHandlerClass(APIPortAppConfig):
-        CONFIG_CLASS = AWSPortAppConfig
+    class AppConfigHandlerClass(AWSAPIPortAppConfig):
+        pass
