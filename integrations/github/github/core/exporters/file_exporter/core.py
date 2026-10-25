@@ -24,6 +24,7 @@ from collections import defaultdict
 from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
     COMPARE_MAX_FILES,
+    COMPARE_TRUSTED_STATUSES,
     FileDiffStatus,
     build_batch_file_query,
     decode_content,
@@ -466,8 +467,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
-        # "identical" means the branch is unchanged (the push went to another branch).
-        if diff.get("status") not in ("ahead", "identical"):
+        if diff.get("status") not in COMPARE_TRUSTED_STATUSES:
             logger.info(
                 f"Falling back to full scan for {repo_name}@{branch} in {organization}: compare status '{diff.get('status')}'"
             )

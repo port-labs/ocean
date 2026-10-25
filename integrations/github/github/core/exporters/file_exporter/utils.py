@@ -45,6 +45,7 @@ MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
 GRAPHQL_MAX_FILE_SIZE = 100_000
 FIELD_NAME_PATTERN = re.compile(r"^file_(\d+)$")
 COMPARE_MAX_FILES = 300
+COMPARE_TRUSTED_STATUSES = ("ahead", "identical")
 
 
 class FileObject(TypedDict):
