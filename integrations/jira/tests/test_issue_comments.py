@@ -12,6 +12,7 @@ from jira.client import JiraClient
 from jira.comments import (
     adf_to_plain_text,
     attach_comments_to_issues,
+    fetch_all_comments_for_issue,
     normalize_issue_comment,
 )
 from jira.overrides import JiraIssueConfig, JiraIssueSelector
@@ -205,16 +206,22 @@ async def test_flag_false_makes_no_comments_api_call(
 async def _attach_with_one_comment(
     jira_client: JiraClient, issues: list[dict[str, Any]]
 ) -> MagicMock:
-    async def _comment_pages(
-        _issue_key: str,
+    issue_key = str(issues[0]["key"])
+
+    async def _paginated_data(
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield [normalize_issue_comment(COMMENT, str(issues[0]["key"]))]
+        assert extract_key == "comments"
+        assert issue_key in url
+        yield [COMMENT]
 
     with patch.object(
-        jira_client, "get_paginated_comments_for_issue", side_effect=_comment_pages
-    ) as mock_comments:
+        jira_client, "_get_paginated_data", side_effect=_paginated_data
+    ) as mock_paginated:
         await attach_comments_to_issues(jira_client, issues)
-    return mock_comments
+    return mock_paginated
 
 
 @pytest.mark.asyncio
@@ -225,8 +232,13 @@ async def test_attach_comments_fetches_at_most_ten_issues_at_once() -> None:
     release = asyncio.Event()
 
     class _Client:
-        def get_paginated_comments_for_issue(
-            self, _issue_key: str
+        api_url = "https://example.atlassian.net/rest/api/3"
+
+        def _get_paginated_data(
+            self,
+            _url: str,
+            extract_key: str | None = None,
+            initial_params: dict[str, Any] | None = None,
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             async def _pages() -> AsyncGenerator[list[dict[str, Any]], None]:
                 nonlocal in_flight, peak
@@ -255,9 +267,8 @@ async def test_missing_updated_still_loads_comments(jira_client: JiraClient) -> 
     issues: list[dict[str, Any]] = [
         {"key": "TEST-1", "fields": {"summary": "No updated"}}
     ]
-    mock_comments = await _attach_with_one_comment(jira_client, issues)
+    await _attach_with_one_comment(jira_client, issues)
 
-    mock_comments.assert_called_once_with("TEST-1")
     assert issues[0]["__comments"][0]["__commentId"] == "TEST-1/10000"
 
 
@@ -271,9 +282,8 @@ async def test_unparseable_updated_still_loads_comments(
             "fields": {"updated": "not-a-date", "summary": "Bad date"},
         }
     ]
-    mock_comments = await _attach_with_one_comment(jira_client, issues)
+    await _attach_with_one_comment(jira_client, issues)
 
-    mock_comments.assert_called_once_with("TEST-1")
     assert issues[0]["__comments"][0]["__body"] == "Please confirm the rollout window."
 
 
@@ -285,9 +295,8 @@ async def test_old_updated_still_loads_comments(jira_client: JiraClient) -> None
             "fields": {"updated": _old_updated(60), "summary": "Old"},
         }
     ]
-    mock_comments = await _attach_with_one_comment(jira_client, issues)
+    await _attach_with_one_comment(jira_client, issues)
 
-    mock_comments.assert_called_once_with("TEST-OLD")
     assert issues[0]["__comments"][0]["__commentId"] == "TEST-OLD/10000"
 
 
@@ -302,20 +311,17 @@ async def test_recent_issue_attaches_all_comments_with_adf_flattened(
         }
     ]
 
-    async def _comment_pages(
-        _issue_key: str,
+    async def _paginated_data(
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield [
-            normalize_issue_comment(COMMENT, "TEST-1"),
-            normalize_issue_comment({**COMMENT, "id": "10001"}, "TEST-1"),
-        ]
+        assert extract_key == "comments"
+        assert "TEST-1" in url
+        yield [COMMENT, {**COMMENT, "id": "10001"}]
 
-    with patch.object(
-        jira_client, "get_paginated_comments_for_issue", side_effect=_comment_pages
-    ) as mock_comments:
+    with patch.object(jira_client, "_get_paginated_data", side_effect=_paginated_data):
         await attach_comments_to_issues(jira_client, issues)
-
-    mock_comments.assert_called_once_with("TEST-1")
     comments = issues[0]["__comments"]
     assert len(comments) == 2
     assert comments[0]["__body"] == "Please confirm the rollout window."
@@ -324,7 +330,7 @@ async def test_recent_issue_attaches_all_comments_with_adf_flattened(
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_comments_for_issue(jira_client: JiraClient) -> None:
+async def test_fetch_all_comments_for_issue(jira_client: JiraClient) -> None:
     with patch.object(
         jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
@@ -334,9 +340,7 @@ async def test_get_paginated_comments_for_issue(jira_client: JiraClient) -> None
             "total": 1,
             "comments": [COMMENT],
         }
-        comments: list[dict[str, Any]] = []
-        async for batch in jira_client.get_paginated_comments_for_issue("TEST-1"):
-            comments.extend(batch)
+        comments = await fetch_all_comments_for_issue(jira_client, "TEST-1")
 
     assert comments[0]["__commentId"] == "TEST-1/10000"
     assert mock_request.await_args is not None
@@ -347,9 +351,9 @@ def _issue_pages(
     issue: dict[str, Any],
 ) -> Any:
     async def pages(
-        _params: dict[str, Any], *, include_comments: bool = False
+        params: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        assert include_comments is True
+        assert params.get("includeComments") is True
         yield [issue]
 
     return pages
@@ -395,7 +399,7 @@ async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
     client.get_paginated_issues.assert_called_once()
     called_params = client.get_paginated_issues.call_args.args[0]
     assert called_params["jql"].endswith("AND key = TEST-1")
-    assert client.get_paginated_issues.call_args.kwargs["include_comments"] is True
+    assert called_params["includeComments"] is True
 
 
 @pytest.mark.asyncio

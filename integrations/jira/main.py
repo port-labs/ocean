@@ -71,7 +71,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()
 
-    params = {}
+    params: dict[str, Any] = {}
     config = cast(JiraIssueConfig, event.resource_config)
 
     jql = config.selector.jql.strip() if config.selector.jql else ""
@@ -81,9 +81,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params["fields"] = config.selector.fields
     if config.selector.expand:
         params["expand"] = config.selector.expand
-    async for issues in client.get_paginated_issues(
-        params, include_comments=config.selector.include_comments
-    ):
+    if config.selector.include_comments:
+        params["includeComments"] = True
+    async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 

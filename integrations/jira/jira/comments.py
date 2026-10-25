@@ -13,9 +13,14 @@ _BLOCK_NODE_TYPES = {
 }
 
 
-class _CommentsClient(Protocol):
-    def get_paginated_comments_for_issue(
-        self, issue_key: str
+class _CommentsPaginationClient(Protocol):
+    api_url: str
+
+    def _get_paginated_data(
+        self,
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
 
 
@@ -94,16 +99,19 @@ _MAX_CONCURRENT_COMMENT_FETCHES = 10
 
 
 async def fetch_all_comments_for_issue(
-    client: _CommentsClient, issue_key: str
+    client: _CommentsPaginationClient, issue_key: str
 ) -> list[dict[str, Any]]:
     comments: list[dict[str, Any]] = []
-    async for batch in client.get_paginated_comments_for_issue(issue_key):
-        comments.extend(batch)
+    url = f"{client.api_url}/issue/{issue_key}/comment"
+    async for batch in client._get_paginated_data(url, "comments"):
+        comments.extend(
+            normalize_issue_comment(comment, issue_key) for comment in batch
+        )
     return comments
 
 
 async def attach_comments_to_issues(
-    client: _CommentsClient,
+    client: _CommentsPaginationClient,
     issues: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Attach `__comments` on every issue that has a key. Mutates and returns issues."""
