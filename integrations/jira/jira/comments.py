@@ -14,6 +14,10 @@ _BLOCK_NODE_TYPES = {
     "orderedList",
 }
 
+# Match the Jira HTTP client cap so a large issue batch cannot open one
+# comment fetch per issue at the same time.
+_MAX_CONCURRENT_COMMENT_FETCHES = 10
+
 
 def _attr_node_text(node_type: str, attrs: dict[str, Any]) -> str:
     """Visible text for ADF inline nodes that store their value in attrs."""
@@ -82,11 +86,6 @@ def normalize_issue_comment(comment: dict[str, Any], issue_key: str) -> dict[str
         "__body": adf_to_plain_text(comment.get("body")).strip(),
         "__url": url,
     }
-
-
-# Match the Jira HTTP client cap so a large issue batch cannot open one
-# comment fetch per issue at the same time.
-_MAX_CONCURRENT_COMMENT_FETCHES = 10
 
 
 async def fetch_all_comments_for_issue(
