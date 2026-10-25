@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.13.0 (2026-10-25)
+
+
+### Features
+
+- Add managed Port MCP credentials for Claude agent sessions
+
+
 ## 0.12.6 (2026-10-25)
 
 
