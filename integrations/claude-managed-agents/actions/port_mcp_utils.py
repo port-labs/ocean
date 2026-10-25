@@ -11,9 +11,6 @@ from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVaul
 from anthropic.types.beta.vaults.beta_managed_agents_credential import (
     BetaManagedAgentsCredential,
 )
-from anthropic.types.beta.vaults.beta_managed_agents_static_bearer_auth_response import (
-    BetaManagedAgentsStaticBearerAuthResponse,
-)
 from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
     BetaManagedAgentsMCPServerURLDefinition,
 )
@@ -64,10 +61,10 @@ def _is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
 def _is_vault_credential_url_matching(
     credential: BetaManagedAgentsCredential, url: str
 ) -> bool:
-    mcp_server_url = credential.auth.mcp_server_url
-    return mcp_server_url is not None and _normalize_port_mcp_url(
-        mcp_server_url
-    ) == _normalize_port_mcp_url(url)
+    auth = credential.auth
+    if auth.type != "static_bearer":
+        return False
+    return _normalize_port_mcp_url(auth.mcp_server_url) == _normalize_port_mcp_url(url)
 
 
 def _required_port_mcp_url() -> str:
@@ -103,15 +100,13 @@ def attach_port_mcp_settings_to_agent_config(
     """Attach the Port MCP server + toolset to agent config. Pass
     ``existing_agent`` on update to keep existing tools/mcp_servers."""
     port_mcp_url = _required_port_mcp_url()
-    agent_servers = existing_agent.mcp_servers if existing_agent else []
-    agent_tools = existing_agent.tools if existing_agent else []
-    mcp_servers = _merge_mcp_servers_by_url(
-        agent_servers,
-        cast(
-            list[BetaManagedAgentsMCPServerURLDefinition],
-            proposed_config.get("mcp_servers", []),
-        ),
+    agent_servers = (existing_agent.mcp_servers or []) if existing_agent else []
+    agent_tools = (existing_agent.tools or []) if existing_agent else []
+    proposed_servers = cast(
+        list[BetaManagedAgentsMCPServerURLDefinition],
+        proposed_config.get("mcp_servers") or [],
     )
+    mcp_servers = _merge_mcp_servers_by_url(agent_servers, proposed_servers)
     if not is_agent_configured_with_port_mcp(mcp_servers):
         mcp_servers, agent_tools = _swap_stale_port_mcp_config(mcp_servers, agent_tools)
         mcp_servers.append(
