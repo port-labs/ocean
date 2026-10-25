@@ -86,7 +86,7 @@ def sdk_agent(
     agent_id: str = "agent_1",
     version: int | None = None,
     metadata: dict[str, Any] | None = None,
-    mcp_servers: list[dict[str, Any]] | None = None,
+    mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition] | None = None,
 ) -> MagicMock:
     agent = MagicMock()
     agent.id = agent_id

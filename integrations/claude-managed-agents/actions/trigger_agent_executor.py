@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Self
 
 from anthropic.types.beta import BetaManagedAgentsAgent
@@ -10,8 +11,11 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.actions.utils import get_run_access_token
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import (
+    IntegrationRun,
+    ResolvedExecutionIdentity,
+    WorkflowNodeRun,
+)
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
 from port_ocean.utils.ttl_cache import TTLCache
@@ -65,6 +69,42 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
         return self
 
 
+@dataclass(frozen=True)
+class PortMcpWorkflowContext:
+    workflow_run: WorkflowNodeRun
+    execution_identity: ResolvedExecutionIdentity
+    vault_name: str | None
+
+
+def port_mcp_workflow_context(
+    inputs: TriggerAgentInputs, run: IntegrationRun
+) -> PortMcpWorkflowContext | None:
+    if not inputs.enablePortMcp or not isinstance(run, WorkflowNodeRun):
+        return None
+    identity = run.execution_identity
+    if identity is None:
+        return None
+    return PortMcpWorkflowContext(run, identity, inputs.vaultName)
+
+
+def session_config_with_port_mcp(
+    api_config: dict[str, Any],
+    binding: PortMcpBinding,
+    execution_identity: ResolvedExecutionIdentity,
+) -> dict[str, Any]:
+    vault_ids = list(api_config.get("vault_ids") or [])
+    if binding.vault_id not in vault_ids:
+        vault_ids.append(binding.vault_id)
+    return {
+        **api_config,
+        "metadata": {
+            **(api_config.get("metadata") or {}),
+            PORT_IDENTITY_ID_KEY: execution_identity.identifier,
+        },
+        "vault_ids": vault_ids,
+    }
+
+
 class TriggerAgentExecutor(AbstractAnthropicExecutor):
     """Executor for the `trigger_agent` action.
 
@@ -96,20 +136,21 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         return None
 
     async def _resolve_port_mcp_binding(
-        self,
-        run: WorkflowNodeRun,
-        vault_name: str | None,
+        self, port_mcp: PortMcpWorkflowContext
     ) -> PortMcpBinding:
-        get_run_access_token(run)
-        ensured_vault_name = vault_name or run.execution_identity.identifier
+        ensured_vault_name = (
+            port_mcp.vault_name or port_mcp.execution_identity.identifier
+        )
         binding = self._port_mcp_cache.get(ensured_vault_name)
         if binding is None:
             binding = await ensure_port_mcp_binding(
-                self.client, run, ensured_vault_name
+                self.client, port_mcp.workflow_run, ensured_vault_name
             )
             self._port_mcp_cache.set(ensured_vault_name, binding)
         else:
-            await remint_port_mcp_credential(self.client, run, binding)
+            await remint_port_mcp_credential(
+                self.client, port_mcp.workflow_run, binding
+            )
         return binding
 
     async def _ensure_session_continuable(
@@ -172,6 +213,29 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         self._agent_cache.set(agent.id, updated)
         return updated
 
+    async def _create_new_trigger_session(
+        self,
+        inputs: TriggerAgentInputs,
+        port_mcp: PortMcpWorkflowContext | None,
+    ) -> BetaManagedAgentsSession:
+        api_config = await normalize_session_config(inputs.config)
+        if port_mcp is not None:
+            binding = await self._resolve_port_mcp_binding(port_mcp)
+            api_config = session_config_with_port_mcp(
+                api_config, binding, port_mcp.execution_identity
+            )
+        session = await self.client.create_session(
+            inputs.agentId,
+            inputs.environmentId,
+            extra=api_config or None,
+        )
+        if not session.id:
+            raise ActionExecutionError(
+                "Session was created but no session id was returned",
+                status_label=SESSION_START_FAILED_STATUS_LABEL,
+            )
+        return session
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
@@ -192,40 +256,14 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         )
         if inputs.enablePortMcp:
             agent = await self._ensure_agent_port_mcp_configured(agent)
-        should_authenticate_port_mcp = (
-            inputs.enablePortMcp
-            and isinstance(run, WorkflowNodeRun)
-            and run.execution_identity is not None
-        )
+
+        port_mcp = port_mcp_workflow_context(inputs, run)
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId, run)
-            if should_authenticate_port_mcp:
-                await self._resolve_port_mcp_binding(run, inputs.vaultName)
+            if port_mcp is not None:
+                await self._resolve_port_mcp_binding(port_mcp)
         else:
-            api_config = await normalize_session_config(inputs.config)
-            if should_authenticate_port_mcp:
-                binding = await self._resolve_port_mcp_binding(run, inputs.vaultName)
-                vault_ids = list(api_config.get("vault_ids") or [])
-                if binding.vault_id not in vault_ids:
-                    vault_ids.append(binding.vault_id)
-                api_config = {
-                    **api_config,
-                    "metadata": {
-                        **(api_config.get("metadata") or {}),
-                        PORT_IDENTITY_ID_KEY: run.execution_identity.identifier,
-                    },
-                    "vault_ids": vault_ids,
-                }
-            session = await self.client.create_session(
-                inputs.agentId,
-                inputs.environmentId,
-                extra=api_config or None,
-            )
-            if not session.id:
-                raise ActionExecutionError(
-                    "Session was created but no session id was returned",
-                    status_label=SESSION_START_FAILED_STATUS_LABEL,
-                )
+            session = await self._create_new_trigger_session(inputs, port_mcp)
 
         user_message = await self.client.send_user_message(session.id, inputs.prompt)
         logger.info(

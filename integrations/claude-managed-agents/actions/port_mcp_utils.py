@@ -11,6 +11,9 @@ from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVaul
 from anthropic.types.beta.vaults.beta_managed_agents_credential import (
     BetaManagedAgentsCredential,
 )
+from anthropic.types.beta.vaults.beta_managed_agents_static_bearer_auth_response import (
+    BetaManagedAgentsStaticBearerAuthResponse,
+)
 from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
     BetaManagedAgentsMCPServerURLDefinition,
 )
@@ -51,9 +54,7 @@ def _merge_mcp_servers_by_url(
 
 
 def _is_port_mcp_toolset(tool: Tool) -> bool:
-    return (
-        tool.type == "mcp_toolset" and tool.mcp_server_name == PORT_MCP_SERVER_NAME
-    )
+    return tool.type == "mcp_toolset" and tool.mcp_server_name == PORT_MCP_SERVER_NAME
 
 
 def _is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
@@ -67,6 +68,13 @@ def _is_vault_credential_url_matching(
     return mcp_server_url is not None and _normalize_port_mcp_url(
         mcp_server_url
     ) == _normalize_port_mcp_url(url)
+
+
+def _required_port_mcp_url() -> str:
+    port_mcp_url = ocean.config.port.mcp_url
+    if not port_mcp_url:
+        raise RuntimeError("Port MCP URL is not configured for this integration")
+    return port_mcp_url
 
 
 def is_agent_configured_with_port_mcp(
@@ -94,7 +102,7 @@ def attach_port_mcp_settings_to_agent_config(
 ) -> dict[str, Any]:
     """Attach the Port MCP server + toolset to agent config. Pass
     ``existing_agent`` on update to keep existing tools/mcp_servers."""
-    port_mcp_url = ocean.config.port.mcp_url
+    port_mcp_url = _required_port_mcp_url()
     agent_servers = existing_agent.mcp_servers if existing_agent else []
     agent_tools = existing_agent.tools if existing_agent else []
     mcp_servers = _merge_mcp_servers_by_url(
@@ -105,9 +113,7 @@ def attach_port_mcp_settings_to_agent_config(
         ),
     )
     if not is_agent_configured_with_port_mcp(mcp_servers):
-        mcp_servers, agent_tools = _swap_stale_port_mcp_config(
-            mcp_servers, agent_tools
-        )
+        mcp_servers, agent_tools = _swap_stale_port_mcp_config(mcp_servers, agent_tools)
         mcp_servers.append(
             BetaManagedAgentsMCPServerURLDefinition(
                 type="url", name=PORT_MCP_SERVER_NAME, url=port_mcp_url
@@ -125,32 +131,41 @@ async def ensure_port_mcp_binding(
     client: AnthropicClient, run: WorkflowNodeRun, vault_name: str
 ) -> PortMcpBinding:
     """Find or create the user's vault, then (re)mint its Port MCP credential."""
-    vault = await find_first_match_in_generator(
+    port_mcp_url = _required_port_mcp_url()
+    vault_match = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.list()),
         functools.partial(_is_vault_name_matching, name=vault_name),
     )
-    if vault is None:
+    raw_vault: Any
+    if vault_match is None:
         logger.info(f"Creating Port MCP vault '{vault_name}'")
-        vault = await client.beta.vaults.create(display_name=vault_name)
+        raw_vault = await client.beta.vaults.create(display_name=vault_name)
+    else:
+        raw_vault = vault_match
+    vault = cast(BetaManagedAgentsVault, raw_vault)
 
-    credential = await find_first_match_in_generator(
+    credential_match = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.credentials.list(vault_id=vault.id)),
-        functools.partial(
-            _is_vault_credential_url_matching, url=ocean.config.port.mcp_url
-        ),
+        functools.partial(_is_vault_credential_url_matching, url=port_mcp_url),
     )
-    if credential is None:
+    access_token = get_run_access_token(run)
+    if access_token is None:
+        raise RuntimeError("portAccessToken is required when executionIdentity is set")
+    if credential_match is None:
         logger.info(f"Creating Port MCP credential '{PORT_MCP_CREDENTIAL_NAME}'")
-        credential = await client.beta.vaults.credentials.create(
+        raw_credential: Any = await client.beta.vaults.credentials.create(
             vault.id,
             auth={
                 "type": "static_bearer",
-                "token": get_run_access_token(run),
-                "mcp_server_url": ocean.config.port.mcp_url,
+                "token": access_token,
+                "mcp_server_url": port_mcp_url,
             },
             display_name=PORT_MCP_CREDENTIAL_NAME,
         )
     else:
+        raw_credential = credential_match
+    credential = cast(BetaManagedAgentsCredential, raw_credential)
+    if credential_match is not None:
         await remint_port_mcp_credential(
             client, run, PortMcpBinding(vault_id=vault.id, credential_id=credential.id)
         )
@@ -162,11 +177,14 @@ async def remint_port_mcp_credential(
 ) -> None:
     """Remint the vault credential for a continued session, verifying the
     run's identity still matches the session's owner. No-op if unowned."""
+    access_token = get_run_access_token(run)
+    if access_token is None:
+        raise RuntimeError("portAccessToken is required when executionIdentity is set")
     await client.beta.vaults.credentials.update(
         binding.credential_id,
         vault_id=binding.vault_id,
         auth={
             "type": "static_bearer",
-            "token": get_run_access_token(run),
+            "token": access_token,
         },
     )
