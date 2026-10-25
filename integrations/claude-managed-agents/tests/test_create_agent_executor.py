@@ -111,7 +111,9 @@ async def test_create_agent_executor_creates_and_completes() -> None:
 
     extra = client_mock.create_agent.await_args.kwargs["extra"]
     assert extra["description"] == "d"
-    assert any(s.get("name") == PORT_MCP_SERVER_NAME for s in extra["mcp_servers"])
+    assert any(
+        getattr(s, "name", None) == PORT_MCP_SERVER_NAME for s in extra["mcp_servers"]
+    )
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
 
@@ -240,6 +242,7 @@ async def test_create_agent_executor_passes_config_through() -> None:
         "model": "claude-opus-4-8",
         "systemPrompt": "s",
         "config": mcp_config,
+        "enablePortMcp": False,
     }
 
     mock_ocean = build_mock_ocean()
@@ -323,7 +326,9 @@ async def test_create_agent_executor_wires_port_mcp_when_flag_true() -> None:
     extra = client_mock.create_agent.await_args.kwargs["extra"]
     assert extra["description"] == "d"
     assert "metadata" not in extra
-    assert any(s.get("name") == PORT_MCP_SERVER_NAME for s in extra["mcp_servers"])
+    assert any(
+        getattr(s, "name", None) == PORT_MCP_SERVER_NAME for s in extra["mcp_servers"]
+    )
 
 
 @pytest.mark.asyncio

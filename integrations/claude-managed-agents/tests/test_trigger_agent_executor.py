@@ -136,6 +136,10 @@ async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None
     run_2 = workflow_run_with_port_mcp(token="tok_2")
     with (
         patch(
+            "actions.trigger_agent_executor.get_run_access_token",
+            return_value="tok_1",
+        ),
+        patch(
             "actions.trigger_agent_executor.ensure_port_mcp_binding",
             AsyncMock(return_value=binding),
         ) as ensure,
@@ -189,6 +193,90 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
             "vault_ids": ["vault_port"],
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_enable_port_mcp_wires_agent_without_existing_mcp() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+
+    agent = sdk_agent(agent_id="agent_wire_mcp", version=3)
+    updated_agent = port_mcp_agent(agent_id="agent_wire_mcp", version=4)
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=agent)
+    client_mock.update_agent = AsyncMock(return_value=updated_agent)
+    client_mock.create_session = AsyncMock(return_value=sdk_session())
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache(max_items=100, ttl_seconds=120)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_wire_mcp",
+            "environmentId": "env_1",
+            "prompt": "go",
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            AsyncMock(
+                return_value=PortMcpBinding(
+                    vault_id="vault_port", credential_id="cred_1"
+                )
+            ),
+        ),
+    ):
+        await executor.execute(run)
+
+    client_mock.update_agent.assert_awaited_once()
+    update_kwargs = client_mock.update_agent.await_args.kwargs
+    assert update_kwargs["version"] == 3
+    assert PORT_MCP_SERVER_NAME in str(update_kwargs["payload"])
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_enable_port_mcp_false_skips_vault_and_agent_update() -> None:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
+    client_mock.create_session = AsyncMock(return_value=sdk_session())
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    client_mock.update_agent = AsyncMock()
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "environmentId": "env_1",
+            "prompt": "go",
+            "enablePortMcp": False,
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            AsyncMock(),
+        ) as resolve_binding,
+    ):
+        await executor.execute(run)
+
+    client_mock.update_agent.assert_not_called()
+    resolve_binding.assert_not_awaited()
+    extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
+    assert "vault_ids" not in extra
 
 
 @pytest.mark.asyncio
@@ -359,6 +447,7 @@ async def test_trigger_agent_executor_starts_session() -> None:
         "agentId": "agent_1",
         "environmentId": "env_1",
         "prompt": "go",
+        "enablePortMcp": False,
         "reportSessionStatus": True,
     }
 
@@ -409,6 +498,7 @@ async def test_trigger_agent_executor_passes_config_on_new_session() -> None:
             "vault_ids": ["vault_1"],
             "resources": [{"type": "memory_store", "memory_store_id": "ms_1"}],
         },
+        "enablePortMcp": False,
         "reportSessionStatus": True,
     }
 
@@ -470,6 +560,7 @@ async def test_trigger_agent_executor_ignores_session_create_fields_when_continu
         "sessionId": "sess_1",
         "prompt": "follow up",
         "config": {"title": "Should be ignored"},
+        "enablePortMcp": False,
         "reportSessionStatus": True,
     }
 
@@ -517,6 +608,7 @@ async def test_trigger_agent_continues_idle_session() -> None:
         "agentId": "agent_1",
         "sessionId": "sess_1",
         "prompt": "follow up",
+        "enablePortMcp": False,
         "reportSessionStatus": True,
     }
 
@@ -550,6 +642,7 @@ async def test_trigger_agent_rejects_non_idle_session() -> None:
         "agentId": "agent_1",
         "sessionId": "sess_1",
         "prompt": "go",
+        "enablePortMcp": False,
     }
 
     with patch("actions.trigger_agent_executor.ocean", build_mock_ocean()):
@@ -596,6 +689,7 @@ async def test_trigger_agent_rejects_requires_action_idle() -> None:
         "agentId": "agent_1",
         "sessionId": "sess_1",
         "prompt": "go",
+        "enablePortMcp": False,
     }
 
     with patch("actions.trigger_agent_executor.ocean", build_mock_ocean()):
@@ -636,6 +730,7 @@ async def test_trigger_agent_executor_injects_github_pat_into_session_config() -
                 {"type": "github_repository", "url": "https://github.com/org/repo"}
             ]
         },
+        "enablePortMcp": False,
         "reportSessionStatus": True,
     }
 
@@ -682,6 +777,7 @@ async def test_trigger_agent_executor_completes_run_synchronously_when_report_st
         "agentId": "agent_1",
         "environmentId": "env_1",
         "prompt": "go",
+        "enablePortMcp": False,
         "reportSessionStatus": False,
     }
 
@@ -717,6 +813,7 @@ async def test_trigger_agent_executor_completes_run_synchronously_by_default() -
         "agentId": "agent_1",
         "environmentId": "env_1",
         "prompt": "go",
+        "enablePortMcp": False,
     }
 
     mock_ocean = build_mock_ocean()

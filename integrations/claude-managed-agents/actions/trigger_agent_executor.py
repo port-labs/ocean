@@ -10,6 +10,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
@@ -18,6 +19,7 @@ from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp_utils import (
     PortMcpBinding,
+    attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_binding,
     is_agent_configured_with_port_mcp,
     remint_port_mcp_credential,
@@ -53,6 +55,7 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     environmentId: str = ""
     vaultName: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
+    enablePortMcp: bool = True
     reportSessionStatus: bool = False
 
     @model_validator(mode="after")
@@ -97,6 +100,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         run: WorkflowNodeRun,
         vault_name: str | None,
     ) -> PortMcpBinding:
+        get_run_access_token(run)
         ensured_vault_name = vault_name or run.execution_identity.identifier
         binding = self._port_mcp_cache.get(ensured_vault_name)
         if binding is None:
@@ -155,6 +159,19 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         return session
 
+    async def _ensure_agent_port_mcp_configured(
+        self, agent: BetaManagedAgentsAgent
+    ) -> BetaManagedAgentsAgent:
+        if is_agent_configured_with_port_mcp(agent.mcp_servers):
+            return agent
+        updated = await self.client.update_agent(
+            agent.id,
+            version=agent.version,
+            payload=attach_port_mcp_settings_to_agent_config({}, existing_agent=agent),
+        )
+        self._agent_cache.set(agent.id, updated)
+        return updated
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
@@ -173,8 +190,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         agent = await self._agent_cache.get_or_fetch(
             inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
         )
+        if inputs.enablePortMcp:
+            agent = await self._ensure_agent_port_mcp_configured(agent)
         should_authenticate_port_mcp = (
-            is_agent_configured_with_port_mcp(agent.mcp_servers)
+            inputs.enablePortMcp
             and isinstance(run, WorkflowNodeRun)
             and run.execution_identity is not None
         )

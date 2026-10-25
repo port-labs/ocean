@@ -86,14 +86,19 @@ def test_apply_port_mcp_adds_server_and_toolset() -> None:
     result = attach_port_mcp_settings_to_agent_config({"description": "d"})
     assert result["description"] == "d"
     assert "metadata" not in result
+    def _field(item: object, key: str) -> object:
+        if isinstance(item, dict):
+            return item.get(key)
+        return getattr(item, key, None)
+
     assert any(
-        s.get("name") == PORT_MCP_SERVER_NAME
-        and s.get("url") == "https://mcp.getport.io/v1"
+        _field(s, "name") == PORT_MCP_SERVER_NAME
+        and _field(s, "url") == "https://mcp.getport.io/v1"
         for s in result["mcp_servers"]
     )
     assert any(
-        t.get("type") == "mcp_toolset"
-        and t.get("mcp_server_name") == PORT_MCP_SERVER_NAME
+        _field(t, "type") == "mcp_toolset"
+        and _field(t, "mcp_server_name") == PORT_MCP_SERVER_NAME
         for t in result["tools"]
     )
 

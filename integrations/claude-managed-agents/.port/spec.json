@@ -197,6 +197,14 @@
           "required": true
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, ensures the agent is connected to the Port MCP endpoint for the integration's Port region and attaches a managed vault credential for Actor or Service Account execution identities.",
+          "default": true,
+          "required": false
+        },
+        {
           "name": "vaultName",
           "title": "Vault name",
           "type": "string",

@@ -5,6 +5,9 @@ from types import SimpleNamespace
 from typing import Any, AsyncIterator, TypeVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+    BetaManagedAgentsMCPServerURLDefinition,
+)
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
 )
@@ -97,11 +100,11 @@ def sdk_agent(
 def port_mcp_agent(**kwargs: Any) -> MagicMock:
     return sdk_agent(
         mcp_servers=[
-            {
-                "type": "url",
-                "name": PORT_MCP_SERVER_NAME,
-                "url": "https://mcp.getport.io/v1",
-            }
+            BetaManagedAgentsMCPServerURLDefinition(
+                type="url",
+                name=PORT_MCP_SERVER_NAME,
+                url="https://mcp.getport.io/v1",
+            )
         ],
         **kwargs,
     )
