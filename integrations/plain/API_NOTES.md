@@ -90,10 +90,13 @@ All five are root `Query` fields. Connection path for the paginator is `data.<fi
 |------|--------|------------|-----------------|
 | company | `companies` | `company:read` | `data.companies` |
 | tenant | `tenants` | `tenant:read` | `data.tenants` |
-| user | `users` | `user:read` | `data.users` |
-| machine-user | `machineUsers` | likely `machineUser:read` | `data.machineUsers` |
-| customer | `customers` | `customer:read` | `data.customers` |
-| thread | `threads` | `thread:read` | `data.threads` |
+| user | `users` | `user:read`, `roles:read` | `data.users` |
+| machine-user | `machineUsers` | `machineUser:read` | `data.machineUsers` |
+| customer | `customers` | `customer:read`, `customerTenantMembership:read` | `data.customers` |
+| thread | `threads` | `thread:read`, `tier:read` | `data.threads` |
+| thread-message | `thread.timelineEntries` | `timeline:read` | timeline entries |
+| discussion | `discussions` | `threadDiscussion:read` | per-thread |
+| discussion-message | `discussion.messages` | `threadDiscussionMessage:read` | per-discussion |
 
 Argument shapes from the schema (2026-09-24):
 
@@ -162,20 +165,23 @@ customer(customerId: ID!): Customer    # permission customer:read; null if missi
 
 Also present, if later stubs want them: `company(companyId: ID!)`, `tenant(tenantId: ID!)`, `user(userId: ID!)`.
 
-## API key permissions (Phase 1)
+## API key permissions
 
-Exact strings from schema field descriptions:
+Confirmed via `myPermissions` (2026-10-26). Required for sync/probe kinds:
 
 - `company:read`
 - `tenant:read`
-- `user:read`
-- `customer:read`
-- `thread:read`
-- `timeline:read` for `thread.timelineEntries` (thread messages). Confirmed live on 2026-09-29: the field returns HTTP 403 `Insufficient permissions, missing "timeline:read"` when this permission is absent.
+- `user:read`, `roles:read`
+- `machineUser:read`
+- `customer:read`, `customerTenantMembership:read`
+- `thread:read`, `tier:read`
+- `timeline:read` for `thread.timelineEntries` (thread messages)
+- `threadDiscussion:read` for discussions
+- `threadDiscussionMessage:read` for discussion messages
 
-Create the machine-user key with those permissions. Webhook registration is out of scope here; it will need its own permissions in Phase 2.
+Webhook registration also needs `webhookTarget:create` / `webhookTarget:edit` (in addition to `webhookTarget:read` for listing). Create the machine-user key with the sync permissions above; add webhook target write perms when using live events.
 
-The key in `integrations/plain/.env` (`PLAIN_TOKEN`, gitignored) was checked with `myPermissions` on 2026-09-24. All five are present.
+The connection probe uses `query { myPermissions { permissions } }` and compares the granted set to each kind's `probe_permissions`.
 
 ## Live list pages
 

@@ -140,6 +140,27 @@ async def test_execute_raises_on_http_errors(status_code: int) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_my_permissions_returns_granted_map() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "myPermissions": {
+                        "permissions": ["company:read", "thread:read", 123, ""]
+                    }
+                }
+            },
+        )
+
+    client, http_client = _client(handler)
+    async with http_client:
+        permissions = await client.get_my_permissions()
+
+    assert permissions == {"company:read": True, "thread:read": True}
+
+
+@pytest.mark.asyncio
 async def test_authorization_header_uses_token_from_config() -> None:
     seen: dict[str, str] = {}
 

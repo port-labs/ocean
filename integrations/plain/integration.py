@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 
 from plain.utils import ObjectKind
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -34,6 +34,7 @@ class CompanyResourceConfig(ResourceConfig):
         description="Company selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("company:read",)
 
 
 class TenantResourceConfig(ResourceConfig):
@@ -45,6 +46,7 @@ class TenantResourceConfig(ResourceConfig):
         description="Tenant selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("tenant:read",)
 
 
 class UserResourceConfig(ResourceConfig):
@@ -56,6 +58,7 @@ class UserResourceConfig(ResourceConfig):
         description="User selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("user:read", "roles:read")
 
 
 class MachineUserSelector(PlainSelector):
@@ -80,6 +83,7 @@ class MachineUserResourceConfig(ResourceConfig):
         description="Machine user selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("machineUser:read",)
 
 
 class CustomerResourceConfig(ResourceConfig):
@@ -90,6 +94,10 @@ class CustomerResourceConfig(ResourceConfig):
     selector: PlainSelector = Field(
         description="Customer selector",
         title="Selector",
+    )
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "customer:read",
+        "customerTenantMembership:read",
     )
 
 
@@ -132,6 +140,7 @@ class ThreadResourceConfig(ResourceConfig):
         description="Thread selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("thread:read", "tier:read")
 
 
 class ThreadMessageResourceConfig(ResourceConfig):
@@ -143,6 +152,7 @@ class ThreadMessageResourceConfig(ResourceConfig):
         description="Thread message selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("timeline:read",)
 
 
 class DiscussionResourceConfig(ResourceConfig):
@@ -154,6 +164,7 @@ class DiscussionResourceConfig(ResourceConfig):
         description="Discussion selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("threadDiscussion:read",)
 
 
 class DiscussionMessageResourceConfig(ResourceConfig):
@@ -165,6 +176,7 @@ class DiscussionMessageResourceConfig(ResourceConfig):
         description="Discussion message selector",
         title="Selector",
     )
+    probe_permissions: ClassVar[tuple[str, ...]] = ("threadDiscussionMessage:read",)
 
 
 class PlainPortAppConfig(PortAppConfig):
