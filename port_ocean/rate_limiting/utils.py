@@ -16,10 +16,6 @@ from port_ocean.rate_limiting.models import (
 )
 
 
-def is_centralized_rate_limiter_enabled() -> bool:
-    return ocean.config.centralized_rate_limiter.enabled
-
-
 def derive_sync_tier() -> SyncTier:
     """Map this pod's Ocean event mode to a centralized rate-limit priority tier."""
     mode = _derive_sync_tier()
@@ -33,22 +29,23 @@ def derive_sync_tier() -> SyncTier:
 
 
 def active_centralized_rate_limiter() -> CentralizedRateLimiter | None:
-    # Enabled check first: a test Ocean may not have the limiter attribute.
-    if not ocean.initialized or not is_centralized_rate_limiter_enabled():
+    """The process limiter, or None when startup did not connect to Redis.
+
+    A test Ocean may not have the attribute. ``getattr`` keeps that case on
+    the local limiter.
+    """
+    if not ocean.initialized:
         return None
-    return ocean.centralized_rate_limiter
+    return getattr(ocean, "centralized_rate_limiter", None)
 
 
 def use_centralized_rate_limiting() -> bool:
     """True when this process should use Redis admission instead of the local limiter.
 
-    False when the feature is disabled or setup left the limiter unset. A Redis
-    connection failure at startup does that, so the wrapper keeps the local limiter.
+    False when setup left the limiter unset. A Redis connection failure at
+    startup does that, so the wrapper keeps the local limiter.
     """
-    return (
-        is_centralized_rate_limiter_enabled()
-        and active_centralized_rate_limiter() is not None
-    )
+    return active_centralized_rate_limiter() is not None
 
 
 async def record_centralized_rate_limit(

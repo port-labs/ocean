@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -161,9 +162,9 @@ async def test_wait_status_logs_live_pool_once_per_minute() -> None:
 
 
 @pytest.mark.asyncio
-async def test_active_limiter_none_when_feature_disabled() -> None:
+async def test_active_limiter_none_when_ocean_is_not_initialized() -> None:
     with patch(
-        "port_ocean.rate_limiting.utils.is_centralized_rate_limiter_enabled",
-        return_value=False,
+        "port_ocean.rate_limiting.utils.ocean",
+        SimpleNamespace(initialized=False),
     ):
         assert active_centralized_rate_limiter() is None
