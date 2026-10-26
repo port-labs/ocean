@@ -1,7 +1,7 @@
+import os
 from enum import Enum
 from typing import Any, Literal, Optional, Self, Type
-
-import os
+from urllib.parse import urlparse
 
 from loguru import logger
 from pydantic import (

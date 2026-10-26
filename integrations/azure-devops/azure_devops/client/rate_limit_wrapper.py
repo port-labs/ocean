@@ -7,6 +7,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
+from loguru import logger
 
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
@@ -84,7 +85,7 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
             return float(ADO_RATE_LIMIT_WINDOW_SECONDS)
 
     def _parse_centralized_state(
-        self, response: httpx.Response, _context: str
+        self, response: httpx.Response, context: str
     ) -> Optional[CentralizedRateLimitState]:
         headers = response.headers
         limit: int | None = None
@@ -116,12 +117,29 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
         ):
             return None
 
-        return CentralizedRateLimitState(
+        state = CentralizedRateLimitState(
             remaining=remaining,
             limit=limit,
             reset_at=reset_at,
             blocked_until=blocked_until,
         )
+        ratio = round(remaining / limit, 3) if limit else None
+        reset_in_seconds = round(reset_at - time.time(), 3) if reset_at else None
+        logger.info(
+            "Azure DevOps centralized rate limit state "
+            f"pool={self.pool} context={context} remaining={remaining} "
+            f"limit={limit} ratio={ratio} reset_at={reset_at} "
+            f"reset_in_seconds={reset_in_seconds} blocked_until={blocked_until}",
+            pool=self.pool,
+            context=context,
+            remaining=remaining,
+            limit=limit,
+            ratio=ratio,
+            reset_at=reset_at,
+            reset_in_seconds=reset_in_seconds,
+            blocked_until=blocked_until,
+        )
+        return state
 
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return response.status_code == HTTPStatus.TOO_MANY_REQUESTS
