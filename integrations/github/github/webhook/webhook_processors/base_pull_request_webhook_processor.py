@@ -97,7 +97,8 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         pr_state = data_to_upsert.get("state", "")
-        if pr_state and pr_state not in config.selector.states:
+        effective_state = "closed" if pr_state == "merged" else pr_state
+        if effective_state and effective_state not in config.selector.states:
             logger.info(
                 f"Pull request {repo_name}/{number} has state '{pr_state}' which is "
                 f"excluded by selector states {config.selector.states}, deleting"

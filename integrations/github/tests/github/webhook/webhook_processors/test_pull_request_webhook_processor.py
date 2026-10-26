@@ -227,3 +227,126 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.assert_called_once()
         called_opts = mock_exporter.get_resource.call_args.args[0]
         assert called_opts["exclude_graphql_fields"] == ["additions", "changedFiles"]
+
+    @pytest.mark.parametrize(
+        "api,selector_states,pr_state_from_api,expected_update",
+        [
+            # GraphQL: "merged" state should be treated as "closed" when checking selector
+            # When 'closed' is in states, merged PRs should be kept (upserted)
+            ("graphql", ["open", "closed"], "merged", True),
+            ("graphql", ["closed"], "merged", True),
+            # GraphQL: "closed" state (not merged) should work as before
+            ("graphql", ["open", "closed"], "closed", True),
+            ("graphql", ["closed"], "closed", True),
+            # REST: "closed" state (REST returns "closed" for merged PRs)
+            ("rest", ["open", "closed"], "closed", True),
+            ("rest", ["closed"], "closed", True),
+        ],
+    )
+    async def test_handle_event_merged_pr_state_upserted_when_closed_in_states(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+        api: Literal["rest", "graphql"],
+        selector_states: list[Literal["open", "closed"]],
+        pr_state_from_api: str,
+        expected_update: bool,
+    ) -> None:
+        """Test that merged PRs (state='merged' from GraphQL) are kept when 'closed' is in selector states.
+
+        The GraphQL API returns state='MERGED' for merged PRs, which gets normalized to 'merged'.
+        The REST API returns state='closed' for merged PRs.
+        When the selector includes 'closed', merged PRs should be kept (upserted), not deleted.
+        This test covers the case where the exporter is called and returns the PR data.
+        """
+        resource_config.selector.api = api
+        resource_config.selector.states = selector_states
+
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "closed"}
+        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
+        payload = {
+            "action": "closed",
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        fetched_pr_data = {
+            **pr_data,
+            "state": pr_state_from_api,
+            "additional_data": "from_api",
+        }
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = fetched_pr_data
+
+        exporter_path = (
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.GraphQLPullRequestExporter"
+            if api == "graphql"
+            else "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter"
+        )
+
+        with patch(exporter_path, return_value=mock_exporter):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == [fetched_pr_data]
+        assert result.deleted_raw_results == []
+        mock_exporter.get_resource.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "api,pr_state_from_api",
+        [
+            # GraphQL: "merged" state should be deleted when 'closed' is NOT in states
+            ("graphql", "merged"),
+            # GraphQL: "closed" state should be deleted when 'closed' is NOT in states
+            ("graphql", "closed"),
+            # REST: "closed" state should be deleted when 'closed' is NOT in states
+            ("rest", "closed"),
+        ],
+    )
+    async def test_handle_event_merged_pr_deleted_when_closed_not_in_states(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+        api: Literal["rest", "graphql"],
+        pr_state_from_api: str,
+    ) -> None:
+        """Test that merged/closed PRs are deleted when 'closed' is NOT in selector states.
+
+        When the selector only includes 'open', a closed/merged PR should be deleted.
+        This hits the early delete path (before calling the exporter) because
+        action='closed' and 'closed' is not in states.
+        """
+        resource_config.selector.api = api
+        resource_config.selector.states = ["open"]
+
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "closed"}
+        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
+        payload = {
+            "action": "closed",
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        mock_exporter = AsyncMock()
+
+        exporter_path = (
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.GraphQLPullRequestExporter"
+            if api == "graphql"
+            else "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter"
+        )
+
+        with patch(exporter_path, return_value=mock_exporter):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        # Early delete path uses enriched payload PR data (not fetched data)
+        assert result.deleted_raw_results == [{**pr_data, "__organization": "test-org"}]
+        # Exporter should NOT be called in early delete path
+        mock_exporter.get_resource.assert_not_called()
