@@ -28,7 +28,6 @@ from gitlab.helpers.incremental import (
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
-    build_project_list_params,
     build_project_updated_after_params,
     resolve_effective_datetime,
 )
@@ -159,6 +158,7 @@ async def on_start() -> None:
 @ocean.on_incremental_resync(ObjectKind.PROJECT)
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync projects; incremental only fetches projects updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
@@ -171,7 +171,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    params = build_project_list_params(
+    params = build_project_updated_after_params(
         build_project_params(include_only_active_projects=include_only_active_projects),
         sync_cursor,
     )
@@ -280,8 +280,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(ObjectKind.JOB)
 @ocean.on_resync(ObjectKind.JOB)
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync pipeline jobs; incremental only walks recently updated pipelines.
-    """
+    """Resync pipeline jobs; incremental only walks recently updated pipelines."""
     client = create_gitlab_client()
     selector = cast(JobResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
@@ -367,19 +366,14 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync project tags; incremental scans recently active projects only.
-
-    Projects are gated with ``last_activity_after``. Tags have no server-side
-    time filter, so each project's tags are listed newest-first and early-stopped
-    once ``created_at`` predates the cursor.
-    """
+    """Resync project tags; incremental scans recently updated projects only."""
     client = create_gitlab_client()
     selector = cast(TagResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_list_params(
+        params=build_project_updated_after_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),
@@ -401,12 +395,7 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(ObjectKind.RELEASE)
 @ocean.on_resync(ObjectKind.RELEASE)
 async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync project releases; incremental scans recently updated projects only.
-
-    Projects are gated with ``updated_after`` (and ``order_by=updated_at``).
-    Releases have no reliable change timestamp, so once a project is selected
-    we fetch all of its releases.
-    """
+    """Resync project releases; incremental scans recently updated projects only."""
     client = create_gitlab_client()
     selector = cast(ReleaseResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
@@ -509,7 +498,6 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT_WITH_MEMBERS)
 async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Full resync only — membership changes do not reliably bump last_activity_at."""
     client = create_gitlab_client()
     selector = cast(
         GitlabProjectWithMembersResourceConfig, event.resource_config

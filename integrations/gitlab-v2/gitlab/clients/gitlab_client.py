@@ -403,18 +403,7 @@ class GitLabClient:
         max_concurrent: int = 10,
         cursor: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch tags for each project in the batch.
-
-        On incremental runs (``cursor`` set), tags are requested newest-first
-        and pagination stops once ``created_at`` predates the cursor. Callers
-        should also pass ``last_activity_after`` when listing projects so only
-        recently active repos are scanned.
-
-        Args:
-            projects_batch: List of projects to fetch tags for
-            max_concurrent: Maximum number of concurrent requests
-            cursor: Incremental sync cursor; ``None`` for a full tag listing
-        """
+        """Fetch tags for each project; with a cursor, stop once created_at is older."""
         if cursor is None:
             async for tags_batch in self.get_projects_resource_with_enrichment(
                 projects_batch, "repository/tags", max_concurrent
@@ -441,12 +430,7 @@ class GitLabClient:
         projects_batch: list[dict[str, Any]],
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all releases for each project in the batch.
-
-        The Releases API has no time filter and release objects have no reliable
-        change timestamp, so callers should narrow ``projects_batch`` first
-        (e.g. ``GET /projects?updated_after=…``).
-        """
+        """Fetch all releases for each project in the batch."""
         async for releases_batch in self.get_projects_resource_with_enrichment(
             projects_batch, "releases", max_concurrent
         ):

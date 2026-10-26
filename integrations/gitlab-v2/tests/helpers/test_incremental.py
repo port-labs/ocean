@@ -7,7 +7,6 @@ from gitlab.helpers.incremental import (
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
-    build_project_list_params,
     build_project_updated_after_params,
     build_tag_list_params,
     resolve_effective_datetime,
@@ -24,22 +23,6 @@ def _options() -> IssueOptions:
         non_archived=True,
         state="opened",
     )
-
-
-def test_project_full_resync_keeps_visibility_params() -> None:
-    assert build_project_list_params(
-        {"min_access_level": 30, "active": True}, cursor=None
-    ) == {"min_access_level": 30, "active": True}
-
-
-def test_project_incremental_sets_last_activity_after() -> None:
-    assert build_project_list_params(
-        {"min_access_level": 30, "active": True}, cursor=CURSOR
-    ) == {
-        "min_access_level": 30,
-        "active": True,
-        "last_activity_after": CURSOR.isoformat(),
-    }
 
 
 def test_project_updated_after_sets_order_by() -> None:
