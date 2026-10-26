@@ -41,6 +41,6 @@ class AgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         agent = await client.get_agent(agent_id)
         logger.info(f"Upserting agent {agent_id} from catalog ({event_type})")
         return WebhookEventRawResults(
-            updated_raw_results=[agent.to_dict(mode="json")],
+            updated_raw_results=[agent.to_dict(mode="json", warnings=False)],
             deleted_raw_results=[],
         )

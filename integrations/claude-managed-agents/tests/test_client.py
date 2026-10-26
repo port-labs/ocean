@@ -239,7 +239,7 @@ async def test_create_session_forwards_extra(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_user_message_event_shape(client: AnthropicClient) -> None:
+async def test_senduser_message_event_shape(client: AnthropicClient) -> None:
     inner: Any = client._client
     sent_event = BetaManagedAgentsUserMessageEvent(
         id="evt_1",
