@@ -1225,3 +1225,38 @@ class TestGitHubSearchQueryTooLongError:
         assert error.query == query
         assert error.organization == "test-org"
         assert error.query_length == len(query)
+
+    def test_error_extends_ocean_abort_exception(self) -> None:
+        """GitHubSearchQueryTooLongError must extend OceanAbortException so Ocean core
+        can catch it with `except* OceanAbortException` and continue processing other kinds.
+
+        This inheritance is critical: Ocean core's resync_generator_wrapper catches
+        OceanAbortException, wraps it in an ExceptionGroup, and _register_in_batches
+        catches that group with `except* OceanAbortException`. This allows the error
+        to be logged and recorded for the repository kind while other kinds continue
+        syncing normally.
+        """
+        from port_ocean.exceptions.core import OceanAbortException
+
+        error = GitHubSearchQueryTooLongError("long query", "test-org")
+
+        assert isinstance(error, OceanAbortException)
+        assert isinstance(error, Exception)
+
+    def test_error_is_catchable_by_exception_group_handler(self) -> None:
+        """Verify that the exception works correctly with Python 3.11+ except* syntax,
+        which Ocean core uses to catch OceanAbortException from async generators.
+        """
+        from port_ocean.exceptions.core import OceanAbortException
+
+        error = GitHubSearchQueryTooLongError("long query", "test-org")
+        group = ExceptionGroup("test", [error])
+
+        caught_errors: list[OceanAbortException] = []
+        try:
+            raise group
+        except* OceanAbortException as e:
+            caught_errors.extend(e.exceptions)
+
+        assert len(caught_errors) == 1
+        assert isinstance(caught_errors[0], GitHubSearchQueryTooLongError)
