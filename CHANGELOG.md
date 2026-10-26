@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.2 (2026-10-26)
+
+
+### Bug Fixes
+
+- Bumped filelock to ^4.2.1 and required opentelemetry-api >=1.45.1 to fix GHSA-v4x8-3wr5-3wq8, GHSA-567q-5qvw-pf92, GHSA-9vhv-jxww-xfm5 and GHSA-xcq7-p3pf-p88h
+
+
+## 0.56.1 (2026-10-25)
+
+
+### Bug Fixes
+
+- Removed curl from the integration production images and upgraded Alpine libcurl and brotli-libs.
+
+
+## 0.56.0 (2026-10-25)
+
+
+### Features
+
+- Add workflow claim support for encrypted identity access tokens
+
+
+## 0.55.6 (2026-10-25)
+
+
+### Improvements
+
+- Bump fastapi to 0.162.0, prometheus-client to 0.26.0, virtualenv to 21.14.13, jq to 1.13.0, and black to 26.10.1.
+
+
 ## 0.55.5 (2026-10-22)
 
 
