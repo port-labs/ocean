@@ -106,7 +106,9 @@ async def test_probe_marks_checks_failed_when_permissions_fetch_fails(
     await PlainPermissionProbe(probe_context).run()
 
     assert len(probe_context.checks) == 2
-    assert all(check.status is ProbeCheckStatus.FAILURE for check in probe_context.checks)
+    assert all(
+        check.status is ProbeCheckStatus.FAILURE for check in probe_context.checks
+    )
     assert all(
         "fetching API key permissions" in (check.message or "")
         for check in probe_context.checks

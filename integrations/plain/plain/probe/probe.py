@@ -47,8 +47,7 @@ class PlainPermissionProbe:
             return
         except httpx.RequestError as error:
             await self.context.fail(
-                "Plain could not be reached while verifying authentication: "
-                f"{error}"
+                "Plain could not be reached while verifying authentication: " f"{error}"
             )
             return
 
