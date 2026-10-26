@@ -150,9 +150,6 @@ def test_quota_methods_noop_when_centralized() -> None:
 
 def test_use_centralized_requires_active_limiter() -> None:
     app = SimpleNamespace(
-        config=SimpleNamespace(
-            centralized_rate_limiter=SimpleNamespace(enabled=True),
-        ),
         centralized_rate_limiter=object(),
         initialized=True,
     )

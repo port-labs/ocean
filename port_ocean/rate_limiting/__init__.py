@@ -6,7 +6,6 @@ from port_ocean.rate_limiting.models import (
     SyncTier,
 )
 from port_ocean.rate_limiting.utils import (
-    is_centralized_rate_limiter_enabled,
     record_centralized_rate_limit,
     use_centralized_rate_limiting,
 )

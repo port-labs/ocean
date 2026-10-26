@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from typing import Protocol
 
 from loguru import logger
 
@@ -9,20 +7,20 @@ from port_ocean.consumers.redis_client import create_redis_client_with_retry
 from port_ocean.consumers.redis_connection import RedisConnectionHelper
 from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
 
-if TYPE_CHECKING:
-    from port_ocean.ocean import Ocean
+
+class HasCentralizedRateLimiter(Protocol):
+    """Host that stores the process limiter. Ocean is the production instance."""
+
+    centralized_rate_limiter: CentralizedRateLimiter | None
 
 
 async def setup_centralized_rate_limiter(
-    app: Ocean,
+    app: HasCentralizedRateLimiter,
     settings: CentralizedRateLimiterSettings,
     *,
     org_id: str,
 ) -> None:
     """Initialize the centralized rate limiter on the Ocean app instance."""
-    if not settings.enabled:
-        return
-
     if app.centralized_rate_limiter is not None:
         message = (
             "Centralized rate limiter is already registered on this Ocean app; "
@@ -33,6 +31,7 @@ async def setup_centralized_rate_limiter(
 
     redis_settings = settings.redis
     redis_helper = RedisConnectionHelper()
+    limiter: CentralizedRateLimiter | None = None
     try:
         client_kwargs = redis_helper.client_kwargs(redis_settings)
         redis_client = await create_redis_client_with_retry(
@@ -47,15 +46,19 @@ async def setup_centralized_rate_limiter(
         app.centralized_rate_limiter = limiter
         logger.info("Centralized rate limiter enabled with Redis")
     except Exception as error:
-        redis_helper.cleanup()
+        # Leave the limiter unset so use_centralized_rate_limiting() stays false
+        # and the integration keeps its local limiter.
+        if limiter is not None:
+            await limiter.close()
+        else:
+            redis_helper.cleanup()
         logger.warning(
-            "Failed to connect to centralized rate limiter Redis; using no-op limiter",
+            "Failed to connect to centralized rate limiter Redis; using the local rate limiter",
             error=str(error),
         )
-        app.centralized_rate_limiter = CentralizedRateLimiter(org_id, None)
 
 
-async def teardown_centralized_rate_limiter(app: Ocean) -> None:
+async def teardown_centralized_rate_limiter(app: HasCentralizedRateLimiter) -> None:
     """Release Redis resources opened by setup_centralized_rate_limiter."""
     limiter = app.centralized_rate_limiter
     if limiter is not None:

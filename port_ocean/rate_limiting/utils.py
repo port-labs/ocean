@@ -1,7 +1,6 @@
 """Shared helpers for centralized rate limiting."""
 
 import asyncio
-import time
 
 from loguru import logger
 
@@ -9,15 +8,12 @@ from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.sync_tier import _derive_sync_tier
 from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
+from port_ocean.rate_limiting.constants import WAIT_STATUS_INTERVAL_SECONDS
 from port_ocean.rate_limiting.models import (
     CentralizedRateLimitState,
     RateLimitAcquireDecision,
     SyncTier,
 )
-
-
-def is_centralized_rate_limiter_enabled() -> bool:
-    return ocean.config.centralized_rate_limiter.enabled
 
 
 def derive_sync_tier() -> SyncTier:
@@ -33,22 +29,23 @@ def derive_sync_tier() -> SyncTier:
 
 
 def active_centralized_rate_limiter() -> CentralizedRateLimiter | None:
-    # Enabled check first: a test Ocean may not have the limiter attribute.
-    if not ocean.initialized or not is_centralized_rate_limiter_enabled():
+    """The process limiter, or None when startup did not connect to Redis.
+
+    A test Ocean may not have the attribute. ``getattr`` keeps that case on
+    the local limiter.
+    """
+    if not ocean.initialized:
         return None
-    return ocean.centralized_rate_limiter
+    return getattr(ocean, "centralized_rate_limiter", None)
 
 
 def use_centralized_rate_limiting() -> bool:
-    """Redis vendor admission/publish when enabled and limiter is active.
+    """True when this process should use Redis admission instead of the local limiter.
 
-    False when disabled or Redis is unavailable (fail-open). Integrations use local
-    limiter hooks on the wrapper instead.
+    False when setup left the limiter unset. A Redis connection failure at
+    startup does that, so the wrapper keeps the local limiter.
     """
-    return (
-        is_centralized_rate_limiter_enabled()
-        and active_centralized_rate_limiter() is not None
-    )
+    return active_centralized_rate_limiter() is not None
 
 
 async def record_centralized_rate_limit(
@@ -61,33 +58,16 @@ async def record_centralized_rate_limit(
     limiter = active_centralized_rate_limiter()
     if limiter is None:
         return
-    # TODO(rl-local-test): remove after centralized rate limiter load-test validation
-    tier = derive_sync_tier()
-    ratio = round((state.remaining or 0) / state.limit, 3) if state.limit else None
-    reset_in_seconds = (
-        round(state.reset_at - time.time(), 3) if state.reset_at else None
-    )
-    logger.info(
-        "Centralized rate limiter recorded response "
-        f"pool={pool} tier={tier.value} remaining={state.remaining} "
-        f"limit={state.limit} ratio={ratio} reset_at={state.reset_at} "
-        f"reset_in_seconds={reset_in_seconds} is_rate_limited={is_rate_limited} "
-        f"integration={ocean.config.integration.identifier}",
-        pool=pool,
-        tier=tier.value,
-        remaining=state.remaining,
-        limit=state.limit,
-        ratio=ratio,
-        reset_at=state.reset_at,
-        reset_in_seconds=reset_in_seconds,
-        is_rate_limited=is_rate_limited,
-        integration_identifier=ocean.config.integration.identifier,
-    )
     await limiter.record_response(pool, state, is_rate_limited=is_rate_limited)
 
 
 async def await_centralized_rate_limit(pool: str) -> None:
-    """Wait for cross-pod admission before sending an outbound request."""
+    """Wait for cross-pod admission before sending an outbound request.
+
+    A block still sleeps for the full ``wait_seconds`` from that acquire.
+    Every minute of that sleep logs the live pool once per pool, so a long
+    full-resync backoff is visible without one line per waiting request.
+    """
     limiter = active_centralized_rate_limiter()
     if limiter is None:
         return
@@ -107,18 +87,17 @@ async def await_centralized_rate_limit(pool: str) -> None:
         if result.decision == RateLimitAcquireDecision.ALLOW:
             return
 
-        wait_seconds = result.wait_seconds
-        if wait_seconds <= 0:
+        remaining = result.wait_seconds
+        if remaining <= 0:
             return
 
-        # TODO(rl-local-test): remove after centralized rate limiter load-test validation
-        logger.info(
-            "Centralized rate limiter blocked request "
-            f"pool={pool} tier={tier.value} wait_seconds={wait_seconds:.3f} "
-            f"integration={ocean.config.integration.identifier}",
-            pool=pool,
-            tier=tier.value,
-            wait_seconds=wait_seconds,
-            integration_identifier=ocean.config.integration.identifier,
-        )
-        await asyncio.sleep(wait_seconds)
+        while remaining > 0:
+            await limiter.log_wait_status(
+                pool,
+                tier,
+                result,
+                sleep_remaining_seconds=remaining,
+            )
+            step = min(WAIT_STATUS_INTERVAL_SECONDS, remaining)
+            await asyncio.sleep(step)
+            remaining -= step
