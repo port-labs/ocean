@@ -9,7 +9,7 @@ import pytest
 from client import (
     TerraformClient,
     CacheKeys,
-    MAX_CONCURRENT_PROJECT_ACCESS_FETCHES,
+    MAX_CONCURRENT_TEAM_ACCESS_FETCHES,
     TERRAFORM_WEBHOOK_EVENTS,
     WorkspaceRunEvents,
     HealthAssessmentEvents,
@@ -571,6 +571,73 @@ class TestGetPaginatedOrganizationResources:
                 f"organizations/org-2/{resource_path}",
             ]
 
+    @pytest.mark.asyncio
+    async def test_skips_organizations_the_token_cannot_read_when_opted_in(
+        self, terraform_client: TerraformClient, resource_path: str
+    ) -> None:
+        with (
+            patch.object(terraform_client, "get_paginated_organizations") as mock_orgs,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def org_generator() -> Any:
+                yield [{"id": "org-forbidden"}, {"id": "org-2"}]
+
+            def resource_generator(endpoint: str, *_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    if "org-forbidden" in endpoint:
+                        raise httpx.HTTPStatusError(
+                            "Forbidden",
+                            request=httpx.Request("GET", "https://app.terraform.io"),
+                            response=httpx.Response(403),
+                        )
+                    yield [{"id": "resource-1"}]
+
+                return generator()
+
+            mock_orgs.return_value = org_generator()
+            mock_resources.side_effect = resource_generator
+
+            result = []
+            async for batch in terraform_client.get_paginated_organization_resources(
+                resource_path, skip_inaccessible_organizations=True
+            ):
+                result.extend(batch)
+
+            assert result == [{"id": "resource-1"}]
+
+    @pytest.mark.asyncio
+    async def test_raises_on_permission_errors_by_default(
+        self, terraform_client: TerraformClient, resource_path: str
+    ) -> None:
+        with (
+            patch.object(terraform_client, "get_paginated_organizations") as mock_orgs,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def org_generator() -> Any:
+                yield [{"id": "org-1"}]
+
+            def resource_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    raise httpx.HTTPStatusError(
+                        "Forbidden",
+                        request=httpx.Request("GET", "https://app.terraform.io"),
+                        response=httpx.Response(403),
+                    )
+                    yield []
+
+                return generator()
+
+            mock_orgs.return_value = org_generator()
+            mock_resources.side_effect = resource_generator
+
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in terraform_client.get_paginated_organization_resources(
+                    resource_path
+                ):
+                    pass
+
 
 class TestGetPaginatedTeams:
     @pytest.mark.asyncio
@@ -659,24 +726,107 @@ class TestGetPaginatedOrganizationMemberships:
 
 class TestGetPaginatedTeamWorkspaceAccess:
     @pytest.mark.asyncio
-    async def test_lists_grants_without_a_workspace_filter(
+    async def test_fetches_access_for_every_workspace(
         self, terraform_client: TerraformClient
     ) -> None:
-        with patch.object(
-            terraform_client, "get_paginated_resources"
-        ) as mock_resources:
+        with (
+            patch.object(
+                terraform_client, "get_paginated_workspaces"
+            ) as mock_workspaces,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
 
-            async def access_generator(*_args: Any, **_kwargs: Any) -> Any:
-                yield [{"id": "tws-1"}, {"id": "tws-2"}]
+            async def workspace_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "ws-1"}, {"id": "ws-2"}]
 
-            mock_resources.return_value = access_generator()
+            def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    yield [{"id": "tws-1"}]
+
+                return generator()
+
+            mock_workspaces.return_value = workspace_generator()
+            mock_resources.side_effect = access_generator
 
             result = []
             async for batch in terraform_client.get_paginated_team_workspace_access():
                 result.extend(batch)
 
             assert len(result) == 2
-            assert mock_resources.call_args.args == ("team-workspaces",)
+            assert sorted(
+                call.args[1]["filter[workspace][id]"]
+                for call in mock_resources.call_args_list
+            ) == ["ws-1", "ws-2"]
+            assert {call.args[0] for call in mock_resources.call_args_list} == {
+                "team-workspaces"
+            }
+
+    @pytest.mark.asyncio
+    async def test_skips_workspaces_the_token_cannot_read(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with (
+            patch.object(
+                terraform_client, "get_paginated_workspaces"
+            ) as mock_workspaces,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def workspace_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "ws-forbidden"}, {"id": "ws-2"}]
+
+            def access_generator(_endpoint: str, params: dict[str, Any]) -> Any:
+                async def generator() -> Any:
+                    if params["filter[workspace][id]"] == "ws-forbidden":
+                        raise httpx.HTTPStatusError(
+                            "Forbidden",
+                            request=httpx.Request("GET", "https://app.terraform.io"),
+                            response=httpx.Response(403),
+                        )
+                    yield [{"id": "tws-1"}]
+
+                return generator()
+
+            mock_workspaces.return_value = workspace_generator()
+            mock_resources.side_effect = access_generator
+
+            result = []
+            async for batch in terraform_client.get_paginated_team_workspace_access():
+                result.extend(batch)
+
+            assert result == [{"id": "tws-1"}]
+
+    @pytest.mark.asyncio
+    async def test_reraises_unexpected_errors(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with (
+            patch.object(
+                terraform_client, "get_paginated_workspaces"
+            ) as mock_workspaces,
+            patch.object(terraform_client, "get_paginated_resources") as mock_resources,
+        ):
+
+            async def workspace_generator(*_args: Any, **_kwargs: Any) -> Any:
+                yield [{"id": "ws-1"}]
+
+            def access_generator(*_args: Any, **_kwargs: Any) -> Any:
+                async def generator() -> Any:
+                    raise httpx.HTTPStatusError(
+                        "Server error",
+                        request=httpx.Request("GET", "https://app.terraform.io"),
+                        response=httpx.Response(500),
+                    )
+                    yield []
+
+                return generator()
+
+            mock_workspaces.return_value = workspace_generator()
+            mock_resources.side_effect = access_generator
+
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in terraform_client.get_paginated_team_workspace_access():
+                    pass
 
 
 class TestGetPaginatedTeamProjectAccess:
@@ -718,7 +868,7 @@ class TestGetPaginatedTeamProjectAccess:
     async def test_bounds_concurrent_project_fetches(
         self, terraform_client: TerraformClient
     ) -> None:
-        project_count = MAX_CONCURRENT_PROJECT_ACCESS_FETCHES * 2
+        project_count = MAX_CONCURRENT_TEAM_ACCESS_FETCHES * 2
         in_flight = 0
         peak_in_flight = 0
 
@@ -751,7 +901,7 @@ class TestGetPaginatedTeamProjectAccess:
                 result.extend(access_batch)
 
             assert len(result) == project_count
-            assert 1 < peak_in_flight <= MAX_CONCURRENT_PROJECT_ACCESS_FETCHES
+            assert 1 < peak_in_flight <= MAX_CONCURRENT_TEAM_ACCESS_FETCHES
 
     @pytest.mark.asyncio
     async def test_fetches_projects_in_the_same_batch_concurrently(

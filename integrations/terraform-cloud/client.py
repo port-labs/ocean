@@ -1,7 +1,7 @@
 import asyncio
 from enum import StrEnum
 from urllib.parse import urlparse
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, AsyncIterator, Optional
 
 import httpx
 from aiolimiter import AsyncLimiter
@@ -50,11 +50,8 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 NUMBER_OF_REQUESTS = 25
 NUMBER_OF_SECONDS = 1
-# Bounds in-flight per-project team-access requests. The rate limiter already caps
-# throughput at NUMBER_OF_REQUESTS/second, which 10 in-flight requests saturate at
-# any round-trip above ~400ms; more would only queue behind the limiter while holding
-# connections, and the shared http client sets no pool limit of its own.
-MAX_CONCURRENT_PROJECT_ACCESS_FETCHES = 10
+MAX_CONCURRENT_TEAM_ACCESS_FETCHES = 10
+INACCESSIBLE_STATUS_CODES = (403, 404)
 
 
 class TerraformClient:
@@ -135,11 +132,13 @@ class TerraformClient:
                 break
 
             next_url = next_url.replace(self.api_url + "/", "")
-            # the next link carries page[size] and every filter in its query string
             params = None
 
     async def get_paginated_organization_resources(
-        self, resource_path: str, params: Optional[dict[str, Any]] = None
+        self,
+        resource_path: str,
+        params: Optional[dict[str, Any]] = None,
+        skip_inaccessible_organizations: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Starting to fetch {resource_path} across all organizations")
         async for organizations in self.get_paginated_organizations():
@@ -149,16 +148,29 @@ class TerraformClient:
                     f"Fetching {resource_path} for organization ID: {organization_id}"
                 )
                 endpoint = f"organizations/{organization_id}/{resource_path}"
-                async for resources in self.get_paginated_resources(endpoint, params):
-                    if not resources:
-                        logger.debug(
-                            f"No {resource_path} for organization ID: {organization_id}"
+                try:
+                    async for resources in self.get_paginated_resources(
+                        endpoint, params
+                    ):
+                        if not resources:
+                            logger.debug(
+                                f"No {resource_path} for organization ID: {organization_id}"
+                            )
+                            continue
+                        logger.info(
+                            f"Retrieved {len(resources)} {resource_path} for organization ID: {organization_id}"
                         )
-                        continue
-                    logger.info(
-                        f"Retrieved {len(resources)} {resource_path} for organization ID: {organization_id}"
+                        yield resources
+                except httpx.HTTPStatusError as e:
+                    if (
+                        not skip_inaccessible_organizations
+                        or e.response.status_code not in INACCESSIBLE_STATUS_CODES
+                    ):
+                        raise
+                    logger.warning(
+                        f"Skipping {resource_path} for organization ID {organization_id}: "
+                        f"token is missing permissions ({e.response.status_code})"
                     )
-                    yield resources
 
     @cache_iterator_result()
     async def get_paginated_projects(
@@ -170,57 +182,87 @@ class TerraformClient:
     async def get_paginated_teams(
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for teams in self.get_paginated_organization_resources("teams", params):
+        async for teams in self.get_paginated_organization_resources(
+            "teams", params, skip_inaccessible_organizations=True
+        ):
             yield teams
 
     async def get_paginated_organization_memberships(
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for memberships in self.get_paginated_organization_resources(
-            "organization-memberships", params
+            "organization-memberships", params, skip_inaccessible_organizations=True
         ):
             yield memberships
+
+    async def get_team_access_for_single_resource(
+        self,
+        endpoint: str,
+        filter_key: str,
+        resource_id: str,
+        semaphore: asyncio.BoundedSemaphore,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async with semaphore:
+            try:
+                async for access_records in self.get_paginated_resources(
+                    endpoint, {filter_key: resource_id}
+                ):
+                    if not access_records:
+                        logger.debug(f"No {endpoint} access on {resource_id}")
+                        continue
+                    logger.info(
+                        f"Retrieved {len(access_records)} {endpoint} access records for {resource_id}"
+                    )
+                    yield access_records
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code not in INACCESSIBLE_STATUS_CODES:
+                    raise
+                logger.warning(
+                    f"Skipping {endpoint} access for {resource_id}: "
+                    f"token is missing permissions ({e.response.status_code})"
+                )
+
+    async def get_paginated_team_access(
+        self,
+        endpoint: str,
+        filter_key: str,
+        resources: AsyncIterator[list[dict[str, Any]]],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAM_ACCESS_FETCHES)
+        total_access_records = 0
+        async for batch in resources:
+            access_tasks = [
+                self.get_team_access_for_single_resource(
+                    endpoint, filter_key, resource["id"], semaphore
+                )
+                for resource in batch
+            ]
+            async for access_records in stream_async_iterators_tasks(*access_tasks):
+                total_access_records += len(access_records)
+                yield access_records
+        logger.info(f"Total {endpoint} access records: {total_access_records}")
 
     async def get_paginated_team_workspace_access(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Starting to fetch team workspace access grants")
-        total_access_records = 0
-        async for access_records in self.get_paginated_resources("team-workspaces"):
-            total_access_records += len(access_records)
+        logger.info("Starting to fetch team workspace access across all workspaces")
+        async for access_records in self.get_paginated_team_access(
+            "team-workspaces",
+            "filter[workspace][id]",
+            self.get_paginated_workspaces(),
+        ):
             yield access_records
-        logger.info(f"Total team workspace access grants: {total_access_records}")
-
-    async def get_team_access_for_single_project(
-        self, project_id: str, semaphore: asyncio.BoundedSemaphore
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async with semaphore:
-            async for access_records in self.get_paginated_resources(
-                "team-projects", {"filter[project][id]": project_id}
-            ):
-                if not access_records:
-                    logger.debug(f"No team access on project ID: {project_id}")
-                    continue
-                logger.info(
-                    f"Retrieved {len(access_records)} team project access records for project ID: {project_id}"
-                )
-                yield access_records
 
     async def get_paginated_team_project_access(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Starting to fetch team project access across all projects")
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECT_ACCESS_FETCHES)
-        total_access_records = 0
-        async for projects in self.get_paginated_projects():
-            access_tasks = [
-                self.get_team_access_for_single_project(project["id"], semaphore)
-                for project in projects
-            ]
-            async for access_records in stream_async_iterators_tasks(*access_tasks):
-                total_access_records += len(access_records)
-                yield access_records
-        logger.info(f"Total team project access records: {total_access_records}")
+        async for access_records in self.get_paginated_team_access(
+            "team-projects",
+            "filter[project][id]",
+            self.get_paginated_projects(),
+        ):
+            yield access_records
 
     async def get_paginated_organizations(
         self,
