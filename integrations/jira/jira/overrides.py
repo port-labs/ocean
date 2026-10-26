@@ -8,6 +8,11 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 
+_INCREMENTAL_SYNC_SELECTOR_NOTE = (
+    " When incremental sync is enabled, a scheduled run returns only the"
+    " matching issues updated since the previous sync."
+)
+
 
 class TeamSelector(Selector):
     include_members: bool = Field(
@@ -33,7 +38,11 @@ class JiraIssueSelector(Selector):
     jql: str = Field(
         title="JQL Query",
         default="(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)",
-        description="JQL (Jira Query Language) expression used to filter which issues are synced. Defaults to open issues and those created or updated within the last week.",
+        description=(
+            "JQL (Jira Query Language) expression used to filter which issues are synced. "
+            "Defaults to open issues and those created or updated within the last week."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
     )
     fields: str | None = Field(
         title="Included Fields",
@@ -189,6 +198,7 @@ class JiraBacklogSelector(Selector):
             "Defaults to recently updated or incomplete issues to avoid "
             "re-ingesting the full backlog history on every resync. "
             "Omit entirely to fetch all backlog issues."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
         ),
     )
     fields: list[str] | None = Field(
@@ -304,6 +314,8 @@ class JiraWorklogSelector(Selector):
             "JQL to scope which issues' worklogs are fetched. "
             "Defaults to issues updated in the last week to avoid "
             "re-fetching all worklogs on every resync."
+            " When incremental sync is enabled, a scheduled run returns every"
+            " worklog on matching issues updated since the previous sync."
         ),
     )
     api_query_params: JiraWorklogAPIQueryParams | None = Field(

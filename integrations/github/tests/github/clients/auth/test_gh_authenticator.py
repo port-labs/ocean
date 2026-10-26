@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import pytest
 import httpx
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.clients.auth.abstract_authenticator import GitHubToken
 from github.clients.auth.github_app.installation_authenticator import (
@@ -12,6 +12,7 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from port_ocean.context.ocean import ocean
+from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 
 class TestGithubAuthenticator:
@@ -60,7 +61,7 @@ class TestGithubAuthenticator:
         ) as mock_fetch_install_token:
             await github_auth.get_token()
 
-            mock_fetch_install_token.assert_called_once_with("12345")
+            mock_fetch_install_token.assert_called_once_with("12345", skip_retry=False)
 
     @pytest.mark.asyncio
     async def test_token_refreshed_on_expiry(
@@ -83,7 +84,7 @@ class TestGithubAuthenticator:
         ) as mock_fetch_install_token:
             await github_auth.get_headers()
 
-            mock_fetch_install_token.assert_called_once_with("12345")
+            mock_fetch_install_token.assert_called_once_with("12345", skip_retry=False)
             assert github_auth.cached_installation_token == mock_new_token
 
     @pytest.mark.asyncio
@@ -168,6 +169,78 @@ class TestGithubAuthenticator:
 
             assert resp.status_code == 200
             assert len(calls) == 2
+
+
+class TestGitHubAppSkipRetry:
+    @pytest.fixture
+    def app_auth(self) -> GitHubAppAuthenticator:
+        return GitHubAppAuthenticator(
+            app_id="test-app-id",
+            private_key="test-private-key",
+            github_host="https://api.github.com",
+        )
+
+    @pytest.mark.asyncio
+    async def test_fetch_installation_access_token_passes_skip_retry_extension(
+        self, app_auth: GitHubAppAuthenticator
+    ) -> None:
+        request = httpx.Request(
+            "POST", "https://api.github.com/app/installations/123/access_tokens"
+        )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "token": "installation-token",
+                    "expires_at": (
+                        datetime.now(timezone.utc) + timedelta(hours=1)
+                    ).isoformat(),
+                    "permissions": {"metadata": "read"},
+                },
+                request=request,
+            )
+        )
+        app_auth._http_client = mock_client
+
+        with patch.object(
+            app_auth,
+            "get_headers",
+            AsyncMock(return_value=MagicMock(as_dict=lambda: {})),
+        ):
+            await app_auth.fetch_installation_access_token("123", skip_retry=True)
+
+        assert (
+            mock_client.post.call_args.kwargs["extensions"][SKIP_RETRY_EXTENSION_KEY]
+            is True
+        )
+
+    @pytest.mark.asyncio
+    async def test_installation_authenticator_honors_skip_retry_flag(
+        self, app_auth: GitHubAppAuthenticator
+    ) -> None:
+        authenticator = GitHubAppInstallationAuthenticator(
+            app_auth=app_auth,
+            organization="my-org",
+            installation_id="123",
+        )
+        authenticator.skip_retry = True
+
+        with patch.object(
+            app_auth,
+            "fetch_installation_access_token",
+            AsyncMock(
+                return_value=GitHubToken(
+                    token="token",
+                    expires_at=(
+                        datetime.now(timezone.utc) + timedelta(hours=1)
+                    ).isoformat(),
+                )
+            ),
+        ) as mock_fetch:
+            await authenticator.get_token()
+
+        mock_fetch.assert_awaited_once_with("123", skip_retry=True)
 
 
 class TestPersonalTokenAuthenticator:

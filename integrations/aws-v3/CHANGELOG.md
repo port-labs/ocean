@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.1.17 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 3.1.16 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 3.1.15 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 3.1.14 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 3.1.13 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 3.1.12 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 3.1.11 (2026-10-22)
+
+
+### Bug Fixes
+
+- Fixed GovCloud role assumption via web identity using the commercial STS endpoint instead of the partition-aware GovCloud region, causing InvalidIdentityToken failures.
+
+
+## 3.1.10 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 3.1.9 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 3.1.8 (2026-10-21)
+
+
+### Bug Fixes
+
+- Fix AWS::CodeDeploy::DeploymentGroup resync failing with 0 entities when ec2TagSet/onPremisesTagSet are present by typing them as objects to match the AWS API response shape
+
+
+## 3.1.7 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 3.1.6 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
 ## 3.1.5 (2026-10-20)
 
 

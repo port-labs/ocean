@@ -13,7 +13,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
 )
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunLog
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 EXTERNAL_ID_PREFIX = "claude_session"
@@ -100,7 +100,7 @@ def format_session_event(
 
 
 async def post_interaction_logs(
-    run: WorkflowNodeRun,
+    run: IntegrationRun,
     events: list[BetaManagedAgentsSessionEvent],
 ) -> None:
     """Format interaction events and post any resulting log lines to ``run``.
