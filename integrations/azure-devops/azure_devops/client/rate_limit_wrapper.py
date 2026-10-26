@@ -123,7 +123,7 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
             reset_at=reset_at,
             blocked_until=blocked_until,
         )
-        ratio = round(remaining / limit, 3) if limit else None
+        ratio = round(remaining / limit, 3) if limit and remaining is not None else None
         reset_in_seconds = round(reset_at - time.time(), 3) if reset_at else None
         logger.info(
             "Azure DevOps centralized rate limit state "
