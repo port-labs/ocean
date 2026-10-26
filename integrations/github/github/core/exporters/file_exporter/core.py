@@ -459,7 +459,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         )
         if not commits:
             logger.info(
-                f"No base commit for {repo_name}@{branch} in {organization} before {since.isoformat()}, falling back to full scan"
+                f"No base commit for {repo_name}@{branch} before {since.isoformat()}; using full tree"
             )
             return None
         base_sha = commits[0]["sha"]
@@ -468,12 +468,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         files = diff.get("files", [])
         if diff.get("status") not in COMPARE_TRUSTED_STATUSES:
             logger.info(
-                f"Falling back to full scan for {repo_name}@{branch} in {organization}: compare status '{diff.get('status')}'"
+                f"Untrusted compare status '{diff.get('status')}' for {repo_name}@{branch}; using full tree"
             )
             return None
         if len(files) >= COMPARE_MAX_FILES:
             logger.info(
-                f"Falling back to full scan for {repo_name}@{branch} in {organization}: compare returned {len(files)} files (may be truncated)"
+                f"Compare for {repo_name}@{branch} may be truncated ({len(files)} files); using full tree"
             )
             return None
 
