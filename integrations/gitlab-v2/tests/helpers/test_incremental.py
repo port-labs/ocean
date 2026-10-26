@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
@@ -54,7 +55,7 @@ def test_tag_incremental_orders_newest_first() -> None:
 
 
 def test_tag_incremental_keeps_tags_at_or_after_cursor() -> None:
-    page = [
+    page: list[dict[str, Any]] = [
         {"name": "new", "created_at": "2026-10-19T09:00:00Z"},
         {"name": "old", "created_at": "2026-10-17T09:00:00Z"},
         {"name": "lightweight", "created_at": None},

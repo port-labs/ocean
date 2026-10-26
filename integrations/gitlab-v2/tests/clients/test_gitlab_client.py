@@ -1938,9 +1938,7 @@ class TestGitLabClient:
                 mock_projects, "repository/tags", 5
             )
 
-    async def test_get_tags_incremental_early_stops(
-        self, client: GitLabClient
-    ) -> None:
+    async def test_get_tags_incremental_early_stops(self, client: GitLabClient) -> None:
         """Incremental tag sync filters by created_at and stops paging early."""
         from datetime import datetime, timezone
 
