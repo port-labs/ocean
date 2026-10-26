@@ -281,10 +281,6 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.JOB)
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync pipeline jobs; incremental only walks recently updated pipelines.
-
-    Jobs have no time filter, so incremental runs gate projects with
-    ``last_activity_after`` and pipelines with ``updated_after``, then fetch the
-    first page of jobs per pipeline (same ~100-job cap as a full resync).
     """
     client = create_gitlab_client()
     selector = cast(JobResourceConfig, event.resource_config).selector
@@ -301,7 +297,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for projects_batch in client.get_projects(
-        params=build_project_list_params(
+        params=build_project_updated_after_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),
