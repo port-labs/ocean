@@ -6,8 +6,10 @@ import httpx
 from github.core.exporters.repository_exporter import (
     ARCHIVED_QUALIFIER_PATTERN,
     ENRICHMENT_BATCH_SIZE,
+    GITHUB_SEARCH_QUERY_MAX_LENGTH,
     RestRepositoryExporter,
 )
+from github.helpers.exceptions import GitHubSearchQueryTooLongError
 from pydantic.v1 import ValidationError
 from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 from integration import GithubPortAppConfig
@@ -1019,3 +1021,207 @@ def test_archived_qualifier_pattern_matches_standalone_qualifier_only(
     query: str, should_match: bool
 ) -> None:
     assert bool(ARCHIVED_QUALIFIER_PATTERN.search(query)) is should_match
+
+
+@pytest.mark.asyncio
+class TestSearchQueryLengthValidation:
+    """Tests for GitHub search query length validation (256 char limit)."""
+
+    async def test_query_length_validation_passes_for_short_queries(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Queries under the 256-char limit should pass validation."""
+        exporter = RestRepositoryExporter(rest_client)
+        short_query = "org:test-org topic:backend"
+        exporter._validate_query_length(short_query, "test-org")
+
+    async def test_query_length_validation_fails_for_long_queries(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Queries exceeding 256 chars should raise GitHubSearchQueryTooLongError."""
+        exporter = RestRepositoryExporter(rest_client)
+        long_query = "org:test-org " + "a" * 250
+
+        with pytest.raises(GitHubSearchQueryTooLongError) as exc_info:
+            exporter._validate_query_length(long_query, "test-org")
+
+        assert "256-character limit" in str(exc_info.value)
+        assert "test-org" in str(exc_info.value)
+        assert exc_info.value.query_length == len(long_query)
+
+    async def test_query_exactly_at_limit_passes(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """A query of exactly 256 characters should pass validation."""
+        exporter = RestRepositoryExporter(rest_client)
+        prefix = "org:test-org "
+        padding = "a" * (GITHUB_SEARCH_QUERY_MAX_LENGTH - len(prefix))
+        exact_limit_query = prefix + padding
+        assert len(exact_limit_query) == GITHUB_SEARCH_QUERY_MAX_LENGTH
+        exporter._validate_query_length(exact_limit_query, "test-org")
+
+    async def test_query_one_over_limit_fails(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """A query of 257 characters should fail validation."""
+        exporter = RestRepositoryExporter(rest_client)
+        prefix = "org:test-org "
+        padding = "a" * (GITHUB_SEARCH_QUERY_MAX_LENGTH - len(prefix) + 1)
+        over_limit_query = prefix + padding
+        assert len(over_limit_query) == GITHUB_SEARCH_QUERY_MAX_LENGTH + 1
+
+        with pytest.raises(GitHubSearchQueryTooLongError):
+            exporter._validate_query_length(over_limit_query, "test-org")
+
+    async def test_search_strategy_validates_query_length_before_api_call(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """Search strategy should validate query length before making API calls."""
+        long_user_query = "a" * 250
+
+        async with event_context("test_event"):
+            options = ListRepositoryOptions(
+                organization="test-org",
+                organization_type="Organization",
+                type=mock_port_app_config.repository_type,
+                search_params=RepoSearchParams(query=long_user_query),
+            )
+            exporter = RestRepositoryExporter(rest_client)
+
+            with pytest.raises(GitHubSearchQueryTooLongError) as exc_info:
+                [batch async for batch in exporter.get_paginated_resources(options)]
+
+            assert "repoSearch" in str(exc_info.value)
+            assert "test-org" in str(exc_info.value)
+
+    async def test_search_strategy_handles_422_as_query_error(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """A 422 from GitHub search should be converted to GitHubSearchQueryTooLongError
+        when the error appears to be query-related."""
+
+        async def mock_paginated_request_422(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            request = httpx.Request("GET", url)
+            response = httpx.Response(
+                422,
+                json={"message": "Validation Failed", "errors": [{"code": "query"}]},
+                request=request,
+            )
+            raise httpx.HTTPStatusError("422", request=request, response=response)
+            yield  # Make this an async generator
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request_422
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                with pytest.raises(GitHubSearchQueryTooLongError) as exc_info:
+                    [batch async for batch in exporter.get_paginated_resources(options)]
+
+                assert "test-org" in str(exc_info.value)
+
+    async def test_search_strategy_reraises_non_query_422(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """A 422 that doesn't appear query-related should be re-raised as-is."""
+
+        async def mock_paginated_request_422(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            request = httpx.Request("GET", url)
+            response = httpx.Response(
+                422,
+                json={"message": "Some other error", "errors": [{"code": "unrelated"}]},
+                request=request,
+            )
+            raise httpx.HTTPStatusError("422", request=request, response=response)
+            yield
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request_422
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                    [batch async for batch in exporter.get_paginated_resources(options)]
+
+                assert exc_info.value.response.status_code == 422
+
+    async def test_search_strategy_reraises_non_422_errors(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """Non-422 HTTP errors should be re-raised without modification."""
+
+        async def mock_paginated_request_500(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            request = httpx.Request("GET", url)
+            response = httpx.Response(500, json={"message": "Server error"}, request=request)
+            raise httpx.HTTPStatusError("500", request=request, response=response)
+            yield
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request_500
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                    [batch async for batch in exporter.get_paginated_resources(options)]
+
+                assert exc_info.value.response.status_code == 500
+
+
+class TestGitHubSearchQueryTooLongError:
+    """Tests for the GitHubSearchQueryTooLongError exception."""
+
+    def test_error_message_contains_actionable_guidance(self) -> None:
+        """Error message should guide users to fix their configuration."""
+        query = "a" * 300
+        error = GitHubSearchQueryTooLongError(query, "my-org")
+
+        message = str(error)
+        assert "256-character limit" in message
+        assert "300 characters" in message
+        assert "my-org" in message
+        assert "repoSearch" in message
+        assert "simplify" in message.lower()
+
+    def test_error_includes_detail_when_provided(self) -> None:
+        """Error should include additional detail when provided."""
+        query = "a" * 300
+        error = GitHubSearchQueryTooLongError(query, "my-org", "GitHub said: bad query")
+
+        message = str(error)
+        assert "GitHub said: bad query" in message
+
+    def test_error_preserves_query_metadata(self) -> None:
+        """Error should preserve query and organization for debugging."""
+        query = "org:test topic:backend " + "a" * 250
+        error = GitHubSearchQueryTooLongError(query, "test-org")
+
+        assert error.query == query
+        assert error.organization == "test-org"
+        assert error.query_length == len(query)

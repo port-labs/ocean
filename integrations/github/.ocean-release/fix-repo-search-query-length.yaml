@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix repository search query length validation - now raises a clear, actionable error when the repoSearch query exceeds GitHub's 256-character limit instead of failing with a cryptic 422 error that could affect dependent kinds

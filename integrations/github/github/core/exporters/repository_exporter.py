@@ -4,7 +4,11 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
+
+import httpx
+
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.exceptions import GitHubSearchQueryTooLongError
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import (
     parse_github_options,
@@ -51,6 +55,8 @@ ENRICHMENT_BATCH_SIZE = 10
 ARCHIVED_QUALIFIER_PATTERN = re.compile(
     r"(?<!\S)archived:(?:true|false)(?!\S)", re.IGNORECASE
 )
+
+GITHUB_SEARCH_QUERY_MAX_LENGTH = 256
 
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
@@ -231,27 +237,66 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
         if pushed_since:
-            # Search has no "pushed" sort, so filter server-side with a qualifier instead.
             raw_q = (
                 f"{raw_q} pushed:>={self._format_search_datetime(pushed_since)}".strip()
             )
             incremental_cursor = None
 
+        full_query = f"org:{organization} {raw_q}"
+        self._validate_query_length(full_query, organization)
+
         query_params = {
-            "q": f"org:{organization} {raw_q}",
+            "q": full_query,
             **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
         }
         url = f"{self.client.base_url}/search/repositories"
 
-        async for repos in paginate_with_strategy(
-            self._search_result_items(url, query_params),
-            cursor=incremental_cursor,
-            strategy=REPOSITORY_SEARCH_INCREMENTAL,
-        ):
-            logger.info(
-                f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
-            )
-            yield repos
+        try:
+            async for repos in paginate_with_strategy(
+                self._search_result_items(url, query_params),
+                cursor=incremental_cursor,
+                strategy=REPOSITORY_SEARCH_INCREMENTAL,
+            ):
+                logger.info(
+                    f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
+                )
+                yield repos
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 422:
+                self._handle_search_422_error(e, full_query, organization)
+            raise
+
+    def _validate_query_length(self, query: str, organization: str) -> None:
+        """Validate that the search query does not exceed GitHub's limit.
+
+        GitHub's search API enforces a 256-character limit on query strings.
+        This validation catches the issue early with a clear, actionable error
+        message instead of letting GitHub return a cryptic 422.
+        """
+        if len(query) > GITHUB_SEARCH_QUERY_MAX_LENGTH:
+            raise GitHubSearchQueryTooLongError(query, organization)
+
+    def _handle_search_422_error(
+        self, error: httpx.HTTPStatusError, query: str, organization: str
+    ) -> None:
+        """Handle 422 errors from GitHub search API with actionable guidance.
+
+        GitHub returns 422 for various validation errors including query length.
+        This method provides clear guidance when the error is related to query
+        complexity or length.
+        """
+        response_body = error.response.text
+        is_query_related = (
+            "query" in response_body.lower()
+            or "validation" in response_body.lower()
+            or len(query) > GITHUB_SEARCH_QUERY_MAX_LENGTH
+        )
+
+        if is_query_related:
+            detail = f"GitHub API response: {response_body[:200]}"
+            raise GitHubSearchQueryTooLongError(
+                query, organization, detail
+            ) from error
 
     @staticmethod
     def _format_search_datetime(value: datetime) -> str:

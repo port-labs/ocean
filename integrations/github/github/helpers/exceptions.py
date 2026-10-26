@@ -78,3 +78,29 @@ class RateLimitException(Exception):
 
 class GitHubTreeFetchError(OceanAbortException):
     """Raised when git tree fetch fails so the file kind aborts without reconciliation deletes."""
+
+
+class GitHubSearchQueryTooLongError(OceanAbortException):
+    """Raised when the repository search query exceeds GitHub's 256-character limit.
+
+    GitHub's search API enforces a 256-character limit on the query string. When this
+    limit is exceeded, the API returns a 422 Unprocessable Entity error.
+
+    This exception includes guidance on how to fix the configuration to avoid the error.
+    """
+
+    MAX_QUERY_LENGTH = 256
+
+    def __init__(self, query: str, organization: str, detail: str = ""):
+        self.query = query
+        self.organization = organization
+        self.query_length = len(query)
+        guidance = (
+            f"Repository search query exceeds GitHub's {self.MAX_QUERY_LENGTH}-character limit "
+            f"(actual: {self.query_length} characters) for organization '{organization}'. "
+            "Please simplify the 'repoSearch' selector query in your Port configuration. "
+            "Consider using topic-based filtering or reducing the number of search terms."
+        )
+        if detail:
+            guidance = f"{guidance} Detail: {detail}"
+        super().__init__(guidance)
