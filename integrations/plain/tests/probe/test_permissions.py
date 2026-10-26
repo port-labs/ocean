@@ -15,8 +15,17 @@ def test_plain_kind_permission_verdict_loads_kind_probe_permissions() -> None:
     assert verdict.kind_permissions == get_kind_probe_permissions(PlainPortAppConfig)
     assert verdict.kind_permissions["company"] == ("company:read",)
     assert verdict.kind_permissions["user"] == ("user:read", "roles:read")
-    assert verdict.kind_permissions["discussion"] == ("threadDiscussion:read",)
+    assert verdict.kind_permissions["thread-message"] == (
+        "thread:read",
+        "timeline:read",
+    )
+    assert verdict.kind_permissions["discussion"] == (
+        "thread:read",
+        "threadDiscussion:read",
+    )
     assert verdict.kind_permissions["discussion-message"] == (
+        "thread:read",
+        "threadDiscussion:read",
         "threadDiscussionMessage:read",
     )
 

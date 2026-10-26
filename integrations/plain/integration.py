@@ -152,7 +152,7 @@ class ThreadMessageResourceConfig(ResourceConfig):
         description="Thread message selector",
         title="Selector",
     )
-    probe_permissions: ClassVar[tuple[str, ...]] = ("timeline:read",)
+    probe_permissions: ClassVar[tuple[str, ...]] = ("thread:read", "timeline:read")
 
 
 class DiscussionResourceConfig(ResourceConfig):
@@ -164,7 +164,10 @@ class DiscussionResourceConfig(ResourceConfig):
         description="Discussion selector",
         title="Selector",
     )
-    probe_permissions: ClassVar[tuple[str, ...]] = ("threadDiscussion:read",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "thread:read",
+        "threadDiscussion:read",
+    )
 
 
 class DiscussionMessageResourceConfig(ResourceConfig):
@@ -176,7 +179,11 @@ class DiscussionMessageResourceConfig(ResourceConfig):
         description="Discussion message selector",
         title="Selector",
     )
-    probe_permissions: ClassVar[tuple[str, ...]] = ("threadDiscussionMessage:read",)
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "thread:read",
+        "threadDiscussion:read",
+        "threadDiscussionMessage:read",
+    )
 
 
 class PlainPortAppConfig(PortAppConfig):

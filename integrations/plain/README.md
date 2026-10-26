@@ -16,9 +16,9 @@ Ocean integration that syncs [Plain](https://www.plain.com/) support data into P
 | `machine-user` | `machineUsers` | `machineUser:read` |
 | `customer` | `customers` | `customer:read`, `customerTenantMembership:read` |
 | `thread` | `threads` | `thread:read`, `tier:read` |
-| `thread-message` | `thread.timelineEntries` | `timeline:read` |
-| `discussion` | `discussions` filtered by thread | `threadDiscussion:read` |
-| `discussion-message` | `discussion.messages` | `threadDiscussionMessage:read` |
+| `thread-message` | `thread.timelineEntries` | `thread:read`, `timeline:read` |
+| `discussion` | `discussions` filtered by thread | `thread:read`, `threadDiscussion:read` |
+| `discussion-message` | `discussion.messages` | `thread:read`, `threadDiscussion:read`, `threadDiscussionMessage:read` |
 
 Mappings live in `.port/resources/port-app-config.yml`. Blueprints are `plainCompany`, `plainTenant`, `plainUser`, `plainMachineUser`, `plainCustomer`, `plainThread`, `plainThreadMessage`, `plainDiscussion`, and `plainDiscussionMessage`. A thread `assignee` relation is set only when `assignedTo` is a `User`; a `machineAssignee` relation is set when it is a `MachineUser`. Thread tier is synced as a string property (`.tier.name`), not a separate kind. Machine users sync all by default (including deleted); set `excludeDeleted: true` on the machine-user selector to skip deleted ones at sync time, or keep them and filter in Port with a query such as `.isDeleted == false`. Customer tenants come from `tenantMemberships`. Every kind selector supports `pageSize` (default `100`, max `100`) to control GraphQL list page size for that mapping block. On the thread, thread-message, discussion, and discussion-message selectors, `excludeDoneThreads: true` syncs only `TODO` and `SNOOZED` threads. When it is `false`, optional `threadStatuses` (for example `[TODO, SNOOZED]`) limits which statuses sync; omit it to sync every status. On discussion and discussion-message, `excludeAiDiscussions: true` skips Cursor and agent-session discussions (and their messages) at fetch time; `false` syncs every discussion including AI ones. Each flag is independent. The next resync uses the saved mapping. Thread messages are timeline entries that have text. Discussions are the internal conversations on those threads. A discussion message is related to its discussion and to the parent thread. Slack links and email recipients are stored when Plain sends them.
 

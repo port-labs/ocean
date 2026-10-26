@@ -94,9 +94,9 @@ All five are root `Query` fields. Connection path for the paginator is `data.<fi
 | machine-user | `machineUsers` | `machineUser:read` | `data.machineUsers` |
 | customer | `customers` | `customer:read`, `customerTenantMembership:read` | `data.customers` |
 | thread | `threads` | `thread:read`, `tier:read` | `data.threads` |
-| thread-message | `thread.timelineEntries` | `timeline:read` | timeline entries |
-| discussion | `discussions` | `threadDiscussion:read` | per-thread |
-| discussion-message | `discussion.messages` | `threadDiscussionMessage:read` | per-discussion |
+| thread-message | `thread.timelineEntries` | `thread:read`, `timeline:read` | lists threads, then timeline entries |
+| discussion | `discussions` | `thread:read`, `threadDiscussion:read` | lists threads, then per-thread discussions |
+| discussion-message | `discussion.messages` | `thread:read`, `threadDiscussion:read`, `threadDiscussionMessage:read` | lists threads and discussions, then messages |
 
 Argument shapes from the schema (2026-09-24):
 
@@ -175,9 +175,9 @@ Confirmed via `myPermissions` (2026-10-26). Required for sync/probe kinds:
 - `machineUser:read`
 - `customer:read`, `customerTenantMembership:read`
 - `thread:read`, `tier:read`
-- `timeline:read` for `thread.timelineEntries` (thread messages)
-- `threadDiscussion:read` for discussions
-- `threadDiscussionMessage:read` for discussion messages
+- `thread:read` + `timeline:read` for thread messages (`get_thread_ids` then `timelineEntries`)
+- `thread:read` + `threadDiscussion:read` for discussions
+- `thread:read` + `threadDiscussion:read` + `threadDiscussionMessage:read` for discussion messages
 
 Webhook registration also needs `webhookTarget:create` / `webhookTarget:edit` (in addition to `webhookTarget:read` for listing). Create the machine-user key with the sync permissions above; add webhook target write perms when using live events.
 
