@@ -387,13 +387,12 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
-                if self.config.centralized_rate_limiter.enabled:
-                    org_id = await self.port_client.get_org_id()
-                    await setup_centralized_rate_limiter(
-                        self,
-                        self.config.centralized_rate_limiter,
-                        org_id=org_id,
-                    )
+                org_id = await self.port_client.get_org_id()
+                await setup_centralized_rate_limiter(
+                    self,
+                    self.config.centralized_rate_limiter,
+                    org_id=org_id,
+                )
                 await self.integration.start()
                 await self._register_addons()
                 await self._setup_status_heartbeat()

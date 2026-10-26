@@ -29,7 +29,6 @@ async def test_setup_raises_when_limiter_already_registered() -> None:
         centralized_rate_limiter=CentralizedRateLimiter("org-existing", None),
     )
     settings = MagicMock()
-    settings.enabled = True
 
     with pytest.raises(RuntimeError, match="must not be called twice"):
         await setup_centralized_rate_limiter(app, settings, org_id="org-new")
@@ -39,7 +38,6 @@ async def test_setup_raises_when_limiter_already_registered() -> None:
 async def test_setup_leaves_limiter_unset_when_redis_connect_fails() -> None:
     app = SimpleNamespace(centralized_rate_limiter=None)
     settings = MagicMock()
-    settings.enabled = True
 
     with (
         patch("port_ocean.rate_limiting.bootstrap.RedisConnectionHelper") as helper_cls,

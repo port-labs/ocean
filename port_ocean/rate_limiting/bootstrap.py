@@ -21,9 +21,6 @@ async def setup_centralized_rate_limiter(
     org_id: str,
 ) -> None:
     """Initialize the centralized rate limiter on the Ocean app instance."""
-    if not settings.enabled:
-        return
-
     if app.centralized_rate_limiter is not None:
         message = (
             "Centralized rate limiter is already registered on this Ocean app; "
