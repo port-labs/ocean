@@ -2,8 +2,10 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 
 from plain.client import PlainClient
+from plain.probe import PlainPermissionProbe
 from plain.utils import ObjectKind
 from plain.webhook_setup import register_webhook_target
 from webhook_processors import (
@@ -147,6 +149,15 @@ async def on_start() -> None:
         )
         return
     await register_webhook_target()
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Plain permissions for {len(context.available_kinds)} resource kinds"
+    )
+    await PlainPermissionProbe(context).run()
+    return context
 
 
 ocean.add_webhook_processor("/webhook", CompanyWebhookProcessor)
