@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed assignees and reviewers property mappings to sanitize square brackets in bot logins (e.g. `dependabot[bot]`) consistently with the creator property, preventing Port identifier validation failures
