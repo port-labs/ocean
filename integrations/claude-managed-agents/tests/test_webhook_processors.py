@@ -89,7 +89,7 @@ _STANDARD_COMPLETION = {
 }
 
 
-def _sdk_session(
+def sdk_session(
     *,
     session_id: str = "s1",
     status: str = "idle",
@@ -104,7 +104,7 @@ def _sdk_session(
 
 
 def _stub_session_usage_client(client: MagicMock) -> None:
-    client.get_session = AsyncMock(return_value=_sdk_session())
+    client.get_session = AsyncMock(return_value=sdk_session())
     client.get_console_host = MagicMock(return_value="https://platform.claude.com")
     client.get_workspace_id = MagicMock(return_value=None)
 
@@ -141,7 +141,7 @@ async def test_session_upsert_event_fetches_resource() -> None:
     processor = SessionWebhookProcessor(_event(payload["data"]))
     client = MagicMock()
     client.get_session = AsyncMock(
-        return_value=_sdk_session(status="running", usage=None)
+        return_value=sdk_session(status="running", usage=None)
     )
     with patch(
         "webhook_processors.session_webhook_processor.create_anthropic_client",
@@ -205,7 +205,7 @@ async def test_agent_upsert_event_fetches_resource() -> None:
         results = await processor.handle_event(payload, None)
     assert results.updated_raw_results == [{"id": "a1", "name": "bot"}]
     client.get_agent.assert_awaited_once_with("a1")
-    agent.to_dict.assert_called_once_with(mode="json")
+    agent.to_dict.assert_called_once_with(mode="json", warnings=False)
 
 
 # --- environment ---
@@ -271,7 +271,7 @@ async def test_memory_store_upsert_event_fetches_resource() -> None:
         results = await processor.handle_event(payload, None)
     assert results.updated_raw_results == [{"id": "ms1", "name": "mem"}]
     client.get_memory_store.assert_awaited_once_with("ms1")
-    memory_store.to_dict.assert_called_once_with(mode="json")
+    memory_store.to_dict.assert_called_once_with(mode="json", warnings=False)
 
 
 # --- trigger agent (action) ---

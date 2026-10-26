@@ -1,15 +1,18 @@
 import re
 
+from github.clients.constants import SKIP_RETRY_CONFIG
 from github.probe.pat.permissions import PatKindPermissionVerdict
 from httpx import Response
 from port_ocean.context.ocean import ocean
 from port_ocean.core.probe import KindPermissionVerdict
-from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.helpers.api_error_messages import format_github_request_error
 from github.probe.base_probe_flow import GitHubPermissionProbeFlow, org_scopes
 
-NO_RETRY = {SKIP_RETRY_EXTENSION_KEY: True}
+_FETCH_USER_UNAUTHORIZED_HINT = (
+    "Please verify the personal access token is valid and not expired."
+)
 
 _FINE_GRAINED_PAT_PREFIX = "github_pat_"
 # github_pat_ + 22 alnum + _ + 59 alnum (93 chars total)
@@ -93,12 +96,10 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         response = await authenticator.client.get(
             f"{ocean.integration_config['github_host'].rstrip('/')}/user",
             headers=(await authenticator.get_headers()).as_dict(),
-            extensions=NO_RETRY,
+            extensions=SKIP_RETRY_CONFIG,
         )
         if not response.is_success:
-            await self.context.fail(
-                f"Failed to fetch authenticated user: GitHub API returned {response.status_code}"
-            )
+            await self.context.fail(format_authenticated_user_error(response))
             return None
         return response
 
@@ -140,7 +141,7 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
                 url,
                 headers=headers,
                 params=params,
-                extensions=NO_RETRY,
+                extensions=SKIP_RETRY_CONFIG,
             )
             if not response.is_success:
                 await self.context.fail(
@@ -183,7 +184,7 @@ class GitHubPatPermissionProbe(GitHubPermissionProbeFlow):
         response = await authenticator.client.get(
             f"{github_host}/user/memberships/orgs/{organization}",
             headers=(await authenticator.get_headers()).as_dict(),
-            extensions=NO_RETRY,
+            extensions=SKIP_RETRY_CONFIG,
         )
         if response.status_code == 200:
             membership = response.json()
@@ -219,3 +220,12 @@ def expand_pat_scopes(scopes: set[str]) -> set[str]:
                 expanded.add(implied)
                 pending.append(implied)
     return expanded
+
+
+def format_authenticated_user_error(response: Response) -> str:
+    """Build a user-facing failure message for a failed GET /user probe request."""
+    return format_github_request_error(
+        response,
+        action="Failed to fetch authenticated user",
+        unauthorized_hint=_FETCH_USER_UNAUTHORIZED_HINT,
+    )
