@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Bumped filelock to ^4.2.1 and required opentelemetry-api >=1.45.1 to fix GHSA-v4x8-3wr5-3wq8, GHSA-567q-5qvw-pf92, GHSA-9vhv-jxww-xfm5 and GHSA-xcq7-p3pf-p88h
