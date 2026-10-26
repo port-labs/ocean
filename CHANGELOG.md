@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.1 (2026-10-25)
+
+
+### Bug Fixes
+
+- Removed curl from the integration production images and upgraded Alpine libcurl and brotli-libs.
+
+
+## 0.56.0 (2026-10-25)
+
+
+### Features
+
+- Add workflow claim support for encrypted identity access tokens
+
+
 ## 0.55.6 (2026-10-25)
 
 

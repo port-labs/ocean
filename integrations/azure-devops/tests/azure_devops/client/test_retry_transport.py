@@ -55,6 +55,7 @@ class TestAzureDevOpsRetryTransport:
     def test_429_sleep_uses_fixed_ado_cooldown(self) -> None:
         transport = _make_transport()
 
+        transport._retry_config.sync_tier_multiplier = 1.0
         sleep = transport._calculate_sleep(
             attempts_made=1,
             headers=httpx.Headers({"retry-after": "1"}),
@@ -66,6 +67,7 @@ class TestAzureDevOpsRetryTransport:
     def test_transport_error_sleep_uses_fixed_ado_cooldown(self) -> None:
         transport = _make_transport()
 
+        transport._retry_config.sync_tier_multiplier = 1.0
         sleep = transport._calculate_sleep(
             attempts_made=1,
             headers=httpx.Headers({}),
@@ -73,6 +75,18 @@ class TestAzureDevOpsRetryTransport:
         )
 
         assert sleep == ADO_RATE_LIMIT_WINDOW_SECONDS
+
+    def test_ado_cooldown_scales_with_the_sync_tier(self) -> None:
+        transport = _make_transport()
+        transport._retry_config.sync_tier_multiplier = 1.25
+
+        sleep = transport._calculate_sleep(
+            attempts_made=1,
+            headers=httpx.Headers({"retry-after": "1"}),
+            status_code=429,
+        )
+
+        assert sleep == pytest.approx(ADO_RETRY_MAX_BACKOFF)
 
     @pytest.mark.asyncio
     async def test_before_retry_async_signals_shared_throttle_on_transport_retry(

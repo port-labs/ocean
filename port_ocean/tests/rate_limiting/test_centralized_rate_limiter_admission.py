@@ -1,5 +1,9 @@
 from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
-from port_ocean.rate_limiting.models import RateLimitAcquireDecision, SyncTier
+from port_ocean.rate_limiting.models import (
+    RateLimitAcquireDecision,
+    RateLimitBlockReason,
+    SyncTier,
+)
 from port_ocean.rate_limiting.pool_state import PoolRedisState
 
 NOW = 1_700_000_000.0
@@ -38,7 +42,10 @@ def test_future_reset_still_backs_off_for_empty_quota() -> None:
     result = _limiter()._admission_from_pool(state, SyncTier.HIGH, NOW)
     assert result is not None
     assert result.decision == RateLimitAcquireDecision.BLOCK
+    assert result.reason == RateLimitBlockReason.SYNC_TIER
     assert result.wait_seconds == 45
+    assert result.remaining == 0
+    assert result.limit == 100
 
 
 def test_real_block_holds_after_quota_window_expired() -> None:
@@ -51,4 +58,5 @@ def test_real_block_holds_after_quota_window_expired() -> None:
     result = _limiter()._admission_from_pool(state, SyncTier.HIGH, NOW)
     assert result is not None
     assert result.decision == RateLimitAcquireDecision.BLOCK
+    assert result.reason == RateLimitBlockReason.BLOCKED_UNTIL
     assert result.wait_seconds == 30
