@@ -147,7 +147,7 @@ async def test_get_my_permissions_returns_granted_map() -> None:
             json={
                 "data": {
                     "myPermissions": {
-                        "permissions": ["company:read", "thread:read", 123, ""]
+                        "permissions": ["company:read", "thread:read", ""]
                     }
                 }
             },

@@ -122,7 +122,7 @@ class PlainClient:
 
     async def verify_authentication(self) -> None:
         """Validate that the configured API token can call Plain GraphQL."""
-        await self.execute(MY_PERMISSIONS, operation_name="MyPermissions")
+        await self.get_my_permissions()
 
     async def get_my_permissions(self) -> dict[str, bool]:
         """Return the permissions granted to the current Plain API key."""
@@ -137,11 +137,7 @@ class PlainClient:
             raise PlainGraphQLError(
                 [{"message": "Plain myPermissions returned no permissions list"}]
             )
-        return {
-            permission: True
-            for permission in raw_permissions
-            if isinstance(permission, str) and permission
-        }
+        return {permission: True for permission in raw_permissions if permission}
 
     async def paginate_connection(
         self,

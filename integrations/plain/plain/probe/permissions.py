@@ -4,9 +4,6 @@ from port_ocean.core.handlers.port_app_config.validators import (
 )
 from port_ocean.core.probe import KindPermissionVerdict, PermissionCombination
 
-# Permissions required by the probe's myPermissions auth call itself.
-MY_PERMISSIONS_REQUIRED: tuple[str, ...] = ()
-
 
 def authentication_failure_message(*, status_code: int | None = None) -> str:
     if status_code == 401:

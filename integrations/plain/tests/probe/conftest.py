@@ -33,7 +33,6 @@ def request_error() -> httpx.RequestError:
 
 def _mock_client(**kwargs: Any) -> SimpleNamespace:
     defaults: dict[str, Any] = {
-        "verify_authentication": AsyncMock(),
         "get_my_permissions": AsyncMock(return_value={}),
     }
     defaults.update(kwargs)
