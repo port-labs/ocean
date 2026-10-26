@@ -254,11 +254,6 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(
             f"Processing batch of {len(projects_batch)} projects for pipelines"
-            + (
-                f" updated after {params['updated_after']}"
-                if "updated_after" in params
-                else ""
-            )
         )
         project_map = {
             str(project["id"]): {"path_with_namespace": project["path_with_namespace"]}
@@ -330,11 +325,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
-                + (
-                    f" updated after {params['updated_after']}"
-                    if "updated_after" in params
-                    else ""
-                )
             )
 
             async for merge_requests_batch in client.get_groups_resource(
@@ -665,11 +655,6 @@ async def _resync_deployments(
     ):
         logger.info(
             f"Processing batch of {len(projects_batch)} projects for deployments"
-            + (
-                f" updated after {params['updated_after']}"
-                if params and "updated_after" in params
-                else ""
-            )
         )
         async for deployments_batch in client.get_deployments(
             projects_batch,
