@@ -343,7 +343,7 @@ async def test_resync_files_routes_selectors_to_matching_authenticators(
 
 
 @pytest.mark.asyncio
-async def test_folder_pattern_mapping_builder_lists_pushed_repos_once() -> None:
+async def test_folder_pattern_mapping_builder_lists_repos_per_selector() -> None:
     org_exporter = MagicMock()
     org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
         [{"login": "test-org", "type": "Organization"}]
@@ -369,8 +369,11 @@ async def test_folder_pattern_mapping_builder_lists_pushed_repos_once() -> None:
             selectors, changed_since=RepositoryChange.pushed(pushed_since)
         )
 
-    assert len(list_calls) == 1
-    assert list_calls[0]["changed_since"] == RepositoryChange.pushed(pushed_since)
+    assert len(list_calls) == 2
+    assert all(
+        call["changed_since"] == RepositoryChange.pushed(pushed_since)
+        for call in list_calls
+    )
     assert [f["path"] for f in result[0]["folders"]] == ["services/*", "libs/*"]
 
 
@@ -476,7 +479,7 @@ async def test_resync_skills_passes_cursor_to_builder(
     [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
     ids=["full-resync", "incremental"],
 )
-async def test_resync_plugins_lists_pushed_repos_once(
+async def test_resync_plugins_lists_repos_per_path(
     github_main: Any, cursor: datetime | None
 ) -> None:
     list_calls: List[Dict[str, Any]] = []
@@ -533,9 +536,12 @@ async def test_resync_plugins_lists_pushed_repos_once(
                 else:
                     batches = [b async for b in github_main.resync_plugins("plugin")]
 
-    # Both path entries reuse a single org listing.
-    assert len(list_calls) == 1
-    assert list_calls[0].get("changed_since") == RepositoryChange.pushed(cursor)
+    # Each path entry lists the org again.
+    assert len(list_calls) == 2
+    assert all(
+        call.get("changed_since") == RepositoryChange.pushed(cursor)
+        for call in list_calls
+    )
     assert batches == [[{"plugin": {"name": "p"}}], [{"plugin": {"name": "p"}}]]
     repositories = plugin_exporter.get_paginated_resources.call_args.args[0][
         "repositories"

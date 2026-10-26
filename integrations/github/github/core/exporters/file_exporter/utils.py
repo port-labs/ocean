@@ -32,7 +32,6 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import GithubClientType, matches_glob_pattern
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
-    MemoizedRepositorySelector,
 )
 from github.helpers.repository_change import RepositoryChange
 
@@ -186,7 +185,6 @@ class FilePatternMappingBuilder:
         changed_since: RepositoryChange | None = None,
     ) -> List[ListFileSearchOptions]:
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
-        repo_selector = MemoizedRepositorySelector(self.repo_selector)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
@@ -196,14 +194,13 @@ class FilePatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    repos = await repo_selector.select_repos(
+                    async for repo_name, branch, _ in self.repo_selector.select_repos(
                         file_sel,
                         self.repo_exporter,
                         org_login,
                         org["type"],
                         changed_since=changed_since,
-                    )
-                    for repo_name, branch, _ in repos:
+                    ):
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
                                 organization=org_login,

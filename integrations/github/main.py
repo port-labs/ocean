@@ -137,7 +137,6 @@ from github.core.exporters.mcp_exporter import (
 )
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
-    MemoizedRepositorySelector,
 )
 from github.core.options import (
     ListOrganizationOptions,
@@ -1404,9 +1403,7 @@ async def resync_plugins(
     repo_exporter = RestRepositoryExporter(rest_client)
     plugin_exporter = PluginExporter(rest_client, selector.providers)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
-    repo_selector = MemoizedRepositorySelector(
-        CompositeRepositorySelector(app_config.repository_type)
-    )
+    repo_selector = CompositeRepositorySelector(app_config.repository_type)
 
     for path in paths:
         async for orgs in org_exporter.get_paginated_resources(
@@ -1414,15 +1411,14 @@ async def resync_plugins(
         ):
             for org in orgs:
                 org_login = org["login"]
-                repos = await repo_selector.select_repos(
+                repositories: list[PluginRepositoryOptions] = []
+                async for _repo_name, branch, repo_obj in repo_selector.select_repos(
                     path,
                     repo_exporter,
                     org_login,
                     org["type"],
                     changed_since=RepositoryChange.pushed(sync_cursor),
-                )
-                repositories: list[PluginRepositoryOptions] = []
-                for _repo_name, branch, repo_obj in repos:
+                ):
                     repositories.append(
                         PluginRepositoryOptions(
                             organization=org_login,

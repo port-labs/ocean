@@ -1886,7 +1886,7 @@ async def test_get_changed_paths_since_cache_is_keyed_by_field(
 
 
 @pytest.mark.asyncio
-async def test_builder_lists_org_repos_once_for_selectors_without_repos() -> None:
+async def test_builder_lists_org_repos_per_selector_without_repos() -> None:
     repo_exporter = MagicMock()
     org_exporter = MagicMock()
     list_calls: List[Dict[str, Any]] = []
@@ -1928,8 +1928,13 @@ async def test_builder_lists_org_repos_once_for_selectors_without_repos() -> Non
             event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(files)
 
-    # One listing per (org, excludeArchived); explicit repos don't list the org.
-    assert [call["exclude_archived"] for call in list_calls] == [False, True]
+    # One listing per non-explicit pattern; explicit repos don't list the org.
+    assert [call["exclude_archived"] for call in list_calls] == [
+        False,
+        False,
+        False,
+        True,
+    ]
 
     by_repo = {item["repo_name"]: item["files"] for item in result}
     assert [f["path"] for f in by_repo["repo1"]] == [
