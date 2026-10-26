@@ -468,3 +468,54 @@ class TestWorkflowNodeRunStatusLabel:
             },
             should_raise=False,
         )
+
+    async def test_report_run_completed_includes_links(
+        self, actions_client: ActionsAndWorkflowRunsClientMixin
+    ) -> None:
+        run = make_run()
+        run.output = {"workflowRunUrl": "https://gitlab.example/pipelines/99"}
+        with (
+            patch.object(
+                actions_client, "patch_wf_node_run", AsyncMock()
+            ) as mock_patch,
+            patch.object(actions_client, "post_wf_node_run_logs", AsyncMock()),
+        ):
+            await actions_client.report_run_completed(
+                run,
+                success=True,
+                links=["https://gitlab.example/pipelines/99"],
+            )
+
+        mock_patch.assert_awaited_once_with(
+            run.id,
+            {
+                "status": WorkflowNodeRunStatus.COMPLETED,
+                "result": WorkflowNodeRunResult.SUCCESS,
+                "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
+                "links": ["https://gitlab.example/pipelines/99"],
+            },
+            should_raise=False,
+        )
+
+    async def test_report_run_completed_omits_absent_links(
+        self, actions_client: ActionsAndWorkflowRunsClientMixin
+    ) -> None:
+        run = make_run()
+        run.output = {"workflowRunUrl": "https://gitlab.example/pipelines/99"}
+        with (
+            patch.object(
+                actions_client, "patch_wf_node_run", AsyncMock()
+            ) as mock_patch,
+            patch.object(actions_client, "post_wf_node_run_logs", AsyncMock()),
+        ):
+            await actions_client.report_run_completed(run, success=True)
+
+        mock_patch.assert_awaited_once_with(
+            run.id,
+            {
+                "status": WorkflowNodeRunStatus.COMPLETED,
+                "result": WorkflowNodeRunResult.SUCCESS,
+                "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
+            },
+            should_raise=False,
+        )

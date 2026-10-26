@@ -26,6 +26,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         result: WorkflowNodeRunResult,
         output: dict[str, Any] | None = None,
         status_label: str | None = None,
+        links: list[str] | None = None,
     ) -> dict[str, Any]:
         patch: dict[str, Any] = {
             "status": WorkflowNodeRunStatus.COMPLETED,
@@ -35,6 +36,8 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             patch["output"] = output
         if status_label:
             patch["statusLabel"] = {"text": status_label}
+        if links:
+            patch["links"] = links
         return patch
 
     async def claim_pending_runs(
@@ -184,12 +187,17 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         message: str | None = None,
         status_label: str | None = None,
         should_raise: bool = False,
+        links: list[str] | None = None,
     ) -> None:
         """Report a run as completed with success or failure.
 
         ``status_label`` is a description of the outcome, shown on the run in
         Port alongside its terminal status; keep it to two words at most, since
         it is rendered as a label.
+
+        ``links`` is a list of URLs to associate with the run. For workflow node
+        runs, these are preserved from ``update_run_started`` only if re-sent here;
+        pass the same links on completion to keep them visible once the run ends.
         """
         if not success:
             logger.error("Run completed with failure", run_id=run.id)
@@ -211,7 +219,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 )
             await self.patch_wf_node_run(
                 run.id,
-                self._wf_node_completion_patch(result, run.output, status_label),
+                self._wf_node_completion_patch(result, run.output, status_label, links),
                 should_raise=should_raise,
             )
         else:

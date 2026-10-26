@@ -19,6 +19,9 @@ from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
     RunStatus,
+    WorkflowIntegrationActionConfig,
+    WorkflowNodeRun,
+    WorkflowNodeRunStatus,
 )
 from integration import GithubWorkflowRunConfig, GithubWorkflowRunSelector
 
@@ -44,6 +47,25 @@ def make_run(execution_properties: dict[str, Any]) -> ActionRun:
             integrationActionType="dispatch_workflow",
             integrationActionExecutionProperties=execution_properties,
         ),
+    )
+
+
+def make_workflow_node_run(
+    execution_properties: dict[str, Any],
+    output: dict[str, Any] | None = None,
+) -> WorkflowNodeRun:
+    return WorkflowNodeRun(
+        id="wfnr-123",
+        node_uid="node-uid-1",
+        status=WorkflowNodeRunStatus.IN_PROGRESS,
+        config=WorkflowIntegrationActionConfig(
+            type="INTEGRATION_ACTION",
+            installationId="inst-1",
+            integrationProvider="github-ocean",
+            integrationInvocationType="dispatch_workflow",
+            integrationActionExecutionProperties=execution_properties,
+        ),
+        output=output or {},
     )
 
 
@@ -238,3 +260,38 @@ class TestDispatchWorkflowWebhookProcessor:
         processor = DispatchWorkflowWebhookProcessor(event=event)
 
         assert await processor._should_process_event(event) is True
+
+    async def test_includes_link_on_completion_for_workflow_node_run(
+        self,
+        processor: DispatchWorkflowWebhookProcessor,
+        resource_config: ResourceConfig,
+        mock_port_client: MagicMock,
+    ) -> None:
+        workflow_url = "https://github.com/port-labs/ocean/actions/runs/99999"
+        mock_port_client.find_run_by_external_id.return_value = make_workflow_node_run(
+            {"reportWorkflowStatus": True},
+            output={"workflowRunUrl": workflow_url},
+        )
+
+        await processor.handle_event(make_payload("success"), resource_config)
+
+        mock_port_client.report_run_completed.assert_awaited_once()
+        _, kwargs = mock_port_client.report_run_completed.await_args
+        assert kwargs["links"] == [workflow_url]
+
+    async def test_omits_link_on_completion_when_output_has_no_url(
+        self,
+        processor: DispatchWorkflowWebhookProcessor,
+        resource_config: ResourceConfig,
+        mock_port_client: MagicMock,
+    ) -> None:
+        mock_port_client.find_run_by_external_id.return_value = make_workflow_node_run(
+            {"reportWorkflowStatus": True},
+            output={},
+        )
+
+        await processor.handle_event(make_payload("success"), resource_config)
+
+        mock_port_client.report_run_completed.assert_awaited_once()
+        _, kwargs = mock_port_client.report_run_completed.await_args
+        assert kwargs["links"] is None

@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Preserve GitHub workflow run link when reporting dispatch workflow completion (PORT-18235)

@@ -115,8 +115,12 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 conclusion=conclusion,
             )
 
+            links: list[str] | None = None
             if isinstance(run, WorkflowNodeRun):
                 run.output["conclusion"] = conclusion
+                workflow_run_url = run.output.get("workflowRunUrl")
+                if workflow_run_url:
+                    links = [workflow_run_url]
 
             await ocean.port_client.report_run_completed(
                 run,
@@ -125,6 +129,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 status_label=CONCLUSION_STATUS_LABELS.get(
                     conclusion, f"Workflow {conclusion}"
                 ),
+                links=links,
             )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
