@@ -1,5 +1,3 @@
-"""Legacy dispatch_workflow tracking against GitHub's second-precision created search."""
-
 from collections.abc import AsyncGenerator, Iterator
 from datetime import datetime, timezone, tzinfo
 from typing import Any
