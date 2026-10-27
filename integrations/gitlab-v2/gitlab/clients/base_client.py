@@ -7,60 +7,24 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
 from gitlab.clients.auth_client import AuthClient
-from gitlab.clients.rate_limiter import (
-    GitLabRateLimiter,
-    GitLabRateLimiterConfig,
-    GitLabRateLimitWrapper,
-    centralized_rate_limit_pool,
-)
+from gitlab.clients.rate_limiter import GitLabRateLimiter, GitLabRateLimiterConfig
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 1800
 
 
 class HTTPBaseClient:
-    def __init__(
-        self,
-        base_url: str,
-        token: str,
-        endpoint: str,
-        *,
-        centralized_rate_limit: bool = True,
-    ):
+    def __init__(self, base_url: str, token: str, endpoint: str):
         self.token = token
-        local_limiter = GitLabRateLimiter(GitLabRateLimiterConfig())
-        if centralized_rate_limit:
-            self._rate_limiter: GitLabRateLimitWrapper | GitLabRateLimiter = (
-                GitLabRateLimitWrapper(
-                    local_limiter,
-                    pool=centralized_rate_limit_pool(base_url),
-                )
-            )
-            transport_limiter: GitLabRateLimitWrapper | None = self._rate_limiter
-        else:
-            self._rate_limiter = local_limiter
-            transport_limiter = None
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 max_backoff_wait=MAX_BACKOFF_WAIT_IN_SECONDS,
                 additional_retry_status_codes=[500],
-                rate_limiter=transport_limiter,
             ),
             timeout=ocean.config.client_timeout,
         )
         self.base_url = f"{base_url}/{endpoint.strip('/')}"
         self._auth_client = AuthClient(self.token)
-
-    def is_close_to_rate_limit(self) -> bool:
-        limiter = self._rate_limiter
-        if isinstance(limiter, GitLabRateLimitWrapper):
-            return limiter.is_close_to_rate_limit()
-        return False
-
-    def seconds_until_rate_limit_reset(self) -> float:
-        limiter = self._rate_limiter
-        if isinstance(limiter, GitLabRateLimitWrapper):
-            return limiter.seconds_until_rate_limit_reset()
-        return 0.0
+        self._rate_limiter = GitLabRateLimiter(GitLabRateLimiterConfig())
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -113,12 +77,7 @@ class HTTPBaseClient:
                 raise
             finally:
                 if response is not None:
-                    if isinstance(self._rate_limiter, GitLabRateLimitWrapper):
-                        await self._rate_limiter.record_rate_limit_response(
-                            response, context=url
-                        )
-                    else:
-                        self._rate_limiter.update_rate_limits(response.headers, url)
+                    self._rate_limiter.update_rate_limits(response.headers, url)
 
     async def _handle_status_code_error(
         self,

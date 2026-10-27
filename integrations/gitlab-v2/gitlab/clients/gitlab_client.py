@@ -111,19 +111,8 @@ class GitLabClient:
         "all_available": True,  # Fetch all resources accessible to the user
     }
 
-    def __init__(
-        self,
-        base_url: str,
-        token: str,
-        *,
-        centralized_rate_limit: bool = True,
-    ) -> None:
-        self.rest = RestClient(
-            base_url,
-            token,
-            endpoint="api/v4",
-            centralized_rate_limit=centralized_rate_limit,
-        )
+    def __init__(self, base_url: str, token: str) -> None:
+        self.rest = RestClient(base_url, token, endpoint="api/v4")
         # Groups where Advanced Search (search_type=advanced) returned 400.
         # Avoid re-trying that path for every file pattern in the same process.
         self._groups_without_advanced_search: set[str] = set()
