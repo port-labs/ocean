@@ -1,7 +1,7 @@
 """Legacy dispatch_workflow tracking against GitHub's second-precision created search."""
 
 from collections.abc import AsyncGenerator, Iterator
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -27,15 +27,17 @@ from mocks.transport_builder import GithubMockTransportBuilder
 REPO = REPO_NAMES[0]
 WORKFLOW = "deploy.yml"
 ACTOR = "octocat"
-DISPATCH_NOW = datetime(2026, 10, 21, 14, 39, 36, 502590, tzinfo=timezone.utc)
 RUN_CREATED_AT = "2026-10-21T14:39:36Z"
 WORKFLOW_RUN_ID = 39722903259
 
 
 class _FrozenDateTime(datetime):
     @classmethod
-    def now(cls, tz: timezone | None = None) -> datetime:
+    def now(cls, tz: tzinfo | None = None) -> "_FrozenDateTime":
         return DISPATCH_NOW
+
+
+DISPATCH_NOW = _FrozenDateTime(2026, 10, 21, 14, 39, 36, 502590, tzinfo=timezone.utc)
 
 
 def _parse_github_datetime(value: str) -> datetime:
