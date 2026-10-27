@@ -21,6 +21,7 @@ from datadog.webhook.webhook_client import AUDIT_TRAIL_WEBHOOK_PATH
 
 class ObjectKind(StrEnum):
     SERVICE_DEPENDENCY = "serviceDependency"
+    CATALOG_ENTITY = "catalogEntity"
     HOST = "host"
     MONITOR = "monitor"
     SLO = "slo"

@@ -109,3 +109,47 @@ resources:
             sourceService: .name
           relations:
             dependencies: if .calls then .calls[] else [] end
+  - kind: catalogEntity
+    selector:
+      query: 'true'
+      includeDiscovered: 'false'
+    port:
+      entity:
+        mappings:
+          # shortcut: ambiguous if a name contains "/" — namespace "a" + name "b"
+          # renders as namespace "default" + name "a/b"; revisit if an org uses namespaces
+          identifier: >-
+            .attributes.kind + ":" + (if .attributes.namespace == "default"
+            then "" else .attributes.namespace + "/" end) +
+            .attributes.name
+          title: .attributes.displayName // .attributes.name
+          blueprint: '"datadogCatalogEntity"'
+          properties:
+            kind: .attributes.kind
+            namespace: .attributes.namespace
+            description: .attributes.description
+            owner: .attributes.owner
+            tags: .attributes.tags
+            type: .__schema.spec.type
+            tier: .__schema.spec.tier
+            lifecycle: .__schema.spec.lifecycle
+            languages: .__schema.spec.languages
+            links: .__schema.metadata.links // [] | map(.url)
+            ingestionSource: .meta.ingestionSource
+            createdAt: .meta.createdAt
+            updatedAt: .meta.modifiedAt
+            emailContacts: >-
+              [.__schema.metadata.contacts // [] | .[] | select(.type ==
+              "email") | .contact]
+            additionalOwners: .__schema.metadata.additionalOwners // [] | map(.name)
+          relations:
+            dependsOn: .__schema.spec.dependsOn // []
+            componentOf: .__schema.spec.componentOf // []
+            components: .__schema.spec.components // []
+            implementedBy: .__schema.spec.implementedBy // []
+            team:
+              combinator: '"and"'
+              rules:
+                - property: '"handle"'
+                  operator: '"="'
+                  value: .attributes.owner

@@ -215,6 +215,26 @@ class ServiceResourceConfig(ResourceConfig):
     )
 
 
+class CatalogEntitySelector(Selector):
+    include_discovered: bool = Field(
+        alias="includeDiscovered",
+        default=False,
+        title="Include Discovered Entities",
+        description="Whether to include entities Datadog discovered automatically from APM and USM alongside the declared ones, defaults to false",
+    )
+
+
+class CatalogEntityResourceConfig(ResourceConfig):
+    kind: Literal["catalogEntity"] = Field(
+        title="Datadog Catalog Entity",
+        description="Datadog Software Catalog entity resource kind, covering every entity kind.",
+    )
+    selector: CatalogEntitySelector = Field(
+        title="Catalog Entity Selector",
+        description="Selector for the Datadog Software Catalog entity resource.",
+    )
+
+
 class UserResourceConfig(ResourceConfig):
     kind: Literal["user"] = Field(
         title="Datadog User",
@@ -258,6 +278,7 @@ class DataDogPortAppConfig(PortAppConfig):
         | MonitorResourceConfig
         | SLOResourceConfig
         | ServiceResourceConfig
+        | CatalogEntityResourceConfig
         | UserResourceConfig
         | RoleResourceConfig
         | OrgResourceConfig
