@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import json
 from typing import Any
 
@@ -117,9 +117,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     def _legacy_dispatch_created_filter(now: datetime | None = None) -> str:
         """GitHub's created search compares timestamps at whole-second precision."""
         timestamp = now or datetime.now(timezone.utc)
-        # GitHub's `created` filter is UTC whole seconds (…Z). Subtract 2s so a
-        # run created in the same second as this timestamp still matches.
-        return (timestamp - timedelta(seconds=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # GitHub stores `created_at` as UTC whole seconds (…Z). isoformat() emits
+        # microseconds, and a run at 14:39:36Z does not match created>=14:39:36.001.
+        return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         if not self._use_legacy_dispatch_workflow_tracking():

@@ -487,12 +487,12 @@ class TestLegacyDispatchWorkflowExecutor:
 
 
 class TestLegacyDispatchCreatedFilter:
-    def test_drops_subsecond_precision_and_buffers(self) -> None:
+    def test_drops_subsecond_precision(self) -> None:
         now = datetime(2026, 10, 21, 14, 39, 36, 502590, tzinfo=timezone.utc)
 
         assert (
             DispatchWorkflowExecutor._legacy_dispatch_created_filter(now)
-            == "2026-10-21T14:39:34Z"
+            == "2026-10-21T14:39:36Z"
         )
 
     def test_same_second_github_created_at_still_matches(self) -> None:

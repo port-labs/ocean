@@ -45,7 +45,11 @@ def _parse_github_datetime(value: str) -> datetime:
 
 
 def _github_created_matches(run_created_at: str, created_query: str) -> bool:
-    """Approximate GitHub's created search: stored times are whole seconds."""
+    """GitHub stores created_at at whole seconds; query microseconds are kept.
+
+    A run at 14:39:36Z matches created>=14:39:36 and >=14:39:35.999, but not
+    >=14:39:36.001.
+    """
     if not created_query.startswith(">="):
         return False
     bound = _parse_github_datetime(created_query[2:])
@@ -169,6 +173,18 @@ class TestLegacyDispatchCreatedFilter(BaseIntegrationTest):
             ),
         )
 
+    def test_github_created_search_keeps_query_microseconds(self) -> None:
+        assert _github_created_matches(RUN_CREATED_AT, f">={RUN_CREATED_AT}")
+        assert _github_created_matches(
+            RUN_CREATED_AT, ">=2026-10-21T14:39:35.999000+00:00"
+        )
+        assert not _github_created_matches(
+            RUN_CREATED_AT, ">=2026-10-21T14:39:36.001000+00:00"
+        )
+        assert not _github_created_matches(
+            RUN_CREATED_AT, f">={DISPATCH_NOW.isoformat()}"
+        )
+
     @pytest.mark.asyncio
     async def test_tracks_run_created_in_the_same_second(
         self,
@@ -183,11 +199,7 @@ class TestLegacyDispatchCreatedFilter(BaseIntegrationTest):
             if "/actions/workflows/" in str(call.request.url)
             and call.request.method == "GET"
         ]
-        assert created_queries
-        assert all(
-            query is not None and "." not in query for query in created_queries
-        ), created_queries
-        assert _github_created_matches(RUN_CREATED_AT, created_queries[0] or "")
+        assert created_queries == [f">={RUN_CREATED_AT}"]
 
     @pytest.mark.asyncio
     async def test_isoformat_filter_misses_run_in_the_same_second(
@@ -198,6 +210,7 @@ class TestLegacyDispatchCreatedFilter(BaseIntegrationTest):
         with patch.object(
             DispatchWorkflowExecutor,
             "_legacy_dispatch_created_filter",
+            # Old code: datetime.now(timezone.utc).isoformat()
             return_value=DISPATCH_NOW.isoformat(),
         ):
             with pytest.raises(
