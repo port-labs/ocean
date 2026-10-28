@@ -152,10 +152,11 @@ class TestAbstractGithubClient:
             response = await client.send_api_request("orgs/forbidden-org/repos")
             assert response == {}
 
-    async def test_send_api_request_401_error_ignored(
+    async def test_send_api_request_401_error_raised(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
-        # Test 401 Unauthorized error handling - should be ignored by default
+        # 401 means broken credentials, never a missing/forbidden resource — it must
+        # fail the sync instead of being swallowed into an empty response.
         client = ConcreteGithubClient(
             organization="test-org",
             github_host="https://api.github.com",
@@ -174,9 +175,8 @@ class TestAbstractGithubClient:
             "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
-            # Should return empty dict for 401 (ignored error)
-            response = await client.send_api_request("orgs/unauthorized-org/repos")
-            assert response == {}
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.send_api_request("orgs/unauthorized-org/repos")
 
     async def test_send_api_request_500_error_raised(
         self, authenticator: AbstractGitHubAuthenticator

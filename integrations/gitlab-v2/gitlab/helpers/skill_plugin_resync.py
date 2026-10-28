@@ -8,6 +8,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gitlab.clients.gitlab_client import GitLabClient
+from gitlab.helpers.skill_folder import attach_skill_folder_files
 from gitlab.helpers.skill_plugin import (
     PLUGIN_MANIFEST_PATHS,
     PluginProvider,
@@ -34,7 +35,12 @@ async def resync_skills(
     emitted_keys: set[str] = set()
 
     async for skills in _resync_skills_via_tree(
-        client, path_entries, path_globs, project_params, emitted_keys
+        client,
+        path_entries,
+        path_globs,
+        project_params,
+        emitted_keys,
+        selector.include_skill_folder,
     ):
         yield skills
 
@@ -45,6 +51,7 @@ async def _resync_skills_via_tree(
     path_globs: list[str],
     project_params: dict[str, Any] | None,
     emitted_keys: set[str],
+    include_skill_folder: bool,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """One minimized tree-walk set per project, matching all applicable globs."""
     patterns_by_repo, unrestricted_patterns = _partition_skill_patterns(path_entries)
@@ -56,10 +63,8 @@ async def _resync_skills_via_tree(
             skip_parsing=True,
             params=project_params,
         ):
-            skills = _skills_from_files(
-                await client._enrich_files_with_repos(files_batch),
-                path_globs,
-                emitted_keys,
+            skills = await _build_skills(
+                client, files_batch, path_globs, emitted_keys, include_skill_folder
             )
             if skills:
                 yield skills
@@ -79,10 +84,8 @@ async def _resync_skills_via_tree(
                 skip_parsing=True,
                 repositories=[project],
             ):
-                skills = _skills_from_files(
-                    await client._enrich_files_with_repos(files_batch),
-                    path_globs,
-                    emitted_keys,
+                skills = await _build_skills(
+                    client, files_batch, path_globs, emitted_keys, include_skill_folder
                 )
                 if skills:
                     yield skills
@@ -102,12 +105,29 @@ def _partition_skill_patterns(
     return patterns_by_repo, unrestricted
 
 
+async def _build_skills(
+    client: GitLabClient,
+    files_batch: list[dict[str, Any]],
+    path_globs: list[str],
+    emitted_keys: set[str],
+    include_skill_folder: bool,
+) -> list[dict[str, Any]]:
+    skills = _skills_from_files(
+        await client._enrich_files_with_repos(files_batch), path_globs, emitted_keys
+    )
+    if not include_skill_folder:
+        return [skill_item for skill_item, _ in skills]
+    built = await attach_skill_folder_files(client, skills)
+    return [skill_item for skill_item in built if skill_item is not None]
+
+
 def _skills_from_files(
     enriched: list[dict[str, Any]],
     path_globs: list[str],
     emitted_keys: set[str],
-) -> list[dict[str, Any]]:
-    skills: list[dict[str, Any]] = []
+) -> list[tuple[dict[str, Any], str]]:
+    """Deduplicated skill raw items, each with its raw SKILL.md content."""
+    skills: list[tuple[dict[str, Any], str]] = []
     for file_entity in enriched:
         skill_item = enrich_file_to_skill(file_entity, path_globs=path_globs)
         if not skill_item:
@@ -119,7 +139,7 @@ def _skills_from_files(
         if key in emitted_keys:
             continue
         emitted_keys.add(key)
-        skills.append(skill_item)
+        skills.append((skill_item, file_entity["file"]["content"]))
     return skills
 
 

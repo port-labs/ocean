@@ -2,6 +2,7 @@ from typing import cast
 from loguru import logger
 from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
+    RestTeamExporter,
 )
 from github.core.options import SingleTeamOptions
 from github.webhook.events import (
@@ -88,6 +89,23 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        if selector.include_external_group or selector.include_group_mappings:
+            rest_exporter = RestTeamExporter(
+                await create_github_client_for_org(organization)
+            )
+
+            if selector.include_external_group:
+                enriched = await rest_exporter.enrich_teams_with_external_group(
+                    [data_to_upsert], organization
+                )
+                data_to_upsert = enriched[0]
+
+            if selector.include_group_mappings:
+                enriched = await rest_exporter.enrich_teams_with_group_mappings(
+                    [data_to_upsert], organization
+                )
+                data_to_upsert = enriched[0]
 
         logger.info(f"Upserting team '{team['slug']}' of {organization}")
 

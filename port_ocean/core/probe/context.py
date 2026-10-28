@@ -102,7 +102,8 @@ class ProbeContext:
 
     async def finalize(self) -> None:
         self.ended_at = datetime.now(timezone.utc)
-        self.status = ProbeStatus.COMPLETED
+        if self.status == ProbeStatus.IN_PROGRESS:
+            self.status = ProbeStatus.COMPLETED
         await self.update_progress()
 
     async def fail(self, message: str) -> None:

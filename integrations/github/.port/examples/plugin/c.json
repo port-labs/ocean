@@ -4,6 +4,7 @@
     "displayName": "opencode-hooks",
     "description": "",
     "version": null,
+    "path": "",
     "supports": {
       "claude": false,
       "cursor": false,

@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+from typing import Any, Self
+
+from anthropic.types.beta import BetaManagedAgentsAgent
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
 from anthropic.types.beta.sessions.beta_managed_agents_session_requires_action import (
     BetaManagedAgentsSessionRequiresAction,
@@ -7,11 +11,23 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event
 )
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun
+from port_ocean.core.models import (
+    IntegrationRun,
+    ResolvedExecutionIdentity,
+    WorkflowNodeRun,
+)
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-
+from pydantic import Field, model_validator
+from port_ocean.utils.ttl_cache import TTLCache
+from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.exceptions import InvalidActionParametersException
+from actions.port_mcp_utils import (
+    PortMcpBinding,
+    attach_port_mcp_settings_to_agent_config,
+    ensure_port_mcp_binding,
+    is_agent_configured_with_port_mcp,
+    remint_port_mcp_credential,
+)
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
@@ -19,6 +35,7 @@ from actions.utils import (
     normalize_session_config,
 )
 from integration import ObjectKind
+from stream_manager import get_stream_manager
 from webhook_processors.registry import WEBHOOK_PATH
 from webhook_processors.trigger_agent_webhook_processor import (
     TriggerAgentWebhookProcessor,
@@ -29,6 +46,63 @@ SESSION_RUNNING_STATUS_LABEL = "Session running"
 PROMPT_SENT_STATUS_LABEL = "Prompt sent"
 SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Cannot continue"
 SESSION_START_FAILED_STATUS_LABEL = "Start failed"
+PORT_IDENTITY_ID_KEY = "port_identity_id"
+
+_CACHE_TTL_SECONDS = 120
+_CACHE_MAX_ITEMS = 100
+
+
+class TriggerAgentInputs(AbstractAnthropicActionInput):
+    agentId: str = Field(min_length=1)
+    prompt: str = Field(min_length=1)
+    sessionId: str | None = None
+    environmentId: str = ""
+    vaultName: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    enablePortMcp: bool = True
+    reportSessionStatus: bool = False
+
+    @model_validator(mode="after")
+    def require_environment_for_new_session(self) -> Self:
+        if not self.sessionId and not self.environmentId:
+            raise ValueError("environmentId is required when starting a new session")
+        return self
+
+
+@dataclass(frozen=True)
+class PortMcpWorkflowContext:
+    workflow_run: WorkflowNodeRun
+    execution_identity: ResolvedExecutionIdentity
+    vault_name: str | None
+
+
+def port_mcp_workflow_context(
+    inputs: TriggerAgentInputs, run: IntegrationRun
+) -> PortMcpWorkflowContext | None:
+    if not inputs.enablePortMcp or not isinstance(run, WorkflowNodeRun):
+        return None
+    identity = run.execution_identity
+    if identity is None:
+        return None
+    return PortMcpWorkflowContext(run, identity, inputs.vaultName)
+
+
+def session_config_with_port_mcp(
+    api_config: dict[str, Any],
+    binding: PortMcpBinding,
+    execution_identity: ResolvedExecutionIdentity,
+) -> dict[str, Any]:
+    vault_ids = list(api_config.get("vault_ids") or [])
+    if binding.vault_id not in vault_ids:
+        vault_ids.append(binding.vault_id)
+    return {
+        **api_config,
+        "metadata": {
+            **(api_config.get("metadata") or {}),
+            PORT_IDENTITY_ID_KEY: execution_identity.identifier,
+        },
+        "vault_ids": vault_ids,
+    }
 
 
 class TriggerAgentExecutor(AbstractAnthropicExecutor):
@@ -48,14 +122,39 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     WEBHOOK_PROCESSOR_CLASS = TriggerAgentWebhookProcessor
     WEBHOOK_PATH = WEBHOOK_PATH
 
+    _agent_cache = TTLCache[BetaManagedAgentsAgent](
+        ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
+    )
+    _port_mcp_cache = TTLCache[PortMcpBinding](
+        ttl_seconds=_CACHE_TTL_SECONDS, max_items=_CACHE_MAX_ITEMS
+    )
+
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         session_id = run.execution_properties.get("sessionId")
         if session_id:
             return session_id
         return None
 
+    async def _resolve_port_mcp_binding(
+        self, port_mcp: PortMcpWorkflowContext
+    ) -> PortMcpBinding:
+        ensured_vault_name = (
+            port_mcp.vault_name or port_mcp.execution_identity.identifier
+        )
+        binding = self._port_mcp_cache.get(ensured_vault_name)
+        if binding is None:
+            binding = await ensure_port_mcp_binding(
+                self.client, port_mcp.workflow_run, ensured_vault_name
+            )
+            self._port_mcp_cache.set(ensured_vault_name, binding)
+        else:
+            await remint_port_mcp_credential(
+                self.client, port_mcp.workflow_run, binding
+            )
+        return binding
+
     async def _ensure_session_continuable(
-        self, session_id: str
+        self, session_id: str, run: IntegrationRun
     ) -> BetaManagedAgentsSession:
         session = await self.client.get_session(session_id)
         if session.status != "idle":
@@ -83,57 +182,92 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                     )
             break
 
+        owner = (session.metadata or {}).get(PORT_IDENTITY_ID_KEY)
+        if owner:
+            identity = (
+                run.execution_identity if isinstance(run, WorkflowNodeRun) else None
+            )
+            if identity is None:
+                raise ActionExecutionError(
+                    f"Cannot continue session {session.id}: owned by {owner} "
+                    "without an execution identity"
+                )
+            if owner != identity.identifier:
+                raise ActionExecutionError(
+                    f"Cannot continue session {session.id}: owned by {owner}, "
+                    f"run is {identity.identifier}"
+                )
+
+        return session
+
+    async def _ensure_agent_port_mcp_configured(
+        self, agent: BetaManagedAgentsAgent
+    ) -> BetaManagedAgentsAgent:
+        if is_agent_configured_with_port_mcp(agent.mcp_servers or []):
+            return agent
+        updated = await self.client.update_agent(
+            agent.id,
+            version=agent.version,
+            payload=attach_port_mcp_settings_to_agent_config({}, existing_agent=agent),
+        )
+        self._agent_cache.set(agent.id, updated)
+        return updated
+
+    async def _create_new_trigger_session(
+        self,
+        inputs: TriggerAgentInputs,
+        port_mcp: PortMcpWorkflowContext | None,
+    ) -> BetaManagedAgentsSession:
+        api_config = await normalize_session_config(inputs.config)
+        if port_mcp is not None:
+            binding = await self._resolve_port_mcp_binding(port_mcp)
+            api_config = session_config_with_port_mcp(
+                api_config, binding, port_mcp.execution_identity
+            )
+        session = await self.client.create_session(
+            inputs.agentId,
+            inputs.environmentId,
+            extra=api_config or None,
+        )
+        if not session.id:
+            raise ActionExecutionError(
+                "Session was created but no session id was returned",
+                status_label=SESSION_START_FAILED_STATUS_LABEL,
+            )
         return session
 
     async def execute(self, run: IntegrationRun) -> None:
-        props = run.execution_properties
-        agent_id = props.get("agentId")
-        environment_id = props.get("environmentId")
-        prompt = props.get("prompt")
-        session_id = props.get("sessionId")
-        config = props.get("config")
-        if config is None:
-            config = {}
-        elif not isinstance(config, dict):
-            raise InvalidActionParametersException("config must be an object")
-
-        if not (agent_id and prompt):
-            raise InvalidActionParametersException("agentId and prompt are required")
+        inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
         await ocean.port_client.post_run_log(
             run,
             (
-                f"Sending prompt to Claude agent {agent_id} " f"(session {session_id})"
-                if session_id
-                else f"Starting a new session for Claude agent {agent_id}"
+                f"Sending prompt to Claude agent {inputs.agentId} "
+                f"(session {inputs.sessionId})"
+                if inputs.sessionId
+                else f"Starting a new session for Claude agent {inputs.agentId}"
             ),
             status_label=STARTING_STATUS_LABEL,
             should_raise=False,
         )
 
-        if session_id:
-            session = await self._ensure_session_continuable(session_id)
-        else:
-            if not environment_id:
-                raise InvalidActionParametersException(
-                    "environmentId is required when starting a new session"
-                )
-            api_config = await normalize_session_config(config)
-            session = await self.client.create_session(
-                agent_id,
-                environment_id,
-                extra=api_config or None,
-            )
-            if not session.id:
-                raise ActionExecutionError(
-                    "Session was created but no session id was returned",
-                    status_label=SESSION_START_FAILED_STATUS_LABEL,
-                )
+        agent = await self._agent_cache.get_or_fetch(
+            inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
+        )
+        if inputs.enablePortMcp:
+            agent = await self._ensure_agent_port_mcp_configured(agent)
 
-        resolved_session_id = session.id
-        user_message = await self.client.send_user_message(resolved_session_id, prompt)
+        port_mcp = port_mcp_workflow_context(inputs, run)
+        if inputs.sessionId:
+            session = await self._ensure_session_continuable(inputs.sessionId, run)
+            if port_mcp is not None:
+                await self._resolve_port_mcp_binding(port_mcp)
+        else:
+            session = await self._create_new_trigger_session(inputs, port_mcp)
+
+        user_message = await self.client.send_user_message(session.id, inputs.prompt)
         logger.info(
-            f"Triggered Claude agent {agent_id} via session {resolved_session_id} "
+            f"Triggered Claude agent {inputs.agentId} via session {session.id} "
             f"(message {user_message.id}) for run {run.id}"
         )
 
@@ -141,31 +275,44 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         # not mapped). Status updates arrive later via webhooks. Best-effort:
         # never fails the run. Convert to dict only at the catalog boundary.
         await self.register_entity(
-            ObjectKind.SESSION, session.to_dict(mode="json"), run
+            ObjectKind.SESSION, session.to_dict(mode="json", warnings=False), run
         )
 
-        external_id = build_external_id(resolved_session_id, user_message.id)
+        external_id = build_external_id(session.id, user_message.id)
         session_url = build_session_link(
             self.client.get_console_host(),
             self.client.get_workspace_id(),
-            resolved_session_id,
+            session.id,
         )
         await ocean.port_client.update_run_started(
             run,
             session_url,
             external_id,
             extra_output=TriggerAgentSessionOutput(
-                session_id=resolved_session_id,
+                session_id=session.id,
                 user_message_event_id=user_message.id,
                 url=session_url,
             ).model_dump(),
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
 
-        if not props.get("reportSessionStatus", False):
-            await ocean.port_client.report_run_completed(
-                run,
-                True,
-                f"Prompt sent to session {resolved_session_id}",
-                status_label=PROMPT_SENT_STATUS_LABEL,
-            )
+        if inputs.reportSessionStatus:
+            try:
+                await self.client.update_session(
+                    session.id,
+                    metadata={"portExternalRunId": external_id},
+                )
+                await get_stream_manager().track(session.id, run)
+            except Exception as exc:
+                logger.warning(
+                    f"Failed to store portExternalRunId on session "
+                    f"{session.id}: {exc!r}"
+                )
+            return
+
+        await ocean.port_client.report_run_completed(
+            run,
+            True,
+            f"Prompt sent to session {session.id}",
+            status_label=PROMPT_SENT_STATUS_LABEL,
+        )

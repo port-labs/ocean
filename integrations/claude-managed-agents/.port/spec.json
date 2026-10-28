@@ -4,6 +4,7 @@
   "icon": "Claude",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ai-agents/claude-managed-agents",
   "recommendedInstallationMethod": "Saas",
+  "defaultInstallationId": "claude-mngd-agnts",
   "formMappingEnabled": true,
   "features": [
     {
@@ -70,11 +71,19 @@
       "description": "The host of the Claude Console, used to build session links in action run output. If not specified, the default will be https://platform.claude.com."
     },
     {
+      "name": "verifyWebhookSecrets",
+      "type": "boolean",
+      "required": false,
+      "sensitive": false,
+      "default": true,
+      "description": "When true, verify Claude live-event webhook signatures using webhookSigningSecret. On SaaS, the signing secret returned when the webhook is first created is stored as an organization secret and webhookSigningSecret is patched on the integration spec automatically. Refer <a href=\"https://platform.claude.com/docs/en/managed-agents/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+    },
+    {
       "name": "webhookSigningSecret",
       "type": "string",
       "required": false,
       "sensitive": true,
-      "description": "The signing secret from the Claude Console webhook configuration. Required only to enable live events (webhooks). Refer <a href=\"https://platform.claude.com/docs/en/api/typescript/beta/webhooks\" target=\"_blank\">Anthropic webhooks documentation</a>."
+      "description": "Claude webhook signing secret used when verifyWebhookSecrets is enabled. On SaaS, Port stores an organization secret and sets this field automatically when the webhook is first registered. For self-hosted, set it manually from the Claude Console (Manage > Webhooks)."
     },
     {
       "name": "githubAuthorizationToken",
@@ -82,6 +91,30 @@
       "required": false,
       "sensitive": true,
       "description": "Optional GitHub personal access token injected into github_repository session resources when authorization_token is omitted. Configure this when workflow forms collect repository URLs only."
+    },
+    {
+      "name": "maxConcurrentSessionStreams",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 10,
+      "description": "Maximum number of Claude sessions that the integration will stream live simultaneously. Tune this in line with the pod's allocated resources."
+    },
+    {
+      "name": "flushIntervalSeconds",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 5,
+      "description": "How often (in seconds) the integration flushes buffered stream events to Port as workflow run logs."
+    },
+    {
+      "name": "flushBatchSize",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 25,
+      "description": "Maximum number of log entries posted to Port in a single flush. Acts as a safety cap during event bursts."
     }
   ],
   "actionsProcessingEnabled": true,
@@ -106,6 +139,14 @@
           "required": true
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities.",
+          "default": true,
+          "required": false
+        },
+        {
           "name": "systemPrompt",
           "title": "System prompt",
           "type": "string",
@@ -125,6 +166,7 @@
       "name": "trigger_agent",
       "icon": "Claude",
       "description": "Trigger a Claude managed agent by starting or continuing a session and sending a user message",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "agentId",
@@ -155,6 +197,21 @@
           "required": true
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, ensures the agent is connected to the Port MCP endpoint for the integration's Port region and attaches a managed vault credential for Actor or Service Account execution identities.",
+          "default": true,
+          "required": false
+        },
+        {
+          "name": "vaultName",
+          "title": "Vault name",
+          "type": "string",
+          "description": "Display name of the Claude vault that stores this user's Port MCP credential. Resolved before the run starts, so a workflow expression such as port-mcp-{{ .trigger.by.user.email }} is allowed. The resolved value must be stable and unique per user, and the same value must be sent when continuing the session; a shared name lets later runs overwrite the token. Defaults to port-mcp-{identity id}.",
+          "required": false
+        },
+        {
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
@@ -165,7 +222,7 @@
           "name": "reportSessionStatus",
           "title": "Report session status",
           "type": "boolean",
-          "description": "Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires a webhook to be configured on the integration (see webhookSigningSecret); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.",
+          "description": "Whether to wait for the session to reach a terminal state and report its outcome back to Port via webhooks. Requires live events (OCEAN__BASE_URL / webhook registration); otherwise the run never completes. Defaults to false, which completes the run immediately after the prompt is sent.",
           "default": false,
           "required": false
         }
@@ -251,6 +308,13 @@
           "title": "Model",
           "type": "string",
           "description": "New model identifier, for example claude-opus-4-8",
+          "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities. Omit to leave the agent's MCP config unchanged.",
           "required": false
         },
         {

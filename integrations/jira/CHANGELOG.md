@@ -7,6 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.16.7 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 0.16.6 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 0.16.5 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 0.16.4 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 0.16.3 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 0.16.2 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 0.16.1 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 0.16.0 (2026-10-21)
+
+
+### Features
+
+- Added incremental sync for the `issue`, `backlog`, and `worklog` kinds, fetching only issues updated since the stored cursor within the configured JQL scope. Deletions and backlog membership changes apply on the next full resync.
+
+
+## 0.15.19 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 0.15.18 (2026-10-20)
+
+
+### Improvements
+
+- Clarify Test Connection auth failures by guiding users on bad URL (404) vs credentials/scope (401)
+
+
+## 0.15.17 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.15.16 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.15.15 (2026-10-20)
+
+
+### Features
+
+- Added empty scopes to spec file to match new typing requirements for test connection supported integrations
+
+
+## 0.15.14 (2026-10-19)
+
+
+### Improvements
+
+- Supply Jira-specific compact live-event log identifiers via JiraAbstractWebhookProcessor when dual-gated payload logging is enabled in Ocean core.
+
+
+## 0.15.13 (2026-10-19)
+
+
+### Improvements
+
+- Include the required API token scope when Jira Test Connection fails on /myself (read:jira-user) or /mypermissions (read:jira-work)
+
+
+## 0.15.12 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 0.15.11 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 0.15.10 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 0.15.9 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
 ## 0.15.8 (2026-10-11)
 
 

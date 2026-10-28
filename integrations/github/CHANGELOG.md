@@ -7,6 +7,247 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.22.15 (2026-10-28)
+
+
+### Bug Fixes
+
+- Fixed legacy dispatch_workflow tracking missing GitHub runs created in the same second as the poll timestamp.
+
+
+## 6.22.14 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 6.22.13 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 6.22.12 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 6.22.11 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 6.22.10 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 6.22.9 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 6.22.8 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 6.22.7 (2026-10-21)
+
+
+### Bug Fixes
+
+- Enable EXTGLOB for folder path patterns matching sunset github-app
+
+
+## 6.22.6 (2026-10-21)
+
+
+### Improvements
+
+- Clarify GitHub PAT and App probe auth failures for rate limits and invalid credentials
+
+
+## 6.22.5 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 6.22.4 (2026-10-20)
+
+
+### Improvements
+
+- Changed the per-request "GitHub API request" info log to debug in order to reduce integration log volume. (#8593417)
+
+
+## 6.22.3 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 6.22.2 (2026-10-20)
+
+
+### Improvements
+
+- Detect fine-grained PATs by documented format and fail clearly when a github_pat_ token is malformed
+
+
+## 6.22.1 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 6.22.0 (2026-10-20)
+
+
+### Features
+
+- Added an opt-in `include_group_mappings` selector to the team kind that fetches the IdP groups mapped to each team via `GET /orgs/{org}/teams/{slug}/team-sync/group-mappings` and exposes them under `__group_mappings`. Supports organizations using GitHub Enterprise Cloud team synchronization (non-EMU). Team membership webhook events now also keep `__external_group` and `__group_mappings` on the upserted team when `include_external_group` or `include_group_mappings` is enabled.
+
+
+## 6.21.5 (2026-10-20)
+
+
+### Features
+
+- Added org scope to spec file for test connection visual enrichment
+
+
+## 6.21.4 (2026-10-20)
+
+
+### Bug Fixes
+
+- Fail the File Kind validation check when Port rejects the entity
+
+
+## 6.21.3 (2026-10-19)
+
+
+### Bug Fixes
+
+- Fail the resync when the GitHub API returns 401 instead of ignoring the error, so invalid credentials surface as a failed sync and entities are preserved rather than deleted.
+
+
+## 6.21.2 (2026-10-19)
+
+
+### Improvements
+
+- Supply GitHub-specific compact live-event log identifiers via get_live_event_log_identifiers on webhook processors when dual-gated payload logging is enabled in Ocean core.
+
+
+## 6.21.1 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 6.21.0 (2026-10-18)
+
+
+### Features
+
+- Added an opt-in `includeSkillFolder` selector to the `skill` kind that bundles every text file in the skill folder into `skill.files` as a list of `{path, content}`, on both resync and push webhooks. Skills whose SKILL.md and folder files exceed 1MB in total are skipped with a warning.
+
+
+## 6.20.2 (2026-10-18)
+
+
+### Bug Fixes
+
+- Fix folder live events so unset repo branch matches the default branch only
+
+
+## 6.20.1 (2026-10-15)
+
+
+### Bug Fixes
+
+- Fix workflow incremental sync missing YAML edits by gating only on repository `pushed_since` and fetching all workflows for those repos. Workflow `updated_at` often does not change when `.github/workflows` files are committed, so filtering on it dropped real changes.
+
+
+## 6.20.0 (2026-10-14)
+
+
+### Features
+
+- Added Pull Request comment actions (create, edit, delete), enabling Port Workflows to manage GitHub Pull Request comments directly
+
+
+## 6.19.0 (2026-10-14)
+
+
+### Bug Fixes
+
+- Validate that a configured GitHub organization is accessible during PAT probe mode, preventing false positives for invalid or inaccessible orgs.
+
+### Features
+
+- Discover agent plugins at any directory depth and emit one plugin entity per plugin root.
+Repository-root plugins keep an empty path so existing identifiers stay stable, marketplace files no longer create
+entities on their own, and selector.maxDepth can cap how deep discovery searches
+- Add incremental sync for workflows. Incremental runs only list repositories pushed since the cursor
+(sorted by push time with early stop, or a `pushed:>=` search qualifier when `repoSearch` is set) and fetch workflows
+for those repositories
+
+
+## 6.18.3 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 6.18.2 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 6.18.1 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
 ## 6.18.0 (2026-10-11)
 
 

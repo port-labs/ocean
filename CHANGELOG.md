@@ -7,6 +7,118 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.2 (2026-10-26)
+
+
+### Bug Fixes
+
+- Bumped filelock to ^4.2.1 and required opentelemetry-api >=1.45.1 to fix GHSA-v4x8-3wr5-3wq8, GHSA-567q-5qvw-pf92, GHSA-9vhv-jxww-xfm5 and GHSA-xcq7-p3pf-p88h
+
+
+## 0.56.1 (2026-10-25)
+
+
+### Bug Fixes
+
+- Removed curl from the integration production images and upgraded Alpine libcurl and brotli-libs.
+
+
+## 0.56.0 (2026-10-25)
+
+
+### Features
+
+- Add workflow claim support for encrypted identity access tokens
+
+
+## 0.55.6 (2026-10-25)
+
+
+### Improvements
+
+- Bump fastapi to 0.162.0, prometheus-client to 0.26.0, virtualenv to 21.14.13, jq to 1.13.0, and black to 26.10.1.
+
+
+## 0.55.5 (2026-10-22)
+
+
+### Bug Fixes
+
+- port-ocean now requires certifi>=2026.10.19 (GHSA-6q48-6c7w-9gw2) and virtualenv>=21.14.9 (GHSA-5vjq-rrrf-7h2q, GHSA-vxj4-q4g9-crj7, GHSA-c978-59m8-c77v, GHSA-cw65-gx24-rc82, GHSA-43mp-35q3-x3fq). Integrations pick these up through the next Ocean version bump.
+
+
+## 0.55.4 (2026-10-22)
+
+
+### Bug Fixes
+
+- Force a rebuild of all integration images to solve potential vulnerability issues
+
+
+## 0.55.3 (2026-10-21)
+
+
+### Bug Fixes
+
+- Still register action executors on live-events (WEBHOOKS_ONLY) pods so completion webhooks (e.g. GitHub workflow_run finished) keep calling report_run_completed
+
+
+## 0.55.2 (2026-10-21)
+
+
+### Bug Fixes
+
+- Skip registering resync handlers and action executors, and disable HTTP log ingestion, when running test connection (probe)
+
+
+## 0.55.1 (2026-10-20)
+
+
+### Bug Fixes
+
+- Do not fail the probe CLI/CI job when the probe reports an external (third-party) failure; only internal failures exit non-zero
+
+
+## 0.55.0 (2026-10-20)
+
+
+### Features
+
+- Added sync-tier-aware backoff jitter to RetryTransport, auto-detected per pod from event-listener settings. Full/partial resync backs off more than incremental sync, and actions/live-events are unaffected, so background sync yields to user-facing work when they share rate-limit pressure on the same token. Configurable via RetryConfig.apply_sync_tier_jitter.
+
+
+## 0.54.1 (2026-10-18)
+
+
+### Improved Documentation
+
+- Update README and package metadata to reflect Port's AI software factory positioning
+
+
+## 0.54.0 (2026-10-13)
+
+
+### Features
+
+- Add opt-in live-event payload logging requiring both OCEAN__LIVE_EVENTS__PAYLOAD_LOGGING_ENABLED (default false) and org feature flag LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED. When gates are off, live-event timestamp logs use compact identifiers; when both gates are on, full masked payloads log at DEBUG for all timestamp types including finish.
+
+
+## 0.53.9 (2026-10-12)
+
+
+### Bug Fixes
+
+- Retry patch_integration(spec) while SaaS is updating; add get/upsert organization secret helpers
+
+
+## 0.53.8 (2026-10-12)
+
+
+### Features
+
+- Add organization secret create/update helpers and patch_integration(spec=) support
+
+
 ## 0.53.7 (2026-10-11)
 
 
