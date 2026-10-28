@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fixed legacy dispatch_workflow tracking missing GitHub runs created in the same second as the poll timestamp.
