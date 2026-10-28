@@ -67,9 +67,6 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         if options.include_discovered:
             params["includeDiscovered"] = "true"
         if options.entity_kinds:
-            # the spec declares filter[kind] as a single string, but repeated params are
-            # honoured (service+datastore returns 39 = 20+19) and a comma-joined value
-            # returns nothing, so the list form httpx repeats is the only one that works
             params["filter[kind]"] = options.entity_kinds
 
         pending_kinds = set(options.entity_kinds)
