@@ -68,7 +68,7 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         if options.entity_kinds:
             params["filter[kind]"] = options.entity_kinds
 
-        fetched_kinds: set[str] = set()
+        pending_kinds = set(options.entity_kinds)
         async for response in self._paginate_responses_by_offset(
             url,
             offset_param="page[offset]",
@@ -76,15 +76,12 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
             extra_params=params,
         ):
             entities = attach_schemas(response)
-            if options.entity_kinds:
-                fetched_kinds.update(
-                    entity["attributes"]["kind"] for entity in entities
-                )
+            if pending_kinds:
+                pending_kinds -= {entity["attributes"]["kind"] for entity in entities}
             yield entities
 
-        unmatched = [kind for kind in options.entity_kinds if kind not in fetched_kinds]
-        if unmatched:
+        if pending_kinds:
             logger.warning(
-                f"No catalog entities returned for kinds {unmatched}; Datadog matches "
-                "kind names exactly and returns an empty page for one it does not know"
+                f"No catalog entities returned for kinds {sorted(pending_kinds)}; Datadog "
+                "matches kind names exactly and returns an empty page for one it does not know"
             )
