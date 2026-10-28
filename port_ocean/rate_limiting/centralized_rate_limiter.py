@@ -1,4 +1,4 @@
-"""Cross-pod centralized rate limiter (Redis + no-op fallback).
+"""Cross-pod centralized rate limiter.
 
 Every pod of one integration shares a Redis hash per vendor pool. ``acquire``
 decides if this pod may send the next request. ``record_response`` replaces
@@ -26,7 +26,6 @@ from port_ocean.rate_limiting.pool_state import (
     pool_redis_key,
     pool_state_from_redis_hash,
     record_hash_mapping,
-    should_back_off_for_sync_tier,
     wait_seconds_until_quota_reset,
     wait_seconds_while_pool_blocked,
 )
@@ -36,16 +35,16 @@ from port_ocean.rate_limiting.redis_lua_scripts import RESERVE_POOL_SLOT_SCRIPT
 class CentralizedRateLimiter:
     """Shared vendor quota for every pod of one integration.
 
-    A Redis client of ``None`` allows every acquire and skips writes. Startup
-    does not install that when Redis cannot be reached. It leaves the limiter
-    unset so the integration keeps its local limiter.
+    Startup installs this only after Redis is connected. A dropped connection
+    during acquire allows that one request. A failed publish is logged and
+    ignored.
     """
 
     def __init__(
         self,
         org_id: str,
-        redis_client: RedisClient | None = None,
-        redis_connection_helper: RedisConnectionHelper | None = None,
+        redis_client: RedisClient,
+        redis_connection_helper: RedisConnectionHelper,
     ) -> None:
         """Store the Port org and the Redis client that holds every pool hash.
 
@@ -59,19 +58,13 @@ class CentralizedRateLimiter:
         self._reserve_sha: str | None = None
 
     async def initialize(self) -> None:
-        """Load the reserve script once. Skipped when this limiter has no Redis client."""
-        if self._redis is None:
-            return
+        """Load the reserve script once."""
         self._reserve_sha = await self._redis.script_load(RESERVE_POOL_SLOT_SCRIPT)
 
     async def close(self) -> None:
-        """Close Redis and drop the loaded script. Safe to call when setup never connected."""
-        if self._redis is not None:
-            await self._redis.aclose()
-            self._redis = None
-        if self._redis_connection_helper is not None:
-            self._redis_connection_helper.cleanup()
-            self._redis_connection_helper = None
+        """Close Redis and remove the temporary TLS files."""
+        await self._redis.aclose()
+        self._redis_connection_helper.cleanup()
         self._reserve_sha = None
 
     @staticmethod
@@ -89,9 +82,7 @@ class CentralizedRateLimiter:
         """The caller must wait ``wait_seconds`` and then acquire again.
 
         A negative wait is clamped to zero. The caller treats zero as "do not
-        sleep", so a clock skew cannot stall the pod. ``state`` is the snapshot
-        that produced this decision, kept so a status line can still describe
-        it if a later read of Redis fails.
+        sleep", so a clock skew cannot stall the pod.
         """
         return AcquireResult(
             decision=RateLimitAcquireDecision.BLOCK,
@@ -112,21 +103,9 @@ class CentralizedRateLimiter:
         """
         return pool_redis_key(self._org_id, ocean.config.integration.identifier, pool)
 
-    def _require_redis(self) -> RedisClient:
-        """Return the client. Raises when this limiter was built without one.
-
-        Callers that tolerate a missing client check ``_redis`` first.
-        Narrowing here is also what lets ``hgetall`` / ``evalsha`` type-check.
-        """
-        if self._redis is None:
-            raise RuntimeError(
-                "Centralized rate limiter Redis client is not initialized"
-            )
-        return self._redis
-
     async def _fetch_pool_state(self, key: str) -> PoolRedisState:
         """Read the pool hash. A missing key is an empty snapshot, not an error."""
-        raw_hash = await self._require_redis().hgetall(key)
+        raw_hash = await self._redis.hgetall(key)
         return pool_state_from_redis_hash(raw_hash)
 
     def _sleep_seconds_for_pool(self, state: PoolRedisState, now: float) -> float:
@@ -172,7 +151,7 @@ class CentralizedRateLimiter:
         # 0 is the stored value when the vendor sent no reset. It is not a future window.
         if state.reset_at <= now:
             return self._allow()
-        if should_back_off_for_sync_tier(tier, state):
+        if state.should_back_off(tier):
             return self._block(
                 wait_seconds_until_quota_reset(state.reset_at, now),
                 reason=RateLimitBlockReason.SYNC_TIER,
@@ -192,7 +171,7 @@ class CentralizedRateLimiter:
         reserve_sha = self._reserve_sha  # local so mypy sees str, not str | None
         if reserve_sha is None:
             raise RuntimeError("Centralized rate limiter Redis script is not loaded")
-        raw: list[Any] = await self._require_redis().evalsha(
+        raw: list[Any] = await self._redis.evalsha(
             reserve_sha,
             1,
             key,
@@ -226,12 +205,9 @@ class CentralizedRateLimiter:
     async def acquire(self, pool: str, tier: SyncTier) -> AcquireResult:
         """Return whether this pod may call the vendor for ``pool`` at ``tier``.
 
-        No Redis client allows the request. A dropped Redis connection does
-        too, so a Redis outage does not stall outbound calls. Any other error
-        propagates.
+        A dropped Redis connection allows the request, so a Redis outage does
+        not stall outbound calls. Any other error propagates.
         """
-        if self._redis is None:
-            return self._allow()
         try:
             return await self._acquire_with_redis(pool, tier)
         except Exception as error:
@@ -260,15 +236,12 @@ class CentralizedRateLimiter:
         holds every pod. A Redis failure is logged and ignored so publishing
         quota never fails the HTTP call.
         """
-        if self._redis is None:
-            return
-
         key = self._redis_key_for_pool(pool)
         now = time.time()
         mapping = record_hash_mapping(state, is_rate_limited=is_rate_limited, now=now)
         try:
             # redis-py's hset mapping type does not accept dict[str, str].
-            await self._require_redis().hset(key, mapping=cast(Any, mapping))
+            await self._redis.hset(key, mapping=cast(Any, mapping))
         except Exception as error:
             if is_redis_connection_error(error):
                 logger.warning(

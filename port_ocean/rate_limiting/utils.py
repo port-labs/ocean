@@ -30,12 +30,9 @@ def derive_sync_tier() -> SyncTier:
 def active_centralized_rate_limiter() -> CentralizedRateLimiter | None:
     """The process limiter, or None when startup did not connect to Redis.
 
-    A test Ocean may not have the attribute. ``getattr`` keeps that case on
-    the local limiter.
+    Callers then keep the local limiter.
     """
-    if not ocean.initialized:
-        return None
-    return getattr(ocean, "centralized_rate_limiter", None)
+    return ocean.centralized_rate_limiter
 
 
 def use_centralized_rate_limiting() -> bool:

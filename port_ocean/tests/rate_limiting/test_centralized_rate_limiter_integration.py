@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,7 +10,6 @@ from port_ocean.rate_limiting.models import (
     SyncTier,
 )
 from port_ocean.rate_limiting.utils import (
-    active_centralized_rate_limiter,
     await_centralized_rate_limit,
     record_centralized_rate_limit,
 )
@@ -84,12 +82,3 @@ async def test_await_centralized_rate_limit_sleeps_for_the_block() -> None:
 
     sleep.assert_awaited_once_with(125)
     assert mock_limiter.acquire.await_count == 2
-
-
-@pytest.mark.asyncio
-async def test_active_limiter_none_when_ocean_is_not_initialized() -> None:
-    with patch(
-        "port_ocean.rate_limiting.utils.ocean",
-        SimpleNamespace(initialized=False),
-    ):
-        assert active_centralized_rate_limiter() is None
