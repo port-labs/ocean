@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
     build_deployment_params,
+    build_file_project_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
@@ -27,6 +28,23 @@ def test_project_full_resync_keeps_visibility_params() -> None:
     assert build_project_list_params(
         {"min_access_level": 30, "active": True}, cursor=None
     ) == {"min_access_level": 30, "active": True}
+
+
+def test_file_project_full_resync_keeps_base_params() -> None:
+    assert build_file_project_params(
+        {"min_access_level": 30, "active": True}, cursor=None
+    ) == {"min_access_level": 30, "active": True}
+
+
+def test_file_project_incremental_sets_updated_after_and_order() -> None:
+    assert build_file_project_params(
+        {"min_access_level": 30, "active": True}, cursor=CURSOR
+    ) == {
+        "min_access_level": 30,
+        "active": True,
+        "order_by": "updated_at",
+        "updated_after": CURSOR.isoformat(),
+    }
 
 
 def test_project_incremental_sets_last_activity_after() -> None:

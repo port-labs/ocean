@@ -34,6 +34,17 @@ def build_project_list_params(
     return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
 
 
+def build_file_project_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for the file kind's ``GET /projects`` list."""
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(base_params, cursor)
+    if "updated_after" in params:
+        params["order_by"] = "updated_at"
+    return params
+
+
 def build_issue_params(
     options: IssueOptions,
     updated_after: Optional[datetime],

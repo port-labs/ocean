@@ -23,6 +23,10 @@ from gitlab.helpers.utils import (
     build_search_query,
     enrich_resources_with_project,
 )
+from gitlab.helpers.file_incremental import (
+    enrich_files_with_included,
+    resync_files_incremental,
+)
 from gitlab.helpers.incremental import (
     build_deployment_params,
     build_issue_params,
@@ -113,27 +117,6 @@ from gitlab.clients.options import IssueOptions
 
 RESYNC_MEMBERS_BATCH_SIZE = 10
 DEFAULT_MAX_CONCURRENT = 10
-
-
-async def _fetch_included_files_content(
-    client: Any,
-    project: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Fetch included files for a project. Returns dict of file_path -> content."""
-    project_path = project.get("path_with_namespace", str(project.get("id", "")))
-    ref = project.get("default_branch", "main")
-    included: dict[str, Any] = {}
-    for file_path in file_paths:
-        try:
-            content = await client.get_file_content(project_path, file_path, ref)
-            included[file_path] = content
-        except Exception:
-            logger.debug(
-                f"Could not fetch file '{file_path}' from {project_path}@{ref}"
-            )
-            included[file_path] = None
-    return included
 
 
 @ocean.on_start()
@@ -486,19 +469,26 @@ async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_T
             yield list(results)
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files. Incremental upserts files added or edited since the cursor."""
     client = create_gitlab_client()
-
     selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
-    include_only_active_groups = selector.include_only_active_groups
+    cursor = active_incremental_cursor()
+    if cursor is not None:
+        async for batch in resync_files_incremental(
+            client, selector, cursor, max_concurrent=DEFAULT_MAX_CONCURRENT
+        ):
+            yield batch
+        return
+
     included_files = selector.included_files or []
-
     search_path = selector.files.path
-    scope = "blobs"
     skip_parsing = selector.files.skip_parsing
+    include_only_active_groups = selector.include_only_active_groups
+    scope = "blobs"
     search_strategy = selector.files.search_strategy
-
     repositories = (
         selector.files.repos
         if hasattr(selector.files, "repos") and selector.files.repos
@@ -506,21 +496,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     files_cache: dict[str, dict[str, Any]] = {}
-
-    async def _enrich_and_yield(
-        files_batch: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        enriched_batch = await client._enrich_files_with_repos(files_batch)
-        if included_files:
-            for file_entity in enriched_batch:
-                repo = file_entity.get("repo", {})
-                repo_key = str(repo.get("id", repo.get("path_with_namespace", "")))
-                if repo_key not in files_cache:
-                    files_cache[repo_key] = await _fetch_included_files_content(
-                        client, repo, included_files
-                    )
-                file_entity["__includedFiles"] = files_cache[repo_key]
-        return enriched_batch
 
     params = (
         build_project_params(include_only_active_projects=include_only_active_groups)
@@ -536,7 +511,9 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=params,
         strategy=search_strategy,
     ):
-        enriched_batch = await _enrich_and_yield(files_batch)
+        enriched_batch = await enrich_files_with_included(
+            client, files_batch, included_files, files_cache
+        )
         if enriched_batch:
             yield enriched_batch
 
