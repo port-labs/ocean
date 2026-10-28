@@ -112,7 +112,7 @@ resources:
   - kind: catalogEntity
     selector:
       query: 'true'
-      includeDiscovered: 'false'
+      includeDiscovered: false
     port:
       entity:
         mappings:
