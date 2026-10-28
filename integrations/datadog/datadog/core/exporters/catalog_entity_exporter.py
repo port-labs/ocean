@@ -66,8 +66,6 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         if options.include_discovered:
             params["includeDiscovered"] = "true"
         if options.entity_kinds:
-            # httpx repeats the param once per value, which is the only form the
-            # endpoint accepts: "service,datastore" as a single value matches nothing
             params["filter[kind]"] = options.entity_kinds
 
         fetched_kinds: set[str] = set()
