@@ -83,7 +83,7 @@ async def test_get_catalog_entities_attaches_schemas(
 
 
 @pytest.mark.asyncio
-async def test_get_catalog_entities_without_a_schema(
+async def test_get_catalog_entities_without_a_usable_schema(
     mock_datadog_client: DatadogClient,
 ) -> None:
     page: dict[str, list[dict[str, Any]]] = {
@@ -95,7 +95,15 @@ async def test_get_catalog_entities_without_a_schema(
                 "attributes": {"kind": "queue", "name": "q"},
                 "relationships": {},
             },
-        ]
+            {
+                "id": "3",
+                "type": "entity",
+                "attributes": {"kind": "service", "name": "s"},
+                "relationships": {"schema": {"data": None}},
+            },
+            entity("4", "api"),
+        ],
+        "included": [],
     }
 
     with patch.object(
@@ -108,7 +116,7 @@ async def test_get_catalog_entities_without_a_schema(
         async for batch in exporter.get_paginated_resources(ListCatalogEntityOptions()):
             entities.extend(batch)
 
-        assert len(entities) == 2
+        assert len(entities) == 4
         assert all(SCHEMA_ENRICHMENT_KEY not in e for e in entities)
 
 

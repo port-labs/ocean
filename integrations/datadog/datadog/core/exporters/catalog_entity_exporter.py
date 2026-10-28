@@ -38,9 +38,10 @@ def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
 
     entities: list[dict[str, Any]] = response["data"]
     for entity in entities:
-        schema_relation = entity.get("relationships", {}).get("schema")
-        if schema_relation:
-            entity[SCHEMA_ENRICHMENT_KEY] = schemas[schema_relation["data"]["id"]]
+        schema_relation = entity.get("relationships", {}).get("schema") or {}
+        schema_id = (schema_relation.get("data") or {}).get("id")
+        if schema_id in schemas:
+            entity[SCHEMA_ENRICHMENT_KEY] = schemas[schema_id]
 
     without_schema = [e["id"] for e in entities if SCHEMA_ENRICHMENT_KEY not in e]
     if without_schema:
