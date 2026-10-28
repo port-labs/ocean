@@ -1,4 +1,4 @@
-"""Cross-pod centralized rate limiter (Redis + no-op fallback).
+"""Cross-pod centralized rate limiter.
 
 Every pod of one integration shares a Redis hash per vendor pool. ``acquire``
 decides if this pod may send the next request. ``record_response`` replaces
@@ -14,7 +14,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.consumers.redis_client import RedisClient
 from port_ocean.consumers.redis_connection import RedisConnectionHelper
 from port_ocean.consumers.redis_stream_utils import is_redis_connection_error
-from port_ocean.rate_limiting.constants import WAIT_STATUS_INTERVAL_SECONDS
 from port_ocean.rate_limiting.models import (
     AcquireResult,
     CentralizedRateLimitState,
@@ -27,7 +26,6 @@ from port_ocean.rate_limiting.pool_state import (
     pool_redis_key,
     pool_state_from_redis_hash,
     record_hash_mapping,
-    should_back_off_for_sync_tier,
     wait_seconds_until_quota_reset,
     wait_seconds_while_pool_blocked,
 )
@@ -37,16 +35,16 @@ from port_ocean.rate_limiting.redis_lua_scripts import RESERVE_POOL_SLOT_SCRIPT
 class CentralizedRateLimiter:
     """Shared vendor quota for every pod of one integration.
 
-    A Redis client of ``None`` allows every acquire and skips writes. Startup
-    does not install that when Redis cannot be reached. It leaves the limiter
-    unset so the integration keeps its local limiter.
+    Startup installs this only after Redis is connected. A dropped connection
+    during acquire allows that one request. A failed publish is logged and
+    ignored.
     """
 
     def __init__(
         self,
         org_id: str,
-        redis_client: RedisClient | None = None,
-        redis_connection_helper: RedisConnectionHelper | None = None,
+        redis_client: RedisClient,
+        redis_connection_helper: RedisConnectionHelper,
     ) -> None:
         """Store the Port org and the Redis client that holds every pool hash.
 
@@ -58,24 +56,16 @@ class CentralizedRateLimiter:
         self._redis = redis_client
         self._redis_connection_helper = redis_connection_helper
         self._reserve_sha: str | None = None
-        self._status_log_at: dict[str, float] = {}
 
     async def initialize(self) -> None:
-        """Load the reserve script once. Skipped when this limiter has no Redis client."""
-        if self._redis is None:
-            return
+        """Load the reserve script once."""
         self._reserve_sha = await self._redis.script_load(RESERVE_POOL_SLOT_SCRIPT)
 
     async def close(self) -> None:
-        """Close Redis and drop the loaded script. Safe to call when setup never connected."""
-        if self._redis is not None:
-            await self._redis.aclose()
-            self._redis = None
-        if self._redis_connection_helper is not None:
-            self._redis_connection_helper.cleanup()
-            self._redis_connection_helper = None
+        """Close Redis and remove the temporary TLS files."""
+        await self._redis.aclose()
+        self._redis_connection_helper.cleanup()
         self._reserve_sha = None
-        self._status_log_at = {}
 
     @staticmethod
     def _allow() -> AcquireResult:
@@ -92,9 +82,7 @@ class CentralizedRateLimiter:
         """The caller must wait ``wait_seconds`` and then acquire again.
 
         A negative wait is clamped to zero. The caller treats zero as "do not
-        sleep", so a clock skew cannot stall the pod. ``state`` is the snapshot
-        that produced this decision, kept so a status line can still describe
-        it if a later read of Redis fails.
+        sleep", so a clock skew cannot stall the pod.
         """
         return AcquireResult(
             decision=RateLimitAcquireDecision.BLOCK,
@@ -115,21 +103,9 @@ class CentralizedRateLimiter:
         """
         return pool_redis_key(self._org_id, ocean.config.integration.identifier, pool)
 
-    def _require_redis(self) -> RedisClient:
-        """Return the client. Raises when this limiter was built without one.
-
-        Callers that tolerate a missing client check ``_redis`` first.
-        Narrowing here is also what lets ``hgetall`` / ``evalsha`` type-check.
-        """
-        if self._redis is None:
-            raise RuntimeError(
-                "Centralized rate limiter Redis client is not initialized"
-            )
-        return self._redis
-
     async def _fetch_pool_state(self, key: str) -> PoolRedisState:
         """Read the pool hash. A missing key is an empty snapshot, not an error."""
-        raw_hash = await self._require_redis().hgetall(key)
+        raw_hash = await self._redis.hgetall(key)
         return pool_state_from_redis_hash(raw_hash)
 
     def _sleep_seconds_for_pool(self, state: PoolRedisState, now: float) -> float:
@@ -175,7 +151,7 @@ class CentralizedRateLimiter:
         # 0 is the stored value when the vendor sent no reset. It is not a future window.
         if state.reset_at <= now:
             return self._allow()
-        if should_back_off_for_sync_tier(tier, state):
+        if state.should_back_off(tier):
             return self._block(
                 wait_seconds_until_quota_reset(state.reset_at, now),
                 reason=RateLimitBlockReason.SYNC_TIER,
@@ -195,7 +171,7 @@ class CentralizedRateLimiter:
         reserve_sha = self._reserve_sha  # local so mypy sees str, not str | None
         if reserve_sha is None:
             raise RuntimeError("Centralized rate limiter Redis script is not loaded")
-        raw: list[Any] = await self._require_redis().evalsha(
+        raw: list[Any] = await self._redis.evalsha(
             reserve_sha,
             1,
             key,
@@ -229,12 +205,9 @@ class CentralizedRateLimiter:
     async def acquire(self, pool: str, tier: SyncTier) -> AcquireResult:
         """Return whether this pod may call the vendor for ``pool`` at ``tier``.
 
-        No Redis client allows the request. A dropped Redis connection does
-        too, so a Redis outage does not stall outbound calls. Any other error
-        propagates.
+        A dropped Redis connection allows the request, so a Redis outage does
+        not stall outbound calls. Any other error propagates.
         """
-        if self._redis is None:
-            return self._allow()
         try:
             return await self._acquire_with_redis(pool, tier)
         except Exception as error:
@@ -246,89 +219,6 @@ class CentralizedRateLimiter:
                 return self._allow()
             raise
 
-    def _claim_status_log(self, pool: str, now: float) -> bool:
-        """True for the first waiter in a pool during each status interval.
-
-        Check and set happen before any await, so concurrent waiters on one
-        event loop collapse to a single line per pool per minute.
-        """
-        last = self._status_log_at.get(pool)
-        if last is not None and now - last < WAIT_STATUS_INTERVAL_SECONDS:
-            return False
-        self._status_log_at[pool] = now
-        return True
-
-    async def log_wait_status(
-        self,
-        pool: str,
-        tier: SyncTier,
-        result: AcquireResult,
-        *,
-        sleep_remaining_seconds: float,
-    ) -> None:
-        """Log the live pool once per minute while callers sleep out a block.
-
-        The sleep itself still lasts for the original ``wait_seconds``. This
-        read does not admit a request and does not shorten that sleep. The
-        line carries the reason the sleep started and what admission would
-        do with the hash as it stands now.
-        """
-        now = time.time()
-        if not self._claim_status_log(pool, now):
-            return
-
-        state = self._state_from_acquire_result(result)
-        snapshot = "decision"
-        if self._redis is not None:
-            try:
-                state = await self._fetch_pool_state(self._redis_key_for_pool(pool))
-                snapshot = "fresh"
-            except Exception as error:
-                logger.warning(
-                    "Centralized rate limiter status read failed; logging the decision snapshot",
-                    error=str(error),
-                )
-
-        ratio = round(state.remaining / state.limit, 3) if state.limit else None
-        reset_in_seconds = round(state.reset_at - now, 3) if state.reset_at else None
-        fields = {
-            "pool": pool,
-            "tier": tier,
-            "reason": result.reason,
-            "sleep_remaining_seconds": round(sleep_remaining_seconds, 3),
-            "decision_wait_seconds": round(result.wait_seconds, 3),
-            "remaining": state.remaining,
-            "limit": state.limit,
-            "ratio": ratio,
-            "reset_at": state.reset_at or None,
-            "reset_in_seconds": reset_in_seconds,
-            "blocked_until": state.blocked_until or None,
-            "fresh_admission": self._fresh_admission_label(state, tier, now),
-            "snapshot": snapshot,
-        }
-        detail = " ".join(f"{name}={value}" for name, value in fields.items())
-        logger.bind(**fields).info(f"Centralized rate limiter waiting {detail}")
-
-    def _fresh_admission_label(
-        self, state: PoolRedisState, tier: SyncTier, now: float
-    ) -> str:
-        """What a new acquire would do with this snapshot. Does not reserve."""
-        fresh = self._admission_from_pool(state, tier, now)
-        if fresh is None:
-            return "reserve"
-        if fresh.decision == RateLimitAcquireDecision.ALLOW:
-            return "allow"
-        return f"block:{fresh.reason}"
-
-    @staticmethod
-    def _state_from_acquire_result(result: AcquireResult) -> PoolRedisState:
-        return PoolRedisState(
-            limit=result.limit,
-            remaining=result.remaining or 0,
-            reset_at=result.reset_at or 0.0,
-            blocked_until=result.blocked_until or 0.0,
-        )
-
     async def record_response(
         self,
         pool: str,
@@ -336,24 +226,22 @@ class CentralizedRateLimiter:
         *,
         is_rate_limited: bool = False,
     ) -> None:
-        """Replace the pool hash with the vendor headers from this response.
+        """Publish this response onto the pool hash.
 
-        One ``HSET`` writes remaining, limit, reset_at, blocked_until, and
-        updated_at together. The hash has no TTL, so the last response stays
-        until a later one overwrites it. ``is_rate_limited`` sets
+        One ``HSET`` writes the quota fields this response actually carried,
+        plus ``blocked_until`` and ``updated_at``. Missing remaining, limit,
+        or reset_at are left untouched. The hash has no TTL, so the last
+        write stays until a later one updates it. ``is_rate_limited`` sets
         ``blocked_until`` when the caller did not pass one; that is how a 429
         holds every pod. A Redis failure is logged and ignored so publishing
         quota never fails the HTTP call.
         """
-        if self._redis is None:
-            return
-
         key = self._redis_key_for_pool(pool)
         now = time.time()
         mapping = record_hash_mapping(state, is_rate_limited=is_rate_limited, now=now)
         try:
             # redis-py's hset mapping type does not accept dict[str, str].
-            await self._require_redis().hset(key, mapping=cast(Any, mapping))
+            await self._redis.hset(key, mapping=cast(Any, mapping))
         except Exception as error:
             if is_redis_connection_error(error):
                 logger.warning(

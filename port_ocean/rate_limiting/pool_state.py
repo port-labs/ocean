@@ -37,6 +37,28 @@ class PoolRedisState:
     reset_at: float = 0.0
     blocked_until: float = 0.0
 
+    def should_back_off(self, tier: SyncTier) -> bool:
+        """Whether this tier should wait out the current vendor window.
+
+        Full resync (``LOW``) backs off at or below 25% remaining. Incremental
+        (``MEDIUM``) backs off at or below 10%. Live events and actions
+        (``HIGH``) back off only when remaining is empty. No limit, or a limit
+        of 0, cannot form a ratio, so those snapshots do not back off.
+
+        ``reset_at`` is ignored here. The caller allows an expired window before
+        asking this question.
+        """
+        if self.limit is None or self.limit <= 0:
+            return False
+        ratio = self.remaining / self.limit
+        if tier == SyncTier.LOW:
+            return ratio <= LOW_REMAINING_RATIO_CEILING
+        if tier == SyncTier.MEDIUM:
+            return ratio <= MEDIUM_REMAINING_RATIO_CEILING
+        if tier == SyncTier.HIGH:
+            return self.remaining <= 0
+        return False
+
 
 def decode_redis_hash(raw: Mapping[Any, Any]) -> dict[str, str]:
     """Turn a Redis hash into ``str`` keys and values.
@@ -113,11 +135,13 @@ def record_hash_mapping(
     is_rate_limited: bool,
     now: float,
 ) -> dict[str, str]:
-    """Every hash field for one ``HSET``, so a publish cannot tear.
+    """Hash fields for one ``HSET``.
 
-    Redis stores the values as strings. A missing remaining, limit, or
-    reset_at is written as ``0``. ``blocked_until`` from the caller wins.
-    When the caller omits it, a rate-limited response blocks for
+    Redis stores the values as strings. ``HSET`` updates only the fields in
+    this mapping, so a missing remaining, limit, or reset_at is left out.
+    A 429 that only knows ``blocked_until`` then keeps the last good quota
+    snapshot. ``blocked_until`` from the caller wins. When the caller omits
+    it, a rate-limited response blocks for
     ``DEFAULT_RATE_LIMITED_BLOCK_SECONDS``; any other response writes ``0``
     and clears a previous 429 hold for every pod.
     """
@@ -127,33 +151,14 @@ def record_hash_mapping(
             now + DEFAULT_RATE_LIMITED_BLOCK_SECONDS if is_rate_limited else 0.0
         )
 
-    return {
-        "remaining": str(state.remaining if state.remaining is not None else 0),
-        "limit": str(state.limit if state.limit is not None else 0),
-        "reset_at": str(state.reset_at if state.reset_at is not None else 0),
+    mapping = {
         "blocked_until": str(blocked_until),
         "updated_at": str(now),
     }
-
-
-def should_back_off_for_sync_tier(tier: SyncTier, state: PoolRedisState) -> bool:
-    """Whether this tier should wait out the current vendor window.
-
-    Full resync (``LOW``) backs off at or below 25% remaining. Incremental
-    (``MEDIUM``) backs off at or below 10%. Live events and actions
-    (``HIGH``) back off only when remaining is empty. No limit, or a limit
-    of 0, cannot form a ratio, so those snapshots do not back off.
-
-    ``reset_at`` is ignored here. The caller allows an expired window before
-    asking this question.
-    """
-    if state.limit is None or state.limit <= 0:
-        return False
-    ratio = state.remaining / state.limit
-    if tier == SyncTier.LOW:
-        return ratio <= LOW_REMAINING_RATIO_CEILING
-    if tier == SyncTier.MEDIUM:
-        return ratio <= MEDIUM_REMAINING_RATIO_CEILING
-    if tier == SyncTier.HIGH:
-        return state.remaining <= 0
-    return False
+    if state.remaining is not None:
+        mapping["remaining"] = str(state.remaining)
+    if state.limit is not None:
+        mapping["limit"] = str(state.limit)
+    if state.reset_at is not None:
+        mapping["reset_at"] = str(state.reset_at)
+    return mapping

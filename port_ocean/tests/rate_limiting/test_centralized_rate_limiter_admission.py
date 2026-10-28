@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, MagicMock
+
 from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
 from port_ocean.rate_limiting.models import (
     RateLimitAcquireDecision,
@@ -10,7 +12,7 @@ NOW = 1_700_000_000.0
 
 
 def _limiter() -> CentralizedRateLimiter:
-    return CentralizedRateLimiter("org-test")
+    return CentralizedRateLimiter("org-test", AsyncMock(), MagicMock())
 
 
 def test_expired_quota_allows_even_when_remaining_is_zero() -> None:

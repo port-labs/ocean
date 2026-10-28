@@ -5,7 +5,6 @@ from port_ocean.rate_limiting.models import SyncTier
 from port_ocean.rate_limiting.pool_state import (
     pool_state_from_redis_hash,
     record_hash_mapping,
-    should_back_off_for_sync_tier,
     wait_seconds_until_quota_reset,
     wait_seconds_while_pool_blocked,
 )
@@ -20,14 +19,14 @@ def test_tier_low_backs_off_when_ratio_at_ceiling() -> None:
     state = pool_state_from_redis_hash(
         {b"remaining": b"25", b"limit": b"100"},
     )
-    assert should_back_off_for_sync_tier(SyncTier.LOW, state) is True
+    assert state.should_back_off(SyncTier.LOW) is True
 
 
 def test_tier_high_allows_while_remaining_positive() -> None:
     state = pool_state_from_redis_hash(
         {b"remaining": b"1", b"limit": b"100"},
     )
-    assert should_back_off_for_sync_tier(SyncTier.HIGH, state) is False
+    assert state.should_back_off(SyncTier.HIGH) is False
 
 
 def test_wait_seconds_while_pool_blocked() -> None:
@@ -48,6 +47,22 @@ def test_record_hash_mapping_sets_block_on_rate_limited() -> None:
         now=now,
     )
     assert float(mapping["blocked_until"]) > now
+    assert mapping["remaining"] == "0"
+    assert mapping["limit"] == "100"
+    assert "reset_at" not in mapping
+
+
+def test_record_hash_mapping_keeps_existing_quota_when_429_has_no_headers() -> None:
+    mapping = record_hash_mapping(
+        CentralizedRateLimitState(blocked_until=1360.0),
+        is_rate_limited=True,
+        now=1000.0,
+    )
+    assert mapping["blocked_until"] == "1360.0"
+    assert mapping["updated_at"] == "1000.0"
+    assert "remaining" not in mapping
+    assert "limit" not in mapping
+    assert "reset_at" not in mapping
 
 
 def test_wait_seconds_until_quota_reset() -> None:

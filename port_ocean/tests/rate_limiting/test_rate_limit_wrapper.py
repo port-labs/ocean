@@ -96,7 +96,9 @@ async def test_skips_local_acquire_when_centralized_active() -> None:
 
 
 @pytest.mark.asyncio
-async def test_record_rate_limit_response_skips_local_on_transport_retry() -> None:
+async def test_record_rate_limit_response_uses_local_limiter_when_redis_is_off() -> (
+    None
+):
     wrapper = _StubWrapper()
     response = httpx.Response(200)
     with patch(
@@ -104,19 +106,9 @@ async def test_record_rate_limit_response_skips_local_on_transport_retry() -> No
         return_value=False,
     ):
         await wrapper.record_rate_limit_response(response)
-    wrapper.local_ingest.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_record_rate_limit_response_uses_local_with_resource_context() -> None:
-    wrapper = _StubWrapper()
-    response = httpx.Response(200)
-    with patch(
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-        return_value=False,
-    ):
         await wrapper.record_rate_limit_response(response, context="/repos")
-    wrapper.local_ingest.assert_awaited_once()
+    assert wrapper.local_ingest.await_args_list[0].args == (response, "")
+    assert wrapper.local_ingest.await_args_list[1].args == (response, "/repos")
 
 
 @pytest.mark.asyncio
@@ -149,9 +141,6 @@ def test_quota_methods_noop_when_centralized() -> None:
 
 
 def test_use_centralized_requires_active_limiter() -> None:
-    app = SimpleNamespace(
-        centralized_rate_limiter=object(),
-        initialized=True,
-    )
+    app = SimpleNamespace(centralized_rate_limiter=object())
     with patch("port_ocean.rate_limiting.utils.ocean", app):
         assert use_centralized_rate_limiting() is True
