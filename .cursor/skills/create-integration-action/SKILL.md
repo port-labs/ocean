@@ -35,8 +35,7 @@ Add an action executor to an existing Ocean integration. To build a whole new in
 Everything Port-facing goes through `ocean.port_client`. The action methods are mixed in from
 `port_ocean/clients/port/mixins/actions_and_workflow_runs.py` — a short file, and the source of
 truth for their current signatures. Read it before writing `execute`; the framework docstrings
-and `docs/framework-guides/docs/framework/features/actions.md` predate it and still describe an
-older API.
+predate it and still describe an older API.
 
 | Method                                  | What it is for                                             |
 | --------------------------------------- | ---------------------------------------------------------- |
@@ -522,5 +521,3 @@ and this skill trails it.
 - Simplest sync example: `integrations/github/github/actions/external_custom_properties/update_repo_external_custom_properties_executor.py`
 - Richest example (polling, partition key, dual tracking modes):
   `integrations/github/github/actions/dispatch_workflow_executor.py`
-- Framework docs: `docs/framework-guides/docs/framework/features/actions.md` — predates the
-  current client facade, so treat the source as authoritative where they disagree
