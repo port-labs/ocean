@@ -383,16 +383,36 @@ def main() -> int:
         # Ephemeral listen port so concurrent / leftover sails do not collide.
         sail_port = str(18000 + (uuid.uuid4().int % 1000))
 
-        cmd = [
-            sys.executable,
-            "-m",
-            "port_ocean.cli.cli",
-            "sail",
-            str(integration_path),
-            "--once",
-            "--port",
-            sail_port,
-        ]
+        # `python -m port_ocean.cli.cli` only imports the module; the console
+        # script entry point is what calls cli_start(). Do not resolve()
+        # sys.executable — on macOS that can leave the venv and miss `ocean`.
+        ocean_bin = Path(sys.executable).parent / "ocean"
+        if not ocean_bin.is_file():
+            ocean_bin = Path(sys.prefix) / "bin" / "ocean"
+        if ocean_bin.is_file():
+            cmd = [
+                str(ocean_bin),
+                "sail",
+                str(integration_path),
+                "--once",
+                "--port",
+                sail_port,
+            ]
+        else:
+            cmd = [
+                sys.executable,
+                "-c",
+                (
+                    "import re, sys; from port_ocean.cli.cli import cli_start; "
+                    "sys.argv[0] = re.sub(r'(-script\\.pyw|\\.exe)?$', '', sys.argv[0]); "
+                    "raise SystemExit(cli_start())"
+                ),
+                "sail",
+                str(integration_path),
+                "--once",
+                "--port",
+                sail_port,
+            ]
 
         print(f"running: {' '.join(cmd)}")
         proc = subprocess.run(
