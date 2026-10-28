@@ -5,12 +5,7 @@ from contextlib import suppress
 import httpx
 import pytest
 
-from rate_limiter import (
-    PAUSE_AT_UTILIZATION,
-    RateLimitInfo,
-    TerraformRateLimiter,
-    budget_key,
-)
+from rate_limiter import TerraformRateLimiter, budget_key
 
 
 class TestBudgetKey:
@@ -19,12 +14,23 @@ class TestBudgetKey:
         [
             ("/api/v2/workspaces/ws-b6PJa69T989mRSNy/runs", "workspaces/*/runs"),
             ("/api/v2/workspaces/ws-QmFPKBwJErJ3LeQr/runs", "workspaces/*/runs"),
+            ("/api/v2/runs/run-CZcmD7eagjhyXavN", "runs/*"),
+            (
+                "/api/v2/state-versions/sv-g4rqST72reoHjo1P/outputs",
+                "state-versions/*/outputs",
+            ),
             ("/api/v2/account/details", "account/details"),
             # A resource name that contains a dash is not an id.
             ("/api/v2/state-versions", "state-versions"),
             (
                 "/api/v2/organizations/Ocean-Test/workspaces",
                 "organizations/Ocean-Test/workspaces",
+            ),
+            # Only the prefixes HCP Terraform issues collapse, so an organization whose
+            # name happens to look like an id keeps its own key.
+            (
+                "/api/v2/organizations/app-production1/projects",
+                "organizations/app-production1/projects",
             ),
         ],
     )
@@ -41,26 +47,16 @@ class TestBudgetKey:
 
         assert first == second
 
-
-class TestRateLimitInfo:
-    def test_utilization_rises_as_budget_drains(self) -> None:
-        full = RateLimitInfo(limit=30, remaining=30, reset_at=0)
-        nearly_spent = RateLimitInfo(limit=30, remaining=3, reset_at=0)
-
-        assert full.utilization_percentage == 0.0
-        assert nearly_spent.utilization_percentage == 90.0
-        assert nearly_spent.utilization_percentage >= PAUSE_AT_UTILIZATION
-
-    def test_seconds_until_reset_never_negative(self) -> None:
-        past = RateLimitInfo(limit=30, remaining=0, reset_at=time.monotonic() - 5)
-
-        assert past.seconds_until_reset == 0.0
-
-    def test_unknown_limit_reports_no_utilization(self) -> None:
-        assert (
-            RateLimitInfo(limit=0, remaining=0, reset_at=0).utilization_percentage
-            == 0.0
+    def test_state_file_downloads_share_one_key(self) -> None:
+        """Archivist paths are unique per object and must not grow the lock map."""
+        first = budget_key(
+            httpx.URL("https://archivist.terraform.io/v1/object/dmF1bHQ6djM6YWFh")
         )
+        second = budget_key(
+            httpx.URL("https://archivist.terraform.io/v1/object/dmF1bHQ6djM6YmJi")
+        )
+
+        assert first == second == "non-api"
 
 
 def headers(limit: str, remaining: str, reset: str) -> httpx.Headers:
@@ -106,6 +102,23 @@ class TestUpdate:
 
         assert limiter._budgets == {}
 
+    def test_does_not_raise_remaining_inside_a_live_window(self) -> None:
+        """A response that left the server before the drain must not refill the count."""
+        limiter = TerraformRateLimiter()
+        limiter.update(headers("30", "1", "14"), "workspaces/*/runs")
+
+        limiter.update(headers("30", "28", "14"), "workspaces/*/runs")
+
+        assert limiter._budgets["workspaces/*/runs"].remaining == 1
+
+    def test_accepts_a_higher_count_once_the_window_has_passed(self) -> None:
+        limiter = TerraformRateLimiter()
+        limiter.update(headers("30", "1", "0"), "workspaces/*/runs")
+
+        limiter.update(headers("30", "28", "14"), "workspaces/*/runs")
+
+        assert limiter._budgets["workspaces/*/runs"].remaining == 28
+
 
 class TestBudget:
     @pytest.mark.asyncio
@@ -128,6 +141,17 @@ class TestBudget:
             pass
 
         assert time.monotonic() - started >= 0.2
+
+    @pytest.mark.asyncio
+    async def test_does_not_pause_once_the_window_has_passed(self) -> None:
+        limiter = TerraformRateLimiter()
+        limiter.update(headers("30", "0", "0"), "workspaces/*/runs")
+
+        started = time.monotonic()
+        async with limiter.budget("workspaces/*/runs"):
+            pass
+
+        assert time.monotonic() - started < 0.1
 
     @pytest.mark.asyncio
     async def test_a_spent_budget_does_not_apply_to_another_key(self) -> None:
@@ -173,3 +197,21 @@ class TestBudget:
             pass
 
         assert limiter._budgets["workspaces/*/runs"].remaining == 9
+
+    @pytest.mark.asyncio
+    async def test_spends_the_refreshed_budget_after_a_pause(self) -> None:
+        """A response landing during the pause is what the waiter should spend from."""
+        limiter = TerraformRateLimiter()
+        limiter.update(headers("30", "1", "0.2"), "workspaces/*/runs")
+
+        async def refresh_mid_pause() -> None:
+            await asyncio.sleep(0.05)
+            limiter._budgets["workspaces/*/runs"].reset_at = time.monotonic()
+            limiter.update(headers("30", "30", "14"), "workspaces/*/runs")
+
+        refreshing = asyncio.create_task(refresh_mid_pause())
+        async with limiter.budget("workspaces/*/runs"):
+            pass
+        await refreshing
+
+        assert limiter._budgets["workspaces/*/runs"].remaining == 29

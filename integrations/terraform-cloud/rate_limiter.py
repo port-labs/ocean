@@ -1,5 +1,4 @@
 import asyncio
-import re
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -9,12 +8,12 @@ from typing import AsyncIterator
 import httpx
 from loguru import logger
 
+API_PREFIX = "/api/v2/"
 MAX_CONCURRENT_REQUESTS = 10
-# Pause once the window is nearly spent rather than at zero, so in-flight requests do
-# not tip it over while the budget is being read.
-PAUSE_AT_UTILIZATION = 90.0
-# Resource ids look like ws-b6PJa69T989mRSNy; resource names like state-versions do not.
-RESOURCE_ID = re.compile(r"^[a-z]{2,4}-[A-Za-z0-9]{8,}$")
+# Headroom for the requests already in flight when the budget is read.
+PAUSE_AT_REMAINING = 3
+# The only ids this integration sends. Organization segments are names, not ids.
+RESOURCE_ID_PREFIXES = ("ws-", "run-", "sv-")
 
 
 @dataclass
@@ -27,30 +26,31 @@ class RateLimitInfo:
     def seconds_until_reset(self) -> float:
         return max(0.0, self.reset_at - time.monotonic())
 
-    @property
-    def utilization_percentage(self) -> float:
-        if self.limit <= 0:
-            return 0.0
-        used = self.limit - self.remaining
-        return max(0.0, min(100.0, (used / self.limit) * 100.0))
-
 
 def budget_key(url: httpx.URL) -> str:
-    """Collapse resource ids so every workspace's runs share one budget."""
-    segments = url.path.removeprefix("/api/v2/").strip("/").split("/")
+    """Terraform counts a budget per endpoint, not per resource, so resource ids
+    collapse and every workspace's runs share one key."""
+    if not url.path.startswith(API_PREFIX):
+        # Archivist paths are unique per object; one key keeps the lock map bounded.
+        return "non-api"
+
+    segments = url.path.removeprefix(API_PREFIX).strip("/").split("/")
     return "/".join(
-        "*" if RESOURCE_ID.match(segment) else segment for segment in segments
+        "*" if segment.startswith(RESOURCE_ID_PREFIXES) else segment
+        for segment in segments
     )
 
 
 class TerraformRateLimiter:
     """Paces requests from HCP Terraform's own rate limit headers.
 
-    A fixed requests-per-second limiter cannot stay inside this API's budget: the limit
-    is 30 requests, but x-ratelimit-reset reports a window of roughly 14 seconds rather
-    than 1, and each resource carries its own budget. Measured on Ocean-Test
-    2026-10-21: 120 serial requests to one workspace's runs drained
-    x-ratelimit-remaining from 27 to 0 in 12s, then returned 429 until the window reset.
+    The budget is 30 requests per window, and x-ratelimit-reset puts that window at
+    roughly 14 seconds. A per-second limiter cannot express that: the 25 per second this
+    replaces spends a whole window in just over a second.
+
+    One budget covers an endpoint shape rather than an individual resource, so budget_key
+    collapses resource ids. Draining one workspace's runs also returns 429 on a second
+    workspace's runs, while account/details is unaffected.
     """
 
     def __init__(self, max_concurrent: int = MAX_CONCURRENT_REQUESTS) -> None:
@@ -67,7 +67,7 @@ class TerraformRateLimiter:
             # per key, so a spent resource does not stall another resource's waiters.
             async with self._locks[key]:
                 info = self._budgets.get(key)
-                if info and info.utilization_percentage >= PAUSE_AT_UTILIZATION:
+                if info and info.remaining <= PAUSE_AT_REMAINING:
                     sleep_for = info.seconds_until_reset
                     if sleep_for > 0:
                         logger.warning(
@@ -75,6 +75,8 @@ class TerraformRateLimiter:
                             f"({info.remaining}/{info.limit}), pausing {sleep_for:.2f}s"
                         )
                         await asyncio.sleep(sleep_for)
+                        # A response may have refreshed the budget while we paused.
+                        info = self._budgets.get(key)
                 if info:
                     # Spend it now so concurrent callers see the drain before the
                     # response arrives to correct the count.
@@ -102,6 +104,12 @@ class TerraformRateLimiter:
                 f"limit={limit} remaining={remaining} reset={reset}"
             )
             return
+
+        known = self._budgets.get(key)
+        if known and known.seconds_until_reset > 0:
+            # While the window is live the count only falls: a response that left the
+            # server before the drain cannot refill it.
+            info.remaining = min(known.remaining, info.remaining)
 
         self._budgets[key] = info
         logger.debug(

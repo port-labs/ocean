@@ -53,7 +53,8 @@ def build(
 
 class TestRateLimitedTransport:
     @pytest.mark.asyncio
-    async def test_acquires_once_per_request(self) -> None:
+    async def test_acquires_once_per_request_and_records_nothing(self) -> None:
+        """Spending is this transport's only job; recording is after_retry_async's."""
         limiter = CountingLimiter()
         wrapped = ScriptedTransport(200)
         transport = RateLimitedTransport(wrapped, limiter)
@@ -64,6 +65,7 @@ class TestRateLimitedTransport:
 
         assert limiter.acquisitions == 1
         assert wrapped.attempts == 1
+        assert limiter.updates == []
 
 
 class TestTerraformRetryTransport:
@@ -90,3 +92,13 @@ class TestTerraformRetryTransport:
 
         assert wrapped.attempts == 1
         assert limiter.acquisitions == 1
+
+    @pytest.mark.asyncio
+    async def test_records_the_budget_for_every_attempt(self) -> None:
+        transport, _, limiter = build(429, 200)
+
+        await transport.handle_async_request(
+            httpx.Request("GET", "https://app.terraform.io/api/v2/workspaces")
+        )
+
+        assert limiter.updates == ["workspaces", "workspaces"]

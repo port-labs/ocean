@@ -3,15 +3,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import utils
 from utils import init_terraform_client, should_fetch_health_assessment
 
 
 @pytest.fixture(autouse=True)
 def reset_client_cache() -> Generator[None, None, None]:
-    utils._client = None
+    init_terraform_client.cache_clear()
     yield
-    utils._client = None
+    init_terraform_client.cache_clear()
 
 
 class TestInitTerraformClient:

@@ -7,7 +7,7 @@ from rate_limiter import TerraformRateLimiter, budget_key
 
 
 class RateLimitedTransport(httpx.AsyncBaseTransport):
-    """Spends the rate limit budget for one HTTP attempt and records what came back."""
+    """Spends the rate limit budget for one HTTP attempt."""
 
     def __init__(
         self,
@@ -18,12 +18,8 @@ class RateLimitedTransport(httpx.AsyncBaseTransport):
         self._rate_limiter = rate_limiter
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        key = budget_key(request.url)
-        async with self._rate_limiter.budget(key):
-            response = await self._wrapped_transport.handle_async_request(request)
-
-        self._rate_limiter.update(response.headers, key)
-        return response
+        async with self._rate_limiter.budget(budget_key(request.url)):
+            return await self._wrapped_transport.handle_async_request(request)
 
     async def aclose(self) -> None:
         await self._wrapped_transport.aclose()
@@ -44,7 +40,15 @@ class TerraformRetryTransport(RetryTransport):
         wrapped_transport: httpx.AsyncBaseTransport,
         **kwargs: Any,
     ) -> None:
+        self._rate_limiter = rate_limiter
         super().__init__(
             wrapped_transport=RateLimitedTransport(wrapped_transport, rate_limiter),
             **kwargs,
         )
+
+    async def after_retry_async(
+        self, request: httpx.Request, response: httpx.Response, attempt: int
+    ) -> None:
+        # Not reached for POST, which the framework does not retry; budget() has
+        # already spent for it.
+        self._rate_limiter.update(response.headers, budget_key(request.url))

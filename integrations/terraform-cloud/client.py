@@ -53,12 +53,7 @@ PAGE_SIZE = 100
 
 
 class TerraformClient:
-    def __init__(
-        self,
-        terraform_base_url: str,
-        auth_token: str,
-        rate_limiter: Optional[TerraformRateLimiter] = None,
-    ) -> None:
+    def __init__(self, terraform_base_url: str, auth_token: str) -> None:
         self.terraform_base_url = terraform_base_url
         self.base_headers = {
             "Authorization": f"Bearer {auth_token}",
@@ -67,7 +62,7 @@ class TerraformClient:
         self.api_url = f"{self.terraform_base_url}/api/v2"
         self.client = OceanAsyncClient(
             transport_class=TerraformRetryTransport,
-            transport_kwargs={"rate_limiter": rate_limiter or TerraformRateLimiter()},
+            transport_kwargs={"rate_limiter": TerraformRateLimiter()},
             timeout=ocean.config.client_timeout,
             headers=self.base_headers,
         )
