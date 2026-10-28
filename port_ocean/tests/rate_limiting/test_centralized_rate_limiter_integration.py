@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,8 +23,8 @@ async def test_record_centralized_rate_limit_calls_limiter() -> None:
     mock_limiter.record_response = AsyncMock()
 
     with patch(
-        "port_ocean.rate_limiting.utils.active_centralized_rate_limiter",
-        return_value=mock_limiter,
+        "port_ocean.rate_limiting.utils.ocean",
+        SimpleNamespace(centralized_rate_limiter=mock_limiter),
     ):
         await record_centralized_rate_limit(
             "github_rest",
@@ -41,8 +42,8 @@ async def test_record_centralized_rate_limit_calls_limiter() -> None:
 @pytest.mark.asyncio
 async def test_record_centralized_rate_limit_noop_when_inactive() -> None:
     with patch(
-        "port_ocean.rate_limiting.utils.active_centralized_rate_limiter",
-        return_value=None,
+        "port_ocean.rate_limiting.utils.ocean",
+        SimpleNamespace(centralized_rate_limiter=None),
     ):
         await record_centralized_rate_limit(
             "default",
@@ -66,8 +67,8 @@ async def test_await_centralized_rate_limit_sleeps_for_the_block() -> None:
 
     with (
         patch(
-            "port_ocean.rate_limiting.utils.active_centralized_rate_limiter",
-            return_value=mock_limiter,
+            "port_ocean.rate_limiting.utils.ocean",
+            SimpleNamespace(centralized_rate_limiter=mock_limiter),
         ),
         patch(
             "port_ocean.rate_limiting.utils.derive_sync_tier",

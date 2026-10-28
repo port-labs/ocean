@@ -7,7 +7,6 @@ from loguru import logger
 from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.sync_tier import _derive_sync_tier
-from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
 from port_ocean.rate_limiting.models import (
     CentralizedRateLimitState,
     RateLimitAcquireDecision,
@@ -27,21 +26,13 @@ def derive_sync_tier() -> SyncTier:
     return SyncTier.MEDIUM
 
 
-def active_centralized_rate_limiter() -> CentralizedRateLimiter | None:
-    """The process limiter, or None when startup did not connect to Redis.
-
-    Callers then keep the local limiter.
-    """
-    return ocean.centralized_rate_limiter
-
-
 def use_centralized_rate_limiting() -> bool:
     """True when this process should use Redis admission instead of the local limiter.
 
     False when setup left the limiter unset. A Redis connection failure at
     startup does that, so the wrapper keeps the local limiter.
     """
-    return active_centralized_rate_limiter() is not None
+    return ocean.centralized_rate_limiter is not None
 
 
 async def record_centralized_rate_limit(
@@ -51,7 +42,7 @@ async def record_centralized_rate_limit(
     is_rate_limited: bool = False,
 ) -> None:
     """Publish integration-parsed rate limit state when centralized limiting is active."""
-    limiter = active_centralized_rate_limiter()
+    limiter = ocean.centralized_rate_limiter
     if limiter is None:
         return
     await limiter.record_response(pool, state, is_rate_limited=is_rate_limited)
@@ -63,7 +54,7 @@ async def await_centralized_rate_limit(pool: str) -> None:
     A block sleeps for the full ``wait_seconds`` from that acquire, then
     asks again.
     """
-    limiter = active_centralized_rate_limiter()
+    limiter = ocean.centralized_rate_limiter
     if limiter is None:
         return
 

@@ -141,9 +141,6 @@ def test_quota_methods_noop_when_centralized() -> None:
 
 
 def test_use_centralized_requires_active_limiter() -> None:
-    app = SimpleNamespace(
-        centralized_rate_limiter=object(),
-        initialized=True,
-    )
+    app = SimpleNamespace(centralized_rate_limiter=object())
     with patch("port_ocean.rate_limiting.utils.ocean", app):
         assert use_centralized_rate_limiting() is True
