@@ -282,7 +282,12 @@ def main() -> int:
     parser.add_argument(
         "--env-file", default=None, help="Defaults to <integration>/.env then repo .env"
     )
-    parser.add_argument("--keep", action="store_true", help="Skip cleanup (debug)")
+    parser.add_argument(
+        "--cleanup",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Delete this run's integration, its entities, and a blueprint this run created",
+    )
     args = parser.parse_args()
 
     integration_path = Path(args.integration).resolve()
@@ -416,7 +421,7 @@ def main() -> int:
     finally:
         unmatched = _fetch_unmatched(args.stub_url)
         # B6 cleanup
-        if not args.keep:
+        if args.cleanup:
             try:
                 entities = port.search_entities_for_integration(
                     integration_type=integration_type,
@@ -436,6 +441,8 @@ def main() -> int:
                     port.delete_blueprint(blueprint_name, delete_entities=True)
                 except Exception as exc:  # noqa: BLE001
                     print(f"warn: blueprint cleanup failed: {exc}")
+        else:
+            print(f"cleanup skipped; integration {run_id} left in the org")
 
         # B7 result
         print("\n======== RESULT ========")

@@ -50,6 +50,7 @@ Run this for integration work, not only when the user says "validate". That incl
 
    The script loads Port credentials itself. Do not read `.env`. Never pass credentials as CLI args.
    Do not run `ocean`, `ocean sail`, or `python -m port_ocean` yourself. This script is the only way to start the integration.
+   Cleanup runs by default. It deletes this run's integration, its entities, and a blueprint this run created. Do not pass `--no-cleanup` unless the user explicitly asks to keep those Port resources.
 8. **Stop when it exits 0.** If the output contains `missing Port credentials`, stop. Do not reset, re-register, or re-run. Tell the user the code changes, expectations, and mocks are in place, and validation did not run because Port credentials are not configured. On any other failure, fix the registration, the expectations, or the integration change and run the script once more. If that fails again, or you are stuck on startup or imports, stop and report the script output. Do not launch Ocean another way.
 
 ## Startup webhooks (C3)
