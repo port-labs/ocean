@@ -712,8 +712,10 @@ class TestGithubGraphQLClientRetryConfig:
                 github_host=_GQL_HOST, authenticator=authenticator
             )
             other_rest = GithubRestClient(github_host=_GQL_HOST, authenticator=other)
-            rest_limiter = rest.client._transport._retry_config.rate_limiter
-            graphql_limiter = graphql.client._transport._retry_config.rate_limiter
+            rest_transport = cast(GitHubRetryTransport, rest.client._transport)
+            graphql_transport = cast(GitHubRetryTransport, graphql.client._transport)
+            rest_limiter = rest_transport._retry_config.rate_limiter
+            graphql_limiter = graphql_transport._retry_config.rate_limiter
 
         assert rest_limiter is rest.rate_limiter
         assert graphql_limiter is graphql.rate_limiter

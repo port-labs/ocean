@@ -1,8 +1,9 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, cast
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from github.helpers.utils import IgnoredError
@@ -430,7 +431,5 @@ class TestAbstractGithubClientClientProperty:
                 authenticator=authenticator,
             )
             assert rest_client.client is not authenticator.client
-            assert (
-                rest_client.client._transport._retry_config.rate_limiter
-                is rest_client.rate_limiter
-            )
+            transport = cast(GitHubRetryTransport, rest_client.client._transport)
+            assert transport._retry_config.rate_limiter is rest_client.rate_limiter
