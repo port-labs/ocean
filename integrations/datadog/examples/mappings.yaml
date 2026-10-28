@@ -143,10 +143,10 @@ resources:
               "email") | .contact]
             additionalOwners: .__schema.metadata.additionalOwners // [] | map(.name)
           relations:
-            dependsOn: .__schema.spec.dependsOn // []
-            componentOf: .__schema.spec.componentOf // []
-            components: .__schema.spec.components // []
-            implementedBy: .__schema.spec.implementedBy // []
+            dependsOn: .__schema.spec.dependsOn // [] | map(sub(":default/"; ":"))
+            componentOf: .__schema.spec.componentOf // [] | map(sub(":default/"; ":"))
+            components: .__schema.spec.components // [] | map(sub(":default/"; ":"))
+            implementedBy: .__schema.spec.implementedBy // [] | map(sub(":default/"; ":"))
             team:
               combinator: '"and"'
               rules:
