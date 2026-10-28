@@ -1098,14 +1098,14 @@ standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[stand
 
 [[package]]
 name = "filelock"
-version = "3.32.7"
+version = "4.2.4"
 description = "A platform independent file lock."
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "filelock-3.32.7-py3-none-any.whl", hash = "sha256:65ff0d0190ea42038b32bda4b77834fb05be2cad4c5b9b01aa4dfb3614536e52"},
-    {file = "filelock-3.32.7.tar.gz", hash = "sha256:37b8a3d9811b0f9aef7e5ec5c71bb320de52df51e6ca9bcd6f5ad81187660da7"},
+    {file = "filelock-4.2.4-py3-none-any.whl", hash = "sha256:301241438c57936ef93f4243a94f2559022268bfcf9b375a9a72eb0f8db8358e"},
+    {file = "filelock-4.2.4.tar.gz", hash = "sha256:c6d8663535e1650ee430507b4ffbac7b464dd64b7647ea0112a9f406499d163d"},
 ]
 
 [[package]]
@@ -2350,14 +2350,14 @@ signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
 
 [[package]]
 name = "opentelemetry-api"
-version = "1.45.0"
+version = "1.45.1"
 description = "OpenTelemetry Python API"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "opentelemetry_api-1.45.0-py3-none-any.whl", hash = "sha256:80e068aba7cd56c8b58512d6a36f8d25cb1dfaa0c0a4cc1c938ccf9f362d9cb3"},
-    {file = "opentelemetry_api-1.45.0.tar.gz", hash = "sha256:711ede81773c8025c2c03dac0450bc89f3d30aea6eabcc815c570d4e35a963f7"},
+    {file = "opentelemetry_api-1.45.1-py3-none-any.whl", hash = "sha256:b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb"},
+    {file = "opentelemetry_api-1.45.1.tar.gz", hash = "sha256:aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75"},
 ]
 
 [package.dependencies]
@@ -2422,14 +2422,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.56.1"
+version = "0.56.2"
 description = "Port Ocean is a Python framework for building integrations that ingest data into Port, the platform for building your AI software factory."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.56.1-py3-none-any.whl", hash = "sha256:9599ad74cec1f37093d60e04f03d59d345467c9f4852ec0c1a8cee756c7669a3"},
-    {file = "port_ocean-0.56.1.tar.gz", hash = "sha256:8fbc601fadfdef8bca5f1b00ed85db39114ab693923626a4cfb208dc4b73755c"},
+    {file = "port_ocean-0.56.2-py3-none-any.whl", hash = "sha256:a3fd320dbbccba96eb8cc1df92504d59f828fd214c83d25f7dde68e745c032c9"},
+    {file = "port_ocean-0.56.2.tar.gz", hash = "sha256:9b9570218128231354f85c956a1ce14147ec4bc90b98a426a15dcbf5ea1e3fc5"},
 ]
 
 [package.dependencies]
@@ -2441,7 +2441,7 @@ confluent-kafka = ">=2.15.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
 cryptography = ">=50.0.2,<51.0.0"
 fastapi = ">=0.162.0,<0.163.0"
-filelock = ">=3.32.7,<4.0.0"
+filelock = ">=4.2.1,<5.0.0"
 httpx = ">=0.28.1,<0.29.0"
 ijson = ">=3.4.0,<4.0.0"
 jinja2 = ">=3.1.6"
@@ -2451,6 +2451,7 @@ jmespath = ">=1.0.1,<2.0.0"
 jq = ">=1.13.0,<2.0.0"
 jsonref = {version = ">=1.1.0,<2.0.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
+opentelemetry-api = ">=1.45.1"
 prometheus-client = ">=0.26.0,<0.27.0"
 psutil = ">=7.2.1,<8.0.0"
 pydantic = {version = ">=2.13.5,<3.0.0", extras = ["dotenv"]}
@@ -3786,4 +3787,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "318f64521a8c22a75a1adaabe3267bacf6ee48d02d53e95be13ca8a143c6fa43"
+content-hash = "c008aa9a7d08fb554058cf129b6f7731e78a936bc97cab29917d6961de98aec4"
