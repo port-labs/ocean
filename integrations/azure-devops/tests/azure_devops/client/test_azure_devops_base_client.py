@@ -25,6 +25,26 @@ def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
     )
 
 
+def test_integration_client_uses_redis_when_the_process_has_it(
+    mock_client: HTTPBaseClient,
+) -> None:
+    assert mock_client._rate_limiter._redis_enabled is True
+
+
+def test_user_token_client_stays_on_the_local_limiter(
+    mock_context: PortOceanContext,
+) -> None:
+    mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
+    client = HTTPBaseClient(
+        auth_provider=PatAuthProvider("user-token"),
+        organization_url="https://dev.azure.com/test-org",
+        centralized_rate_limit=False,
+    )
+
+    assert client._rate_limiter._redis_enabled is False
+    assert client._rate_limiter.pool == "test-org"
+
+
 def test_base_client_uses_azure_devops_retry_transport(
     mock_client: HTTPBaseClient,
 ) -> None:

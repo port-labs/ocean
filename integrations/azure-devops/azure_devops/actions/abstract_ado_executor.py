@@ -70,6 +70,9 @@ class AbstractAzureDevopsExecutor(AbstractExecutor):
             BearerAuthProvider(token),
             base_client.webhook_auth_username,
             base_client.excluded_tags,
+            # The user's quota is not the organization quota. Stay on the local
+            # limiter so this token does not write the integration's Redis pool.
+            centralized_rate_limit=False,
         )
 
     @asynccontextmanager

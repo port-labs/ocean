@@ -93,11 +93,14 @@ class HTTPBaseClient:
         self,
         auth_provider: AuthProvider,
         organization_url: str,
+        *,
+        centralized_rate_limit: bool = True,
     ) -> None:
         self._auth_provider = auth_provider
         self._rate_limiter = AzureDevOpsRateLimitWrapper(
             AzureDevOpsRateLimiter(),
             pool=centralized_rate_limit_pool(organization_url),
+            redis_enabled=centralized_rate_limit,
         )
         self._client = OceanAsyncClient(
             AzureDevOpsRetryTransport,

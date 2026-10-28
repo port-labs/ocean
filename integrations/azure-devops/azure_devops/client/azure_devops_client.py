@@ -292,9 +292,15 @@ class AzureDevopsClient(HTTPBaseClient):
         auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
         excluded_tags: Optional[list[str]] = None,
+        *,
+        centralized_rate_limit: bool = True,
     ) -> None:
         organization_url = organization_url.rstrip("/")
-        super().__init__(auth_provider, organization_url)
+        super().__init__(
+            auth_provider,
+            organization_url,
+            centralized_rate_limit=centralized_rate_limit,
+        )
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username

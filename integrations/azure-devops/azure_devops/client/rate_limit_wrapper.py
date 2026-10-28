@@ -41,8 +41,10 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
         self,
         limiter: AzureDevOpsRateLimiter,
         pool: str,
+        *,
+        redis_enabled: bool = True,
     ) -> None:
-        super().__init__(pool)
+        super().__init__(pool, redis_enabled=redis_enabled)
         self._limiter = limiter
 
     async def signal_throttle(self, seconds: float, reason: str = "throttle") -> None:
