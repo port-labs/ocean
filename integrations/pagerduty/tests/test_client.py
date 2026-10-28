@@ -5,6 +5,7 @@ import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from clients.pagerduty import PagerDutyClient
+from clients.rate_limit_wrapper import MINUTE_POOL, PagerDutyRateLimitWrapper
 from clients.rate_limiter import PagerDutyDailyRateLimitExceededError
 
 TEST_INTEGRATION_CONFIG: dict[str, str] = {
@@ -51,6 +52,7 @@ def mock_ocean_context() -> None:
         mock_ocean_app.base_url = TEST_INTEGRATION_CONFIG["app_host"]
         mock_ocean_app.cache_provider = AsyncMock()
         mock_ocean_app.cache_provider.get.return_value = None
+        mock_ocean_app.centralized_rate_limiter = None
 
         def get_mock_external_access_token() -> str:
             return "pd_test_external_access_token"
@@ -68,6 +70,12 @@ def client() -> PagerDutyClient:
 
 
 class TestPagerDutyClient:
+    def test_minute_pool_is_the_retry_limiter(self, client: PagerDutyClient) -> None:
+        assert isinstance(client._rate_limiter, PagerDutyRateLimitWrapper)
+        assert client._rate_limiter.pool == MINUTE_POOL
+        assert client.http_client._retry_config is not None
+        assert client.http_client._retry_config.rate_limiter is client._rate_limiter
+
     @pytest.mark.asyncio
     async def test_paginate_request_to_pager_duty(
         self, client: PagerDutyClient

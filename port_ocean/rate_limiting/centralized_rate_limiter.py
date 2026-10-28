@@ -329,6 +329,17 @@ class CentralizedRateLimiter:
             blocked_until=result.blocked_until or 0.0,
         )
 
+    async def read_pool_state(self, pool: str) -> PoolRedisState | None:
+        """Read a pool hash without reserving a slot.
+
+        None when this limiter has no Redis client. A missing key is an
+        untracked snapshot (``limit is None``), not None. Callers that must
+        not sleep on the pool use this instead of ``acquire``.
+        """
+        if self._redis is None:
+            return None
+        return await self._fetch_pool_state(self._redis_key_for_pool(pool))
+
     async def record_response(
         self,
         pool: str,

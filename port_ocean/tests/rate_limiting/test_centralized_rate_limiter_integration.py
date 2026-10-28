@@ -21,6 +21,30 @@ from port_ocean.rate_limiting.utils import (
 
 
 @pytest.mark.asyncio
+async def test_read_pool_state_does_not_reserve() -> None:
+    expected = PoolRedisState(limit=10, remaining=0, reset_at=50.0)
+    limiter = CentralizedRateLimiter("org", MagicMock())
+    fetch = AsyncMock(return_value=expected)
+
+    with (
+        patch.object(
+            limiter, "_redis_key_for_pool", return_value="ratelimit:org:id:daily"
+        ),
+        patch.object(limiter, "_fetch_pool_state", fetch),
+    ):
+        state = await limiter.read_pool_state("daily")
+
+    assert state == expected
+    fetch.assert_awaited_once_with("ratelimit:org:id:daily")
+
+
+@pytest.mark.asyncio
+async def test_read_pool_state_none_without_redis() -> None:
+    limiter = CentralizedRateLimiter("org", None)
+    assert await limiter.read_pool_state("daily") is None
+
+
+@pytest.mark.asyncio
 async def test_record_centralized_rate_limit_calls_limiter() -> None:
     state = CentralizedRateLimitState(remaining=10, limit=100)
     mock_limiter = MagicMock()
