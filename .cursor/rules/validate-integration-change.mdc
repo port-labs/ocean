@@ -1,0 +1,17 @@
+---
+description: Run agentic integration validation after any integration change
+globs: integrations/**/*
+alwaysApply: false
+---
+
+# Validate integration changes
+
+When the task changes an integration (a new or updated kind, a bugfix, client or mapping logic, config, webhooks, or other internal behavior), follow `.cursor/skills/validate-integration-change/SKILL.md` before treating the work as done.
+
+Finish when `scripts/validate_integration_sail.py` exits 0 for that change.
+
+Run Ocean only through `scripts/validate_integration_sail.py`. Never run `ocean sail` directly.
+
+If that script fails with `missing Port credentials`, do not retry. Tell the user the changes are in place and validation did not run because Port credentials are not configured. Do not read `.env`.
+
+If it fails for another reason, run it once more after fixing the registration, expectations, or integration change. If it fails again, or you are stuck, stop and report the script output.
