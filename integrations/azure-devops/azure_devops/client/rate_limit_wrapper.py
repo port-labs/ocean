@@ -51,6 +51,17 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
         """Local cooldown for timeouts. Redis blocks only on a real 429."""
         await self._limiter.signal_throttle(seconds, reason)
 
+    async def acquire(self) -> None:
+        """Honor a timeout cooldown, then wait for Redis when it is on.
+
+        ``acquire`` runs before every send. The local limiter only reads
+        ``_throttle_until`` from its own ``__aenter__``, which Redis mode
+        skips, so the wait lives here too. Local mode already waited on entry.
+        """
+        if self._redis_admission_enabled():
+            await self._limiter.wait_out_throttle()
+        await super().acquire()
+
     async def _local_acquire(self) -> None:
         await self._limiter.__aenter__()
 

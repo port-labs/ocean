@@ -113,11 +113,13 @@ def record_hash_mapping(
     is_rate_limited: bool,
     now: float,
 ) -> dict[str, str]:
-    """Every hash field for one ``HSET``, so a publish cannot tear.
+    """Hash fields for one ``HSET``.
 
-    Redis stores the values as strings. A missing remaining, limit, or
-    reset_at is written as ``0``. ``blocked_until`` from the caller wins.
-    When the caller omits it, a rate-limited response blocks for
+    Redis stores the values as strings. ``HSET`` updates only the fields in
+    this mapping, so a missing remaining, limit, or reset_at is left out.
+    A 429 that only knows ``blocked_until`` then keeps the last good quota
+    snapshot. ``blocked_until`` from the caller wins. When the caller omits
+    it, a rate-limited response blocks for
     ``DEFAULT_RATE_LIMITED_BLOCK_SECONDS``; any other response writes ``0``
     and clears a previous 429 hold for every pod.
     """
@@ -127,13 +129,17 @@ def record_hash_mapping(
             now + DEFAULT_RATE_LIMITED_BLOCK_SECONDS if is_rate_limited else 0.0
         )
 
-    return {
-        "remaining": str(state.remaining if state.remaining is not None else 0),
-        "limit": str(state.limit if state.limit is not None else 0),
-        "reset_at": str(state.reset_at if state.reset_at is not None else 0),
+    mapping = {
         "blocked_until": str(blocked_until),
         "updated_at": str(now),
     }
+    if state.remaining is not None:
+        mapping["remaining"] = str(state.remaining)
+    if state.limit is not None:
+        mapping["limit"] = str(state.limit)
+    if state.reset_at is not None:
+        mapping["reset_at"] = str(state.reset_at)
+    return mapping
 
 
 def should_back_off_for_sync_tier(tier: SyncTier, state: PoolRedisState) -> bool:

@@ -109,31 +109,40 @@ class AzureDevOpsRateLimiter:
                     f"(expires in {self._throttle_until - now:.0f}s)"
                 )
 
+    async def wait_out_throttle(self) -> None:
+        """Sleep until a timeout cooldown ends.
+
+        The caller holds the limiter lock for the sleep, so later callers queue
+        behind that window. Local entry does this after taking the semaphore.
+        Redis admission does this from ``acquire``, before the Redis wait.
+        """
+        async with self._lock:
+            if self._throttle_until is None:
+                return
+            remaining_seconds = self._throttle_until - time.time()
+            if remaining_seconds > 0:
+                logger.bind(
+                    rate_limit_wait_seconds=float(remaining_seconds),
+                    rate_limit_reason="throttle_window",
+                ).warning(
+                    f"ADO rate limit: holding request for {remaining_seconds:.0f} seconds while throttle window expires"
+                )
+                await asyncio.sleep(remaining_seconds)
+            else:
+                logger.debug(
+                    "ADO rate limit: throttle window already expired, clearing and proceeding"
+                )
+            self._throttle_until = None
+
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
         """Enter the async context manager.
 
         Acquires semaphore and handles rate limiting logic before allowing request.
         """
         await self._semaphore.acquire()
+        await self.wait_out_throttle()
 
         async with self._lock:
-            # Check shared throttle signal from 429s or transport timeouts.
-            if self._throttle_until is not None:
-                remaining_seconds = self._throttle_until - time.time()
-                if remaining_seconds > 0:
-                    logger.bind(
-                        rate_limit_wait_seconds=float(remaining_seconds),
-                        rate_limit_reason="throttle_window",
-                    ).warning(
-                        f"ADO rate limit: holding request for {remaining_seconds:.0f} seconds while throttle window expires"
-                    )
-                    await asyncio.sleep(remaining_seconds)
-                else:
-                    logger.debug(
-                        "ADO rate limit: throttle window already expired, clearing and proceeding"
-                    )
-                self._throttle_until = None
-
             # Check if we need to wait due to previous rate limit
             retry_wait = self.should_wait_for_retry_after
             if retry_wait > 0:

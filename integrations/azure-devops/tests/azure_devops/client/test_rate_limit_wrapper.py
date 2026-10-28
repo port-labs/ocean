@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 
@@ -72,6 +72,43 @@ def test_429_without_retry_after_uses_ado_window() -> None:
     assert state is not None
     assert state.blocked_until == 1360.0
     assert state.limit is None
+
+
+async def test_redis_acquire_waits_out_local_throttle_first() -> None:
+    wrapper = _wrapper()
+    wrapper._limiter._throttle_until = 1300.0
+
+    with (
+        patch.object(wrapper, "_redis_admission_enabled", return_value=True),
+        patch(
+            "azure_devops.client.rate_limit_wrapper.RateLimitWrapper.acquire",
+            new_callable=AsyncMock,
+        ) as redis_acquire,
+        patch("asyncio.sleep", new_callable=AsyncMock) as sleep,
+        patch(
+            "azure_devops.client.rate_limiter.time.time",
+            return_value=1000.0,
+        ),
+    ):
+        await wrapper.acquire()
+
+    sleep.assert_awaited_once_with(300.0)
+    redis_acquire.assert_awaited_once()
+    assert wrapper._limiter._throttle_until is None
+
+
+async def test_local_acquire_leaves_timeout_cooldown_for_entry() -> None:
+    wrapper = _wrapper()
+    wrapper._limiter._throttle_until = 1300.0
+
+    with (
+        patch.object(wrapper, "_redis_admission_enabled", return_value=False),
+        patch("asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        await wrapper.acquire()
+
+    sleep.assert_not_awaited()
+    assert wrapper._limiter._throttle_until == 1300.0
 
 
 def test_pool_is_the_azure_organization_name() -> None:
