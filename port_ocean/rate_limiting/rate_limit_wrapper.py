@@ -64,20 +64,17 @@ class RateLimitWrapper(ABC):
             await await_centralized_rate_limit(self.pool)
 
     async def record_rate_limit_response(
-        self, response: httpx.Response, *, context: str = "transport-retry"
+        self, response: httpx.Response, *, context: str = ""
     ) -> None:
-        """Publish vendor headers, or update the local limiter.
+        """Publish vendor headers, or pass the response to the local limiter.
 
-        A Redis publish is skipped when the subclass cannot parse quota
-        headers, so a header-less response does not overwrite a good hash
-        with zeros. ``is_rate_limited`` comes from the subclass, usually a
-        429, and is what sets ``blocked_until``.
+        Redis on publishes the parsed quota. A response the subclass cannot
+        parse is skipped, so a header-less response does not overwrite a good
+        hash with zeros. ``is_rate_limited`` comes from the subclass, usually
+        a 429, and is what sets ``blocked_until``.
 
-        In local mode the default context is ``transport-retry``, which
-        ``RetryTransport`` uses. The integration transport has already
-        applied that response, so ingesting it again would double-count.
-        A resource context such as ``/repos`` is a normal response and does
-        update the local limiter.
+        Redis off forwards the response to the local limiter. That limiter
+        already decides how a retry and a normal response update its state.
         """
         if self._redis_admission_enabled():
             state = self._parse_centralized_state(response, context)
@@ -87,9 +84,6 @@ class RateLimitWrapper(ABC):
                     state,
                     is_rate_limited=self._centralized_is_rate_limited(response),
                 )
-            return
-        # Transport retries already updated the local limiter before this call.
-        if context == "transport-retry":
             return
         await self._local_ingest_response(response, context)
 

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Optional
 
 
 class SyncTier(StrEnum):
@@ -31,10 +30,10 @@ class RateLimitBlockReason(StrEnum):
 
 @dataclass(frozen=True)
 class CentralizedRateLimitState:
-    remaining: Optional[int] = None
-    limit: Optional[int] = None
-    reset_at: Optional[float] = None
-    blocked_until: Optional[float] = None
+    remaining: int | None = None
+    limit: int | None = None
+    reset_at: float | None = None
+    blocked_until: float | None = None
 
 
 @dataclass(frozen=True)
