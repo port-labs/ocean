@@ -211,11 +211,11 @@ class JenkinsClient:
             return self.jenkins_base_url
         url = parent_job["url"].rstrip("/")
         parsed = urlparse(url)
-        if parsed.scheme and parsed.netloc:
-            return url
         base_path = urlparse(self.jenkins_base_url).path.rstrip("/")
         job_path = parsed.path
-        if base_path and job_path.startswith(base_path + "/"):
+        if base_path and (
+            job_path == base_path or job_path.startswith(base_path + "/")
+        ):
             job_path = job_path[len(base_path) :]
         return f"{self.jenkins_base_url.rstrip('/')}{job_path}".rstrip("/")
 

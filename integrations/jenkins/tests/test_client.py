@@ -243,15 +243,22 @@ async def test_build_base_url_removes_trailing_slash(
         context_client = JenkinsClient(
             "http://jenkins.example.com/jenkins", "user", "token"
         )
-    folder_job = {
-        "url": "http://jenkins.example.com/jenkins/job/folder/job/child/"
-    }
+    folder_job = {"url": "http://jenkins.example.com/jenkins/job/folder/job/child/"}
     context_url = context_client._build_base_url(folder_job)
-    assert (
-        context_url
-        == "http://jenkins.example.com/jenkins/job/folder/job/child"
-    )
+    assert context_url == "http://jenkins.example.com/jenkins/job/folder/job/child"
 
     relative_job = {"url": "/jenkins/job/my-job/"}
     relative_url = context_client._build_base_url(relative_job)
     assert relative_url == "http://jenkins.example.com/jenkins/job/my-job"
+
+    with patch("client.http_async_client", new=mock_ocean_client):
+        configured_client = JenkinsClient(
+            "https://configured.example.com/jenkins", "user", "token"
+        )
+    mismatched_job = {
+        "url": "http://jenkins.internal:8080/jenkins/job/folder/job/child/"
+    }
+    rewritten_url = configured_client._build_base_url(mismatched_job)
+    assert (
+        rewritten_url == "https://configured.example.com/jenkins/job/folder/job/child"
+    )
