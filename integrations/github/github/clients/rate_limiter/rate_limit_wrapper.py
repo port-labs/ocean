@@ -1,11 +1,9 @@
 """GitHub rate limit wrapper (local limiter + Redis publish)."""
 
-import time
 from types import TracebackType
 from typing import Literal, Optional
 
 import httpx
-from loguru import logger
 
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import (
@@ -19,15 +17,16 @@ from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS = 20
 
 
-def _quota_log_fields(state: CentralizedRateLimitState) -> str:
-    ratio = round((state.remaining or 0) / state.limit, 3) if state.limit else None
-    reset_in_seconds = (
-        round(state.reset_at - time.time(), 3) if state.reset_at else None
-    )
-    return (
-        f"remaining={state.remaining} limit={state.limit} ratio={ratio} "
-        f"reset_at={state.reset_at} reset_in_seconds={reset_in_seconds}"
-    )
+def github_centralized_rate_limit_pool(api_type: str, scope: str) -> str:
+    """One Redis pool per GitHub API and credential.
+
+    REST and GraphQL stay apart, and so do two installations of one app.
+    """
+    # scope is installation:{id}, app:{id}, or pat:{hash}. The Redis key is
+    # ratelimit:{org}:{integration}:{pool}, so a colon in the scope would look
+    # like another segment. installation:123 becomes installation-123, and the
+    # pool is rest-installation-123.
+    return f"{api_type}-{str(scope).replace(':', '-')}"
 
 
 class GitHubRateLimitWrapper(RateLimitWrapper):
@@ -35,9 +34,11 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
         self,
         limiter: GitHubRateLimiter,
         pool: str,
-        api_type: Literal["rest", "graphql"],
+        api_type: Literal["rest", "graphql", "search"],
+        *,
+        redis_enabled: bool = True,
     ) -> None:
-        super().__init__(pool)
+        super().__init__(pool, redis_enabled=redis_enabled)
         self._limiter = limiter
         self._api_type = api_type
 
@@ -85,35 +86,11 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
         headers = RateLimiterRequiredHeaders(**response.headers)
         info = self._limiter._parse_rate_limit_headers(headers)
         if info is not None:
-            state = self._centralized_state_from_info(info)
-            # TODO(rl-local-test): remove after centralized rate limiter load-test validation
-            logger.info(
-                "GitHub centralized rate limit state from headers "
-                f"pool={self.pool} api_type={self._api_type} context={context} "
-                f"{_quota_log_fields(state)}",
-                pool=self.pool,
-                api_type=self._api_type,
-                context=context,
-                remaining=state.remaining,
-                limit=state.limit,
-                reset_at=state.reset_at,
-            )
-            return state
+            return self._centralized_state_from_info(info)
         if self._api_type == "graphql":
             info = extract_graphql_rate_limit_info(response)
             if info is not None:
-                state = self._centralized_state_from_info(info)
-                # TODO(rl-local-test): remove after centralized rate limiter load-test validation
-                logger.info(
-                    "GitHub centralized rate limit state from graphql extract "
-                    f"pool={self.pool} context={context} {_quota_log_fields(state)}",
-                    pool=self.pool,
-                    context=context,
-                    remaining=state.remaining,
-                    limit=state.limit,
-                    reset_at=state.reset_at,
-                )
-                return state
+                return self._centralized_state_from_info(info)
         return None
 
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:

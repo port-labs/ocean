@@ -35,6 +35,9 @@ class AbstractGithubExecutor(AbstractExecutor):
         return GithubRestClient(
             github_host=str(ocean.integration_config["github_host"]),
             authenticator=PersonalTokenAuthenticator(user_token, organization),
+            # The user's quota is not the installation quota. Stay on the local
+            # limiter so this token does not write the integration's Redis pool.
+            centralized_rate_limit=False,
         )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:

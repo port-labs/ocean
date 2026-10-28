@@ -85,6 +85,11 @@ class TestAbstractGithubExecutorClientSelection:
 
         assert client is user_client
         personal_auth.assert_called_once_with("gho_user", "test-org")
+        rest_client_cls.assert_called_once_with(
+            github_host="https://api.github.com",
+            authenticator=personal_auth.return_value,
+            centralized_rate_limit=False,
+        )
         create_app_client.assert_not_awaited()
 
     @pytest.mark.asyncio

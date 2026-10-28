@@ -9,7 +9,11 @@ from loguru import logger
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
-from github.clients.rate_limiter.rate_limit_wrapper import GitHubRateLimitWrapper
+from github.clients.rate_limiter.rate_limit_wrapper import (
+    GitHubRateLimitWrapper,
+    github_centralized_rate_limit_pool,
+)
+
 if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
         AbstractGitHubAuthenticator,
@@ -21,6 +25,7 @@ class AbstractGithubClient(ABC):
         self,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
+        centralized_rate_limit: bool = True,
         **kwargs: Any,
     ) -> None:
         self.github_host = github_host
@@ -35,8 +40,8 @@ class AbstractGithubClient(ABC):
             raw_limiter,
             pool=self.centralized_rate_limit_pool,
             api_type=self.rate_limiter_config.api_type,
+            redis_enabled=centralized_rate_limit,
         )
-        self.authenticator.configure_rate_limiting(rate_limiter=self._rate_limiter)
 
     @property
     def rate_limiter(self) -> GitHubRateLimitWrapper:
@@ -45,7 +50,10 @@ class AbstractGithubClient(ABC):
 
     @property
     def centralized_rate_limit_pool(self) -> str:
-        return "rest"
+        return github_centralized_rate_limit_pool(
+            self.rate_limiter_config.api_type,
+            self.authenticator.rate_limit_scope,
+        )
 
     _DEFAULT_IGNORED_ERRORS = [
         # Note: While GitHub documentation mentions 403 as a rate limit code,
@@ -64,8 +72,9 @@ class AbstractGithubClient(ABC):
     ]
 
     @property
+    @abstractmethod
     def client(self) -> httpx.AsyncClient:
-        return self.authenticator.client
+        """The HTTP client that admits and records this API's pool."""
 
     async def headers(self) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
@@ -127,9 +136,10 @@ class AbstractGithubClient(ABC):
                     follow_redirects=True,
                 )
                 response.raise_for_status()
-                logger.bind(http_request=1).info("GitHub API request")
 
-                logger.debug(f"Successfully fetched {method} {resource}")
+                logger.bind(http_request=1).debug(
+                    f"Successfully fetched {method} {resource}"
+                )
                 await self.rate_limiter.record_rate_limit_response(
                     response, context=resource
                 )

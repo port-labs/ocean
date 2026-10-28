@@ -58,9 +58,6 @@ class _DummyAuthenticator:
     def set_rate_limit_notifier(self, notifier: Any) -> None:
         pass
 
-    def configure_rate_limiting(self, **kwargs: Any) -> None:
-        pass
-
     async def get_headers(self) -> _DummyHeaders:
         return _DummyHeaders()
 
@@ -96,6 +93,10 @@ class _DummyBaseClient(AbstractGithubClient):
     @property
     def rate_limiter_config(self) -> GitHubRateLimiterConfig:
         return self._config
+
+    @property
+    def client(self) -> Any:
+        return self.authenticator.client
 
     async def send_paginated_request(
         self,

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.rest_client import GithubRestClient
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 
@@ -20,6 +21,10 @@ class ConcreteGithubClient(AbstractGithubClient):
             api_type="rest",
             max_concurrent=10,
         )
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        return self.authenticator.client
 
     async def send_paginated_request(
         self,
@@ -415,14 +420,17 @@ class TestAbstractGithubClient:
 
 
 class TestAbstractGithubClientClientProperty:
-    def test_client_property_delegates_to_authenticator_client(
+    def test_rest_client_owns_its_http_client(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
         with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
             mock_ocean.config.client_timeout = 60
-            base_client = ConcreteGithubClient(
-                organization="test-org",
+            rest_client = GithubRestClient(
                 github_host="https://api.github.com",
                 authenticator=authenticator,
             )
-            assert base_client.client is authenticator.client
+            assert rest_client.client is not authenticator.client
+            assert (
+                rest_client.client._transport._retry_config.rate_limiter
+                is rest_client.rate_limiter
+            )

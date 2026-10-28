@@ -29,9 +29,18 @@ class RateLimitWrapper(ABC):
     request is not delayed twice.
     """
 
-    def __init__(self, pool: str) -> None:
-        """``pool`` is the Redis bucket for this client, such as ``rest``."""
+    def __init__(self, pool: str, *, redis_enabled: bool = True) -> None:
+        """``pool`` is the Redis bucket for this client, such as ``rest``.
+
+        ``redis_enabled`` is false for a credential that must not read or write
+        that bucket, such as an identity-propagated user token. The local
+        limiter still applies.
+        """
         self.pool = pool
+        self._redis_enabled = redis_enabled
+
+    def _redis_admission_enabled(self) -> bool:
+        return self._redis_enabled and use_centralized_rate_limiting()
 
     async def __aenter__(self) -> Self:
         """Take the local semaphore for the ``async with`` body.
@@ -39,7 +48,7 @@ class RateLimitWrapper(ABC):
         With Redis on this is a no-op. The wait happens in ``acquire``, once
         per attempt, instead of holding a process-local slot across retries.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return self
         await self._local_acquire()
         return self
@@ -51,7 +60,7 @@ class RateLimitWrapper(ABC):
         In local mode the semaphore was already taken in ``__aenter__``, so
         there is nothing left to wait for here.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             await await_centralized_rate_limit(self.pool)
 
     async def record_rate_limit_response(
@@ -70,7 +79,7 @@ class RateLimitWrapper(ABC):
         A resource context such as ``/repos`` is a normal response and does
         update the local limiter.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             state = self._parse_centralized_state(response, context)
             if state is not None:
                 await record_centralized_rate_limit(
@@ -91,7 +100,7 @@ class RateLimitWrapper(ABC):
         exc_tb: Optional[TracebackType],
     ) -> None:
         """Release the local semaphore. Redis holds nothing for this request."""
-        if not use_centralized_rate_limiting():
+        if not self._redis_admission_enabled():
             await self._local_release(exc_type, exc_val, exc_tb)
 
     def is_close_to_rate_limit(self) -> bool:
@@ -100,13 +109,13 @@ class RateLimitWrapper(ABC):
         Redis admission already applied that pause, so this stays false and
         the executor does not sleep again.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return False
         return self._local_is_close_to_rate_limit()
 
     def seconds_until_rate_limit_reset(self) -> float:
         """How long the action executor should sleep. Zero when Redis is on."""
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return 0.0
         return self._local_seconds_until_rate_limit_reset()
 
@@ -115,7 +124,7 @@ class RateLimitWrapper(ABC):
 
         Redis admission covers that wait, so the local lock is not taken.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return
         await self._notify_transport_rate_limit_retry(response)
 

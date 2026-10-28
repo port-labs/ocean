@@ -1,6 +1,8 @@
 import re
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+import httpx
+
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
@@ -13,6 +15,29 @@ class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
     NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
+
+    def __init__(
+        self,
+        github_host: str,
+        authenticator: Any,
+        centralized_rate_limit: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            github_host,
+            authenticator,
+            centralized_rate_limit=centralized_rate_limit,
+            **kwargs,
+        )
+        self._rest_client: httpx.AsyncClient | None = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._rest_client is None:
+            self._rest_client = self.authenticator._make_client(
+                rate_limiter=self._rate_limiter,
+            )
+        return self._rest_client
 
     @property
     def base_url(self) -> str:
