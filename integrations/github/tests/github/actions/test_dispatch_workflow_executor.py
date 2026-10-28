@@ -1,5 +1,6 @@
 """Tests for DispatchWorkflowExecutor."""
 
+from datetime import datetime, timezone
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -432,6 +433,10 @@ class TestLegacyDispatchWorkflowExecutor:
         mock_rest_client.send_api_request.assert_awaited_once()
         poll_params = mock_rest_client.send_api_request.await_args.kwargs["params"]
         assert poll_params["actor"] == "port-bot[bot]"
+        created = poll_params["created"]
+        assert created.startswith(">=")
+        assert created.endswith("Z")
+        assert "." not in created
         mock_port_client.update_run_started.assert_awaited_once_with(
             run,
             WORKFLOW_RUN["html_url"],
@@ -479,3 +484,22 @@ class TestLegacyDispatchWorkflowExecutor:
                 match="unable to track it's progress",
             ):
                 await executor.execute(run)
+
+
+class TestLegacyDispatchCreatedFilter:
+    def test_drops_subsecond_precision(self) -> None:
+        now = datetime(2026, 10, 21, 14, 39, 36, 502590, tzinfo=timezone.utc)
+
+        assert (
+            DispatchWorkflowExecutor._legacy_dispatch_created_filter(now)
+            == "2026-10-21T14:39:36Z"
+        )
+
+    def test_same_second_github_created_at_still_matches(self) -> None:
+        now = datetime(2026, 10, 22, 4, 32, 1, 502590, tzinfo=timezone.utc)
+        github_created_at = "2026-10-22T04:32:01Z"
+
+        assert (
+            DispatchWorkflowExecutor._legacy_dispatch_created_filter(now)
+            <= github_created_at
+        )
