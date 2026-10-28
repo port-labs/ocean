@@ -131,9 +131,26 @@ class PortSettings(BaseOceanModel):
     # Left unset, identity propagation falls back to guessing it from base_url (api. -> app.),
     # which breaks if the app domain doesn't follow that exact convention.
     app_url: NoTrailingSlashUrl | None = None
+    mcp_url: NoTrailingSlashUrl | None = None
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     blueprint_cache_ttl_seconds: float = 120.0
+
+    @model_validator(mode="after")
+    def _derive_mcp_url(self) -> Self:
+        if self.mcp_url is not None:
+            return self
+        parsed = urlparse(str(self.base_url))
+        if not parsed.hostname:
+            raise ValueError(
+                "Cannot derive mcp_url from base_url "
+                f"{self.base_url!r}: missing hostname. "
+                "Set mcp_url explicitly."
+            )
+        hostname = f"mcp.{parsed.hostname.removeprefix('api.')}"
+        netloc = f"{hostname}:{parsed.port}" if parsed.port else hostname
+        self.mcp_url = f"{parsed.scheme or 'https'}://{netloc}/v1".rstrip("/")
+        return self
 
 
 class IntegrationSettings(BaseOceanModel):

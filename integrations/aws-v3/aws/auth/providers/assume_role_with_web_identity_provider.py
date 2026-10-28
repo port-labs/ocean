@@ -3,6 +3,7 @@ from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import AioRefreshableCredentials
 from aws.auth.utils import CredentialsProviderError
+from aws.utils import RegionHelper
 from loguru import logger
 from typing import Any, Awaitable, Callable, Dict
 import aiofiles
@@ -80,8 +81,14 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
             try:
                 web_identity_token = await self._read_web_identity_token()
 
+                region = kwargs.get("region")
+                if not region:
+                    region = await RegionHelper.get_custom_partition_region_or_none(
+                        self.aws_client_factory_session
+                    )
+
                 async with self.aws_client_factory_session.create_client(
-                    "sts", region_name=kwargs.get("region")
+                    "sts", region_name=region
                 ) as sts_client:
                     assume_role_params = {
                         "RoleArn": role_arn,
