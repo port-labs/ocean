@@ -222,6 +222,12 @@ class CatalogEntitySelector(Selector):
         title="Include Discovered Entities",
         description="Whether to include entities Datadog discovered automatically from APM and USM alongside the declared ones, defaults to false",
     )
+    entity_kinds: list[str] = Field(
+        alias="entityKinds",
+        default_factory=list,
+        title="Entity Kinds",
+        description="Entity kinds to fetch, e.g. service, datastore. Case sensitive, defaults to every kind",
+    )
 
 
 class CatalogEntityResourceConfig(ResourceConfig):

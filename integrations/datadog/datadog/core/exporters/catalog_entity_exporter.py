@@ -14,12 +14,16 @@ SCHEMA_ENRICHMENT_KEY = "__schema"
 
 class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
     include_discovered: bool = False
+    entity_kinds: list[str] = []
 
     @classmethod
     def from_resource_config(
         cls, resource_config: "CatalogEntityResourceConfig"
     ) -> "ListCatalogEntityOptions":
-        return cls(include_discovered=resource_config.selector.include_discovered)
+        return cls(
+            include_discovered=resource_config.selector.include_discovered,
+            entity_kinds=resource_config.selector.entity_kinds,
+        )
 
 
 def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -52,8 +56,8 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
     async def get_paginated_resources(
         self, options: ListCatalogEntityOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get Software Catalog entities from Datadog. `filter[kind]` is omitted so
-        every kind — service, datastore, queue, api, system and the rest — is returned.
+        """Get Software Catalog entities from Datadog. Without `entity_kinds` every
+        kind — service, datastore, queue, api, system and the rest — is returned.
         Docs: https://docs.datadoghq.com/api/latest/software-catalog/#get-a-list-of-entities
         """
         url = f"{self.client.api_url}/api/v2/catalog/entity"
@@ -61,11 +65,28 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         params: dict[str, Any] = {"include": "schema"}
         if options.include_discovered:
             params["includeDiscovered"] = "true"
+        if options.entity_kinds:
+            # httpx repeats the param once per value, which is the only form the
+            # endpoint accepts: "service,datastore" as a single value matches nothing
+            params["filter[kind]"] = options.entity_kinds
 
+        fetched_kinds: set[str] = set()
         async for response in self._paginate_responses_by_offset(
             url,
             offset_param="page[offset]",
             size_param="page[limit]",
             extra_params=params,
         ):
-            yield attach_schemas(response)
+            entities = attach_schemas(response)
+            if options.entity_kinds:
+                fetched_kinds.update(
+                    entity["attributes"]["kind"] for entity in entities
+                )
+            yield entities
+
+        unmatched = [kind for kind in options.entity_kinds if kind not in fetched_kinds]
+        if unmatched:
+            logger.warning(
+                f"No catalog entities returned for kinds {unmatched}; Datadog matches "
+                "kind names exactly and returns an empty page for one it does not know"
+            )

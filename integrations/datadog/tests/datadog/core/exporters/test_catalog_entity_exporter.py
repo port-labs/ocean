@@ -16,7 +16,7 @@ EMPTY_PAGE: dict[str, list[dict[str, Any]]] = {"data": []}
 
 def entity(entity_id: str, kind: str, with_schema: bool = True) -> dict[str, Any]:
     """Shaped after a real /api/v2/catalog/entity response: the schema relationship
-    carries the entity's own id, and the schema itself arrives in ."""
+    carries the entity's own id, and the schema itself arrives in `included`."""
     return {
         "id": entity_id,
         "type": "entity",
@@ -153,3 +153,56 @@ async def test_get_catalog_entities_include_discovered(
             pass
 
         assert mock_request.call_args.kwargs["params"]["includeDiscovered"] == "true"
+
+
+@pytest.mark.asyncio
+async def test_get_catalog_entities_filters_by_entity_kinds(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    page = {"data": [entity("1", "service", with_schema=False)]}
+
+    with patch.object(
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page, EMPTY_PAGE]
+
+        exporter = CatalogEntityExporter(mock_datadog_client)
+        async for _ in exporter.get_paginated_resources(
+            ListCatalogEntityOptions(entity_kinds=["service", "datastore"])
+        ):
+            pass
+
+        assert mock_request.call_count == 2
+        assert all(
+            call.kwargs["params"]["filter[kind]"] == ["service", "datastore"]
+            for call in mock_request.call_args_list
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_catalog_entities_warns_for_kinds_that_returned_nothing(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    page = {
+        "data": [entity("1", "service")],
+        "included": [
+            {"id": "1", "type": "schema", "attributes": {"schema": {"spec": {}}}}
+        ],
+    }
+
+    with (
+        patch.object(
+            mock_datadog_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch("datadog.core.exporters.catalog_entity_exporter.logger") as mock_logger,
+    ):
+        mock_request.side_effect = [page, EMPTY_PAGE]
+
+        exporter = CatalogEntityExporter(mock_datadog_client)
+        async for _ in exporter.get_paginated_resources(
+            ListCatalogEntityOptions(entity_kinds=["service", "Datastore"])
+        ):
+            pass
+
+        mock_logger.warning.assert_called_once()
+        assert "['Datastore']" in mock_logger.warning.call_args.args[0]
