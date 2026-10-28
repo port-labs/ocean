@@ -14,7 +14,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.consumers.redis_client import RedisClient
 from port_ocean.consumers.redis_connection import RedisConnectionHelper
 from port_ocean.consumers.redis_stream_utils import is_redis_connection_error
-from port_ocean.rate_limiting.constants import WAIT_STATUS_INTERVAL_SECONDS
 from port_ocean.rate_limiting.models import (
     AcquireResult,
     CentralizedRateLimitState,
@@ -58,7 +57,6 @@ class CentralizedRateLimiter:
         self._redis = redis_client
         self._redis_connection_helper = redis_connection_helper
         self._reserve_sha: str | None = None
-        self._status_log_at: dict[str, float] = {}
 
     async def initialize(self) -> None:
         """Load the reserve script once. Skipped when this limiter has no Redis client."""
@@ -75,7 +73,6 @@ class CentralizedRateLimiter:
             self._redis_connection_helper.cleanup()
             self._redis_connection_helper = None
         self._reserve_sha = None
-        self._status_log_at = {}
 
     @staticmethod
     def _allow() -> AcquireResult:
@@ -245,89 +242,6 @@ class CentralizedRateLimiter:
                 )
                 return self._allow()
             raise
-
-    def _claim_status_log(self, pool: str, now: float) -> bool:
-        """True for the first waiter in a pool during each status interval.
-
-        Check and set happen before any await, so concurrent waiters on one
-        event loop collapse to a single line per pool per minute.
-        """
-        last = self._status_log_at.get(pool)
-        if last is not None and now - last < WAIT_STATUS_INTERVAL_SECONDS:
-            return False
-        self._status_log_at[pool] = now
-        return True
-
-    async def log_wait_status(
-        self,
-        pool: str,
-        tier: SyncTier,
-        result: AcquireResult,
-        *,
-        sleep_remaining_seconds: float,
-    ) -> None:
-        """Log the live pool once per minute while callers sleep out a block.
-
-        The sleep itself still lasts for the original ``wait_seconds``. This
-        read does not admit a request and does not shorten that sleep. The
-        line carries the reason the sleep started and what admission would
-        do with the hash as it stands now.
-        """
-        now = time.time()
-        if not self._claim_status_log(pool, now):
-            return
-
-        state = self._state_from_acquire_result(result)
-        snapshot = "decision"
-        if self._redis is not None:
-            try:
-                state = await self._fetch_pool_state(self._redis_key_for_pool(pool))
-                snapshot = "fresh"
-            except Exception as error:
-                logger.warning(
-                    "Centralized rate limiter status read failed; logging the decision snapshot",
-                    error=str(error),
-                )
-
-        ratio = round(state.remaining / state.limit, 3) if state.limit else None
-        reset_in_seconds = round(state.reset_at - now, 3) if state.reset_at else None
-        fields = {
-            "pool": pool,
-            "tier": tier,
-            "reason": result.reason,
-            "sleep_remaining_seconds": round(sleep_remaining_seconds, 3),
-            "decision_wait_seconds": round(result.wait_seconds, 3),
-            "remaining": state.remaining,
-            "limit": state.limit,
-            "ratio": ratio,
-            "reset_at": state.reset_at or None,
-            "reset_in_seconds": reset_in_seconds,
-            "blocked_until": state.blocked_until or None,
-            "fresh_admission": self._fresh_admission_label(state, tier, now),
-            "snapshot": snapshot,
-        }
-        detail = " ".join(f"{name}={value}" for name, value in fields.items())
-        logger.bind(**fields).info(f"Centralized rate limiter waiting {detail}")
-
-    def _fresh_admission_label(
-        self, state: PoolRedisState, tier: SyncTier, now: float
-    ) -> str:
-        """What a new acquire would do with this snapshot. Does not reserve."""
-        fresh = self._admission_from_pool(state, tier, now)
-        if fresh is None:
-            return "reserve"
-        if fresh.decision == RateLimitAcquireDecision.ALLOW:
-            return "allow"
-        return f"block:{fresh.reason}"
-
-    @staticmethod
-    def _state_from_acquire_result(result: AcquireResult) -> PoolRedisState:
-        return PoolRedisState(
-            limit=result.limit,
-            remaining=result.remaining or 0,
-            reset_at=result.reset_at or 0.0,
-            blocked_until=result.blocked_until or 0.0,
-        )
 
     async def record_response(
         self,

@@ -8,7 +8,6 @@ from port_ocean.context.event import EventType
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.sync_tier import _derive_sync_tier
 from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
-from port_ocean.rate_limiting.constants import WAIT_STATUS_INTERVAL_SECONDS
 from port_ocean.rate_limiting.models import (
     CentralizedRateLimitState,
     RateLimitAcquireDecision,
@@ -64,9 +63,8 @@ async def record_centralized_rate_limit(
 async def await_centralized_rate_limit(pool: str) -> None:
     """Wait for cross-pod admission before sending an outbound request.
 
-    A block still sleeps for the full ``wait_seconds`` from that acquire.
-    Every minute of that sleep logs the live pool once per pool, so a long
-    full-resync backoff is visible without one line per waiting request.
+    A block sleeps for the full ``wait_seconds`` from that acquire, then
+    asks again.
     """
     limiter = active_centralized_rate_limiter()
     if limiter is None:
@@ -87,17 +85,7 @@ async def await_centralized_rate_limit(pool: str) -> None:
         if result.decision == RateLimitAcquireDecision.ALLOW:
             return
 
-        remaining = result.wait_seconds
-        if remaining <= 0:
+        if result.wait_seconds <= 0:
             return
 
-        while remaining > 0:
-            await limiter.log_wait_status(
-                pool,
-                tier,
-                result,
-                sleep_remaining_seconds=remaining,
-            )
-            step = min(WAIT_STATUS_INTERVAL_SECONDS, remaining)
-            await asyncio.sleep(step)
-            remaining -= step
+        await asyncio.sleep(result.wait_seconds)
