@@ -336,11 +336,12 @@ class CentralizedRateLimiter:
         *,
         is_rate_limited: bool = False,
     ) -> None:
-        """Replace the pool hash with the vendor headers from this response.
+        """Publish this response onto the pool hash.
 
-        One ``HSET`` writes remaining, limit, reset_at, blocked_until, and
-        updated_at together. The hash has no TTL, so the last response stays
-        until a later one overwrites it. ``is_rate_limited`` sets
+        One ``HSET`` writes the quota fields this response actually carried,
+        plus ``blocked_until`` and ``updated_at``. Missing remaining, limit,
+        or reset_at are left untouched. The hash has no TTL, so the last
+        write stays until a later one updates it. ``is_rate_limited`` sets
         ``blocked_until`` when the caller did not pass one; that is how a 429
         holds every pod. A Redis failure is logged and ignored so publishing
         quota never fails the HTTP call.

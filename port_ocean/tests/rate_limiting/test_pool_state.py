@@ -48,6 +48,22 @@ def test_record_hash_mapping_sets_block_on_rate_limited() -> None:
         now=now,
     )
     assert float(mapping["blocked_until"]) > now
+    assert mapping["remaining"] == "0"
+    assert mapping["limit"] == "100"
+    assert "reset_at" not in mapping
+
+
+def test_record_hash_mapping_keeps_existing_quota_when_429_has_no_headers() -> None:
+    mapping = record_hash_mapping(
+        CentralizedRateLimitState(blocked_until=1360.0),
+        is_rate_limited=True,
+        now=1000.0,
+    )
+    assert mapping["blocked_until"] == "1360.0"
+    assert mapping["updated_at"] == "1000.0"
+    assert "remaining" not in mapping
+    assert "limit" not in mapping
+    assert "reset_at" not in mapping
 
 
 def test_wait_seconds_until_quota_reset() -> None:
