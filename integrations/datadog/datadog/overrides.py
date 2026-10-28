@@ -226,7 +226,7 @@ class CatalogEntitySelector(Selector):
         alias="entityKinds",
         default_factory=list,
         title="Entity Kinds",
-        description="Entity kinds to fetch, e.g. service, datastore. Case sensitive, defaults to every kind",
+        description="Entity kinds to fetch, e.g. service, datastore. Case sensitive, defaults to every kind. See the <a target='_blank' href='https://docs.datadoghq.com/software_catalog/service_definitions/v3-0/'>Datadog entity schema</a> for the kinds Datadog defines; an org can also define custom kinds beyond those.",
     )
 
 
