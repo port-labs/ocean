@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.244 (2026-10-29)
+
+
+### Bug Fixes
+
+- Rewrite nested Jenkins job URLs onto the configured host without doubling the context path
+
+
+## 0.2.243 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
 ## 0.2.242 (2026-10-26)
 
 

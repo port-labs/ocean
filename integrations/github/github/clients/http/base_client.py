@@ -45,7 +45,6 @@ class AbstractGithubClient(ABC):
 
     @property
     def rate_limiter(self) -> GitHubRateLimitWrapper:
-        # Property so spec mocks see it. An __init__ assignment would hide it.
         return self._rate_limiter
 
     @property

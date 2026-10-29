@@ -15,21 +15,7 @@ class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
     NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
-
-    def __init__(
-        self,
-        github_host: str,
-        authenticator: Any,
-        centralized_rate_limit: bool = True,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(
-            github_host,
-            authenticator,
-            centralized_rate_limit=centralized_rate_limit,
-            **kwargs,
-        )
-        self._rest_client: httpx.AsyncClient | None = None
+    _rest_client: httpx.AsyncClient | None = None
 
     @property
     def client(self) -> httpx.AsyncClient:
