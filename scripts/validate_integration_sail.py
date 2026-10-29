@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import tomllib
 import traceback
 import uuid
 from pathlib import Path
@@ -250,7 +251,15 @@ def _assert_expectations(
 
 
 def _integration_type(integration_path: Path) -> str:
-    # folder name is the integration type in Ocean
+    """Same name Ocean uses: project or Poetry name in the integration pyproject, lowercased."""
+    pyproject = integration_path / "pyproject.toml"
+    if pyproject.is_file():
+        data = tomllib.loads(pyproject.read_text())
+        name = (data.get("project") or {}).get("name") or (
+            data.get("tool", {}).get("poetry") or {}
+        ).get("name")
+        if name:
+            return str(name).lower()
     return integration_path.name.lower()
 
 
