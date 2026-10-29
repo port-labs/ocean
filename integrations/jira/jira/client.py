@@ -16,7 +16,9 @@ from jira.api_models import JiraIssueComment, JiraIssueTransitionsResponse
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 from .rate_limiter import JiraRateLimiter
+from .rate_limit_wrapper import JiraRateLimitWrapper, centralized_rate_limit_pool
 from .retry_transport import JiraRetryTransport
 
 PAGE_SIZE = 50
@@ -123,12 +125,16 @@ class JiraClient(OAuthClient):
             None if self.is_oauth_enabled() else f"{self.jira_rest_url}/software/1.0"
         )
 
-        self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
+        self._rate_limiter = JiraRateLimitWrapper(
+            JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS),
+            pool=centralized_rate_limit_pool(self.jira_url),
+        )
         self.client = OceanAsyncClient(
             JiraRetryTransport,
             transport_kwargs={
                 "rate_limit_notifier": self._rate_limiter.on_response,
             },
+            retry_config=RetryConfig(rate_limiter=self._rate_limiter),
             timeout=Timeout(30),
         )
         self.client.auth = self.jira_api_auth
@@ -252,13 +258,15 @@ class JiraClient(OAuthClient):
                     extensions=extensions or None,
                 )
                 response.raise_for_status()
-                await self._rate_limiter.on_response(response)
+                await self._rate_limiter.record_rate_limit_response(
+                    response, context=url
+                )
                 if not response.content:
                     return None
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
-            await self._rate_limiter.on_response(response)
+            await self._rate_limiter.record_rate_limit_response(response, context=url)
             is_rate_limit = self._rate_limiter.is_rate_limit_response(response)
             logger.bind(
                 status_code=response.status_code,
