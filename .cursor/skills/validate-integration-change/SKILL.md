@@ -30,14 +30,20 @@ Run this for integration work, not only when the user says "validate". That incl
 5. **Register routes** for every third-party call the resync will make (including startup webhook registration — see below). Use the admin CLI or HTTP:
 
    ```bash
-   python -m tools.vendor_stub.cli register --file /tmp/reg.json
+   python -m tools.vendor_stub.cli register \
+     --file /tmp/reg.json \
+     --model integrations/<name>/<package>/external_api_models/<resource>.py:<Class> \
+     --values '{"name":"example-repo","visibility":"public"}' \
+     --as-list
    python -m tools.vendor_stub.cli paginate --file /tmp/pages.json
    python -m tools.vendor_stub.cli reset
    python -m tools.vendor_stub.cli unmatched
    ```
 
-   Registration fields: `method`, `path` or `path_regex`, optional `query`, `headers`, `body_contains`, `body_field`, `priority`, `times` (int or response sequence), and `response` (`status`, `body`, `headers`).
-6. **Response files** — while preparing bodies, write them under `integrations/<name>/mock_responses/`. Include the doc URL and the date in the file (comment or `_meta`). A later run may reuse a file only when every mapped field needed for this change is already present in it; otherwise rewrite from the docs.
+   `--file` / `--json` supply `method`, `path` or `path_regex`, optional `query`, `headers`, `body_contains`, `body_field`, `priority`, `times` (int or response sequence), and `response` (`status`, `headers`). Do not put the response body in that file.
+6. **Models** — while preparing bodies, write or extend `integrations/<name>/<package>/external_api_models/<resource>.py`. The file is the Pydantic model only. Put the doc URL and the date in the module docstring. A later run may reuse the module only when every mapped field needed for this change is already a field on the model; otherwise add the field. Do not add an example constructor.
+
+   Register with `--model path/to/model.py:Class` and `--values` set to a JSON object that satisfies the model. Include asserted values, identifiers, and fields that link to another stubbed resource. Use `--as-list` when the endpoint returns an array. `--model` on `paginate` sets every page body from that same object. Do not hand-write the response body. If validation fails on a missing field, add it to `--values`, or make that field optional on the model when the mapping does not read it.
 7. **Run the sail script**:
 
    ```bash
