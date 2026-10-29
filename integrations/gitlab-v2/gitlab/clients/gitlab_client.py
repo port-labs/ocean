@@ -404,14 +404,6 @@ class GitLabClient:
         cursor: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch tags for each project; with a cursor, stop once created_at is older."""
-        if cursor is None:
-            async for tags_batch in self.get_projects_resource_with_enrichment(
-                projects_batch, "repository/tags", max_concurrent
-            ):
-                logger.info(f"Received batch with {len(tags_batch)} tags")
-                yield tags_batch
-            return
-
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = [
             semaphore_async_iterator(
