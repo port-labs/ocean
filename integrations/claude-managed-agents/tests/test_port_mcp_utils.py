@@ -9,8 +9,10 @@ import pytest
 from actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
     PortMcpBinding,
+    _is_vault_credential_url_matching,
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_binding,
+    is_agent_configured_with_port_mcp,
 )
 
 
@@ -19,6 +21,36 @@ from tests.action_test_helpers import (
     mock_ocean_with_client_secret,
     workflow_run_with_port_mcp,
 )
+
+
+def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+    from anthropic.types.beta.vaults.beta_managed_agents_static_bearer_auth_response import (
+        BetaManagedAgentsStaticBearerAuthResponse,
+    )
+
+    getport = "https://mcp.getport.io/v1"
+    port = "https://mcp.port.io/v1"
+    servers = [
+        BetaManagedAgentsMCPServerURLDefinition(
+            type="url", name=PORT_MCP_SERVER_NAME, url=getport
+        )
+    ]
+    credential = SimpleNamespace(
+        auth=BetaManagedAgentsStaticBearerAuthResponse(
+            type="static_bearer", mcp_server_url=getport
+        )
+    )
+
+    with patch(
+        "actions.port_mcp_utils.ocean",
+        SimpleNamespace(config=SimpleNamespace(port=SimpleNamespace(mcp_url=port))),
+    ):
+        assert not is_agent_configured_with_port_mcp(servers)
+    assert _is_vault_credential_url_matching(credential, getport)
+    assert not _is_vault_credential_url_matching(credential, port)
 
 
 def test_apply_port_mcp_adds_server_and_toolset() -> None:

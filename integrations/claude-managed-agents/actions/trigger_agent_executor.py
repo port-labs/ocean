@@ -254,10 +254,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         agent = await self._agent_cache.get_or_fetch(
             inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
         )
-        if inputs.enablePortMcp:
+        port_mcp = port_mcp_workflow_context(inputs, run)
+        if port_mcp is not None:
             agent = await self._ensure_agent_port_mcp_configured(agent)
 
-        port_mcp = port_mcp_workflow_context(inputs, run)
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId, run)
             if port_mcp is not None:
