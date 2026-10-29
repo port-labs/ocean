@@ -25,6 +25,7 @@ from gitlab.helpers.utils import (
 )
 from gitlab.helpers.incremental import (
     build_deployment_params,
+    build_incremental_project_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
@@ -280,7 +281,11 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(ObjectKind.JOB)
 @ocean.on_resync(ObjectKind.JOB)
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync pipeline jobs; incremental only walks recently updated pipelines."""
+    """Resync pipeline jobs.
+
+    Incremental runs only include projects updated since the cursor, then
+    pipelines updated since the cursor.
+    """
     client = create_gitlab_client()
     selector = cast(JobResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
@@ -294,14 +299,13 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ),
         sync_cursor,
     )
+    project_params = build_incremental_project_params(
+        build_project_params(include_only_active_projects=include_only_active_projects),
+        sync_cursor,
+    )
 
     async for projects_batch in client.get_projects(
-        params=build_project_list_params(
-            build_project_params(
-                include_only_active_projects=include_only_active_projects
-            ),
-            sync_cursor,
-        ),
+        params=project_params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -361,14 +365,14 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync project tags; incremental scans recently updated projects only."""
+    """Resync project tags; incremental scans projects updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(TagResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_list_params(
+        params=build_incremental_project_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),
@@ -389,14 +393,14 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_incremental_resync(ObjectKind.RELEASE)
 @ocean.on_resync(ObjectKind.RELEASE)
 async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync project releases; incremental scans recently updated projects only."""
+    """Resync project releases; incremental scans projects updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(ReleaseResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_list_params(
+        params=build_incremental_project_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),

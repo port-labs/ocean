@@ -2,7 +2,9 @@ from datetime import datetime, timezone
 
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
+    build_cursor_updated_after_params,
     build_deployment_params,
+    build_incremental_project_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
@@ -168,6 +170,51 @@ def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> Non
     assert params == {
         "status": "running",
         "updated_after": CURSOR.isoformat(),
+    }
+
+
+def test_incremental_project_params_keep_base_params_without_cursor() -> None:
+    assert build_incremental_project_params(
+        {"min_access_level": 30, "active": True}, cursor=None
+    ) == {"min_access_level": 30, "active": True}
+
+
+def test_incremental_project_params_replace_selector_timestamps() -> None:
+    params = build_incremental_project_params(
+        {
+            "min_access_level": 30,
+            "active": True,
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "order_by": "last_activity_at",
+        },
+        cursor=CURSOR,
+    )
+
+    assert params == {
+        "min_access_level": 30,
+        "active": True,
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
+    }
+
+
+def test_tag_project_incremental_replaces_selector_timestamps() -> None:
+    params = build_cursor_updated_after_params(
+        {
+            "min_access_level": 30,
+            "active": True,
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "updated_before": "2024-12-01T00:00:00Z",
+            "order_by": "last_activity_at",
+        },
+        cursor=CURSOR,
+    )
+
+    assert params == {
+        "min_access_level": 30,
+        "active": True,
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
     }
 
 
