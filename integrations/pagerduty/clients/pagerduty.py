@@ -18,6 +18,7 @@ from clients.rate_limiter import (
     RateLimitInfo,
     daily_quota_exhausted,
 )
+from clients.rate_limit_wrapper import MINUTE_POOL, PagerDutyRateLimitWrapper
 from clients.retry_transport import PagerDutyRetryTransport
 
 USER_KEY = "users"
@@ -35,8 +36,9 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
-        self._rate_limiter = PagerDutyRateLimiter(
-            max_concurrent=MAX_CONCURRENT_REQUESTS,
+        self._rate_limiter = PagerDutyRateLimitWrapper(
+            PagerDutyRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS),
+            pool=MINUTE_POOL,
         )
         self.http_client = OceanAsyncClient(
             transport_class=PagerDutyRetryTransport,
@@ -46,6 +48,7 @@ class PagerDutyClient(OAuthClient):
                 retry_after_headers=[
                     "ratelimit-reset",
                 ],
+                rate_limiter=self._rate_limiter,
             ),
             timeout=ocean.config.client_timeout,
         )
@@ -392,7 +395,7 @@ class PagerDutyClient(OAuthClient):
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
 
-        self._rate_limiter.check_daily_budget(endpoint)
+        await self._rate_limiter.check_daily_budget(endpoint)
 
         async with self._rate_limiter:
             try:
@@ -430,7 +433,9 @@ class PagerDutyClient(OAuthClient):
 
             finally:
                 if "response" in locals():
-                    self._rate_limiter.update_rate_limits(response.headers, endpoint)
+                    await self._rate_limiter.record_rate_limit_response(
+                        response, context=endpoint
+                    )
 
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(resource=USER_KEY):

@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Wire PagerDuty into the centralized rate limiter. The integration token has one Redis pool for the per-minute quota and a separate pool for the analytics daily quota. Daily exhaustion still raises instead of sleeping until the reset. The local limiter stays as the fallback.

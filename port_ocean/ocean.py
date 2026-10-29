@@ -45,6 +45,11 @@ from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+from port_ocean.rate_limiting.bootstrap import (
+    setup_centralized_rate_limiter,
+    teardown_centralized_rate_limiter,
+)
+from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
 
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
@@ -142,6 +147,8 @@ class Ocean:
                 raise ValueError(
                     "Identity propagation enabled but no vault client configured."
                 )
+
+        self.centralized_rate_limiter: CentralizedRateLimiter | None = None
 
         self.app_initialized = False
         self._status_heartbeat_task: asyncio.Task[None] | None = None
@@ -380,6 +387,12 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
+                org_id = await self.port_client.get_org_id()
+                await setup_centralized_rate_limiter(
+                    self,
+                    self.config.centralized_rate_limiter,
+                    org_id=org_id,
+                )
                 await self.integration.start()
                 await self._register_addons()
                 await self._setup_status_heartbeat()
@@ -392,6 +405,7 @@ class Ocean:
                 sys.exit("Server stopped")
             finally:
                 await signal_handler.exit()
+                await teardown_centralized_rate_limiter(self)
 
         self.fast_api_app.router.lifespan_context = lifecycle
         self.app_initialized = True
