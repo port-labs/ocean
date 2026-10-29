@@ -80,6 +80,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             self._graphql_client = self.authenticator._make_client(
                 extra_retryable_methods=frozenset({"POST"}),
                 extra_retryable_status=frozenset({HTTPStatus.FORBIDDEN}),
+                rate_limiter=self._rate_limiter,
             )
         return self._graphql_client
 

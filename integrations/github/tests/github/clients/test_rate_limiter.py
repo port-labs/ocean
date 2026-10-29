@@ -94,6 +94,10 @@ class _DummyBaseClient(AbstractGithubClient):
     def rate_limiter_config(self) -> GitHubRateLimiterConfig:
         return self._config
 
+    @property
+    def client(self) -> Any:
+        return self.authenticator.client
+
     async def send_paginated_request(
         self,
         resource: str,
