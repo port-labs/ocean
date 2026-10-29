@@ -21,12 +21,11 @@ async def setup_centralized_rate_limiter(
 ) -> None:
     """Initialize the centralized rate limiter on the Ocean app instance."""
     if app.centralized_rate_limiter is not None:
-        message = (
+        logger.warning(
             "Centralized rate limiter is already registered on this Ocean app; "
-            "setup_centralized_rate_limiter must not be called twice"
+            "skipping setup_centralized_rate_limiter"
         )
-        logger.error(message)
-        raise RuntimeError(message)
+        return
 
     redis_settings = settings.redis
     redis_helper = RedisConnectionHelper()
@@ -45,8 +44,7 @@ async def setup_centralized_rate_limiter(
         app.centralized_rate_limiter = limiter
         logger.info("Centralized rate limiter enabled with Redis")
     except Exception as error:
-        # Leave the limiter unset so use_centralized_rate_limiting() stays false
-        # and the integration keeps its local limiter.
+        # Leave the limiter unset so callers keep the local limiter.
         if limiter is not None:
             await limiter.close()
         else:

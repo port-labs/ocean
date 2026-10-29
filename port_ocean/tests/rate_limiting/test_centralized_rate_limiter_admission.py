@@ -6,7 +6,7 @@ from port_ocean.rate_limiting.models import (
     RateLimitBlockReason,
     SyncTier,
 )
-from port_ocean.rate_limiting.pool_state import PoolRedisState
+from port_ocean.rate_limiting.pool_state_utils import PoolRedisState
 
 NOW = 1_700_000_000.0
 

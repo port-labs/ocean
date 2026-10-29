@@ -244,6 +244,10 @@ cmd_run() {
     if [[ "${status}" -eq 0 ]]; then
         run_configset_tests || status=$?
     fi
+    if [[ "${status}" -ne 0 ]]; then
+        echo "Smoke tests failed; dumping container logs for ${SMOKE_TEST_CONTAINER}"
+        docker logs "${SMOKE_TEST_CONTAINER}" || true
+    fi
     cmd_down || true
     if ! cmd_clean; then
         status=1

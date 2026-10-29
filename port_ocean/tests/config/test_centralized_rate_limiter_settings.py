@@ -6,6 +6,7 @@ from port_ocean.config.settings import CentralizedRateLimiterSettings
 
 def test_defaults_to_local_redis() -> None:
     settings = CentralizedRateLimiterSettings()
+    assert settings.enabled is False
     assert settings.redis.url == "redis://localhost:6379"
 
 

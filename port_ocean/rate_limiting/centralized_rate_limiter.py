@@ -21,7 +21,7 @@ from port_ocean.rate_limiting.models import (
     RateLimitBlockReason,
     SyncTier,
 )
-from port_ocean.rate_limiting.pool_state import (
+from port_ocean.rate_limiting.pool_state_utils import (
     PoolRedisState,
     pool_redis_key,
     pool_state_from_redis_hash,

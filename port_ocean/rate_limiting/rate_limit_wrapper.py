@@ -13,11 +13,11 @@ from typing import Optional, Self
 
 import httpx
 
+from port_ocean.context.ocean import ocean
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.utils import (
     await_centralized_rate_limit,
     record_centralized_rate_limit,
-    use_centralized_rate_limiting,
 )
 
 
@@ -40,7 +40,7 @@ class RateLimitWrapper(ABC):
         self._redis_enabled = redis_enabled
 
     def _redis_admission_enabled(self) -> bool:
-        return self._redis_enabled and use_centralized_rate_limiting()
+        return self._redis_enabled and ocean.centralized_rate_limiter is not None
 
     async def __aenter__(self) -> Self:
         """Take the local semaphore for the ``async with`` body.
