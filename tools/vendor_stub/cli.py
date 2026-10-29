@@ -10,6 +10,8 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from tools.vendor_stub.fill import fill_model
+
 DEFAULT_BASE = "http://127.0.0.1:8765"
 
 
@@ -19,11 +21,11 @@ def _client(base: str) -> httpx.Client:
 
 def _add_model_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", help="path/to/model.py:Class")
-    parser.add_argument("--values", help="JSON object passed to the model")
+    parser.add_argument("--values", help="Partial JSON body the mock returns")
     parser.add_argument(
         "--as-list",
         action="store_true",
-        help="Wrap the model as a one-element list",
+        help="Wrap the partial as a one-element list",
     )
 
 
@@ -55,17 +57,18 @@ def _load_model(spec: str) -> type[BaseModel]:
 
 def _model_body(args: argparse.Namespace) -> Any:
     if args.values is None:
-        raise SystemExit("--model requires --values")
-    values = json.loads(args.values)
+        values: Any = {}
+    else:
+        values = json.loads(args.values)
     if not isinstance(values, dict):
         raise SystemExit("--values must be a JSON object")
     try:
-        body = _load_model(args.model).model_validate(values).model_dump(mode="json")
+        fill_model(_load_model(args.model), values)
     except ValidationError as exc:
         raise SystemExit(str(exc)) from exc
     if args.as_list:
-        return [body]
-    return body
+        return [values]
+    return values
 
 
 def _apply_model(payload: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
