@@ -140,6 +140,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         file_patterns: List[FileSearchOptions],
         changed_since: RepositoryChange | None = None,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Resolve file patterns to fetch lists, partitioned by GraphQL vs REST.
+
+        When ``changed_since`` is set, uses the incremental path (compare API);
+        otherwise scans the full recursive tree. Both paths produce the same
+        match shape so downstream fetch routing stays identical.
+        """
         graphql_files = []
         rest_files = []
 
@@ -162,21 +168,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            changed_paths = None
+
             if changed_since:
-                changed_paths = await self.get_changed_paths_since(
-                    organization, repo_name, branch, changed_since
+                matched = await self._match_files_incremental(
+                    organization, repo_name, branch, pattern, changed_since
                 )
-            if changed_paths is not None and not any(
-                match_file_path_against_glob_pattern(path, pattern)
-                for path in changed_paths
-            ):
-                matched = []
             else:
-                tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
-                matched = filter_github_tree_entries_by_pattern(tree, pattern)
-                if changed_paths is not None:
-                    matched = [m for m in matched if m["path"] in changed_paths]
+                matched = await self._match_files_full(
+                    organization, repo_name, branch, pattern
+                )
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
@@ -205,6 +205,54 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     rest_files.append(file_info)
 
         return graphql_files, rest_files
+
+    async def _match_files_full(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+    ) -> List[Dict[str, Any]]:
+        """Full resync: scan the recursive git tree and filter by glob pattern."""
+        tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
+        return filter_github_tree_entries_by_pattern(tree, pattern)
+
+    async def _match_files_incremental(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+        changed_since: RepositoryChange,
+    ) -> List[Dict[str, Any]]:
+        """Incremental resync: only files changed since the cursor that match ``pattern``.
+
+        1. Ask the compare API for paths changed since ``changed_since``.
+        2. If the diff is untrusted (None), fall back to a full tree scan.
+        3. If no changed path matches the glob, skip the tree fetch entirely.
+        4. Otherwise scan the tree, then keep only entries in the changed set
+           (tree still needed for fetch_method / sha metadata).
+        """
+        changed_paths = await self.get_changed_paths_since(
+            organization, repo_name, branch, changed_since
+        )
+        if changed_paths is None:
+            # Compare could not be trusted — same result as a full resync.
+            return await self._match_files_full(
+                organization, repo_name, branch, pattern
+            )
+
+        # Avoid a recursive tree call when nothing in the diff matches this pattern.
+        if not any(
+            match_file_path_against_glob_pattern(path, pattern)
+            for path in changed_paths
+        ):
+            return []
+
+        matched = await self._match_files_full(
+            organization, repo_name, branch, pattern
+        )
+        return [m for m in matched if m["path"] in changed_paths]
 
     async def process_rest_api_files(
         self, files: List[Dict[str, Any]]
