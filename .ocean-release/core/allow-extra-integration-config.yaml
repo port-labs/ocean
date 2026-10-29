@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Preserve undeclared integration config keys so env-only overrides survive into ocean.integration_config
