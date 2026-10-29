@@ -7,6 +7,7 @@ from loguru import logger
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from port_ocean.utils.time import convert_str_to_utc_datetime
 
+from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.clients.options import IssueOptions
 
 # GitLab filters list endpoints server-side by the resource's updated_at.
@@ -180,7 +181,7 @@ def included_path_changed(changed: set[str], included_files: Sequence[str]) -> b
 
 
 async def load_named_projects(
-    client: Any,
+    client: GitLabClient,
     repositories: Sequence[str],
     cursor: datetime,
 ) -> list[dict[str, Any]]:

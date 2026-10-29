@@ -17,6 +17,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from wcmatch import glob
 
+from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.clients.utils import build_group_params, build_project_params
 from gitlab.helpers.incremental import (
     build_file_project_params,
@@ -45,7 +46,7 @@ def _selector_paths(changed: set[str], search_path: str) -> list[str]:
 
 
 async def fetch_included_files_content(
-    client: Any,
+    client: GitLabClient,
     project: dict[str, Any],
     file_paths: list[str],
 ) -> dict[str, Any]:
@@ -67,7 +68,7 @@ async def fetch_included_files_content(
 
 
 async def _enrich_processed_files(
-    client: Any,
+    client: GitLabClient,
     processed: list[dict[str, Any]],
     project: dict[str, Any],
     included_files: list[str],
@@ -87,7 +88,7 @@ async def _enrich_processed_files(
 
 
 async def _tree_fallback(
-    client: Any,
+    client: GitLabClient,
     project: dict[str, Any],
     *,
     search_path: str,
@@ -108,7 +109,7 @@ async def _tree_fallback(
 
 
 async def _project_file_changes(
-    client: Any,
+    client: GitLabClient,
     project: dict[str, Any],
     *,
     cursor: datetime,
@@ -180,7 +181,7 @@ async def _project_file_changes(
 
 
 async def iter_incremental_files(
-    client: Any,
+    client: GitLabClient,
     projects: list[dict[str, Any]],
     *,
     cursor: datetime,
@@ -202,7 +203,7 @@ async def iter_incremental_files(
 
 
 async def enrich_files_with_included(
-    client: Any,
+    client: GitLabClient,
     files_batch: list[dict[str, Any]],
     included_files: list[str],
     included_cache: dict[str, dict[str, Any]],
@@ -223,7 +224,7 @@ async def enrich_files_with_included(
 
 
 async def _resync_files_via_search(
-    client: Any,
+    client: GitLabClient,
     selector: GitLabFilesSelector,
     cursor: datetime,
     *,
@@ -268,7 +269,7 @@ async def _resync_files_via_search(
 
 
 async def resync_files_incremental(
-    client: Any,
+    client: GitLabClient,
     selector: GitLabFilesSelector,
     cursor: datetime,
     *,

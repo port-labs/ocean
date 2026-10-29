@@ -18,7 +18,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from wcmatch import glob
 
-from gitlab.clients.gitlab_client import _is_wildcard_path
+from gitlab.clients.gitlab_client import GitLabClient, _is_wildcard_path
 from gitlab.clients.utils import build_project_params
 from gitlab.enrichments.included_files import (
     FolderIncludedFilesStrategy,
@@ -76,7 +76,7 @@ def _matching_changed_folders(changed_files: set[str], pattern_path: str) -> set
 
 
 async def enrich_folders_with_included(
-    client: Any,
+    client: GitLabClient,
     folders_batch: list[dict[str, Any]],
     folder_selectors: Sequence[FolderPattern],
     included_files: Sequence[str],
@@ -95,7 +95,7 @@ async def enrich_folders_with_included(
 
 
 async def _iter_matching_tree_folders(
-    client: Any,
+    client: GitLabClient,
     project: dict[str, Any],
     *,
     path: str,
@@ -121,7 +121,7 @@ async def _iter_matching_tree_folders(
 
 
 async def _project_folder_changes(
-    client: Any,
+    client: GitLabClient,
     project: dict[str, Any],
     *,
     cursor: datetime,
@@ -203,7 +203,7 @@ async def _project_folder_changes(
 
 
 async def iter_incremental_folders(
-    client: Any,
+    client: GitLabClient,
     projects: list[dict[str, Any]],
     *,
     cursor: datetime,
@@ -227,7 +227,7 @@ async def iter_incremental_folders(
 
 
 async def _resync_named_repo_folders(
-    client: Any,
+    client: GitLabClient,
     repos: Sequence[RepositoryBranchMapping],
     *,
     cursor: datetime,
@@ -258,7 +258,7 @@ async def _resync_named_repo_folders(
 
 
 async def resync_folders_incremental(
-    client: Any,
+    client: GitLabClient,
     selector: GitlabFolderSelector,
     cursor: datetime,
     *,

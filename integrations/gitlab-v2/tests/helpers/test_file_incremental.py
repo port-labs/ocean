@@ -134,7 +134,11 @@ async def _collect(client: _FakeClient, **overrides: Any) -> list[dict[str, Any]
     }
     options.update(overrides)
     batches: list[dict[str, Any]] = []
-    async for batch in iter_incremental_files(client, [PROJECT], **options):
+    async for batch in iter_incremental_files(
+        client,  # type: ignore[arg-type]
+        [PROJECT],
+        **options,
+    ):
         batches.extend(batch)
     return batches
 
@@ -329,7 +333,9 @@ async def test_repository_tree_lists_projects_updated_after_cursor() -> None:
     ):
         batches = [
             batch
-            async for batch in resync_files_incremental(client, _selector(), CURSOR)
+            async for batch in resync_files_incremental(
+                client, _selector(), CURSOR  # type: ignore[arg-type]
+            )
         ]
 
     assert batches == []
@@ -352,7 +358,10 @@ async def test_project_search_uses_the_resync_search() -> None:
         return_value={"min_access_level": 30},
     ):
         batches = [
-            batch async for batch in resync_files_incremental(client, selector, CURSOR)
+            batch
+            async for batch in resync_files_incremental(
+                client, selector, CURSOR  # type: ignore[arg-type]
+            )
         ]
 
     assert client.compare_calls == []
@@ -371,7 +380,10 @@ async def test_project_search_skips_named_repo_before_cursor() -> None:
     client = _ResyncClient()
     selector = _selector("projectSearch", repos=["group/idle"])
     batches = [
-        batch async for batch in resync_files_incremental(client, selector, CURSOR)
+        batch
+        async for batch in resync_files_incremental(
+            client, selector, CURSOR  # type: ignore[arg-type]
+        )
     ]
 
     assert batches == []
@@ -387,7 +399,10 @@ async def test_group_search_uses_the_resync_search() -> None:
         return_value={"active": True},
     ):
         batches = [
-            batch async for batch in resync_files_incremental(client, selector, CURSOR)
+            batch
+            async for batch in resync_files_incremental(
+                client, selector, CURSOR  # type: ignore[arg-type]
+            )
         ]
 
     assert client.compare_calls == []
@@ -400,6 +415,8 @@ async def test_group_search_uses_the_resync_search() -> None:
 async def test_load_named_projects_skips_idle_and_branchless() -> None:
     client = _FakeClient()
     projects = await load_named_projects(
-        client, ["group/project", "group/idle", "group/empty"], CURSOR
+        client,  # type: ignore[arg-type]
+        ["group/project", "group/idle", "group/empty"],
+        CURSOR,
     )
     assert [project["path_with_namespace"] for project in projects] == ["group/project"]

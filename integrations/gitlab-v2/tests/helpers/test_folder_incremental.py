@@ -136,7 +136,11 @@ async def _collect(client: _FakeFolderClient, **overrides: Any) -> list[dict[str
     }
     options.update(overrides)
     batches: list[dict[str, Any]] = []
-    async for batch in iter_incremental_folders(client, [PROJECT], **options):
+    async for batch in iter_incremental_folders(
+        client,  # type: ignore[arg-type]
+        [PROJECT],
+        **options,
+    ):
         batches.extend(batch)
     return batches
 
@@ -258,7 +262,9 @@ async def test_resync_folders_incremental_all_projects_uses_updated_after() -> N
     ):
         batches = [
             batch
-            async for batch in resync_folders_incremental(client, selector, CURSOR)
+            async for batch in resync_folders_incremental(
+                client, selector, CURSOR  # type: ignore[arg-type]
+            )
         ]
 
     assert batches == []
@@ -299,7 +305,10 @@ async def test_resync_folders_incremental_named_repos_uses_branch_and_skips_idle
     )
 
     batches = [
-        batch async for batch in resync_folders_incremental(client, selector, CURSOR)
+        batch
+        async for batch in resync_folders_incremental(
+            client, selector, CURSOR  # type: ignore[arg-type]
+        )
     ]
 
     assert len(batches) == 1
