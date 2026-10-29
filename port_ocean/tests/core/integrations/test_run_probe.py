@@ -100,28 +100,27 @@ async def test_run_probe_marks_context_internal_failure_when_listener_raises(
     return_value=["repository"],
 )
 @pytest.mark.asyncio
-async def test_run_probe_raises_when_context_is_failed(
+async def test_run_probe_returns_failed_context_without_raising(
     mock_get_port_app_config_kinds: MagicMock,
     integration: BaseIntegration,
 ) -> None:
     # Arrange
-    captured_context: list[ProbeContext] = []
-    message: str = "Probe failed"
+    message = "third-party API unreachable"
 
     async def on_probe(context: ProbeContext) -> ProbeContext:
-        captured_context.append(context)
         await context.fail(message)
         return context
 
     integration.event_strategy.on_probe = on_probe
     config = ProbeConfig(kinds=["repository"])
 
-    # Act / Assert
-    with pytest.raises(ProbeFailedError, match=message):
-        await integration.run_probe("probe-123", config)
+    # Act
+    result = await integration.run_probe("probe-123", config)
 
-    assert captured_context[0].status == ProbeStatus.FAILED
-    assert captured_context[0].message == message
+    # Assert
+    assert result.status == ProbeStatus.FAILED
+    assert result.message == message
+    assert result.ended_at is not None
 
 
 @patch(

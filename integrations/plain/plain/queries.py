@@ -556,3 +556,11 @@ mutation UpdateWebhookTarget($input: UpdateWebhookTargetInput!) {
   }
 }
 """.strip()
+
+MY_PERMISSIONS = """
+query MyPermissions {
+  myPermissions {
+    permissions
+  }
+}
+""".strip()

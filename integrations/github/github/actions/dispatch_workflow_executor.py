@@ -113,6 +113,14 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             ocean.integration_config.get("legacy_dispatch_workflow_tracking", False)
         )
 
+    @staticmethod
+    def _legacy_dispatch_created_filter(now: datetime | None = None) -> str:
+        """GitHub's created search compares timestamps at whole-second precision."""
+        timestamp = now or datetime.now(timezone.utc)
+        # GitHub stores `created_at` as UTC whole seconds (…Z). isoformat() emits
+        # microseconds, and a run at 14:39:36Z does not match created>=14:39:36.001.
+        return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         if not self._use_legacy_dispatch_workflow_tracking():
             return None
@@ -191,6 +199,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 logger.warning(
                     f"Couldn't find the triggered workflow run, waiting for {WORKFLOW_POLL_DELAY_SECONDS} seconds",
                     attempts_made=attempts_made,
+                    created_filter=iso_date,
                 )
                 await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
                 attempts_made += 1
@@ -284,7 +293,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
         try:
             if self._use_legacy_dispatch_workflow_tracking():
-                iso_date = datetime.now(timezone.utc).isoformat()
+                iso_date = self._legacy_dispatch_created_filter()
                 await self._dispatch_workflow_legacy(
                     rest_client, organization, repo, workflow, ref, inputs
                 )

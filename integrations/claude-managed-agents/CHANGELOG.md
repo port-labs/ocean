@@ -7,6 +7,142 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.13.4 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 0.13.3 (2026-10-29)
+
+
+### Bug Fixes
+
+- Match Port MCP vault credentials by exact URL and skip agent Port MCP ensure when execution identity is missing
+
+
+## 0.13.2 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 0.13.1 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 0.13.0 (2026-10-25)
+
+
+### Features
+
+- Add managed Port MCP credentials for Claude agent sessions
+
+
+## 0.12.6 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 0.12.5 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 0.12.4 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 0.12.3 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 0.12.2 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 0.12.1 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 0.12.0 (2026-10-21)
+
+
+### Features
+
+- Stream agent messages and session errors to Port workflow run logs in near-real-time during trigger_agent sessions.
+
+
+## 0.11.3 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.11.2 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.11.1 (2026-10-19)
+
+
+### Improvements
+
+- Added `defaultInstallationId` (`claude-mngd-agnts`) to the integration spec so Port can default the installation identifier to a value within the 20-character limit
+
+
+## 0.11.0 (2026-10-19)
+
+
+### Features
+
+- Post agent messages and session errors as workflow node run logs when a trigger_agent session completes.
+
+
+## 0.10.3 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
 ## 0.10.2 (2026-10-13)
 
 
