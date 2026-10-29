@@ -222,6 +222,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         changed_since: Optional[RepositoryChange] = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        strategy: Optional[ClientSideCutoffStrategy] = None
+        cursor: Optional[datetime] = None
+
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []
@@ -239,8 +242,6 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
-        strategy: Optional[ClientSideCutoffStrategy] = None
-        cursor: Optional[datetime] = None
         if changed_since:
             qualifier = SEARCH_CHANGE_QUALIFIERS.get(changed_since.field)
             if qualifier:
