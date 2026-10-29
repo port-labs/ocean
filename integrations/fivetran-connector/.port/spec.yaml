@@ -1,0 +1,15 @@
+title: Fivetran Connector
+description: Sync data from any HTTP endpoint implementing the Fivetran connector protocol into Port
+icon: Fivetran
+features:
+  - type: exporter
+    section: Custom
+    resources: []
+configurations: []
+saas:
+  enabled: false
+installationDocs:
+  helm:
+    enabled: true
+  docker:
+    enabled: true
