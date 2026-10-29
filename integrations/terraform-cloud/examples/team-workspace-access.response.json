@@ -1,0 +1,37 @@
+{
+  "id": "tws-i2aickTaRLiJ6wdU",
+  "type": "team-workspaces",
+  "attributes": {
+    "access": "read",
+    "runs": "read",
+    "variables": "read",
+    "state-versions": "read",
+    "sentinel-mocks": "none",
+    "workspace-locking": false,
+    "run-tasks": false,
+    "policy-overrides": false
+  },
+  "relationships": {
+    "team": {
+      "data": {
+        "id": "team-VSwwhbxrXgmMktRa",
+        "type": "teams"
+      },
+      "links": {
+        "related": "/api/v2/teams/team-VSwwhbxrXgmMktRa"
+      }
+    },
+    "workspace": {
+      "data": {
+        "id": "ws-nAw4TsmPxCkeFMBs",
+        "type": "workspaces"
+      },
+      "links": {
+        "related": "/api/v2/organizations/Ocean-Test/workspaces/ws-with-state-1"
+      }
+    }
+  },
+  "links": {
+    "self": "/api/v2/team-workspaces/tws-i2aickTaRLiJ6wdU"
+  }
+}
