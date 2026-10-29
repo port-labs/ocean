@@ -387,7 +387,6 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for tags_batch in client.get_tags(
             projects_batch,
             max_concurrent=DEFAULT_MAX_CONCURRENT,
-            cursor=sync_cursor,
         ):
             yield tags_batch
 

@@ -1907,24 +1907,24 @@ class TestGitLabClient:
         mock_projects = [
             {"id": 1, "name": "Test Project", "path_with_namespace": "test/project"},
         ]
-
-        async def fake_pages(
-            project_path: str,
-            resource_type: str,
-            params: dict[str, Any] | None = None,
-        ) -> Any:
-            assert resource_type == "repository/tags"
-            assert params is None
-            yield [
-                {"name": "v1.0.0", "message": "Release v1.0.0"},
-                {"name": "v1.1.0", "message": "Release v1.1.0"},
-            ]
+        mock_tags = [
+            {
+                "name": "v1.0.0",
+                "message": "Release v1.0.0",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+            {
+                "name": "v1.1.0",
+                "message": "Release v1.1.0",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+        ]
 
         with patch.object(
-            client.rest,
-            "get_paginated_project_resource",
-            side_effect=fake_pages,
-        ) as mock_pages:
+            client,
+            "get_projects_resource_with_enrichment",
+            return_value=async_mock_generator([mock_tags]),
+        ) as mock_get_resource_enrichment:
             results = []
             async for batch in client.get_tags(mock_projects, max_concurrent=5):
                 results.extend(batch)
@@ -1934,44 +1934,9 @@ class TestGitLabClient:
             assert results[1]["name"] == "v1.1.0"
             assert results[0]["__project"]["path_with_namespace"] == "test/project"
             assert results[1]["__project"]["path_with_namespace"] == "test/project"
-            mock_pages.assert_called_once()
-
-    async def test_get_tags_incremental_early_stops(self, client: GitLabClient) -> None:
-        """Incremental tag sync filters by created_at and stops paging early."""
-        from datetime import datetime, timezone
-
-        cursor = datetime(2026, 10, 18, 9, 0, tzinfo=timezone.utc)
-        mock_projects = [
-            {"id": 1, "name": "Test Project", "path_with_namespace": "test/project"},
-        ]
-
-        async def fake_pages(
-            project_path: str,
-            resource_type: str,
-            params: dict[str, Any] | None = None,
-        ) -> Any:
-            assert resource_type == "repository/tags"
-            assert params == {"order_by": "updated", "sort": "desc"}
-            yield [
-                {"name": "v2.0.0", "created_at": "2026-10-19T09:00:00Z"},
-                {"name": "v1.0.0", "created_at": "2026-10-17T09:00:00Z"},
-            ]
-            yield [{"name": "v0.1.0", "created_at": "2026-01-01T00:00:00Z"}]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_project_resource",
-            side_effect=fake_pages,
-        ) as mock_pages:
-            results = []
-            async for batch in client.get_tags(
-                mock_projects, max_concurrent=5, cursor=cursor
-            ):
-                results.extend(batch)
-
-            assert [tag["name"] for tag in results] == ["v2.0.0"]
-            assert results[0]["__project"]["path_with_namespace"] == "test/project"
-            mock_pages.assert_called_once()
+            mock_get_resource_enrichment.assert_called_once_with(
+                mock_projects, "repository/tags", 5
+            )
 
     async def test_get_releases(self, client: GitLabClient) -> None:
         """Test fetching releases for projects with enrichment"""

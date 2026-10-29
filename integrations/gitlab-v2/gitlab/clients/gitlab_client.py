@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, Union
 
@@ -7,7 +6,6 @@ import anyio
 import httpx
 from loguru import logger
 from pydantic.v1 import BaseModel
-from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -16,7 +14,6 @@ from port_ocean.utils.cache import cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.incremental import TAG_INCREMENTAL, build_tag_list_params
 from gitlab.helpers.utils import (
     build_search_query,
     parse_file_content,
@@ -374,48 +371,17 @@ class GitLabClient:
             if active_batch:
                 yield active_batch
 
-    async def _iter_project_tags(
-        self,
-        project: dict[str, Any],
-        *,
-        cursor: datetime | None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Paginate a project's tags, early-stopping on incremental runs."""
-        params = build_tag_list_params(cursor)
-        pages = self.rest.get_paginated_project_resource(
-            str(project["id"]),
-            "repository/tags",
-            params=params or None,
-        )
-        async for batch in paginate_with_strategy(
-            pages,
-            cursor=cursor,
-            strategy=TAG_INCREMENTAL if cursor is not None else None,
-        ):
-            yield [
-                self.enrich_with_project_path(tag, project["path_with_namespace"])
-                for tag in batch
-            ]
-
     async def get_tags(
         self,
         projects_batch: list[dict[str, Any]],
         max_concurrent: int = 10,
-        cursor: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch tags for each project; with a cursor, stop once created_at is older."""
-        semaphore = asyncio.Semaphore(max_concurrent)
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                partial(self._iter_project_tags, project, cursor=cursor),
-            )
-            for project in projects_batch
-        ]
-        async for tags_batch in stream_async_iterators_tasks(*tasks):
-            if tags_batch:
-                logger.info(f"Received batch with {len(tags_batch)} tags")
-                yield tags_batch
+        """Fetch all tags for each project in the batch."""
+        async for tags_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "repository/tags", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(tags_batch)} tags")
+            yield tags_batch
 
     async def get_releases(
         self,

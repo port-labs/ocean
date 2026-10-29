@@ -3,21 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from port_ocean.core.incremental.strategies import (
-    ClientSideCutoffStrategy,
-    ServerSideTimestampStrategy,
-)
+from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 
 from gitlab.clients.options import IssueOptions
 
 # GitLab filters list endpoints server-side by the resource's updated_at.
 UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
-
-# Lightweight tags often omit created_at - those are kept and do not trigger early-stop.
-TAG_INCREMENTAL = ClientSideCutoffStrategy(
-    stop_field="created_at",
-    query_params={"order_by": "updated", "sort": "desc"},
-)
 
 MergeRequestState = Literal["opened", "closed", "merged"]
 
@@ -41,11 +32,6 @@ def build_project_updated_after_params(
     if "updated_after" in params:
         params["order_by"] = "updated_at"
     return params
-
-
-def build_tag_list_params(cursor: datetime | None) -> dict[str, Any]:
-    """Query params for ``GET /projects/:id/repository/tags``."""
-    return TAG_INCREMENTAL.merge_params({}, cursor)
 
 
 def build_issue_params(

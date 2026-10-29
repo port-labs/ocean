@@ -1,15 +1,12 @@
 from datetime import datetime, timezone
-from typing import Any
 
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
-    TAG_INCREMENTAL,
     build_deployment_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
     build_project_updated_after_params,
-    build_tag_list_params,
     resolve_effective_datetime,
 )
 
@@ -41,31 +38,6 @@ def test_project_updated_after_full_resync_keeps_base_params() -> None:
     assert build_project_updated_after_params(
         {"min_access_level": 30, "active": True}, cursor=None
     ) == {"min_access_level": 30, "active": True}
-
-
-def test_tag_full_resync_has_no_order_params() -> None:
-    assert build_tag_list_params(cursor=None) == {}
-
-
-def test_tag_incremental_orders_newest_first() -> None:
-    assert build_tag_list_params(cursor=CURSOR) == {
-        "order_by": "updated",
-        "sort": "desc",
-    }
-
-
-def test_tag_incremental_keeps_tags_at_or_after_cursor() -> None:
-    page: list[dict[str, Any]] = [
-        {"name": "new", "created_at": "2026-10-19T09:00:00Z"},
-        {"name": "old", "created_at": "2026-10-17T09:00:00Z"},
-        {"name": "lightweight", "created_at": None},
-    ]
-
-    assert [tag["name"] for tag in TAG_INCREMENTAL.filter_page(page, CURSOR)] == [
-        "new",
-        "lightweight",
-    ]
-    assert TAG_INCREMENTAL.should_break_pagination(page, CURSOR) is True
 
 
 def test_resolve_effective_datetime_prefers_cursor() -> None:
