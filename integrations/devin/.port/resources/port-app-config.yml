@@ -1,0 +1,82 @@
+resources:
+  - kind: playbook
+    selector:
+      query: 'true'
+      includeEnterprise: false
+    port:
+      entity:
+        mappings:
+          identifier: .playbook_id
+          title: .title
+          blueprint: '"devin_playbook"'
+          properties:
+            body: .body
+            macro: .macro
+            accessType: .access_type
+            createdBy: .created_by
+            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            updatedAt: .updated_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+  - kind: knowledge-note
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .note_id
+          title: .name
+          blueprint: '"devin_knowledge_note"'
+          properties:
+            body: .body
+            trigger: .trigger
+            folderPath: .folder_path
+            pinnedRepo: .pinned_repo
+            enabled: .is_enabled
+            accessType: .access_type
+            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            updatedAt: .updated_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+  - kind: secret
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .secret_id
+          title: .key // .secret_id
+          blueprint: '"devin_secret"'
+          properties:
+            note: .note
+            secretType: .secret_type
+            accessType: .access_type
+            sensitive: .is_sensitive
+            createdBy: .created_by
+            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+  - kind: session
+    selector:
+      query: 'true'
+      includeArchived: false
+      createdAfterDays: 30
+      onlyManagedByPort: false
+    port:
+      entity:
+        mappings:
+          identifier: .session_id
+          title: .title // .session_id
+          blueprint: '"devin_session"'
+          properties:
+            status: .status
+            statusDetail: .status_detail
+            url: .url
+            origin: .origin
+            category: .category
+            tags: .tags
+            managedByPort: 'any(.tags[]?; . == "port:managed")'
+            pullRequests: '[.pull_requests[]?.pr_url]'
+            acusConsumed: .acus_consumed
+            onDemandUsage: .on_demand_usage
+            devinMode: .devin_mode
+            archived: .is_archived
+            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            updatedAt: .updated_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+          relations:
+            playbook: .playbook_id
+            parentSession: .parent_session_id
