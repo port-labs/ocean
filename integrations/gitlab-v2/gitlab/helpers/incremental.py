@@ -9,7 +9,17 @@ from gitlab.clients.options import IssueOptions
 
 # GitLab filters list endpoints server-side by the resource's updated_at.
 UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
+LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
+    param_key="last_activity_after"
+)
 
+# Dropped on incremental runs; replaced by cursor ``updated_after`` + ``order_by``.
+DEPLOYMENT_TIMESTAMP_SELECTORS = {
+    "finished_after",
+    "finished_before",
+    "updated_after",
+    "updated_before",
+}
 MergeRequestState = Literal["opened", "closed", "merged"]
 
 
@@ -23,15 +33,12 @@ def resolve_effective_datetime(
     return selector_value
 
 
-def build_project_updated_after_params(
+def build_project_list_params(
     base_params: dict[str, Any],
     cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects`` (``updated_after`` + ``order_by=updated_at``)."""
-    params = UPDATED_AFTER_INCREMENTAL.merge_params(base_params, cursor)
-    if "updated_after" in params:
-        params["order_by"] = "updated_at"
-    return params
+    """Query params for ``GET /projects``."""
+    return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
 
 
 def build_issue_params(
@@ -79,20 +86,21 @@ def build_pipeline_params(
 
 def build_deployment_params(
     api_query_params: dict[str, Any] | None,
-    cursor: datetime | None,
+    cursor: datetime,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/deployments``."""
-    raw = dict(api_query_params or {})
-    if "finished_after" in raw or "finished_before" in raw:
-        # GitLab rejects mixing a finished window with updated_after.
-        raw.pop("updated_after", None)
-        params = {key: value for key, value in raw.items() if value is not None}
-        params["order_by"] = "finished_at"
-        return params
+    """Incremental query params for ``GET /projects/{id}/deployments``.
 
-    params = merge_updated_after_params(api_query_params, cursor)
-    if "updated_after" in params:
-        params["order_by"] = "updated_at"
+    Drops selector timestamp filters and ``order_by``, keeps other filters
+    """
+    params = {
+        key: value
+        for key, value in (api_query_params or {}).items()
+        if key not in DEPLOYMENT_TIMESTAMP_SELECTORS
+        and key != "order_by"
+        and value is not None
+    }
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
+    params["order_by"] = "updated_at"
     return params
 
 

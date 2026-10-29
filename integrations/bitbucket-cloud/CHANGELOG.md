@@ -7,6 +7,127 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.11 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 0.6.10 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 0.6.9 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 0.6.8 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 0.6.7 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 0.6.6 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 0.6.5 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 0.6.4 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 0.6.3 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 0.6.2 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.6.1 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.6.0 (2026-10-19)
+
+
+### Improvements
+
+- - The `file` kind now discovers files by listing each repository through Bitbucket's Source API with a server-side filter, instead of querying the workspace code search API that Atlassian deprecates on 2026-11-01 with no replacement.
+- A workspace without a code search index now ingests its files. Previously the search request answered 404, which was read as no results, so the kind produced nothing and its existing entities were reconciled away on every resync.
+- Files that code search never indexed are now ingested. Files above 1 MB are skipped, and the file, its size and the limit are logged.
+- The `repos` field is now matched against each repository's slug, its display name, and its display name with spaces hyphenated, case-insensitively, where it was previously sent to the code search API as a repository qualifier. A configured value that matched nothing before may now match.
+- Filename and path matching are unchanged. The server-side filter is a substring match, so a configured filename that is a suffix of another file's name can now reach the matcher from more places - a configured `port.yml` also accepts `airport.yml`, as it already did wherever discovery surfaced one.
+
+
+## 0.5.148 (2026-10-19)
+
+
+### Bug Fixes
+
+- - Fixed the repository listing paginating at Bitbucket's default page size of 10 instead of 100. Every kind that lists repositories passes a parameters dictionary, which is empty rather than unset when no selector filters are configured, so the page size was never applied - ten times the requests against the hourly rate limit on every resync of every kind.
+- Fixed the directory listing dropping its own depth limit whenever a caller passes query parameters. Bitbucket defaults that limit to one level, so such a listing would have returned the repository root only, with no error.
+- Fixed an `AttributeError` raised for a file whose content Bitbucket cannot return, which was logged as a successful fetch one line earlier. The shipped default repository mapping requests a CODEOWNERS file from every repository, so this was reached on every resync of most installations and recorded only at debug level.
+- A file whose content cannot be read now ends the `file` kind in error so its existing entities are preserved rather than reconciled away, a nested `file://` reference resolves to null, and a push skips that file instead of overwriting a good entity with empty content.
+- The `file` kind now reports every file it could not read and fails once the walk has finished, so the files it could read still reach Port. Previously the first unreadable file ended the walk and discarded everything behind it.
+- The `file` kind now addresses each repository by its real slug rather than by its display name with spaces hyphenated. A renamed repository, or one whose name carries punctuation, was fetched at a URL that resolves to nothing - or, where the hyphenated name happens to match another repository's slug, to that repository's file instead.
+
+
+## 0.5.147 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
 ## 0.5.146 (2026-10-13)
 
 

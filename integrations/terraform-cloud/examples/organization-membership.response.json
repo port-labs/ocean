@@ -1,0 +1,31 @@
+{
+  "id": "ou-4cXmcpnKmKifHe4U",
+  "type": "organization-memberships",
+  "attributes": {
+    "status": "active",
+    "email": "jane.doe@example.com",
+    "created-at": "2026-03-18T09:27:14.458Z"
+  },
+  "relationships": {
+    "teams": {
+      "data": [
+        {
+          "id": "team-aVV5S82NesrvqUje",
+          "type": "teams"
+        }
+      ]
+    },
+    "user": {
+      "data": {
+        "id": "user-3vrswiZfU32oE296",
+        "type": "users"
+      }
+    },
+    "organization": {
+      "data": {
+        "id": "Ocean-Test",
+        "type": "organizations"
+      }
+    }
+  }
+}

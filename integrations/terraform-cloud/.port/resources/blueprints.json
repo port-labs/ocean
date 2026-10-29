@@ -388,5 +388,209 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "terraformCloudTeam",
+    "description": "This blueprint represents a team in Terraform Cloud",
+    "title": "Terraform Cloud Team",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "description": "Whether the team is visible to the whole organization or only to its members"
+        },
+        "usersCount": {
+          "type": "number",
+          "title": "Users Count",
+          "description": "The number of users in the team"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the team"
+        },
+        "ssoTeamId": {
+          "type": "string",
+          "title": "SSO Team ID",
+          "description": "The identifier of the team in the SSO provider"
+        },
+        "organizationAccess": {
+          "type": "object",
+          "title": "Organization Access",
+          "description": "The organization-level permissions granted to this team"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "organization": {
+        "title": "Terraform Cloud Organization",
+        "target": "terraformCloudOrganization",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "terraformCloudOrganizationMembership",
+    "description": "This blueprint represents a user's membership of an organization in Terraform Cloud",
+    "title": "Terraform Cloud Organization Membership",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email",
+          "description": "The email address of the user"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the membership, active or invited"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "The time the membership was created"
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID",
+          "description": "The Terraform Cloud identifier of the user behind this membership"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "organization": {
+        "title": "Terraform Cloud Organization",
+        "target": "terraformCloudOrganization",
+        "required": false,
+        "many": false
+      },
+      "teams": {
+        "title": "Terraform Cloud Teams",
+        "target": "terraformCloudTeam",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "terraformCloudTeamWorkspaceAccess",
+    "description": "This blueprint represents a team's access to a workspace in Terraform Cloud",
+    "title": "Terraform Cloud Team Workspace Access",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "access": {
+          "type": "string",
+          "title": "Access",
+          "description": "The access level the team holds on the workspace"
+        },
+        "runs": {
+          "type": "string",
+          "title": "Runs",
+          "description": "The team's permission on the workspace's runs"
+        },
+        "variables": {
+          "type": "string",
+          "title": "Variables",
+          "description": "The team's permission on the workspace's variables"
+        },
+        "stateVersions": {
+          "type": "string",
+          "title": "State Versions",
+          "description": "The team's permission on the workspace's state versions"
+        },
+        "sentinelMocks": {
+          "type": "string",
+          "title": "Sentinel Mocks",
+          "description": "The team's permission on the workspace's Sentinel mocks"
+        },
+        "workspaceLocking": {
+          "type": "boolean",
+          "title": "Workspace Locking",
+          "description": "Whether the team can lock and unlock the workspace"
+        },
+        "runTasks": {
+          "type": "boolean",
+          "title": "Run Tasks",
+          "description": "Whether the team can manage the workspace's run tasks"
+        },
+        "policyOverrides": {
+          "type": "boolean",
+          "title": "Policy Overrides",
+          "description": "Whether the team can override soft-mandatory policy checks"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "team": {
+        "title": "Terraform Cloud Team",
+        "target": "terraformCloudTeam",
+        "required": false,
+        "many": false
+      },
+      "workspace": {
+        "title": "Terraform Cloud Workspace",
+        "target": "terraformCloudWorkspace",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "terraformCloudTeamProjectAccess",
+    "description": "This blueprint represents a team's access to a project in Terraform Cloud",
+    "title": "Terraform Cloud Team Project Access",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "access": {
+          "type": "string",
+          "title": "Access",
+          "description": "The access level the team holds on the project"
+        },
+        "projectAccess": {
+          "type": "object",
+          "title": "Project Access",
+          "description": "The team's permissions on the project itself"
+        },
+        "workspaceAccess": {
+          "type": "object",
+          "title": "Workspace Access",
+          "description": "The team's permissions on the workspaces the project contains"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "team": {
+        "title": "Terraform Cloud Team",
+        "target": "terraformCloudTeam",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Terraform Cloud Project",
+        "target": "terraformCloudProject",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

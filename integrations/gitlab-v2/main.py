@@ -28,7 +28,7 @@ from gitlab.helpers.incremental import (
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
-    build_project_updated_after_params,
+    build_project_list_params,
     resolve_effective_datetime,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
@@ -171,7 +171,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    params = build_project_updated_after_params(
+    params = build_project_list_params(
         build_project_params(include_only_active_projects=include_only_active_projects),
         sync_cursor,
     )
@@ -296,7 +296,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for projects_batch in client.get_projects(
-        params=build_project_updated_after_params(
+        params=build_project_list_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),
@@ -343,11 +343,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
-                + (
-                    f" updated after {params['updated_after']}"
-                    if "updated_after" in params
-                    else ""
-                )
             )
 
             async for merge_requests_batch in client.get_groups_resource(
@@ -373,7 +368,7 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_updated_after_params(
+        params=build_project_list_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),
@@ -401,7 +396,7 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_updated_after_params(
+        params=build_project_list_params(
             build_project_params(
                 include_only_active_projects=include_only_active_projects
             ),
@@ -497,6 +492,7 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT_WITH_MEMBERS)
 async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Full resync only — membership changes do not reliably bump last_activity_at."""
     client = create_gitlab_client()
     selector = cast(
         GitlabProjectWithMembersResourceConfig, event.resource_config
@@ -705,13 +701,16 @@ async def _resync_deployments(
 async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync project deployments; incremental only fetches those updated since the cursor."""
     selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
-    params = build_deployment_params(
-        selector.generate_query_params() or None,
-        active_incremental_cursor(),
+    sync_cursor = active_incremental_cursor()
+    selector_params = selector.generate_query_params() or None
+    params = (
+        build_deployment_params(selector_params, sync_cursor)
+        if sync_cursor is not None
+        else selector_params
     )
     async for batch in _resync_deployments(
         selector.include_only_active_projects,
-        params or None,
+        params,
     ):
         yield batch
 
