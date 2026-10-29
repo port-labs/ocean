@@ -67,4 +67,9 @@ async def await_centralized_rate_limit(pool: str) -> None:
         if result.wait_seconds <= 0:
             return
 
+        logger.info(
+            "Centralized rate limiter waiting",
+            pool=pool,
+            wait_seconds=result.wait_seconds,
+        )
         await asyncio.sleep(result.wait_seconds)
