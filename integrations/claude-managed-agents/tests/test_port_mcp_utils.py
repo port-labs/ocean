@@ -24,8 +24,13 @@ from tests.action_test_helpers import (
 
 
 def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
+    from datetime import datetime, timezone
+
     from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
         BetaManagedAgentsMCPServerURLDefinition,
+    )
+    from anthropic.types.beta.vaults.beta_managed_agents_credential import (
+        BetaManagedAgentsCredential,
     )
     from anthropic.types.beta.vaults.beta_managed_agents_static_bearer_auth_response import (
         BetaManagedAgentsStaticBearerAuthResponse,
@@ -38,10 +43,18 @@ def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
             type="url", name=PORT_MCP_SERVER_NAME, url=getport
         )
     ]
-    credential = SimpleNamespace(
+    credential = BetaManagedAgentsCredential(
+        id="cred_1",
+        display_name="port-mcp",
+        type="vault_credential",
+        vault_id="vault_1",
+        metadata={},
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
         auth=BetaManagedAgentsStaticBearerAuthResponse(
-            type="static_bearer", mcp_server_url=getport
-        )
+            type="static_bearer",
+            mcp_server_url=getport,
+        ),
     )
 
     with patch(
