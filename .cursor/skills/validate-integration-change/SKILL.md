@@ -20,14 +20,14 @@ Run this for integration work, not only when the user says "validate". That incl
 
 1. **Read the docs** for the vendor endpoints the change touches. Prefer official REST/GraphQL docs over guessing response shapes.
 2. **Write the change** in the integration (client, mapping, config, etc.).
-3. **Write an expectations file** (YAML). It must name `blueprint`. Add at least one of: `count`, `identifier`, a mapped `property` (`name`/`value`), or `absent`. Optionally include `blueprint_definition` (created only if missing), `host_env` (env var set to the stub URL), and `env` (extra env; `${STUB_URL}` is expanded).
+3. **Write an expectations file** (YAML). It must name `blueprint` and include `mapping`. `mapping` is the port-app-config for this run: put only the resources the resync should ingest (the kind under test, plus any other kind that change needs). The script creates the integration with that mapping in one request, and sail keeps it. Kinds left out of `mapping.resources` are not fetched or upserted. Do not delete those kinds from the integration's `port-app-config.yml`. Add at least one of: `count`, `identifier`, a mapped `property` (`name`/`value`), or `absent`. Optionally include `blueprint_definition` (created only if missing), `host_env` (env var set to the stub URL), and `env` (extra env; `${STUB_URL}` is expanded). A relation on a kept resource still needs its target blueprint to exist.
 4. **Start the stub** (if not already running):
 
    ```bash
    python -m tools.vendor_stub --port 8765
    ```
 
-5. **Register routes** for every third-party call the resync will make (including startup webhook registration — see below). Use the admin CLI or HTTP:
+5. **Register routes** for every third-party call this run's resync will make, including startup webhook registration (see below). That is the resources in `mapping`, not every kind in the integration's port-app-config. Use the admin CLI or HTTP:
 
    ```bash
    python -m tools.vendor_stub.cli register \
@@ -72,6 +72,19 @@ identifier: example-repo
 property:
   name: default_branch
   value: main
+mapping:
+  resources:
+    - kind: repository
+      selector:
+        query: "true"
+      port:
+        entity:
+          mappings:
+            identifier: .name
+            title: .name
+            blueprint: '"githubRepository"'
+            properties:
+              defaultBranch: .default_branch
 host_env: OCEAN__INTEGRATION__CONFIG__GITHUB_HOST
 env:
   OCEAN__INTEGRATION__CONFIG__GITHUB_TOKEN: "dummy"

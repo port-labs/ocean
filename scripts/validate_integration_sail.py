@@ -120,6 +120,30 @@ class PortApi:
                 f"warn: delete blueprint {identifier}: {r.status_code} {r.text[:200]}"
             )
 
+    def create_integration(
+        self,
+        identifier: str,
+        integration_type: str,
+        version: str,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        r = self.http.post(
+            f"{self.api_url}/integration",
+            headers=self._auth_headers(),
+            json={
+                "installationId": identifier,
+                "installationAppType": integration_type,
+                "version": version or "0.0.0",
+                "changelogDestination": {},
+                "config": config,
+                "actionsProcessingEnabled": False,
+                "incrementalSyncEnabled": False,
+                "createPortResourcesOrigin": "Ocean",
+            },
+        )
+        r.raise_for_status()
+        return r.json()["integration"]
+
     def delete_integration(self, identifier: str) -> None:
         r = self.http.delete(
             f"{self.api_url}/integration/{identifier}",
@@ -184,6 +208,14 @@ def _load_expectations(path: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text())
     if not isinstance(data, dict) or not data.get("blueprint"):
         raise SystemExit("expectations file must be a mapping with a `blueprint` key")
+    mapping = data.get("mapping")
+    resources = mapping.get("resources") if isinstance(mapping, dict) else None
+    if not isinstance(resources, list) or not resources:
+        raise SystemExit(
+            "expectations file must include `mapping.resources` with the resources "
+            "this run syncs. The script creates the integration with that mapping, "
+            "so kinds left out of it are not ingested."
+        )
     return data
 
 
@@ -250,17 +282,25 @@ def _assert_expectations(
     return errors
 
 
+def _pyproject_table(integration_path: Path) -> dict[str, Any]:
+    pyproject = integration_path / "pyproject.toml"
+    if not pyproject.is_file():
+        return {}
+    data = tomllib.loads(pyproject.read_text())
+    return (data.get("project") or {}) or (data.get("tool", {}).get("poetry") or {})
+
+
 def _integration_type(integration_path: Path) -> str:
     """Same name Ocean uses: project or Poetry name in the integration pyproject, lowercased."""
-    pyproject = integration_path / "pyproject.toml"
-    if pyproject.is_file():
-        data = tomllib.loads(pyproject.read_text())
-        name = (data.get("project") or {}).get("name") or (
-            data.get("tool", {}).get("poetry") or {}
-        ).get("name")
-        if name:
-            return str(name).lower()
+    name = _pyproject_table(integration_path).get("name")
+    if name:
+        return str(name).lower()
     return integration_path.name.lower()
+
+
+def _integration_version(integration_path: Path) -> str:
+    version = _pyproject_table(integration_path).get("version")
+    return str(version) if version else "0.0.0"
 
 
 def _fetch_unmatched(stub_url: str) -> Any:
@@ -346,6 +386,19 @@ def main() -> int:
         else:
             print(f"blueprint {blueprint_name} already exists")
 
+        # Create the integration with only the expected mapping. Sail finds it
+        # already present and does not replace the config with the full local file.
+        mapping = expectations["mapping"]
+        port.create_integration(
+            run_id,
+            integration_type,
+            _integration_version(integration_path),
+            mapping,
+        )
+        print(
+            f"created integration {run_id} with {len(mapping['resources'])} resources"
+        )
+
         # B3: sail once
         child_env = os.environ.copy()
         child_env.update(file_env)
@@ -356,7 +409,8 @@ def main() -> int:
         child_env["OCEAN__INTEGRATION__TYPE"] = integration_type
         child_env["OCEAN__EVENT_LISTENER__TYPE"] = "ONCE"
         child_env["OCEAN__CREATE_PORT_RESOURCES_ORIGIN"] = "Ocean"
-        # Always initialize from local .port/resources for this validation run.
+        # Blueprints still initialize from local .port/resources. The mapping
+        # is the one stored on the integration created above.
         child_env["OCEAN__INITIALIZE_PORT_RESOURCES"] = "true"
         # Force ocean-core processing so entities are upserted in-process.
         # Sandbox orgs with DSP/lakehouse flags otherwise extract raw data only
