@@ -41,7 +41,7 @@ Run this for integration work, not only when the user says "validate". That incl
    ```
 
    `--file` / `--json` supply `method`, `path` or `path_regex`, optional `query`, `headers`, `body_contains`, `body_field`, `priority`, `times` (int or response sequence), and `response` (`status`, `headers`). Do not put the response body in that file.
-6. **Models** — write or extend `integrations/<name>/<package>/external_api_models/<resource>.py` as the full vendor object from the docs, not the subset this change maps. Put the doc URL and the date in the module docstring. A later run may reuse the module when it already matches that documented object. Do not add an example constructor.
+6. **Models** — write or extend `integrations/<name>/<package>/external_api_models/<resource>.py` as the full vendor object from the docs, not the subset this change maps. Put the doc URL and the date in the module docstring. A later run may reuse the module when it already matches that documented object. Do not add an example constructor. Do not add `from __future__ import annotations` or `model_rebuild()` unless the file has a real forward or recursive type reference that fails without them. Prefer defining nested classes before they are referenced.
 
    Register with `--model path/to/model.py:Class` and `--values` set to the partial body the stub should return (asserted values, identifiers, mapped fields, and fields that link to another stubbed resource). The CLI checks that partial against the full model, then registers `--values` as the HTTP body. Use `--as-list` when the endpoint returns an array. `--model` on `paginate` sets every page body from that same partial. Do not hand-write the response body in the registration file.
 7. **Run the sail script**:
