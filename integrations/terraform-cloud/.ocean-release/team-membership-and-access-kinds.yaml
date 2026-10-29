@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add team, organization-membership, team-workspace-access and team-project-access kinds with optional search, status and email selectors
