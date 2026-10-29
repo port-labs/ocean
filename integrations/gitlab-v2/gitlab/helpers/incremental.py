@@ -13,15 +13,13 @@ LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
     param_key="last_activity_after"
 )
 
-DEPLOYMENT_SELECTOR_PARAMS = (
-    "environment",
-    "status",
-    "updated_after",
-    "updated_before",
-    "finished_after",
-    "finished_before",
-)
-
+# Timestamp selectors, each requiring the matching ``order_by`` on GitLab's side.
+DEPLOYMENT_TIMESTAMP_ORDER_BY = {
+    "finished_after": "finished_at",
+    "finished_before": "finished_at",
+    "updated_after": "updated_at",
+    "updated_before": "updated_at",
+}
 MergeRequestState = Literal["opened", "closed", "merged"]
 
 
@@ -86,38 +84,36 @@ def build_pipeline_params(
     return merge_updated_after_params(api_query_params, cursor)
 
 
+def _with_timestamp_order_by(params: dict[str, Any]) -> dict[str, Any]:
+    for key, order_by in DEPLOYMENT_TIMESTAMP_ORDER_BY.items():
+        if key in params:
+            params["order_by"] = order_by
+            break
+    return params
+
+
 def build_deployment_params(
     api_query_params: dict[str, Any] | None,
     cursor: datetime | None,
 ) -> dict[str, Any]:
     """Query params for ``GET /projects/{id}/deployments``.
 
-    Incremental (cursor set): selector filters are ignored and only
-    ``updated_after=<cursor>`` is sent. Otherwise the selectors are used as-is.
+    Incremental (cursor set): selector timestamp filters are ignored and only the
+    cursor's timestamp param is sent; other filters (environment, status) are kept.
+    Otherwise the selectors are used as-is.
     """
     raw = dict(api_query_params or {})
 
     if cursor is not None:
-        params = {
+        raw = {
             key: value
             for key, value in raw.items()
-            if key not in DEPLOYMENT_SELECTOR_PARAMS and value is not None
+            if key not in DEPLOYMENT_TIMESTAMP_ORDER_BY
         }
-        params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
-        params["order_by"] = "updated_at"
-        return params
+        raw.pop("order_by", None)
 
-    if "finished_after" in raw or "finished_before" in raw:
-        # GitLab rejects mixing a finished window with updated_after.
-        raw.pop("updated_after", None)
-        params = {key: value for key, value in raw.items() if value is not None}
-        params["order_by"] = "finished_at"
-        return params
-
-    params = merge_updated_after_params(raw, None)
-    if "updated_after" in params:
-        params["order_by"] = "updated_at"
-    return params
+    params = merge_updated_after_params(raw, cursor)
+    return _with_timestamp_order_by(params)
 
 
 def merge_updated_after_params(
