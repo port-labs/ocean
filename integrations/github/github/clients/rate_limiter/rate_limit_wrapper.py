@@ -96,12 +96,14 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return self._limiter.is_rate_limit_response(response)
 
+    @property
     def _local_is_close_to_rate_limit(self) -> bool:
         info = self._limiter.rate_limit_info
         if not info:
             return False
         return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
 
+    @property
     def _local_seconds_until_rate_limit_reset(self) -> float:
         info = self._limiter.rate_limit_info
         if not info:

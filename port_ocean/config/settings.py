@@ -365,13 +365,15 @@ LiveEventsSettingsType = RedisLiveEventsSettings
 class CentralizedRateLimiterSettings(BaseOceanModel):
     """Cross-pod third-party API rate limit coordination via Redis.
 
-    Startup always connects. A failed connection leaves the limiter unset, and
-    each integration keeps its local limiter. Configure the connection with
+    Off unless ``OCEAN__CENTRALIZED_RATE_LIMITER__ENABLED`` is true. A failed
+    connection leaves the limiter unset, and each integration keeps its local
+    limiter. Configure the connection with
     ``OCEAN__CENTRALIZED_RATE_LIMITER__REDIS__*``.
     """
 
     model_config = ConfigDict(extra="allow")
 
+    enabled: bool = False
     redis: RedisConnectionSettings = Field(default_factory=RedisConnectionSettings)
 
 

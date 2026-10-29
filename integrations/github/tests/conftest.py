@@ -38,24 +38,6 @@ TEST_INTEGRATION_CONFIG: Dict[str, Any] = {
 
 
 @pytest.fixture(autouse=True)
-def disable_centralized_rate_limiting() -> Generator[None, None, None]:
-    """GitHub unit tests exercise the local limiter; keep centralized path off."""
-    targets = (
-        "port_ocean.rate_limiting.utils.use_centralized_rate_limiting",
-        # Wrapper imports the name directly, so the utils patch does not reach it.
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-    )
-    patches = [patch(target, return_value=False) for target in targets]
-    for p in patches:
-        p.start()
-    try:
-        yield
-    finally:
-        for p in patches:
-            p.stop()
-
-
-@pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     """Mock the PortOcean context to prevent initialization errors."""
 
@@ -72,6 +54,7 @@ def mock_ocean_context() -> None:
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.centralized_rate_limiter = None
         mock_ocean_app.base_url = "https://baseurl.com"
         mock_ocean_app.cache_provider = AsyncMock()
         mock_ocean_app.cache_provider.get.return_value = None

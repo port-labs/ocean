@@ -1,9 +1,4 @@
-"""Redis pool hash parsing, sync-tier gates, and record field mapping.
-
-These helpers stay here so ``utils`` can import ``CentralizedRateLimiter``
-without a cycle: the limiter imports this module, and this module does not
-import the limiter.
-"""
+"""Redis pool hash parsing, sync-tier gates, and record field mapping."""
 
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -13,6 +8,7 @@ from port_ocean.rate_limiting.constants import (
     REDIS_KEY_PREFIX,
 )
 from port_ocean.rate_limiting.models import CentralizedRateLimitState, SyncTier
+from port_ocean.utils.misc import decode_redis_hash
 
 # Full resync (SyncTier.LOW) gives way once remaining/limit drops to this.
 LOW_REMAINING_RATIO_CEILING = 0.25
@@ -58,20 +54,6 @@ class PoolRedisState:
         if tier == SyncTier.HIGH:
             return self.remaining <= 0
         return False
-
-
-def decode_redis_hash(raw: Mapping[Any, Any]) -> dict[str, str]:
-    """Turn a Redis hash into ``str`` keys and values.
-
-    redis-py returns ``bytes`` when ``decode_responses`` is off. Tests and a
-    client with decoding on may already pass ``str``.
-    """
-    decoded: dict[str, str] = {}
-    for key, value in raw.items():
-        k = key.decode() if isinstance(key, bytes) else str(key)
-        v = value.decode() if isinstance(value, bytes) else str(value)
-        decoded[k] = v
-    return decoded
 
 
 def pool_redis_key(org_id: str, integration_identifier: str, pool: str) -> str:
