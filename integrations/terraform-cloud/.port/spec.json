@@ -29,6 +29,18 @@
         },
         {
           "kind": "health-assessment"
+        },
+        {
+          "kind": "team"
+        },
+        {
+          "kind": "organization-membership"
+        },
+        {
+          "kind": "team-workspace-access"
+        },
+        {
+          "kind": "team-project-access"
         }
       ]
     }

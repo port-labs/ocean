@@ -215,6 +215,32 @@ class ServiceResourceConfig(ResourceConfig):
     )
 
 
+class CatalogEntitySelector(Selector):
+    include_discovered: bool = Field(
+        alias="includeDiscovered",
+        default=False,
+        title="Include Discovered Entities",
+        description="Whether to include entities Datadog discovered automatically from APM and USM alongside the declared ones, defaults to false",
+    )
+    entity_kinds: list[str] = Field(
+        alias="entityKinds",
+        default_factory=list,
+        title="Entity Kinds",
+        description="Entity kinds to fetch, e.g. service, datastore. Case sensitive, defaults to every kind. See the <a target='_blank' href='https://docs.datadoghq.com/software_catalog/service_definitions/v3-0/'>Datadog entity schema</a> for the kinds Datadog defines; an org can also define custom kinds beyond those.",
+    )
+
+
+class CatalogEntityResourceConfig(ResourceConfig):
+    kind: Literal["catalogEntity"] = Field(
+        title="Datadog Catalog Entity",
+        description="Datadog Software Catalog entity resource kind, covering every entity kind.",
+    )
+    selector: CatalogEntitySelector = Field(
+        title="Catalog Entity Selector",
+        description="Selector for the Datadog Software Catalog entity resource.",
+    )
+
+
 class UserResourceConfig(ResourceConfig):
     kind: Literal["user"] = Field(
         title="Datadog User",
@@ -258,6 +284,7 @@ class DataDogPortAppConfig(PortAppConfig):
         | MonitorResourceConfig
         | SLOResourceConfig
         | ServiceResourceConfig
+        | CatalogEntityResourceConfig
         | UserResourceConfig
         | RoleResourceConfig
         | OrgResourceConfig

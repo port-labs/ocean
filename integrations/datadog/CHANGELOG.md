@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-10-29)
+
+
+### Features
+
+- Add catalogEntity kind ingesting every Datadog Software Catalog entity kind with its declared relations, narrowed by the optional entityKinds selector
+
+
 ## 0.6.105 (2026-10-26)
 
 
