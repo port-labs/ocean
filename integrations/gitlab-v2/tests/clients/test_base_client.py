@@ -6,6 +6,8 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.base_client import HTTPBaseClient
+from gitlab.clients.rate_limiter.limiter import GitLabRateLimiter
+from gitlab.clients.rate_limiter.rate_limit_wrapper import GitLabRateLimitWrapper
 
 
 @pytest.fixture(autouse=True)
@@ -315,3 +317,27 @@ class TestHTTPBaseClient:
             assert client.token == original_token  # Token should remain unchanged
             assert client._auth_client.token == original_token
             mock_get_token.assert_called_once()
+
+
+def test_integration_token_uses_the_host_pool() -> None:
+    client = HTTPBaseClient(
+        "https://gitlab.example.com",
+        "integration-token",
+        endpoint="api/v4",
+    )
+
+    assert isinstance(client._rate_limiter, GitLabRateLimitWrapper)
+    assert client._rate_limiter.pool == "gitlab.example.com"
+    assert client._client._retry_config.rate_limiter is client._rate_limiter
+
+
+def test_user_token_stays_on_the_local_limiter() -> None:
+    client = HTTPBaseClient(
+        "https://gitlab.example.com",
+        "user-token",
+        endpoint="api/v4",
+        centralized_rate_limit=False,
+    )
+
+    assert isinstance(client._rate_limiter, GitLabRateLimiter)
+    assert client._client._retry_config.rate_limiter is None
