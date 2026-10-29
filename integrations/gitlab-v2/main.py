@@ -25,6 +25,7 @@ from gitlab.helpers.utils import (
 )
 from gitlab.helpers.incremental import (
     build_deployment_params,
+    build_incremental_project_params,
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
@@ -158,6 +159,7 @@ async def on_start() -> None:
 @ocean.on_incremental_resync(ObjectKind.PROJECT)
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync projects; incremental only fetches projects updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
@@ -252,7 +254,14 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
-        logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for pipelines"
+            + (
+                f" updated after {params['updated_after']}"
+                if "updated_after" in params
+                else ""
+            )
+        )
         project_map = {
             str(project["id"]): {"path_with_namespace": project["path_with_namespace"]}
             for project in projects_batch
@@ -269,32 +278,40 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield enriched_pipelines
 
 
+@ocean.on_incremental_resync(ObjectKind.JOB)
 @ocean.on_resync(ObjectKind.JOB)
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Limit the number of jobs that are yielded to 100.
-    Results will be approximately 100 (more or less).
+    """Resync pipeline jobs.
+
+    Incremental runs only include projects updated since the cursor, then
+    pipelines updated since the cursor.
     """
     client = create_gitlab_client()
     selector = cast(JobResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
+    sync_cursor = active_incremental_cursor()
 
-    pipeline_params = (
-        selector.pipeline_query_params.generate_query_params()
-        if selector.pipeline_query_params
-        else None
+    pipeline_params = build_pipeline_params(
+        (
+            selector.pipeline_query_params.generate_query_params()
+            if selector.pipeline_query_params
+            else None
+        ),
+        sync_cursor,
+    )
+    project_params = build_incremental_project_params(
+        build_project_params(include_only_active_projects=include_only_active_projects),
+        sync_cursor,
     )
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(
-            include_only_active_projects=include_only_active_projects
-        ),
+        params=project_params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
         async for jobs_batch in client.get_pipeline_jobs(
-            projects_batch, pipeline_params=pipeline_params
+            projects_batch, pipeline_params=pipeline_params or None
         ):
             yield jobs_batch
 
@@ -338,15 +355,21 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield merge_requests_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync project tags; incremental scans projects updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(TagResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
+    sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(
-            include_only_active_projects=include_only_active_projects
+        params=build_incremental_project_params(
+            build_project_params(
+                include_only_active_projects=include_only_active_projects
+            ),
+            sync_cursor,
         ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
@@ -354,20 +377,27 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
 
         async for tags_batch in client.get_tags(
-            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
         ):
             yield tags_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.RELEASE)
 @ocean.on_resync(ObjectKind.RELEASE)
 async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync project releases; incremental scans projects updated since the cursor."""
     client = create_gitlab_client()
     selector = cast(ReleaseResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
+    sync_cursor = active_incremental_cursor()
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(
-            include_only_active_projects=include_only_active_projects
+        params=build_incremental_project_params(
+            build_project_params(
+                include_only_active_projects=include_only_active_projects
+            ),
+            sync_cursor,
         ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
@@ -375,7 +405,8 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Processing batch of {len(projects_batch)} projects for releases")
 
         async for releases_batch in client.get_releases(
-            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
         ):
             yield releases_batch
 
