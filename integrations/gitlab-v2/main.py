@@ -27,6 +27,10 @@ from gitlab.helpers.file_incremental import (
     enrich_files_with_included,
     resync_files_incremental,
 )
+from gitlab.helpers.folder_incremental import (
+    enrich_folders_with_included,
+    resync_folders_incremental,
+)
 from gitlab.helpers.incremental import (
     build_deployment_params,
     build_issue_params,
@@ -540,12 +544,21 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync folders. Incremental upserts folders with changes since the cursor."""
     client = create_gitlab_client()
     selector = cast(GitLabFoldersResourceConfig, event.resource_config).selector
-    included_files = selector.included_files or []
+    cursor = active_incremental_cursor()
+    if cursor is not None:
+        async for batch in resync_folders_incremental(
+            client, selector, cursor, max_concurrent=DEFAULT_MAX_CONCURRENT
+        ):
+            yield batch
+        return
 
+    included_files = selector.included_files or []
     include_only_active_projects = selector.include_only_active_projects
     projects_params = build_project_params(
         include_only_active_projects=include_only_active_projects
@@ -572,22 +585,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         branch=None,
                     ):
                         if folders_batch:
-                            if included_files:
-                                from gitlab.enrichments.included_files import (
-                                    IncludedFilesEnricher,
-                                    FolderIncludedFilesStrategy,
-                                )
-
-                                enricher = IncludedFilesEnricher(
-                                    client=client,
-                                    strategy=FolderIncludedFilesStrategy(
-                                        folder_selectors=selector.folders,
-                                        global_included_files=included_files,
-                                    ),
-                                )
-                                folders_batch = await enricher.enrich_batch(
-                                    folders_batch
-                                )
+                            folders_batch = await enrich_folders_with_included(
+                                client, folders_batch, selector.folders, included_files
+                            )
                             logger.info(
                                 f"Found {len(folders_batch)} folders in {project['path_with_namespace']}"
                             )
@@ -598,20 +598,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 async for folders_batch in client.get_repository_folders(
                     path=path, repository=repo.name, branch=repo.branch
                 ):
-                    if included_files and folders_batch:
-                        from gitlab.enrichments.included_files import (
-                            IncludedFilesEnricher,
-                            FolderIncludedFilesStrategy,
+                    if folders_batch:
+                        folders_batch = await enrich_folders_with_included(
+                            client, folders_batch, selector.folders, included_files
                         )
-
-                        enricher = IncludedFilesEnricher(
-                            client=client,
-                            strategy=FolderIncludedFilesStrategy(
-                                folder_selectors=selector.folders,
-                                global_included_files=included_files,
-                            ),
-                        )
-                        folders_batch = await enricher.enrich_batch(folders_batch)
                     logger.info(f"Found batch of {len(folders_batch)} matching folders")
                     yield folders_batch
 

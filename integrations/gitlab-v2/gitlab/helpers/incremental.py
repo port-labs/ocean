@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Literal, Optional
+from datetime import datetime, timezone
+from typing import Any, Literal, Optional, Sequence
 
+from loguru import logger
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
+from port_ocean.utils.time import convert_str_to_utc_datetime
 
 from gitlab.clients.options import IssueOptions
 
@@ -118,3 +120,81 @@ def merge_updated_after_params(
     params = {key: value for key, value in raw.items() if value is not None}
     effective = resolve_effective_datetime(cursor, selector_updated_after)
     return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)
+
+
+def project_updated_before_cursor(project: dict[str, Any], cursor: datetime) -> bool:
+    """True when the project row has not changed since ``cursor``.
+
+    A missing ``updated_at`` does not skip the project; the commit list decides.
+    """
+    raw = project.get("updated_at")
+    if not isinstance(raw, str) or not raw:
+        return False
+    updated = convert_str_to_utc_datetime(raw)
+    if cursor.tzinfo is None:
+        cursor = cursor.replace(tzinfo=timezone.utc)
+    return updated < cursor.astimezone(timezone.utc)
+
+
+def oldest_commit_parent(commits: list[dict[str, Any]]) -> str | None:
+    """First parent of the oldest commit in a newest-first list.
+
+    ``None`` means that commit has no parent (the root of the branch).
+    """
+    if not commits:
+        return None
+    parents = commits[-1].get("parent_ids") or []
+    if not parents or not isinstance(parents[0], str) or not parents[0]:
+        return None
+    return parents[0]
+
+
+def compare_is_incomplete(compare: dict[str, Any] | None) -> bool:
+    """True when the compare file list cannot be trusted.
+
+    ``compare_timeout`` means GitLab hit a size or time limit and ``diffs`` may
+    be missing files. ``too_large`` and ``collapsed`` only omit patch text.
+    """
+    if not compare or compare.get("compare_timeout"):
+        return True
+    return compare.get("diffs") is None
+
+
+def changed_paths_from_diffs(diffs: list[dict[str, Any]]) -> set[str]:
+    """Added or edited paths from a compare. Deleted paths are left out."""
+    changed: set[str] = set()
+    for diff in diffs:
+        if diff.get("deleted_file"):
+            continue
+        new_path = diff.get("new_path")
+        if isinstance(new_path, str) and new_path:
+            changed.add(new_path)
+    return changed
+
+
+def included_path_changed(changed: set[str], included_files: Sequence[str]) -> bool:
+    if not included_files:
+        return False
+    included = set(included_files)
+    return any(path in included for path in changed)
+
+
+async def load_named_projects(
+    client: Any,
+    repositories: Sequence[str],
+    cursor: datetime,
+) -> list[dict[str, Any]]:
+    """Fetch named repos and drop those whose ``updated_at`` is before ``cursor``."""
+    projects: list[dict[str, Any]] = []
+    for repo in repositories:
+        project = await client.get_project(repo)
+        if not project or not project.get("default_branch"):
+            continue
+        if project_updated_before_cursor(project, cursor):
+            logger.info(
+                f"Skipping project '{repo}' during incremental sync: "
+                "updated_at is before the cursor"
+            )
+            continue
+        projects.append(project)
+    return projects

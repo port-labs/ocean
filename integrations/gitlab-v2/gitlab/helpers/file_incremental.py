@@ -10,23 +10,22 @@ an included file changed on its own.
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
-from functools import partial
+from datetime import datetime
 from typing import Any, AsyncIterator
 
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import (
-    semaphore_async_iterator,
-    stream_async_iterators_tasks,
-)
-from port_ocean.utils.time import convert_str_to_utc_datetime
 from wcmatch import glob
 
-from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.clients.utils import build_group_params, build_project_params
-from gitlab.helpers.incremental import build_file_project_params
+from gitlab.helpers.incremental import (
+    build_file_project_params,
+    changed_paths_from_diffs,
+    compare_is_incomplete,
+    included_path_changed,
+    load_named_projects,
+    oldest_commit_parent,
+)
 from gitlab.helpers.utils import build_search_query, file_match_pattern
 from integration import GitLabFilesSelector
 
@@ -39,67 +38,10 @@ def path_matches_file_pattern(file_path: str, search_path: str) -> bool:
     )
 
 
-def project_updated_before_cursor(project: dict[str, Any], cursor: datetime) -> bool:
-    """True when the project row has not changed since ``cursor``.
-
-    A missing ``updated_at`` does not skip the project; the commit list decides.
-    """
-    raw = project.get("updated_at")
-    if not isinstance(raw, str) or not raw:
-        return False
-    updated = convert_str_to_utc_datetime(raw)
-    if cursor.tzinfo is None:
-        cursor = cursor.replace(tzinfo=timezone.utc)
-    return updated < cursor.astimezone(timezone.utc)
-
-
-def oldest_commit_parent(commits: list[dict[str, Any]]) -> str | None:
-    """First parent of the oldest commit in a newest-first list.
-
-    ``None`` means that commit has no parent (the root of the branch).
-    """
-    if not commits:
-        return None
-    parents = commits[-1].get("parent_ids") or []
-    if not parents or not isinstance(parents[0], str) or not parents[0]:
-        return None
-    return parents[0]
-
-
-def compare_is_incomplete(compare: dict[str, Any] | None) -> bool:
-    """True when the compare file list cannot be trusted.
-
-    ``compare_timeout`` means GitLab hit a size or time limit and ``diffs`` may
-    be missing files. ``too_large`` and ``collapsed`` only omit patch text.
-    """
-    if not compare or compare.get("compare_timeout"):
-        return True
-    return compare.get("diffs") is None
-
-
-def _changed_paths(diffs: list[dict[str, Any]]) -> set[str]:
-    """Added or edited paths from a compare. Deleted paths are left out."""
-    changed: set[str] = set()
-    for diff in diffs:
-        if diff.get("deleted_file"):
-            continue
-        new_path = diff.get("new_path")
-        if isinstance(new_path, str) and new_path:
-            changed.add(new_path)
-    return changed
-
-
 def _selector_paths(changed: set[str], search_path: str) -> list[str]:
     return sorted(
         path for path in changed if path_matches_file_pattern(path, search_path)
     )
-
-
-def _included_path_changed(changed: set[str], included_files: list[str]) -> bool:
-    if not included_files:
-        return False
-    included = set(included_files)
-    return any(path in included for path in changed)
 
 
 async def fetch_included_files_content(
@@ -217,10 +159,10 @@ async def _project_file_changes(
             yield batch
         return
 
-    changed = _changed_paths(compare.get("diffs") or [])
+    changed = changed_paths_from_diffs(compare.get("diffs") or [])
     selector_paths = _selector_paths(changed, search_path)
     if not selector_paths:
-        if _included_path_changed(changed, included_files):
+        if included_path_changed(changed, included_files):
             async for batch in _fallback():
                 yield batch
         return
@@ -245,15 +187,9 @@ async def iter_incremental_files(
     search_path: str,
     skip_parsing: bool,
     included_files: list[str],
-    max_concurrent: int = 10,
 ) -> AsyncIterator[list[dict[str, Any]]]:
     """Yield ``{file, repo}`` batches for files added or edited since ``cursor``."""
-    if not projects:
-        return
-
-    semaphore = asyncio.BoundedSemaphore(max_concurrent)
-
-    async def _one(project: dict[str, Any]) -> AsyncIterator[list[dict[str, Any]]]:
+    for project in projects:
         async for batch in _project_file_changes(
             client,
             project,
@@ -263,13 +199,6 @@ async def iter_incremental_files(
             included_files=included_files,
         ):
             yield batch
-
-    tasks = [
-        semaphore_async_iterator(semaphore, partial(_one, project))
-        for project in projects
-    ]
-    async for batch in stream_async_iterators_tasks(*tasks):
-        yield batch
 
 
 async def enrich_files_with_included(
@@ -294,7 +223,7 @@ async def enrich_files_with_included(
 
 
 async def _resync_files_via_search(
-    client: GitLabClient,
+    client: Any,
     selector: GitLabFilesSelector,
     cursor: datetime,
     *,
@@ -306,9 +235,7 @@ async def _resync_files_via_search(
     included_files = list(selector.included_files or [])
     repositories = selector.files.repos or None
     if repositories:
-        projects = await load_named_projects(
-            client, repositories, cursor, max_concurrent=max_concurrent
-        )
+        projects = await load_named_projects(client, repositories, cursor)
         repositories = [project["path_with_namespace"] for project in projects]
         if not repositories:
             return
@@ -341,7 +268,7 @@ async def _resync_files_via_search(
 
 
 async def resync_files_incremental(
-    client: GitLabClient,
+    client: Any,
     selector: GitLabFilesSelector,
     cursor: datetime,
     *,
@@ -370,15 +297,12 @@ async def resync_files_incremental(
             search_path=search_path,
             skip_parsing=skip_parsing,
             included_files=included_files,
-            max_concurrent=max_concurrent,
         ):
             yield batch
 
     if repositories:
         async for batch in _files(
-            await load_named_projects(
-                client, repositories, cursor, max_concurrent=max_concurrent
-            )
+            await load_named_projects(client, repositories, cursor)
         ):
             yield batch
         return
@@ -398,30 +322,3 @@ async def resync_files_incremental(
         client._log_skipped_projects_without_default_branch(skipped)
         async for batch in _files(searchable):
             yield batch
-
-
-async def load_named_projects(
-    client: Any,
-    repositories: list[str],
-    cursor: datetime,
-    *,
-    max_concurrent: int = 10,
-) -> list[dict[str, Any]]:
-    """Fetch named repos and drop those whose ``updated_at`` is before ``cursor``."""
-    semaphore = asyncio.BoundedSemaphore(max_concurrent)
-
-    async def _load(repo: str) -> dict[str, Any] | None:
-        async with semaphore:
-            project = await client.get_project(repo)
-            if not project or not project.get("default_branch"):
-                return None
-            if project_updated_before_cursor(project, cursor):
-                logger.info(
-                    f"Skipping project '{repo}' during file incremental sync: "
-                    "updated_at is before the cursor"
-                )
-                return None
-            return project
-
-    loaded = await asyncio.gather(*(_load(repo) for repo in repositories))
-    return [project for project in loaded if project is not None]

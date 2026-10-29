@@ -1,19 +1,21 @@
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Literal
 from unittest.mock import patch
 
 import pytest
 
 from gitlab.helpers.file_incremental import (
-    compare_is_incomplete,
-    file_match_pattern,
     iter_incremental_files,
-    load_named_projects,
-    oldest_commit_parent,
     path_matches_file_pattern,
-    project_updated_before_cursor,
     resync_files_incremental,
 )
+from gitlab.helpers.incremental import (
+    compare_is_incomplete,
+    load_named_projects,
+    oldest_commit_parent,
+    project_updated_before_cursor,
+)
+from gitlab.helpers.utils import file_match_pattern
 from integration import FilesSelector, GitLabFilesSelector
 
 CURSOR = datetime(2026, 10, 18, 9, 0, tzinfo=timezone.utc)
@@ -297,7 +299,10 @@ class _ResyncClient(_FakeClient):
 
 
 def _selector(
-    strategy: str = "repositoryTree", repos: list[str] | None = None
+    strategy: Literal[
+        "groupSearch", "projectSearch", "repositoryTree"
+    ] = "repositoryTree",
+    repos: list[str] | None = None,
 ) -> GitLabFilesSelector:
     return GitLabFilesSelector(
         query="true",

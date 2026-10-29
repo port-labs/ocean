@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added incremental sync for the file kind, fetching only files added or edited since the Ocean cursor
+changelog: Added incremental sync for the file and folder kinds, fetching only files and folders added or edited since the Ocean cursor
