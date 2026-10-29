@@ -6,6 +6,7 @@ from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
+from github.helpers.repository_change import RepositoryChange, RepositoryChangeField
 from github.helpers.utils import (
     parse_github_options,
     get_repository_metadata,
@@ -42,6 +43,12 @@ REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="pushed_at",
     query_params={"sort": "pushed", "direction": "desc"},
 )
+
+# List endpoints can sort by either field and stop at the cursor.
+LIST_CHANGE_STRATEGIES: dict[RepositoryChangeField, ClientSideCutoffStrategy] = {
+    RepositoryChangeField.UPDATED: REPOSITORY_INCREMENTAL,
+    RepositoryChangeField.PUSHED: REPOSITORY_PUSHED_INCREMENTAL,
+}
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
@@ -101,13 +108,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         options_dict = dict(options)
         included_relations = options_dict.pop("included_relations", None)
-        incremental_cursor = options_dict.pop("updated_since", None)
-        pushed_since = options_dict.pop("pushed_since", None)
+        changed_since = cast(
+            Optional[RepositoryChange], options_dict.pop("changed_since", None)
+        )
 
         async for repos in self._fetch_repositories(
             cast(ListRepositoryOptions, options_dict),
-            incremental_cursor=incremental_cursor,
-            pushed_since=pushed_since,
+            changed_since=changed_since,
         ):
             if not included_relations:
                 yield repos
@@ -136,8 +143,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         options: ListRepositoryOptions,
         *,
-        incremental_cursor: datetime | None = None,
-        pushed_since: datetime | None = None,
+        changed_since: Optional[RepositoryChange] = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
         organization_type = params.pop("organization_type")
@@ -160,8 +166,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             organization_type,
             params,
             search_params,
-            incremental_cursor=incremental_cursor,
-            pushed_since=pushed_since,
+            changed_since=changed_since,
             exclude_archived=exclude_archived,
         ):
             if exclude_archived:
@@ -177,19 +182,17 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         _: Optional[RepoSearchParams],
         *,
-        incremental_cursor: datetime | None = None,
-        pushed_since: datetime | None = None,
+        changed_since: Optional[RepositoryChange] = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        strategy, cursor = (
-            (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
-            if pushed_since
-            else (REPOSITORY_INCREMENTAL, incremental_cursor)
+        strategy = (
+            LIST_CHANGE_STRATEGIES[changed_since.field] if changed_since else None
         )
+        cursor = changed_since.since if changed_since else None
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
-            strategy.merge_params(params, cursor),
+            strategy.merge_params(params, cursor) if strategy else params,
         )
 
         async for repos in paginate_with_strategy(
@@ -209,8 +212,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
         *,
-        incremental_cursor: datetime | None = None,
-        pushed_since: datetime | None = None,
+        changed_since: Optional[RepositoryChange] = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repository_type = params.pop("type")
@@ -230,28 +232,43 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
-        if pushed_since:
-            # Search has no "pushed" sort, so filter server-side with a qualifier instead.
-            raw_q = (
-                f"{raw_q} pushed:>={self._format_search_datetime(pushed_since)}".strip()
-            )
-            incremental_cursor = None
+        raw_q, strategy, cursor = self._apply_incremental_search_filter(
+            raw_q, changed_since
+        )
 
         query_params = {
             "q": f"org:{organization} {raw_q}",
-            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
+            **(strategy.merge_params(params, cursor) if strategy else params),
         }
         url = f"{self.client.base_url}/search/repositories"
 
         async for repos in paginate_with_strategy(
             self._search_result_items(url, query_params),
-            cursor=incremental_cursor,
-            strategy=REPOSITORY_SEARCH_INCREMENTAL,
+            cursor=cursor,
+            strategy=strategy,
         ):
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
             )
             yield repos
+
+    def _apply_incremental_search_filter(
+        self, raw_q: str, changed_since: Optional[RepositoryChange]
+    ) -> tuple[str, Optional[ClientSideCutoffStrategy], Optional[datetime]]:
+        """Narrow a repository search to changes since the cursor.
+
+        Search can sort by updated_at, so that field stops pagination
+        client-side. It cannot sort by pushed_at, so that field is a
+        ``pushed:>=`` qualifier and GitHub filters it.
+        """
+        if not changed_since:
+            return raw_q, None, None
+
+        if changed_since.field is RepositoryChangeField.PUSHED:
+            since = self._format_search_datetime(changed_since.since)
+            return f"{raw_q} pushed:>={since}".strip(), None, None
+
+        return raw_q, REPOSITORY_SEARCH_INCREMENTAL, changed_since.since
 
     @staticmethod
     def _format_search_datetime(value: datetime) -> str:
