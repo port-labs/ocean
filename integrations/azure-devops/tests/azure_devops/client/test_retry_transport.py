@@ -5,14 +5,16 @@ import pytest
 
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
+    ADO_RETRY_MAX_BACKOFF,
     AzureDevOpsRateLimiter,
 )
+from azure_devops.client.rate_limit_wrapper import AzureDevOpsRateLimitWrapper
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.helpers.retry import RetryConfig
 
 
 def _make_transport(
-    rate_limiter: AzureDevOpsRateLimiter | None = None,
+    rate_limiter: AzureDevOpsRateLimitWrapper | None = None,
     auth_header_refresher: AsyncMock | None = None,
 ) -> AzureDevOpsRetryTransport:
     wrapped = httpx.MockTransport(lambda request: httpx.Response(200, request=request))
@@ -20,14 +22,17 @@ def _make_transport(
         wrapped_transport=wrapped,
         rate_limiter=rate_limiter,
         auth_header_refresher=auth_header_refresher,
+        max_backoff_wait=ADO_RETRY_MAX_BACKOFF,
     )
 
 
 class TestAzureDevOpsRetryTransport:
     @pytest.mark.asyncio
     async def test_after_retry_async_signals_shared_throttle_on_429(self) -> None:
-        rate_limiter = AzureDevOpsRateLimiter()
-        transport = _make_transport(rate_limiter=rate_limiter)
+        limiter = AzureDevOpsRateLimiter()
+        transport = _make_transport(
+            rate_limiter=AzureDevOpsRateLimitWrapper(limiter, pool="ocean-sandbox")
+        )
         request = httpx.Request("GET", "https://dev.azure.com/org/_apis/projects")
         response = httpx.Response(
             429,
@@ -42,14 +47,15 @@ class TestAzureDevOpsRetryTransport:
         with patch("time.time", return_value=1000.0):
             await transport.after_retry_async(request, response, attempt=1)
 
-        assert rate_limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
-        assert rate_limiter._limit == 200
-        assert rate_limiter._remaining == 0
-        assert rate_limiter._reset_time == 1300.0
+        assert limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
+        assert limiter._limit == 200
+        assert limiter._remaining == 0
+        assert limiter._reset_time == 1300.0
 
     def test_429_sleep_uses_fixed_ado_cooldown(self) -> None:
         transport = _make_transport()
 
+        transport._retry_config.sync_tier_multiplier = 1.0
         sleep = transport._calculate_sleep(
             attempts_made=1,
             headers=httpx.Headers({"retry-after": "1"}),
@@ -61,6 +67,7 @@ class TestAzureDevOpsRetryTransport:
     def test_transport_error_sleep_uses_fixed_ado_cooldown(self) -> None:
         transport = _make_transport()
 
+        transport._retry_config.sync_tier_multiplier = 1.0
         sleep = transport._calculate_sleep(
             attempts_made=1,
             headers=httpx.Headers({}),
@@ -69,12 +76,26 @@ class TestAzureDevOpsRetryTransport:
 
         assert sleep == ADO_RATE_LIMIT_WINDOW_SECONDS
 
+    def test_ado_cooldown_scales_with_the_sync_tier(self) -> None:
+        transport = _make_transport()
+        transport._retry_config.sync_tier_multiplier = 1.25
+
+        sleep = transport._calculate_sleep(
+            attempts_made=1,
+            headers=httpx.Headers({"retry-after": "1"}),
+            status_code=429,
+        )
+
+        assert sleep == pytest.approx(ADO_RETRY_MAX_BACKOFF)
+
     @pytest.mark.asyncio
     async def test_before_retry_async_signals_shared_throttle_on_transport_retry(
         self,
     ) -> None:
-        rate_limiter = AzureDevOpsRateLimiter()
-        transport = _make_transport(rate_limiter=rate_limiter)
+        limiter = AzureDevOpsRateLimiter()
+        transport = _make_transport(
+            rate_limiter=AzureDevOpsRateLimitWrapper(limiter, pool="ocean-sandbox")
+        )
         request = httpx.Request("GET", "https://dev.azure.com/org/_apis/projects")
 
         with patch("time.time", return_value=1000.0):
@@ -86,7 +107,7 @@ class TestAzureDevOpsRetryTransport:
             )
 
         assert refreshed is None
-        assert rate_limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
+        assert limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
 
     @pytest.mark.asyncio
     async def test_before_retry_async_refreshes_auth_headers(self) -> None:
@@ -162,7 +183,8 @@ class TestAzureDevOpsRetryTransport:
         self,
     ) -> None:
         requests_seen: list[httpx.Request] = []
-        rate_limiter = AzureDevOpsRateLimiter()
+        limiter = AzureDevOpsRateLimiter()
+        rate_limiter = AzureDevOpsRateLimitWrapper(limiter, pool="ocean-sandbox")
 
         async def handler(request: httpx.Request) -> httpx.Response:
             requests_seen.append(request)
@@ -192,5 +214,5 @@ class TestAzureDevOpsRetryTransport:
 
         assert response.status_code == 200
         assert len(requests_seen) == 2
-        assert rate_limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
+        assert limiter._throttle_until == 1000.0 + ADO_RATE_LIMIT_WINDOW_SECONDS
         sleep.assert_awaited_once_with(ADO_RATE_LIMIT_WINDOW_SECONDS)

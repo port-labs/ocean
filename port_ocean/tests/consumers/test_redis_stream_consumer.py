@@ -97,7 +97,7 @@ class TestRedisStreamConsumerConnection:
                 on_message=AsyncMock(),
             )
 
-        assert consumer._redis_client_kwargs() == {
+        assert consumer._redis_connection_helper.client_kwargs(settings) == {
             "decode_responses": True,
             "legacy_responses": True,
             "socket_timeout": None,
@@ -129,20 +129,21 @@ class TestRedisStreamConsumerConnection:
                 on_message=AsyncMock(),
             )
 
-        kwargs = consumer._redis_client_kwargs()
+        helper = consumer._redis_connection_helper
+        kwargs = helper.client_kwargs(settings)
 
         assert kwargs["connection_class"] is SSLConnection
         assert kwargs["legacy_responses"] is True
         assert kwargs["socket_timeout"] is None
         assert kwargs["ssl_ca_data"] == ca_pem
-        assert kwargs["ssl_certfile"] == consumer._ssl_cert_file
-        assert kwargs["ssl_keyfile"] == consumer._ssl_key_file
+        assert kwargs["ssl_certfile"] == helper._ssl_cert_file
+        assert kwargs["ssl_keyfile"] == helper._ssl_key_file
         with open(kwargs["ssl_certfile"], encoding="utf-8") as cert_file:
             assert cert_file.read() == cert_pem
         with open(kwargs["ssl_keyfile"], encoding="utf-8") as key_file:
             assert key_file.read() == key_pem
 
-        consumer._cleanup_tls_files()
+        helper.cleanup()
 
     def test_redis_client_kwargs_cleans_up_previous_tls_files_on_reconnect(
         self,
@@ -167,18 +168,19 @@ class TestRedisStreamConsumerConnection:
                 stream_key="stream",
                 on_message=AsyncMock(),
             )
-            consumer._redis_client_kwargs()
-            old_cert_path = consumer._ssl_cert_file
-            old_key_path = consumer._ssl_key_file
+            helper = consumer._redis_connection_helper
+            helper.client_kwargs(settings)
+            old_cert_path = helper._ssl_cert_file
+            old_key_path = helper._ssl_key_file
 
-            consumer._redis_client_kwargs()
+            helper.client_kwargs(settings)
 
         assert old_cert_path is not None
         assert old_key_path is not None
         assert not os.path.exists(old_cert_path)
         assert not os.path.exists(old_key_path)
 
-        consumer._cleanup_tls_files()
+        consumer._redis_connection_helper.cleanup()
 
     def test_redis_client_kwargs_uses_tls_when_enabled(
         self,
@@ -198,7 +200,7 @@ class TestRedisStreamConsumerConnection:
                 on_message=AsyncMock(),
             )
 
-        kwargs = consumer._redis_client_kwargs()
+        kwargs = consumer._redis_connection_helper.client_kwargs(settings)
 
         assert kwargs["connection_class"] is SSLConnection
 
@@ -236,9 +238,10 @@ class TestRedisStreamConsumerConnection:
                 stream_key="stream",
                 on_message=AsyncMock(),
             )
-            consumer._redis_client_kwargs()
-            cert_path = consumer._ssl_cert_file
-            key_path = consumer._ssl_key_file
+            helper = consumer._redis_connection_helper
+            helper.client_kwargs(settings)
+            cert_path = helper._ssl_cert_file
+            key_path = helper._ssl_key_file
 
             consumer._redis = AsyncMock()
             consumer._read_task = None

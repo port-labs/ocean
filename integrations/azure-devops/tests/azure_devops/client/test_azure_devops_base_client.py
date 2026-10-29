@@ -10,6 +10,7 @@ from azure_devops.client.base_client import (
 )
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
+    ADO_RETRY_MAX_BACKOFF,
 )
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.context.ocean import PortOceanContext
@@ -20,7 +21,28 @@ def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
     mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
     return HTTPBaseClient(
         auth_provider=PatAuthProvider("test_token"),
+        organization_url="https://dev.azure.com/test-org",
     )
+
+
+def test_integration_client_uses_redis_when_the_process_has_it(
+    mock_client: HTTPBaseClient,
+) -> None:
+    assert mock_client._rate_limiter._redis_enabled is True
+
+
+def test_user_token_client_stays_on_the_local_limiter(
+    mock_context: PortOceanContext,
+) -> None:
+    mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
+    client = HTTPBaseClient(
+        auth_provider=PatAuthProvider("user-token"),
+        organization_url="https://dev.azure.com/test-org",
+        centralized_rate_limit=False,
+    )
+
+    assert client._rate_limiter._redis_enabled is False
+    assert client._rate_limiter.pool == "test-org"
 
 
 def test_base_client_uses_azure_devops_retry_transport(
@@ -31,7 +53,7 @@ def test_base_client_uses_azure_devops_retry_transport(
     assert isinstance(transport, AzureDevOpsRetryTransport)
     assert transport._rate_limiter is mock_client._rate_limiter
     assert transport._retry_config.max_attempts == 10
-    assert transport._retry_config.max_backoff_wait == ADO_RATE_LIMIT_WINDOW_SECONDS
+    assert transport._retry_config.max_backoff_wait == ADO_RETRY_MAX_BACKOFF
 
 
 @pytest.mark.asyncio
