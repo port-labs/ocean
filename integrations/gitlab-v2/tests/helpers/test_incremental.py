@@ -171,25 +171,6 @@ def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> Non
     }
 
 
-def test_deployment_full_resync_keeps_selector_filters() -> None:
-    params = build_deployment_params(
-        {
-            "environment": "production",
-            "status": "success",
-            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
-            "order_by": "finished_at",
-        },
-        cursor=None,
-    )
-
-    assert params == {
-        "environment": "production",
-        "status": "success",
-        "order_by": "updated_at",
-        "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
-    }
-
-
 def test_deployment_incremental_overrides_selector_updated_after() -> None:
     params = build_deployment_params(
         {"updated_after": SELECTOR_UPDATED_AFTER.isoformat()},
@@ -202,31 +183,16 @@ def test_deployment_incremental_overrides_selector_updated_after() -> None:
     }
 
 
-def test_deployment_without_updated_after_keeps_finished_at_order() -> None:
+def test_deployment_incremental_drops_finished_order_by() -> None:
     params = build_deployment_params(
         {"status": "success", "order_by": "finished_at"},
-        cursor=None,
-    )
-
-    assert params == {"status": "success", "order_by": "finished_at"}
-
-
-def test_deployment_full_resync_with_finished_window_keeps_original_selectors() -> None:
-    params = build_deployment_params(
-        {
-            "status": "success",
-            "finished_after": "2024-01-01T00:00:00Z",
-            "finished_before": "2024-06-01T00:00:00Z",
-            "order_by": "finished_at",
-        },
-        cursor=None,
+        cursor=CURSOR,
     )
 
     assert params == {
         "status": "success",
-        "finished_after": "2024-01-01T00:00:00Z",
-        "finished_before": "2024-06-01T00:00:00Z",
-        "order_by": "finished_at",
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
     }
 
 
@@ -239,6 +205,7 @@ def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() 
             "updated_before": "2024-12-01T00:00:00Z",
             "finished_after": "2024-01-01T00:00:00Z",
             "finished_before": "2024-06-01T00:00:00Z",
+            "order_by": "finished_at",
         },
         cursor=CURSOR,
     )
@@ -247,17 +214,5 @@ def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() 
         "environment": "production",
         "status": "success",
         "updated_after": CURSOR.isoformat(),
-        "order_by": "updated_at",
-    }
-
-
-def test_deployment_full_resync_orders_by_selector_timestamp_family() -> None:
-    params = build_deployment_params(
-        {"updated_before": "2024-06-01T00:00:00Z"},
-        cursor=None,
-    )
-
-    assert params == {
-        "updated_before": "2024-06-01T00:00:00Z",
         "order_by": "updated_at",
     }

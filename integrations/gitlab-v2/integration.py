@@ -788,6 +788,8 @@ class GitlabDeploymentQueryParams(BaseModel):
         params = self.dict(exclude_unset=True, exclude_none=True)
         if "finished_after" in params or "finished_before" in params:
             params["order_by"] = "finished_at"
+        elif "updated_after" in params or "updated_before" in params:
+            params["order_by"] = "updated_at"
         return params
 
 

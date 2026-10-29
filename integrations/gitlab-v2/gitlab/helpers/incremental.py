@@ -13,12 +13,12 @@ LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
     param_key="last_activity_after"
 )
 
-# Timestamp selectors, each requiring the matching ``order_by`` on GitLab's side.
-DEPLOYMENT_TIMESTAMP_ORDER_BY = {
-    "finished_after": "finished_at",
-    "finished_before": "finished_at",
-    "updated_after": "updated_at",
-    "updated_before": "updated_at",
+# Dropped on incremental runs; replaced by cursor ``updated_after`` + ``order_by``.
+DEPLOYMENT_TIMESTAMP_SELECTORS = {
+    "finished_after",
+    "finished_before",
+    "updated_after",
+    "updated_before",
 }
 MergeRequestState = Literal["opened", "closed", "merged"]
 
@@ -84,36 +84,24 @@ def build_pipeline_params(
     return merge_updated_after_params(api_query_params, cursor)
 
 
-def _with_timestamp_order_by(params: dict[str, Any]) -> dict[str, Any]:
-    for key, order_by in DEPLOYMENT_TIMESTAMP_ORDER_BY.items():
-        if key in params:
-            params["order_by"] = order_by
-            break
-    return params
-
-
 def build_deployment_params(
     api_query_params: dict[str, Any] | None,
-    cursor: datetime | None,
+    cursor: datetime,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/deployments``.
+    """Incremental query params for ``GET /projects/{id}/deployments``.
 
-    Incremental (cursor set): selector timestamp filters are ignored and only the
-    cursor's timestamp param is sent; other filters (environment, status) are kept.
-    Otherwise the selectors are used as-is.
+    Drops selector timestamp filters and ``order_by``, keeps other filters
     """
-    raw = dict(api_query_params or {})
-
-    if cursor is not None:
-        raw = {
-            key: value
-            for key, value in raw.items()
-            if key not in DEPLOYMENT_TIMESTAMP_ORDER_BY
-        }
-        raw.pop("order_by", None)
-
-    params = merge_updated_after_params(raw, cursor)
-    return _with_timestamp_order_by(params)
+    params = {
+        key: value
+        for key, value in (api_query_params or {}).items()
+        if key not in DEPLOYMENT_TIMESTAMP_SELECTORS
+        and key != "order_by"
+        and value is not None
+    }
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
+    params["order_by"] = "updated_at"
+    return params
 
 
 def merge_updated_after_params(

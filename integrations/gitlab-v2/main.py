@@ -667,13 +667,16 @@ async def _resync_deployments(
 async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync project deployments; incremental only fetches those updated since the cursor."""
     selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
-    params = build_deployment_params(
-        selector.generate_query_params() or None,
-        active_incremental_cursor(),
+    sync_cursor = active_incremental_cursor()
+    selector_params = selector.generate_query_params() or None
+    params = (
+        build_deployment_params(selector_params, sync_cursor)
+        if sync_cursor is not None
+        else selector_params
     )
     async for batch in _resync_deployments(
         selector.include_only_active_projects,
-        params or None,
+        params,
     ):
         yield batch
 
