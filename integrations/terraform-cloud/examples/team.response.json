@@ -1,0 +1,87 @@
+{
+  "id": "team-aVV5S82NesrvqUje",
+  "type": "teams",
+  "attributes": {
+    "name": "owners",
+    "users-count": 2,
+    "description": null,
+    "sso-team-id": null,
+    "visibility": "secret",
+    "allow-member-token-management": true,
+    "permissions": {
+      "can-update-membership": true,
+      "can-destroy": false,
+      "can-update-organization-access": false,
+      "can-update-api-token": true,
+      "can-update-visibility": false,
+      "can-update-name": false,
+      "can-update-sso-team-id": false,
+      "can-update-member-token-management": false,
+      "can-view-api-token": true
+    },
+    "organization-access": {
+      "manage-policies": true,
+      "manage-workspaces": true,
+      "manage-vcs-settings": true,
+      "manage-policy-overrides": true,
+      "manage-modules": true,
+      "manage-providers": true,
+      "manage-run-tasks": true,
+      "manage-projects": true,
+      "manage-membership": true,
+      "manage-teams": true,
+      "manage-organization-access": true,
+      "access-secret-teams": true,
+      "read-projects": true,
+      "read-workspaces": true,
+      "manage-agent-pools": true,
+      "manage-registry-components": true,
+      "delegate-policy-overrides": true,
+      "manage-public-providers": true,
+      "manage-public-modules": true,
+      "manage-registry-artifact-tags": true,
+      "manage-registry-artifact-version-tags": true
+    }
+  },
+  "relationships": {
+    "organization": {
+      "data": {
+        "id": "Ocean-Test",
+        "type": "organizations"
+      }
+    },
+    "users": {
+      "data": [
+        {
+          "id": "user-ekrNUysERHDnPHbX",
+          "type": "users"
+        },
+        {
+          "id": "user-3vrswiZfU32oE296",
+          "type": "users"
+        }
+      ]
+    },
+    "organization-memberships": {
+      "data": [
+        {
+          "id": "ou-4cXmcpnKmKifHe4U",
+          "type": "organization-memberships"
+        },
+        {
+          "id": "ou-yQuWmNRXac3r245J",
+          "type": "organization-memberships"
+        }
+      ]
+    },
+    "authentication-token": {
+      "meta": {}
+    },
+    "authentication-tokens": {
+      "meta": {}
+    }
+  },
+  "links": {
+    "self": "/api/v2/teams/team-aVV5S82NesrvqUje"
+  }
+}
