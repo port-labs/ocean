@@ -222,9 +222,6 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         changed_since: Optional[RepositoryChange] = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        strategy: Optional[ClientSideCutoffStrategy] = None
-        cursor: Optional[datetime] = None
-
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []
@@ -242,14 +239,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
-        if changed_since:
-            qualifier = SEARCH_CHANGE_QUALIFIERS.get(changed_since.field)
-            if qualifier:
-                since = self._format_search_datetime(changed_since.since)
-                raw_q = f"{raw_q} {qualifier}:>={since}".strip()
-            else:
-                strategy = SEARCH_CHANGE_STRATEGIES[changed_since.field]
-                cursor = changed_since.since
+        raw_q, strategy, cursor = self._apply_incremental_search_filter(
+            raw_q, changed_since
+        )
 
         query_params = {
             "q": f"org:{organization} {raw_q}",
@@ -266,6 +258,28 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
             )
             yield repos
+
+    def _apply_incremental_search_filter(
+        self, raw_q: str, changed_since: Optional[RepositoryChange]
+    ) -> tuple[str, Optional[ClientSideCutoffStrategy], Optional[datetime]]:
+        """Narrow a repository search to changes since the cursor.
+
+        Fields GitHub search can filter server-side (pushed) become a date
+        qualifier. Fields it can only sort (updated) use a client-side cutoff.
+        """
+        if not changed_since:
+            return raw_q, None, None
+
+        qualifier = SEARCH_CHANGE_QUALIFIERS.get(changed_since.field)
+        if qualifier:
+            since = self._format_search_datetime(changed_since.since)
+            return f"{raw_q} {qualifier}:>={since}".strip(), None, None
+
+        return (
+            raw_q,
+            SEARCH_CHANGE_STRATEGIES[changed_since.field],
+            changed_since.since,
+        )
 
     @staticmethod
     def _format_search_datetime(value: datetime) -> str:
