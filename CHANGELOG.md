@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.3 (2026-10-29)
+
+
+### Improvements
+
+- Preserve undeclared integration config keys so env-only overrides survive into ocean.integration_config
+
+
 ## 0.56.2 (2026-10-26)
 
 
