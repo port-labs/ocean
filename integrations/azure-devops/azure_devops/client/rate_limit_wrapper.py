@@ -157,8 +157,10 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return response.status_code == HTTPStatus.TOO_MANY_REQUESTS
 
+    @property
     def _local_is_close_to_rate_limit(self) -> bool:
         return self._limiter.is_close_to_limit
 
+    @property
     def _local_seconds_until_rate_limit_reset(self) -> float:
         return self._limiter.seconds_until_reset

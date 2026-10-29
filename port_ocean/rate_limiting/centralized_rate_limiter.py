@@ -9,6 +9,7 @@ import time
 from typing import Any, cast
 
 from loguru import logger
+from redis.exceptions import NoScriptError
 
 from port_ocean.context.ocean import ocean
 from port_ocean.consumers.redis_client import RedisClient
@@ -21,7 +22,7 @@ from port_ocean.rate_limiting.models import (
     RateLimitBlockReason,
     SyncTier,
 )
-from port_ocean.rate_limiting.pool_state import (
+from port_ocean.rate_limiting.pool_state_utils import (
     PoolRedisState,
     pool_redis_key,
     pool_state_from_redis_hash,
@@ -161,13 +162,8 @@ class CentralizedRateLimiter:
             return self._allow()
         return None
 
-    async def _try_decrement_remaining(self, key: str, now: float) -> bool:
-        """Atomically take one unit of ``remaining``.
-
-        Python already applied the tier policy. The script only re-checks
-        ``blocked_until`` and decrements, so two pods cannot both take the
-        last slot. True when this pod took it. See ``RESERVE_POOL_SLOT_SCRIPT``.
-        """
+    async def _eval_reserve(self, key: str, now: float) -> bool:
+        """Run the loaded reserve script. True when this pod took the slot."""
         reserve_sha = self._reserve_sha  # local so mypy sees str, not str | None
         if reserve_sha is None:
             raise RuntimeError("Centralized rate limiter Redis script is not loaded")
@@ -178,6 +174,24 @@ class CentralizedRateLimiter:
             str(now),
         )
         return bool(int(raw[0]))
+
+    async def _try_decrement_remaining(self, key: str, now: float) -> bool:
+        """Atomically take one unit of ``remaining``.
+
+        Python already applied the tier policy. The script only re-checks
+        ``blocked_until`` and decrements, so two pods cannot both take the
+        last slot. True when this pod took it. See ``RESERVE_POOL_SLOT_SCRIPT``.
+
+        A Redis restart or failover drops the script cache. ``EVALSHA`` then
+        raises ``NoScriptError``. Load the script again and retry once, so
+        this request still reserves instead of failing open.
+        """
+        try:
+            return await self._eval_reserve(key, now)
+        except NoScriptError:
+            logger.warning("Centralized rate limiter Redis script missing; reloading")
+            self._reserve_sha = await self._redis.script_load(RESERVE_POOL_SLOT_SCRIPT)
+            return await self._eval_reserve(key, now)
 
     async def _acquire_with_redis(self, pool: str, tier: SyncTier) -> AcquireResult:
         """Read the pool, apply admission, then reserve a slot if the window is open.

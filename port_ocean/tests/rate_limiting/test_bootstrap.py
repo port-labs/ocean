@@ -32,12 +32,23 @@ async def test_teardown_closes_redis_and_clears_app_limiter() -> None:
 
 
 @pytest.mark.asyncio
-async def test_setup_raises_when_limiter_already_registered() -> None:
-    app = _app(_limiter(AsyncMock()))
+async def test_setup_skips_when_limiter_already_registered() -> None:
+    existing = _limiter(AsyncMock())
+    app = _app(existing)
     settings = MagicMock()
 
-    with pytest.raises(RuntimeError, match="must not be called twice"):
+    with (
+        patch("port_ocean.rate_limiting.bootstrap.logger") as logger,
+        patch(
+            "port_ocean.rate_limiting.bootstrap.create_redis_client_with_retry",
+            new_callable=AsyncMock,
+        ) as connect,
+    ):
         await setup_centralized_rate_limiter(app, settings, org_id="org-new")
+
+    connect.assert_not_awaited()
+    logger.warning.assert_called_once()
+    assert app.centralized_rate_limiter is existing
 
 
 @pytest.mark.asyncio

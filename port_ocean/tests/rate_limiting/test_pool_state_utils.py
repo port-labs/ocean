@@ -2,7 +2,7 @@ import time
 
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.models import SyncTier
-from port_ocean.rate_limiting.pool_state import (
+from port_ocean.rate_limiting.pool_state_utils import (
     pool_state_from_redis_hash,
     record_hash_mapping,
     wait_seconds_until_quota_reset,

@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any, Generator
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -24,19 +25,12 @@ MOCK_RESOURCE_CONTAINERS_ACCOUNT = {"account": {"baseUrl": f"{MOCK_ORG_URL}/"}}
 @pytest.fixture(autouse=True)
 def disable_centralized_rate_limiting() -> Generator[None, None, None]:
     """Azure DevOps unit tests exercise the local limiter; keep centralized path off."""
-    targets = (
-        "port_ocean.rate_limiting.utils.use_centralized_rate_limiting",
-        # Wrapper imports the name directly, so the utils patch does not reach it.
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-    )
-    patches = [patch(target, return_value=False) for target in targets]
-    for item in patches:
-        item.start()
-    try:
+    inactive = SimpleNamespace(centralized_rate_limiter=None)
+    with (
+        patch("port_ocean.rate_limiting.rate_limit_wrapper.ocean", inactive),
+        patch("port_ocean.rate_limiting.utils.ocean", inactive),
+    ):
         yield
-    finally:
-        for item in patches:
-            item.stop()
 
 
 def mock_client_manager(monkeypatch: Any, mock_client: MagicMock) -> MagicMock:

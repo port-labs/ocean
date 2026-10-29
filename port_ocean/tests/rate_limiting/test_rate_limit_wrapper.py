@@ -6,7 +6,10 @@ import pytest
 
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
-from port_ocean.rate_limiting.utils import use_centralized_rate_limiting
+
+
+def _ocean(limiter: object | None) -> SimpleNamespace:
+    return SimpleNamespace(centralized_rate_limiter=limiter)
 
 
 class _StubWrapper(RateLimitWrapper):
@@ -45,9 +48,11 @@ class _StubWrapper(RateLimitWrapper):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return False
 
+    @property
     def _local_is_close_to_rate_limit(self) -> bool:
         return True
 
+    @property
     def _local_seconds_until_rate_limit_reset(self) -> float:
         return 42.0
 
@@ -56,8 +61,8 @@ class _StubWrapper(RateLimitWrapper):
 async def test_local_acquire_when_centralized_inactive() -> None:
     wrapper = _StubWrapper()
     with patch(
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-        return_value=False,
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        _ocean(None),
     ):
         async with wrapper:
             pass
@@ -70,8 +75,8 @@ async def test_acquire_calls_centralized_admission() -> None:
     wrapper = _StubWrapper()
     with (
         patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
+            "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+            _ocean(object()),
         ),
         patch(
             "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",
@@ -86,8 +91,8 @@ async def test_acquire_calls_centralized_admission() -> None:
 async def test_skips_local_acquire_when_centralized_active() -> None:
     wrapper = _StubWrapper()
     with patch(
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-        return_value=True,
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        _ocean(object()),
     ):
         async with wrapper:
             pass
@@ -102,8 +107,8 @@ async def test_record_rate_limit_response_uses_local_limiter_when_redis_is_off()
     wrapper = _StubWrapper()
     response = httpx.Response(200)
     with patch(
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-        return_value=False,
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        _ocean(None),
     ):
         await wrapper.record_rate_limit_response(response)
         await wrapper.record_rate_limit_response(response, context="/repos")
@@ -117,8 +122,8 @@ async def test_record_rate_limit_response_publishes_when_centralized() -> None:
     response = httpx.Response(200)
     with (
         patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
+            "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+            _ocean(object()),
         ),
         patch(
             "port_ocean.rate_limiting.rate_limit_wrapper.record_centralized_rate_limit",
@@ -133,14 +138,18 @@ async def test_record_rate_limit_response_publishes_when_centralized() -> None:
 def test_quota_methods_noop_when_centralized() -> None:
     wrapper = _StubWrapper()
     with patch(
-        "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-        return_value=True,
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        _ocean(object()),
     ):
         assert wrapper.is_close_to_rate_limit() is False
         assert wrapper.seconds_until_rate_limit_reset() == 0.0
 
 
-def test_use_centralized_requires_active_limiter() -> None:
-    app = SimpleNamespace(centralized_rate_limiter=object())
-    with patch("port_ocean.rate_limiting.utils.ocean", app):
-        assert use_centralized_rate_limiting() is True
+def test_quota_methods_read_local_properties_when_redis_is_off() -> None:
+    wrapper = _StubWrapper()
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        _ocean(None),
+    ):
+        assert wrapper.is_close_to_rate_limit() is True
+        assert wrapper.seconds_until_rate_limit_reset() == 42.0

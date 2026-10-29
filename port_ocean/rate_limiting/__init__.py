@@ -4,8 +4,5 @@ from port_ocean.rate_limiting.models import (
     RateLimitAcquireDecision,
     SyncTier,
 )
-from port_ocean.rate_limiting.utils import (
-    record_centralized_rate_limit,
-    use_centralized_rate_limiting,
-)
+from port_ocean.rate_limiting.utils import record_centralized_rate_limit
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
