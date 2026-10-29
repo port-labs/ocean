@@ -691,11 +691,6 @@ async def _resync_deployments(
     ):
         logger.info(
             f"Processing batch of {len(projects_batch)} projects for deployments"
-            + (
-                f" updated after {params['updated_after']}"
-                if params and "updated_after" in params
-                else ""
-            )
         )
         async for deployments_batch in client.get_deployments(
             projects_batch,
