@@ -62,6 +62,21 @@ def test_retry_after_blocks_only_on_429() -> None:
     assert wrapper._parse_centralized_state(ok, "request") is None
 
 
+def test_unparseable_retry_after_warns_and_uses_ado_window() -> None:
+    response = httpx.Response(429, headers={"retry-after": "soon"})
+    wrapper = _wrapper()
+
+    with (
+        patch("azure_devops.client.rate_limit_wrapper.time.time", return_value=1000.0),
+        patch("azure_devops.client.rate_limit_wrapper.logger.warning") as warning,
+    ):
+        state = wrapper._parse_centralized_state(response, "request")
+
+    assert state is not None
+    assert state.blocked_until == 1360.0
+    warning.assert_called_once()
+
+
 def test_429_without_retry_after_uses_ado_window() -> None:
     response = httpx.Response(429, headers={})
     wrapper = _wrapper()

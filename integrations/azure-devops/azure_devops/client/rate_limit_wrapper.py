@@ -95,6 +95,11 @@ class AzureDevOpsRateLimitWrapper(RateLimitWrapper):
         try:
             return float(raw)
         except ValueError:
+            logger.warning(
+                "Azure DevOps Retry-After header is not a number; using the default window",
+                retry_after=raw,
+                default_seconds=ADO_RATE_LIMIT_WINDOW_SECONDS,
+            )
             return float(ADO_RATE_LIMIT_WINDOW_SECONDS)
 
     def _parse_centralized_state(

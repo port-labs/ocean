@@ -1,4 +1,3 @@
-import sys
 import time
 from typing import Any, AsyncGenerator, Optional
 
@@ -61,13 +60,12 @@ def _log_api_request(
     method: str,
     url: str,
     *,
-    counted: bool,
     sync_tier_multiplier: float | None,
 ) -> None:
     """Info line for the first production stage of the shared limiter.
 
     One line per Azure response: status, the sync-tier multiplier, and the
-    rate-limit headers. Successful calls also carry ``http_request=1``.
+    rate-limit headers. The incremental metric stays on the short success log.
     """
     fields = _rate_limit_header_values(response)
     reset_in_seconds = _reset_in_seconds(fields.get(LIMIT_RESET_HEADER))
@@ -77,15 +75,12 @@ def _log_api_request(
         f"reset_in_seconds={reset_in_seconds} "
         f"sync_tier_multiplier={sync_tier_multiplier} {header_text}"
     )
-    bound = logger.bind(
+    logger.bind(
         status_code=response.status_code,
         reset_in_seconds=reset_in_seconds,
         sync_tier_multiplier=sync_tier_multiplier,
         **{name.replace("-", "_"): value for name, value in fields.items()},
-    )
-    if counted:
-        bound = bound.bind(http_request=1)
-    bound.info(message)
+    ).info(message)
 
 
 class HTTPBaseClient:
@@ -102,22 +97,23 @@ class HTTPBaseClient:
             pool=centralized_rate_limit_pool(organization_url),
             redis_enabled=centralized_rate_limit,
         )
+        self._retry_config = RetryConfig(
+            retry_after_headers=[
+                LIMIT_RESET_HEADER,
+                LIMIT_RETRY_AFTER_HEADER,
+            ],
+            max_backoff_wait=ADO_RETRY_MAX_BACKOFF,
+            base_delay=ADO_RATE_LIMIT_WINDOW_SECONDS,
+            max_attempts=10,
+            rate_limiter=self._rate_limiter,
+        )
         self._client = OceanAsyncClient(
             AzureDevOpsRetryTransport,
             transport_kwargs={
                 "rate_limiter": self._rate_limiter,
                 "auth_header_refresher": self._auth_provider.get_auth_headers,
             },
-            retry_config=RetryConfig(
-                retry_after_headers=[
-                    LIMIT_RESET_HEADER,
-                    LIMIT_RETRY_AFTER_HEADER,
-                ],
-                max_backoff_wait=ADO_RETRY_MAX_BACKOFF,
-                base_delay=ADO_RATE_LIMIT_WINDOW_SECONDS,
-                max_attempts=10,
-                rate_limiter=self._rate_limiter,
-            ),
+            retry_config=self._retry_config,
             timeout=ocean.config.client_timeout,
         )
 
@@ -147,6 +143,7 @@ class HTTPBaseClient:
                     headers=headers,
                 )
                 response.raise_for_status()
+                logger.bind(http_request=1).info("Azure DevOps API request")
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:
                 if raise_on_404:
@@ -172,18 +169,11 @@ class HTTPBaseClient:
             raise e
         finally:
             if "response" in locals() and response:
-                retry_config = getattr(self._client, "_retry_config", None)
-                multiplier = (
-                    retry_config.sync_tier_multiplier
-                    if retry_config is not None
-                    else None
-                )
                 _log_api_request(
                     response,
                     method,
                     url,
-                    counted=sys.exc_info()[0] is None,
-                    sync_tier_multiplier=multiplier,
+                    sync_tier_multiplier=self._retry_config.sync_tier_multiplier,
                 )
                 await self._rate_limiter.record_rate_limit_response(
                     response, context=url
