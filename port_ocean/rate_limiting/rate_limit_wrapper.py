@@ -105,13 +105,13 @@ class RateLimitWrapper(ABC):
         """
         if self._redis_admission_enabled():
             return False
-        return self._local_is_close_to_rate_limit()
+        return self._local_is_close_to_rate_limit
 
     def seconds_until_rate_limit_reset(self) -> float:
         """How long the action executor should sleep. Zero when Redis is on."""
         if self._redis_admission_enabled():
             return 0.0
-        return self._local_seconds_until_rate_limit_reset()
+        return self._local_seconds_until_rate_limit_reset
 
     async def notify_transport_rate_limit_retry(self, response: httpx.Response) -> None:
         """Tell the local limiter that the transport is about to sleep on a 429.
@@ -157,10 +157,12 @@ class RateLimitWrapper(ABC):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         """True when this response should set the shared ``blocked_until``."""
 
+    @property
     @abstractmethod
     def _local_is_close_to_rate_limit(self) -> bool:
         """Local-limiter view of whether an action run should pause."""
 
+    @property
     @abstractmethod
     def _local_seconds_until_rate_limit_reset(self) -> float:
         """Local-limiter sleep before the next action run."""

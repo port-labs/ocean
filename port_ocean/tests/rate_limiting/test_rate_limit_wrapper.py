@@ -48,9 +48,11 @@ class _StubWrapper(RateLimitWrapper):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return False
 
+    @property
     def _local_is_close_to_rate_limit(self) -> bool:
         return True
 
+    @property
     def _local_seconds_until_rate_limit_reset(self) -> float:
         return 42.0
 
@@ -141,3 +143,13 @@ def test_quota_methods_noop_when_centralized() -> None:
     ):
         assert wrapper.is_close_to_rate_limit() is False
         assert wrapper.seconds_until_rate_limit_reset() == 0.0
+
+
+def test_quota_methods_read_local_properties_when_redis_is_off() -> None:
+    wrapper = _StubWrapper()
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        _ocean(None),
+    ):
+        assert wrapper.is_close_to_rate_limit() is True
+        assert wrapper.seconds_until_rate_limit_reset() == 42.0
