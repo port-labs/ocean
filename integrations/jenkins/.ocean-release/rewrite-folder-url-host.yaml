@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Rewrite nested Jenkins job URLs onto the configured host without doubling the context path
