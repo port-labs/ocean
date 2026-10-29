@@ -54,6 +54,15 @@ class JiraIssueSelector(Selector):
         description="Comma-separated list of additional issue properties to expand. Supported values include 'renderedFields', 'names', 'schema', 'transitions', 'operations', 'editmeta', and 'changelog'.",
         default=None,
     )
+    include_comments: bool = Field(
+        alias="includeComments",
+        title="Include Comments",
+        default=False,
+        description=(
+            "When true, attach each issue's comments under `__comments` so they can "
+            "be mapped with itemsToParse."
+        ),
+    )
 
 
 class JiraIssueConfig(ResourceConfig):
