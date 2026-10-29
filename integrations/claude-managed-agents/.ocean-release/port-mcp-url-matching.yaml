@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: Match Port MCP vault credentials by exact URL and skip agent Port MCP ensure when execution identity is missing
