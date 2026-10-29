@@ -235,7 +235,8 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
     None
 ):
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
+    client_mock.get_agent = AsyncMock(return_value=sdk_agent())
+    client_mock.update_agent = AsyncMock()
     client_mock.create_session = AsyncMock(return_value=sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=user_message_event())
     executor = build_executor(TriggerAgentExecutor, client_mock)
@@ -266,6 +267,7 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
         await executor.execute(run)
 
     resolve_binding.assert_not_awaited()
+    client_mock.update_agent.assert_not_called()
     client_mock.create_session.assert_awaited_once()
     extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
     assert "vault_ids" not in extra
