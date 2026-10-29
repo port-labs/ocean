@@ -1,0 +1,35 @@
+{
+  "identifier": "team-aVV5S82NesrvqUje",
+  "title": "owners",
+  "blueprint": "terraformCloudTeam",
+  "properties": {
+    "visibility": "secret",
+    "usersCount": 2,
+    "organizationAccess": {
+      "manage-policies": true,
+      "manage-workspaces": true,
+      "manage-vcs-settings": true,
+      "manage-policy-overrides": true,
+      "manage-modules": true,
+      "manage-providers": true,
+      "manage-run-tasks": true,
+      "manage-projects": true,
+      "manage-membership": true,
+      "manage-teams": true,
+      "manage-organization-access": true,
+      "access-secret-teams": true,
+      "read-projects": true,
+      "read-workspaces": true,
+      "manage-agent-pools": true,
+      "manage-registry-components": true,
+      "delegate-policy-overrides": true,
+      "manage-public-providers": true,
+      "manage-public-modules": true,
+      "manage-registry-artifact-tags": true,
+      "manage-registry-artifact-version-tags": true
+    }
+  },
+  "relations": {
+    "organization": "Ocean-Test"
+  }
+}
