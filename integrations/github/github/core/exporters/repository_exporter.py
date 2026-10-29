@@ -44,17 +44,10 @@ REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     query_params={"sort": "pushed", "direction": "desc"},
 )
 
-# How each change field is applied: list endpoints sort by it and stop at the cursor.
+# List endpoints can sort by either field and stop at the cursor.
 LIST_CHANGE_STRATEGIES: dict[RepositoryChangeField, ClientSideCutoffStrategy] = {
     RepositoryChangeField.UPDATED: REPOSITORY_INCREMENTAL,
     RepositoryChangeField.PUSHED: REPOSITORY_PUSHED_INCREMENTAL,
-}
-# Search can sort by "updated" but not "pushed", so pushed is filtered server-side by qualifier.
-SEARCH_CHANGE_STRATEGIES: dict[RepositoryChangeField, ClientSideCutoffStrategy] = {
-    RepositoryChangeField.UPDATED: REPOSITORY_SEARCH_INCREMENTAL,
-}
-SEARCH_CHANGE_QUALIFIERS: dict[RepositoryChangeField, str] = {
-    RepositoryChangeField.PUSHED: "pushed",
 }
 
 if TYPE_CHECKING:
@@ -264,22 +257,18 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> tuple[str, Optional[ClientSideCutoffStrategy], Optional[datetime]]:
         """Narrow a repository search to changes since the cursor.
 
-        Fields GitHub search can filter server-side (pushed) become a date
-        qualifier. Fields it can only sort (updated) use a client-side cutoff.
+        Search can sort by updated_at, so that field stops pagination
+        client-side. It cannot sort by pushed_at, so that field is a
+        ``pushed:>=`` qualifier and GitHub filters it.
         """
         if not changed_since:
             return raw_q, None, None
 
-        qualifier = SEARCH_CHANGE_QUALIFIERS.get(changed_since.field)
-        if qualifier:
+        if changed_since.field is RepositoryChangeField.PUSHED:
             since = self._format_search_datetime(changed_since.since)
-            return f"{raw_q} {qualifier}:>={since}".strip(), None, None
+            return f"{raw_q} pushed:>={since}".strip(), None, None
 
-        return (
-            raw_q,
-            SEARCH_CHANGE_STRATEGIES[changed_since.field],
-            changed_since.since,
-        )
+        return raw_q, REPOSITORY_SEARCH_INCREMENTAL, changed_since.since
 
     @staticmethod
     def _format_search_datetime(value: datetime) -> str:
