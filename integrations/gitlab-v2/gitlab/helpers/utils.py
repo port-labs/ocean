@@ -159,6 +159,18 @@ def build_search_query(search_path: str) -> SearchQuery:
     )
 
 
+def file_match_pattern(search_path: str) -> str:
+    """Glob the repository tree uses for ``search_path``.
+
+    A path with no directory matches that filename anywhere, so ``README.md``
+    becomes ``**/README.md``.
+    """
+    query = build_search_query(search_path)
+    if query.directory is None:
+        return f"**/{query.filename}"
+    return query.path
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:

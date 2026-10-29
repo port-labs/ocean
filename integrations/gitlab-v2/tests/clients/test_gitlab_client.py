@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -2953,3 +2954,56 @@ class TestGitLabClient:
             awards = await client.list_merge_request_note_award_emojis("g/p", 1, 2)
 
         assert awards is None
+
+    async def test_compare_repository_straight(self, client: GitLabClient) -> None:
+        with patch.object(
+            client.rest, "send_api_request", AsyncMock(return_value={"diffs": []})
+        ) as mock_request:
+            result = await client.compare_repository(
+                "group/project", "aaa", "bbb", straight=True
+            )
+
+        assert result == {"diffs": []}
+        mock_request.assert_awaited_once_with(
+            "GET",
+            "projects/group%2Fproject/repository/compare",
+            params={"from": "aaa", "to": "bbb", "straight": True},
+        )
+
+    async def test_compare_repository_omits_straight_by_default(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(
+            client.rest, "send_api_request", AsyncMock(return_value={"diffs": []})
+        ) as mock_request:
+            await client.compare_repository("group/project", "aaa", "bbb")
+
+        mock_request.assert_awaited_once_with(
+            "GET",
+            "projects/group%2Fproject/repository/compare",
+            params={"from": "aaa", "to": "bbb"},
+        )
+
+    async def test_get_repository_commits_passes_since(
+        self, client: GitLabClient
+    ) -> None:
+        since = datetime(2026, 10, 18, 9, 0, tzinfo=timezone.utc)
+        commits = [{"id": "abc", "parent_ids": ["def"]}]
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([commits]),
+        ) as mock_pages:
+            pages = [
+                page
+                async for page in client.get_repository_commits(
+                    "group/project", "main", since
+                )
+            ]
+
+        assert pages == [commits]
+        mock_pages.assert_called_once_with(
+            "group/project",
+            "repository/commits",
+            {"ref_name": "main", "since": since.isoformat()},
+        )

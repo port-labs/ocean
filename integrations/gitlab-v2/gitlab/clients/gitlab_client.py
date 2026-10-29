@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, Union
 
@@ -10,11 +11,13 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from port_ocean.utils.cache import cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import (
     build_search_query,
+    file_match_pattern,
     parse_file_content,
     SearchQuery,
     is_bot_member,
@@ -144,14 +147,38 @@ class GitLabClient:
         project_path: str | int,
         from_sha: str,
         to_sha: str,
+        *,
+        straight: bool = False,
     ) -> dict[str, Any]:
-        """Compare two refs and return the GitLab compare payload (including diffs)."""
+        """Compare two refs.
+
+        ``straight=False`` compares from the merge base. ``straight=True`` diffs
+        the two refs directly.
+        """
         encoded_path = quote(str(project_path), safe="")
+        params: dict[str, Any] = {"from": from_sha, "to": to_sha}
+        if straight:
+            params["straight"] = True
         return await self.rest.send_api_request(
             "GET",
             f"projects/{encoded_path}/repository/compare",
-            params={"from": from_sha, "to": to_sha},
+            params=params,
         )
+
+    async def get_repository_commits(
+        self,
+        project_path: str | int,
+        ref: str,
+        since: datetime,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """List commits on ``ref`` with committer date on or after ``since``.
+        GitLab returns newest first.
+        """
+        params = {"ref_name": ref, "since": since.isoformat()}
+        async for batch in self.rest.get_paginated_project_resource(
+            str(project_path), "repository/commits", params
+        ):
+            yield batch
 
     async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
@@ -256,6 +283,10 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
 
+        The ``GET /projects`` listing is cached (GitHub-style parent cache).
+        Languages, search queries, and included files are applied after the
+        cache so kinds that only need the project list still reuse it.
+
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
             max_concurrent: Maximum number of concurrent requests
@@ -263,14 +294,7 @@ class GitLabClient:
             search_queries: Optional list of search queries to execute for each project
             included_files: List of file paths to fetch and attach to each project
         """
-        request_params = {**self.DEFAULT_PARAMS}
-        if params:
-            request_params.update(params)
-
-        async for projects_batch in self.rest.get_paginated_resource(
-            "projects", params=request_params
-        ):
-            logger.info(f"Received batch with {len(projects_batch)} projects")
+        async for projects_batch in self._fetch_projects(params=params):
             enriched_batch = projects_batch
 
             if include_languages:
@@ -301,15 +325,32 @@ class GitLabClient:
                 )
                 enriched_batch = await enricher.enrich_batch(enriched_batch)
 
+            if enriched_batch:
+                yield enriched_batch
+
+    @cache_iterator_result()
+    async def _fetch_projects(
+        self,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Cached ``GET /projects`` pages (no per-kind enrichment)."""
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
+        async for projects_batch in self.rest.get_paginated_resource(
+            "projects", params=request_params
+        ):
+            logger.info(f"Received batch with {len(projects_batch)} projects")
             # Exclude projects that are pending deletion — their `project_destroy`
             # webhook only fires after the grace period (7 days on paid GitLab.com
             # tiers), so they would otherwise linger in Port until then.
             active_batch = [
-                p for p in enriched_batch if not p.get("marked_for_deletion_at")
+                p for p in projects_batch if not p.get("marked_for_deletion_at")
             ]
-            if len(active_batch) < len(enriched_batch):
+            if len(active_batch) < len(projects_batch):
                 logger.info(
-                    f"Filtered out {len(enriched_batch) - len(active_batch)} project(s) pending deletion"
+                    f"Filtered out {len(projects_batch) - len(active_batch)} project(s) pending deletion"
                 )
 
             if active_batch:
@@ -321,9 +362,21 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
+        The ``GET /groups`` listing is cached so kinds that fan out from groups
+        (issues, merge-requests, folders, …) reuse one pagination.
+
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
         """
+        async for groups_batch in self._fetch_groups(params=params):
+            yield groups_batch
+
+    @cache_iterator_result()
+    async def _fetch_groups(
+        self,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Cached ``GET /groups`` pages."""
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)
@@ -1348,9 +1401,7 @@ class GitLabClient:
         walks: set[tuple[str, bool]] = set()
         for path_pattern in path_patterns:
             query = build_search_query(path_pattern)
-            match_pattern = (
-                f"**/{query.filename}" if query.directory is None else query.path
-            )
+            match_pattern = file_match_pattern(path_pattern)
             match_patterns.append(match_pattern)
             if _is_wildcard_path(match_pattern):
                 walks.add((_literal_tree_prefix(match_pattern), True))
