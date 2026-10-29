@@ -159,6 +159,12 @@
         "description": "The workflow state of this issue",
         "required": false,
         "many": false
+      },
+      "project": {
+        "target": "linearProject",
+        "title": "Project",
+        "required": false,
+        "many": false
       }
     }
   },
