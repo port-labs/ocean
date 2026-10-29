@@ -237,19 +237,32 @@ async def _get_workflow_run(port_client: PortClient, run_id: str) -> dict[str, A
 async def wait_for_workflow_node_external_id(
     port_client: PortClient,
     run_id: str,
-    timeout_seconds: float = 60,
+    timeout_seconds: float = 120,
     poll_interval_seconds: float = 1,
 ) -> str:
     deadline = asyncio.get_event_loop().time() + timeout_seconds
+    last_run: dict[str, Any] = {}
     while asyncio.get_event_loop().time() < deadline:
-        run = await _get_workflow_run(port_client, run_id)
-        for node_run in run.get("nodeRuns") or []:
+        last_run = await _get_workflow_run(port_client, run_id)
+        for node_run in last_run.get("nodeRuns") or []:
             external_id = node_run.get("externalRunId")
             if external_id:
                 return external_id
+        if last_run.get("status") in _WORKFLOW_TERMINAL:
+            break
         await asyncio.sleep(poll_interval_seconds)
+    node_statuses = [
+        {
+            "identifier": node_run.get("identifier"),
+            "status": node_run.get("status"),
+            "result": node_run.get("result"),
+        }
+        for node_run in last_run.get("nodeRuns") or []
+    ]
     raise TimeoutError(
-        f"Workflow run {run_id} did not get a node external id within {timeout_seconds}s"
+        f"Workflow run {run_id} did not get a node external id within {timeout_seconds}s "
+        f"(status={last_run.get('status')}, result={last_run.get('result')}, "
+        f"nodes={node_statuses})"
     )
 
 

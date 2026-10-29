@@ -1,0 +1,146 @@
+"""Redis pool hash parsing, sync-tier gates, and record field mapping."""
+
+from dataclasses import dataclass
+from typing import Any, Mapping
+
+from port_ocean.rate_limiting.constants import (
+    DEFAULT_RATE_LIMITED_BLOCK_SECONDS,
+    REDIS_KEY_PREFIX,
+)
+from port_ocean.rate_limiting.models import CentralizedRateLimitState, SyncTier
+from port_ocean.utils.misc import decode_redis_hash
+
+# Full resync (SyncTier.LOW) gives way once remaining/limit drops to this.
+LOW_REMAINING_RATIO_CEILING = 0.25
+# Incremental resync (SyncTier.MEDIUM) gives way one step later.
+MEDIUM_REMAINING_RATIO_CEILING = 0.10
+# Used only when a caller still wants to wait after reset_at has passed.
+# Admission does not: a past reset_at allows the next request instead.
+DEFAULT_QUOTA_RESET_WAIT_SECONDS = 1.0
+
+
+@dataclass(frozen=True)
+class PoolRedisState:
+    """One pool hash after parsing.
+
+    ``limit`` stays None until a response has published it. That empty
+    snapshot is untracked and must not be treated as remaining 0.
+    ``reset_at`` and ``blocked_until`` of 0 mean "no timestamp stored".
+    """
+
+    limit: int | None
+    remaining: int = 0
+    reset_at: float = 0.0
+    blocked_until: float = 0.0
+
+    def should_back_off(self, tier: SyncTier) -> bool:
+        """Whether this tier should wait out the current vendor window.
+
+        Full resync (``LOW``) backs off at or below 25% remaining. Incremental
+        (``MEDIUM``) backs off at or below 10%. Live events and actions
+        (``HIGH``) back off only when remaining is empty. No limit, or a limit
+        of 0, cannot form a ratio, so those snapshots do not back off.
+
+        ``reset_at`` is ignored here. The caller allows an expired window before
+        asking this question.
+        """
+        if self.limit is None or self.limit <= 0:
+            return False
+        ratio = self.remaining / self.limit
+        if tier == SyncTier.LOW:
+            return ratio <= LOW_REMAINING_RATIO_CEILING
+        if tier == SyncTier.MEDIUM:
+            return ratio <= MEDIUM_REMAINING_RATIO_CEILING
+        if tier == SyncTier.HIGH:
+            return self.remaining <= 0
+        return False
+
+
+def pool_redis_key(org_id: str, integration_identifier: str, pool: str) -> str:
+    """``ratelimit:{org_id}:{integration_identifier}:{pool}``.
+
+    ``pool`` splits vendor buckets that do not share a quota, such as GitHub
+    ``rest`` and ``graphql``. The key has no TTL; the next response overwrites it.
+    """
+    return f"{REDIS_KEY_PREFIX}:{org_id}:{integration_identifier}:{pool}"
+
+
+def wait_seconds_while_pool_blocked(blocked_until: float, now: float) -> float | None:
+    """Seconds left in a 429 block, or None when the pool is not blocked.
+
+    None, rather than 0, lets callers use ``or`` to fall through to the
+    quota-reset wait. A past ``blocked_until`` is the same as no block.
+    """
+    if blocked_until > now:
+        return blocked_until - now
+    return None
+
+
+def wait_seconds_until_quota_reset(
+    reset_at: float,
+    now: float,
+    *,
+    default: float = DEFAULT_QUOTA_RESET_WAIT_SECONDS,
+) -> float:
+    """Seconds until ``reset_at``, or ``default`` when that time has passed.
+
+    This is a sleep hint for a caller that already decided to wait. It does
+    not mean the snapshot is still valid. Admission treats a past ``reset_at``
+    as expired and allows the request instead of sleeping for ``default``.
+    """
+    if reset_at > now:
+        return reset_at - now
+    return default
+
+
+def pool_state_from_redis_hash(raw: Mapping[Any, Any]) -> PoolRedisState:
+    """Parse a pool hash. A missing key yields an untracked snapshot.
+
+    Remaining is kept only once ``limit`` is present. Without ``limit`` the
+    pool has never been published, and a stray ``remaining`` must not look
+    like an empty quota. A missing ``reset_at`` becomes 0, which admission
+    treats as an expired window.
+    """
+    fields = decode_redis_hash(raw)
+    limit = int(fields["limit"]) if "limit" in fields else None
+    return PoolRedisState(
+        limit,
+        remaining=int(fields.get("remaining") or 0) if limit is not None else 0,
+        reset_at=float(fields.get("reset_at") or 0),
+        blocked_until=float(fields.get("blocked_until") or 0),
+    )
+
+
+def record_hash_mapping(
+    state: CentralizedRateLimitState,
+    *,
+    is_rate_limited: bool,
+    now: float,
+) -> dict[str, str]:
+    """Hash fields for one ``HSET``.
+
+    Redis stores the values as strings. ``HSET`` updates only the fields in
+    this mapping, so a missing remaining, limit, or reset_at is left out.
+    A 429 that only knows ``blocked_until`` then keeps the last good quota
+    snapshot. ``blocked_until`` from the caller wins. When the caller omits
+    it, a rate-limited response blocks for
+    ``DEFAULT_RATE_LIMITED_BLOCK_SECONDS``; any other response writes ``0``
+    and clears a previous 429 hold for every pod.
+    """
+    blocked_until = state.blocked_until
+    if blocked_until is None:
+        blocked_until = (
+            now + DEFAULT_RATE_LIMITED_BLOCK_SECONDS if is_rate_limited else 0.0
+        )
+
+    mapping = {
+        "blocked_until": str(blocked_until),
+        "updated_at": str(now),
+    }
+    if state.remaining is not None:
+        mapping["remaining"] = str(state.remaining)
+    if state.limit is not None:
+        mapping["limit"] = str(state.limit)
+    if state.reset_at is not None:
+        mapping["reset_at"] = str(state.reset_at)
+    return mapping
