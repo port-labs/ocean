@@ -13,6 +13,15 @@ LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
     param_key="last_activity_after"
 )
 
+DEPLOYMENT_SELECTOR_PARAMS = (
+    "environment",
+    "status",
+    "updated_after",
+    "updated_before",
+    "finished_after",
+    "finished_before",
+)
+
 MergeRequestState = Literal["opened", "closed", "merged"]
 
 
@@ -81,8 +90,23 @@ def build_deployment_params(
     api_query_params: dict[str, Any] | None,
     cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/deployments``."""
+    """Query params for ``GET /projects/{id}/deployments``.
+
+    Incremental (cursor set): selector filters are ignored and only
+    ``updated_after=<cursor>`` is sent. Otherwise the selectors are used as-is.
+    """
     raw = dict(api_query_params or {})
+
+    if cursor is not None:
+        params = {
+            key: value
+            for key, value in raw.items()
+            if key not in DEPLOYMENT_SELECTOR_PARAMS and value is not None
+        }
+        params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
+        params["order_by"] = "updated_at"
+        return params
+
     if "finished_after" in raw or "finished_before" in raw:
         # GitLab rejects mixing a finished window with updated_after.
         raw.pop("updated_after", None)
@@ -90,7 +114,7 @@ def build_deployment_params(
         params["order_by"] = "finished_at"
         return params
 
-    params = merge_updated_after_params(api_query_params, cursor)
+    params = merge_updated_after_params(raw, None)
     if "updated_after" in params:
         params["order_by"] = "updated_at"
     return params

@@ -192,15 +192,11 @@ def test_deployment_full_resync_keeps_selector_filters() -> None:
 
 def test_deployment_incremental_overrides_selector_updated_after() -> None:
     params = build_deployment_params(
-        {
-            "environment": "staging",
-            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
-        },
+        {"updated_after": SELECTOR_UPDATED_AFTER.isoformat()},
         cursor=CURSOR,
     )
 
     assert params == {
-        "environment": "staging",
         "updated_after": CURSOR.isoformat(),
         "order_by": "updated_at",
     }
@@ -215,7 +211,7 @@ def test_deployment_without_updated_after_keeps_finished_at_order() -> None:
     assert params == {"status": "success", "order_by": "finished_at"}
 
 
-def test_deployment_incremental_with_finished_window_skips_cursor() -> None:
+def test_deployment_full_resync_with_finished_window_keeps_original_selectors() -> None:
     params = build_deployment_params(
         {
             "status": "success",
@@ -223,7 +219,7 @@ def test_deployment_incremental_with_finished_window_skips_cursor() -> None:
             "finished_before": "2024-06-01T00:00:00Z",
             "order_by": "finished_at",
         },
-        cursor=CURSOR,
+        cursor=None,
     )
 
     assert params == {
@@ -231,6 +227,25 @@ def test_deployment_incremental_with_finished_window_skips_cursor() -> None:
         "finished_after": "2024-01-01T00:00:00Z",
         "finished_before": "2024-06-01T00:00:00Z",
         "order_by": "finished_at",
+    }
+
+
+def test_deployment_incremental_ignores_all_selectors_and_uses_only_cursor() -> None:
+    params = build_deployment_params(
+        {
+            "environment": "production",
+            "status": "success",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "updated_before": "2024-12-01T00:00:00Z",
+            "finished_after": "2024-01-01T00:00:00Z",
+            "finished_before": "2024-06-01T00:00:00Z",
+        },
+        cursor=CURSOR,
+    )
+
+    assert params == {
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
     }
 
 
