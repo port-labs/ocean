@@ -40,7 +40,8 @@ class PortMcpBinding(BaseModel):
 
 
 def _normalize_port_mcp_url(url: str) -> str:
-    return url.replace("getport", "port").rstrip("/")
+    # Claude matches vault credentials by exact MCP URL — keep host as-is.
+    return url.rstrip("/")
 
 
 def _merge_mcp_servers_by_url(
