@@ -309,14 +309,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
-        logger.info(
-            f"Processing batch of {len(projects_batch)} projects for jobs"
-            + (
-                f" (pipelines updated after {pipeline_params['updated_after']})"
-                if "updated_after" in pipeline_params
-                else ""
-            )
-        )
+        logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
         async for jobs_batch in client.get_pipeline_jobs(
             projects_batch, pipeline_params=pipeline_params or None
         ):

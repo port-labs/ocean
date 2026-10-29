@@ -376,7 +376,10 @@ class GitLabClient:
         projects_batch: list[dict[str, Any]],
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all tags for each project in the batch."""
+        """Fetch all tags for each project in the batch.
+        Incremental runs only include projects updated since the cursor, then
+        tags updated since the cursor.
+        """
         async for tags_batch in self.get_projects_resource_with_enrichment(
             projects_batch, "repository/tags", max_concurrent
         ):
@@ -388,7 +391,11 @@ class GitLabClient:
         projects_batch: list[dict[str, Any]],
         max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all releases for each project in the batch."""
+        """Fetch all releases for each project in the batch.
+
+        Incremental runs only include projects updated since the cursor, then
+        releases updated since the cursor.
+        """
         async for releases_batch in self.get_projects_resource_with_enrichment(
             projects_batch, "releases", max_concurrent
         ):
