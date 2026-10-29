@@ -501,17 +501,46 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         rewritten history, truncated compare), so the caller falls back to a full
         tree scan.
         """
-        since = changed_since.since
+        base_sha = await self._resolve_compare_base_sha(
+            organization, repo_name, branch, changed_since.since
+        )
+        if base_sha is None:
+            return None
+
+        files = await self._files_from_trusted_compare(
+            organization, repo_name, base_sha, branch
+        )
+        if files is None:
+            return None
+        return {file["filename"] for file in files}
+
+    async def _resolve_compare_base_sha(
+        self, organization: str, repo_name: str, branch: str, until: datetime
+    ) -> Optional[str]:
+        """Newest commit on ``branch`` with committer date at or before ``until``.
+
+        This is not the historical branch tip at ``until``. No such commit means
+        there is nothing safe to diff, so the caller scans the full tree.
+        """
         commits = await self.list_commits_until(
-            organization, repo_name, branch, since, per_page=1
+            organization, repo_name, branch, until, per_page=1
         )
         if not commits:
             logger.info(
-                f"No base commit for {repo_name}@{branch} before {since.isoformat()}; using full tree"
+                f"No base commit for {repo_name}@{branch} before {until.isoformat()}; using full tree"
             )
             return None
-        base_sha = commits[0]["sha"]
+        return commits[0]["sha"]
 
+    async def _files_from_trusted_compare(
+        self, organization: str, repo_name: str, base_sha: str, branch: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Files changed between ``base_sha`` and ``branch`` when the compare is complete.
+
+        ``ahead`` and ``identical`` mean ``base_sha`` is an ancestor of the tip.
+        GitHub caps the file list at 300 and does not mark it truncated, so a
+        full list is treated as incomplete and the caller scans the full tree.
+        """
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
         if diff.get("status") not in COMPARE_TRUSTED_STATUSES:
@@ -524,8 +553,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Compare for {repo_name}@{branch} may be truncated ({len(files)} files); using full tree"
             )
             return None
-
-        return {file["filename"] for file in files}
+        return files
 
     async def fetch_commit_diff(
         self, organization: str, repo_name: str, before_sha: str, after_sha: str
