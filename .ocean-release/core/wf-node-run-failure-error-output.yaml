@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Include failure message in workflow node run output when report_run_completed fails
