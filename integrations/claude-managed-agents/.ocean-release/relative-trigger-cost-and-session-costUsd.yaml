@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Report per-trigger relative session cost/tokens on trigger_agent completion and map cumulative session list cost onto claude_session entities.
