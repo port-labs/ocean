@@ -319,11 +319,12 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 f"Failed to fetch prior session.usage for {session_id} "
                 f"(reporting cumulative usage): {error}"
             )
-            return None
-        logger.info(
-            f"No prior session.usage before {before.isoformat()} for "
-            f"session {session_id}; treating usage as first-turn totals"
-        )
+        else:
+            logger.info(
+                f"No prior session.usage before {before.isoformat()} for "
+                f"session {session_id}; treating usage as first-turn totals"
+            )
+
         return None
 
     async def _find_anchor_user_message(
