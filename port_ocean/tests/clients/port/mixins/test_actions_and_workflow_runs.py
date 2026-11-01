@@ -229,7 +229,7 @@ class TestWorkflowNodeRunOutputPreservation:
             should_raise=False,
         )
 
-    async def test_report_run_completed_failure_preserves_output(
+    async def test_report_run_completed_failure_adds_error_to_output(
         self, actions_client: ActionsAndWorkflowRunsClientMixin
     ) -> None:
         run = make_run()
@@ -243,6 +243,33 @@ class TestWorkflowNodeRunOutputPreservation:
             await actions_client.report_run_completed(
                 run, success=False, message="pipeline failed"
             )
+
+        mock_patch.assert_awaited_once_with(
+            run.id,
+            {
+                "status": WorkflowNodeRunStatus.COMPLETED,
+                "result": WorkflowNodeRunResult.FAILED,
+                "output": {
+                    "workflowRunUrl": "https://gitlab.example/pipelines/99",
+                    "error": {"message": "pipeline failed"},
+                },
+            },
+            should_raise=False,
+        )
+        assert run.output == {
+            "workflowRunUrl": "https://gitlab.example/pipelines/99",
+            "error": {"message": "pipeline failed"},
+        }
+
+    async def test_report_run_completed_failure_without_message_preserves_output(
+        self, actions_client: ActionsAndWorkflowRunsClientMixin
+    ) -> None:
+        run = make_run()
+        run.output = {"workflowRunUrl": "https://gitlab.example/pipelines/99"}
+        with patch.object(
+            actions_client, "patch_wf_node_run", AsyncMock()
+        ) as mock_patch:
+            await actions_client.report_run_completed(run, success=False)
 
         mock_patch.assert_awaited_once_with(
             run.id,
