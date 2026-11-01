@@ -62,11 +62,11 @@ class TriggerAgentSessionOutput(BaseModel):
     ) -> Self:
         input_tokens = session.usage.input_tokens
         output_tokens = session.usage.output_tokens
-        cost = list_cost_to_usd(session.usage.list_cost)
+        cost_usd = list_cost_to_usd(session.usage.list_cost)
         if baseline_usage is not None:
             input_tokens = _token_delta(input_tokens, baseline_usage.input_tokens)
             output_tokens = _token_delta(output_tokens, baseline_usage.output_tokens)
-            cost = _cost_delta(cost, list_cost_to_usd(baseline_usage.list_cost))
+            cost_usd = _cost_delta(cost_usd, list_cost_to_usd(baseline_usage.list_cost))
 
         return cls(
             session_id=session_id,
@@ -74,5 +74,5 @@ class TriggerAgentSessionOutput(BaseModel):
             url=url,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            cost_usd=(cost),
+            cost_usd=cost_usd,
         )
