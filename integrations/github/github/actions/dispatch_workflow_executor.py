@@ -22,7 +22,6 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
     DispatchWorkflowWebhookProcessor,
 )
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
-from github.clients.http.base_client import AbstractGithubClient
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.ocean import ocean
 
@@ -114,6 +113,14 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             ocean.integration_config.get("legacy_dispatch_workflow_tracking", False)
         )
 
+    @staticmethod
+    def _legacy_dispatch_created_filter(now: datetime | None = None) -> str:
+        """GitHub's created search compares timestamps at whole-second precision."""
+        timestamp = now or datetime.now(timezone.utc)
+        # GitHub stores `created_at` as UTC whole seconds (…Z). isoformat() emits
+        # microseconds, and a run at 14:39:36Z does not match created>=14:39:36.001.
+        return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         if not self._use_legacy_dispatch_workflow_tracking():
             return None
@@ -125,14 +132,6 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             return None
 
         return f"{organization}/{repo}/{workflow}"
-
-    async def _get_execution_clients(
-        self, run: IntegrationRun
-    ) -> list[AbstractGithubClient]:
-        organization = run.execution_properties.get("org")
-        if not isinstance(organization, str):
-            raise InvalidActionParametersException("org is required")
-        return [await self._rest_client_for_org(run, organization)]
 
     async def _get_default_ref(
         self, rest_client: GithubRestClient, organization: str, repo_name: str
@@ -200,6 +199,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 logger.warning(
                     f"Couldn't find the triggered workflow run, waiting for {WORKFLOW_POLL_DELAY_SECONDS} seconds",
                     attempts_made=attempts_made,
+                    created_filter=iso_date,
                 )
                 await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
                 attempts_made += 1
@@ -279,9 +279,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         inputs: dict[str, str] = self._parse_inputs(
             run.execution_properties.get("workflowInputs", {})
         )
-        rest_client = (await self._get_execution_clients(run))[0]
-        if not isinstance(rest_client, GithubRestClient):
-            raise InvalidActionParametersException("GitHub REST client is required")
+        rest_client = await self._get_rest_client(run)
         ref = inputs.pop("ref", None)
         if not ref:
             ref = await self._get_default_ref(rest_client, organization, repo)
@@ -295,7 +293,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
         try:
             if self._use_legacy_dispatch_workflow_tracking():
-                iso_date = datetime.now(timezone.utc).isoformat()
+                iso_date = self._legacy_dispatch_created_filter()
                 await self._dispatch_workflow_legacy(
                     rest_client, organization, repo, workflow, ref, inputs
                 )

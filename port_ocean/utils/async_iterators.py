@@ -261,3 +261,15 @@ async def stream_independent_async_iterators(
             f"{context} failed with {len(errors)} error(s)",
             errors,
         )
+
+
+async def find_first_match_in_generator(
+    generator: typing.AsyncIterator[list[T]],
+    match: typing.Callable[[T], bool],
+) -> T | None:
+    """Return the first item matching ``match`` across batched async pages."""
+    async for batch in generator:
+        for item in batch:
+            if match(item):
+                return item
+    return None

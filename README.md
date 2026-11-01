@@ -5,8 +5,7 @@
 [![Lint](https://github.com/port-labs/Port-Ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/port-labs/ocean)
 
-Ocean is an innovative solution developed by Port to seamlessly integrate various third-party systems with our developer portal product,
-empowering engineers to effortlessly prioritize key features and streamline the integration process.
+Ocean is Port's open source integration framework. It makes it easy to ingest data from your third-party tools and infrastructure into Port, the platform for building your AI software factory.
 
 ## Prerequisites
 

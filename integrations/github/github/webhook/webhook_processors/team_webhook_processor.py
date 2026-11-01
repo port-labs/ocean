@@ -116,6 +116,12 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
             data_to_upsert = enriched[0]
 
+        if selector.include_group_mappings:
+            enriched = await exporter.enrich_teams_with_group_mappings(
+                [data_to_upsert], organization
+            )
+            data_to_upsert = enriched[0]
+
         logger.info(f"Team {team['slug']} of organization: {organization} was upserted")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

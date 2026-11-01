@@ -322,3 +322,132 @@ class TestTeamMemberWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
+
+    async def test_handle_event_with_group_mappings_enrichment(
+        self,
+        team_member_webhook_processor: TeamMemberWebhookProcessor,
+    ) -> None:
+        team_data = {"name": "test-team-name", "slug": "test-team-slug"}
+        payload = {
+            "action": TEAM_MEMBERSHIP_EVENTS[0],
+            "team": team_data,
+            "member": {"login": "test-member"},
+            "organization": {"login": "test-org"},
+        }
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSelector(
+                members=True, include_group_mappings=True, query="true"
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+        full_team_export_data = {
+            "id": "team123",
+            **team_data,
+            "members": {"nodes": [{"login": "test-member"}]},
+        }
+        group_mapping = {
+            "group_id": "111a1a11-aaa1-1aaa-11a1-a1a1a1a1a1aa",
+            "group_name": "saml-azuread-test",
+            "group_description": "A group of Developers working on AzureAD SAML SSO",
+        }
+        enriched_team = {**full_team_export_data, "__group_mappings": [group_mapping]}
+
+        mock_graphql_exporter = AsyncMock()
+        mock_graphql_exporter.get_resource.return_value = full_team_export_data
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client_for_org"
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter",
+                return_value=mock_graphql_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.RestTeamExporter.enrich_teams_with_group_mappings",
+                new=AsyncMock(return_value=[enriched_team]),
+            ) as mock_enrich,
+        ):
+            result = await team_member_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        mock_enrich.assert_awaited_once_with([full_team_export_data], "test-org")
+        assert result.updated_raw_results == [enriched_team]
+        assert result.deleted_raw_results == []
+
+    async def test_handle_event_with_external_group_enrichment(
+        self,
+        team_member_webhook_processor: TeamMemberWebhookProcessor,
+    ) -> None:
+        team_data = {"name": "test-team-name", "slug": "test-team-slug"}
+        payload = {
+            "action": TEAM_MEMBERSHIP_EVENTS[0],
+            "team": team_data,
+            "member": {"login": "test-member"},
+            "organization": {"login": "test-org"},
+        }
+        resource_config = GithubTeamConfig(
+            kind=ObjectKind.TEAM,
+            selector=GithubTeamSelector(
+                members=True, include_external_group=True, query="true"
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".slug",
+                        title=".name",
+                        blueprint='"githubTeam"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+        full_team_export_data = {
+            "id": "team123",
+            **team_data,
+            "members": {"nodes": [{"login": "test-member"}]},
+        }
+        external_group = {"group_id": 123, "group_name": "Octocat admins"}
+        enriched_team = {**full_team_export_data, "__external_group": external_group}
+
+        mock_graphql_exporter = AsyncMock()
+        mock_graphql_exporter.get_resource.return_value = full_team_export_data
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.create_github_client_for_org"
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.GraphQLTeamWithMembersExporter",
+                return_value=mock_graphql_exporter,
+            ),
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.RestTeamExporter.enrich_teams_with_external_group",
+                new=AsyncMock(return_value=[enriched_team]),
+            ) as mock_enrich_external,
+            patch(
+                "github.webhook.webhook_processors.team_member_webhook_processor.RestTeamExporter.enrich_teams_with_group_mappings",
+                new=AsyncMock(),
+            ) as mock_enrich_mappings,
+        ):
+            result = await team_member_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        mock_enrich_external.assert_awaited_once_with(
+            [full_team_export_data], "test-org"
+        )
+        mock_enrich_mappings.assert_not_awaited()
+        assert result.updated_raw_results == [enriched_team]
+        assert result.deleted_raw_results == []

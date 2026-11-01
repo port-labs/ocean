@@ -12,4 +12,4 @@ class MemoryStoresExporter(AbstractAnthropicExporter):
             self.client.beta.memory_stores.list(include_archived=include_archived)
         ):
             logger.debug(f"Fetched memory stores batch with {len(batch)} records")
-            yield batch
+            yield [item.to_dict(mode="json", warnings=False) for item in batch]

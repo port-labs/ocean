@@ -4,4 +4,7 @@
 # rewrote (e.g. a shrunk `variables.first`) survive only here for the GraphQL
 # client's error logs. Shared contract between the transport (producer) and the
 # GraphQL client (consumer).
+from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
+
 GRAPHQL_SENT_VARIABLES_EXTENSION = "github_graphql_sent_variables"
+SKIP_RETRY_CONFIG = {SKIP_RETRY_EXTENSION_KEY: True}

@@ -1,0 +1,21 @@
+{
+  "id": "disc_2",
+  "threadId": "th_2",
+  "title": "Email the customer",
+  "status": "RESOLVED",
+  "agentStatus": "UNKNOWN",
+  "visibility": "USER",
+  "isUnread": false,
+  "createdAt": {"iso8601": "2026-02-01T00:00:00Z"},
+  "updatedAt": {"iso8601": "2026-02-02T00:00:00Z"},
+  "lastActivityAt": {"iso8601": "2026-02-02T00:00:00Z"},
+  "resolvedAt": {"iso8601": "2026-02-03T00:00:00Z"},
+  "channelDetails": {
+    "__typename": "ThreadDiscussionEmailChannelDetails",
+    "emailRecipients": ["a@example.com", "b@example.com"]
+  },
+  "createdBy": {
+    "__typename": "MachineUserActor",
+    "machineUserId": "mu_1"
+  }
+}

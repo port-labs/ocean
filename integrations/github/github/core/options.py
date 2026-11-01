@@ -29,6 +29,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
     updated_since: NotRequired[Optional[datetime]]
+    pushed_since: NotRequired[Optional[datetime]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -264,6 +265,13 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class ListSkillSearchOptions(TypedDict):
+    """File search options for SKILL.md files and how to build each skill."""
+
+    repositories: Required[List[ListFileSearchOptions]]
+    include_skill_folder: Required[bool]
 
 
 class PluginRepositoryOptions(SingleOrganizationOptions):

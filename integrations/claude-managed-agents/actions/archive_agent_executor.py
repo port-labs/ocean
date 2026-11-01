@@ -55,11 +55,11 @@ class ArchiveAgentExecutor(AbstractAnthropicExecutor):
 
         logger.info(f"Archived Claude agent {agent_id} for run {run.id}")
 
-        # Reflect the archived state in the catalog so the entity is updated
-        # without waiting for the next resync. Agents have no webhook events,
-        # so the entity would otherwise remain stale until then. Best-effort:
-        # never fails the run.
-        await self.register_entity(ObjectKind.AGENT, agent, run)
+        # Reflect the archived state in the catalog immediately (webhooks also
+        # keep agents in sync). Best-effort: never fails the run.
+        await self.register_entity(
+            ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run
+        )
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id

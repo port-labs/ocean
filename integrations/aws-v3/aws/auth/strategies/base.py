@@ -10,6 +10,12 @@ class AWSSessionStrategy(ABC):
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
         self.provider = provider
         self.config = config
+        self._inaccessible_accounts: dict[str, str] = {}
+
+    @property
+    def inaccessible_accounts(self) -> dict[str, str]:
+        """Account IDs that failed assume-role during health check, mapped to the error."""
+        return self._inaccessible_accounts
 
     @abstractmethod
     def get_account_sessions(

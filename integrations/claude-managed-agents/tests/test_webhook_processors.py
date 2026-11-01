@@ -58,6 +58,11 @@ from webhook_processors.trigger_agent_webhook_processor import (
     SESSION_FAILED_STATUS_LABEL,
     TriggerAgentWebhookProcessor,
 )
+from webhook_processors.agent_webhook_processor import AgentWebhookProcessor
+from webhook_processors.environment_webhook_processor import EnvironmentWebhookProcessor
+from webhook_processors.memory_store_webhook_processor import (
+    MemoryStoreWebhookProcessor,
+)
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
@@ -84,7 +89,7 @@ _STANDARD_COMPLETION = {
 }
 
 
-def _sdk_session(
+def sdk_session(
     *,
     session_id: str = "s1",
     status: str = "idle",
@@ -99,7 +104,7 @@ def _sdk_session(
 
 
 def _stub_session_usage_client(client: MagicMock) -> None:
-    client.get_session = AsyncMock(return_value=_sdk_session())
+    client.get_session = AsyncMock(return_value=sdk_session())
     client.get_console_host = MagicMock(return_value="https://platform.claude.com")
     client.get_workspace_id = MagicMock(return_value=None)
 
@@ -136,7 +141,7 @@ async def test_session_upsert_event_fetches_resource() -> None:
     processor = SessionWebhookProcessor(_event(payload["data"]))
     client = MagicMock()
     client.get_session = AsyncMock(
-        return_value=_sdk_session(status="running", usage=None)
+        return_value=sdk_session(status="running", usage=None)
     )
     with patch(
         "webhook_processors.session_webhook_processor.create_anthropic_client",
@@ -164,6 +169,109 @@ async def test_vault_delete_event_returns_delete() -> None:
     processor = VaultWebhookProcessor(_event(payload["data"]))
     results = await processor.handle_event(payload, None)
     assert results.deleted_raw_results == [{"id": "v1"}]
+
+
+# --- agent ---
+
+
+@pytest.mark.asyncio
+async def test_agent_should_process_and_kinds() -> None:
+    processor = AgentWebhookProcessor(_event({"type": "agent.updated", "id": "a1"}))
+    assert await processor.should_process_event(processor.event) is True
+    assert await processor.get_matching_kinds(processor.event) == ["agent"]
+
+
+@pytest.mark.asyncio
+async def test_agent_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "agent.deleted", "id": "a1"}}
+    processor = AgentWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "a1"}]
+    assert results.updated_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_agent_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "agent.created", "id": "a1"}}
+    processor = AgentWebhookProcessor(_event(payload["data"]))
+    client = MagicMock()
+    agent = MagicMock()
+    agent.to_dict.return_value = {"id": "a1", "name": "bot"}
+    client.get_agent = AsyncMock(return_value=agent)
+    with patch(
+        "webhook_processors.agent_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "a1", "name": "bot"}]
+    client.get_agent.assert_awaited_once_with("a1")
+    agent.to_dict.assert_called_once_with(mode="json", warnings=False)
+
+
+# --- environment ---
+
+
+@pytest.mark.asyncio
+async def test_environment_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "environment.deleted", "id": "e1"}}
+    processor = EnvironmentWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "e1"}]
+
+
+@pytest.mark.asyncio
+async def test_environment_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "environment.updated", "id": "e1"}}
+    processor = EnvironmentWebhookProcessor(_event(payload["data"]))
+    environment = MagicMock()
+    environment.to_dict.return_value = {"id": "e1", "name": "env"}
+    client = MagicMock()
+    client.get_environment = AsyncMock(return_value=environment)
+    with patch(
+        "webhook_processors.environment_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "e1", "name": "env"}]
+    client.get_environment.assert_awaited_once_with("e1")
+
+
+# --- memory store ---
+
+
+@pytest.mark.asyncio
+async def test_memory_store_should_process_and_kinds() -> None:
+    processor = MemoryStoreWebhookProcessor(
+        _event({"type": "memory_store.created", "id": "ms1"})
+    )
+    assert await processor.should_process_event(processor.event) is True
+    assert await processor.get_matching_kinds(processor.event) == ["memory-store"]
+
+
+@pytest.mark.asyncio
+async def test_memory_store_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "memory_store.deleted", "id": "ms1"}}
+    processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "ms1"}]
+
+
+@pytest.mark.asyncio
+async def test_memory_store_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "memory_store.archived", "id": "ms1"}}
+    processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    memory_store = MagicMock()
+    memory_store.to_dict.return_value = {"id": "ms1", "name": "mem"}
+    client = MagicMock()
+    client.get_memory_store = AsyncMock(return_value=memory_store)
+    with patch(
+        "webhook_processors.memory_store_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "ms1", "name": "mem"}]
+    client.get_memory_store.assert_awaited_once_with("ms1")
+    memory_store.to_dict.assert_called_once_with(mode="json", warnings=False)
 
 
 # --- trigger agent (action) ---
@@ -386,6 +494,7 @@ async def test_trigger_reports_response_on_success() -> None:
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         _patch_session_events(
             anchor,
             [batch],
@@ -426,6 +535,7 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         _patch_session_events(
             anchor,
             [batch],
@@ -435,7 +545,7 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
         await processor.handle_event(payload, None)
 
     logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
-    assert [log.level for log in logs] == ["ERROR"]
+    assert [log.level for log in logs] == ["ERROR", "INFO"]
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
         run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
     )
@@ -467,6 +577,7 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -509,6 +620,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -540,6 +652,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [failed_batch]),
     ):
         await processor.handle_event(payload, None)
@@ -562,6 +675,7 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, []),
     ):
         await processor.handle_event(payload, None)
@@ -811,6 +925,7 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         patch(
             "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
@@ -907,6 +1022,7 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
 
     with (
         patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch("actions.utils.ocean", mock_ocean),
         patch(
             "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,

@@ -20,9 +20,9 @@ class ReviewPullRequestInputs(AbstractGithubActionInput):
     body: str | None = None
 
     @model_validator(mode="after")
-    def check_request_changes_requires_body(self) -> "ReviewPullRequestInputs":
-        if self.event == "REQUEST_CHANGES" and not self.body:
-            raise ValueError("body is required when event is REQUEST_CHANGES")
+    def check_body_required_for_event(self) -> "ReviewPullRequestInputs":
+        if self.event in ("REQUEST_CHANGES", "COMMENT") and not self.body:
+            raise ValueError(f"body is required when event is {self.event}")
         return self
 
     def to_api_payload(self) -> dict[str, Any]:

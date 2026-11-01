@@ -64,7 +64,7 @@ def test_probe_command_invokes_run_probe_with_parsed_kinds(
 
     # Assert
     assert result.exit_code == 0
-    assert "Probe succeeded" in result.output
+    assert "Probe complete" in result.output
     mock_run_probe.assert_called_once_with(
         "probe-123",
         str(tmp_path),

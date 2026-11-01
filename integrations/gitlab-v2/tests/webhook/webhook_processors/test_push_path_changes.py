@@ -26,9 +26,10 @@ def test_collect_paths_from_commits() -> None:
             },
         ]
     }
-    changed, removed = collect_paths_from_commits(payload)
+    changed, removed, modified = collect_paths_from_commits(payload)
     assert changed == {"a.md", "b.md", "d.md"}
     assert removed == {"c.md", "a.md"}
+    assert modified == {"b.md", "d.md"}
 
 
 def test_paths_from_compare_diffs() -> None:
@@ -51,10 +52,17 @@ def test_paths_from_compare_diffs() -> None:
             "renamed_file": True,
             "deleted_file": False,
         },
+        {
+            "new_path": "edited.md",
+            "old_path": "edited.md",
+            "new_file": False,
+            "deleted_file": False,
+        },
     ]
-    changed, removed = paths_from_compare_diffs(diffs)
-    assert changed == {"added.md", "new-name.md"}
+    changed, removed, modified = paths_from_compare_diffs(diffs)
+    assert changed == {"added.md", "new-name.md", "edited.md"}
     assert removed == {"gone.md", "old-name.md"}
+    assert modified == {"edited.md"}
 
 
 @pytest.mark.asyncio
@@ -85,10 +93,13 @@ async def test_resolve_push_path_changes_always_compares() -> None:
             {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
         ],
     }
-    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    changed, removed, modified = await resolve_push_path_changes(
+        client, "group/project", payload
+    )
     client.compare_repository.assert_awaited_once_with("group/project", "aaa", "bbb")
     assert changed == {"skills/y/SKILL.md"}
     assert removed == {"skills/gone/SKILL.md"}
+    assert modified == set()
 
 
 @pytest.mark.asyncio
@@ -102,9 +113,12 @@ async def test_resolve_push_path_changes_falls_back_when_compare_fails() -> None
             {"added": ["skills/x/SKILL.md"], "modified": [], "removed": ["old.md"]},
         ],
     }
-    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    changed, removed, modified = await resolve_push_path_changes(
+        client, "group/project", payload
+    )
     assert changed == {"skills/x/SKILL.md"}
     assert removed == {"old.md"}
+    assert modified == set()
 
 
 @pytest.mark.asyncio
@@ -119,9 +133,12 @@ async def test_resolve_push_path_changes_falls_back_on_empty_compare_response() 
             {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
         ],
     }
-    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    changed, removed, modified = await resolve_push_path_changes(
+        client, "group/project", payload
+    )
     assert changed == {"skills/x/SKILL.md"}
     assert removed == set()
+    assert modified == set()
 
 
 @pytest.mark.asyncio
@@ -135,9 +152,12 @@ async def test_resolve_push_path_changes_keeps_empty_diff_list() -> None:
             {"added": ["skills/x/SKILL.md"], "modified": [], "removed": []},
         ],
     }
-    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    changed, removed, modified = await resolve_push_path_changes(
+        client, "group/project", payload
+    )
     assert changed == set()
     assert removed == set()
+    assert modified == set()
 
 
 @pytest.mark.asyncio
@@ -150,8 +170,12 @@ async def test_resolve_push_path_changes_skips_compare_on_blank_sha() -> None:
             {"added": ["skills/z/SKILL.md"], "modified": [], "removed": []},
         ],
     }
-    changed, removed = await resolve_push_path_changes(client, "group/project", payload)
+    changed, removed, modified = await resolve_push_path_changes(
+        client, "group/project", payload
+    )
     assert changed == {"skills/z/SKILL.md"}
+    assert removed == set()
+    assert modified == set()
     client.compare_repository.assert_not_called()
 
 
@@ -164,6 +188,10 @@ async def test_resolve_push_path_changes_skips_compare_on_missing_sha() -> None:
             {"added": ["skills/z/SKILL.md"], "modified": [], "removed": []},
         ],
     }
-    changed, _ = await resolve_push_path_changes(client, "group/project", payload)
+    changed, removed, modified = await resolve_push_path_changes(
+        client, "group/project", payload
+    )
     assert changed == {"skills/z/SKILL.md"}
+    assert removed == set()
+    assert modified == set()
     client.compare_repository.assert_not_called()

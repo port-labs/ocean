@@ -36,7 +36,6 @@ from github.core.exporters.file_exporter.file_processor import (
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     _IGNORED_ERRORS = [
-        IgnoredError(status=401, message="Unauthorized access to endpoint"),
         IgnoredError(status=404, message="Resource not found at endpoint"),
         IgnoredError(status=409, message="empty repository"),
     ]
@@ -415,8 +414,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         Primary source for file kinds: 403 must raise GitHubTreeFetchError
         (synced-with-issues) so reconciliation does not treat the failure as an
-        empty catalog. 401/404/409 are ignored so missing repos/branches skip
-        without aborting the kind. Other HTTP errors skip that repo.
+        empty catalog. 404/409 are ignored so missing repos/branches skip
+        without aborting the kind. Other HTTP errors abort the kind.
         """
         tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
         try:

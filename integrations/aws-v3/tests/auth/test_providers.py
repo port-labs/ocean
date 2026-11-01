@@ -712,3 +712,109 @@ class TestAssumeRoleWithWebIdentityProvider:
         assert "role_arn is required for AssumeRoleWithWebIdentityProvider" in str(
             exc_info.value
         )
+
+    @pytest.mark.asyncio
+    @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
+    async def test_get_credentials_applies_govcloud_region_fallback(self) -> None:
+        """Test that a GovCloud role ARN resolves the partition-aware region when
+        no explicit region is passed, instead of the commercial STS endpoint."""
+        config = {"account_role_arn": "arn:aws-us-gov:iam::123456789012:role/test-role"}
+        provider = AssumeRoleWithWebIdentityProvider(config=config)
+        mock_session = MagicMock()
+        mock_sts_client = AsyncMock()
+
+        mock_file = AsyncMock()
+        mock_file.read.return_value = "test-web-identity-token"
+        with patch("aiofiles.open") as mock_aiofiles_open:
+            mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+
+            mock_sts_client.assume_role_with_web_identity.return_value = {
+                "Credentials": {
+                    "AccessKeyId": "test_access_key",
+                    "SecretAccessKey": "test_secret_key",
+                    "SessionToken": "test_session_token",
+                    "Expiration": MagicMock(),
+                }
+            }
+            mock_sts_client.assume_role_with_web_identity.return_value["Credentials"][
+                "Expiration"
+            ].isoformat.return_value = "2024-12-31T23:59:59Z"
+
+            mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
+
+            with patch.object(provider, "aws_client_factory_session", mock_session):
+                mock_session.create_client.return_value = mock_context_manager
+
+                with patch(
+                    "aws.auth.providers.assume_role_with_web_identity_provider.RegionHelper.get_custom_partition_region_or_none",
+                    new_callable=AsyncMock,
+                    return_value="us-gov-west-1",
+                ) as mock_region_fallback:
+                    with patch(
+                        "aws.auth.providers.assume_role_with_web_identity_provider.AioRefreshableCredentials.create_from_metadata"
+                    ) as mock_create_creds:
+                        mock_create_creds.return_value = MagicMock(
+                            spec=AioRefreshableCredentials
+                        )
+
+                        await provider.get_credentials(
+                            role_arn="arn:aws-us-gov:iam::123456789012:role/test-role",
+                        )
+
+                        mock_region_fallback.assert_called_once_with(mock_session)
+                        mock_session.create_client.assert_called_once_with(
+                            "sts", region_name="us-gov-west-1"
+                        )
+
+    @pytest.mark.asyncio
+    @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
+    async def test_get_credentials_commercial_partition_unchanged(self) -> None:
+        """Test that commercial (default partition) behavior is unchanged when no
+        region is passed: the region fallback resolves to None."""
+        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        provider = AssumeRoleWithWebIdentityProvider(config=config)
+        mock_session = MagicMock()
+        mock_sts_client = AsyncMock()
+
+        mock_file = AsyncMock()
+        mock_file.read.return_value = "test-web-identity-token"
+        with patch("aiofiles.open") as mock_aiofiles_open:
+            mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+
+            mock_sts_client.assume_role_with_web_identity.return_value = {
+                "Credentials": {
+                    "AccessKeyId": "test_access_key",
+                    "SecretAccessKey": "test_secret_key",
+                    "SessionToken": "test_session_token",
+                    "Expiration": MagicMock(),
+                }
+            }
+            mock_sts_client.assume_role_with_web_identity.return_value["Credentials"][
+                "Expiration"
+            ].isoformat.return_value = "2024-12-31T23:59:59Z"
+
+            mock_context_manager = create_mock_sts_context_manager(mock_sts_client)
+
+            with patch.object(provider, "aws_client_factory_session", mock_session):
+                mock_session.create_client.return_value = mock_context_manager
+
+                with patch(
+                    "aws.auth.providers.assume_role_with_web_identity_provider.RegionHelper.get_custom_partition_region_or_none",
+                    new_callable=AsyncMock,
+                    return_value=None,
+                ) as mock_region_fallback:
+                    with patch(
+                        "aws.auth.providers.assume_role_with_web_identity_provider.AioRefreshableCredentials.create_from_metadata"
+                    ) as mock_create_creds:
+                        mock_create_creds.return_value = MagicMock(
+                            spec=AioRefreshableCredentials
+                        )
+
+                        await provider.get_credentials(
+                            role_arn="arn:aws:iam::123456789012:role/test-role",
+                        )
+
+                        mock_region_fallback.assert_called_once_with(mock_session)
+                        mock_session.create_client.assert_called_once_with(
+                            "sts", region_name=None
+                        )

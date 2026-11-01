@@ -14,11 +14,18 @@ from core.exporters.skills_exporter import SkillsExporter
 from core.exporters.vaults_exporter import VaultsExporter
 
 
+def _model(data: dict[str, Any]) -> MagicMock:
+    """Return a mock SDK model whose to_dict() returns *data*."""
+    m = MagicMock()
+    m.to_dict.return_value = data
+    return m
+
+
 async def _batches(
     *pages: list[dict[str, Any]]
-) -> AsyncGenerator[list[dict[str, Any]], None]:
+) -> AsyncGenerator[list[MagicMock], None]:
     for page in pages:
-        yield page
+        yield [_model(item) for item in page]
 
 
 @pytest.mark.asyncio

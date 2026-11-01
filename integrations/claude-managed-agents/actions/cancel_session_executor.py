@@ -78,7 +78,7 @@ class CancelSessionExecutor(AbstractAnthropicExecutor):
         # Reflect the session in the catalog (no-op if the `session` kind is
         # not mapped). Best-effort: never fails the run.
         await self.register_entity(
-            ObjectKind.SESSION, session.to_dict(mode="json"), run
+            ObjectKind.SESSION, session.to_dict(mode="json", warnings=False), run
         )
 
         if isinstance(run, WorkflowNodeRun):

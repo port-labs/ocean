@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
@@ -12,6 +13,10 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ORGANIZATION = "organization"
     HEALTH_ASSESSMENT = "health-assessment"
+    TEAM = "team"
+    ORGANIZATION_MEMBERSHIP = "organization-membership"
+    TEAM_WORKSPACE_ACCESS = "team-workspace-access"
+    TEAM_PROJECT_ACCESS = "team-project-access"
 
 
 def init_terraform_client() -> TerraformClient:
@@ -26,3 +31,14 @@ def init_terraform_client() -> TerraformClient:
     )
 
     return terraform_client
+
+
+def should_fetch_health_assessment(workspace: dict[str, Any]) -> bool:
+    if not workspace["attributes"]["assessments-enabled"]:
+        return False
+
+    relationships = workspace["relationships"]
+    if "current-assessment-result" not in relationships:
+        return True
+
+    return relationships["current-assessment-result"].get("data") is not None

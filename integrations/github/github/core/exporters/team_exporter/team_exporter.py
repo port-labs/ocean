@@ -121,3 +121,22 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched external IdP group {groups[0]['group_name']} for team {slug} in {organization}"
             )
         return teams
+
+    async def enrich_teams_with_group_mappings(
+        self,
+        teams: list[dict[str, Any]],
+        organization: str,
+    ) -> list[dict[str, Any]]:
+        for team in teams:
+            slug = team["slug"]
+            url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}/team-sync/group-mappings"
+            response = await self.client.send_api_request(url)
+            # Unlike external groups, a team can be mapped to multiple IdP groups.
+            # No pagination on this endpoint.
+            # https://docs.github.com/en/enterprise-cloud@latest/rest/teams/team-sync
+            groups = response.get("groups", [])
+            team["__group_mappings"] = groups
+            logger.info(
+                f"Fetched {len(groups)} team sync group mappings for team {slug} in {organization}"
+            )
+        return teams

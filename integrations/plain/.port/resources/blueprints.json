@@ -1,0 +1,460 @@
+[
+    {
+        "identifier": "plainCompany",
+        "title": "Plain Company",
+        "icon": "Blueprint",
+        "description": "A company in Plain",
+        "schema": {
+            "properties": {
+                "domainName": {
+                    "type": "string",
+                    "title": "Domain"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "plainTenant",
+        "title": "Plain Tenant",
+        "icon": "Blueprint",
+        "description": "A tenant in Plain",
+        "schema": {
+            "properties": {
+                "externalId": {
+                    "type": "string",
+                    "title": "External ID"
+                },
+                "url": {
+                    "type": "string",
+                    "format": "url",
+                    "title": "URL"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "plainUser",
+        "title": "Plain User",
+        "icon": "Blueprint",
+        "description": "A support user in Plain",
+        "schema": {
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "format": "idn-email",
+                    "title": "Email"
+                },
+                "publicName": {
+                    "type": "string",
+                    "title": "Public name"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status"
+                },
+                "role": {
+                    "type": "string",
+                    "title": "Role"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "plainMachineUser",
+        "title": "Plain Machine User",
+        "icon": "Blueprint",
+        "description": "A machine user (API bot or AI agent) in Plain",
+        "schema": {
+            "properties": {
+                "publicName": {
+                    "type": "string",
+                    "title": "Public name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Type",
+                    "enum": ["API_USER", "AI_AGENT"]
+                },
+                "isCustomAgent": {
+                    "type": "boolean",
+                    "title": "Is custom agent"
+                },
+                "isAssignableToThreads": {
+                    "type": "boolean",
+                    "title": "Is assignable to threads"
+                },
+                "isDeleted": {
+                    "type": "boolean",
+                    "title": "Is deleted"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "plainCustomer",
+        "title": "Plain Customer",
+        "icon": "Blueprint",
+        "description": "A customer in Plain",
+        "schema": {
+            "properties": {
+                "externalId": {
+                    "type": "string",
+                    "title": "External ID"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "title": "Email"
+                },
+                "shortName": {
+                    "type": "string",
+                    "title": "Short name"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "company": {
+                "title": "Company",
+                "target": "plainCompany",
+                "required": false,
+                "many": false
+            },
+            "tenants": {
+                "title": "Tenants",
+                "target": "plainTenant",
+                "required": false,
+                "many": true
+            }
+        }
+    },
+    {
+        "identifier": "plainThread",
+        "title": "Plain Thread",
+        "icon": "Blueprint",
+        "description": "A support thread in Plain",
+        "schema": {
+            "properties": {
+                "ref": {
+                    "type": "string",
+                    "title": "Reference"
+                },
+                "externalId": {
+                    "type": "string",
+                    "title": "External ID"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": ["TODO", "SNOOZED", "DONE"]
+                },
+                "priority": {
+                    "type": "number",
+                    "title": "Priority"
+                },
+                "tier": {
+                    "type": "string",
+                    "title": "Tier"
+                },
+                "assigneeType": {
+                    "type": "string",
+                    "title": "Assignee type"
+                },
+                "labels": {
+                    "type": "array",
+                    "title": "Labels",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "productArea": {
+                    "type": "string",
+                    "title": "Product area"
+                },
+                "fields": {
+                    "type": "string",
+                    "title": "Thread fields"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "customer": {
+                "title": "Customer",
+                "target": "plainCustomer",
+                "required": false,
+                "many": false
+            },
+            "tenant": {
+                "title": "Tenant",
+                "target": "plainTenant",
+                "required": false,
+                "many": false
+            },
+            "assignee": {
+                "title": "Assignee",
+                "target": "plainUser",
+                "required": false,
+                "many": false
+            },
+            "machineAssignee": {
+                "title": "Machine assignee",
+                "target": "plainMachineUser",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "plainThreadMessage",
+        "title": "Plain Thread Message",
+        "icon": "Blueprint",
+        "description": "A message in a Plain thread timeline",
+        "schema": {
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "entryType": {
+                    "type": "string",
+                    "title": "Entry type"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Timestamp"
+                },
+                "actorType": {
+                    "type": "string",
+                    "title": "Actor type"
+                },
+                "actorId": {
+                    "type": "string",
+                    "title": "Actor ID"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "thread": {
+                "title": "Thread",
+                "target": "plainThread",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "plainDiscussion",
+        "title": "Plain Discussion",
+        "icon": "Blueprint",
+        "description": "An internal discussion on a Plain thread",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": ["OPEN", "RESOLVED"]
+                },
+                "agentStatus": {
+                    "type": "string",
+                    "title": "Agent status",
+                    "enum": ["UNKNOWN", "IDLE", "IN_PROGRESS", "TOOL_CALL_APPROVAL_PENDING"]
+                },
+                "visibility": {
+                    "type": "string",
+                    "title": "Visibility",
+                    "enum": ["WORKSPACE", "USER"]
+                },
+                "isUnread": {
+                    "type": "boolean",
+                    "title": "Unread"
+                },
+                "channel": {
+                    "type": "string",
+                    "title": "Channel",
+                    "enum": ["SLACK", "EMAIL", "CURSOR", "AGENT_SESSION"]
+                },
+                "slackChannelName": {
+                    "type": "string",
+                    "title": "Slack channel"
+                },
+                "slackMessageLink": {
+                    "type": "string",
+                    "title": "Slack link"
+                },
+                "emailRecipients": {
+                    "type": "array",
+                    "title": "Email recipients",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                },
+                "lastActivityAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Last activity at"
+                },
+                "resolvedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Resolved at"
+                },
+                "createdByType": {
+                    "type": "string",
+                    "title": "Created by type"
+                },
+                "createdById": {
+                    "type": "string",
+                    "title": "Created by ID"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "thread": {
+                "title": "Thread",
+                "target": "plainThread",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "plainDiscussionMessage",
+        "title": "Plain Discussion Message",
+        "icon": "Blueprint",
+        "description": "A message in a Plain thread discussion",
+        "schema": {
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "messageType": {
+                    "type": "string",
+                    "title": "Message type",
+                    "enum": ["INBOUND", "OUTBOUND"]
+                },
+                "slackMessageLink": {
+                    "type": "string",
+                    "title": "Slack link"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Timestamp"
+                },
+                "authorType": {
+                    "type": "string",
+                    "title": "Author type"
+                },
+                "authorId": {
+                    "type": "string",
+                    "title": "Author ID"
+                }
+            },
+            "required": []
+        },
+        "calculationProperties": {},
+        "relations": {
+            "thread": {
+                "title": "Thread",
+                "target": "plainThread",
+                "required": false,
+                "many": false
+            },
+            "discussion": {
+                "title": "Discussion",
+                "target": "plainDiscussion",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]

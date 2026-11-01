@@ -121,7 +121,7 @@ class TestEnrichStateVersionWithOutput:
         )
 
         assert result["id"] == "sv-123"
-        assert result["__output"] == {}
+        assert result["__output"] == []
 
     @pytest.mark.asyncio
     async def test_enrich_state_version_preserves_original_data(
@@ -298,7 +298,7 @@ class TestHandleEvent:
 
             assert len(result.updated_raw_results) == 2
             assert result.updated_raw_results[0]["__output"] == [{"name": "output1"}]
-            assert result.updated_raw_results[1]["__output"] == {}
+            assert result.updated_raw_results[1]["__output"] == []
 
     @pytest.mark.asyncio
     async def test_handle_event_extracts_correct_payload_fields(

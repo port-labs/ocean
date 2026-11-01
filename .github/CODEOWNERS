@@ -30,3 +30,6 @@
 /integrations/*/pyproject.toml @port-labs/connect-team @port-labs/lighthouse-team
 /integrations/*/CHANGELOG.md @port-labs/connect-team @port-labs/lighthouse-team
 /integrations/*/poetry.lock @port-labs/connect-team @port-labs/lighthouse-team
+
+/.ocean-release/core/** @port-labs/connect-team
+/integrations/*/.ocean-release/** @port-labs/connect-team @port-labs/lighthouse-team

@@ -72,13 +72,19 @@ class EntitiesHandler:
 
             return (results.get("nextCursor"), results.get("entities", []))
 
+        extra_entity_properties = ""
+        if resource_config.selector.entity_extra_properties_query:
+            extra_entity_properties = (
+                resource_config.selector.entity_extra_properties_query
+            )
+
         async for entity in send_paginated_graph_api_request(
             self.http_client,
             LIST_ENTITIES_WITH_FILTER_QUERY,
             request_type="list_entities_by_resource_kind",
             extract_data=extract_entities,
             entity_query_filter=resource_config.selector.entity_query_filter,
-            extra_entity_properties=resource_config.selector.entity_extra_properties_query,
+            extra_entity_properties=extra_entity_properties,
         ):
 
             if entity:
@@ -89,8 +95,11 @@ class EntitiesHandler:
         self, entity_guids: list[str]
     ) -> list[dict[Any, Any]]:
         # entities api doesn't support pagination
+        extra_entity_properties = ""
         query = await render_query(
-            LIST_ENTITIES_BY_GUIDS_QUERY, entity_guids=entity_guids
+            LIST_ENTITIES_BY_GUIDS_QUERY,
+            entity_guids=entity_guids,
+            extra_entity_properties=extra_entity_properties,
         )
         response = await send_graph_api_request(
             self.http_client,

@@ -627,7 +627,7 @@ class TestRestFileExporter:
     ) -> None:
         """404 on tree-fetch must remain ignored (skip repo), not abort the kind.
 
-        With ignore_default_errors=False, only 403 raises to abort. 401/404/409
+        With ignore_default_errors=False, only 403 raises to abort. 404/409
         are on _IGNORED_ERRORS so send_api_request returns empty and the kind
         continues (skips that repo without aborting).
         """

@@ -10,4 +10,4 @@ class SkillsExporter(AbstractAnthropicExporter):
             self.client.beta.skills.list(source="custom")
         ):
             logger.debug(f"Fetched skills batch with {len(batch)} records")
-            yield batch
+            yield [item.to_dict(mode="json", warnings=False) for item in batch]

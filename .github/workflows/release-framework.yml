@@ -1,5 +1,6 @@
 name: Release framework
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -12,6 +13,7 @@ env:
 jobs:
   tag-main:
     name: Tag main branch and create release
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
 
@@ -19,6 +21,7 @@ jobs:
     outputs:
       current_tag: ${{ steps.get_current_version.outputs.current_tag }}
       prev_tag: ${{ steps.get_previous_version.outputs.prev_tag }}
+      release_exists: ${{ steps.check_release.outputs.release_exists }}
 
     steps:
       - name: Check out code
@@ -42,8 +45,25 @@ jobs:
           PREV_TAG=$(git show HEAD~1:pyproject.toml 2>/dev/null | grep -E '^version = ".*"' | cut -d'"' -f2 || echo "")
           echo "prev_tag=${PREV_TAG}" >> $GITHUB_ENV
           echo "prev_tag=${PREV_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          CURRENT_TAG="${{ steps.get_current_version.outputs.current_tag }}"
+          PREV_TAG="${{ steps.get_previous_version.outputs.prev_tag }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/v${CURRENT_TAG}$"; then
+            echo "::notice::Tag v${CURRENT_TAG} already exists, exiting without releasing again"
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          elif [ -n "${PREV_TAG}" ] && [ "${CURRENT_TAG}" = "${PREV_TAG}" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            # Push with no version bump and no existing tag: nothing to release
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag v${CURRENT_TAG} does not exist, will create"
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Tag main
-        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
+        if: steps.check_release.outputs.release_exists != 'true'
         run: |
           CURRENT_TAG="${{ steps.get_current_version.outputs.current_tag }}"
           git config --local user.email "action@github.com"
@@ -53,7 +73,7 @@ jobs:
           # Explicitly push the tag (not a branch)
           git push origin refs/tags/v${CURRENT_TAG}
       - name: Create GitHub Release
-        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
+        if: steps.check_release.outputs.release_exists != 'true'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_current_version.outputs.current_tag }}
@@ -67,8 +87,11 @@ jobs:
   publish_ocean:
     name: Publish framework to PyPI
     needs: tag-main
-    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
+    if: github.ref == 'refs/heads/main' && needs.tag-main.outputs.release_exists != 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Set up Python 3.12
         uses: actions/setup-python@v7
@@ -102,8 +125,17 @@ jobs:
             sleep 2
           done
 
+      - name: Trigger apply-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run apply-release.yml \
+            --ref main \
+            -f version="${{ env.VERSION }}" \
+            -f actor="${{ github.actor }}"
+
       - name: Send internal release notification
-        if: env.VERSION != ''
+        if: success()
         continue-on-error: true
         uses: fjogeleit/http-request-action@v2
         with:
@@ -138,7 +170,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<https://ocean.getport.io/changelog/${{ env.VERSION }}|Check out the Changelog>"
+                    "text": "<https://github.com/port-labs/ocean/blob/v${{ env.VERSION }}/CHANGELOG.md|Check out the Changelog>"
                   }
                 },
                 {
@@ -149,6 +181,48 @@ jobs:
                   "text": {
                     "type": "mrkdwn",
                     "text": "Happy sailing! :ocean: :heart:"
+                  }
+                }
+              ]
+            }
+
+      - name: Send Slack failure notification
+        if: failure()
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v2
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Ocean framework release failed!* :x:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Triggered by:* <https://github.com/${{ github.actor }}|${{ github.actor }}>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Version:* `${{ env.VERSION || needs.tag-main.outputs.current_tag }}`"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
                   }
                 }
               ]
