@@ -14,6 +14,7 @@ from actions.trigger_agent_executor import (
     SESSION_NOT_CONTINUABLE_STATUS_LABEL,
     TriggerAgentExecutor,
 )
+from actions.prompt_images import PromptImages
 from actions.types import TriggerAgentSessionOutput
 from actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
@@ -28,6 +29,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from tests.action_test_helpers import (
     build_executor,
+    image_block,
     build_mock_ocean,
     empty_session_events,
     mock_ocean_with_client_secret,
@@ -357,7 +359,83 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
 
     resolve_binding.assert_awaited_once()
     client_mock.create_session.assert_not_called()
-    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up")
+    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up", [])
+
+
+async def execute_continuing(prompt: str, images: PromptImages) -> tuple[Any, Any]:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
+    client_mock.get_session = AsyncMock(return_value=sdk_session())
+    client_mock.get_session_events = empty_session_events
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event("msg_2"))
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "sessionId": "sess_1",
+            "prompt": prompt,
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "actions.trigger_agent_executor.load_prompt_images",
+            AsyncMock(return_value=images),
+        ),
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            AsyncMock(
+                return_value=PortMcpBinding(
+                    vault_id="vault_port", credential_id="cred_1"
+                )
+            ),
+        ),
+    ):
+        await executor.execute(run)
+    return client_mock, mock_ocean
+
+
+IMAGE_BLOCKS: list[Any] = [{"type": "text", "text": "Image 1:"}, image_block()]
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_sends_the_relabeled_prompt_and_the_images_after_it() -> (
+    None
+):
+    client_mock, _ = await execute_continuing(
+        "see ![x](https://assets.io/organizations/o/markdown_image/a.png)",
+        PromptImages("see [Image 1: x]", blocks=IMAGE_BLOCKS),
+    )
+
+    client_mock.send_user_message.assert_awaited_once_with(
+        "sess_1", "see [Image 1: x]", IMAGE_BLOCKS
+    )
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_logs_the_images_it_could_not_load_and_still_runs() -> None:
+    gone = "https://assets.io/organizations/o/markdown_image/gone.png"
+
+    client_mock, mock_ocean = await execute_continuing(
+        f"see {gone}",
+        PromptImages("see [Image 1 - could not be loaded]", failed=[gone]),
+    )
+
+    client_mock.send_user_message.assert_awaited_once_with(
+        "sess_1", "see [Image 1 - could not be loaded]", []
+    )
+    warning = [
+        call
+        for call in mock_ocean.port_client.post_run_log.await_args_list
+        if call.kwargs.get("level") == "WARNING"
+    ]
+    assert len(warning) == 1 and gone in warning[0].args[1]
 
 
 @pytest.mark.asyncio
@@ -426,7 +504,7 @@ async def test_trigger_agent_executor_starts_session() -> None:
         "env_1",
         extra=None,
     )
-    client_mock.send_user_message.assert_awaited_once_with("sess_1", "go")
+    client_mock.send_user_message.assert_awaited_once_with("sess_1", "go", [])
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.update_run_started.assert_awaited_once()
     call = mock_ocean.port_client.update_run_started.call_args
@@ -583,7 +661,7 @@ async def test_trigger_agent_continues_idle_session() -> None:
         await executor.execute(run)
 
     client_mock.create_session.assert_not_called()
-    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up")
+    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up", [])
     assert (
         mock_ocean.port_client.update_run_started.call_args.args[2]
         == "claude_session_sess_1_msg_2"

@@ -28,6 +28,7 @@ from actions.port_mcp_utils import (
     is_agent_configured_with_port_mcp,
     remint_port_mcp_credential,
 )
+from actions.prompt_images import ImageContent, load_prompt_images
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
@@ -236,6 +237,24 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             )
         return session
 
+    async def _prompt_with_images(
+        self, prompt: str, run: IntegrationRun
+    ) -> tuple[str, list[ImageContent]]:
+        """The prompt with the Port images it links to relabeled, and the images as content blocks after it.
+
+        An image that can't be loaded is logged on the run and labeled so in the prompt: it never fails the run.
+        """
+        images = await load_prompt_images(prompt)
+        if images.failed:
+            await ocean.port_client.post_run_log(
+                run,
+                f"Could not load {len(images.failed)} image(s) linked in the prompt: "
+                + ", ".join(images.failed),
+                level="WARNING",
+                should_raise=False,
+            )
+        return images.prompt, images.blocks
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
@@ -265,7 +284,8 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         else:
             session = await self._create_new_trigger_session(inputs, port_mcp)
 
-        user_message = await self.client.send_user_message(session.id, inputs.prompt)
+        prompt, images = await self._prompt_with_images(inputs.prompt, run)
+        user_message = await self.client.send_user_message(session.id, prompt, images)
         logger.info(
             f"Triggered Claude agent {inputs.agentId} via session {session.id} "
             f"(message {user_message.id}) for run {run.id}"
