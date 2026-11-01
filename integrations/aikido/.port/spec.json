@@ -5,6 +5,7 @@
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/aikido",
   "formMappingEnabled": true,
   "recommendedInstallationMethod": "Saas",
+  "temp": "key",
   "features": [
     {
       "type": "exporter",
