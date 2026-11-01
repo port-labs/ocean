@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
 from anthropic.types.beta import (
+    BetaManagedAgentsSessionUsageEvent,
     BetaWebhookSessionIdledEventData,
     BetaWebhookSessionStatusIdledEventData,
     BetaWebhookSessionStatusTerminatedEventData,
@@ -18,6 +19,9 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
 )
 from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event import (
     BetaManagedAgentsSessionStatusIdleEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
+    BetaManagedAgentsSessionUsageSnapshot,
 )
 from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
@@ -223,7 +227,9 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         extra_output.update(
             (
-                await self._build_standard_completion_output(session_id, data)
+                await self._build_standard_completion_output(
+                    session_id, data, prior_idle_time=prior_idle_time
+                )
             ).model_dump()
         )
 
@@ -248,9 +254,13 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def _build_standard_completion_output(
-        self, session_id: str, webhook_data: TerminalSessionWebhookData
+        self,
+        session_id: str,
+        webhook_data: TerminalSessionWebhookData,
+        *,
+        prior_idle_time: datetime | None,
     ) -> TriggerAgentSessionOutput:
-        """Session URL plus cumulative usage from a best-effort session retrieve."""
+        """Session URL plus this trigger's usage delta from a best-effort retrieve."""
         client = create_anthropic_client()
         session_url = build_session_link(
             client.get_console_host(), webhook_data.workspace_id, session_id
@@ -265,7 +275,47 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             )
             return TriggerAgentSessionOutput(url=session_url)
 
-        return TriggerAgentSessionOutput.from_session(url=session_url, session=session)
+        baseline = await self._find_baseline_usage(session_id, prior_idle_time)
+        return TriggerAgentSessionOutput.from_session(
+            url=session_url,
+            session=session,
+            baseline_usage=baseline,
+        )
+
+    async def _find_baseline_usage(
+        self, session_id: str, prior_idle_time: datetime | None
+    ) -> BetaManagedAgentsSessionUsageSnapshot | None:
+        """Prior cumulative ``session.usage`` snapshot for relative cost/tokens.
+
+        Emitted immediately before each idle. For a continued session, use the
+        last snapshot at or before ``prior_idle_time``. New sessions have no
+        baseline (delta from zero).
+        """
+        if prior_idle_time is None:
+            return None
+        try:
+            client = create_anthropic_client()
+            async for batch in client.get_session_events(
+                session_id,
+                types=["session.usage"],
+                order="desc",
+                created_at_lte=prior_idle_time,
+                limit=1,
+            ):
+                event = batch[0]
+                if isinstance(event, BetaManagedAgentsSessionUsageEvent):
+                    return event.usage
+                logger.warning(
+                    f"Expected session.usage baseline for session {session_id}, "
+                    f"got {event.type}"
+                )
+                return None
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch prior session.usage for {session_id} "
+                f"(reporting cumulative usage): {error}"
+            )
+        return None
 
     async def _find_anchor_user_message(
         self, session_id: str, webhook_time: datetime

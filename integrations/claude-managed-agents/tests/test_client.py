@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
+import httpx2
 import pytest
 from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
@@ -40,9 +40,9 @@ _RATE_LIMIT_HEADERS = {
 
 def _response(
     method: str, headers: dict[str, str], status_code: int = 200
-) -> httpx.Response:
-    request = httpx.Request(method, "https://api.anthropic.com/v1/agents")
-    return httpx.Response(status_code, headers=headers, request=request)
+) -> httpx2.Response:
+    request = httpx2.Request(method, "https://api.anthropic.com/v1/agents")
+    return httpx2.Response(status_code, headers=headers, request=request)
 
 
 @pytest.fixture
@@ -361,7 +361,7 @@ async def test_on_response_missing_workspace_id_leaves_cache_none(
 
 @pytest.mark.asyncio
 async def test_on_request_noop_when_no_cached_info(client: AnthropicClient) -> None:
-    request = httpx.Request("GET", "https://api.anthropic.com/v1/agents")
+    request = httpx2.Request("GET", "https://api.anthropic.com/v1/agents")
 
     await client._on_request(request)
 
@@ -377,7 +377,7 @@ async def test_on_request_optimistically_decrements_remaining(
         remaining=5,
         reset=datetime.now(timezone.utc) + timedelta(seconds=30),
     )
-    request = httpx.Request("GET", "https://api.anthropic.com/v1/agents")
+    request = httpx2.Request("GET", "https://api.anthropic.com/v1/agents")
 
     await client._on_request(request)
 
@@ -400,7 +400,7 @@ async def test_on_request_sleeps_when_pool_exhausted(
     client._create_rate_limit_info = RateLimitInfo(
         limit=300, remaining=0, reset=datetime.now(timezone.utc) + timedelta(seconds=10)
     )
-    request = httpx.Request("POST", "https://api.anthropic.com/v1/agents")
+    request = httpx2.Request("POST", "https://api.anthropic.com/v1/agents")
 
     await client._on_request(request)
 
@@ -424,7 +424,7 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
     client._read_rate_limit_info = RateLimitInfo(
         limit=1200, remaining=0, reset=datetime.now(timezone.utc) - timedelta(seconds=5)
     )
-    request = httpx.Request("GET", "https://api.anthropic.com/v1/agents")
+    request = httpx2.Request("GET", "https://api.anthropic.com/v1/agents")
 
     await client._on_request(request)
 

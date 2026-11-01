@@ -386,6 +386,12 @@ def _patch_session_events(
             if prior_idle is not None:
                 yield [prior_idle]
             return
+        if (
+            kwargs.get("types") == ["session.usage"]
+            and kwargs.get("order") == "desc"
+        ):
+            # No prior usage snapshot → baseline None → report cumulative usage.
+            return
         if kwargs.get("types") == _INTERACTION_EVENT_TYPES:
             if prior_idle is not None:
                 if kwargs.get("created_at_gt") == prior_idle.processed_at:

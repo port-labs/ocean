@@ -39,12 +39,18 @@ def test_build_session_link_uses_configured_console_host() -> None:
 
 
 def test_list_cost_to_usd() -> None:
+    from anthropic.types.beta_monetary_amount import BetaMonetaryAmount
+
     assert list_cost_to_usd({"amount": "187", "currency": "USD"}) == 1.87
     assert list_cost_to_usd({"amount": "50", "currency": "USD"}) == 0.5
     assert list_cost_to_usd({"amount": "0", "currency": "USD"}) == 0.0
     assert list_cost_to_usd(None) is None
     assert list_cost_to_usd({"amount": "not-a-number"}) is None
     assert list_cost_to_usd({}) is None
+    assert (
+        list_cost_to_usd(BetaMonetaryAmount.model_validate({"amount": "187", "currency": "USD"}))
+        == 1.87
+    )
 
 
 @pytest.mark.asyncio
