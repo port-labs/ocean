@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
-from tools.vendor_stub import store
 from tools.vendor_stub.match import find_best
+from tools.vendor_stub.mock_repo import MockRepo
 
 app = FastAPI(title="vendor-stub")
 mock_router = APIRouter(prefix="/__mock")
@@ -70,7 +70,7 @@ def _build_response(raw: dict[str, Any], stub_base: str) -> Response:
 
 @mock_router.post("/register")
 async def register(payload: dict[str, Any]) -> dict[str, Any]:
-    saved = store.add_registration(payload)
+    saved = MockRepo.add_registration(payload)
     return {"ok": True, "registration": saved}
 
 
@@ -101,29 +101,29 @@ async def paginate(payload: dict[str, Any], request: Request) -> dict[str, Any]:
         "times": responses,
         "priority": base.get("priority", 10),
     }
-    saved = store.add_registration(reg)
+    saved = MockRepo.add_registration(reg)
     return {"ok": True, "registration": saved, "stub_base": _stub_base(request)}
 
 
 @mock_router.post("/reset")
 async def reset() -> dict[str, Any]:
-    store.reset()
+    MockRepo.reset()
     return {"ok": True}
 
 
 @mock_router.get("/unmatched")
 async def unmatched() -> dict[str, Any]:
-    return {"ok": True, "unmatched": store.get_unmatched()}
+    return {"ok": True, "unmatched": MockRepo.get_unmatched()}
 
 
 @mock_router.get("/calls")
 async def calls() -> dict[str, Any]:
-    return {"ok": True, "calls": store.get_call_log()}
+    return {"ok": True, "calls": MockRepo.get_call_log()}
 
 
 @mock_router.get("/registrations")
 async def registrations() -> dict[str, Any]:
-    return {"ok": True, "registrations": store.list_registrations()}
+    return {"ok": True, "registrations": MockRepo.list_registrations()}
 
 
 app.include_router(mock_router)
@@ -148,10 +148,10 @@ async def wildcard(request: Request, path: str) -> Response:
         "headers": {k: v for k, v in headers.items() if k.lower() != "authorization"},
         "body": body_text[:4000],
     }
-    store.log_call(call)
+    MockRepo.log_call(call)
 
     reg, failed = find_best(
-        store.list_registrations(),
+        MockRepo.list_registrations(),
         method=method,
         path=full_path,
         query=query,
@@ -167,7 +167,7 @@ async def wildcard(request: Request, path: str) -> Response:
             "closest_registration": None,
         }
         # attach closest for debugging
-        regs = store.list_registrations()
+        regs = MockRepo.list_registrations()
         if regs:
             best = None
             best_failed: list[str] = []
@@ -207,7 +207,7 @@ async def wildcard(request: Request, path: str) -> Response:
                     best_failed = c_failed
             entry["closest_registration"] = best
             entry["closest_failed_conditions"] = best_failed
-        store.log_unmatched(entry)
+        MockRepo.log_unmatched(entry)
         return JSONResponse(
             {
                 "error": "unmatched",
@@ -218,27 +218,27 @@ async def wildcard(request: Request, path: str) -> Response:
 
     times = reg.get("times")
     if isinstance(times, list):
-        nxt = store.next_sequence_response(reg["id"], times)
+        nxt = MockRepo.next_sequence_response(reg["id"], times)
         if nxt is None:
             entry = {
                 **call,
                 "reason": "times sequence exhausted",
                 "registration_id": reg.get("id"),
             }
-            store.log_unmatched(entry)
+            MockRepo.log_unmatched(entry)
             return JSONResponse(
                 {"error": "unmatched", "reason": "times exhausted"}, status_code=501
             )
         return _build_response(nxt, stub_base)
 
     if isinstance(times, int):
-        if not store.bump_times_remaining(reg):
+        if not MockRepo.bump_times_remaining(reg):
             entry = {
                 **call,
                 "reason": "times count exhausted",
                 "registration_id": reg.get("id"),
             }
-            store.log_unmatched(entry)
+            MockRepo.log_unmatched(entry)
             return JSONResponse(
                 {"error": "unmatched", "reason": "times exhausted"}, status_code=501
             )
