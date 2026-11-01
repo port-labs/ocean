@@ -1,20 +1,44 @@
 ---
 name: validate-integration-change
+# REVERT: restore the broader description below (use whenever implementing...), then
+# delete disable-model-invocation so the skill can auto-suggest again.
 description: >-
   Validate any change under integrations/ against a local HTTP vendor stub and
   a sandbox Port org, using response shapes from the vendor docs and no real
-  vendor credentials. Use whenever implementing, fixing, or refactoring an
-  Ocean integration: adding or changing a kind, fixing a bug, or changing
-  client, mapping, config, webhook, or other internal logic. Also use when
-  asked to validate an integration change, run agentic integration validation,
-  or prove a mapping or client change with a stub. Finish when the sail script
-  exits 0. If it exits with a missing Port credentials error, do not retry.
-  Never run ocean sail directly. If the script is stuck, stop.
+  vendor credentials. Use when asked to validate an integration change, run
+  agentic integration validation, or prove a mapping or client change with a
+  stub. Finish when the sail script exits 0. If it exits with a missing Port
+  credentials error, do not retry. Never run ocean sail directly. If the
+  script is stuck, stop.
+# REVERT: delete the next line
+disable-model-invocation: true
 ---
 
 # Validate an integration change
 
+<!-- REVERT: delete this whole "When to run" section (request-only gate) -->
+## When to run
+
+Run this only when requested (for example: "validate this integration change",
+"run agentic integration validation", or an explicit ask to prove a mapping or
+client change with the stub). Do not start this workflow on every integration
+edit until it is confirmed to work as expected.
+
+<!-- REVERT: restore this into description (after "vendor credentials."):
+Use whenever implementing, fixing, or refactoring an Ocean integration: adding
+or changing a kind, fixing a bug, or changing client, mapping, config, webhook,
+or other internal logic. Also use when asked to validate an integration change,
+run agentic integration validation, or prove a mapping or client change with a
+stub.
+-->
+
+<!-- REVERT: uncomment the next paragraph and delete the "When requested, prove..." line below -->
+<!--
 Run this for integration work, not only when the user says "validate". That includes adding or changing a kind, fixing a bug, and changing client, mapping, config, webhook, or other internal logic. Prove the change by stubbing the third-party API locally, sailing once into a sandbox Port org, and asserting entities. The task is done when the sail script exits 0.
+-->
+
+<!-- REVERT: delete this line after restoring the auto-run paragraph above -->
+When requested, prove the change by stubbing the third-party API locally, sailing once into a sandbox Port org, and asserting entities. The task is done when the sail script exits 0.
 
 ## Steps
 

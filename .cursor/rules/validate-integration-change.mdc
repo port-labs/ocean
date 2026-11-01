@@ -1,12 +1,28 @@
 ---
-description: Run agentic integration validation after any integration change
-globs: integrations/**/*
+# REVERT: restore description to "Run agentic integration validation after any integration change"
+description: Run agentic integration validation when requested
+# REVERT: uncomment the next line to auto-attach on integration edits
+# globs: integrations/**/*
 alwaysApply: false
 ---
 
 # Validate integration changes
 
+<!-- REVERT: delete this whole "When to run" section (request-only gate) -->
+## When to run
+
+Run this only when requested (for example: "validate this integration change",
+"run agentic integration validation", or an explicit ask to prove a mapping or
+client change with the stub). Do not run it automatically after every
+integration edit until the workflow is confirmed.
+
+<!-- REVERT: uncomment the next paragraph and delete the "When requested, follow..." line below -->
+<!--
 When the task changes an integration (a new or updated kind, a bugfix, client or mapping logic, config, webhooks, or other internal behavior), follow `.cursor/skills/validate-integration-change/SKILL.md` before treating the work as done.
+-->
+
+<!-- REVERT: delete this line after restoring the auto-run paragraph above -->
+When requested, follow `.cursor/skills/validate-integration-change/SKILL.md`.
 
 Finish when `scripts/validate_integration_sail.py` exits 0 for that change.
 
