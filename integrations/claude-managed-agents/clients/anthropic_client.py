@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 from typing import Any, Literal, Protocol, cast
 
 from anthropic.resources.beta import AsyncBeta
-from anthropic import AsyncAnthropic, DefaultAsyncHttpxClient, Omit
+import httpx
+from anthropic import AsyncAnthropic, Omit
 from anthropic.types.beta import BetaEnvironment
 from anthropic.types.beta.beta_managed_agents_agent import BetaManagedAgentsAgent
 from anthropic.types.beta.beta_managed_agents_memory_store import (
@@ -106,18 +107,10 @@ class AnthropicClient:
         self._create_rate_limit_lock = asyncio.Lock()
         self._read_rate_limit_lock = asyncio.Lock()
         self._workspace_id: str | None = None
-        # anthropic>=1.0 uses httpx2 for the SDK transport; Console admin calls
-        # (webhooks) still go through Ocean's httpx-based client.
-        timeout = ocean.config.client_timeout
-        self._sdk_http = DefaultAsyncHttpxClient(
-            timeout=timeout,
-            event_hooks={
-                "request": [self._on_request],
-                "response": [self._on_response],
-            },
-        )
+        # Shared transport for the SDK and Console admin calls (e.g. webhooks)
+        # so rate-limit hooks apply to every Anthropic HTTP request.
         self._anthropic_http = OceanAsyncClient(
-            timeout=timeout,
+            timeout=ocean.config.client_timeout,
             retry_config=RetryConfig(max_attempts=0),
             event_hooks={
                 "request": [self._on_request],
@@ -130,7 +123,9 @@ class AnthropicClient:
             default_headers=(
                 {"anthropic-version": anthropic_version} if anthropic_version else None
             ),
-            http_client=self._sdk_http,
+            # Ocean's retry layer is disabled (max_attempts=0) since the Anthropic
+            # SDK already retries internally.
+            http_client=self._anthropic_http,
         )
 
     @property
@@ -178,7 +173,7 @@ class AnthropicClient:
         (list/retrieve) is a read endpoint."""
         return "read" if method == "GET" else "create"
 
-    def _parse_rate_limit_headers(self, headers: Any) -> RateLimitInfo | None:
+    def _parse_rate_limit_headers(self, headers: httpx.Headers) -> RateLimitInfo | None:
         limit = headers.get(_RATE_LIMIT_LIMIT_HEADER)
         remaining = headers.get(_RATE_LIMIT_REMAINING_HEADER)
         reset = headers.get(_RATE_LIMIT_RESET_HEADER)
@@ -196,15 +191,12 @@ class AnthropicClient:
             )
             return None
 
-    async def _on_request(self, request: Any) -> None:
+    async def _on_request(self, request: httpx.Request) -> None:
         """Proactive safety net: pauses before a request only once a pool is
         known (from a prior response) to be fully exhausted, then lets the
         next response refresh it. Otherwise optimistically pre-decrements the
         cached count so a burst of concurrent requests can't all see the same
         stale `remaining` value and overshoot it before any response returns.
-
-        Accepts both ``httpx2.Request`` (SDK transport) and ``httpx.Request``
-        (Ocean console client).
         """
         pool = self._pool_for_method(request.method)
         async with self._rate_limit_lock(pool):
@@ -226,8 +218,7 @@ class AnthropicClient:
                     pool, replace(info, remaining=info.remaining - 1)
                 )
 
-    async def _on_response(self, response: Any) -> None:
-        """Accepts ``httpx2.Response`` (SDK) and ``httpx.Response`` (console)."""
+    async def _on_response(self, response: httpx.Response) -> None:
         workspace_id = response.headers.get(_WORKSPACE_ID_HEADER)
         if workspace_id:
             self._workspace_id = workspace_id

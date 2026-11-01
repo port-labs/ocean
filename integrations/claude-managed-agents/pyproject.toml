@@ -7,7 +7,7 @@ authors = ["Tal Sabag <tal@port.io>"]
 [tool.poetry.dependencies]
 python = "^3.12"
 port_ocean = {version = "^0.56.3", extras = ["cli"]}
-anthropic = {version = "^2.3.0", extras = ["webhooks"]}
+anthropic = { version = ">=0.121.0,<1.0.0", extras = ["webhooks"] }
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration

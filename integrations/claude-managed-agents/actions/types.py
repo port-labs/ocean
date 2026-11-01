@@ -4,33 +4,15 @@ from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSe
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
 )
-from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
-    BetaManagedAgentsSessionUsageSnapshot,
-)
+from anthropic.types.beta_monetary_amount import BetaMonetaryAmount
 from pydantic import BaseModel, ConfigDict, Field
 
-SessionUsageLike = (
-    BetaManagedAgentsSessionUsage | BetaManagedAgentsSessionUsageSnapshot | None
-)
 
-
-def list_cost_to_usd(list_cost: Any) -> float | None:
-    """Convert Anthropic ``usage.list_cost`` (cents string) to USD.
-
-    Anthropic reports ``list_cost`` as ``{"amount": "<cents>", "currency": "USD"}``
-    (or a ``BetaMonetaryAmount`` model) where ``amount`` is whole US cents at
-    public list rates (not contracted price).
-    """
+def list_cost_to_usd(list_cost: BetaMonetaryAmount | None) -> float | None:
     if list_cost is None:
         return None
-    if isinstance(list_cost, dict):
-        amount = list_cost.get("amount")
-    else:
-        amount = getattr(list_cost, "amount", None)
-    if amount is None:
-        return None
     try:
-        return int(amount) / 100.0
+        return float(list_cost.amount) / 100.0
     except (TypeError, ValueError):
         return None
 
@@ -38,15 +20,17 @@ def list_cost_to_usd(list_cost: Any) -> float | None:
 def _token_delta(current: int | None, baseline: int | None) -> int | None:
     if current is None:
         return None
-    return max(0, current - (baseline or 0))
+    if baseline is None:
+        return current
+    return max(0, current - baseline)
 
 
-def _cost_delta(current: Any, baseline: Any) -> float | None:
-    current_usd = list_cost_to_usd(current)
-    if current_usd is None:
+def _cost_delta(current: float | None, baseline: float | None) -> float | None:
+    if current is None:
         return None
-    baseline_usd = list_cost_to_usd(baseline) or 0.0
-    return max(0.0, round(current_usd - baseline_usd, 2))
+    if baseline is None:
+        return current
+    return max(0.0, round(current - baseline, 2))
 
 
 class TriggerAgentSessionOutput(BaseModel):
@@ -74,30 +58,21 @@ class TriggerAgentSessionOutput(BaseModel):
         session: BetaManagedAgentsSession,
         session_id: str | None = None,
         user_message_event_id: str | None = None,
-        baseline_usage: SessionUsageLike = None,
+        baseline_usage: BetaManagedAgentsSessionUsage,
     ) -> Self:
-        """Build output from a session retrieve, as cost/tokens for this trigger.
+        input_tokens = session.usage.input_tokens
+        output_tokens = session.usage.output_tokens
+        cost = list_cost_to_usd(session.usage.list_cost)
+        if baseline_usage is not None:
+            input_tokens = _token_delta(input_tokens, baseline_usage.input_tokens)
+            output_tokens = _token_delta(output_tokens, baseline_usage.output_tokens)
+            cost = _cost_delta(cost, list_cost_to_usd(baseline_usage.list_cost))
 
-        Anthropic session ``usage`` is cumulative. Pass ``baseline_usage`` from the
-        prior ``session.usage`` snapshot (last idle) to report only this
-        invocation's delta; omit it for a brand-new session.
-        """
-        usage = session.usage
-        baseline = baseline_usage
         return cls(
             session_id=session_id,
             user_message_event_id=user_message_event_id,
             url=url,
-            input_tokens=_token_delta(
-                usage.input_tokens,
-                None if baseline is None else baseline.input_tokens,
-            ),
-            output_tokens=_token_delta(
-                usage.output_tokens,
-                None if baseline is None else baseline.output_tokens,
-            ),
-            cost_usd=_cost_delta(
-                usage.list_cost,
-                None if baseline is None else baseline.list_cost,
-            ),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=(cost),
         )

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -66,12 +67,6 @@ from webhook_processors.memory_store_webhook_processor import (
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
-)
-from anthropic.types.beta.beta_managed_agents_session_usage_event import (
-    BetaManagedAgentsSessionUsageEvent,
-)
-from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
-    BetaManagedAgentsSessionUsageSnapshot,
 )
 
 
@@ -366,12 +361,29 @@ def _tool_use(name: str) -> BetaManagedAgentsAgentToolUseEvent:
     )
 
 
+def _session_usage_event(
+    *,
+    processed_at: datetime,
+    usage: BetaManagedAgentsSessionUsage,
+    event_id: str = "usage_1",
+) -> BetaManagedAgentsSessionEvent:
+    return cast(
+        BetaManagedAgentsSessionEvent,
+        SimpleNamespace(
+            id=event_id,
+            type="session.usage",
+            processed_at=processed_at,
+            usage=usage,
+        ),
+    )
+
+
 def _patch_session_events(
     anchor: BetaManagedAgentsUserMessageEvent,
     interaction_batches: list[list[BetaManagedAgentsSessionEvent]],
     *,
     prior_idle: BetaManagedAgentsSessionStatusIdleEvent | None = None,
-    prior_usage: BetaManagedAgentsSessionUsageEvent | None = None,
+    prior_usage: BetaManagedAgentsSessionEvent | None = None,
     agent_message_batches: list[list[BetaManagedAgentsSessionEvent]] | None = None,
 ) -> Any:
     """Mock ``get_session_events`` for the anchor, prior-idle, and combined
@@ -506,11 +518,9 @@ async def test_trigger_reports_relative_usage_against_prior_session_usage() -> N
         processed_at=datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
         stop_reason=BetaManagedAgentsSessionEndTurn(type="end_turn"),
     )
-    prior_usage = BetaManagedAgentsSessionUsageEvent(
-        id="usage_1",
-        type="session.usage",
+    prior_usage = _session_usage_event(
         processed_at=datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
-        usage=BetaManagedAgentsSessionUsageSnapshot.model_validate(
+        usage=BetaManagedAgentsSessionUsage.model_validate(
             {
                 "input_tokens": 2000,
                 "output_tokens": 1000,

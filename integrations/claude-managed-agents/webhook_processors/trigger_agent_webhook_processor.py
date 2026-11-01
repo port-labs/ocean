@@ -8,6 +8,9 @@ from anthropic.types.beta import (
     BetaWebhookSessionStatusTerminatedEventData,
     UnwrapWebhookEvent,
 )
+from anthropic.types.beta.beta_managed_agents_session_usage import (
+    BetaManagedAgentsSessionUsage,
+)
 from anthropic.types.beta.sessions.beta_managed_agents_agent_message_event import (
     BetaManagedAgentsAgentMessageEvent,
 )
@@ -19,9 +22,6 @@ from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
 )
 from anthropic.types.beta.sessions.beta_managed_agents_session_status_idle_event import (
     BetaManagedAgentsSessionStatusIdleEvent,
-)
-from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
-    BetaManagedAgentsSessionUsageSnapshot,
 )
 from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
@@ -226,9 +226,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             extra_output["error"] = last_error
 
         baseline_before = (
-            anchor.processed_at
-            if isinstance(anchor.processed_at, datetime)
-            else None
+            anchor.processed_at if isinstance(anchor.processed_at, datetime) else None
         )
         extra_output.update(
             (
@@ -289,7 +287,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
     async def _find_baseline_usage(
         self, session_id: str, before: datetime | None
-    ) -> BetaManagedAgentsSessionUsageSnapshot | None:
+    ) -> BetaManagedAgentsSessionUsage | None:
         """Prior cumulative ``session.usage`` for relative cost/tokens.
 
         ``session.usage`` is emitted just before each idle. The last snapshot
@@ -308,13 +306,13 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 limit=1,
             ):
                 event = batch[0]
-                if isinstance(event, BetaManagedAgentsSessionUsageEvent):
-                    return event.usage
-                logger.warning(
-                    f"Expected session.usage baseline for session {session_id}, "
-                    f"got {event.type}"
-                )
-                return None
+                if not isinstance(event, BetaManagedAgentsSessionUsageEvent):
+                    logger.warning(
+                        f"Expected session.usage event for session {session_id}, "
+                        f"got {event.type}"
+                    )
+                    return None
+                return event.usage
         except Exception as error:
             logger.warning(
                 f"Failed to fetch prior session.usage for {session_id} "
