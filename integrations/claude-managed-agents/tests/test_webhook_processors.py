@@ -67,6 +67,12 @@ from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
 )
+from anthropic.types.beta.beta_managed_agents_session_usage_event import (
+    BetaManagedAgentsSessionUsageEvent,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
+    BetaManagedAgentsSessionUsageSnapshot,
+)
 
 
 def _event(data: dict[str, Any]) -> WebhookEvent:
@@ -365,6 +371,7 @@ def _patch_session_events(
     interaction_batches: list[list[BetaManagedAgentsSessionEvent]],
     *,
     prior_idle: BetaManagedAgentsSessionStatusIdleEvent | None = None,
+    prior_usage: BetaManagedAgentsSessionUsageEvent | None = None,
     agent_message_batches: list[list[BetaManagedAgentsSessionEvent]] | None = None,
 ) -> Any:
     """Mock ``get_session_events`` for the anchor, prior-idle, and combined
@@ -386,11 +393,9 @@ def _patch_session_events(
             if prior_idle is not None:
                 yield [prior_idle]
             return
-        if (
-            kwargs.get("types") == ["session.usage"]
-            and kwargs.get("order") == "desc"
-        ):
-            # No prior usage snapshot → baseline None → report cumulative usage.
+        if kwargs.get("types") == ["session.usage"] and kwargs.get("order") == "desc":
+            if prior_usage is not None and kwargs.get("created_at_lt") is not None:
+                yield [prior_usage]
             return
         if kwargs.get("types") == _INTERACTION_EVENT_TYPES:
             if prior_idle is not None:
@@ -479,6 +484,56 @@ async def test_trigger_reports_success_without_error_logs() -> None:
         mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
         == SESSION_COMPLETED_STATUS_LABEL
     )
+
+
+@pytest.mark.asyncio
+async def test_trigger_reports_relative_usage_against_prior_session_usage() -> None:
+    """Continued sessions subtract the last session.usage before this turn."""
+    anchor = _user_message("continue")
+    payload = _webhook_payload()
+    processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
+
+    run = _wf_node_run(session_id="s1")
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.post_run_logs = AsyncMock()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    prior_idle = BetaManagedAgentsSessionStatusIdleEvent(
+        id="idle_1",
+        type="session.status_idle",
+        processed_at=datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+        stop_reason=BetaManagedAgentsSessionEndTurn(type="end_turn"),
+    )
+    prior_usage = BetaManagedAgentsSessionUsageEvent(
+        id="usage_1",
+        type="session.usage",
+        processed_at=datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+        usage=BetaManagedAgentsSessionUsageSnapshot.model_validate(
+            {
+                "input_tokens": 2000,
+                "output_tokens": 1000,
+                "list_cost": {"amount": "50", "currency": "USD"},
+            }
+        ),
+    )
+    batch: list[BetaManagedAgentsSessionEvent] = [
+        _idle(BetaManagedAgentsSessionEndTurn(type="end_turn")),
+    ]
+
+    with (
+        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        _patch_session_events(
+            anchor, [batch], prior_idle=prior_idle, prior_usage=prior_usage
+        ),
+    ):
+        await processor.handle_event(payload, None)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert run.output["inputTokens"] == 3000
+    assert run.output["outputTokens"] == 2200
+    assert run.output["costUsd"] == 1.37
 
 
 @pytest.mark.asyncio

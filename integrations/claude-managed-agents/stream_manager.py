@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 
-import httpx
+import httpx2
 from anthropic.types.beta.sessions.beta_managed_agents_session_deleted_event import (
     BetaManagedAgentsSessionDeletedEvent,
 )
@@ -25,7 +25,8 @@ _TERMINAL_STREAM_TYPES = (
 _INITIAL_RECONNECT_BACKOFF = 1.0
 _MAX_RECONNECT_BACKOFF = 60.0
 
-_STREAM_TIMEOUT = httpx.Timeout(connect=30.0, read=None, write=5.0, pool=5.0)
+# anthropic SDK 2.x transports use httpx2, not httpx.
+_STREAM_TIMEOUT = httpx2.Timeout(connect=30.0, read=None, write=5.0, pool=5.0)
 
 
 class StreamManager:

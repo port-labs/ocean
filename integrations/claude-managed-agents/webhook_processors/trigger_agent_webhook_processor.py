@@ -225,10 +225,15 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         elif not success and last_error is not None:
             extra_output["error"] = last_error
 
+        baseline_before = (
+            anchor.processed_at
+            if isinstance(anchor.processed_at, datetime)
+            else None
+        )
         extra_output.update(
             (
                 await self._build_standard_completion_output(
-                    session_id, data, prior_idle_time=prior_idle_time
+                    session_id, data, baseline_before=baseline_before
                 )
             ).model_dump()
         )
@@ -258,7 +263,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         session_id: str,
         webhook_data: TerminalSessionWebhookData,
         *,
-        prior_idle_time: datetime | None,
+        baseline_before: datetime | None,
     ) -> TriggerAgentSessionOutput:
         """Session URL plus this trigger's usage delta from a best-effort retrieve."""
         client = create_anthropic_client()
@@ -275,7 +280,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             )
             return TriggerAgentSessionOutput(url=session_url)
 
-        baseline = await self._find_baseline_usage(session_id, prior_idle_time)
+        baseline = await self._find_baseline_usage(session_id, baseline_before)
         return TriggerAgentSessionOutput.from_session(
             url=session_url,
             session=session,
@@ -283,15 +288,15 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         )
 
     async def _find_baseline_usage(
-        self, session_id: str, prior_idle_time: datetime | None
+        self, session_id: str, before: datetime | None
     ) -> BetaManagedAgentsSessionUsageSnapshot | None:
-        """Prior cumulative ``session.usage`` snapshot for relative cost/tokens.
+        """Prior cumulative ``session.usage`` for relative cost/tokens.
 
-        Emitted immediately before each idle. For a continued session, use the
-        last snapshot at or before ``prior_idle_time``. New sessions have no
-        baseline (delta from zero).
+        ``session.usage`` is emitted just before each idle. The last snapshot
+        strictly before this turn's user message is the baseline; the current
+        retrieve is the new cumulative total. First turn has no prior snapshot.
         """
-        if prior_idle_time is None:
+        if before is None:
             return None
         try:
             client = create_anthropic_client()
@@ -299,7 +304,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 session_id,
                 types=["session.usage"],
                 order="desc",
-                created_at_lte=prior_idle_time,
+                created_at_lt=before,
                 limit=1,
             ):
                 event = batch[0]
@@ -315,6 +320,10 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 f"Failed to fetch prior session.usage for {session_id} "
                 f"(reporting cumulative usage): {error}"
             )
+        logger.info(
+            f"No prior session.usage before {before.isoformat()} for "
+            f"session {session_id}; treating usage as first-turn totals"
+        )
         return None
 
     async def _find_anchor_user_message(
