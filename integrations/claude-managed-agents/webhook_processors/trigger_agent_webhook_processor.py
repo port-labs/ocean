@@ -225,13 +225,10 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         elif not success and last_error is not None:
             extra_output["error"] = last_error
 
-        baseline_before = (
-            anchor.processed_at if isinstance(anchor.processed_at, datetime) else None
-        )
         extra_output.update(
             (
                 await self._build_standard_completion_output(
-                    session_id, data, baseline_before=baseline_before
+                    session_id, data, baseline_before=anchor.processed_at
                 )
             ).model_dump()
         )
@@ -278,7 +275,11 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             )
             return TriggerAgentSessionOutput(url=session_url)
 
-        baseline = await self._find_baseline_usage(session_id, baseline_before)
+        baseline = (
+            await self._find_baseline_usage(session_id, baseline_before)
+            if baseline_before is not None
+            else None
+        )
         return TriggerAgentSessionOutput.from_session(
             url=session_url,
             session=session,
@@ -286,7 +287,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         )
 
     async def _find_baseline_usage(
-        self, session_id: str, before: datetime | None
+        self, session_id: str, before: datetime
     ) -> BetaManagedAgentsSessionUsage | None:
         """Prior cumulative ``session.usage`` for relative cost/tokens.
 
@@ -294,8 +295,6 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         strictly before this turn's user message is the baseline; the current
         retrieve is the new cumulative total. First turn has no prior snapshot.
         """
-        if before is None:
-            return None
         try:
             client = create_anthropic_client()
             async for batch in client.get_session_events(
@@ -320,6 +319,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 f"Failed to fetch prior session.usage for {session_id} "
                 f"(reporting cumulative usage): {error}"
             )
+            return None
         logger.info(
             f"No prior session.usage before {before.isoformat()} for "
             f"session {session_id}; treating usage as first-turn totals"
