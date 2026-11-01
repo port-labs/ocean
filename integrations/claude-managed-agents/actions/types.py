@@ -12,7 +12,7 @@ def list_cost_to_usd(list_cost: BetaMonetaryAmount | None) -> float | None:
     if list_cost is None:
         return None
     try:
-        return float(list_cost.amount) / 100.0
+        return int(list_cost.amount) / 100.0
     except (TypeError, ValueError):
         return None
 
@@ -58,7 +58,7 @@ class TriggerAgentSessionOutput(BaseModel):
         session: BetaManagedAgentsSession,
         session_id: str | None = None,
         user_message_event_id: str | None = None,
-        baseline_usage: BetaManagedAgentsSessionUsage,
+        baseline_usage: BetaManagedAgentsSessionUsage | None = None,
     ) -> Self:
         input_tokens = session.usage.input_tokens
         output_tokens = session.usage.output_tokens

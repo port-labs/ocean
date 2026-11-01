@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from anthropic.types.beta_monetary_amount import BetaMonetaryAmount
 
 from actions.types import list_cost_to_usd
 from actions.utils import (
@@ -40,12 +40,33 @@ def test_build_session_link_uses_configured_console_host() -> None:
 
 
 def test_list_cost_to_usd() -> None:
-    assert list_cost_to_usd({"amount": "187", "currency": "USD"}) == 1.87
-    assert list_cost_to_usd({"amount": "50", "currency": "USD"}) == 0.5
-    assert list_cost_to_usd({"amount": "0", "currency": "USD"}) == 0.0
-    assert list_cost_to_usd({"amount": "not-a-number"}) is None
-    assert list_cost_to_usd({}) is None
-    assert list_cost_to_usd(SimpleNamespace(amount="187", currency="USD")) == 1.87
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate({"amount": "187", "currency": "USD"})
+        )
+        == 1.87
+    )
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate({"amount": "50", "currency": "USD"})
+        )
+        == 0.5
+    )
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate({"amount": "0", "currency": "USD"})
+        )
+        == 0.0
+    )
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate(
+                {"amount": "not-a-number", "currency": "USD"}
+            )
+        )
+        is None
+    )
+    assert list_cost_to_usd(None) is None
 
 
 @pytest.mark.asyncio

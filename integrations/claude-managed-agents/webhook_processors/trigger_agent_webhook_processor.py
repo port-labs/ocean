@@ -312,7 +312,9 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                         f"got {event.type}"
                     )
                     return None
-                return event.usage
+                return BetaManagedAgentsSessionUsage.model_validate(
+                    event.usage, from_attributes=True
+                )
         except Exception as error:
             logger.warning(
                 f"Failed to fetch prior session.usage for {session_id} "

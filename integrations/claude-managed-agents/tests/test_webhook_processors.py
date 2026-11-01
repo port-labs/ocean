@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -65,8 +64,12 @@ from webhook_processors.memory_store_webhook_processor import (
     MemoryStoreWebhookProcessor,
 )
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
+from anthropic.types.beta import BetaManagedAgentsSessionUsageEvent
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
+    BetaManagedAgentsSessionUsageSnapshot,
 )
 
 
@@ -366,14 +369,19 @@ def _session_usage_event(
     processed_at: datetime,
     usage: BetaManagedAgentsSessionUsage,
     event_id: str = "usage_1",
-) -> BetaManagedAgentsSessionEvent:
-    return cast(
-        BetaManagedAgentsSessionEvent,
-        SimpleNamespace(
-            id=event_id,
-            type="session.usage",
-            processed_at=processed_at,
-            usage=usage,
+) -> BetaManagedAgentsSessionUsageEvent:
+    return BetaManagedAgentsSessionUsageEvent(
+        id=event_id,
+        type="session.usage",
+        processed_at=processed_at,
+        usage=BetaManagedAgentsSessionUsageSnapshot(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            list_cost=usage.list_cost,
+            active_seconds=usage.active_seconds,
+            cache_creation=usage.cache_creation,
+            cache_read_input_tokens=usage.cache_read_input_tokens,
+            server_tool_use=usage.server_tool_use,
         ),
     )
 
@@ -383,7 +391,7 @@ def _patch_session_events(
     interaction_batches: list[list[BetaManagedAgentsSessionEvent]],
     *,
     prior_idle: BetaManagedAgentsSessionStatusIdleEvent | None = None,
-    prior_usage: BetaManagedAgentsSessionEvent | None = None,
+    prior_usage: BetaManagedAgentsSessionUsageEvent | None = None,
     agent_message_batches: list[list[BetaManagedAgentsSessionEvent]] | None = None,
 ) -> Any:
     """Mock ``get_session_events`` for the anchor, prior-idle, and combined
