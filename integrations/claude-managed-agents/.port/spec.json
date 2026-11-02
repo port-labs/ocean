@@ -147,6 +147,13 @@
           "required": false
         },
         {
+          "name": "virtualMcpServerIds",
+          "title": "Virtual MCP server IDs",
+          "type": "array",
+          "description": "Identifiers of `_virtual_mcp_server` catalog entities. The integration wires each as `{region MCP host}/v1/virtual-server/{id}` on the agent and mints vault bearer credentials on trigger_agent (with Actor or Service Account execution identity). Independent of Enable Port MCP.",
+          "required": false
+        },
+        {
           "name": "systemPrompt",
           "title": "System prompt",
           "type": "string",
@@ -202,6 +209,13 @@
           "type": "boolean",
           "description": "When true, ensures the agent is connected to the Port MCP endpoint for the integration's Port region and attaches a managed vault credential for Actor or Service Account execution identities.",
           "default": true,
+          "required": false
+        },
+        {
+          "name": "virtualMcpServerIds",
+          "title": "Virtual MCP server IDs",
+          "type": "array",
+          "description": "Identifiers of `_virtual_mcp_server` catalog entities. This run wires missing servers on the agent and mints vault bearer credentials for each virtual URL (and for full Port MCP when Enable Port MCP is true). Does not remove MCP servers from the agent when Enable Port MCP is false.",
           "required": false
         },
         {
@@ -315,6 +329,13 @@
           "title": "Enable Port MCP",
           "type": "boolean",
           "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities. Omit to leave the agent's MCP config unchanged.",
+          "required": false
+        },
+        {
+          "name": "virtualMcpServerIds",
+          "title": "Virtual MCP server IDs",
+          "type": "array",
+          "description": "Identifiers of `_virtual_mcp_server` catalog entities to attach or reconcile on the agent. Pass an empty array to remove all integration-managed virtual MCP servers. Omit to leave virtual MCP config unchanged.",
           "required": false
         },
         {

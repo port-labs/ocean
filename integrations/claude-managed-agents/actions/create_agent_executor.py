@@ -22,6 +22,7 @@ class CreateAgentInputs(AbstractAnthropicActionInput):
     systemPrompt: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
     enablePortMcp: bool = True
+    virtualMcpServerIds: list[str] = Field(default_factory=list)
 
 
 class CreateAgentExecutor(AbstractAnthropicExecutor):
@@ -37,8 +38,12 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateAgentInputs.from_execution_properties(run.execution_properties)
         extra = inputs.config
-        if inputs.enablePortMcp:
-            extra = attach_port_mcp_settings_to_agent_config(inputs.config)
+        if inputs.enablePortMcp or inputs.virtualMcpServerIds:
+            extra = attach_port_mcp_settings_to_agent_config(
+                inputs.config,
+                enable_port_mcp=inputs.enablePortMcp,
+                virtual_mcp_server_ids=inputs.virtualMcpServerIds,
+            )
 
         await ocean.port_client.post_run_log(
             run,

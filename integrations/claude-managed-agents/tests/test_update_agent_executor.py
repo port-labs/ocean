@@ -119,7 +119,7 @@ async def test_update_agent_executor_requires_at_least_one_update_field() -> Non
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "properties",
-    [{"enablePortMcp": False}, {"config": {}}],
+    [{"config": {}}],
 )
 async def test_update_agent_executor_rejects_updates_with_empty_payload(
     properties: dict[str, Any],

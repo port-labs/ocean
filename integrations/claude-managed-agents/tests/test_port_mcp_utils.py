@@ -235,3 +235,95 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
             "token": "tok_abc",
         },
     )
+
+
+def test_virtual_mcp_server_url_uses_region_base() -> None:
+    from actions.port_mcp_utils import virtual_mcp_server_url
+
+    with patch(
+        "actions.port_mcp_utils.ocean",
+        SimpleNamespace(
+            config=SimpleNamespace(
+                port=SimpleNamespace(mcp_url="https://mcp.getport.io/v1")
+            )
+        ),
+    ):
+        assert (
+            virtual_mcp_server_url("payments")
+            == "https://mcp.getport.io/v1/virtual-server/payments"
+        )
+
+
+def test_attach_virtual_mcp_without_full_port() -> None:
+    from actions.port_mcp_utils import virtual_mcp_server_name
+
+    result = attach_port_mcp_settings_to_agent_config(
+        {},
+        enable_port_mcp=False,
+        virtual_mcp_server_ids=["payments"],
+    )
+    assert len(result["mcp_servers"]) == 1
+    assert getattr(result["mcp_servers"][0], "name", None) == virtual_mcp_server_name(
+        "payments"
+    )
+    assert (
+        getattr(result["mcp_servers"][0], "url", None)
+        == "https://mcp.getport.io/v1/virtual-server/payments"
+    )
+    assert result["tools"][0]["mcp_server_name"] == virtual_mcp_server_name("payments")
+
+
+def test_update_removes_managed_port_mcp_when_disabled() -> None:
+    from tests.action_test_helpers import port_mcp_agent
+
+    agent = port_mcp_agent()
+    result = attach_port_mcp_settings_to_agent_config(
+        {},
+        existing_agent=agent,
+        enable_port_mcp=False,
+        remove_port_mcp=True,
+    )
+    assert not any(
+        getattr(s, "name", None) == PORT_MCP_SERVER_NAME for s in result["mcp_servers"]
+    )
+    assert not any(
+        t.get("mcp_server_name") == PORT_MCP_SERVER_NAME
+        for t in result["tools"]
+        if isinstance(t, dict)
+    )
+
+
+@pytest.mark.asyncio
+async def test_ensure_mcp_bindings_creates_credentials_for_virtual_urls() -> None:
+    from actions.port_mcp_utils import ensure_mcp_bindings
+
+    client = MagicMock()
+    client.paginate = empty_vault_pages
+    client.beta.vaults.create = AsyncMock(
+        return_value=SimpleNamespace(id="vault_new", display_name="vault")
+    )
+    client.beta.vaults.credentials.create = AsyncMock(
+        side_effect=[
+            SimpleNamespace(id="cred_port"),
+            SimpleNamespace(id="cred_virtual"),
+        ]
+    )
+    client.beta.vaults.credentials.update = AsyncMock()
+    mock_ocean = mock_ocean_with_client_secret()
+
+    with (
+        patch("actions.port_mcp_utils.ocean", mock_ocean),
+        patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+    ):
+        binding = await ensure_mcp_bindings(
+            client,
+            workflow_run_with_port_mcp(),
+            vault_name="vault",
+            mcp_urls=[
+                "https://mcp.getport.io/v1",
+                "https://mcp.getport.io/v1/virtual-server/payments",
+            ],
+        )
+
+    assert binding == PortMcpBinding(vault_id="vault_new", credential_id="cred_port")
+    assert client.beta.vaults.credentials.create.await_count == 2

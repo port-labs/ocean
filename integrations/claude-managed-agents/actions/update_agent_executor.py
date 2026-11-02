@@ -24,14 +24,23 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     systemPrompt: str | None = None
     config: dict[str, Any] | None = None
     enablePortMcp: bool | None = None
+    virtualMcpServerIds: list[str] | None = None
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
         if not any(
-            [self.name, self.model, self.systemPrompt, self.config, self.enablePortMcp]
+            [
+                self.name,
+                self.model,
+                self.systemPrompt,
+                self.config,
+                self.enablePortMcp is not None,
+                "virtualMcpServerIds" in self.model_fields_set,
+            ]
         ):
             raise ValueError(
-                "at least one of name, model, systemPrompt, or config must be provided"
+                "at least one of name, model, systemPrompt, config, enablePortMcp, "
+                "or virtualMcpServerIds must be provided"
             )
         return self
 
@@ -47,14 +56,26 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
         payload = {
             rename.get(field, field): value
             for field, value in self.model_dump(
-                exclude={"agentId", "enablePortMcp"}, exclude_none=True
+                exclude={"agentId", "enablePortMcp", "virtualMcpServerIds"},
+                exclude_none=True,
             ).items()
             if value
         }
         config = payload.pop("config", None) or {}
-        if self.enablePortMcp:
+        reconcile_virtual = "virtualMcpServerIds" in self.model_fields_set
+        if self.enablePortMcp is not None or reconcile_virtual:
+            virtual_ids = (
+                list(self.virtualMcpServerIds or [])
+                if reconcile_virtual
+                else []
+            )
             config = attach_port_mcp_settings_to_agent_config(
-                config, existing_agent=existing_agent
+                config,
+                existing_agent=existing_agent,
+                enable_port_mcp=self.enablePortMcp is True,
+                remove_port_mcp=self.enablePortMcp is False,
+                virtual_mcp_server_ids=virtual_ids,
+                reconcile_virtual_mcp_server_ids=reconcile_virtual,
             )
         return {**payload, **config}
 

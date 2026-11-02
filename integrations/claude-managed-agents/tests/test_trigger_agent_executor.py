@@ -120,16 +120,20 @@ async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None
     run_2 = workflow_run_with_port_mcp(token="tok_2")
     with (
         patch(
-            "actions.trigger_agent_executor.ensure_port_mcp_binding",
+            "actions.trigger_agent_executor.ensure_mcp_bindings",
             AsyncMock(return_value=binding),
         ) as ensure,
         patch(
-            "actions.trigger_agent_executor.remint_port_mcp_credential",
+            "actions.trigger_agent_executor.remint_managed_mcp_credentials",
             AsyncMock(),
         ) as remint,
     ):
-        ctx_1 = PortMcpWorkflowContext(run_1, run_1.execution_identity, None)
-        ctx_2 = PortMcpWorkflowContext(run_2, run_2.execution_identity, None)
+        ctx_1 = PortMcpWorkflowContext(
+            run_1, run_1.execution_identity, None, True, ()
+        )
+        ctx_2 = PortMcpWorkflowContext(
+            run_2, run_2.execution_identity, None, True, ()
+        )
         first = await executor._resolve_port_mcp_binding(ctx_1)
         second = await executor._resolve_port_mcp_binding(ctx_2)
 

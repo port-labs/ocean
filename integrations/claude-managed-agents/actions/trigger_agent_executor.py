@@ -27,10 +27,11 @@ from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp_utils import (
     PortMcpBinding,
+    agent_needs_managed_mcp_update,
     attach_port_mcp_settings_to_agent_config,
-    ensure_port_mcp_binding,
-    is_agent_configured_with_port_mcp,
-    remint_port_mcp_credential,
+    collect_managed_mcp_urls,
+    ensure_mcp_bindings,
+    remint_managed_mcp_credentials,
 )
 from actions.prompt_images import load_prompt_images, prompt_without_images
 from actions.types import TriggerAgentSessionOutput
@@ -68,6 +69,7 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     vaultName: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
     enablePortMcp: bool = True
+    virtualMcpServerIds: list[str] = Field(default_factory=list)
     reportSessionStatus: bool = False
 
     @model_validator(mode="after")
@@ -82,17 +84,27 @@ class PortMcpWorkflowContext:
     workflow_run: WorkflowNodeRun
     execution_identity: ResolvedExecutionIdentity
     vault_name: str | None
+    enable_port_mcp: bool
+    virtual_mcp_server_ids: tuple[str, ...]
 
 
 def port_mcp_workflow_context(
     inputs: TriggerAgentInputs, run: IntegrationRun
 ) -> PortMcpWorkflowContext | None:
-    if not inputs.enablePortMcp or not isinstance(run, WorkflowNodeRun):
+    if not isinstance(run, WorkflowNodeRun):
+        return None
+    if not inputs.enablePortMcp and not inputs.virtualMcpServerIds:
         return None
     identity = run.execution_identity
     if identity is None:
         return None
-    return PortMcpWorkflowContext(run, identity, inputs.vaultName)
+    return PortMcpWorkflowContext(
+        run,
+        identity,
+        inputs.vaultName,
+        inputs.enablePortMcp,
+        tuple(inputs.virtualMcpServerIds),
+    )
 
 
 def session_config_with_port_mcp(
@@ -149,15 +161,26 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         ensured_vault_name = (
             port_mcp.vault_name or port_mcp.execution_identity.identifier
         )
-        binding = self._port_mcp_cache.get(ensured_vault_name)
+        mcp_urls = collect_managed_mcp_urls(
+            enable_port_mcp=port_mcp.enable_port_mcp,
+            virtual_mcp_server_ids=list(port_mcp.virtual_mcp_server_ids),
+        )
+        cache_key = f"{ensured_vault_name}:{','.join(mcp_urls)}"
+        binding = self._port_mcp_cache.get(cache_key)
         if binding is None:
-            binding = await ensure_port_mcp_binding(
-                self.client, port_mcp.workflow_run, ensured_vault_name
+            binding = await ensure_mcp_bindings(
+                self.client,
+                port_mcp.workflow_run,
+                ensured_vault_name,
+                mcp_urls,
             )
-            self._port_mcp_cache.set(ensured_vault_name, binding)
+            self._port_mcp_cache.set(cache_key, binding)
         else:
-            await remint_port_mcp_credential(
-                self.client, port_mcp.workflow_run, binding
+            await remint_managed_mcp_credentials(
+                self.client,
+                port_mcp.workflow_run,
+                binding.vault_id,
+                mcp_urls,
             )
         return binding
 
@@ -208,15 +231,25 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         return session
 
-    async def _ensure_agent_port_mcp_configured(
-        self, agent: BetaManagedAgentsAgent
+    async def _ensure_agent_managed_mcp_configured(
+        self, agent: BetaManagedAgentsAgent, port_mcp: PortMcpWorkflowContext
     ) -> BetaManagedAgentsAgent:
-        if is_agent_configured_with_port_mcp(agent.mcp_servers or []):
+        virtual_ids = list(port_mcp.virtual_mcp_server_ids)
+        if not agent_needs_managed_mcp_update(
+            agent,
+            enable_port_mcp=port_mcp.enable_port_mcp,
+            virtual_mcp_server_ids=virtual_ids,
+        ):
             return agent
         updated = await self.client.update_agent(
             agent.id,
             version=agent.version,
-            payload=attach_port_mcp_settings_to_agent_config({}, existing_agent=agent),
+            payload=attach_port_mcp_settings_to_agent_config(
+                {},
+                existing_agent=agent,
+                enable_port_mcp=port_mcp.enable_port_mcp,
+                virtual_mcp_server_ids=virtual_ids,
+            ),
         )
         self._agent_cache.set(agent.id, updated)
         return updated
@@ -302,7 +335,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         )
         port_mcp = port_mcp_workflow_context(inputs, run)
         if port_mcp is not None:
-            agent = await self._ensure_agent_port_mcp_configured(agent)
+            agent = await self._ensure_agent_managed_mcp_configured(agent, port_mcp)
 
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId, run)

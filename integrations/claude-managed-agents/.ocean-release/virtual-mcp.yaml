@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add virtual MCP server support via virtualMcpServerIds on create, update, and trigger agent actions.
