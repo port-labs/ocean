@@ -256,11 +256,6 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(
             f"Processing batch of {len(projects_batch)} projects for pipelines"
-            + (
-                f" updated after {params['updated_after']}"
-                if "updated_after" in params
-                else ""
-            )
         )
         project_map = {
             str(project["id"]): {"path_with_namespace": project["path_with_namespace"]}
