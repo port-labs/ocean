@@ -34,13 +34,12 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
                 self.model,
                 self.systemPrompt,
                 self.config,
-                self.enablePortMcp is not None,
-                "virtualMcpServerIds" in self.model_fields_set,
+                self.enablePortMcp,
+                self.virtualMcpServerIds,
             ]
         ):
             raise ValueError(
-                "at least one of name, model, systemPrompt, config, enablePortMcp, "
-                "or virtualMcpServerIds must be provided"
+                "at least one of name, model, systemPrompt, or config must be provided"
             )
         return self
 
@@ -62,20 +61,12 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
             if value
         }
         config = payload.pop("config", None) or {}
-        reconcile_virtual = "virtualMcpServerIds" in self.model_fields_set
-        if self.enablePortMcp is not None or reconcile_virtual:
-            virtual_ids = (
-                list(self.virtualMcpServerIds or [])
-                if reconcile_virtual
-                else []
-            )
+        if self.enablePortMcp or self.virtualMcpServerIds:
             config = attach_port_mcp_settings_to_agent_config(
                 config,
                 existing_agent=existing_agent,
-                enable_port_mcp=self.enablePortMcp is True,
-                remove_port_mcp=self.enablePortMcp is False,
-                virtual_mcp_server_ids=virtual_ids,
-                reconcile_virtual_mcp_server_ids=reconcile_virtual,
+                enable_port_mcp=bool(self.enablePortMcp),
+                virtual_mcp_server_ids=self.virtualMcpServerIds or [],
             )
         return {**payload, **config}
 

@@ -150,7 +150,7 @@
           "name": "virtualMcpServerIds",
           "title": "Virtual MCP server IDs",
           "type": "array",
-          "description": "Identifiers of `_virtual_mcp_server` catalog entities. The integration wires each as `{region MCP host}/v1/virtual-server/{id}` on the agent and mints vault bearer credentials on trigger_agent (with Actor or Service Account execution identity). Independent of Enable Port MCP.",
+          "description": "Identifiers of `_virtual_mcp_server` entities to attach as `{MCP host}/v1/virtual-server/{id}`. Independent of Enable Port MCP.",
           "required": false
         },
         {
@@ -215,7 +215,7 @@
           "name": "virtualMcpServerIds",
           "title": "Virtual MCP server IDs",
           "type": "array",
-          "description": "Identifiers of `_virtual_mcp_server` catalog entities. This run wires missing servers on the agent and mints vault bearer credentials for each virtual URL (and for full Port MCP when Enable Port MCP is true). Does not remove MCP servers from the agent when Enable Port MCP is false.",
+          "description": "Identifiers of `_virtual_mcp_server` entities to attach and authenticate for this run. Does not remove existing MCP servers when Enable Port MCP is false.",
           "required": false
         },
         {
@@ -335,7 +335,7 @@
           "name": "virtualMcpServerIds",
           "title": "Virtual MCP server IDs",
           "type": "array",
-          "description": "Identifiers of `_virtual_mcp_server` catalog entities to attach or reconcile on the agent. Pass an empty array to remove all integration-managed virtual MCP servers. Omit to leave virtual MCP config unchanged.",
+          "description": "Identifiers of `_virtual_mcp_server` entities to attach. Omit to leave the agent's virtual MCP config unchanged.",
           "required": false
         },
         {
