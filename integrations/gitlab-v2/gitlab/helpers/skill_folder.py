@@ -4,8 +4,12 @@ from typing import Any
 
 from loguru import logger
 
-from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME
+from gitlab.clients.gitlab_client import (
+    GitLabClient,
+    _literal_tree_prefix,
+    _minimize_tree_roots,
+)
+from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME, matches_skill_path
 
 TEXT_FILE_EXTENSIONS: frozenset[str] = frozenset(
     {
@@ -56,6 +60,50 @@ def skill_dir_prefix(skill_md_path: str) -> str:
     """Path prefix shared by every file inside the skill folder ("" at repo root)."""
     skill_dir = str(PurePosixPath(skill_md_path).parent)
     return "" if skill_dir == "." else f"{skill_dir}/"
+
+
+async def find_owning_skill_md_paths(
+    client: GitLabClient,
+    project: dict[str, Any],
+    commit_sha: str,
+    changed_paths: set[str],
+    path_globs: list[str],
+) -> set[str]:
+    """SKILL.md paths of the closest skill containing each changed path.
+
+    A file inside a nested skill belongs only to that skill, so outer skills are not
+    rebuilt for it. Adding or removing a nested SKILL.md moves its folder out of or into
+    the parent's bundle, so the parent is its owner.
+    """
+    skill_roots = _minimize_tree_roots(
+        {_literal_tree_prefix(pattern) for pattern in path_globs}
+    )
+    changed_roots = [
+        root
+        for root in skill_roots
+        if any(not root or path.startswith(f"{root}/") for path in changed_paths)
+    ]
+
+    skill_md_paths: set[str] = set()
+    for root in changed_roots:
+        async for batch in client.get_repository_tree(
+            project, root, commit_sha, recursive=True
+        ):
+            skill_md_paths.update(
+                entry["path"]
+                for entry in batch
+                if entry.get("type") == "blob"
+                and matches_skill_path(entry["path"], path_globs)
+            )
+    skill_md_by_prefix = {skill_dir_prefix(path): path for path in skill_md_paths}
+    owners: set[str] = set()
+    for path in changed_paths:
+        for parent in map(str, PurePosixPath(path).parents):
+            owner = skill_md_by_prefix.get("" if parent == "." else f"{parent}/")
+            if owner is not None and owner != path:
+                owners.add(owner)
+                break
+    return owners
 
 
 def select_skill_folder_files(

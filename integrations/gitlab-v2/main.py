@@ -32,7 +32,12 @@ from gitlab.helpers.incremental import (
     build_project_updated_params,
     resolve_effective_datetime,
 )
-from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
+from gitlab.helpers.skill_plugin_resync import (
+    resync_plugins,
+    resync_plugins_incremental,
+    resync_skills,
+    resync_skills_incremental,
+)
 from integration import (
     GitLabFilesResourceConfig,
     GitLabSkillResourceConfig,
@@ -501,14 +506,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     skip_parsing = selector.files.skip_parsing
     search_strategy = selector.files.search_strategy
     sync_cursor = active_incremental_cursor()
-    logger.info(
-        f"Syncing files for '{search_path}' "
-        + (
-            f"incrementally from {sync_cursor.isoformat()}"
-            if sync_cursor
-            else "(full resync)"
-        )
-    )
 
     repositories = (
         selector.files.repos
@@ -568,25 +565,47 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield enriched_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.SKILL)
 @ocean.on_resync(ObjectKind.SKILL)
 async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
-    project_params = build_project_params(
-        include_only_active_projects=selector.include_only_active_groups
+    sync_cursor = active_incremental_cursor()
+    project_params = build_project_updated_params(
+        build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
+        ),
+        sync_cursor,
     )
-    async for batch in resync_skills(client, selector, project_params):
+    if sync_cursor is None:
+        stream = resync_skills(client, selector, project_params)
+    else:
+        stream = resync_skills_incremental(
+            client, selector, project_params, sync_cursor
+        )
+    async for batch in stream:
         yield batch
 
 
+@ocean.on_incremental_resync(ObjectKind.PLUGIN)
 @ocean.on_resync(ObjectKind.PLUGIN)
 async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
-    project_params = build_project_params(
-        include_only_active_projects=selector.include_only_active_groups
+    sync_cursor = active_incremental_cursor()
+    project_params = build_project_updated_params(
+        build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
+        ),
+        sync_cursor,
     )
-    async for batch in resync_plugins(client, selector, project_params):
+    if sync_cursor is None:
+        stream = resync_plugins(client, selector, project_params)
+    else:
+        stream = resync_plugins_incremental(
+            client, selector, project_params, sync_cursor
+        )
+    async for batch in stream:
         yield batch
 
 

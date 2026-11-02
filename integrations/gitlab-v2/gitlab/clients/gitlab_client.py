@@ -12,7 +12,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
@@ -173,21 +173,31 @@ class GitLabClient:
     async def get_changed_paths_since(
         self, project: dict[str, Any], since: datetime, ref: str
     ) -> list[str] | None:
-        """Return the paths changed on ``ref`` since ``since``.
+        """Return the paths changed on ``ref`` since ``since``, or ``None`` for a full listing.
 
-        The base is the newest commit on ``ref`` at or before ``since``; the compare
-        runs from that base to the current tip. Returns ``None`` when the diff cannot
-        be trusted and a full listing is needed: no commit before the cursor, the base
-        is a root commit (its own files never appear in a root-to-tip diff), GitLab
-        reports a compare timeout, or the API call fails.
+        Cached per run on ``(project path, cursor, ref)``, so FILE, FOLDER, SKILL and PLUGIN
+        share one compare per project.
         """
-        project_path = project["path_with_namespace"]
+        return await self._changed_paths_since(
+            project["path_with_namespace"], since.isoformat(), ref
+        )
+
+    @cache_coroutine_result()
+    async def _changed_paths_since(
+        self, project_path: str, since: str, ref: str
+    ) -> list[str] | None:
+        """Compare from the newest commit at or before ``since`` to the tip of ``ref``.
+
+        Returns ``None`` when the diff cannot be trusted and a full listing is needed: no
+        commit before the cursor, the base is a root commit (its own files never appear in
+        a root-to-tip diff), GitLab reports a compare timeout, or the API call fails.
+        """
         try:
             base: dict[str, Any] | None = None
             async for commits_batch in self.rest.get_paginated_project_resource(
                 project_path,
                 "repository/commits",
-                params={"ref_name": ref, "until": since.isoformat(), "per_page": 1},
+                params={"ref_name": ref, "until": since, "per_page": 1},
             ):
                 if commits_batch:
                     base = commits_batch[0]
@@ -195,7 +205,7 @@ class GitLabClient:
 
             if base is None:
                 logger.info(
-                    f"No commit on '{ref}' before {since.isoformat()} in {project_path}, full listing needed"
+                    f"No commit on '{ref}' before {since} in {project_path}, full listing needed"
                 )
                 return None
             if not base.get("parent_ids"):
@@ -207,7 +217,7 @@ class GitLabClient:
             compare = await self.compare_repository(project_path, base["id"], ref)
         except httpx.HTTPError as err:
             logger.warning(
-                f"Failed to compare '{ref}' in {project_path} since {since.isoformat()}, "
+                f"Failed to compare '{ref}' in {project_path} since {since}, "
                 f"full listing needed: {err}"
             )
             return None
@@ -224,7 +234,7 @@ class GitLabClient:
             if not diff.get("deleted_file")
         ]
         logger.info(
-            f"Found {len(changed_paths)} changed paths in {project_path} since {since.isoformat()}"
+            f"Found {len(changed_paths)} changed paths in {project_path} since {since}"
         )
         return changed_paths
 

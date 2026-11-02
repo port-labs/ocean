@@ -230,4 +230,9 @@ def test_project_updated_incremental_sets_updated_after_and_drops_selectors() ->
         {"active": True, "updated_before": "2026-01-01", "finished_after": "x"},
         cursor=CURSOR,
     )
-    assert params == {"active": True, "updated_after": CURSOR.isoformat()}
+    assert params == {
+        "active": True,
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
+        "sort": "asc",
+    }
