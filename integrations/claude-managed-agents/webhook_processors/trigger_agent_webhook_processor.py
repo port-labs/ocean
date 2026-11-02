@@ -2,10 +2,14 @@ from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
 from anthropic.types.beta import (
+    BetaManagedAgentsSessionUsageEvent,
     BetaWebhookSessionIdledEventData,
     BetaWebhookSessionStatusIdledEventData,
     BetaWebhookSessionStatusTerminatedEventData,
     UnwrapWebhookEvent,
+)
+from anthropic.types.beta.beta_managed_agents_session_usage import (
+    BetaManagedAgentsSessionUsage,
 )
 from anthropic.types.beta.sessions.beta_managed_agents_agent_message_event import (
     BetaManagedAgentsAgentMessageEvent,
@@ -223,7 +227,9 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         extra_output.update(
             (
-                await self._build_standard_completion_output(session_id, data)
+                await self._build_standard_completion_output(
+                    session_id, data, baseline_before=anchor.processed_at
+                )
             ).model_dump()
         )
 
@@ -248,9 +254,13 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def _build_standard_completion_output(
-        self, session_id: str, webhook_data: TerminalSessionWebhookData
+        self,
+        session_id: str,
+        webhook_data: TerminalSessionWebhookData,
+        *,
+        baseline_before: datetime | None,
     ) -> TriggerAgentSessionOutput:
-        """Session URL plus cumulative usage from a best-effort session retrieve."""
+        """Session URL plus this trigger's usage delta from a best-effort retrieve."""
         client = create_anthropic_client()
         session_url = build_session_link(
             client.get_console_host(), webhook_data.workspace_id, session_id
@@ -265,7 +275,57 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             )
             return TriggerAgentSessionOutput(url=session_url)
 
-        return TriggerAgentSessionOutput.from_session(url=session_url, session=session)
+        baseline = (
+            await self._find_baseline_usage(session_id, baseline_before)
+            if baseline_before is not None
+            else None
+        )
+        return TriggerAgentSessionOutput.from_session(
+            url=session_url,
+            session=session,
+            baseline_usage=baseline,
+        )
+
+    async def _find_baseline_usage(
+        self, session_id: str, before: datetime
+    ) -> BetaManagedAgentsSessionUsage | None:
+        """Prior cumulative ``session.usage`` for relative cost/tokens.
+
+        ``session.usage`` is emitted just before each idle. The last snapshot
+        strictly before this turn's user message is the baseline; the current
+        retrieve is the new cumulative total. First turn has no prior snapshot.
+        """
+        try:
+            client = create_anthropic_client()
+            async for batch in client.get_session_events(
+                session_id,
+                types=["session.usage"],
+                order="desc",
+                created_at_lt=before,
+                limit=1,
+            ):
+                event = batch[0]
+                if not isinstance(event, BetaManagedAgentsSessionUsageEvent):
+                    logger.warning(
+                        f"Expected session.usage event for session {session_id}, "
+                        f"got {event.type}"
+                    )
+                    return None
+                return BetaManagedAgentsSessionUsage.model_validate(
+                    event.usage, from_attributes=True
+                )
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch prior session.usage for {session_id} "
+                f"(reporting cumulative usage): {error}"
+            )
+        else:
+            logger.info(
+                f"No prior session.usage before {before.isoformat()} for "
+                f"session {session_id}; treating usage as first-turn totals"
+            )
+
+        return None
 
     async def _find_anchor_user_message(
         self, session_id: str, webhook_time: datetime

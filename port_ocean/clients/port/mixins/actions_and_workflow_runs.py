@@ -200,6 +200,10 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 if success
                 else WorkflowNodeRunResult.FAILED
             )
+            output = run.output
+            if not success and message:
+                output = {**(run.output or {}), "error": {"message": message}}
+                run.output = output
             if message:
                 log_level: Literal["INFO", "WARN", "ERROR", "DEBUG"] = (
                     "INFO" if success else "ERROR"
@@ -211,7 +215,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 )
             await self.patch_wf_node_run(
                 run.id,
-                self._wf_node_completion_patch(result, run.output, status_label),
+                self._wf_node_completion_patch(result, output, status_label),
                 should_raise=should_raise,
             )
         else:
