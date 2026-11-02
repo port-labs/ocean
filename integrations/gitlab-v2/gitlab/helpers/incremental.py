@@ -14,7 +14,7 @@ LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
 )
 
 # Dropped on incremental runs; replaced by cursor ``updated_after`` + ``order_by``.
-DEPLOYMENT_TIMESTAMP_SELECTORS = {
+TIMESTAMP_SELECTORS = {
     "finished_after",
     "finished_before",
     "updated_after",
@@ -39,6 +39,24 @@ def build_project_list_params(
 ) -> dict[str, Any]:
     """Query params for ``GET /projects``."""
     return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
+
+
+def build_project_updated_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects`` used by file and folder listings.
+
+    Filters by ``updated_after`` and drops selector timestamp filters on incremental runs.
+    """
+    params = base_params
+    if cursor is not None:
+        params = {
+            key: value
+            for key, value in base_params.items()
+            if key not in TIMESTAMP_SELECTORS
+        }
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
 
 
 def build_issue_params(
@@ -95,9 +113,7 @@ def build_deployment_params(
     params = {
         key: value
         for key, value in (api_query_params or {}).items()
-        if key not in DEPLOYMENT_TIMESTAMP_SELECTORS
-        and key != "order_by"
-        and value is not None
+        if key not in TIMESTAMP_SELECTORS and key != "order_by" and value is not None
     }
     params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
     params["order_by"] = "updated_at"

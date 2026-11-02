@@ -7,6 +7,7 @@ from gitlab.helpers.incremental import (
     build_merge_request_params,
     build_pipeline_params,
     build_project_list_params,
+    build_project_updated_params,
     resolve_effective_datetime,
 )
 
@@ -216,3 +217,17 @@ def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() 
         "updated_after": CURSOR.isoformat(),
         "order_by": "updated_at",
     }
+
+
+def test_project_updated_full_resync_keeps_params() -> None:
+    assert build_project_updated_params(
+        {"min_access_level": 30, "updated_before": "2026-01-01"}, cursor=None
+    ) == {"min_access_level": 30, "updated_before": "2026-01-01"}
+
+
+def test_project_updated_incremental_sets_updated_after_and_drops_selectors() -> None:
+    params = build_project_updated_params(
+        {"active": True, "updated_before": "2026-01-01", "finished_after": "x"},
+        cursor=CURSOR,
+    )
+    assert params == {"active": True, "updated_after": CURSOR.isoformat()}

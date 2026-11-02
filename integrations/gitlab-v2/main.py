@@ -1,5 +1,5 @@
 from itertools import batched
-from typing import cast, Any
+from typing import AsyncIterator, cast, Any
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -29,6 +29,7 @@ from gitlab.helpers.incremental import (
     build_merge_request_params,
     build_pipeline_params,
     build_project_list_params,
+    build_project_updated_params,
     resolve_effective_datetime,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
@@ -486,6 +487,7 @@ async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_T
             yield list(results)
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -498,6 +500,15 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     scope = "blobs"
     skip_parsing = selector.files.skip_parsing
     search_strategy = selector.files.search_strategy
+    sync_cursor = active_incremental_cursor()
+    logger.info(
+        f"Syncing files for '{search_path}' "
+        + (
+            f"incrementally from {sync_cursor.isoformat()}"
+            if sync_cursor
+            else "(full resync)"
+        )
+    )
 
     repositories = (
         selector.files.repos
@@ -523,19 +534,35 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return enriched_batch
 
     params = (
-        build_project_params(include_only_active_projects=include_only_active_groups)
+        build_project_updated_params(
+            build_project_params(
+                include_only_active_projects=include_only_active_groups
+            ),
+            sync_cursor,
+        )
         if search_strategy in ("projectSearch", "repositoryTree")
         else build_group_params(include_only_active_groups=include_only_active_groups)
     )
 
-    async for files_batch in client.search_files(
-        scope,
-        build_search_query(search_path),
-        skip_parsing=skip_parsing,
-        repositories=repositories,
-        params=params,
-        strategy=search_strategy,
-    ):
+    if sync_cursor is not None and search_strategy == "repositoryTree":
+        files_stream = client.search_changed_files_in_projects(
+            build_search_query(search_path),
+            sync_cursor,
+            skip_parsing=skip_parsing,
+            repositories=repositories,
+            params=params,
+        )
+    else:
+        files_stream = client.search_files(
+            scope,
+            build_search_query(search_path),
+            skip_parsing=skip_parsing,
+            repositories=repositories,
+            params=params,
+            strategy=search_strategy,
+        )
+
+    async for files_batch in files_stream:
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
             yield enriched_batch
@@ -563,6 +590,7 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -570,9 +598,23 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     included_files = selector.included_files or []
 
     include_only_active_projects = selector.include_only_active_projects
-    projects_params = build_project_params(
-        include_only_active_projects=include_only_active_projects
+    sync_cursor = active_incremental_cursor()
+    projects_params = build_project_updated_params(
+        build_project_params(include_only_active_projects=include_only_active_projects),
+        sync_cursor,
     )
+
+    def folders_stream(
+        path: str, repository: str, branch: str | None = None
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        if sync_cursor is not None:
+            return client.get_repository_folders_since(
+                path, repository, sync_cursor, branch
+            )
+        return client.get_repository_folders(
+            path=path, repository=repository, branch=branch
+        )
+
     for folder_selector in selector.folders:
         path = folder_selector.path
         repos = folder_selector.repos
@@ -589,10 +631,8 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    async for folders_batch in client.get_repository_folders(
-                        path=path,
-                        repository=project["path_with_namespace"],
-                        branch=None,
+                    async for folders_batch in folders_stream(
+                        path, project["path_with_namespace"]
                     ):
                         if folders_batch:
                             if included_files:
@@ -618,9 +658,7 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                async for folders_batch in client.get_repository_folders(
-                    path=path, repository=repo.name, branch=repo.branch
-                ):
+                async for folders_batch in folders_stream(path, repo.name, repo.branch):
                     if included_files and folders_batch:
                         from gitlab.enrichments.included_files import (
                             IncludedFilesEnricher,
