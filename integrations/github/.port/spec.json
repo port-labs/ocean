@@ -375,6 +375,7 @@
           "name": "title",
           "title": "Title",
           "type": "string",
+          "sensitive": true,
           "description": "The title of the issue",
           "required": true
         },
