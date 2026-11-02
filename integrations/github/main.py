@@ -477,6 +477,9 @@ async def resync_workflows(
                             options=ListWorkflowOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                updated_since=resolve_effective_datetime(
+                                    sync_cursor, None
+                                ),
                             )
                         )
                     )
