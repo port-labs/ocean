@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import Any, AsyncIterator, Iterator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import httpx
 import pytest
+from anthropic import APIStatusError
 
 from actions.exceptions import InvalidActionParametersException
 from actions.trigger_agent_executor import (
@@ -14,6 +16,7 @@ from actions.trigger_agent_executor import (
     SESSION_NOT_CONTINUABLE_STATUS_LABEL,
     TriggerAgentExecutor,
 )
+from actions.prompt_images import PromptImages
 from actions.types import TriggerAgentSessionOutput
 from actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
@@ -28,6 +31,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from tests.action_test_helpers import (
     build_executor,
+    image_block,
     build_mock_ocean,
     empty_session_events,
     mock_ocean_with_client_secret,
@@ -63,6 +67,36 @@ def test_trigger_agent_session_output_from_session() -> None:
         "inputTokens": 5000,
         "outputTokens": 3200,
         "costUsd": 1.87,
+    }
+
+
+def test_trigger_agent_session_output_relative_to_baseline() -> None:
+    session = sdk_session(
+        session_id="s1",
+        usage=BetaManagedAgentsSessionUsage.model_validate(
+            {
+                "input_tokens": 5000,
+                "output_tokens": 3200,
+                "list_cost": {"amount": "187", "currency": "USD"},
+            }
+        ),
+    )
+    baseline = BetaManagedAgentsSessionUsage.model_validate(
+        {
+            "input_tokens": 2000,
+            "output_tokens": 1000,
+            "list_cost": {"amount": "50", "currency": "USD"},
+        }
+    )
+    assert TriggerAgentSessionOutput.from_session(
+        url="https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        session=session,
+        baseline_usage=baseline,
+    ).model_dump() == {
+        "url": "https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        "inputTokens": 3000,
+        "outputTokens": 2200,
+        "costUsd": 1.37,
     }
 
 
@@ -235,7 +269,8 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
     None
 ):
     client_mock = MagicMock()
-    client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
+    client_mock.get_agent = AsyncMock(return_value=sdk_agent())
+    client_mock.update_agent = AsyncMock()
     client_mock.create_session = AsyncMock(return_value=sdk_session())
     client_mock.send_user_message = AsyncMock(return_value=user_message_event())
     executor = build_executor(TriggerAgentExecutor, client_mock)
@@ -266,6 +301,7 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
         await executor.execute(run)
 
     resolve_binding.assert_not_awaited()
+    client_mock.update_agent.assert_not_called()
     client_mock.create_session.assert_awaited_once()
     extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
     assert "vault_ids" not in extra
@@ -355,7 +391,150 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
 
     resolve_binding.assert_awaited_once()
     client_mock.create_session.assert_not_called()
-    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up")
+    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up", [])
+
+
+async def execute_continuing(
+    prompt: str, images: PromptImages, send_effect: Any = None
+) -> tuple[Any, Any]:
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
+    client_mock.get_session = AsyncMock(return_value=sdk_session())
+    client_mock.get_session_events = empty_session_events
+    client_mock.send_user_message = AsyncMock(
+        return_value=user_message_event("msg_2"), side_effect=send_effect
+    )
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "sessionId": "sess_1",
+            "prompt": prompt,
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "actions.trigger_agent_executor.load_prompt_images",
+            AsyncMock(return_value=images),
+        ),
+        patch(
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            AsyncMock(
+                return_value=PortMcpBinding(
+                    vault_id="vault_port", credential_id="cred_1"
+                )
+            ),
+        ),
+    ):
+        await executor.execute(run)
+    return client_mock, mock_ocean
+
+
+IMAGE_BLOCKS: list[Any] = [{"type": "text", "text": "Image 1:"}, image_block()]
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_sends_the_relabeled_prompt_and_the_images_after_it() -> (
+    None
+):
+    client_mock, _ = await execute_continuing(
+        "see ![x](https://assets.io/organizations/o/markdown_image/a.png)",
+        PromptImages("see [Image 1: x]", blocks=IMAGE_BLOCKS),
+    )
+
+    client_mock.send_user_message.assert_awaited_once_with(
+        "sess_1", "see [Image 1: x]", IMAGE_BLOCKS
+    )
+
+
+GONE = "https://assets.io/organizations/o/markdown_image/gone.png"
+KEPT = "https://assets.io/organizations/o/markdown_image/a.png"
+
+
+def rejected(status: int) -> APIStatusError:
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/sessions")
+    return APIStatusError(
+        "image rejected", response=httpx.Response(status, request=request), body=None
+    )
+
+
+def warnings(mock_ocean: Any) -> list[str]:
+    return [
+        call.args[1]
+        for call in mock_ocean.port_client.post_run_log.await_args_list
+        if call.kwargs.get("level") == "WARNING"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_logs_the_images_it_could_not_attach_and_still_runs() -> (
+    None
+):
+    client_mock, mock_ocean = await execute_continuing(
+        f"see {GONE}",
+        PromptImages("see [Image 1 - not attached]", failed=[GONE]),
+    )
+
+    client_mock.send_user_message.assert_awaited_once_with(
+        "sess_1", "see [Image 1 - not attached]", []
+    )
+    [warning] = warnings(mock_ocean)
+    assert GONE in warning
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_lists_a_limited_number_of_images_it_could_not_attach() -> (
+    None
+):
+    gone = [
+        f"https://assets.io/organizations/o/markdown_image/{i}.png" for i in range(30)
+    ]
+
+    _, mock_ocean = await execute_continuing("see", PromptImages("see", failed=gone))
+
+    [warning] = warnings(mock_ocean)
+    assert gone[9] in warning and gone[10] not in warning and warning.endswith("...")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 413])
+async def test_trigger_agent_sends_the_prompt_without_the_images_claude_rejects(
+    status: int,
+) -> None:
+    client_mock, mock_ocean = await execute_continuing(
+        f"see ![x]({KEPT})",
+        PromptImages("see [Image 1: x]", blocks=IMAGE_BLOCKS),
+        send_effect=[rejected(status), user_message_event("msg_2")],
+    )
+
+    assert client_mock.send_user_message.await_args_list == [
+        call("sess_1", "see [Image 1: x]", IMAGE_BLOCKS),
+        call("sess_1", "see [Image 1: x - not attached]"),
+    ]
+    [warning] = warnings(mock_ocean)
+    assert str(status) in warning
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "images, status",
+    [
+        (PromptImages("see [Image 1: x]", blocks=IMAGE_BLOCKS), 500),
+        (PromptImages("no images"), 400),
+    ],
+)
+async def test_trigger_agent_does_not_hide_other_send_failures(
+    images: PromptImages, status: int
+) -> None:
+    with pytest.raises(APIStatusError):
+        await execute_continuing("no images", images, send_effect=[rejected(status)])
 
 
 @pytest.mark.asyncio
@@ -424,7 +603,7 @@ async def test_trigger_agent_executor_starts_session() -> None:
         "env_1",
         extra=None,
     )
-    client_mock.send_user_message.assert_awaited_once_with("sess_1", "go")
+    client_mock.send_user_message.assert_awaited_once_with("sess_1", "go", [])
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.port_client.update_run_started.assert_awaited_once()
     call = mock_ocean.port_client.update_run_started.call_args
@@ -581,7 +760,7 @@ async def test_trigger_agent_continues_idle_session() -> None:
         await executor.execute(run)
 
     client_mock.create_session.assert_not_called()
-    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up")
+    client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up", [])
     assert (
         mock_ocean.port_client.update_run_started.call_args.args[2]
         == "claude_session_sess_1_msg_2"

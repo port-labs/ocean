@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.5 (2026-11-02)
+
+
+### Improvements
+
+- Add AWS_V3_CUSTOM_KINDS_ENABLED organization feature flag for AWS-v3 custom Cloud Control kinds
+
+
+## 0.56.4 (2026-11-01)
+
+
+### Improvements
+
+- Include failure message in workflow node run output when report_run_completed fails
+
+
+## 0.56.3 (2026-10-29)
+
+
+### Improvements
+
+- Preserve undeclared integration config keys so env-only overrides survive into ocean.integration_config
+
+
+## 0.56.2 (2026-10-26)
+
+
+### Bug Fixes
+
+- Bumped filelock to ^4.2.1 and required opentelemetry-api >=1.45.1 to fix GHSA-v4x8-3wr5-3wq8, GHSA-567q-5qvw-pf92, GHSA-9vhv-jxww-xfm5 and GHSA-xcq7-p3pf-p88h
+
+
 ## 0.56.1 (2026-10-25)
 
 

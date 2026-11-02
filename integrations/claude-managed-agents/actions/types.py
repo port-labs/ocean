@@ -1,24 +1,36 @@
 from typing import Any, Self
 
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
+from anthropic.types.beta.beta_managed_agents_session_usage import (
+    BetaManagedAgentsSessionUsage,
+)
+from anthropic.types.beta_monetary_amount import BetaMonetaryAmount
 from pydantic import BaseModel, ConfigDict, Field
 
 
-def list_cost_to_usd(list_cost: Any) -> float | None:
-    """Convert Anthropic ``usage.list_cost`` (cents string) to USD.
-
-    Anthropic reports ``list_cost`` as ``{"amount": "<cents>", "currency": "USD"}``
-    where ``amount`` is whole US cents at public list rates (not contracted price).
-    """
-    if not isinstance(list_cost, dict):
-        return None
-    amount = list_cost.get("amount")
-    if amount is None:
+def list_cost_to_usd(list_cost: BetaMonetaryAmount | None) -> float | None:
+    if list_cost is None:
         return None
     try:
-        return int(amount) / 100.0
+        return int(list_cost.amount) / 100.0
     except (TypeError, ValueError):
         return None
+
+
+def _token_delta(current: int | None, baseline: int | None) -> int | None:
+    if current is None:
+        return None
+    if baseline is None:
+        return current
+    return max(0, current - baseline)
+
+
+def _cost_delta(current: float | None, baseline: float | None) -> float | None:
+    if current is None:
+        return None
+    if baseline is None:
+        return current
+    return max(0.0, round(current - baseline, 2))
 
 
 class TriggerAgentSessionOutput(BaseModel):
@@ -46,15 +58,21 @@ class TriggerAgentSessionOutput(BaseModel):
         session: BetaManagedAgentsSession,
         session_id: str | None = None,
         user_message_event_id: str | None = None,
+        baseline_usage: BetaManagedAgentsSessionUsage | None = None,
     ) -> Self:
-        """Build output from a session URL and session retrieve result."""
+        input_tokens = session.usage.input_tokens
+        output_tokens = session.usage.output_tokens
+        cost_usd = list_cost_to_usd(session.usage.list_cost)
+        if baseline_usage is not None:
+            input_tokens = _token_delta(input_tokens, baseline_usage.input_tokens)
+            output_tokens = _token_delta(output_tokens, baseline_usage.output_tokens)
+            cost_usd = _cost_delta(cost_usd, list_cost_to_usd(baseline_usage.list_cost))
+
         return cls(
             session_id=session_id,
             user_message_event_id=user_message_event_id,
             url=url,
-            input_tokens=session.usage.input_tokens,
-            output_tokens=session.usage.output_tokens,
-            # ``list_cost`` is on the API usage object but not yet a typed SDK field;
-            # the SDK keeps it in pydantic extras (``extra="allow"``).
-            cost_usd=list_cost_to_usd(getattr(session.usage, "list_cost", None)),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
         )

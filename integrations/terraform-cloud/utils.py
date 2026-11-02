@@ -13,6 +13,10 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ORGANIZATION = "organization"
     HEALTH_ASSESSMENT = "health-assessment"
+    TEAM = "team"
+    ORGANIZATION_MEMBERSHIP = "organization-membership"
+    TEAM_WORKSPACE_ACCESS = "team-workspace-access"
+    TEAM_PROJECT_ACCESS = "team-project-access"
 
 
 def init_terraform_client() -> TerraformClient:
