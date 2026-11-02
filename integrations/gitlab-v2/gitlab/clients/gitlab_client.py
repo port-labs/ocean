@@ -379,6 +379,9 @@ class GitLabClient:
         """Fetch all tags for each project in the batch.
         Incremental runs only include projects updated since the cursor, then
         tags updated since the cursor.
+        Args:
+        projects_batch: List of projects to fetch tags for
+        max_concurrent: Maximum number of concurrent requests
         """
         async for tags_batch in self.get_projects_resource_with_enrichment(
             projects_batch, "repository/tags", max_concurrent
