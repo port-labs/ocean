@@ -66,6 +66,36 @@ def test_trigger_agent_session_output_from_session() -> None:
     }
 
 
+def test_trigger_agent_session_output_relative_to_baseline() -> None:
+    session = sdk_session(
+        session_id="s1",
+        usage=BetaManagedAgentsSessionUsage.model_validate(
+            {
+                "input_tokens": 5000,
+                "output_tokens": 3200,
+                "list_cost": {"amount": "187", "currency": "USD"},
+            }
+        ),
+    )
+    baseline = BetaManagedAgentsSessionUsage.model_validate(
+        {
+            "input_tokens": 2000,
+            "output_tokens": 1000,
+            "list_cost": {"amount": "50", "currency": "USD"},
+        }
+    )
+    assert TriggerAgentSessionOutput.from_session(
+        url="https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        session=session,
+        baseline_usage=baseline,
+    ).model_dump() == {
+        "url": "https://platform.claude.com/workspaces/ws_1/sessions/s1",
+        "inputTokens": 3000,
+        "outputTokens": 2200,
+        "costUsd": 1.37,
+    }
+
+
 def test_trigger_agent_session_output_url_only() -> None:
     assert TriggerAgentSessionOutput(
         url="https://platform.claude.com/"
