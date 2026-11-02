@@ -169,14 +169,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
 
-            if changed_since:
-                matched = await self._match_files_incremental(
-                    organization, repo_name, branch, pattern, changed_since
-                )
-            else:
-                matched = await self._match_files_full(
-                    organization, repo_name, branch, pattern
-                )
+            # Incremental: only files changed since the cursor. Full: every matching file in the tree.
+            matched = await self._match_files(
+                organization, repo_name, branch, pattern, changed_since
+            )
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
@@ -199,12 +195,34 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"File {path} will be fetched via {fetch_method} from {organization}"
                 )
 
+                # Route by fetch method: GraphQL fetches are batched later, REST fetches one by one.
                 if fetch_method == GithubClientType.GRAPHQL:
                     graphql_files.append(file_info)
                 else:
                     rest_files.append(file_info)
 
         return graphql_files, rest_files
+
+    async def _match_files(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+        changed_since: RepositoryChange | None,
+    ) -> List[Dict[str, Any]]:
+        """Pick the sync mode for one pattern.
+
+        - Incremental (``changed_since`` set): ``_match_files_incremental``.
+        - Full (no ``changed_since``): ``_match_files_full``.
+        """
+        if changed_since:
+            # Incremental sync: only files changed since the cursor.
+            return await self._match_files_incremental(
+                organization, repo_name, branch, pattern, changed_since
+            )
+        # Full sync: every matching file in the recursive tree.
+        return await self._match_files_full(organization, repo_name, branch, pattern)
 
     async def _match_files_full(
         self,
@@ -237,21 +255,20 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             organization, repo_name, branch, changed_since
         )
         if changed_paths is None:
-            # Compare could not be trusted — same result as a full resync.
+            # Compare could not be trusted, so this incremental sync falls back to a full sync.
             return await self._match_files_full(
                 organization, repo_name, branch, pattern
             )
 
-        # Avoid a recursive tree call when nothing in the diff matches this pattern.
+        # Incremental sync: nothing changed matches this pattern, so no tree fetch is needed.
         if not any(
             match_file_path_against_glob_pattern(path, pattern)
             for path in changed_paths
         ):
             return []
 
-        matched = await self._match_files_full(
-            organization, repo_name, branch, pattern
-        )
+        # Incremental sync: the tree is needed for fetch_method and sha, then filtered to changed paths.
+        matched = await self._match_files_full(organization, repo_name, branch, pattern)
         return [m for m in matched if m["path"] in changed_paths]
 
     async def process_rest_api_files(
