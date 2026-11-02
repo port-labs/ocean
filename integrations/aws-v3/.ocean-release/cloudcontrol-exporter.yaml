@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add a generic Cloud Control exporter for custom AWS resource kinds (ListResources / GetResource)

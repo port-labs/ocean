@@ -73,6 +73,36 @@ def is_resource_not_found_exception(e: Exception) -> bool:
     return False
 
 
+def is_cloud_control_type_unavailable_exception(e: Exception) -> bool:
+    """Return True when Cloud Control cannot handle the requested type in this region.
+
+    Covers types that are not registered, not available, or do not support the
+    requested Cloud Control action (typically ListResources / GetResource).
+    """
+    unavailable_error_codes = [
+        "TypeNotFoundException",
+        "CFNRegistryException",
+        "UnsupportedActionException",
+        "ResourceNotExistsError",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        if error_code in unavailable_error_codes:
+            return True
+        if error_code == "GeneralServiceException":
+            error_message = response.get("Error", {}).get("Message", "").lower()
+            return any(
+                pattern in error_message
+                for pattern in (
+                    "type not found",
+                    "is not registered",
+                    "resource type is not available in this region",
+                )
+            )
+    return False
+
+
 def is_throttling_exception(e: Exception) -> bool:
     throttling_error_codes = [
         "ThrottlingException",

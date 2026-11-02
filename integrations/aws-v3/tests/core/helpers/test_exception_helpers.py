@@ -2,6 +2,7 @@ from botocore.exceptions import ClientError
 
 from aws.core.helpers.utils import (
     is_access_denied_exception,
+    is_cloud_control_type_unavailable_exception,
     is_resource_not_found_exception,
 )
 
@@ -97,3 +98,42 @@ def test_is_resource_not_found_exception_includes_cicd_and_memorydb_codes() -> N
 def test_is_access_denied_exception() -> None:
     assert is_access_denied_exception(_client_error("AccessDenied")) is True
     assert is_access_denied_exception(_client_error("NoSuchBucket")) is False
+
+
+def test_is_cloud_control_type_unavailable_exception() -> None:
+    assert (
+        is_cloud_control_type_unavailable_exception(
+            _client_error("TypeNotFoundException")
+        )
+        is True
+    )
+    assert (
+        is_cloud_control_type_unavailable_exception(
+            _client_error("UnsupportedActionException")
+        )
+        is True
+    )
+    assert (
+        is_cloud_control_type_unavailable_exception(
+            _client_error("CFNRegistryException")
+        )
+        is True
+    )
+    assert (
+        is_cloud_control_type_unavailable_exception(_client_error("AccessDenied"))
+        is False
+    )
+    assert (
+        is_cloud_control_type_unavailable_exception(
+            ClientError(
+                {
+                    "Error": {
+                        "Code": "GeneralServiceException",
+                        "Message": "The resource type is not available in this region",
+                    }
+                },
+                "ListResources",
+            )
+        )
+        is True
+    )
