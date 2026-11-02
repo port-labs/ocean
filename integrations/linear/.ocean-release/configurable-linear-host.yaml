@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Allow overriding the Linear GraphQL host via OCEAN__INTEGRATION__CONFIG__LINEAR_HOST without exposing it in the Port UI
