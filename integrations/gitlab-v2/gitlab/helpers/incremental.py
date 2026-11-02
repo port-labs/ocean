@@ -118,14 +118,6 @@ def build_incremental_project_params(
     return build_cursor_updated_after_params(base_params, cursor)
 
 
-def build_deployment_params(
-    api_query_params: dict[str, Any] | None,
-    cursor: datetime,
-) -> dict[str, Any]:
-    """Incremental query params for ``GET /projects/{id}/deployments``."""
-    return build_cursor_updated_after_params(api_query_params, cursor)
-
-
 def merge_updated_after_params(
     api_query_params: dict[str, Any] | None,
     cursor: datetime | None,

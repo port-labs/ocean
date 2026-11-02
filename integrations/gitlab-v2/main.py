@@ -24,7 +24,7 @@ from gitlab.helpers.utils import (
     enrich_resources_with_project,
 )
 from gitlab.helpers.incremental import (
-    build_deployment_params,
+    build_cursor_updated_after_params,
     build_incremental_project_params,
     build_issue_params,
     build_merge_request_params,
@@ -254,9 +254,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
-        logger.info(
-            f"Processing batch of {len(projects_batch)} projects for pipelines"
-        )
+        logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
         project_map = {
             str(project["id"]): {"path_with_namespace": project["path_with_namespace"]}
             for project in projects_batch
@@ -294,13 +292,14 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ),
         sync_cursor,
     )
-    project_params = build_incremental_project_params(
-        build_project_params(include_only_active_projects=include_only_active_projects),
-        sync_cursor,
-    )
 
     async for projects_batch in client.get_projects(
-        params=project_params,
+        params=build_incremental_project_params(
+            build_project_params(
+                include_only_active_projects=include_only_active_projects
+            ),
+            sync_cursor,
+        ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -372,8 +371,7 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
 
         async for tags_batch in client.get_tags(
-            projects_batch,
-            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
         ):
             yield tags_batch
 
@@ -400,8 +398,7 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Processing batch of {len(projects_batch)} projects for releases")
 
         async for releases_batch in client.get_releases(
-            projects_batch,
-            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
         ):
             yield releases_batch
 
@@ -696,7 +693,7 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sync_cursor = active_incremental_cursor()
     selector_params = selector.generate_query_params() or None
     params = (
-        build_deployment_params(selector_params, sync_cursor)
+        build_cursor_updated_after_params(selector_params, sync_cursor)
         if sync_cursor is not None
         else selector_params
     )

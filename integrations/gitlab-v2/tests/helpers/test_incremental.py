@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from gitlab.clients.options import IssueOptions
 from gitlab.helpers.incremental import (
     build_cursor_updated_after_params,
-    build_deployment_params,
     build_incremental_project_params,
     build_issue_params,
     build_merge_request_params,
@@ -198,7 +197,7 @@ def test_incremental_project_params_replace_selector_timestamps() -> None:
     }
 
 
-def test_tag_project_incremental_replaces_selector_timestamps() -> None:
+def test_cursor_params_replace_selector_timestamps() -> None:
     params = build_cursor_updated_after_params(
         {
             "min_access_level": 30,
@@ -219,7 +218,7 @@ def test_tag_project_incremental_replaces_selector_timestamps() -> None:
 
 
 def test_deployment_incremental_overrides_selector_updated_after() -> None:
-    params = build_deployment_params(
+    params = build_cursor_updated_after_params(
         {"updated_after": SELECTOR_UPDATED_AFTER.isoformat()},
         cursor=CURSOR,
     )
@@ -231,7 +230,7 @@ def test_deployment_incremental_overrides_selector_updated_after() -> None:
 
 
 def test_deployment_incremental_drops_finished_order_by() -> None:
-    params = build_deployment_params(
+    params = build_cursor_updated_after_params(
         {"status": "success", "order_by": "finished_at"},
         cursor=CURSOR,
     )
@@ -244,7 +243,7 @@ def test_deployment_incremental_drops_finished_order_by() -> None:
 
 
 def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() -> None:
-    params = build_deployment_params(
+    params = build_cursor_updated_after_params(
         {
             "environment": "production",
             "status": "success",
