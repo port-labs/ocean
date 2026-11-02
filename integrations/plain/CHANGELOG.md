@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.3-beta (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 0.2.2-beta (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 0.2.1-beta (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 0.2.0-beta (2026-10-26)
+
+
+### Features
+
+- Add a connection probe that verifies Plain API authentication and per-kind permissions via myPermissions
+
+
 ## 0.1.15-beta (2026-10-26)
 
 

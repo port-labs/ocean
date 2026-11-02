@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.56.5 (2026-11-02)
+
+
+### Improvements
+
+- Add AWS_V3_CUSTOM_KINDS_ENABLED organization feature flag for AWS-v3 custom Cloud Control kinds
+
+
+## 0.56.4 (2026-11-01)
+
+
+### Improvements
+
+- Include failure message in workflow node run output when report_run_completed fails
+
+
+## 0.56.3 (2026-10-29)
+
+
+### Improvements
+
+- Preserve undeclared integration config keys so env-only overrides survive into ocean.integration_config
+
+
 ## 0.56.2 (2026-10-26)
 
 
