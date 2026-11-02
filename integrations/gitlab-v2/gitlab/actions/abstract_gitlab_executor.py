@@ -11,8 +11,6 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.models import IntegrationRun
 
-MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE = 20
-
 
 class AbstractGitlabExecutor(AbstractExecutor):
     WEBHOOK_PROCESSOR_CLASS: type[AbstractWebhookProcessor] | None = None
@@ -21,20 +19,12 @@ class AbstractGitlabExecutor(AbstractExecutor):
         self.client = create_gitlab_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        info = self.client.get_rate_limit_status()
-        if not info:
-            return False
-
-        return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE
+        return self.client.rest.is_close_to_rate_limit()
 
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun
     ) -> float:
-        info = self.client.get_rate_limit_status()
-        if not info:
-            return 0
-
-        return info.seconds_until_reset
+        return self.client.rest.seconds_until_rate_limit_reset()
 
     @asynccontextmanager
     async def _api_client_for_run(
@@ -43,7 +33,7 @@ class AbstractGitlabExecutor(AbstractExecutor):
         user_token = await resolve_user_token(run)
         if user_token:
             host = str(ocean.integration_config["gitlab_host"]).rstrip("/")
-            api_client = GitLabClient(host, user_token)
+            api_client = GitLabClient(host, user_token, centralized_rate_limit=False)
 
             # Do not fall back to the integration OAuth token on 401 — that would
             # execute the action as the integration instead of the user.
