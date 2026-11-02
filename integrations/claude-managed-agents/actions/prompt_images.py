@@ -28,11 +28,8 @@ _IMAGE_LINK = re.compile(
 )
 
 MAX_PROMPT_IMAGES = 10
-# Few at a time: each image is a few MB of base64 in memory. All of them within the timeout: the run waits for them.
+# Few at a time: each image is a few MB of base64 in memory.
 MAX_CONCURRENT_FETCHES = 4
-# One image can't use up the time of the others: the whole load has a larger budget than one request.
-REQUEST_TIMEOUT_SECONDS = 10.0
-LOAD_TIMEOUT_SECONDS = 20.0
 # Anthropic takes images of up to 5 MB, as base64: 3.75 MB of image.
 MAX_IMAGE_BYTES = 5 * 1024 * 1024 * 3 // 4
 SUPPORTED_MEDIA_TYPES = frozenset(
@@ -54,7 +51,7 @@ class PromptImages:
     """A prompt whose Port image links read as labels, and the images those labels name.
 
     `blocks` follow the prompt in the message: a text block "Image N:" and the image, for each image that was loaded.
-    `failed` are the links of the images that are not attached: not loaded in time, not supported, or over the limit.
+    `failed` are the links of the images that are not attached: not loaded, not supported, or over the limit.
     """
 
     prompt: str
@@ -103,7 +100,6 @@ async def _fetch_image(file_key: str) -> BetaManagedAgentsImageBlockParam:
         f"{port_client.auth.api_url}/asset/content",
         params={"fileKey": file_key, "maxSizeBytes": MAX_IMAGE_BYTES},
         headers=await port_client.auth.headers(),
-        timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     data = response.json().get("data") or {}
@@ -122,26 +118,16 @@ async def _fetch_image(file_key: str) -> BetaManagedAgentsImageBlockParam:
 async def _fetch_images(
     file_keys: list[str],
 ) -> list[BetaManagedAgentsImageBlockParam | BaseException]:
-    """The images in order, or why one is missing. Fetched a few at a time, and all within the timeout."""
+    """The images in order, or why one is missing. Fetched a few at a time."""
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_FETCHES)
 
     async def fetch(file_key: str) -> BetaManagedAgentsImageBlockParam:
         async with semaphore:
             return await _fetch_image(file_key)
 
-    tasks = [asyncio.create_task(fetch(file_key)) for file_key in file_keys]
-    _, pending = await asyncio.wait(tasks, timeout=LOAD_TIMEOUT_SECONDS)
-    for task in pending:
-        task.cancel()
-    await asyncio.gather(*pending, return_exceptions=True)
-    return [
-        (
-            asyncio.TimeoutError(f"not loaded within {LOAD_TIMEOUT_SECONDS:g}s")
-            if task in pending
-            else (task.exception() or task.result())
-        )
-        for task in tasks
-    ]
+    return await asyncio.gather(
+        *(fetch(file_key) for file_key in file_keys), return_exceptions=True
+    )
 
 
 async def load_prompt_images(prompt: str) -> PromptImages:

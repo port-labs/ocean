@@ -195,29 +195,6 @@ async def test_images_are_fetched_a_few_at_a_time() -> None:
     assert peak == MAX_CONCURRENT_FETCHES
 
 
-@pytest.mark.asyncio
-async def test_images_that_are_not_loaded_in_time_are_not_attached_and_the_rest_are() -> (
-    None
-):
-    async def answer(*_: Any, params: dict[str, Any], **__: Any) -> httpx.Response:
-        if params["fileKey"].endswith("slow.png"):
-            await asyncio.sleep(10)
-        return png("AAA")
-
-    mock_ocean = port_client_answering()
-    mock_ocean.port_client.client.get = AsyncMock(side_effect=answer)
-
-    with (
-        patch("actions.prompt_images.ocean", mock_ocean),
-        patch("actions.prompt_images.LOAD_TIMEOUT_SECONDS", 0.05),
-    ):
-        loaded = await load_prompt_images(f"{ASSETS}/slow.png {ASSETS}/fast.png")
-
-    assert loaded.prompt == "[Image 1 - not attached] [Image 2]"
-    assert loaded.failed == [f"{ASSETS}/slow.png"]
-    assert loaded.blocks == [{"type": "text", "text": "Image 2:"}, image_block("AAA")]
-
-
 def test_a_prompt_without_images_reads_every_link_as_not_attached() -> None:
     prompt = f"see ![the page]({ASSETS}/a.png) and {ASSETS}/b.png and {ASSETS}/a.png"
 
@@ -226,16 +203,6 @@ def test_a_prompt_without_images_reads_every_link_as_not_attached() -> None:
         "and [Image 1: the page - not attached]"
     )
     assert prompt_without_images("fix the bug") == "fix the bug"
-
-
-@pytest.mark.asyncio
-async def test_each_image_request_has_its_own_timeout() -> None:
-    mock_ocean = port_client_answering(png("AAA"))
-
-    with patch("actions.prompt_images.ocean", mock_ocean):
-        await load_prompt_images(f"{ASSETS}/a.png")
-
-    assert mock_ocean.port_client.client.get.await_args.kwargs["timeout"] == 10.0
 
 
 def test_a_description_with_the_brackets_port_escapes_is_one_image() -> None:
