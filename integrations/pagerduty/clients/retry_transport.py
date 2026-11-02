@@ -1,10 +1,16 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Protocol
 
 import httpx
 from port_ocean.helpers.retry import RetryTransport
 
-from clients.rate_limiter import PagerDutyRateLimiter, daily_quota_exhausted
+from clients.rate_limiter import RateLimitInfo, daily_quota_exhausted
+
+
+class PagerDutyRateLimitUpdater(Protocol):
+    def update_rate_limits(
+        self, headers: httpx.Headers, resource: str
+    ) -> Optional[RateLimitInfo]: ...
 
 
 class PagerDutyRetryTransport(RetryTransport):
@@ -14,7 +20,9 @@ class PagerDutyRetryTransport(RetryTransport):
     Per-attempt updates help concurrent in-flight requests adapt early.
     """
 
-    def __init__(self, *, rate_limiter: PagerDutyRateLimiter, **kwargs: Any) -> None:
+    def __init__(
+        self, *, rate_limiter: PagerDutyRateLimitUpdater, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         self._rate_limiter = rate_limiter
 
