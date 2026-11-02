@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add AWS_V3_CUSTOM_KINDS_ENABLED organization feature flag for AWS-v3 custom Cloud Control kinds
