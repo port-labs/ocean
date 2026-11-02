@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import Any, AsyncIterator, Iterator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import httpx
 import pytest
+from anthropic import APIStatusError
 
 from actions.exceptions import InvalidActionParametersException
 from actions.trigger_agent_executor import (
@@ -362,12 +364,16 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
     client_mock.send_user_message.assert_awaited_once_with("sess_1", "follow up", [])
 
 
-async def execute_continuing(prompt: str, images: PromptImages) -> tuple[Any, Any]:
+async def execute_continuing(
+    prompt: str, images: PromptImages, send_effect: Any = None
+) -> tuple[Any, Any]:
     client_mock = MagicMock()
     client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
     client_mock.get_session = AsyncMock(return_value=sdk_session())
     client_mock.get_session_events = empty_session_events
-    client_mock.send_user_message = AsyncMock(return_value=user_message_event("msg_2"))
+    client_mock.send_user_message = AsyncMock(
+        return_value=user_message_event("msg_2"), side_effect=send_effect
+    )
     executor = build_executor(TriggerAgentExecutor, client_mock)
     run = workflow_run_with_port_mcp(
         execution_properties={
@@ -418,24 +424,87 @@ async def test_trigger_agent_sends_the_relabeled_prompt_and_the_images_after_it(
     )
 
 
-@pytest.mark.asyncio
-async def test_trigger_agent_logs_the_images_it_could_not_load_and_still_runs() -> None:
-    gone = "https://assets.io/organizations/o/markdown_image/gone.png"
+GONE = "https://assets.io/organizations/o/markdown_image/gone.png"
+KEPT = "https://assets.io/organizations/o/markdown_image/a.png"
 
-    client_mock, mock_ocean = await execute_continuing(
-        f"see {gone}",
-        PromptImages("see [Image 1 - could not be loaded]", failed=[gone]),
+
+def rejected(status: int) -> APIStatusError:
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/sessions")
+    return APIStatusError(
+        "image rejected", response=httpx.Response(status, request=request), body=None
     )
 
-    client_mock.send_user_message.assert_awaited_once_with(
-        "sess_1", "see [Image 1 - could not be loaded]", []
-    )
-    warning = [
-        call
+
+def warnings(mock_ocean: Any) -> list[str]:
+    return [
+        call.args[1]
         for call in mock_ocean.port_client.post_run_log.await_args_list
         if call.kwargs.get("level") == "WARNING"
     ]
-    assert len(warning) == 1 and gone in warning[0].args[1]
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_logs_the_images_it_could_not_attach_and_still_runs() -> (
+    None
+):
+    client_mock, mock_ocean = await execute_continuing(
+        f"see {GONE}",
+        PromptImages("see [Image 1 - not attached]", failed=[GONE]),
+    )
+
+    client_mock.send_user_message.assert_awaited_once_with(
+        "sess_1", "see [Image 1 - not attached]", []
+    )
+    [warning] = warnings(mock_ocean)
+    assert GONE in warning
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_lists_a_limited_number_of_images_it_could_not_attach() -> (
+    None
+):
+    gone = [
+        f"https://assets.io/organizations/o/markdown_image/{i}.png" for i in range(30)
+    ]
+
+    _, mock_ocean = await execute_continuing("see", PromptImages("see", failed=gone))
+
+    [warning] = warnings(mock_ocean)
+    assert gone[9] in warning and gone[10] not in warning and warning.endswith("...")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 413])
+async def test_trigger_agent_sends_the_prompt_without_the_images_claude_rejects(
+    status: int,
+) -> None:
+    client_mock, mock_ocean = await execute_continuing(
+        f"see ![x]({KEPT})",
+        PromptImages("see [Image 1: x]", blocks=IMAGE_BLOCKS),
+        send_effect=[rejected(status), user_message_event("msg_2")],
+    )
+
+    assert client_mock.send_user_message.await_args_list == [
+        call("sess_1", "see [Image 1: x]", IMAGE_BLOCKS),
+        call("sess_1", "see [Image 1: x - not attached]"),
+    ]
+    [warning] = warnings(mock_ocean)
+    assert str(status) in warning
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "images, status",
+    [
+        (PromptImages("see [Image 1: x]", blocks=IMAGE_BLOCKS), 500),
+        (PromptImages("no images"), 400),
+    ],
+)
+async def test_trigger_agent_does_not_hide_other_send_failures(
+    images: PromptImages, status: int
+) -> None:
+    with pytest.raises(APIStatusError):
+        await execute_continuing("no images", images, send_effect=[rejected(status)])
 
 
 @pytest.mark.asyncio
