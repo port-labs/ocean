@@ -3,13 +3,10 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic.v1 import Field, BaseModel, ValidationError
-from pydantic.v1.error_wrappers import ErrorWrapper
+from pydantic.v1 import Field, BaseModel
 from typing import ClassVar, List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-
-from feature_flags import is_aws_v3_custom_kinds_enabled
 
 AWS_CLOUD_CONTROL_TYPE_PATTERN = r"^AWS::[A-Za-z0-9]+::[A-Za-z0-9]+$"
 
@@ -496,7 +493,7 @@ class AWSCustomKindResourceConfig(ResourceConfig):
 
 
 class AWSPortAppConfig(PortAppConfig):
-    allow_custom_kinds: ClassVar[bool] = True
+    allow_custom_kinds: ClassVar[bool] = False
 
     resources: List[
         AWSS3BucketResourceConfig
@@ -532,7 +529,6 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSDynamoDBTableResourceConfig
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
-        | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
@@ -540,34 +536,6 @@ class AWSPortAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
-async def _ensure_custom_kinds_feature_enabled(config: AWSPortAppConfig) -> None:
-    if not any(isinstance(resource, AWSCustomKindResourceConfig) for resource in config.resources):
-        return
-    if await is_aws_v3_custom_kinds_enabled():
-        return
-    raise ValidationError(
-        [
-            ErrorWrapper(
-                ValueError(
-                    "Custom AWS resource kinds require the "
-                    "AWS_V3_CUSTOM_KINDS_ENABLED organization feature flag"
-                ),
-                loc=("resources",),
-            )
-        ],
-        AWSPortAppConfig,
-    )
-
-
-class AWSAPIPortAppConfig(APIPortAppConfig):
-    CONFIG_CLASS = AWSPortAppConfig
-
-    async def get_port_app_config(self, use_cache: bool = True) -> AWSPortAppConfig:
-        config = await super().get_port_app_config(use_cache=use_cache)
-        await _ensure_custom_kinds_feature_enabled(config)
-        return config
-
-
 class AWSIntegration(BaseIntegration):
-    class AppConfigHandlerClass(AWSAPIPortAppConfig):
-        pass
+    class AppConfigHandlerClass(APIPortAppConfig):
+        CONFIG_CLASS = AWSPortAppConfig
