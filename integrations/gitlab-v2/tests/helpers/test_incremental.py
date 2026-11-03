@@ -234,5 +234,4 @@ def test_project_updated_incremental_sets_updated_after_and_drops_selectors() ->
         "active": True,
         "updated_after": CURSOR.isoformat(),
         "order_by": "updated_at",
-        "sort": "asc",
     }
