@@ -36,6 +36,8 @@ class AwardEmoji(BaseModel):
 CHANGED_FILES_BATCH_SIZE = 100
 CHANGED_PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
 GIT_NULL_SHA = "0" * 40
+# Push events read per project before giving up and listing the project in full.
+PUSH_EVENT_MAX_PAGES = 20
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
@@ -206,6 +208,8 @@ class GitLabClient:
         since_iso = since.isoformat()
         try:
             pushes = await self._pushes_to_ref_since(project_path, since, ref)
+            if pushes is None:
+                return None
             if not pushes:
                 return await self._unchanged_since(project_path, since, ref)
 
@@ -264,29 +268,48 @@ class GitLabClient:
 
     async def _pushes_to_ref_since(
         self, project_path: str, since: datetime, ref: str
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]] | None:
         """Push events to branch ``ref`` created after ``since``, oldest first.
 
         Events come newest first and the ``after`` filter only takes a date, so
-        pages are read until an event at or before ``since`` shows up.
+        pages are read until an event at or before ``since`` shows up. Returns
+        ``None`` when the history can't be trusted and a full listing is needed:
+        a page that isn't a list (a GET 403/404 comes back as ``{}``), or no
+        cursor event within ``PUSH_EVENT_MAX_PAGES`` pages.
         """
         pushes: list[dict[str, Any]] = []
-        async for events_batch in self.rest.get_paginated_project_resource(
-            project_path, "events", params={"action": "pushed"}
-        ):
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        encoded_path = quote(project_path, safe="")
+        for page in range(1, PUSH_EVENT_MAX_PAGES + 1):
+            events = await self.rest.send_api_request(
+                "GET",
+                f"projects/{encoded_path}/events",
+                params={"action": "pushed", "per_page": page_size, "page": page},
+            )
+            if not isinstance(events, list):
+                logger.warning(
+                    f"Push events for {project_path} are not readable, full listing needed"
+                )
+                return None
             reached_since = False
-            for event in events_batch:
+            for event in events:
                 if convert_str_to_utc_datetime(event["created_at"]) <= since:
                     reached_since = True
                     break
                 push = event.get("push_data") or {}
                 if push.get("ref_type") == "branch" and push.get("ref") == ref:
                     pushes.append(event)
-            if reached_since:
-                break
-        return sorted(
-            pushes, key=lambda event: convert_str_to_utc_datetime(event["created_at"])
+            # A short page is the end of the feed, so every push is already seen.
+            if reached_since or len(events) < page_size:
+                return sorted(
+                    pushes,
+                    key=lambda event: convert_str_to_utc_datetime(event["created_at"]),
+                )
+        logger.warning(
+            f"No push event before {since.isoformat()} in {project_path} within "
+            f"{PUSH_EVENT_MAX_PAGES} pages, full listing needed"
         )
+        return None
 
     async def _unchanged_since(
         self, project_path: str, since: datetime, ref: str

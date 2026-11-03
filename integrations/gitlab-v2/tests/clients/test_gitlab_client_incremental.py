@@ -8,6 +8,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient, _ancestor_dirs
+from gitlab.clients.rest_client import RestClient
 from gitlab.helpers.utils import build_search_query
 
 pytestmark = pytest.mark.asyncio
@@ -65,11 +66,14 @@ def _mock_rest(
     tip_committed_date: str | None = "2026-10-01T00:00:00+00:00",
 ) -> None:
     client.rest = MagicMock()
-    client.rest.get_paginated_project_resource = MagicMock(
-        side_effect=lambda *args, **kwargs: _gen([events])
-    )
 
-    async def send_api_request(method: str, path: str, **_: Any) -> dict[str, Any]:
+    async def send_api_request(
+        method: str, path: str, params: dict[str, Any] | None = None, **_: Any
+    ) -> Any:
+        if path.endswith("/events"):
+            assert params is not None
+            size, page = params["per_page"], params["page"]
+            return events[(page - 1) * size : page * size]
         sha = path.rsplit("/", 1)[-1]
         if sha == "main":
             return {"committed_date": tip_committed_date}
@@ -131,22 +135,58 @@ async def test_pushes_to_other_refs_are_ignored(client: GitLabClient) -> None:
 
 async def test_pushes_are_read_across_pages_until_cursor(client: GitLabClient) -> None:
     """Events are newest first; paging stops at the first event at or before the cursor."""
-    _mock_rest(client, [], {"C1": {"id": "C1", "parent_ids": ["C0"]}})
-    pages = [
-        [_push("2026-10-18T12:00:00Z", "C2")],
-        [_push("2026-10-18T11:00:00Z", "C1"), _push("2026-10-18T08:00:00Z", "C0")],
-    ]
-    client.rest.get_paginated_project_resource = MagicMock(  # type: ignore[method-assign]
-        side_effect=lambda *args, **kwargs: _gen(pages)
+    _mock_rest(
+        client,
+        [
+            _push("2026-10-18T12:00:00Z", "C2"),
+            _push("2026-10-18T11:00:00Z", "C1"),
+            _push("2026-10-18T08:00:00Z", "C0"),
+        ],
+        {"C1": {"id": "C1", "parent_ids": ["C0"]}},
     )
     client.compare_repository = AsyncMock(  # type: ignore[method-assign]
         return_value={"diffs": [{"new_path": "a.yaml", "deleted_file": False}]}
     )
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["a.yaml"]
+    with patch.object(RestClient, "DEFAULT_PAGE_SIZE", 2):
+        assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == [
+            "a.yaml"
+        ]
+
     client.compare_repository.assert_awaited_once_with("group/repo", "C1", "main")
-    params = client.rest.get_paginated_project_resource.call_args.kwargs["params"]
-    assert params == {"action": "pushed"}
+    event_calls = [
+        call.kwargs["params"]
+        for call in client.rest.send_api_request.call_args_list  # type: ignore[attr-defined]
+        if call.args[1].endswith("/events")
+    ]
+    assert [params["page"] for params in event_calls] == [1, 2]
+    assert all(params["action"] == "pushed" for params in event_calls)
+
+
+async def test_unreadable_push_events_need_full_listing(client: GitLabClient) -> None:
+    """A GET 403/404 on the events comes back as {}; that must not read as "no pushes"."""
+    client.rest = MagicMock()
+    client.rest.send_api_request = AsyncMock(return_value={})
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    client.compare_repository.assert_not_awaited()
+
+
+async def test_no_cursor_event_within_page_cap_needs_full_listing(
+    client: GitLabClient,
+) -> None:
+    events = [_push(f"2026-10-20T0{hour}:00:00Z", f"C{hour}") for hour in range(1, 6)]
+    _mock_rest(client, events, {})
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    with (
+        patch.object(RestClient, "DEFAULT_PAGE_SIZE", 2),
+        patch("gitlab.clients.gitlab_client.PUSH_EVENT_MAX_PAGES", 2),
+    ):
+        assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+
+    client.compare_repository.assert_not_awaited()
 
 
 @pytest.fixture
@@ -190,7 +230,8 @@ async def test_unchanged_result_is_cached_for_the_run(client: GitLabClient) -> N
 
     assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
     assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
-    assert client.rest.send_api_request.await_count == 1  # type: ignore[attr-defined]
+    # One events page and one tip read, both made by the first call only.
+    assert client.rest.send_api_request.await_count == 2  # type: ignore[attr-defined]
     client.compare_repository.assert_not_awaited()
 
 
