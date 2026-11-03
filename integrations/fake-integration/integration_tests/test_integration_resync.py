@@ -1,8 +1,11 @@
 """Integration test that runs a full resync of the fake-integration
 with controlled third-party and Port API responses.
 
-This validates the entire pipeline:
-  third-party API → on_resync handler → JQ transformation → Port upsert
+This validates Ocean's side of the pipeline:
+  third-party API → on_resync handler → raw items handed to the data-source-processor
+
+Mapping, selector filtering and stale-entity reconciliation happen in the
+data-source-processor, driven by the lifecycle API calls Ocean makes.
 """
 
 from typing import Any
@@ -15,6 +18,33 @@ from port_ocean.integration_testing import (
     IntegrationTestHarness,
     ResyncResult,
 )
+from port_ocean.integration_testing.port_mock import LifecycleCall
+
+
+def resync_lifecycle_calls(result: ResyncResult) -> list[LifecycleCall]:
+    """Resync-level lifecycle calls (POST /v1/lifecycle/{resync_id})."""
+    return [
+        call
+        for call in result.lifecycle_calls
+        if call.method == "POST"
+        and call.body is not None
+        and len(call.path.strip("/").split("/")) == 3
+    ]
+
+
+def kind_lifecycle_statuses(result: ResyncResult) -> dict[str, list[str]]:
+    """Statuses reported per kind identifier (POST /v1/lifecycle/{resync_id}/kind)."""
+    statuses: dict[str, list[str]] = {}
+    for call in result.lifecycle_calls:
+        if call.method == "POST" and call.path.endswith("/kind") and call.body:
+            statuses.setdefault(call.body["kind_identifier"], []).append(
+                call.body["status"]
+            )
+    return statuses
+
+
+def resync_statuses(result: ResyncResult) -> list[str]:
+    return [call.body["status"] for call in resync_lifecycle_calls(result) if call.body]
 
 
 class TestFakeIntegrationResync(BaseIntegrationTest):
@@ -108,42 +138,30 @@ class TestFakeIntegrationResync(BaseIntegrationTest):
 
     @pytest.mark.asyncio
     async def test_resync_departments_and_persons(self, resync: ResyncResult) -> None:
-        """Test a full resync produces the expected entities from controlled data."""
-        assert (
-            len(resync.upserted_entities) > 0
-        ), f"Expected entities to be upserted, got none. Errors: {resync.errors}"
+        """Test a full resync hands the expected raw items to the data-source-processor."""
+        assert not resync.errors, f"Unexpected resync errors: {resync.errors}"
+        assert resync.upserted_entities == []
 
-        # Check departments were created
-        department_entities = [
-            e
-            for e in resync.upserted_entities
-            if e.get("blueprint") == "fakeDepartment"
-        ]
-        assert len(department_entities) > 0, "Expected department entities"
-        assert department_entities[0]["identifier"] == "hr"
-        assert department_entities[0]["properties"]["name"] == "hr"
+        departments = resync.raw_items("fake-department")
+        assert len(departments) > 0, "Expected raw department items"
+        assert departments[0]["id"] == "hr"
+        assert departments[0]["name"] == "hr"
 
-        # Check persons were created
-        person_entities = [
-            e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
-        ]
-        assert len(person_entities) > 0, "Expected person entities"
+        persons = resync.raw_items("fake-person")
+        assert {p["id"] for p in persons} == {"person-1", "person-2"}
 
-        person_ids = {e["identifier"] for e in person_entities}
-        assert "person-1" in person_ids
-        assert "person-2" in person_ids
+        alice = next(p for p in persons if p["id"] == "person-1")
+        assert alice["name"] == "Alice Smith"
+        assert alice["email"] == "alice@test.com"
+        assert alice["age"] == 30
+        assert alice["status"] == "WORKING"
+        assert alice["department"]["id"] == "hr"
 
-        # Check a specific person's mapped properties
-        alice = next(e for e in person_entities if e["identifier"] == "person-1")
-        assert alice["title"] == "Alice Smith"
-        assert alice["properties"]["email"] == "alice@test.com"
-        assert alice["properties"]["age"] == 30
-        assert alice["properties"]["status"] == "WORKING"
-        assert alice["relations"]["department"] == "hr"
+        assert resync_statuses(resync) == ["started", "finished"]
 
 
 class TestFakeIntegrationSelectorFilter(BaseIntegrationTest):
-    """Test that JQ selectors correctly filter entities."""
+    """Test that selectors are forwarded to the data-source-processor, which filters."""
 
     def create_third_party_transport(self) -> InterceptTransport:
         transport = InterceptTransport(strict=False)
@@ -228,15 +246,28 @@ class TestFakeIntegrationSelectorFilter(BaseIntegrationTest):
         }
 
     @pytest.mark.asyncio
-    async def test_only_working_persons_pass(self, resync: ResyncResult) -> None:
-        person_entities = [
-            e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
-        ]
+    async def test_all_persons_handed_off_with_selector_query(
+        self, resync: ResyncResult
+    ) -> None:
+        assert not resync.errors, f"Unexpected resync errors: {resync.errors}"
 
-        # Only Alice (WORKING) should pass, Bob (NOPE) should be filtered
-        assert len(person_entities) == 1
-        assert person_entities[0]["identifier"] == "person-1"
-        assert person_entities[0]["properties"]["status"] == "WORKING"
+        # Ocean no longer filters: both Alice (WORKING) and Bob (NOPE) are handed off
+        persons = resync.raw_items("fake-person")
+        assert {p["id"]: p["status"] for p in persons} == {
+            "person-1": "WORKING",
+            "person-2": "NOPE",
+        }
+
+        # The selector query reaches the data-source-processor via the resync mapping
+        started = [
+            call.body
+            for call in resync_lifecycle_calls(resync)
+            if call.body and call.body["status"] == "started"
+        ]
+        assert len(started) == 1
+        resources = started[0]["mapping"]["resources"]
+        person_resource = next(r for r in resources if r["kind"] == "fake-person")
+        assert person_resource["selector"]["query"] == '.status == "WORKING"'
 
 
 class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
@@ -309,20 +340,21 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
 
     @pytest.mark.asyncio
     async def test_no_persons_on_api_error(self, resync: ResyncResult) -> None:
-        # Departments should still be created (they don't call the third-party API)
-        department_entities = [
-            e
-            for e in resync.upserted_entities
-            if e.get("blueprint") == "fakeDepartment"
-        ]
-        assert len(department_entities) > 0
+        # Departments are still handed off (they don't call the third-party API)
+        departments = resync.raw_items("fake-department")
+        assert [d["id"] for d in departments] == ["hr"]
 
-        # Person API returned 500, so no person entities should be upserted
-        # The error should be caught and added to resync.errors
-        person_entities = [
-            e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
-        ]
-        assert len(person_entities) == 0
+        # Person API returned 500, so no raw person items are handed off
+        assert resync.raw_items("fake-person", operation=None) == []
+        assert resync.reconciliation_success is False
+
+        # The failed kind is reported to the lifecycle API; the healthy kind finishes
+        kind_statuses = kind_lifecycle_statuses(resync)
+        assert kind_statuses["fake-department-0"] == ["started", "finished"]
+        assert kind_statuses["fake-person-1"] == ["started", "failed"]
+
+        # A partial resync is reported as failed so stale entities are not reconciled away
+        assert resync_statuses(resync) == ["started", "failed"]
 
         # The resync should have encountered an HTTP error
         assert len(resync.errors) > 0, (
@@ -333,7 +365,7 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
         # Extract all exceptions, recursively unwrapping ExceptionGroups
         def extract_exceptions(errors: list[Exception]) -> list[Exception]:
             """Recursively extract exceptions from ExceptionGroups."""
-            result = []
+            result: list[Exception] = []
             for error in errors:
                 if isinstance(error, ExceptionGroup) and hasattr(error, "exceptions"):
                     result.extend(extract_exceptions(list(error.exceptions)))
@@ -341,7 +373,7 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
                     result.append(error)
             return result
 
-        all_errors = extract_exceptions(resync.errors)
+        all_errors: list[Exception] = extract_exceptions(resync.errors)
 
         # Verify at least one error is HTTP-related
         http_errors = [
@@ -358,10 +390,10 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
 
 
 class TestFakeIntegrationDeletions(BaseIntegrationTest):
-    """Test that entities are properly deleted when they no longer exist in the source."""
+    """Test that stale entities are left to the data-source-processor to reconcile."""
 
     def create_third_party_transport(self) -> InterceptTransport:
-        """Mock returns only person-1 (person-2 and person-3 will be deleted)."""
+        """Mock returns only person-1 (person-2 and person-3 are stale in Port)."""
         transport = InterceptTransport(strict=False)
         transport.add_route(
             "GET",
@@ -440,7 +472,7 @@ class TestFakeIntegrationDeletions(BaseIntegrationTest):
         }
 
     def get_port_search_entities_response(self) -> list[dict[str, Any]]:
-        """Entities that 'exist in Port' — will be deleted since they're not in new resync."""
+        """Entities that 'exist in Port' but are no longer returned by the source."""
         return [
             {
                 "identifier": "person-2",
@@ -471,41 +503,25 @@ class TestFakeIntegrationDeletions(BaseIntegrationTest):
         ]
 
     @pytest.mark.asyncio
-    async def test_deleted_entities_are_captured(
+    async def test_stale_entities_left_to_dsp_reconciliation(
         self, harness: IntegrationTestHarness
     ) -> None:
-        """Test that entities existing in Port but not in the new resync are deleted."""
-        # Trigger resync - person-1 will be created, person-2 and person-3 will be deleted
+        """Ocean hands off only current items and signals resync completion; the
+        data-source-processor deletes person-2 and person-3 when it reconciles."""
         result = await harness.trigger_resync()
 
-        # Verify reconciliation succeeded
         assert (
             result.reconciliation_success is True
-        ), f"Reconciliation should succeed, but got errors: {result.errors}"
+        ), f"Resync should succeed, but got errors: {result.errors}"
 
-        # Verify person-1 was upserted
-        person_entities = [
-            e for e in result.upserted_entities if e.get("blueprint") == "fakePerson"
-        ]
-        assert len(person_entities) == 1
-        assert person_entities[0]["identifier"] == "person-1"
+        persons = result.raw_items("fake-person")
+        assert [p["id"] for p in persons] == ["person-1"]
 
-        # Verify person-2 and person-3 were deleted
-        assert (
-            len(result.deleted_entities) >= 2
-        ), f"Expected at least 2 deleted entities, got: {result.deleted_entities}"
+        # Ocean itself neither deletes entities nor emits delete operations
+        assert result.deleted_entities == []
+        assert result.raw_items(operation="delete") == []
 
-        deleted_identifiers = {e["identifier"] for e in result.deleted_entities}
-        assert (
-            "person-2" in deleted_identifiers
-        ), f"Expected person-2 to be deleted, but deleted entities are: {deleted_identifiers}"
-        assert (
-            "person-3" in deleted_identifiers
-        ), f"Expected person-3 to be deleted, but deleted entities are: {deleted_identifiers}"
-
-        # Verify deleted entities have the correct structure
-        person_2_deleted = next(
-            e for e in result.deleted_entities if e["identifier"] == "person-2"
-        )
-        assert person_2_deleted["blueprint"] == "fakePerson"
-        assert person_2_deleted["identifier"] == "person-2"
+        # A finished resync is what lets the data-source-processor reconcile stale entities
+        assert resync_statuses(result) == ["started", "finished"]
+        kind_statuses = kind_lifecycle_statuses(result)
+        assert kind_statuses["fake-person-1"] == ["started", "finished"]
