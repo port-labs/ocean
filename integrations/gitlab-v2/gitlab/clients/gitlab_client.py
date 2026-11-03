@@ -201,6 +201,11 @@ class GitLabClient:
                 "GET",
                 f"projects/{quote(project_path, safe='')}/repository/commits/{base_sha}",
             )
+            if not base:
+                logger.warning(
+                    f"Base commit {base_sha} in {project_path} is not readable, full listing needed"
+                )
+                return None
             if not base.get("parent_ids"):
                 logger.info(
                     f"Base commit {base_sha} in {project_path} is a root commit, full listing needed"
@@ -212,6 +217,14 @@ class GitLabClient:
             logger.warning(
                 f"Failed to compare '{ref}' in {project_path} since {since_iso}, "
                 f"full listing needed: {err}"
+            )
+            return None
+
+        # A 403/404 on a GET comes back as {} (see base_client), which has no diffs.
+        # Treat that as an untrusted compare, not as "nothing changed".
+        if "diffs" not in compare:
+            logger.warning(
+                f"Compare for {project_path} returned no diffs (not readable or not found), full listing needed"
             )
             return None
 
@@ -259,6 +272,11 @@ class GitLabClient:
             "GET",
             f"projects/{quote(project_path, safe='')}/repository/commits/{quote(ref, safe='')}",
         )
+        if not tip.get("committed_date"):
+            logger.warning(
+                f"Branch '{ref}' in {project_path} is not readable, full listing needed"
+            )
+            return None
         if convert_str_to_utc_datetime(tip["committed_date"]) <= since:
             logger.info(
                 f"No push to '{ref}' in {project_path} since {since.isoformat()}"

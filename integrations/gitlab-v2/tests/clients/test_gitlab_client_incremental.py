@@ -62,7 +62,7 @@ def _mock_rest(
     client: GitLabClient,
     events: list[dict[str, Any]],
     commits: dict[str, dict[str, Any]],
-    tip_committed_date: str = "2026-10-01T00:00:00+00:00",
+    tip_committed_date: str | None = "2026-10-01T00:00:00+00:00",
 ) -> None:
     client.rest = MagicMock()
     client.rest.get_paginated_project_resource = MagicMock(
@@ -182,6 +182,34 @@ async def test_changed_paths_none_on_compare_timeout(client: GitLabClient) -> No
     )
 
     assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+
+
+async def test_compare_without_diffs_needs_full_listing(client: GitLabClient) -> None:
+    """A 403/404 compare comes back as {} and must not read as "nothing changed"."""
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0")],
+        {"C0": {"id": "C0", "parent_ids": ["P"]}},
+    )
+    client.compare_repository = AsyncMock(return_value={})  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+
+
+async def test_unreadable_base_commit_needs_full_listing(client: GitLabClient) -> None:
+    _mock_rest(client, [_push("2026-10-18T10:00:00Z", "C0")], {"C0": {}})
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    client.compare_repository.assert_not_awaited()
+
+
+async def test_unreadable_branch_tip_needs_full_listing(client: GitLabClient) -> None:
+    _mock_rest(client, [], {}, tip_committed_date=None)
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    client.compare_repository.assert_not_awaited()
 
 
 async def test_changed_paths_none_on_http_error(client: GitLabClient) -> None:
