@@ -1215,6 +1215,8 @@ class GitLabClient:
         ``since``. Falls back to the full folder listing when the diff cannot be trusted.
         """
         project = await self.get_project(repository)
+        if not project:
+            return
         effective_branch = branch or self._project_tree_ref(project)
         if not effective_branch:
             return

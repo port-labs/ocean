@@ -305,6 +305,19 @@ async def test_changed_folders_yield_only_changed_children(
     assert client.get_repository_tree.call_args.args[1] == "docs"
 
 
+async def test_unreadable_project_yields_no_folders(client: GitLabClient) -> None:
+    """An explicit branch skips the project's default branch, so an empty project must stop here."""
+    client.get_project = AsyncMock(return_value={})  # type: ignore[method-assign]
+    client.get_changed_paths_since = AsyncMock()  # type: ignore[method-assign]
+
+    batches = await _collect(
+        client.get_repository_folders_since("docs", "group/repo", SINCE, branch="dev")
+    )
+
+    assert batches == []
+    client.get_changed_paths_since.assert_not_awaited()
+
+
 async def test_changed_folders_fall_back_to_full_listing(
     client: GitLabClient,
 ) -> None:
