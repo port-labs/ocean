@@ -11,7 +11,7 @@ from port_ocean.integration_testing import (
 from helpers import all_mappings, integration_config
 from mocks.payloads import (
     RECORD_COUNT,
-    created_on_iso,
+    created_on,
     incident_response,
     service_catalog_response,
     sys_id,
@@ -23,12 +23,12 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
     """Happy-path integration test for the ServiceNow integration.
 
     Exercises a full resync across all three default kinds at once:
-    - sys_user_group  → servicenowGroup entities
-    - sc_catalog      → servicenowCatalog entities
-    - incident        → servicenowIncident entities
+    - sys_user_group  → raw group records
+    - sc_catalog      → raw catalog records
+    - incident        → raw incident records
 
-    Expected output: 2 entities per blueprint (RECORD_COUNT = 2),
-    with titles, key properties, and the createdOn date-transform all verified.
+    Expected output: 2 raw records per kind (RECORD_COUNT = 2) handed off to
+    Port, each located by `sys_id` with the raw fields the mapping reads verified.
     """
 
     integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
@@ -69,60 +69,55 @@ class TestServiceNowHappyPath(BaseIntegrationTest):
         assert resync.errors == [], f"Resync had errors: {resync.errors}"
         assert resync.reconciliation_success is True
 
-        by_blueprint: dict[str, list[dict[str, Any]]] = {}
-        for entity in resync.upserted_entities:
-            by_blueprint.setdefault(entity["blueprint"], []).append(entity)
-
         # --- Groups ---
-        groups = by_blueprint.get("servicenowGroup", [])
+        groups = resync.raw_items("sys_user_group")
         assert (
             len(groups) == RECORD_COUNT
         ), f"Expected {RECORD_COUNT} groups, got {len(groups)}"
-        groups_by_id = {e["identifier"]: e for e in groups}
+        groups_by_id = {g["sys_id"]: g for g in groups}
         for i in range(1, RECORD_COUNT + 1):
             record = user_group_response(i)
-            entity = groups_by_id[sys_id("group", i)]
-            assert entity["title"] == record["name"]
-            assert entity["properties"]["description"] == record["description"]
-            assert entity["properties"]["isActive"] == record["active"]
-            assert entity["properties"]["createdOn"] == created_on_iso(i)
-            assert entity["properties"]["createdBy"] == record["sys_created_by"]
+            group = groups_by_id[sys_id("group", i)]
+            assert group["name"] == record["name"]
+            assert group["description"] == record["description"]
+            assert group["active"] == record["active"]
+            assert group["sys_created_on"] == created_on(i)
+            assert group["sys_created_by"] == record["sys_created_by"]
 
         # --- Catalogs ---
-        catalogs = by_blueprint.get("servicenowCatalog", [])
+        catalogs = resync.raw_items("sc_catalog")
         assert (
             len(catalogs) == RECORD_COUNT
         ), f"Expected {RECORD_COUNT} catalogs, got {len(catalogs)}"
-        catalogs_by_id = {e["identifier"]: e for e in catalogs}
+        catalogs_by_id = {c["sys_id"]: c for c in catalogs}
         for i in range(1, RECORD_COUNT + 1):
             record = service_catalog_response(i)
-            entity = catalogs_by_id[sys_id("catalog", i)]
-            assert entity["title"] == record["title"]
-            assert entity["properties"]["description"] == record["description"]
-            assert entity["properties"]["isActive"] == record["active"]
-            assert entity["properties"]["createdOn"] == created_on_iso(i)
-            assert entity["properties"]["createdBy"] == record["sys_created_by"]
+            catalog = catalogs_by_id[sys_id("catalog", i)]
+            assert catalog["title"] == record["title"]
+            assert catalog["description"] == record["description"]
+            assert catalog["active"] == record["active"]
+            assert catalog["sys_created_on"] == created_on(i)
+            assert catalog["sys_created_by"] == record["sys_created_by"]
 
         # --- Incidents ---
-        incidents = by_blueprint.get("servicenowIncident", [])
+        incidents = resync.raw_items("incident")
         assert (
             len(incidents) == RECORD_COUNT
         ), f"Expected {RECORD_COUNT} incidents, got {len(incidents)}"
-        incidents_by_id = {e["identifier"]: e for e in incidents}
+        incidents_by_id = {inc["sys_id"]: inc for inc in incidents}
         for i in range(1, RECORD_COUNT + 1):
             record = incident_response(i)
-            entity = incidents_by_id[sys_id("incident", i)]
-            assert entity["title"] == record["short_description"]
-            props = entity["properties"]
-            assert props["number"] == record["number"]
-            assert props["state"] == record["state"]
-            assert props["category"] == record["category"]
-            assert props["reopenCount"] == record["reopen_count"]
-            assert props["severity"] == record["severity"]
-            assert props["assignedTo"] == record["assigned_to"]["link"]
-            assert props["urgency"] == record["urgency"]
-            assert props["contactType"] == record["contact_type"]
-            assert props["createdOn"] == created_on_iso(i)
-            assert props["createdBy"] == record["sys_created_by"]
-            assert props["isActive"] == record["active"]
-            assert props["priority"] == record["priority"]
+            incident = incidents_by_id[sys_id("incident", i)]
+            assert incident["short_description"] == record["short_description"]
+            assert incident["number"] == record["number"]
+            assert incident["state"] == record["state"]
+            assert incident["category"] == record["category"]
+            assert incident["reopen_count"] == record["reopen_count"]
+            assert incident["severity"] == record["severity"]
+            assert incident["assigned_to"]["link"] == record["assigned_to"]["link"]
+            assert incident["urgency"] == record["urgency"]
+            assert incident["contact_type"] == record["contact_type"]
+            assert incident["sys_created_on"] == created_on(i)
+            assert incident["sys_created_by"] == record["sys_created_by"]
+            assert incident["active"] == record["active"]
+            assert incident["priority"] == record["priority"]
