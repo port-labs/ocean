@@ -260,10 +260,11 @@ async def resync_plugins_incremental(
     """Rebuild only the plugins of projects whose changes touch a plugin manifest or directory."""
     providers = selector.providers
     async for projects_batch in _iter_projects(client, selector.repos, project_params):
-        touched: list[dict[str, Any]] = []
-        for project in projects_batch:
-            if await _plugin_changed(client, project, since, providers):
-                touched.append(project)
+        touched = [
+            project
+            for project in projects_batch
+            if await _plugin_changed(client, project, since, providers)
+        ]
         if not touched:
             continue
         batch = await _plugins_for_projects(client, touched, providers)

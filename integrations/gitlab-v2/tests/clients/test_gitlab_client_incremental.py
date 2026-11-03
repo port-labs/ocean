@@ -87,7 +87,8 @@ async def test_changed_paths_compares_from_branch_tip_before_first_push(
 ) -> None:
     _mock_rest(
         client,
-        [_push("2026-10-18T10:00:00Z", "C0"), _push("2026-10-18T11:00:00Z", "C1")],
+        # GitLab lists events newest first.
+        [_push("2026-10-18T11:00:00Z", "C1"), _push("2026-10-18T10:00:00Z", "C0")],
         {"C0": {"id": "C0", "parent_ids": ["P"]}},
     )
     client.compare_repository = AsyncMock(  # type: ignore[method-assign]

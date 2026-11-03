@@ -258,7 +258,7 @@ class GitLabClient:
 
         changed_paths = [
             diff["new_path"]
-            for diff in compare.get("diffs", [])
+            for diff in compare["diffs"]
             if not diff.get("deleted_file")
         ]
         logger.info(
@@ -301,10 +301,8 @@ class GitLabClient:
                     pushes.append(event)
             # A short page is the end of the feed, so every push is already seen.
             if reached_since or len(events) < page_size:
-                return sorted(
-                    pushes,
-                    key=lambda event: convert_str_to_utc_datetime(event["created_at"]),
-                )
+                # Events come newest first, so reversing puts the oldest push first.
+                return pushes[::-1]
         logger.warning(
             f"No push event before {since.isoformat()} in {project_path} within "
             f"{PUSH_EVENT_MAX_PAGES} pages, full listing needed"
