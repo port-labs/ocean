@@ -1,7 +1,7 @@
 """Shared fixtures for custom authentication tests"""
 
 from typing import Dict, Any
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
 import pytest
 
 from http_server.overrides import (
@@ -11,12 +11,12 @@ from http_server.overrides import (
 
 
 @pytest.fixture
-def mock_entity_processor() -> MagicMock:
-    """Mock Ocean's entity processor for JQ evaluation"""
-    mock_processor = AsyncMock()
+def mock_jq() -> MagicMock:
+    """Mock JQ evaluation"""
+    mock_processor = MagicMock()
 
-    async def mock_search(data: Dict[str, Any], jq_path: str) -> Any:
-        """Simple mock JQ processor"""
+    def mock_search(data: Dict[str, Any], jq_path: str) -> Any:
+        """Simple mock JQ evaluation"""
         if jq_path == ".access_token":
             return data.get("access_token")
         elif jq_path == ".expires_in":
@@ -27,7 +27,7 @@ def mock_entity_processor() -> MagicMock:
             return data.get("nested", {}).get("value")
         return None
 
-    mock_processor._search = mock_search
+    mock_processor.evaluate = mock_search
     return mock_processor
 
 

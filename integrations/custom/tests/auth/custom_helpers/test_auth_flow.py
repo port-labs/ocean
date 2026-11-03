@@ -149,7 +149,7 @@ class TestAuthFlowManager:
                 await custom_auth._perform_auth_request()
 
     async def test_async_auth_flow_initial_auth(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test async_auth_flow performs initial authentication"""
         # No auth_response yet, so should authenticate first
@@ -176,8 +176,8 @@ class TestAuthFlowManager:
             )
 
             with patch(
-                "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-                mock_entity_processor,
+                "http_server.helpers.template_utils.jq",
+                mock_jq,
             ):
                 request = httpx.Request("GET", "https://api.example.com/data")
                 auth_flow = custom_auth.async_auth_flow(request)
@@ -193,7 +193,7 @@ class TestAuthFlowManager:
                 assert "Authorization" in authenticated_request.headers
 
     async def test_async_auth_flow_applies_templates(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test async_auth_flow applies templates to request"""
         custom_auth.auth_response = {"access_token": "test-token"}
@@ -205,8 +205,8 @@ class TestAuthFlowManager:
         mock_response.read = MagicMock(return_value=b'{"data": "success"}')
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             request = httpx.Request("GET", "https://api.example.com/data?page=1")
             auth_flow = custom_auth.async_auth_flow(request)
@@ -221,7 +221,7 @@ class TestAuthFlowManager:
             assert "test-token" in str(authenticated_request.url)
 
     async def test_async_auth_flow_401_reauthentication(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test async_auth_flow handles 401 and re-authenticates"""
         custom_auth.auth_response = {"access_token": "old-token"}
@@ -249,8 +249,8 @@ class TestAuthFlowManager:
             )
 
             with patch(
-                "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-                mock_entity_processor,
+                "http_server.helpers.template_utils.jq",
+                mock_jq,
             ):
                 request = httpx.Request("GET", "https://api.example.com/data")
                 auth_flow = custom_auth.async_auth_flow(request)
@@ -270,7 +270,7 @@ class TestAuthFlowManager:
                     assert custom_auth.auth_response["access_token"] == "new-token"
 
     async def test_async_auth_flow_401_lock_prevents_concurrent_reauth(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that lock prevents concurrent re-authentication on 401"""
         custom_auth.auth_response = {"access_token": "old-token"}
@@ -292,8 +292,8 @@ class TestAuthFlowManager:
 
         async def run_auth_flow() -> None:
             with patch(
-                "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-                mock_entity_processor,
+                "http_server.helpers.template_utils.jq",
+                mock_jq,
             ):
                 request = httpx.Request("GET", "https://api.example.com/data")
                 auth_flow = custom_auth.async_auth_flow(request)
@@ -343,7 +343,7 @@ class TestRequestOverride:
         )
 
     async def test_override_request_headers(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that headers are correctly overridden"""
         custom_auth.auth_response = {"access_token": "test-token-123"}
@@ -356,8 +356,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -374,7 +374,7 @@ class TestRequestOverride:
             assert str(overridden_request.url) == "https://api.example.com/data"
 
     async def test_override_request_query_params(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that query params are correctly overridden"""
         custom_auth.auth_response = {"access_token": "test-token-456"}
@@ -388,8 +388,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -402,7 +402,7 @@ class TestRequestOverride:
             assert "limit=10" in str(overridden_request.url)
 
     async def test_override_request_body_with_existing_json_body(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that body is correctly overridden when request has existing JSON body"""
         custom_auth.auth_response = {"access_token": "test-token-789"}
@@ -419,8 +419,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -439,7 +439,7 @@ class TestRequestOverride:
             assert int(overridden_request.headers["Content-Length"]) == len(body_bytes)
 
     async def test_override_request_body_with_empty_body(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that body is correctly added when request has no body"""
         custom_auth.auth_response = {"access_token": "test-token-empty"}
@@ -451,8 +451,8 @@ class TestRequestOverride:
         original_request = httpx.Request("POST", "https://api.example.com/data")
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -467,7 +467,7 @@ class TestRequestOverride:
             assert int(overridden_request.headers["Content-Length"]) == len(body_bytes)
 
     async def test_override_request_body_with_non_json_body(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that body override handles non-JSON body gracefully"""
         custom_auth.auth_response = {"access_token": "test-token-nonjson"}
@@ -483,8 +483,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -498,7 +498,7 @@ class TestRequestOverride:
             assert "Content-Length" in overridden_request.headers
 
     async def test_override_request_all_parameters_together(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that headers, query params, and body are all overridden together"""
         custom_auth.auth_response = {"access_token": "test-token-complete"}
@@ -516,8 +516,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -539,7 +539,7 @@ class TestRequestOverride:
             assert body_data["original"] == "data"
 
     async def test_override_request_no_auth_response(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that request is returned unchanged when no auth_response exists"""
         custom_auth.auth_response = None
@@ -552,8 +552,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -565,7 +565,7 @@ class TestRequestOverride:
             assert "Authorization" not in overridden_request.headers
 
     async def test_override_request_body_stream_is_set_correctly(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that body stream is correctly set after overriding"""
         custom_auth.auth_response = {"access_token": "test-token-stream"}
@@ -578,8 +578,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
@@ -595,7 +595,7 @@ class TestRequestOverride:
             assert body_bytes_1 == body_bytes_2
 
     async def test_override_request_preserves_extensions(
-        self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock
+        self, custom_auth: AuthFlowManager, mock_jq: MagicMock
     ) -> None:
         """Test that request extensions are preserved"""
         custom_auth.auth_response = {"access_token": "test-token-ext"}
@@ -610,8 +610,8 @@ class TestRequestOverride:
         )
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             overridden_request = await custom_auth._override_request(original_request)
 
