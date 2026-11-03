@@ -16,6 +16,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
 
 from clients.anthropic_client import AnthropicClient, RateLimitInfo
 from clients.exceptions import UnexpectedApiResponseError
+from tests.action_test_helpers import image_block
 
 
 class _Model:
@@ -259,6 +260,40 @@ async def test_senduser_message_event_shape(client: AnthropicClient) -> None:
             {
                 "type": "user.message",
                 "content": [{"type": "text", "text": "hello there"}],
+            }
+        ],
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_user_message_sends_the_extra_content_after_the_text(
+    client: AnthropicClient,
+) -> None:
+    inner: Any = client._client
+    sent_event = BetaManagedAgentsUserMessageEvent(
+        id="evt_1",
+        type="user.message",
+        content=[BetaManagedAgentsTextBlock(type="text", text="look")],
+    )
+    inner.beta.sessions.events.send = AsyncMock(
+        return_value=MagicMock(data=[sent_event])
+    )
+    image = image_block()
+
+    await client.send_user_message(
+        "sess_1", "look", [{"type": "text", "text": "Image 1:"}, image]
+    )
+
+    inner.beta.sessions.events.send.assert_awaited_once_with(
+        "sess_1",
+        events=[
+            {
+                "type": "user.message",
+                "content": [
+                    {"type": "text", "text": "look"},
+                    {"type": "text", "text": "Image 1:"},
+                    image,
+                ],
             }
         ],
     )
