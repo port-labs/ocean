@@ -145,7 +145,7 @@ async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None
         first = await executor._ensure_port_mcp_vault_ready(ctx_1)
         second = await executor._ensure_port_mcp_vault_ready(ctx_2)
 
-    assert first == bindings == second
+    assert first == second == "vault_1"
     get_vault.assert_awaited_once()
     ensure.assert_awaited_once()
     remint.assert_awaited_once()
@@ -201,9 +201,9 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
             None,
             [virtual_url, port_url],
         )
-        bindings = await executor._ensure_port_mcp_vault_ready(ctx)
+        vault_id = await executor._ensure_port_mcp_vault_ready(ctx)
 
-    assert bindings == [new_binding, seeded]
+    assert vault_id == "vault_1"
     get_vault.assert_not_awaited()
     remint.assert_awaited_once()
     ensure.assert_awaited_once_with(client, run, "vault_1", virtual_url)
@@ -226,16 +226,8 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
-            AsyncMock(
-                return_value=[
-                    PortMcpBinding(
-                        mcp_server_url="https://mcp.getport.io/v1",
-                        vault_id="vault_port",
-                        credential_id="cred_1",
-                    )
-                ]
-            ),
+            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            AsyncMock(return_value="vault_port"),
         ) as resolve_binding,
     ):
         await executor.execute(run)
@@ -281,16 +273,8 @@ async def test_trigger_agent_enable_port_mcp_wires_agent_without_existing_mcp() 
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
-            AsyncMock(
-                return_value=[
-                    PortMcpBinding(
-                        mcp_server_url="https://mcp.getport.io/v1",
-                        vault_id="vault_port",
-                        credential_id="cred_1",
-                    )
-                ]
-            ),
+            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            AsyncMock(return_value="vault_port"),
         ),
     ):
         await executor.execute(run)
@@ -329,7 +313,7 @@ async def test_trigger_agent_enable_port_mcp_false_skips_vault_and_agent_update(
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(),
         ) as resolve_binding,
     ):
@@ -371,7 +355,7 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(),
         ) as resolve_binding,
     ):
@@ -456,16 +440,8 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
-            AsyncMock(
-                return_value=[
-                    PortMcpBinding(
-                        mcp_server_url="https://mcp.getport.io/v1",
-                        vault_id="vault_port",
-                        credential_id="cred_1",
-                    )
-                ]
-            ),
+            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            AsyncMock(return_value="vault_port"),
         ) as resolve_binding,
     ):
         await executor.execute(run)
@@ -513,16 +489,8 @@ async def execute_continuing(
             AsyncMock(return_value=images),
         ),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
-            AsyncMock(
-                return_value=[
-                    PortMcpBinding(
-                        mcp_server_url="https://mcp.getport.io/v1",
-                        vault_id="vault_port",
-                        credential_id="cred_1",
-                    )
-                ]
-            ),
+            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            AsyncMock(return_value="vault_port"),
         ),
     ):
         await executor.execute(run)
