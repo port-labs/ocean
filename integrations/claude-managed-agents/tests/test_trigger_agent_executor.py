@@ -140,8 +140,12 @@ async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None
             AsyncMock(),
         ) as remint,
     ):
-        ctx_1 = PortMcpWorkflowContext(run_1, run_1.execution_identity, None, mcp_urls)
-        ctx_2 = PortMcpWorkflowContext(run_2, run_2.execution_identity, None, mcp_urls)
+        ctx_1 = PortMcpWorkflowContext(
+            run_1, run_1.execution_identity, None, mcp_urls, True, []
+        )
+        ctx_2 = PortMcpWorkflowContext(
+            run_2, run_2.execution_identity, None, mcp_urls, True, []
+        )
         first = await executor._ensure_port_mcp_vault_ready(ctx_1)
         second = await executor._ensure_port_mcp_vault_ready(ctx_2)
 
@@ -200,6 +204,8 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
             run.execution_identity,
             None,
             [virtual_url, port_url],
+            True,
+            ["payments"],
         )
         vault_id = await executor._ensure_port_mcp_vault_ready(ctx)
 
@@ -236,7 +242,9 @@ async def test_ensure_port_mcp_vault_ready_tolerates_duplicate_mcp_urls() -> Non
         AsyncMock(),
     ) as remint:
         vault_id = await executor._ensure_port_mcp_vault_ready(
-            PortMcpWorkflowContext(run, run.execution_identity, None, duplicate_urls)
+            PortMcpWorkflowContext(
+                run, run.execution_identity, None, duplicate_urls, True, []
+            )
         )
 
     assert vault_id == "vault_1"

@@ -27,7 +27,6 @@ from actions.abstract_action_input import AbstractAnthropicActionInput
 from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp_utils import (
     PortMcpBinding,
-    attach_managed_mcp_to_agent_payload,
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_credential,
     get_or_create_mcp_vault,
@@ -87,6 +86,8 @@ class PortMcpWorkflowContext:
     execution_identity: ResolvedExecutionIdentity
     vault_name: str | None
     mcp_urls: list[str]
+    enable_port_mcp: bool
+    virtual_mcp_server_ids: list[str]
 
 
 def port_mcp_workflow_context(
@@ -104,6 +105,8 @@ def port_mcp_workflow_context(
         identity,
         inputs.vaultName,
         mcp_urls_to_ensure(inputs.enablePortMcp, inputs.virtualMcpServerIds),
+        inputs.enablePortMcp,
+        inputs.virtualMcpServerIds,
     )
 
 
@@ -239,7 +242,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         self, agent: BetaManagedAgentsAgent, port_mcp: PortMcpWorkflowContext
     ) -> BetaManagedAgentsAgent:
         payload, changed = attach_port_mcp_settings_to_agent_config(
-            {}, agent, enable_port_mcp=True, virtual_mcp_server_ids=port_mcp.mcp_urls
+            {},
+            existing_agent=agent,
+            enable_port_mcp=port_mcp.enable_port_mcp,
+            virtual_mcp_server_ids=port_mcp.virtual_mcp_server_ids,
         )
         if not changed:
             return agent

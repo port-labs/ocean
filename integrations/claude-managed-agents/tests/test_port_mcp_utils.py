@@ -62,13 +62,18 @@ def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
         "actions.port_mcp_utils.ocean",
         SimpleNamespace(config=SimpleNamespace(port=SimpleNamespace(mcp_url=port))),
     ):
-        assert not is_agent_configured_with_port_mcp(servers)
+        assert not is_agent_configured_with_port_mcp(port, servers)
     assert _is_vault_credential_url_matching(credential, getport)
     assert not _is_vault_credential_url_matching(credential, port)
 
 
 def test_apply_port_mcp_adds_server_and_toolset() -> None:
-    result = attach_port_mcp_settings_to_agent_config({"description": "d"})
+    result, changed = attach_port_mcp_settings_to_agent_config(
+        {"description": "d"},
+        enable_port_mcp=True,
+        virtual_mcp_server_ids=[],
+    )
+    assert changed is True
     assert result["description"] == "d"
     assert "metadata" not in result
 
@@ -90,8 +95,19 @@ def test_apply_port_mcp_adds_server_and_toolset() -> None:
 
 
 def test_apply_port_mcp_is_idempotent() -> None:
-    once = attach_port_mcp_settings_to_agent_config({})
-    twice = attach_port_mcp_settings_to_agent_config(once)
+    once, _ = attach_port_mcp_settings_to_agent_config(
+        {}, enable_port_mcp=True, virtual_mcp_server_ids=[]
+    )
+    agent = MagicMock()
+    agent.mcp_servers = once["mcp_servers"]
+    agent.tools = once["tools"]
+    twice, changed = attach_port_mcp_settings_to_agent_config(
+        {},
+        existing_agent=agent,
+        enable_port_mcp=True,
+        virtual_mcp_server_ids=[],
+    )
+    assert changed is False
     assert len(twice["mcp_servers"]) == 1
     assert len(twice["tools"]) == 1
 
@@ -128,7 +144,12 @@ def test_apply_port_mcp_replaces_stale_port_named_server() -> None:
     agent.mcp_servers = [stale]
     agent.tools = [stale_toolset]
 
-    result = attach_port_mcp_settings_to_agent_config({}, existing_agent=agent)
+    result, _ = attach_port_mcp_settings_to_agent_config(
+        {},
+        existing_agent=agent,
+        enable_port_mcp=True,
+        virtual_mcp_server_ids=[],
+    )
 
     assert len(result["mcp_servers"]) == 1
     assert getattr(result["mcp_servers"][0], "url", None) == "https://mcp.getport.io/v1"
@@ -251,13 +272,16 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
 
 
 def test_attach_virtual_mcp_without_full_port() -> None:
-    result = attach_port_mcp_settings_to_agent_config(
+    result, changed = attach_port_mcp_settings_to_agent_config(
         {},
         enable_port_mcp=False,
         virtual_mcp_server_ids=["payments"],
     )
+    assert changed is True
     assert len(result["mcp_servers"]) == 1
-    assert getattr(result["mcp_servers"][0], "name", None) == "port-virtual-payments"
+    assert (
+        getattr(result["mcp_servers"][0], "name", None) == "port-virtual-mcp-payments"
+    )
     assert (
         getattr(result["mcp_servers"][0], "url", None)
         == "https://mcp.getport.io/v1/virtual-server/payments"

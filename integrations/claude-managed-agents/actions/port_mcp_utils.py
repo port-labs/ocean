@@ -104,9 +104,12 @@ def _swap_stale_port_mcp_config(
     tools: list[Tool],
 ) -> tuple[list[BetaManagedAgentsMCPServerURLDefinition], list[Tool]]:
     servers = [s for s in mcp_servers if s.name != port_mcp_server_name]
-    is_port_mcp_toolset = (
-        lambda t: t.type == "mcp_toolset" and t.mcp_server_name == port_mcp_server_name
-    )
+
+    def is_port_mcp_toolset(tool: Tool) -> bool:
+        return (
+            tool.type == "mcp_toolset" and tool.mcp_server_name == port_mcp_server_name
+        )
+
     refreshed_tools = [t for t in tools if not is_port_mcp_toolset(t)]
     return servers, refreshed_tools
 
@@ -157,22 +160,26 @@ def attach_port_mcp_settings_to_agent_config(
         proposed_config.get("mcp_servers") or [],
     )
     mcp_servers = _merge_mcp_servers_by_url(agent_servers, proposed_servers)
+    tools = list(agent_tools)
+    changed = False
 
     if enable_port_mcp:
-        mcp_servers, agent_tools, changed = _revise_agent_config_with_port_mcp(
-            _required_port_mcp_url(), PORT_MCP_SERVER_NAME, mcp_servers, agent_tools
+        mcp_servers, tools, port_changed = _revise_agent_config_with_port_mcp(
+            _required_port_mcp_url(), PORT_MCP_SERVER_NAME, mcp_servers, tools
         )
+        changed = changed or port_changed
 
     for identifier in virtual_mcp_server_ids:
         url = virtual_mcp_server_url(identifier)
         name = f"port-virtual-mcp-{identifier}"
-        mcp_servers, agent_tools, changed = _revise_agent_config_with_port_mcp(
-            url, name, mcp_servers, agent_tools
+        mcp_servers, tools, virtual_changed = _revise_agent_config_with_port_mcp(
+            url, name, mcp_servers, tools
         )
+        changed = changed or virtual_changed
     return {
         **proposed_config,
         "mcp_servers": mcp_servers,
-        "tools": agent_tools,
+        "tools": tools,
     }, changed
 
 
