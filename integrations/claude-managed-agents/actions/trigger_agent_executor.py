@@ -1,8 +1,12 @@
 from dataclasses import dataclass
 from typing import Any, Self
 
+from anthropic import APIStatusError
 from anthropic.types.beta import BetaManagedAgentsAgent
 from anthropic.types.beta.beta_managed_agents_session import BetaManagedAgentsSession
+from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import (
+    BetaManagedAgentsUserMessageEvent,
+)
 from anthropic.types.beta.sessions.beta_managed_agents_session_requires_action import (
     BetaManagedAgentsSessionRequiresAction,
 )
@@ -28,6 +32,7 @@ from actions.port_mcp_utils import (
     is_agent_configured_with_port_mcp,
     remint_port_mcp_credential,
 )
+from actions.prompt_images import load_prompt_images, prompt_without_images
 from actions.types import TriggerAgentSessionOutput
 from actions.utils import (
     build_external_id,
@@ -48,6 +53,9 @@ SESSION_NOT_CONTINUABLE_STATUS_LABEL = "Cannot continue"
 SESSION_START_FAILED_STATUS_LABEL = "Start failed"
 PORT_IDENTITY_ID_KEY = "port_identity_id"
 
+# Claude refuses an image by its size or dimensions with a 400, and a request that is too large with a 413.
+IMAGES_REJECTED_STATUS = (400, 413)
+MAX_LISTED_IMAGES = 10
 _CACHE_TTL_SECONDS = 120
 _CACHE_MAX_ITEMS = 100
 
@@ -236,6 +244,44 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             )
         return session
 
+    async def _send_prompt(
+        self, session_id: str, prompt: str, run: IntegrationRun
+    ) -> BetaManagedAgentsUserMessageEvent:
+        """Sends the prompt with the Port images it links to. Images never fail the run.
+
+        An image that can't be loaded is labeled "not attached" in the prompt and logged on the run. If Claude rejects
+        the images themselves (a size or dimension it does not take), the prompt goes without any of them.
+        """
+        images = await load_prompt_images(prompt)
+        if images.failed:
+            await self._warn(
+                run,
+                f"Could not attach {len(images.failed)} image(s) linked in the prompt: "
+                + ", ".join(images.failed[:MAX_LISTED_IMAGES])
+                + (", ..." if len(images.failed) > MAX_LISTED_IMAGES else ""),
+            )
+        try:
+            return await self.client.send_user_message(
+                session_id, images.prompt, images.blocks
+            )
+        except APIStatusError as error:
+            if not images.blocks or error.status_code not in IMAGES_REJECTED_STATUS:
+                raise
+            await self._warn(
+                run,
+                f"Claude rejected the images ({error.status_code}); sent the prompt without them",
+            )
+            return await self.client.send_user_message(
+                session_id, prompt_without_images(prompt)
+            )
+
+    @staticmethod
+    async def _warn(run: IntegrationRun, message: str) -> None:
+        logger.warning(f"{message} (run {run.id})")
+        await ocean.port_client.post_run_log(
+            run, message, level="WARNING", should_raise=False
+        )
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = TriggerAgentInputs.from_execution_properties(run.execution_properties)
 
@@ -265,7 +311,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         else:
             session = await self._create_new_trigger_session(inputs, port_mcp)
 
-        user_message = await self.client.send_user_message(session.id, inputs.prompt)
+        user_message = await self._send_prompt(session.id, inputs.prompt, run)
         logger.info(
             f"Triggered Claude agent {inputs.agentId} via session {session.id} "
             f"(message {user_message.id}) for run {run.id}"

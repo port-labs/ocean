@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.17.2 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 0.17.1 (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 0.17.0 (2026-10-29)
+
+
+### Features
+
+- Added incremental sync for project (last_activity_after), issue, merge-request, pipeline, and deployment (updated_after) using the Ocean cursor, plus in-run caching of group and project listings
+
+
 ## 0.16.12 (2026-10-29)
 
 

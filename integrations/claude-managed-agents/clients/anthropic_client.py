@@ -19,6 +19,12 @@ from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVaul
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
     BetaManagedAgentsSessionEvent,
 )
+from anthropic.types.beta.sessions.beta_managed_agents_image_block_param import (
+    BetaManagedAgentsImageBlockParam,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_text_block_param import (
+    BetaManagedAgentsTextBlockParam,
+)
 from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event import (
     BetaManagedAgentsUserInterruptEvent,
 )
@@ -422,15 +428,28 @@ class AnthropicClient:
         return await self._client.beta.sessions.create(**payload)
 
     async def send_user_message(
-        self, session_id: str, prompt: str
+        self,
+        session_id: str,
+        prompt: str,
+        extra_content: Sequence[
+            BetaManagedAgentsTextBlockParam | BetaManagedAgentsImageBlockParam
+        ] = (),
     ) -> BetaManagedAgentsUserMessageEvent:
-        logger.info(f"Sending user message to Claude session '{session_id}'")
+        """Sends the prompt, followed by `extra_content`: ready text and image content blocks."""
+        logger.info(
+            f"Sending user message to Claude session '{session_id}'"
+            + (
+                f" with {len(extra_content)} extra content block(s)"
+                if extra_content
+                else ""
+            )
+        )
         response = await self._client.beta.sessions.events.send(
             session_id,
             events=[
                 {
                     "type": "user.message",
-                    "content": [{"type": "text", "text": prompt}],
+                    "content": [{"type": "text", "text": prompt}, *extra_content],
                 }
             ],
         )
