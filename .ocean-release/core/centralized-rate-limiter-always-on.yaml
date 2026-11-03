@@ -1,0 +1,6 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Start the centralized rate limiter on startup. The
+  OCEAN__CENTRALIZED_RATE_LIMITER__ENABLED flag is removed. A failed Redis
+  connection still leaves the limiter unset, and the local limiter is used.
