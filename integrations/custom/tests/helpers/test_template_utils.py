@@ -11,7 +11,7 @@ from http_server.exceptions import (
     TemplateVariableNotFoundError,
 )
 from typing import Dict, Any
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.asyncio
@@ -28,12 +28,12 @@ class TestTemplateEvaluation:
         }
 
     @pytest.fixture
-    def mock_entity_processor(self) -> MagicMock:
-        """Mock Ocean's entity processor for JQ evaluation"""
-        mock_processor = AsyncMock()
+    def mock_jq(self) -> MagicMock:
+        """Mock JQ evaluation"""
+        mock_processor = MagicMock()
 
-        async def mock_search(data: Dict[str, Any], jq_path: str) -> Any:
-            """Simple mock JQ processor - handles paths with or without leading dot"""
+        def mock_search(data: Dict[str, Any], jq_path: str) -> Any:
+            """Simple mock JQ evaluation - handles paths with or without leading dot"""
             # Normalize path (ensure leading dot)
             normalized_path = jq_path if jq_path.startswith(".") else f".{jq_path}"
 
@@ -47,54 +47,54 @@ class TestTemplateEvaluation:
                 return data.get("nested", {}).get("value")
             return None
 
-        mock_processor._search = mock_search
+        mock_processor.evaluate = mock_search
         return mock_processor
 
     async def test_evaluate_template_simple(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test simple template evaluation"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             template = "Bearer {{.access_token}}"
             result = await evaluate_template(template, mock_auth_response)
             assert result == "Bearer abc123"
 
     async def test_evaluate_template_multiple_variables(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test template with multiple variables"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             template = "{{.token_type}} {{.access_token}} expires in {{.expires_in}}"
             result = await evaluate_template(template, mock_auth_response)
             assert result == "Bearer abc123 expires in 3600"
 
     async def test_evaluate_template_nested_path(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test nested JQ path"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             template = "Value: {{.nested.value}}"
             result = await evaluate_template(template, mock_auth_response)
             assert result == "Value: nested_value"
 
     async def test_evaluate_template_without_dot(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test that templates without dot are not processed (regex requires {{.path}} format)"""
         # The regex pattern requires {{.path}} format, so {{path}} without dot won't match
         # This test verifies that templates without the dot are left unchanged
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             template = "Token: {{access_token}}"
             result = await evaluate_template(template, mock_auth_response)
@@ -102,12 +102,12 @@ class TestTemplateEvaluation:
             assert result == "Token: {{access_token}}"
 
     async def test_evaluate_template_missing_field_raises_exception(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test missing field raises TemplateVariableNotFoundError"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             template = "Bearer {{.missing_field}}"
             with pytest.raises(TemplateVariableNotFoundError) as exc_info:
@@ -123,12 +123,12 @@ class TestTemplateEvaluation:
         assert "auth_response is empty" in str(exc_info.value)
 
     async def test_evaluate_templates_in_dict_headers(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test template evaluation in headers dict"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             data = {
                 "Authorization": "Bearer {{.access_token}}",
@@ -139,12 +139,12 @@ class TestTemplateEvaluation:
             assert result["X-TTL"] == "3600"
 
     async def test_evaluate_templates_in_dict_query_params(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test template evaluation in query params"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             data = {"api_key": "{{.access_token}}", "ttl": "{{.expires_in}}"}
             result = await evaluate_templates_in_dict(data, mock_auth_response)
@@ -152,12 +152,12 @@ class TestTemplateEvaluation:
             assert result["ttl"] == "3600"
 
     async def test_evaluate_templates_in_dict_body(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test template evaluation in body"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             data = {"token": "{{.access_token}}", "expires": "{{.expires_in}}"}
             result = await evaluate_templates_in_dict(data, mock_auth_response)
@@ -165,12 +165,12 @@ class TestTemplateEvaluation:
             assert result["expires"] == "3600"
 
     async def test_evaluate_templates_nested_dict(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test nested dictionary evaluation"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             data = {
                 "auth": {
@@ -183,12 +183,12 @@ class TestTemplateEvaluation:
             assert result["auth"]["type"] == "Bearer"
 
     async def test_evaluate_templates_list(
-        self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
+        self, mock_auth_response: Dict[str, Any], mock_jq: MagicMock
     ) -> None:
         """Test list evaluation"""
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             data = {"tokens": ["{{.access_token}}", "{{.token_type}}"]}
             result = await evaluate_templates_in_dict(data, mock_auth_response)

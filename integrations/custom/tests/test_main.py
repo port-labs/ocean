@@ -66,9 +66,7 @@ class TestListResponseHandling:
                     "main.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "http_server.helpers.utils.JQEntityProcessorSync"
-                ) as mock_jq_sync,
+                patch("http_server.helpers.utils.jq") as mock_jq_sync,
             ):
                 direct_list_response = [
                     {"id": 1, "name": "Alice"},
@@ -80,7 +78,7 @@ class TestListResponseHandling:
 
                 mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
-                mock_jq_sync._search.return_value = direct_list_response
+                mock_jq_sync.evaluate.return_value = direct_list_response
 
                 assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
@@ -92,7 +90,7 @@ class TestListResponseHandling:
                 assert batch[0]["id"] == 1
                 assert batch[1]["id"] == 2
 
-                mock_jq_sync._search.assert_called()
+                mock_jq_sync.evaluate.assert_called()
 
     @pytest.mark.asyncio
     async def test_warning_logged_when_not_list_and_no_data_path(
@@ -190,9 +188,7 @@ class TestListResponseHandling:
                     "main.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "http_server.helpers.utils.JQEntityProcessorSync"
-                ) as mock_jq_sync,
+                patch("http_server.helpers.utils.jq") as mock_jq_sync,
             ):
                 object_response = {"data": {"users": [{"id": 1, "name": "Alice"}]}}
 
@@ -202,7 +198,7 @@ class TestListResponseHandling:
                 mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
                 extracted_users = [{"id": 1, "name": "Alice"}]
-                mock_jq_sync._search.return_value = extracted_users
+                mock_jq_sync.evaluate.return_value = extracted_users
 
                 assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
@@ -210,7 +206,7 @@ class TestListResponseHandling:
 
                 batch = await result_iter.__anext__()
 
-                mock_jq_sync._search.assert_called_with(object_response, ".data.users")
+                mock_jq_sync.evaluate.assert_called_with(object_response, ".data.users")
 
                 assert len(batch) == 1
                 assert batch[0]["id"] == 1
