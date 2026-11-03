@@ -1,130 +1,16 @@
-from typing import Dict, Any, Literal, Tuple, List, Type
+from typing import Dict, Any, Literal, Tuple, List
 
 from gitlab.v4.objects import Project
 from loguru import logger
 from pydantic.v1 import Field, BaseModel
-from gitlab_integration.core.async_fetcher import AsyncFetcher
-from gitlab_integration.core.entities import (
-    FILE_PROPERTY_PREFIX,
-    SEARCH_PROPERTY_PREFIX,
-)
 from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 from gitlab_integration.utils import get_cached_all_services
 from port_ocean.context.event import event
-from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
     ResourceConfig,
 )
-
-
-class FileEntityProcessor(JQEntityProcessor):
-    prefix = FILE_PROPERTY_PREFIX
-
-    async def _search(
-        self, data: Dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        project_id, ref, base_path = _validate_project_scope(data)
-        project = _get_project_from_cache(project_id)
-
-        file_path = pattern.replace(self.prefix, "")
-        if base_path:
-            file_path = f"{base_path}/{file_path}"
-        if not project:
-            return None
-        logger.info(
-            f"Searching for file {file_path} in Project {project_id}: {project.path_with_namespace}, ref {ref}"
-        )
-        res = await AsyncFetcher.fetch_single(project.files.get, file_path, ref)
-        return res.decode().decode("utf-8")
-
-
-class SearchEntityProcessor(JQEntityProcessor):
-    prefix = SEARCH_PROPERTY_PREFIX
-    separation_symbol = "&&"
-
-    async def _search(
-        self, data: Dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        """
-        Handles entity mapping for search:// pattern
-        :param data: project data
-        :param pattern: e.g. search://scope=blobs&&query=filename:port.yml
-        :return: True if the search pattern matches, False otherwise
-        """
-        project_id, _, base_path = _validate_project_scope(data)
-        scope, query = self._parse_search_pattern(pattern)
-
-        # assuming that the code is being called after event initialization and as part of the GitLab service
-        # initialization
-        project = _get_project_from_cache(project_id)
-        if not project:
-            return None
-        base_path_message = f" in base path {base_path}" if base_path else ""
-        logger.info(
-            f"Searching {query} {base_path_message} in Project {project_id}: {project.path_with_namespace}, "
-            f"scope {scope}"
-        )
-        match = None
-        if project:
-            if scope == "blobs":
-                # if the query does not contain a path filter, we add the base path to the query
-                # this is done to avoid searching the entire project for the file, if the base path is known
-                # having the base path applies to the case where we export a folder as a monorepo
-                if base_path and "path:" not in query:
-                    query = f"{query} path:{base_path}"
-                results = await AsyncFetcher.fetch_single(project.search, scope, query)  # type: ignore
-                match = bool(results)
-            else:
-                results = await AsyncFetcher.fetch_single(project.search, scope, query)  # type: ignore
-                match = bool(results)
-        return match
-
-    def _parse_search_pattern(self, pattern: str) -> Tuple[str, str]:
-        """
-        :param pattern: e.g. search://scope=blobs&&query=filename:port.yml
-        :return: scope, search_pattern
-        """
-        # remove prefix
-        pattern = pattern.replace(self.prefix, "")
-        if len(pattern.split(self.separation_symbol)) == 1:
-            raise ValueError(
-                f"Search pattern {pattern} does not match the expected format: search://scope=<scope>&&query=<query>"
-            )
-        scope, query = pattern.split(self.separation_symbol, 1)
-
-        # return the actual scope and query values
-        # e.g. scope=blobs -> blobs, query=filename:port.yml -> filename:port.yml
-        return scope.split("=")[1], "=".join(query.split("=")[1:])
-
-
-class GitManipulationHandler(JQEntityProcessor):
-    async def _search(
-        self, data: Dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
-            )
-            entity_processor = FileEntityProcessor
-        elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'searchQueries' selector instead. Example: "
-                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
-                f'Then map to .__searchQueries["<queryName>"]'
-            )
-            entity_processor = SearchEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern, field)
 
 
 class FoldersSelector(BaseModel):

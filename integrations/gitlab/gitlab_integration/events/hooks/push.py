@@ -16,6 +16,14 @@ from gitlab_integration.utils import ObjectKind
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import Entity
+from port_ocean.core.utils.utils import get_port_diff
+
+
+async def _apply_gitops_diff(before: list[Entity], after: list[Entity]) -> None:
+    diff = get_port_diff(before, after)
+    await ocean.register(diff.created + diff.modified, UserAgentType.gitops)
+    await ocean.unregister(diff.deleted, UserAgentType.gitops)
 
 
 class FileAction(StrEnum):
@@ -153,10 +161,7 @@ class PushHook(ProjectHandler):
                                     gitlab_project, file, commit_before, branch
                                 )
                             )
-                            await ocean.update_diff(
-                                {"before": entities_before, "after": []},
-                                UserAgentType.gitops,
-                            )
+                            await _apply_gitops_diff(entities_before, [])
 
                         case FileAction.ADDED:
                             entities_after = (
@@ -164,10 +169,7 @@ class PushHook(ProjectHandler):
                                     gitlab_project, file, commit_after, branch
                                 )
                             )
-                            await ocean.update_diff(
-                                {"before": [], "after": entities_after},
-                                UserAgentType.gitops,
-                            )
+                            await _apply_gitops_diff([], entities_after)
 
                         case FileAction.MODIFIED:
                             entities_before = (
@@ -180,10 +182,7 @@ class PushHook(ProjectHandler):
                                     gitlab_project, file, commit_after, branch
                                 )
                             )
-                            await ocean.update_diff(
-                                {"before": entities_before, "after": entities_after},
-                                UserAgentType.gitops,
-                            )
+                            await _apply_gitops_diff(entities_before, entities_after)
                 except Exception as e:
                     logger.error(
                         f"Error processing file {file} in action {file_action}: {str(e)}"
