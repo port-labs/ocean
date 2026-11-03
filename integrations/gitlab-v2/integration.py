@@ -1,9 +1,8 @@
-from typing import Literal, Any, Type, List, Optional
-from loguru import logger
+from typing import Literal, Any, List, Optional
 from pydantic.v1 import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
+from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -22,12 +21,8 @@ from gitlab.helpers.skill_plugin import (
     DEFAULT_SKILL_PATHS,
     PluginProvider,
 )
-from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
-from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
+from gitlab.raw_enricher import GitlabRawEnricher
 from datetime import datetime, timedelta, timezone
-
-FILE_PROPERTY_PREFIX = "file://"
-SEARCH_PROPERTY_PREFIX = "search://"
 
 ISO_8601_DATETIME_REGEX = (
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$"
@@ -858,38 +853,8 @@ class GitlabPortAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
-class GitManipulationHandler(JQEntityProcessor):
-    async def _search(
-        self, data: dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX) :]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX) :]}"]'
-            )
-            entity_processor = FileEntityProcessor
-        elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'searchQueries' selector instead. Example: "
-                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
-                f'Then map to .__searchQueries["<queryName>"]'
-            )
-            entity_processor = SearchEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-
-        return await entity_processor(self.context)._search(data, pattern, field)
-
-
 class GitlabHandlerMixin(HandlerMixin):
-    EntityProcessorClass = GitManipulationHandler
+    RawEnricherClass = GitlabRawEnricher
 
 
 class GitlabLiveEventsProcessorManager(LiveEventsProcessorManager, GitlabHandlerMixin):
@@ -897,7 +862,7 @@ class GitlabLiveEventsProcessorManager(LiveEventsProcessorManager, GitlabHandler
 
 
 class GitlabIntegration(BaseIntegration):
-    EntityProcessorClass = GitManipulationHandler
+    RawEnricherClass = GitlabRawEnricher
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitlabPortAppConfig
