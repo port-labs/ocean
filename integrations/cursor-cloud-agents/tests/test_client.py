@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from clients.cursor_agents_client import DEFAULT_PAGE_SIZE, CursorAgentsClient
+from clients.cursor_agents_client import (
+    DEFAULT_PAGE_SIZE,
+    CursorAgentsClient,
+    _is_non_idempotent_agent_mutation,
+)
 from clients.exceptions import CursorAgentsPaginationError
 
 
@@ -47,6 +51,54 @@ def test_page_size_property() -> None:
         console_host="https://cursor.com",
     )
     assert instance.page_size == DEFAULT_PAGE_SIZE
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "expected"),
+    [
+        ("POST", "/v0/agents", True),
+        ("POST", "/v1/agents", True),
+        ("POST", "/v1/agents/bc-1/runs", True),
+        ("GET", "/v1/agents", False),
+        ("POST", "/v1/agents/bc-1/usage", False),
+    ],
+)
+def test_is_non_idempotent_agent_mutation(
+    method: str, path: str, expected: bool
+) -> None:
+    assert _is_non_idempotent_agent_mutation(method, path) is expected
+
+
+def test_request_extensions_skip_retry_for_agent_create() -> None:
+    instance = CursorAgentsClient(
+        api_host="https://api.cursor.com",
+        api_key="test-api-key",
+        console_host="https://cursor.com",
+    )
+    assert instance._request_extensions("POST", "/v1/agents") == {
+        "retryable": True,
+        "skip_retry": True,
+    }
+    assert instance._request_extensions("GET", "/v1/agents") == {
+        "retryable": True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_passes_skip_retry_for_create(
+    client: CursorAgentsClient,
+) -> None:
+    inner: Any = client._client
+    request = httpx.Request("POST", "https://api.cursor.com/v1/agents")
+    inner.request = AsyncMock(
+        return_value=httpx.Response(200, json={"id": "bc-1"}, request=request)
+    )
+
+    await client.send_api_request("POST", "/v1/agents", json_body={"prompt": {}})
+
+    extensions = inner.request.await_args.kwargs["extensions"]
+    assert extensions["retryable"] is True
+    assert extensions["skip_retry"] is True
 
 
 @pytest.mark.asyncio
