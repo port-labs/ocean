@@ -227,7 +227,9 @@ class TestSharedRateLimiter:
     def test_every_client_spends_one_budget(self) -> None:
         """Webhook setup drains the window the resync then starts in."""
         resync_client = TerraformClient("https://app.terraform.io", "test-token")
-        webhook_client = TerraformWebhookClient("https://app.terraform.io", "test-token")
+        webhook_client = TerraformWebhookClient(
+            "https://app.terraform.io", "test-token"
+        )
 
         assert (
             resync_client.client._transport._rate_limiter  # type: ignore[attr-defined]
