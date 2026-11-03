@@ -4,7 +4,6 @@ from urllib.parse import urlparse
 from typing import Any, AsyncGenerator, AsyncIterator, Optional
 
 import httpx
-from aiolimiter import AsyncLimiter
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from loguru import logger
 
@@ -52,8 +51,6 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-NUMBER_OF_REQUESTS = 25
-NUMBER_OF_SECONDS = 1
 MAX_CONCURRENT_TEAM_ACCESS_FETCHES = 10
 INACCESSIBLE_STATUS_CODES = (403, 404)
 
