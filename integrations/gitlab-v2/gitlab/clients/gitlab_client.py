@@ -12,7 +12,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from port_ocean.utils.time import convert_str_to_utc_datetime
 from urllib.parse import quote
 from wcmatch import glob
@@ -184,7 +184,25 @@ class GitLabClient:
         cursor, the base is a root commit (its own files never appear in a root-to-tip diff),
         GitLab reports a compare timeout or overflow, or an API call fails.
         """
-        project_path = project["path_with_namespace"]
+        result = await self._changed_paths_for_run(
+            project["path_with_namespace"], since, ref
+        )
+        return result["paths"]
+
+    @cache_coroutine_result()
+    async def _changed_paths_for_run(
+        self, project_path: str, since: datetime, ref: str
+    ) -> dict[str, Any]:
+        """Share one compare per project and ref across the kinds of a run.
+
+        Wrapped in a dict because the cache skips falsy values, and ``[]`` (nothing changed)
+        and ``None`` (full listing) must still be cached.
+        """
+        return {"paths": await self._compare_changed_paths(project_path, since, ref)}
+
+    async def _compare_changed_paths(
+        self, project_path: str, since: datetime, ref: str
+    ) -> list[str] | None:
         since_iso = since.isoformat()
         try:
             pushes = await self._pushes_to_ref_since(project_path, since, ref)
@@ -247,19 +265,25 @@ class GitLabClient:
     async def _pushes_to_ref_since(
         self, project_path: str, since: datetime, ref: str
     ) -> list[dict[str, Any]]:
-        """Push events to branch ``ref`` created after ``since``, oldest first."""
+        """Push events to branch ``ref`` created after ``since``, oldest first.
+
+        Events come newest first and the ``after`` filter only takes a date, so
+        pages are read until an event at or before ``since`` shows up.
+        """
         pushes: list[dict[str, Any]] = []
         async for events_batch in self.rest.get_paginated_project_resource(
-            project_path,
-            "events",
-            params={"action": "pushed", "after": since.date().isoformat()},
+            project_path, "events", params={"action": "pushed"}
         ):
+            reached_since = False
             for event in events_batch:
+                if convert_str_to_utc_datetime(event["created_at"]) <= since:
+                    reached_since = True
+                    break
                 push = event.get("push_data") or {}
-                if push.get("ref_type") != "branch" or push.get("ref") != ref:
-                    continue
-                if convert_str_to_utc_datetime(event["created_at"]) > since:
+                if push.get("ref_type") == "branch" and push.get("ref") == ref:
                     pushes.append(event)
+            if reached_since:
+                break
         return sorted(
             pushes, key=lambda event: convert_str_to_utc_datetime(event["created_at"])
         )

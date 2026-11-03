@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient, _ancestor_dirs
@@ -126,6 +126,71 @@ async def test_pushes_to_other_refs_are_ignored(client: GitLabClient) -> None:
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
     assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
+    client.compare_repository.assert_not_awaited()
+
+
+async def test_pushes_are_read_across_pages_until_cursor(client: GitLabClient) -> None:
+    """Events are newest first; paging stops at the first event at or before the cursor."""
+    _mock_rest(client, [], {"C1": {"id": "C1", "parent_ids": ["C0"]}})
+    pages = [
+        [_push("2026-10-18T12:00:00Z", "C2")],
+        [_push("2026-10-18T11:00:00Z", "C1"), _push("2026-10-18T08:00:00Z", "C0")],
+    ]
+    client.rest.get_paginated_project_resource = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda *args, **kwargs: _gen(pages)
+    )
+    client.compare_repository = AsyncMock(  # type: ignore[method-assign]
+        return_value={"diffs": [{"new_path": "a.yaml", "deleted_file": False}]}
+    )
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["a.yaml"]
+    client.compare_repository.assert_awaited_once_with("group/repo", "C1", "main")
+    params = client.rest.get_paginated_project_resource.call_args.kwargs["params"]
+    assert params == {"action": "pushed"}
+
+
+@pytest.fixture
+def run_cache() -> Iterator[dict[str, Any]]:
+    """An in-memory cache provider, so the per-run cache behaves as it does during a sync."""
+    store: dict[str, Any] = {}
+
+    async def get(key: str) -> Any:
+        return store.get(key)
+
+    async def set_(key: str, value: Any) -> None:
+        store[key] = value
+
+    cache = MagicMock()
+    cache.get = AsyncMock(side_effect=get)
+    cache.set = AsyncMock(side_effect=set_)
+    with patch.object(ocean.app, "cache_provider", cache):
+        yield store
+
+
+@pytest.mark.usefixtures("run_cache")
+async def test_compare_is_computed_once_per_run(client: GitLabClient) -> None:
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0")],
+        {"C0": {"id": "C0", "parent_ids": ["P"]}},
+    )
+    client.compare_repository = AsyncMock(  # type: ignore[method-assign]
+        return_value={"diffs": [{"new_path": "a.yaml", "deleted_file": False}]}
+    )
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["a.yaml"]
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["a.yaml"]
+    client.compare_repository.assert_awaited_once()
+
+
+@pytest.mark.usefixtures("run_cache")
+async def test_unchanged_result_is_cached_for_the_run(client: GitLabClient) -> None:
+    _mock_rest(client, [], {}, tip_committed_date="2026-10-01T00:00:00+00:00")
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
+    assert client.rest.send_api_request.await_count == 1  # type: ignore[attr-defined]
     client.compare_repository.assert_not_awaited()
 
 
