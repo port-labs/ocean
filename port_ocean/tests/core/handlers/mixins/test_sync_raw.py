@@ -26,7 +26,13 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import ETLPhase, RAW_RESULT
+from port_ocean.core.handlers.raw_enricher import BaseRawEnricher
+from port_ocean.core.ocean_types import (
+    ASYNC_GENERATOR_RESYNC_TYPE,
+    RAW_ITEM,
+    RAW_RESULT,
+    ETLPhase,
+)
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.dsp.lifecycle import GranularityType
@@ -1546,6 +1552,80 @@ async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
 
     extract_records = [r for r in records if r.get("etl_phase") == ETLPhase.EXTRACT]
     assert len(extract_records) >= 2, "Expected at least 2 logs with etl_phase=extract"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("dsp_enabled", [True, False])
+async def test_register_in_batches_enriches_buffered_items_only_in_dsp_mode(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    dsp_enabled: bool,
+) -> None:
+    from port_ocean.context.resource import resource_context
+
+    class MarkingEnricher(BaseRawEnricher):
+        async def enrich(
+            self, resource: ResourceConfig, items: list[RAW_ITEM]
+        ) -> list[RAW_ITEM]:
+            return [
+                {**item, "__includedFiles": {"README.md": "hello"}} for item in items
+            ]
+
+    async def generator() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"id": "2"}]
+
+    mock_sync_raw_mixin._raw_enricher = MarkingEnricher(mock_context)
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(  # type: ignore[method-assign]
+        return_value=([{"id": "1"}, generator()], [])
+    )
+    calc_result = MagicMock()
+    calc_result.errors = []
+    calc_result.entity_selector_diff.passed = []
+    calc_result.number_of_transformed_entities = 0
+    mock_sync_raw_mixin._register_resource_raw = AsyncMock(return_value=calc_result)  # type: ignore[method-assign]
+    mock_ocean.metrics.set_metric = MagicMock()  # type: ignore
+    mock_ocean.metrics.inc_metric = MagicMock()  # type: ignore
+    buffer = MagicMock()
+    buffer.add = AsyncMock()
+    buffer.flush = AsyncMock()
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=dsp_enabled),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.LakehouseBuffer",
+            return_value=buffer,
+        ),
+    ):
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            async with resource_context(mock_resource_config, 0):
+                await mock_sync_raw_mixin._register_in_batches(
+                    mock_resource_config,
+                    UserAgentType.exporter,
+                    index=0,
+                    dsp_enabled=dsp_enabled,
+                )
+
+    buffered_items = [
+        item for call in buffer.add.await_args_list for item in call.args[0]["items"]
+    ]
+    if dsp_enabled:
+        assert buffered_items == [
+            {"id": "1", "__includedFiles": {"README.md": "hello"}},
+            {"id": "2", "__includedFiles": {"README.md": "hello"}},
+        ]
+    else:
+        assert buffered_items == [{"id": "1"}, {"id": "2"}]
 
 
 @pytest.mark.asyncio

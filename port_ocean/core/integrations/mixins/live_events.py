@@ -118,6 +118,7 @@ class LiveEventsMixin(HandlerMixin):
             webhook_events_raw_result: List of WebhookEventRawResults objects to send to lakehouse
         """
         try:
+            dsp_enabled = await is_dsp_mode_enabled()
             data_entries: list[LakehouseDataEntry] = []
             for webhook_event_raw_result in webhook_events_raw_result:
                 if not webhook_event_raw_result.has_resource:
@@ -134,10 +135,23 @@ class LiveEventsMixin(HandlerMixin):
                     else 0
                 )
 
-                if webhook_event_raw_result.updated_raw_results:
+                updated_raw_results = webhook_event_raw_result.updated_raw_results
+                deleted_raw_results = webhook_event_raw_result.deleted_raw_results
+                if dsp_enabled:
+                    resource = webhook_event_raw_result.resource
+                    if updated_raw_results:
+                        updated_raw_results = await self.raw_enricher.enrich(
+                            resource, updated_raw_results
+                        )
+                    if deleted_raw_results:
+                        deleted_raw_results = await self.raw_enricher.enrich(
+                            resource, deleted_raw_results
+                        )
+
+                if updated_raw_results:
                     data_entries.append(
                         build_lakehouse_data_entry(
-                            items=webhook_event_raw_result.updated_raw_results,
+                            items=updated_raw_results,
                             metadata=LakehouseDataEntryMetadata(
                                 operation=LakehouseOperation.UPSERT,
                                 resource_index=resource_index,
@@ -149,10 +163,10 @@ class LiveEventsMixin(HandlerMixin):
                             export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )
                     )
-                if webhook_event_raw_result.deleted_raw_results:
+                if deleted_raw_results:
                     data_entries.append(
                         build_lakehouse_data_entry(
-                            items=webhook_event_raw_result.deleted_raw_results,
+                            items=deleted_raw_results,
                             metadata=LakehouseDataEntryMetadata(
                                 operation=LakehouseOperation.DELETE,
                                 resource_index=resource_index,

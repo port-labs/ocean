@@ -481,7 +481,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     selector_hash=selector_hash_from_resource(resource_config),
                 )
                 lakehouse_data_entry = build_lakehouse_data_entry(
-                    items=raw_results,
+                    items=(
+                        await self.raw_enricher.enrich(resource_config, raw_results)
+                        if dsp_enabled
+                        else raw_results
+                    ),
                     metadata=metadata,
                     export_env_variables=resource_config.selector.export_env_variables,
                 )
@@ -517,7 +521,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             selector_hash=selector_hash_from_resource(resource_config),
                         )
                         lakehouse_data_entry = build_lakehouse_data_entry(
-                            items=items,
+                            items=(
+                                await self.raw_enricher.enrich(resource_config, items)
+                                if dsp_enabled
+                                else items
+                            ),
                             metadata=metadata,
                             export_env_variables=resource_config.selector.export_env_variables,
                         )
