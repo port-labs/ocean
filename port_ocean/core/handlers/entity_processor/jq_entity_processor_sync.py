@@ -1,4 +1,3 @@
-import re
 from typing import Any, cast
 
 import jq  # type: ignore
@@ -47,22 +46,55 @@ class JQEntityProcessorSync:
 
     @staticmethod
     def _format_filter(filter: str) -> str:
+        """Convert single-quoted JQ string literals to double quotes.
+
+        JQ rejects single-quoted strings. Mappings still use them, including
+        empty strings and strings closed by punctuation such as `)` or `;`.
+        Characters inside an existing double-quoted string are left unchanged.
         """
-        Convert single quotes to double quotes in JQ expressions.
-        Only replaces single quotes that are opening or closing string delimiters,
-        not single quotes that are part of string content.
-        """
-        # Escape single quotes only if they are opening or closing a string
-        # Pattern matches:
-        # - Single quote at start of string or after whitespace (opening quote)
-        # - Single quote before whitespace or end of string (closing quote)
-        # Uses negative lookahead/lookbehind to avoid replacing quotes inside strings
-        # \1 and \2 will be empty for the alternative that didn't match, so \1"\2 works for both cases
-        # This matches the TypeScript pattern: /(^|\s)'(?!\s|")|(?<!\s|")'(\s|$)/g
-        formatted_filter = re.sub(
-            r'(^|\s)\'(?!\s|")|(?<!\s|")\'(\s|$)', r'\1"\2', filter
-        )
-        return formatted_filter
+        result: list[str] = []
+        index = 0
+        length = len(filter)
+        while index < length:
+            char = filter[index]
+            if char == '"':
+                result.append(char)
+                index += 1
+                while index < length:
+                    if filter[index] == "\\" and index + 1 < length:
+                        result.append(filter[index])
+                        result.append(filter[index + 1])
+                        index += 2
+                        continue
+                    result.append(filter[index])
+                    if filter[index] == '"':
+                        index += 1
+                        break
+                    index += 1
+                continue
+            if char == "'":
+                end = index + 1
+                body: list[str] = []
+                while end < length and filter[end] != "'":
+                    if filter[end] == "\\":
+                        body.append("\\\\")
+                    elif filter[end] == '"':
+                        body.append('\\"')
+                    else:
+                        body.append(filter[end])
+                    end += 1
+                if end >= length:
+                    result.append(char)
+                    index += 1
+                    continue
+                result.append('"')
+                result.extend(body)
+                result.append('"')
+                index = end + 1
+                continue
+            result.append(char)
+            index += 1
+        return "".join(result)
 
     @staticmethod
     def _compile(pattern: str) -> Any:

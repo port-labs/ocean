@@ -11,6 +11,9 @@ import pytest
 from loguru import logger
 
 from port_ocean.core.handlers.entity_processor import jq_entity_processor_sync
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
     JQEntityProcessorSync,
 )
@@ -50,6 +53,19 @@ class TestJQEntityProcessorSync:
         # Test that double quotes are not affected
         result = mocked_processor._format_filter('"shalom"')
         assert result == '"shalom"'
+
+        result = mocked_processor._format_filter("(.name + '/')")
+        assert result == '(.name + "/")'
+
+        result = mocked_processor._format_filter("gsub('[^A-Za-z]'; '-')")
+        assert result == 'gsub("[^A-Za-z]"; "-")'
+
+        result = mocked_processor._format_filter("if .x then .y else '' end")
+        assert result == 'if .x then .y else "" end'
+
+        result = mocked_processor._format_filter('"it\'s"')
+        assert result == '"it\'s"'
+        assert JQEntityProcessor._format_filter("(.name + '/')") == '(.name + "/")'
 
     def test_compile(self, mocked_processor: JQEntityProcessorSync) -> None:
         """Test pattern compilation."""
@@ -108,6 +124,21 @@ class TestJQEntityProcessorSync:
         pattern = "'/' + .organization"
         result = mocked_processor._search(data, pattern)
         assert result == "/port"
+
+    def test_search_single_quoted_string_closed_by_paren(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        """A closing single quote before punctuation must still be converted."""
+        data = {"name": "app"}
+        result = mocked_processor._search(data, "(.name + '/')")
+        assert result == "app/"
+
+    def test_search_empty_single_quoted_string(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        data = {"name": None}
+        result = mocked_processor._search(data, "if .name then .name else '' end")
+        assert result == ""
 
     def test_search_returns_none_on_error(
         self, mocked_processor: JQEntityProcessorSync
