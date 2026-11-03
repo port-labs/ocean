@@ -11,7 +11,8 @@ from actions.port_mcp_utils import (
     PortMcpBinding,
     _is_vault_credential_url_matching,
     attach_port_mcp_settings_to_agent_config,
-    ensure_port_mcp_binding,
+    ensure_port_mcp_credential,
+    get_or_create_mcp_vault,
     is_agent_configured_with_port_mcp,
 )
 
@@ -155,13 +156,19 @@ async def test_ensure_port_mcp_binding_creates_vault_and_credential() -> None:
         patch("actions.port_mcp_utils.ocean", mock_ocean),
         patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
     ):
-        binding = await ensure_port_mcp_binding(
+        vault = await get_or_create_mcp_vault(client, "port-mcp-user@example.com")
+        binding = await ensure_port_mcp_credential(
             client,
             workflow_run_with_port_mcp(),
-            vault_name="port-mcp-user@example.com",
+            vault.id,
+            "https://mcp.getport.io/v1",
         )
 
-    assert binding == PortMcpBinding(vault_id="vault_new", credential_id="cred_new")
+    assert binding == PortMcpBinding(
+        mcp_server_url="https://mcp.getport.io/v1",
+        vault_id="vault_new",
+        credential_id="cred_new",
+    )
     assert (
         client.beta.vaults.create.await_args.kwargs["display_name"]
         == "port-mcp-user@example.com"
@@ -218,13 +225,19 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
         patch("actions.port_mcp_utils.ocean", mock_ocean),
         patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
     ):
-        binding = await ensure_port_mcp_binding(
+        vault = await get_or_create_mcp_vault(client, "port-mcp-user@example.com")
+        binding = await ensure_port_mcp_credential(
             client,
             workflow_run_with_port_mcp(),
-            vault_name="port-mcp-user@example.com",
+            vault.id,
+            "https://mcp.getport.io/v1",
         )
 
-    assert binding == PortMcpBinding(vault_id="vault_1", credential_id="cred_1")
+    assert binding == PortMcpBinding(
+        mcp_server_url="https://mcp.getport.io/v1",
+        vault_id="vault_1",
+        credential_id="cred_1",
+    )
     client.beta.vaults.create.assert_not_awaited()
     client.beta.vaults.credentials.create.assert_not_awaited()
     client.beta.vaults.credentials.update.assert_awaited_once_with(
@@ -271,15 +284,30 @@ async def test_ensure_port_mcp_binding_creates_virtual_credentials() -> None:
         patch("actions.port_mcp_utils.ocean", mock_ocean),
         patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
     ):
-        binding = await ensure_port_mcp_binding(
-            client,
-            workflow_run_with_port_mcp(),
-            vault_name="vault",
-            urls=[
+        vault = await get_or_create_mcp_vault(client, "vault")
+        bindings = [
+            await ensure_port_mcp_credential(
+                client,
+                workflow_run_with_port_mcp(),
+                vault.id,
+                url,
+            )
+            for url in [
                 "https://mcp.getport.io/v1",
                 "https://mcp.getport.io/v1/virtual-server/payments",
-            ],
-        )
+            ]
+        ]
 
-    assert binding == PortMcpBinding(vault_id="vault_new", credential_id="cred_port")
+    assert bindings == [
+        PortMcpBinding(
+            mcp_server_url="https://mcp.getport.io/v1",
+            vault_id="vault_new",
+            credential_id="cred_port",
+        ),
+        PortMcpBinding(
+            mcp_server_url="https://mcp.getport.io/v1/virtual-server/payments",
+            vault_id="vault_new",
+            credential_id="cred_virtual",
+        ),
+    ]
     assert client.beta.vaults.credentials.create.await_count == 2

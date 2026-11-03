@@ -110,38 +110,103 @@ def test_trigger_agent_session_output_url_only() -> None:
 async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None:
     from port_ocean.utils.ttl_cache import TTLCache
 
+    from actions.port_mcp_utils import mcp_urls_to_ensure
+
     client = MagicMock()
-    client.beta.vaults.credentials.update = AsyncMock()
     executor = build_executor(TriggerAgentExecutor, client)
     executor._port_mcp_cache = TTLCache[PortMcpBinding](ttl_seconds=120, max_items=100)
-    binding = PortMcpBinding(vault_id="vault_1", credential_id="cred_1")
+    bindings = [
+        PortMcpBinding(
+            mcp_server_url="https://mcp.getport.io/v1",
+            vault_id="vault_1",
+            credential_id="cred_1",
+        )
+    ]
 
     run_1 = workflow_run_with_port_mcp(token="tok_1")
     run_2 = workflow_run_with_port_mcp(token="tok_2")
+    mcp_urls = mcp_urls_to_ensure(True, [])
     with (
         patch(
-            "actions.trigger_agent_executor.ensure_port_mcp_binding",
-            AsyncMock(return_value=binding),
+            "actions.trigger_agent_executor.get_or_create_mcp_vault",
+            AsyncMock(return_value=SimpleNamespace(id="vault_1")),
+        ) as get_vault,
+        patch(
+            "actions.trigger_agent_executor.ensure_port_mcp_credential",
+            AsyncMock(return_value=bindings[0]),
         ) as ensure,
         patch(
             "actions.trigger_agent_executor.remint_port_mcp_credential",
             AsyncMock(),
         ) as remint,
     ):
-        ctx_1 = PortMcpWorkflowContext(
-            run_1, run_1.execution_identity, None, True, ()
-        )
-        ctx_2 = PortMcpWorkflowContext(
-            run_2, run_2.execution_identity, None, True, ()
-        )
-        first = await executor._resolve_port_mcp_binding(ctx_1)
-        second = await executor._resolve_port_mcp_binding(ctx_2)
+        ctx_1 = PortMcpWorkflowContext(run_1, run_1.execution_identity, None, mcp_urls)
+        ctx_2 = PortMcpWorkflowContext(run_2, run_2.execution_identity, None, mcp_urls)
+        first = await executor._ensure_port_mcp_vault_ready(ctx_1)
+        second = await executor._ensure_port_mcp_vault_ready(ctx_2)
 
-    assert first == binding == second
+    assert first == bindings == second
+    get_vault.assert_awaited_once()
     ensure.assert_awaited_once()
     remint.assert_awaited_once()
     assert remint.await_args is not None
     assert remint.await_args.args[1] is run_2
+
+
+@pytest.mark.asyncio
+async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+
+    from actions.port_mcp_utils import port_mcp_binding_cache_key
+
+    port_url = "https://mcp.getport.io/v1"
+    virtual_url = "https://mcp.getport.io/v1/virtual-server/payments"
+    vault_name = "user@example.com"
+    seeded = PortMcpBinding(
+        mcp_server_url=port_url,
+        vault_id="vault_1",
+        credential_id="cred_port",
+    )
+
+    client = MagicMock()
+    executor = build_executor(TriggerAgentExecutor, client)
+    executor._port_mcp_cache = TTLCache[PortMcpBinding](ttl_seconds=120, max_items=100)
+    executor._port_mcp_cache.set(
+        port_mcp_binding_cache_key(vault_name, port_url), seeded
+    )
+
+    new_binding = PortMcpBinding(
+        mcp_server_url=virtual_url,
+        vault_id="vault_1",
+        credential_id="cred_virtual",
+    )
+    run = workflow_run_with_port_mcp()
+    with (
+        patch(
+            "actions.trigger_agent_executor.get_or_create_mcp_vault",
+            AsyncMock(),
+        ) as get_vault,
+        patch(
+            "actions.trigger_agent_executor.ensure_port_mcp_credential",
+            AsyncMock(return_value=new_binding),
+        ) as ensure,
+        patch(
+            "actions.trigger_agent_executor.remint_port_mcp_credential",
+            AsyncMock(),
+        ) as remint,
+    ):
+        ctx = PortMcpWorkflowContext(
+            run,
+            run.execution_identity,
+            None,
+            [virtual_url, port_url],
+        )
+        bindings = await executor._ensure_port_mcp_vault_ready(ctx)
+
+    assert bindings == [new_binding, seeded]
+    get_vault.assert_not_awaited()
+    remint.assert_awaited_once()
+    ensure.assert_awaited_once_with(client, run, "vault_1", virtual_url)
 
 
 @pytest.mark.asyncio
@@ -161,11 +226,15 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
             AsyncMock(
-                return_value=PortMcpBinding(
-                    vault_id="vault_port", credential_id="cred_1"
-                )
+                return_value=[
+                    PortMcpBinding(
+                        mcp_server_url="https://mcp.getport.io/v1",
+                        vault_id="vault_port",
+                        credential_id="cred_1",
+                    )
+                ]
             ),
         ) as resolve_binding,
     ):
@@ -212,11 +281,15 @@ async def test_trigger_agent_enable_port_mcp_wires_agent_without_existing_mcp() 
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
             AsyncMock(
-                return_value=PortMcpBinding(
-                    vault_id="vault_port", credential_id="cred_1"
-                )
+                return_value=[
+                    PortMcpBinding(
+                        mcp_server_url="https://mcp.getport.io/v1",
+                        vault_id="vault_port",
+                        credential_id="cred_1",
+                    )
+                ]
             ),
         ),
     ):
@@ -256,7 +329,7 @@ async def test_trigger_agent_enable_port_mcp_false_skips_vault_and_agent_update(
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
             AsyncMock(),
         ) as resolve_binding,
     ):
@@ -298,7 +371,7 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
             AsyncMock(),
         ) as resolve_binding,
     ):
@@ -383,11 +456,15 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
         patch("actions.abstract_executor.ocean", mock_ocean),
         patch("actions.abstract_executor.event_context", mock_event_context),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
             AsyncMock(
-                return_value=PortMcpBinding(
-                    vault_id="vault_port", credential_id="cred_1"
-                )
+                return_value=[
+                    PortMcpBinding(
+                        mcp_server_url="https://mcp.getport.io/v1",
+                        vault_id="vault_port",
+                        credential_id="cred_1",
+                    )
+                ]
             ),
         ) as resolve_binding,
     ):
@@ -408,7 +485,14 @@ async def execute_continuing(
     client_mock.send_user_message = AsyncMock(
         return_value=user_message_event("msg_2"), side_effect=send_effect
     )
+    from port_ocean.utils.ttl_cache import TTLCache
+
+    from anthropic.types.beta import BetaManagedAgentsAgent
+
     executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache[BetaManagedAgentsAgent](
+        ttl_seconds=120, max_items=100
+    )
     run = workflow_run_with_port_mcp(
         execution_properties={
             "agentId": "agent_1",
@@ -429,11 +513,15 @@ async def execute_continuing(
             AsyncMock(return_value=images),
         ),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_binding",
+            "actions.trigger_agent_executor.TriggerAgentExecutor._resolve_port_mcp_bindings",
             AsyncMock(
-                return_value=PortMcpBinding(
-                    vault_id="vault_port", credential_id="cred_1"
-                )
+                return_value=[
+                    PortMcpBinding(
+                        mcp_server_url="https://mcp.getport.io/v1",
+                        vault_id="vault_port",
+                        credential_id="cred_1",
+                    )
+                ]
             ),
         ),
     ):
