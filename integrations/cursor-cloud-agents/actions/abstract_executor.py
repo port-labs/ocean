@@ -23,7 +23,7 @@ class AbstractCursorExecutor(AbstractExecutor):
         """The Cursor Cloud Agents API doesn't expose rate-limit state via
         response headers (see `CursorAgentsClient`), so there's nothing to
         check proactively here - `429`/`5xx` backoff is handled reactively by
-        Ocean's retryable HTTP transport on each request."""
+        Ocean's RetryTransport on default retryable methods (e.g. GET)."""
         return False
 
     async def get_remaining_seconds_until_rate_limit(

@@ -6,27 +6,11 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY
 from port_ocean.utils import http_async_client
 
-from clients.endpoints import V0_AGENTS, V1_AGENTS
 from clients.exceptions import CursorAgentsPaginationError
 
 DEFAULT_PAGE_SIZE = 20
-
-
-def _is_non_idempotent_agent_mutation(method: str, path: str) -> bool:
-    """POSTs that launch agents or runs must not be retried on timeout.
-
-    Cursor creates the resource before the HTTP response completes; a retry
-    starts another agent/run even though the first call succeeded server-side.
-    """
-    if method.upper() != "POST":
-        return False
-    normalized = path.split("?", 1)[0].rstrip("/")
-    if normalized in (V0_AGENTS, V1_AGENTS):
-        return True
-    return normalized.endswith("/runs") and f"{V1_AGENTS}/" in normalized
 
 
 class CursorAgentsClient:
@@ -38,9 +22,11 @@ class CursorAgentsClient:
     client exposes both surfaces rather than splitting into two clients.
 
     Cursor's Cloud Agents API does not expose rate-limit state via response
-    headers, so there is no proactive pacing here - `429`/`5xx` backoff is left
-    to Ocean's `extensions={"retryable": True}` RetryTransport (exponential
-    backoff), same as the `cursor` (usage metrics) integration's client.
+    headers, so there is no proactive pacing here - `429`/`5xx` backoff on GETs
+    (and other default retryable methods) is handled by Ocean's RetryTransport.
+    POST create/trigger calls are not retried: Ocean's transport excludes POST by
+    default, and enabling retries on those paths would duplicate agents/runs when
+    Cursor accepts the request but the client times out before the response.
     """
 
     def __init__(
@@ -68,12 +54,6 @@ class CursorAgentsClient:
     def get_console_host(self) -> str:
         return self._console_host
 
-    def _request_extensions(self, method: str, path: str) -> dict[str, bool]:
-        extensions: dict[str, bool] = {"retryable": True}
-        if _is_non_idempotent_agent_mutation(method, path):
-            extensions[SKIP_RETRY_EXTENSION_KEY] = True
-        return extensions
-
     async def send_api_request(
         self,
         method: str,
@@ -89,7 +69,6 @@ class CursorAgentsClient:
             params=params,
             json=json_body,
             timeout=self._request_timeout_seconds,
-            extensions=self._request_extensions(method, path),
         )
         try:
             response.raise_for_status()
