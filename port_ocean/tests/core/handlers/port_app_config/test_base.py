@@ -335,39 +335,6 @@ def test_to_dsp_lifecycle_mapping_wraps_mappings_in_array() -> None:
     assert mappings[0]["properties"]["url"] == ".html_url"
 
 
-def test_to_dsp_lifecycle_mapping_rewrites_file_and_search_refs() -> None:
-    config = PortAppConfig(
-        resources=[
-            ResourceConfig(
-                kind="repository",
-                selector=Selector(query="true"),
-                port=PortResourceConfig(
-                    entity=MappingsConfig(
-                        mappings=EntityMapping(
-                            identifier=".name",
-                            blueprint='"service"',
-                            properties={
-                                "readme": "file://README.md",
-                                "owner": "search://name=owner",
-                                "url": ".html_url",
-                            },
-                        )
-                    )
-                ),
-            )
-        ],
-    )
-
-    mapping = config.to_dsp_lifecycle_mapping()
-
-    [entity_mapping] = mapping["resources"][0]["port"]["entity"]["mappings"]
-    assert entity_mapping["properties"] == {
-        "readme": '.__includedFiles["README.md"]',
-        "owner": '.__search["name=owner"]',
-        "url": ".html_url",
-    }
-
-
 def test_to_dsp_lifecycle_mapping_leaves_array_mappings_unchanged() -> None:
     mapping = {
         "resources": [

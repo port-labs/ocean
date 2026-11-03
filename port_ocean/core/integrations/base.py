@@ -11,6 +11,7 @@ from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
+from port_ocean.core.integrations.mixins.utils import ensure_dsp_processing_available
 from port_ocean.core.probe import ProbeConfig, ProbeContext, ProbeStatus
 from port_ocean.core.probe.reporters import REPORTER_MODES
 from port_ocean.exceptions.core import IntegrationAlreadyStartedException, ModeNotSupportedException
@@ -73,6 +74,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         ):
             raise NotImplementedError("on_resync is not implemented")
 
+        await ensure_dsp_processing_available()
         await self.initialize_handlers()
 
         self.started = True

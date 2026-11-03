@@ -26,12 +26,8 @@ class LakehouseBuffer:
     end of the kind.  Empty flushes are skipped so no unnecessary HTTP requests
     are made.
 
-    When ``fatal=False`` (the default, used in ocean-core / non-DSP mode) a
-    flush failure is logged as a warning and the buffer is discarded so the
-    resync can continue — lake writes are supplementary in this mode and entity
-    upserts still go through the standard ocean-core path.  Set ``fatal=True``
-    in DSP mode, where the lake write is the only data-delivery path and a
-    failure must propagate.
+    A flush failure propagates: the lake write is the only path by which raw data
+    reaches the data-source-processor.
     """
 
     def __init__(
@@ -43,7 +39,6 @@ class LakehouseBuffer:
         max_size_bytes: int = _DEFAULT_MAX_SIZE_BYTES,
         max_buffer_count: int = _DEFAULT_MAX_BUFFER_COUNT,
         event_type: LakehouseEventType = LakehouseEventType.RESYNC,
-        fatal: bool = False,
     ) -> None:
         self._flush_interval = flush_interval_seconds
         self._max_size_bytes = max_size_bytes
@@ -55,7 +50,6 @@ class LakehouseBuffer:
         self.kind = kind
         self.resync_start_time = resync_start_time
         self.event_type = event_type
-        self._fatal = fatal
 
     async def flush(self) -> None:
         if not self._buffer:
@@ -84,8 +78,7 @@ class LakehouseBuffer:
                 f"Failed to flush lakehouse buffer for kind '{self.kind}': {e}. "
                 f"Discarding {len(self._buffer)} buffered items."
             )
-            if self._fatal:
-                raise
+            raise
         self._buffer = []
         self._current_size_bytes = 0
         self._last_flush_at = time.monotonic()

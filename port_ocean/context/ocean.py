@@ -11,8 +11,6 @@ from port_ocean.core.models import Entity, EventListenerType
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
-    RawEntityDiff,
-    EntityDiff,
     BEFORE_RESYNC_EVENT_LISTENER,
     AFTER_RESYNC_EVENT_LISTENER,
     INCREMENTAL_EVENT_LISTENER,
@@ -164,21 +162,6 @@ class PortOceanContext:
 
         return wrapper
 
-    async def update_raw_diff(
-        self,
-        kind: str,
-        raw_diff: RawEntityDiff,
-        user_agent_type: UserAgentType = UserAgentType.exporter,
-    ) -> None:
-        await self.integration.update_raw_diff(kind, raw_diff, user_agent_type)
-
-    async def update_diff(
-        self,
-        diff: EntityDiff,
-        user_agent_type: UserAgentType = UserAgentType.exporter,
-    ) -> None:
-        await self.integration.update_diff(diff, user_agent_type)
-
     async def register_raw(
         self,
         kind: str,
@@ -199,20 +182,17 @@ class PortOceanContext:
         self,
         entities: list[Entity],
         user_agent_type: UserAgentType = UserAgentType.exporter,
-    ) -> None:
-        await self.integration.register(entities, user_agent_type)
+    ) -> list[Entity]:
+        """Write already-built entities straight to Port, without any mapping."""
+        return await self.integration.register(entities, user_agent_type)
 
     async def unregister(
         self,
         entities: list[Entity],
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
+        """Delete already-built entities straight from Port, without any mapping."""
         await self.integration.unregister(entities, user_agent_type)
-
-    async def sync(
-        self, entities: list[Entity], user_agent_type: UserAgentType
-    ) -> None:
-        await self.integration.sync(entities, user_agent_type)
 
     async def sync_raw_all(self) -> None:
         await self.integration.sync_raw_all(trigger_type="manual")

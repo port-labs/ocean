@@ -1,6 +1,5 @@
 import asyncio
-import json
-from typing import Iterable, Any, TypeVar, Callable, Awaitable, AsyncGenerator, cast
+from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
 
@@ -14,12 +13,6 @@ from port_ocean.exceptions.core import (
     RawObjectValidationException,
     IntegrationRuntimeException,
 )
-
-T = TypeVar("T", bound=tuple[list[Any], ...])
-
-
-def zip_and_sum(collection: Iterable[T]) -> T:
-    return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
 
 
 def validate_result(result: Any) -> RAW_RESULT:
@@ -39,13 +32,6 @@ def validate_result(result: Any) -> RAW_RESULT:
                 )
 
     return result
-
-
-def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
-    return (
-        first_entity.identifier == second_entity.identifier
-        and first_entity.blueprint == second_entity.blueprint
-    )
 
 
 async def validate_integration_runtime(
@@ -125,96 +111,3 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
         modified=list(modified.values()),
         deleted=list(entities_at_port.values()),
     )
-
-
-def are_teams_different(
-    first_team: str | None | list[Any] | dict[str, Any],
-    second_team: str | None | list[Any] | dict[str, Any],
-) -> bool:
-    if isinstance(first_team, list) and isinstance(second_team, list):
-        return sorted(first_team) != sorted(second_team)
-    return first_team != second_team
-
-
-def are_entities_fields_equal(
-    first_entity_field: dict[str, Any], second_entity_field: dict[str, Any]
-) -> bool:
-    """
-    Compare two entity fields by serializing them to JSON and comparing their SHA-256 hashes.
-    Removes keys with None values before comparison if the corresponding key doesn't exist in the other dict.
-
-    Args:
-        first_entity_field: First entity field dictionary to compare
-        second_entity_field: Second entity field dictionary to compare
-
-    Returns:
-        bool: True if the entity fields have identical content
-    """
-    first_entity_field_copy = first_entity_field.copy()
-
-    for key in list(first_entity_field.keys()):
-        if first_entity_field[key] is None and key not in second_entity_field:
-            del first_entity_field_copy[key]
-
-    first_props = json.dumps(first_entity_field_copy, sort_keys=True)
-    second_props = json.dumps(second_entity_field, sort_keys=True)
-    return first_props == second_props
-
-
-def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
-    if first_entity.title != second_entity.title:
-        return True
-    if are_teams_different(first_entity.team, second_entity.team):
-        return True
-    if not are_entities_fields_equal(first_entity.properties, second_entity.properties):
-        return True
-    if not are_entities_fields_equal(first_entity.relations, second_entity.relations):
-        return True
-
-    return False
-
-
-async def resolve_entities_diff(
-    source_entities: list[Entity],
-    target_entities_generator: AsyncGenerator[list[Entity], None],
-) -> list[Entity]:
-    """
-    Maps the entities into filtered list of source entities, excluding matches found in target that needs to be upserted
-    Args:
-        source_entities: List of entities from third party source
-        target_entities: List of existing Port entities
-
-    Returns:
-        list[Entity]: Filtered list of source entities, excluding matches found in target
-    """
-    source_entities_dict = {}
-
-    if (
-        len(
-            [
-                entity
-                for entity in source_entities
-                if entity.is_using_search_identifier or entity.is_using_search_relation
-            ]
-        )
-        > 0
-    ):
-        return source_entities
-
-    for entity in source_entities:
-        key = _get_entity_key(entity)
-        source_entities_dict[key] = entity
-
-    async for batch_target_entities in target_entities_generator:
-        if not batch_target_entities:
-            continue
-
-        for entity in batch_target_entities:
-            key = _get_entity_key(entity)
-
-            if key in source_entities_dict and not are_entities_different(
-                entity, cast(Entity, source_entities_dict.get(key))
-            ):
-                source_entities_dict.pop(key, None)
-
-    return list(source_entities_dict.values())
