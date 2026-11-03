@@ -11,7 +11,11 @@ from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.ocean import Ocean
 from port_ocean.helpers.retry import RetryTransport
-from port_ocean.integration_testing.port_mock import PortMockResponder
+from port_ocean.integration_testing.port_mock import (
+    LifecycleCall,
+    PortMockResponder,
+    RawDataBatch,
+)
 from port_ocean.integration_testing.transport import (
     InterceptTransport,
     RecordingTransport,
@@ -37,10 +41,30 @@ def _flatten_exception_tree(exc: BaseException) -> list[Exception]:
 
 @dataclass
 class ResyncResult:
+    """What a resync handed to Port.
+
+    Mapping raw items to entities happens in the data-source-processor, so `raw_batches`
+    is the primary output. `upserted_entities` / `deleted_entities` only hold entities an
+    integration wrote directly (e.g. GitOps `ocean.register`).
+    """
+
+    raw_batches: list[RawDataBatch] = field(default_factory=list)
+    lifecycle_calls: list[LifecycleCall] = field(default_factory=list)
     upserted_entities: list[dict[str, Any]] = field(default_factory=list)
     deleted_entities: list[dict[str, Any]] = field(default_factory=list)
     errors: list[Exception] = field(default_factory=list)
     reconciliation_success: bool = True
+
+    def raw_items(
+        self, kind: str | None = None, operation: str | None = "upsert"
+    ) -> list[dict[str, Any]]:
+        """Raw items handed off for `kind` (all kinds when None), in extraction order."""
+        return [
+            item
+            for batch in self.raw_batches
+            if kind is None or batch.kind == kind
+            for item in batch.items(operation)
+        ]
 
 
 class IntegrationTestHarness:
@@ -108,6 +132,7 @@ class IntegrationTestHarness:
                 "type": "test",
             },
             "send_raw_data_examples": False,
+            "lakehouse_enabled": True,
             **self.config_overrides,
         }
 
@@ -124,7 +149,7 @@ class IntegrationTestHarness:
         # Patch the HTTP clients with intercepted transports
         self._patch_http_clients()
 
-        # Initialize the integration handlers (entity processor, port app config, state applier)
+        # Initialize the integration handlers (port app config, raw enricher)
         await self._ocean.integration.initialize_handlers()
 
     def _patch_http_clients(self) -> None:
@@ -186,6 +211,21 @@ class IntegrationTestHarness:
         if self._ocean:
             self._ocean.port_client.client = port_client
 
+            # The lifecycle client is an OceanAsyncClient too; route it to the Port mock
+            # before the third-party transport patch below applies to new clients.
+            from port_ocean.clients.dsp.lifecycle_http import OceanResyncHttpClient
+
+            lifecycle_http_client = OceanResyncHttpClient(
+                auth=self._ocean.port_client.auth
+            )
+            lifecycle_http_client._transport = self.port_mock.transport
+            p_lifecycle = patch(
+                "port_ocean.clients.dsp.lifecycle_http._get_lifecycle_http_client_context",
+                return_value=lifecycle_http_client,
+            )
+            p_lifecycle.start()
+            self._patches.append(p_lifecycle)
+
         # Patch OceanAsyncClient._init_transport so integrations that create
         # their own client instances also get the intercepted transport
         original_init_transport = None
@@ -228,10 +268,7 @@ class IntegrationTestHarness:
         if not self._ocean:
             raise RuntimeError("Harness not started. Call start() first.")
 
-        # Clear previously captured entities
-        self.port_mock.upserted_entities.clear()
-        self.port_mock.deleted_entity_ids.clear()
-        self.port_mock.deleted_entities.clear()
+        self.port_mock.clear_captured()
 
         try:
             # Call with silent=False so errors are raised and can be captured
@@ -242,25 +279,24 @@ class IntegrationTestHarness:
         except ExceptionGroup as e:
             errors = _flatten_exception_tree(e)
             logger.warning(f"Resync raised ExceptionGroup with {len(errors)} errors")
-            return ResyncResult(
-                upserted_entities=list(self.port_mock.upserted_entities),
-                deleted_entities=list(self.port_mock.deleted_entities),
-                errors=errors,
-                reconciliation_success=False,
-            )
+            return self._resync_result(errors=errors, reconciliation_success=False)
         except Exception as e:
             logger.warning(f"Resync raised an exception: {e}")
-            return ResyncResult(
-                upserted_entities=list(self.port_mock.upserted_entities),
-                deleted_entities=list(self.port_mock.deleted_entities),
-                errors=[e],
-                reconciliation_success=False,
-            )
+            return self._resync_result(errors=[e], reconciliation_success=False)
 
+        return self._resync_result(
+            errors=[], reconciliation_success=reconciliation_success
+        )
+
+    def _resync_result(
+        self, errors: list[Exception], reconciliation_success: bool
+    ) -> ResyncResult:
         return ResyncResult(
+            raw_batches=list(self.port_mock.raw_batches),
+            lifecycle_calls=list(self.port_mock.lifecycle_calls),
             upserted_entities=list(self.port_mock.upserted_entities),
             deleted_entities=list(self.port_mock.deleted_entities),
-            errors=[],
+            errors=errors,
             reconciliation_success=reconciliation_success,
         )
 

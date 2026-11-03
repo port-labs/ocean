@@ -145,6 +145,18 @@ class ResourceConfig(BaseModel):
         description="Defines the mapping from the raw data to the entity and relations.",
     )
 
+    def to_dsp_mapping(self) -> dict[str, Any]:
+        """The resource as the data-source-processor evaluates it: a list of entity mappings
+        whose `file://` / `search://` values read what the raw enricher attached."""
+        resource = self.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+        entity = resource.get("port", {}).get("entity", {})
+        mappings = entity.get("mappings")
+        if mappings is not None and not isinstance(mappings, list):
+            mappings = [mappings]
+        if mappings is not None:
+            entity["mappings"] = rewrite_mapping_refs(mappings)
+        return resource
+
 
 class PortAppConfig(BaseModel):
     allow_custom_kinds: ClassVar[bool] = False
@@ -204,13 +216,9 @@ class PortAppConfig(BaseModel):
 
     def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
         mapping = self.to_request()
-        for resource in mapping.get("resources", []):
-            entity = resource.get("port", {}).get("entity", {})
-            mappings = entity.get("mappings")
-            if mappings is not None and not isinstance(mappings, list):
-                mappings = [mappings]
-            if mappings is not None:
-                entity["mappings"] = rewrite_mapping_refs(mappings)
+        mapping["resources"] = [
+            resource.to_dsp_mapping() for resource in self.resources
+        ]
         return mapping
 
     class Config:

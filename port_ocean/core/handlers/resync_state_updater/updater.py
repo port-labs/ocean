@@ -3,7 +3,6 @@ from typing import Any, Literal
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
@@ -36,11 +35,11 @@ class ResyncStateUpdater:
     async def update_after_superseded_resync(
         self, resync_id: str | None = None
     ) -> None:
-        """Aborted resyncState for a cancelled run, plus lifecycle when DSP is on."""
+        """Aborted resyncState for a cancelled run, plus the lifecycle abort notification."""
         await self.update_after_resync(IntegrationStateStatus.Aborted)
 
         resync_id_normalized = resync_id.strip() if resync_id else ""
-        if not resync_id_normalized or not await is_dsp_mode_enabled():
+        if not resync_id_normalized:
             return
 
         await ocean.app.lifecycle_client.notify_resync_aborted(
@@ -117,10 +116,6 @@ class ResyncStateUpdater:
 
         await ocean.metrics.send_metrics_to_webhook(
             kind=ocean.metrics.current_resource_kind()
-        )
-        await ocean.metrics.report_sync_metrics(
-            kinds=[ocean.metrics.current_resource_kind()],
-            dsp_enabled=await is_dsp_mode_enabled(),
         )
 
         ocean.metrics.clear_sync_context()

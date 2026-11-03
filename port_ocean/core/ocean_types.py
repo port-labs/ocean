@@ -4,14 +4,11 @@ import typing
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import (
-    TypedDict,
     Any,
     AsyncIterator,
     Callable,
     Awaitable,
-    NamedTuple,
 )
-from port_ocean.core.models import Entity
 
 if typing.TYPE_CHECKING:
     from port_ocean.core.probe import ProbeContext
@@ -32,32 +29,8 @@ AFTER_RESYNC_EVENT_LISTENER = Callable[[], Awaitable[None]]
 ON_PROBE_EVENT_LISTENER = Callable[["ProbeContext"], Awaitable["ProbeContext | None"]]
 
 
-class RawEntityDiff(TypedDict):
-    before: list[RAW_ITEM]
-    after: list[RAW_ITEM]
-
-
-class EntityDiff(TypedDict):
-    before: list[Entity]
-    after: list[Entity]
-
-
-class EntitySelectorDiff(NamedTuple):
-    passed: list[Entity]
-    failed: list[Entity]
-
-
-class CalculationResult(NamedTuple):
-    entity_selector_diff: EntitySelectorDiff
-    errors: list[Exception]
-    number_of_transformed_entities: int = 0
-    misconfigured_entity_keys: dict[str, str] = field(default_factory=dict)
-
-
 class ETLPhase:
     EXTRACT = "extract"
-    TRANSFORM = "transform"
-    LOAD = "load"
     RECONCILIATION = "reconciliation"
 
 

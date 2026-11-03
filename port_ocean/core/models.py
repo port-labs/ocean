@@ -147,7 +147,6 @@ class IntegrationFeatureFlag(StrEnum):
 
 
 class ProcessingMode(StrEnum):
-    ocean_core = "ocean-core"
     dsp = "dsp"
 
 
