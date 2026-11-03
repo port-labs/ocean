@@ -1,6 +1,6 @@
 {
   "title": "AWS",
-  "description": "AWS integration for Port",
+  "description": "AWS integration for Port. Syncs first-class AWS resource kinds and custom Cloud Control types (CloudFormation type names such as AWS::IAM::Role from the AWS Cloud Control supported-resources list).",
   "icon": "AWS",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3",
   "formMappingEnabled": true,
@@ -91,6 +91,11 @@
         },
         {
           "kind": "AWS::SNS::Topic"
+        },
+        {
+          "kind": "__custom__",
+          "title": "Custom Cloud Control resource",
+          "description": "Any AWS::Service::Resource type supported by the AWS Cloud Control API (for example AWS::IAM::Role)."
         }
       ]
     }
