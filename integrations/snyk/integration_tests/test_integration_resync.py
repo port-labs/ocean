@@ -8,19 +8,12 @@ from port_ocean.integration_testing import (
     ResyncResult,
 )
 
+from expectations import KIND_EXPECTATIONS, assert_raw_items
 from mocks.payloads import (
     ORG_ID,
-    ORG_NAME,
-    ORG_SLUG,
-    PACKAGE_NAMES,
-    PACKAGE_VERSIONS,
-    PROJECT_IDS,
     RECORD_COUNT,
     SNYK_API_URL,
     SNYK_TOKEN,
-    TARGET_IDS,
-    VULN_IDS,
-    VULN_KEYS,
     org_response,
     project_response,
     target_response,
@@ -28,18 +21,20 @@ from mocks.payloads import (
 )
 from mocks.transport_builder import _paginated
 
+_HAPPY_PATH_KINDS = ("organization", "project", "target", "vulnerability")
+
 
 class TestSnykHappyPath(BaseIntegrationTest):
     """Happy-path integration test for the Snyk integration.
 
     Exercises a full resync across all four default kinds at once:
-    - organization  → snykOrganization entities
-    - project       → snykProject entities
-    - target        → snykTarget entities
-    - vulnerability → snykVulnerability entities
+    - organization
+    - project
+    - target
+    - vulnerability
 
-    Expected output: 1 org, 2 projects, 2 targets, 2 vulnerabilities.
-    All URL, relation, and property assertions are verified.
+    Expected raw items: 1 org, 2 projects, 2 targets, 2 vulnerabilities, each
+    checked on the raw fields its Port mapping reads.
     """
 
     integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
@@ -198,60 +193,7 @@ class TestSnykHappyPath(BaseIntegrationTest):
     async def test_happy_path(self, resync: ResyncResult) -> None:
         assert resync.errors == [], f"Resync had errors: {resync.errors}"
         assert resync.reconciliation_success is True
+        assert {batch.kind for batch in resync.raw_batches} == set(_HAPPY_PATH_KINDS)
 
-        by_blueprint: dict[str, list[dict[str, Any]]] = {}
-        for entity in resync.upserted_entities:
-            by_blueprint.setdefault(entity["blueprint"], []).append(entity)
-
-        # --- Organization ---
-        orgs = by_blueprint.get("snykOrganization", [])
-        assert len(orgs) == 1
-        org = orgs[0]
-        assert org["identifier"] == ORG_ID
-        assert org["title"] == ORG_NAME
-        assert org["properties"]["slug"] == ORG_SLUG
-        assert org["properties"]["url"] == f"https://app.snyk.io/org/{ORG_SLUG}"
-
-        # --- Projects ---
-        projects = by_blueprint.get("snykProject", [])
-        assert len(projects) == RECORD_COUNT
-        projects_by_id = {e["identifier"]: e for e in projects}
-        for i in range(1, RECORD_COUNT + 1):
-            project = projects_by_id[PROJECT_IDS[i - 1]]
-            assert project["title"] == f"Project {i}"
-            props = project["properties"]
-            assert (
-                props["url"]
-                == f"https://app.snyk.io/org/{ORG_SLUG}/project/{PROJECT_IDS[i - 1]}"
-            )
-            assert props["targetOrigin"] == "github"
-            assert props["highOpenVulnerabilities"] == i
-            assert project["relations"]["snyk_target"] == TARGET_IDS[i - 1]
-
-        # --- Targets ---
-        targets = by_blueprint.get("snykTarget", [])
-        assert len(targets) == RECORD_COUNT
-        targets_by_id = {e["identifier"]: e for e in targets}
-        for i in range(1, RECORD_COUNT + 1):
-            target = targets_by_id[TARGET_IDS[i - 1]]
-            assert target["title"] == f"Target {i}"
-            assert target["properties"]["origin"] == "github"
-            assert target["relations"]["snyk_organization"] == ORG_ID
-
-        # --- Vulnerabilities ---
-        vulns = by_blueprint.get("snykVulnerability", [])
-        assert len(vulns) == RECORD_COUNT
-        vulns_by_id = {e["identifier"]: e for e in vulns}
-        for i in range(1, RECORD_COUNT + 1):
-            vuln = vulns_by_id[VULN_IDS[i - 1]]
-            assert vuln["title"] == f"Vulnerability {i}"
-            props = vuln["properties"]
-            assert props["packageNames"] == [PACKAGE_NAMES[i - 1]]
-            assert props["packageVersions"] == [PACKAGE_VERSIONS[i - 1]]
-            assert props["severity"] == ("high" if i == 1 else "medium")
-            assert props["status"] == "open"
-            assert props["url"] == (
-                f"https://app.snyk.io/org/{ORG_SLUG}/project/{PROJECT_IDS[i - 1]}"
-                f"#issue-{VULN_KEYS[i - 1]}"
-            )
-            assert vuln["relations"]["project"] == PROJECT_IDS[i - 1]
+        for kind in _HAPPY_PATH_KINDS:
+            assert_raw_items(resync.raw_items(kind), KIND_EXPECTATIONS[kind], kind)
