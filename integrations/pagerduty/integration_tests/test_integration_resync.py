@@ -1,28 +1,34 @@
+from dataclasses import replace
 from typing import Any
 
 from port_ocean.integration_testing import BaseIntegrationTest, InterceptTransport
 from port_ocean.integration_testing.harness import ResyncResult
 
-from expectations import KIND_EXPECTATIONS
+from expectations import KIND_EXPECTATIONS, KindExpectation, assert_raw_items
 from helpers import full_mapping_config, integration_config
 from mocks.transport_builder import PagerdutyMockTransportBuilder
 
+_INCIDENTS_KIND = "incidents"
 # The full mapping has two incidents blocks (triggered+acknowledged and resolved),
-# so incidents are upserted twice — the total count is 2 × RECORD_COUNT.
-_INCIDENTS_BLUEPRINT = "pagerdutyIncident"
-_INCIDENTS_MULTIPLIER = 2
+# so each incident is extracted once per status.
+_INCIDENT_STATUSES = {"triggered", "resolved"}
+
+
+def _with_status(expectation: KindExpectation, status: str) -> KindExpectation:
+    return replace(
+        expectation,
+        records=tuple(
+            replace(record, fields={**record.fields, "status": status})
+            for record in expectation.records
+        ),
+    )
 
 
 class TestPagerDutyHappyPath(BaseIntegrationTest):
     """Happy-path integration test for the PagerDuty integration.
 
-    Exercises a full resync across all six default kinds at once:
-    - services           → pagerdutyService entities
-    - incidents (×2)     → pagerdutyIncident entities (two resource blocks)
-    - schedules          → pagerdutySchedule entities
-    - oncalls            → pagerdutyOncall entities
-    - escalation_policies→ pagerdutyEscalationPolicy entities
-    - users              → pagerdutyUser entities
+    Exercises a full resync across all six default kinds at once and checks the
+    raw items handed to Port for each kind (incidents come from two resource blocks).
     """
 
     def create_third_party_transport(self) -> InterceptTransport:
@@ -45,52 +51,19 @@ class TestPagerDutyHappyPath(BaseIntegrationTest):
 
     async def test_happy_path(self, resync: ResyncResult) -> None:
         assert not resync.errors, f"Resync raised errors: {resync.errors}"
-
-        by_blueprint: dict[str, list[dict[str, Any]]] = {}
-        for entity in resync.upserted_entities:
-            by_blueprint.setdefault(entity["blueprint"], []).append(entity)
+        assert {batch.kind for batch in resync.raw_batches} == set(KIND_EXPECTATIONS)
 
         for kind, expectation in KIND_EXPECTATIONS.items():
-            blueprint = expectation.blueprint
-            entities = by_blueprint.get(blueprint, [])
+            if kind != _INCIDENTS_KIND:
+                assert_raw_items(resync.raw_items(kind), expectation, kind)
 
-            # Incidents appear in two resource blocks, so double the expected count.
-            expected_count = expectation.count
-            if blueprint == _INCIDENTS_BLUEPRINT:
-                expected_count *= _INCIDENTS_MULTIPLIER
-
-            assert len(entities) == expected_count, (
-                f"[{kind}] expected {expected_count} entities for blueprint "
-                f"{blueprint!r}, got {len(entities)}"
+        incidents_by_status: dict[str, list[dict[str, Any]]] = {}
+        for item in resync.raw_items(_INCIDENTS_KIND):
+            incidents_by_status.setdefault(item["status"], []).append(item)
+        assert incidents_by_status.keys() == _INCIDENT_STATUSES
+        for status, items in incidents_by_status.items():
+            assert_raw_items(
+                items,
+                _with_status(KIND_EXPECTATIONS[_INCIDENTS_KIND], status),
+                f"{_INCIDENTS_KIND}[{status}]",
             )
-
-            for expected in expectation.entities:
-                matching = [
-                    e for e in entities if e["identifier"] == expected.identifier
-                ]
-                assert (
-                    len(matching) >= 1
-                ), f"[{kind}] identifier {expected.identifier!r} not found"
-                if blueprint == _INCIDENTS_BLUEPRINT:
-                    statuses = {e.get("properties", {}).get("status") for e in matching}
-                    assert statuses == {"triggered", "resolved"}, (
-                        f"[{kind}] expected both triggered and resolved incidents "
-                        f"for {expected.identifier!r}, got statuses {statuses}"
-                    )
-                entity = matching[0]
-                if expected.title is not None:
-                    assert (
-                        entity.get("title") == expected.title
-                    ), f"[{kind}] title mismatch for {expected.identifier!r}"
-                for prop, value in expected.properties.items():
-                    actual = entity.get("properties", {}).get(prop)
-                    assert actual == value, (
-                        f"[{kind}] property {prop!r} for {expected.identifier!r}: "
-                        f"expected {value!r}, got {actual!r}"
-                    )
-                for rel, rel_value in expected.relations.items():
-                    actual_rel = entity.get("relations", {}).get(rel)
-                    assert actual_rel == rel_value, (
-                        f"[{kind}] relation {rel!r} for {expected.identifier!r}: "
-                        f"expected {rel_value!r}, got {actual_rel!r}"
-                    )
