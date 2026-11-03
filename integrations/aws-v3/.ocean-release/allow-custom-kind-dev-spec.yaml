@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Document custom Cloud Control kinds in integration spec for dev registry
