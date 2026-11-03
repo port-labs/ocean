@@ -26,9 +26,8 @@ from github.webhook.webhook_processors.check_runs.file_validation import (
     get_file_validation_mappings,
 )
 
-JQ_SEARCH_PATH = (
-    "github.webhook.webhook_processors.check_runs.file_validation."
-    "JQEntityProcessor._search_as_object"
+MAP_ENTITY_PATH = (
+    "github.webhook.webhook_processors.check_runs.file_validation._map_file_entity"
 )
 
 
@@ -321,12 +320,12 @@ class TestFileValidation:
         )
 
         with (
-            patch(JQ_SEARCH_PATH, new_callable=AsyncMock) as mock_jq,
+            patch(MAP_ENTITY_PATH, new_callable=AsyncMock) as mock_map,
             patch.object(
                 ocean.port_client, "upsert_entity", new_callable=AsyncMock
             ) as mock_upsert,
         ):
-            mock_jq.return_value = _extracted_entity()
+            mock_map.return_value = [_extracted_entity()]
             mock_upsert.return_value = entity
 
             result = await validation_service._validate_entity_against_port(
@@ -346,12 +345,12 @@ class TestFileValidation:
         validation_service = FileValidationService("test-org")
 
         with (
-            patch(JQ_SEARCH_PATH, new_callable=AsyncMock) as mock_jq,
+            patch(MAP_ENTITY_PATH, new_callable=AsyncMock) as mock_map,
             patch.object(
                 ocean.port_client, "upsert_entity", new_callable=AsyncMock
             ) as mock_upsert,
         ):
-            mock_jq.return_value = _extracted_entity()
+            mock_map.return_value = [_extracted_entity()]
             mock_upsert.return_value = False
 
             result = await validation_service._validate_entity_against_port(
@@ -372,12 +371,12 @@ class TestFileValidation:
         port_message = "Invalid enum value 'broken' for property 'status'"
 
         with (
-            patch(JQ_SEARCH_PATH, new_callable=AsyncMock) as mock_jq,
+            patch(MAP_ENTITY_PATH, new_callable=AsyncMock) as mock_map,
             patch.object(
                 ocean.port_client, "upsert_entity", new_callable=AsyncMock
             ) as mock_upsert,
         ):
-            mock_jq.return_value = _extracted_entity()
+            mock_map.return_value = [_extracted_entity()]
             mock_upsert.side_effect = _http_status_error(
                 422,
                 json_body={
@@ -395,7 +394,7 @@ class TestFileValidation:
         assert result["errors"] == [port_message]
         assert mock_upsert.call_args.kwargs["should_raise"] is True
 
-    async def test_validate_entity_against_port_jq_failure_does_not_unbound_local(
+    async def test_validate_entity_against_port_mapping_failure_does_not_unbound_local(
         self,
         file_resource_config: GithubFileResourceConfig,
         file_object: FileObject,
@@ -403,18 +402,18 @@ class TestFileValidation:
         validation_service = FileValidationService("test-org")
 
         with patch(
-            JQ_SEARCH_PATH,
+            MAP_ENTITY_PATH,
             new_callable=AsyncMock,
-            side_effect=Exception("jq failed"),
+            side_effect=Exception("mapping failed"),
         ):
             result = await validation_service._validate_entity_against_port(
                 file_object, file_resource_config
             )
 
         assert result["success"] is False
-        assert result["errors"] == ["jq failed"]
+        assert result["errors"] == ["mapping failed"]
 
-    async def test_validate_entity_against_port_invalid_blueprint_type(
+    async def test_validate_entity_against_port_mapping_validation_issue(
         self,
         file_resource_config: GithubFileResourceConfig,
         file_object: FileObject,
@@ -422,16 +421,16 @@ class TestFileValidation:
         validation_service = FileValidationService("test-org")
 
         with patch(
-            JQ_SEARCH_PATH,
+            MAP_ENTITY_PATH,
             new_callable=AsyncMock,
-            return_value=_extracted_entity(blueprint=123),
+            return_value=["status is required"],
         ):
             result = await validation_service._validate_entity_against_port(
                 file_object, file_resource_config
             )
 
         assert result["success"] is False
-        assert result["errors"] == ["Blueprint is not a string"]
+        assert result["errors"] == ["status is required"]
 
     async def test_validate_pull_request_files_fails_check_on_port_404(
         self,
@@ -448,9 +447,9 @@ class TestFileValidation:
                 validation_service.check_runs, "update_check_run"
             ) as mock_update_check,
             patch(
-                JQ_SEARCH_PATH,
+                MAP_ENTITY_PATH,
                 new_callable=AsyncMock,
-                return_value=_extracted_entity(),
+                return_value=[_extracted_entity()],
             ),
             patch.object(
                 ocean.port_client, "upsert_entity", new_callable=AsyncMock
@@ -483,9 +482,9 @@ class TestFileValidation:
                 validation_service.check_runs, "update_check_run"
             ) as mock_update_check,
             patch(
-                JQ_SEARCH_PATH,
+                MAP_ENTITY_PATH,
                 new_callable=AsyncMock,
-                return_value=_extracted_entity(),
+                return_value=[_extracted_entity()],
             ),
             patch.object(
                 ocean.port_client, "upsert_entity", new_callable=AsyncMock

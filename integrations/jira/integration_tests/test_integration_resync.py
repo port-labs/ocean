@@ -27,13 +27,11 @@ from mocks.payloads import (
 class TestJiraHappyPath(BaseIntegrationTest):
     """Happy-path integration test for the Jira integration.
 
-    Exercises a full resync across the three default kinds at once:
-    - project → jiraProject entities
-    - issue   → jiraIssue entities (with project/assignee/reporter relations)
-    - user    → jiraUser entities
-
-    Expected output: 2 projects, 2 issues, 2 users — with identifiers,
-    titles, and key properties all verified.
+    Exercises a full resync across the three default kinds at once and checks
+    the raw records handed to Port for each kind:
+    - project → 2 projects keyed by `key`
+    - issue   → 2 issues keyed by `key` (with project/assignee/reporter fields)
+    - user    → 2 users keyed by `accountId`
     """
 
     integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
@@ -82,68 +80,59 @@ class TestJiraHappyPath(BaseIntegrationTest):
         assert resync.errors == [], f"Resync had errors: {resync.errors}"
         assert resync.reconciliation_success is True
 
-        by_blueprint: dict[str, list[dict[str, Any]]] = {}
-        for entity in resync.upserted_entities:
-            by_blueprint.setdefault(entity["blueprint"], []).append(entity)
-
         # --- Projects ---
-        projects = by_blueprint.get("jiraProject", [])
+        projects = resync.raw_items("project")
         assert len(projects) == len(
             PROJECT_KEYS
         ), f"Expected {len(PROJECT_KEYS)} projects, got {len(projects)}"
-        projects_by_id = {e["identifier"]: e for e in projects}
+        projects_by_key = {p["key"]: p for p in projects}
         for i, key in enumerate(PROJECT_KEYS, start=1):
             record = project_response(key, i)
-            entity = projects_by_id[key]
-            assert entity["title"] == record["name"]
-            assert entity["properties"]["url"] == f"{JIRA_HOST}/projects/{key}"
+            project = projects_by_key[key]
+            assert project["name"] == record["name"]
+            assert project["self"].startswith(JIRA_HOST)
             assert (
-                entity["properties"]["totalIssues"]
+                project["insight"]["totalIssueCount"]
                 == record["insight"]["totalIssueCount"]
             )
 
         # --- Issues ---
-        issues = by_blueprint.get("jiraIssue", [])
+        issues = resync.raw_items("issue")
         assert (
             len(issues) == ISSUE_COUNT
         ), f"Expected {ISSUE_COUNT} issues, got {len(issues)}"
-        issues_by_id = {e["identifier"]: e for e in issues}
+        issues_by_key = {i["key"]: i for i in issues}
         for i in range(1, ISSUE_COUNT + 1):
             record = issue_response(i)
-            key = record["key"]
-            entity = issues_by_id[key]
-            assert entity["title"] == record["fields"]["summary"]
-            props = entity["properties"]
-            assert props["url"] == f"{JIRA_HOST}/browse/{key}"
-            assert props["status"] == record["fields"]["status"]["name"]
-            assert props["issueType"] == record["fields"]["issuetype"]["name"]
-            assert props["creator"] == record["fields"]["creator"]["emailAddress"]
-            assert props["priority"] == record["fields"]["priority"]["name"]
-            assert props["labels"] == record["fields"]["labels"]
-            assert entity["relations"]["project"] == record["fields"]["project"]["key"]
+            issue = issues_by_key[record["key"]]
+            assert issue["self"].startswith(JIRA_HOST)
+            fields = issue["fields"]
+            expected = record["fields"]
+            assert fields["summary"] == expected["summary"]
+            assert fields["status"]["name"] == expected["status"]["name"]
+            assert fields["issuetype"]["name"] == expected["issuetype"]["name"]
             assert (
-                entity["relations"]["assignee"]
-                == record["fields"]["assignee"]["accountId"]
+                fields["creator"]["emailAddress"] == expected["creator"]["emailAddress"]
             )
-            assert (
-                entity["relations"]["reporter"]
-                == record["fields"]["reporter"]["accountId"]
-            )
+            assert fields["priority"]["name"] == expected["priority"]["name"]
+            assert fields["labels"] == expected["labels"]
+            assert fields["project"]["key"] == expected["project"]["key"]
+            assert fields["assignee"]["accountId"] == expected["assignee"]["accountId"]
+            assert fields["reporter"]["accountId"] == expected["reporter"]["accountId"]
 
         # --- Users ---
-        users = by_blueprint.get("jiraUser", [])
+        users = resync.raw_items("user")
         assert (
             len(users) == USER_COUNT
         ), f"Expected {USER_COUNT} users, got {len(users)}"
-        users_by_id = {e["identifier"]: e for e in users}
+        users_by_id = {u["accountId"]: u for u in users}
         for i in range(1, USER_COUNT + 1):
             record = user_response(i)
-            entity = users_by_id[record["accountId"]]
-            assert entity["title"] == record["displayName"]
-            props = entity["properties"]
-            assert props["emailAddress"] == record["emailAddress"]
-            assert props["active"] == record["active"]
-            assert props["accountType"] == record["accountType"]
-            assert props["timeZone"] == record["timeZone"]
-            assert props["locale"] == record["locale"]
-            assert props["avatarUrl"] == record["avatarUrls"]["48x48"]
+            user = users_by_id[record["accountId"]]
+            assert user["displayName"] == record["displayName"]
+            assert user["emailAddress"] == record["emailAddress"]
+            assert user["active"] == record["active"]
+            assert user["accountType"] == record["accountType"]
+            assert user["timeZone"] == record["timeZone"]
+            assert user["locale"] == record["locale"]
+            assert user["avatarUrls"]["48x48"] == record["avatarUrls"]["48x48"]

@@ -81,10 +81,10 @@ class TestGithubHappyPath(BaseIntegrationTest):
     - Repository listing with included files (README, CODEOWNERS)
     - Pull request listing (open PRs only)
 
-    Expected output:
-    - 1 githubOrganization entity
-    - 2 githubRepository entities (related to the org, README content populated)
-    - 2 githubPullRequest entities (one per repo, related to the repo)
+    Expected raw items handed to Port:
+    - 1 organization
+    - 2 repositories (owned by the org, README content in __includedFiles)
+    - 2 pull requests (one per repo, enriched with __repository)
     """
 
     integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
@@ -260,34 +260,32 @@ class TestGithubHappyPath(BaseIntegrationTest):
     async def test_happy_path(self, resync: ResyncResult) -> None:
         assert resync.errors == [], f"Resync had errors: {resync.errors}"
 
-        by_blueprint: dict[str, list[dict[str, Any]]] = {}
-        for entity in resync.upserted_entities:
-            by_blueprint.setdefault(entity["blueprint"], []).append(entity)
-
         # --- Organization ---
-        orgs = by_blueprint.get("githubOrganization", [])
+        orgs = resync.raw_items("organization")
         assert len(orgs) == 1
         org = orgs[0]
-        assert org["identifier"] == ORG_LOGIN
-        assert org["properties"]["id"] == ORG_ID
-        assert org["properties"]["login"] == ORG_LOGIN
-        assert org["properties"]["description"] == "Test organization"
+        assert org["login"] == ORG_LOGIN
+        assert org["id"] == ORG_ID
+        assert org["description"] == "Test organization"
 
         # --- Repositories ---
-        repos = by_blueprint.get("githubRepository", [])
-        assert {e["identifier"] for e in repos} == set(REPO_NAMES)
+        repos = resync.raw_items("repository")
+        assert len(repos) == len(REPO_NAMES)
+        assert {repo["name"] for repo in repos} == set(REPO_NAMES)
         for repo in repos:
-            props = repo["properties"]
-            assert props["visibility"] == "public"
-            assert props["defaultBranch"] == "main"
-            assert props["language"] == "Python"
-            assert props["readme"] == README_TEXT
-            assert not props.get("codeowners"), "CODEOWNERS should be empty (404)"
-            assert repo["relations"]["organization"] == ORG_LOGIN
+            assert repo["private"] is False
+            assert repo["default_branch"] == "main"
+            assert repo["language"] == "Python"
+            assert repo["__includedFiles"]["README.md"] == README_TEXT
+            assert not repo["__includedFiles"].get(
+                "CODEOWNERS"
+            ), "CODEOWNERS should be empty (404)"
+            assert repo["owner"]["login"] == ORG_LOGIN
 
         # --- Pull requests ---
-        prs = by_blueprint.get("githubPullRequest", [])
+        prs = resync.raw_items("pull-request")
         assert len(prs) == len(REPO_NAMES)
+        assert {pr["__repository"] for pr in prs} == set(REPO_NAMES)
         for pr in prs:
-            assert pr["properties"]["status"] == "open"
-            assert pr["relations"]["repository"] in REPO_NAMES
+            assert pr["state"] == "open"
+            assert pr["head"]["repo"]["name"] == pr["__repository"]

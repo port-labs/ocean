@@ -20,9 +20,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
-)
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
@@ -34,7 +31,7 @@ from github.helpers.datetime_selectors import (
 )
 from typing import Any, Dict, List, Optional, Type, Literal, ClassVar
 
-from github.entity_processors.file_entity_processor import FileEntityProcessor
+from github.raw_enricher import GithubRawEnricher
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind, PackageType
 from github.core.exporters.skill_exporter.utils import DEFAULT_SKILL_PATHS
@@ -56,9 +53,6 @@ def _optional_iso_datetime(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
     return parse_selector_iso_datetime(value)
-
-
-FILE_PROPERTY_PREFIX = "file://"
 
 
 class ExcludeArchivedSelector(BaseModel):
@@ -1331,27 +1325,8 @@ class GithubPortAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
-class GitManipulationHandler(JQEntityProcessor):
-    async def _search(
-        self, data: dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
-            )
-            entity_processor = FileEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern, field)
-
-
 class GithubHandlerMixin(HandlerMixin):
-    EntityProcessorClass = GitManipulationHandler
+    RawEnricherClass = GithubRawEnricher
 
 
 class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandlerMixin):
@@ -1408,9 +1383,7 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
 
         # Override the Ocean's default webhook manager with our custom one
         # This is necessary because we need GithubHandlerMixin which provides
-        # GitManipulationHandler to handle file:// prefixed properties and enable
-        # dynamic switching between JQEntityProcessor and FileEntityProcessor
-        # for GitHub-specific file content processing.
+        # GithubRawEnricher to resolve file:// mapping values on live events too.
         event_workers_count = context.config.event_workers_count
         ProcessManager = (
             GithubLiveEventsGroupProcessorManager

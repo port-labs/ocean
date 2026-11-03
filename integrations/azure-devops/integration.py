@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic.v1 import Field, BaseModel
 
-from azure_devops.gitops.file_entity_processor import GitManipulationHandler
+from azure_devops.raw_enricher import AzureDevopsRawEnricher
 from azure_devops.client.user_sources import (
     EntitlementsUserSource,
     GraphUserSource,
@@ -890,7 +890,7 @@ class GitPortAppConfig(PortAppConfig):
 
 
 class AzureDevopsHandlerMixin(HandlerMixin):
-    EntityProcessorClass = GitManipulationHandler
+    RawEnricherClass = AzureDevopsRawEnricher
 
 
 class AzureDevopsLiveEventsProcessorManager(

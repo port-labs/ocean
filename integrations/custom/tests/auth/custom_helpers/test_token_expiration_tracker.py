@@ -200,7 +200,7 @@ class TestTokenExpiration:
     async def test_async_auth_flow_proactively_reauthenticates_on_expiration(
         self,
         custom_auth_with_interval: AuthFlowManager,
-        mock_entity_processor: MagicMock,
+        mock_jq: MagicMock,
     ) -> None:
         """Test that async_auth_flow proactively re-authenticates when expired"""
         # Set up expired token
@@ -224,8 +224,8 @@ class TestTokenExpiration:
         mock_response.read = MagicMock(return_value=b'{"data": "success"}')
 
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             request = httpx.Request("GET", "https://api.example.com/data")
             auth_flow = custom_auth_with_interval.async_auth_flow(request)
@@ -242,7 +242,7 @@ class TestTokenExpiration:
     async def test_proactive_reauthentication_uses_lock(
         self,
         custom_auth_with_interval: AuthFlowManager,
-        mock_entity_processor: MagicMock,
+        mock_jq: MagicMock,
     ) -> None:
         """Test that proactive re-authentication uses lock to prevent concurrent auth"""
         # Set up expired token
@@ -273,8 +273,8 @@ class TestTokenExpiration:
 
         # Run two concurrent auth flows
         with patch(
-            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-            mock_entity_processor,
+            "http_server.helpers.template_utils.jq",
+            mock_jq,
         ):
             await asyncio.gather(run_auth_flow(), run_auth_flow())
 

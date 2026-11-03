@@ -9,9 +9,7 @@ from typing import AsyncGenerator, List, Dict, Any, Optional
 
 from loguru import logger
 
-from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
-    JQEntityProcessorSync,
-)
+from port_ocean.utils import jq
 from http_server.overrides import HttpServerSelector, ApiPathParameter
 from http_server.helpers.endpoint_cache import get_endpoint_cache
 
@@ -81,7 +79,7 @@ def _get_items_from_response(
         return [response_item]
 
     try:
-        extracted = JQEntityProcessorSync._search(response_item, data_path)
+        extracted = jq.evaluate(response_item, data_path)
         if extracted is None:
             return []
         return extracted if isinstance(extracted, list) else [extracted]
@@ -106,10 +104,10 @@ def _get_filtered_value(
         Extracted string value if valid and passes filter, None otherwise
     """
     try:
-        value = JQEntityProcessorSync._search(item, field)
+        value = jq.evaluate(item, field)
         if value is None:
             return None
-        if filter_expr and JQEntityProcessorSync._search(item, filter_expr) is not True:
+        if filter_expr and jq.evaluate(item, filter_expr) is not True:
             return None
         return str(value)
     except Exception as error:

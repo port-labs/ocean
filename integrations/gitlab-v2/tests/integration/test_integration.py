@@ -12,9 +12,9 @@ from pydantic.v1 import ValidationError
 from integration import GitlabPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import GitLabDeploymentStatus
+from gitlab.raw_enricher import GitlabRawEnricher
 from integration import (
     GitlabIntegration,
-    GitManipulationHandler,
     GitlabLiveEventsProcessorManager,
     PipelineQueryParams,
     GitlabDeploymentQueryParams,
@@ -67,22 +67,22 @@ def mock_resource_config() -> MagicMock:
     return config
 
 
-async def test_gitlab_integration_uses_gitmanipulation_handler(
+async def test_gitlab_integration_uses_gitlab_raw_enricher(
     mock_context: MagicMock, mock_signal_handler: AsyncMock
 ) -> None:
-    """Test that GitlabIntegration uses GitManipulationHandler as its EntityProcessorClass"""
+    """Test that GitlabIntegration uses GitlabRawEnricher as its RawEnricherClass"""
     # Arrange & Act
     with patch("integration.signal_handler", mock_signal_handler):
         integration = GitlabIntegration(mock_context)
 
         # Assert
-        assert integration.EntityProcessorClass == GitManipulationHandler
+        assert integration.RawEnricherClass == GitlabRawEnricher
 
 
-async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
+async def test_gitlab_webhook_manager_uses_gitlab_raw_enricher(
     mock_context: MagicMock, mock_signal_handler: AsyncMock
 ) -> None:
-    """Test that GitlabLiveEventsProcessorManager uses GitManipulationHandler as its EntityProcessorClass"""
+    """Test that GitlabLiveEventsProcessorManager uses GitlabRawEnricher as its RawEnricherClass"""
     # Arrange & Act
     with patch("integration.signal_handler", mock_signal_handler):
         integration = GitlabIntegration(mock_context)
@@ -90,7 +90,7 @@ async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
 
         # Assert
         assert isinstance(manager, GitlabLiveEventsProcessorManager)
-        assert manager.EntityProcessorClass == GitManipulationHandler
+        assert manager.RawEnricherClass == GitlabRawEnricher
 
 
 def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() -> None:

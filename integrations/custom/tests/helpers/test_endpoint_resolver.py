@@ -126,7 +126,7 @@ class TestQueryApiForParameters:
     """Test querying API for parameter values - yields batches of values"""
 
     @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.JQEntityProcessorSync")
+    @patch("http_server.helpers.endpoint_resolver.jq")
     async def test_query_with_single_batch(
         self, mock_jq_sync: MagicMock, mock_init_client: MagicMock
     ) -> None:
@@ -145,13 +145,13 @@ class TestQueryApiForParameters:
         mock_client.fetch_paginated_data = mock_fetch
         mock_init_client.return_value = mock_client
 
-        # Setup mock sync JQ processor
+        # Setup mock JQ evaluation
         def mock_search(data: Any, path: str) -> Any:
             if path == ".id":
                 return data.get("id")
             return None
 
-        mock_jq_sync._search = mock_search
+        mock_jq_sync.evaluate = mock_search
 
         # Create param config
         param_config = ApiPathParameter(
@@ -170,7 +170,7 @@ class TestQueryApiForParameters:
         mock_init_client.assert_called_once()
 
     @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.JQEntityProcessorSync")
+    @patch("http_server.helpers.endpoint_resolver.jq")
     async def test_query_with_filter(
         self, mock_jq_sync: MagicMock, mock_init_client: MagicMock
     ) -> None:
@@ -190,7 +190,7 @@ class TestQueryApiForParameters:
         mock_client.fetch_paginated_data = mock_fetch
         mock_init_client.return_value = mock_client
 
-        # Setup mock sync JQ processor
+        # Setup mock JQ evaluation
         def mock_search(data: Any, path: str) -> Any:
             if path == ".id":
                 return data.get("id")
@@ -198,7 +198,7 @@ class TestQueryApiForParameters:
                 return data.get("active")
             return None
 
-        mock_jq_sync._search = mock_search
+        mock_jq_sync.evaluate = mock_search
 
         # Create param config with filter
         param_config = ApiPathParameter(

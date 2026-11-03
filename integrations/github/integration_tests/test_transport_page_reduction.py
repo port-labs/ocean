@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+import port_ocean.context.ocean as ocean_context_module
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.integration_testing import InterceptTransport
@@ -33,7 +34,12 @@ ORG = "test-org"
 
 
 @pytest.fixture(autouse=True)
-def _ocean_context() -> None:
+def _ocean_context() -> Iterator[None]:
+    """Install a mock Ocean context, restoring the previous one afterwards.
+
+    The context is a module global; leaking the mock app breaks later test modules.
+    """
+    previous = ocean_context_module._port_ocean
     app = MagicMock()
     app.is_saas = MagicMock(return_value=False)
     app.config.client_timeout = 30
@@ -41,6 +47,8 @@ def _ocean_context() -> None:
         initialize_port_ocean_context(app)
     except PortOceanContextAlreadyInitializedError:
         pass
+    yield
+    ocean_context_module._port_ocean = previous
 
 
 @pytest.fixture
