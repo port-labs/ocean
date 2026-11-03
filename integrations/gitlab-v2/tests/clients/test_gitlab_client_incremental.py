@@ -49,15 +49,43 @@ async def _collect(stream: Any) -> list[Any]:
     return [item async for item in stream]
 
 
-def _commits(client: GitLabClient, commits: list[list[dict[str, Any]]]) -> None:
+def _push(
+    created_at: str, commit_from: str | None, ref: str = "main"
+) -> dict[str, Any]:
+    return {
+        "created_at": created_at,
+        "push_data": {"ref": ref, "ref_type": "branch", "commit_from": commit_from},
+    }
+
+
+def _mock_rest(
+    client: GitLabClient,
+    events: list[dict[str, Any]],
+    commits: dict[str, dict[str, Any]],
+    tip_committed_date: str = "2026-10-01T00:00:00+00:00",
+) -> None:
     client.rest = MagicMock()
     client.rest.get_paginated_project_resource = MagicMock(
-        side_effect=lambda *args, **kwargs: _gen(commits)
+        side_effect=lambda *args, **kwargs: _gen([events])
     )
 
+    async def send_api_request(method: str, path: str, **_: Any) -> dict[str, Any]:
+        sha = path.rsplit("/", 1)[-1]
+        if sha == "main":
+            return {"committed_date": tip_committed_date}
+        return commits[sha]
 
-async def test_changed_paths_returns_new_paths_only(client: GitLabClient) -> None:
-    _commits(client, [[{"id": "base", "parent_ids": ["p1"]}]])
+    client.rest.send_api_request = AsyncMock(side_effect=send_api_request)
+
+
+async def test_changed_paths_compares_from_branch_tip_before_first_push(
+    client: GitLabClient,
+) -> None:
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0"), _push("2026-10-18T11:00:00Z", "C1")],
+        {"C0": {"id": "C0", "parent_ids": ["P"]}},
+    )
     client.compare_repository = AsyncMock(  # type: ignore[method-assign]
         return_value={
             "diffs": [
@@ -70,19 +98,73 @@ async def test_changed_paths_returns_new_paths_only(client: GitLabClient) -> Non
     result = await client.get_changed_paths_since(PROJECT, SINCE, "main")
 
     assert result == ["a.yaml"]
-    client.compare_repository.assert_awaited_once_with("group/repo", "base", "main")
+    client.compare_repository.assert_awaited_once_with("group/repo", "C0", "main")
 
 
-async def test_changed_paths_none_without_base_commit(client: GitLabClient) -> None:
-    _commits(client, [])
+async def test_late_pushed_commit_is_not_skipped(client: GitLabClient) -> None:
+    """A commit made before the cursor but pushed after it must be compared.
+
+    C was committed before the cursor, so a commit-time lookup would pick C as the base
+    and drop C's own changes. The push event says the branch tip was C0 before the push,
+    so the compare starts there and includes C.
+    """
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0")],
+        {"C0": {"id": "C0", "parent_ids": ["P"]}},
+    )
+    client.compare_repository = AsyncMock(  # type: ignore[method-assign]
+        return_value={"diffs": [{"new_path": "late.yaml", "deleted_file": False}]}
+    )
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["late.yaml"]
+    assert client.compare_repository.call_args.args[1] == "C0"
+
+
+async def test_pushes_to_other_refs_are_ignored(client: GitLabClient) -> None:
+    _mock_rest(client, [_push("2026-10-18T10:00:00Z", "C0", ref="feature")], {})
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
+    client.compare_repository.assert_not_awaited()
+
+
+async def test_no_push_and_tip_before_cursor_is_unchanged(
+    client: GitLabClient,
+) -> None:
+    _mock_rest(client, [], {}, tip_committed_date="2026-10-01T00:00:00+00:00")
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
+    client.compare_repository.assert_not_awaited()
+
+
+async def test_no_push_but_tip_after_cursor_needs_full_listing(
+    client: GitLabClient,
+) -> None:
+    _mock_rest(client, [], {}, tip_committed_date="2026-10-20T00:00:00+00:00")
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
     assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
     client.compare_repository.assert_not_awaited()
 
 
-async def test_changed_paths_none_for_root_commit(client: GitLabClient) -> None:
-    _commits(client, [[{"id": "root", "parent_ids": []}]])
+async def test_branch_created_after_cursor_needs_full_listing(
+    client: GitLabClient,
+) -> None:
+    _mock_rest(client, [_push("2026-10-18T10:00:00Z", None)], {})
+    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
+
+    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    client.compare_repository.assert_not_awaited()
+
+
+async def test_changed_paths_none_for_root_base_commit(client: GitLabClient) -> None:
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0")],
+        {"C0": {"id": "C0", "parent_ids": []}},
+    )
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
     assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
@@ -90,7 +172,11 @@ async def test_changed_paths_none_for_root_commit(client: GitLabClient) -> None:
 
 
 async def test_changed_paths_none_on_compare_timeout(client: GitLabClient) -> None:
-    _commits(client, [[{"id": "base", "parent_ids": ["p1"]}]])
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0")],
+        {"C0": {"id": "C0", "parent_ids": ["P"]}},
+    )
     client.compare_repository = AsyncMock(  # type: ignore[method-assign]
         return_value={"diffs": [], "compare_timeout": True}
     )
@@ -99,7 +185,11 @@ async def test_changed_paths_none_on_compare_timeout(client: GitLabClient) -> No
 
 
 async def test_changed_paths_none_on_http_error(client: GitLabClient) -> None:
-    _commits(client, [[{"id": "base", "parent_ids": ["p1"]}]])
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C0")],
+        {"C0": {"id": "C0", "parent_ids": ["P"]}},
+    )
     client.compare_repository = AsyncMock(  # type: ignore[method-assign]
         side_effect=httpx.ConnectError("boom")
     )

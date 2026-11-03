@@ -13,6 +13,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.time import convert_str_to_utc_datetime
 from urllib.parse import quote
 from wcmatch import glob
 
@@ -34,6 +35,7 @@ class AwardEmoji(BaseModel):
 
 CHANGED_FILES_BATCH_SIZE = 100
 CHANGED_PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
+GIT_NULL_SHA = "0" * 40
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
@@ -173,38 +175,39 @@ class GitLabClient:
     async def get_changed_paths_since(
         self, project: dict[str, Any], since: datetime, ref: str
     ) -> list[str] | None:
-        """Compare from the newest commit at or before ``since`` to the tip of ``ref``.
+        """Return the paths changed on ``ref`` since ``since``, or ``None`` for a full listing.
 
-        Returns the changed paths, or ``None`` when the diff cannot be trusted and a full
-        listing is needed: no commit before the cursor, the base is a root commit (its own
-        files never appear in a root-to-tip diff), GitLab reports a compare timeout, or the
-        API call fails.
+        The base is the branch tip before the first push to ``ref`` after ``since``, taken
+        from the push event. A commit made before the cursor but pushed after it is
+        therefore included, which a commit-time lookup would miss. Returns ``None`` when the
+        diff cannot be trusted and a full listing is needed: the branch was created after the
+        cursor, the base is a root commit (its own files never appear in a root-to-tip diff),
+        GitLab reports a compare timeout or overflow, or an API call fails.
         """
         project_path = project["path_with_namespace"]
         since_iso = since.isoformat()
         try:
-            base: dict[str, Any] | None = None
-            async for commits_batch in self.rest.get_paginated_project_resource(
-                project_path,
-                "repository/commits",
-                params={"ref_name": ref, "until": since_iso, "per_page": 1},
-            ):
-                if commits_batch:
-                    base = commits_batch[0]
-                    break
+            pushes = await self._pushes_to_ref_since(project_path, since, ref)
+            if not pushes:
+                return await self._unchanged_since(project_path, since, ref)
 
-            if base is None:
+            base_sha = pushes[0]["push_data"].get("commit_from")
+            if not base_sha or base_sha == GIT_NULL_SHA:
                 logger.info(
-                    f"No commit on '{ref}' before {since_iso} in {project_path}, full listing needed"
+                    f"Branch '{ref}' in {project_path} was created after {since_iso}, full listing needed"
                 )
                 return None
+            base = await self.rest.send_api_request(
+                "GET",
+                f"projects/{quote(project_path, safe='')}/repository/commits/{base_sha}",
+            )
             if not base.get("parent_ids"):
                 logger.info(
-                    f"Base commit {base['id']} in {project_path} is a root commit, full listing needed"
+                    f"Base commit {base_sha} in {project_path} is a root commit, full listing needed"
                 )
                 return None
 
-            compare = await self.compare_repository(project_path, base["id"], ref)
+            compare = await self.compare_repository(project_path, base_sha, ref)
         except httpx.HTTPError as err:
             logger.warning(
                 f"Failed to compare '{ref}' in {project_path} since {since_iso}, "
@@ -227,6 +230,44 @@ class GitLabClient:
             f"Found {len(changed_paths)} changed paths in {project_path} since {since_iso}"
         )
         return changed_paths
+
+    async def _pushes_to_ref_since(
+        self, project_path: str, since: datetime, ref: str
+    ) -> list[dict[str, Any]]:
+        """Push events to branch ``ref`` created after ``since``, oldest first."""
+        pushes: list[dict[str, Any]] = []
+        async for events_batch in self.rest.get_paginated_project_resource(
+            project_path,
+            "events",
+            params={"action": "pushed", "after": since.date().isoformat()},
+        ):
+            for event in events_batch:
+                push = event.get("push_data") or {}
+                if push.get("ref_type") != "branch" or push.get("ref") != ref:
+                    continue
+                if convert_str_to_utc_datetime(event["created_at"]) > since:
+                    pushes.append(event)
+        return sorted(
+            pushes, key=lambda event: convert_str_to_utc_datetime(event["created_at"])
+        )
+
+    async def _unchanged_since(
+        self, project_path: str, since: datetime, ref: str
+    ) -> list[str] | None:
+        """No push reached ``ref`` after ``since``: nothing changed if its tip predates the cursor."""
+        tip = await self.rest.send_api_request(
+            "GET",
+            f"projects/{quote(project_path, safe='')}/repository/commits/{quote(ref, safe='')}",
+        )
+        if convert_str_to_utc_datetime(tip["committed_date"]) <= since:
+            logger.info(
+                f"No push to '{ref}' in {project_path} since {since.isoformat()}"
+            )
+            return []
+        logger.info(
+            f"'{ref}' in {project_path} has commits after {since.isoformat()} but no push event, full listing needed"
+        )
+        return None
 
     async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
