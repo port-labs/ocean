@@ -7,7 +7,7 @@ reaches its floor.
 
 Unlike the transport-layer 5xx backoff, this path lives above the transport, so
 it runs through the real resync harness end-to-end (auth -> exporter ->
-pagination -> Port entities).
+pagination -> raw items handed to Port).
 """
 
 import os
@@ -67,11 +67,7 @@ class TestGraphQLUnknownErrorResync:
         result = await _run_user_resync(respond)
 
         assert result.errors == [], f"Resync had errors: {result.errors}"
-        users = {
-            e["identifier"]
-            for e in result.upserted_entities
-            if e["blueprint"] == "githubUser"
-        }
+        users = {item["login"] for item in result.raw_items("user")}
         assert users == {member["login"] for member in ORG_MEMBERS}
         # Full page fails, one step down succeeds — no replays at the same size.
         assert sent_first == [FULL_PAGE_SIZE, FULL_PAGE_SIZE - 5]

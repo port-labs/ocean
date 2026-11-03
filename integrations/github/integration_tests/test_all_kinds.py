@@ -5,33 +5,11 @@ import pytest
 
 from port_ocean.integration_testing import IntegrationTestHarness, ResyncResult
 
-from expectations import KIND_EXPECTATIONS, KindExpectation
+from expectations import KIND_EXPECTATIONS, FieldPath, KindExpectation
 from helpers import integration_config, mapping_for_kind
 from mocks.transport_builder import GithubMockTransportBuilder
 
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-
-KIND_BLUEPRINTS: dict[str, str] = {
-    "user": "githubUser",
-    "team": "githubTeam",
-    "pull-request-graphql": "githubPullRequest",
-    "issue": "githubIssue",
-    "release": "githubRelease",
-    "tag": "githubTag",
-    "environment": "githubEnvironment",
-    "workflow": "githubWorkflow",
-    "workflow-run": "githubWorkflowRun",
-    "branch": "githubBranch",
-    "branch-protection": "githubBranch",
-    "branch-detailed": "githubBranch",
-    "dependabot-alert": "githubDependabotAlert",
-    "code-scanning-alerts": "githubCodeScanningAlert",
-    "secret-scanning-alerts": "githubSecretScanningAlert",
-    "deployment": "githubDeployment",
-    "deployment-status": "githubDeploymentStatus",
-    "collaborator": "githubCollaborator",
-    "package": "githubPackage",
-}
 
 KIND_BUILDERS: dict[str, str] = {
     "user": "with_user_routes",
@@ -56,20 +34,21 @@ KIND_BUILDERS: dict[str, str] = {
 }
 
 assert set(KIND_EXPECTATIONS) == set(
-    KIND_BLUEPRINTS
-), "KIND_EXPECTATIONS and KIND_BLUEPRINTS must cover the same kinds"
+    KIND_BUILDERS
+), "KIND_EXPECTATIONS and KIND_BUILDERS must cover the same kinds"
 
 
-@pytest.mark.parametrize("kind", list(KIND_BLUEPRINTS))
+@pytest.mark.parametrize("kind", list(KIND_BUILDERS))
 @pytest.mark.asyncio
 async def test_kind_resyncs(kind: str) -> None:
     builder = GithubMockTransportBuilder().with_base()
     getattr(builder, KIND_BUILDERS[kind])()
     transport = builder.build(strict=True)
 
+    mapping = mapping_for_kind(kind)
     harness = IntegrationTestHarness(
         integration_path=INTEGRATION_PATH,
-        port_mapping_config=mapping_for_kind(kind),
+        port_mapping_config=mapping,
         third_party_transport=transport,
         config_overrides=integration_config(),
     )
@@ -80,61 +59,66 @@ async def test_kind_resyncs(kind: str) -> None:
     finally:
         await harness.shutdown()
 
-    _assert_kind_resync(result, kind)
+    _assert_kind_resync(result, kind, mapping["resources"][0]["kind"])
 
 
-def _assert_kind_resync(result: ResyncResult, kind: str) -> None:
+def _assert_kind_resync(result: ResyncResult, kind: str, resource_kind: str) -> None:
     assert result.errors == [], f"Resync had errors for {kind}: {result.errors}"
     assert (
         result.reconciliation_success is True
     ), f"Reconciliation failed for {kind}: {result.errors}"
 
-    blueprint = KIND_BLUEPRINTS[kind]
-    entities = [e for e in result.upserted_entities if e["blueprint"] == blueprint]
+    items = result.raw_items(resource_kind)
     expectation = KIND_EXPECTATIONS[kind]
 
-    _assert_entity_count(entities, expectation, kind, blueprint)
-    _assert_entity_contents(entities, expectation, kind)
+    _assert_item_count(items, expectation, kind)
+    _assert_item_contents(items, expectation, kind)
 
 
-def _assert_entity_count(
-    entities: list[dict[str, Any]],
-    expectation: KindExpectation,
-    kind: str,
-    blueprint: str,
-) -> None:
-    assert len(entities) == expectation.count, (
-        f"Expected {expectation.count} {blueprint} entities for kind {kind}, "
-        f"got {len(entities)}: {[e['identifier'] for e in entities]}"
-    )
+def _lookup(item: dict[str, Any], path: FieldPath) -> Any:
+    if isinstance(path, str):
+        return item.get(path)
+    value: Any = item
+    for part in path:
+        value = value[part]
+    return value
 
 
-def _assert_entity_contents(
-    entities: list[dict[str, Any]],
+def _assert_item_count(
+    items: list[dict[str, Any]],
     expectation: KindExpectation,
     kind: str,
 ) -> None:
-    entities_by_id = {entity["identifier"]: entity for entity in entities}
-    expected_ids = {expected.identifier for expected in expectation.entities}
-    assert entities_by_id.keys() == expected_ids, (
-        f"Unexpected identifiers for kind {kind}. "
-        f"expected={sorted(expected_ids)} actual={sorted(entities_by_id)}"
+    assert (
+        len(items) == expectation.count
+    ), f"Expected {expectation.count} raw {kind} items, got {len(items)}: {items}"
+
+
+def _assert_item_contents(
+    items: list[dict[str, Any]],
+    expectation: KindExpectation,
+    kind: str,
+) -> None:
+    key_fields = tuple(expectation.records[0].key)
+    assert all(
+        tuple(expected.key) == key_fields for expected in expectation.records
+    ), f"All {kind} records must be keyed by {key_fields}"
+
+    items_by_key = {
+        tuple(item.get(name) for name in key_fields): item for item in items
+    }
+    expected_keys = {tuple(expected.key.values()) for expected in expectation.records}
+    assert len(items_by_key) == len(items), f"Duplicate {kind} keys: {items}"
+    assert items_by_key.keys() == expected_keys, (
+        f"Unexpected {kind} keys {key_fields}. "
+        f"expected={sorted(expected_keys)} actual={sorted(items_by_key)}"
     )
-    # logger.error(f"Entities: {entities_by_id}")
-    for expected in expectation.entities:
-        entity = entities_by_id[expected.identifier]
-        if expected.title is not None:
-            assert entity["title"] == expected.title, (
-                f"{kind}/{expected.identifier} title mismatch: "
-                f"expected {expected.title!r}, got {entity['title']!r}"
-            )
-        for key, value in expected.properties.items():
-            assert entity["properties"].get(key) == value, (
-                f"{kind}/{expected.identifier} property {key!r} mismatch: "
-                f"expected {value!r}, got {entity['properties'].get(key)!r}"
-            )
-        for key, value in expected.relations.items():
-            assert entity.get("relations", {}).get(key) == value, (
-                f"{kind}/{expected.identifier} relation {key!r} mismatch: "
-                f"expected {value!r}, got {entity.get('relations', {}).get(key)!r}"
+    for expected in expectation.records:
+        key = tuple(expected.key.values())
+        item = items_by_key[key]
+        for path, value in expected.fields.items():
+            actual = _lookup(item, path)
+            assert actual == value, (
+                f"{kind}/{key} field {path!r} mismatch: "
+                f"expected {value!r}, got {actual!r}"
             )

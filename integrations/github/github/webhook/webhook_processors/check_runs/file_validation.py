@@ -10,7 +10,6 @@ from integration import GithubFileResourceConfig, GithubFilePattern, GithubPortA
 from port_ocean.clients.port.types import RequestOptions
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
-from port_ocean.core.handlers.entity_processor import JQEntityProcessor
 from datetime import datetime, timezone
 from github.clients.client_factory import create_github_client_for_org
 from github.helpers.exceptions import CheckRunsException
@@ -50,6 +49,16 @@ def _format_port_http_error(error: httpx.HTTPStatusError) -> str:
     if text:
         return text
     return str(error)
+
+
+async def _map_file_entity(
+    file_object: FileObject, resource_config: GithubFileResourceConfig
+) -> list[Any]:
+    """Map a file through the resource's mapping in the data-source-processor, the same way a
+    resync would; entries are entities, or validation error messages."""
+    return await ocean.port_client.calculate_mapping(
+        resource_config.to_dsp_mapping(), dict(file_object)
+    )
 
 
 class CheckRuns:
@@ -204,54 +213,25 @@ class FileValidationService:
         """Validate an entity against Port's API using upsert_entity with validation_only=True."""
         identifier: Any = "unknown"
         try:
-            jq_processor = JQEntityProcessor(ocean)
+            mapped = await _map_file_entity(entity, resource_config)
 
-            entity_mappings = {
-                "identifier": resource_config.port.entity.mappings.identifier,
-                "title": resource_config.port.entity.mappings.title,
-                "blueprint": resource_config.port.entity.mappings.blueprint,
-                "properties": resource_config.port.entity.mappings.properties,
-                "relations": resource_config.port.entity.mappings.relations,
-            }
-
-            extracted_values = await jq_processor._search_as_object(
-                dict(entity), entity_mappings
-            )
-
-            blueprint = extracted_values["blueprint"]
-            properties = extracted_values["properties"]
-            relations = extracted_values["relations"]
-            identifier = extracted_values["identifier"]
-            title = extracted_values["title"]
-
-            if not isinstance(blueprint, str):
+            if not mapped:
                 return {
                     "success": False,
-                    "errors": ["Blueprint is not a string"],
+                    "errors": ["The mapping did not produce an entity"],
                     "response": None,
                 }
 
-            if not isinstance(properties, dict):
+            mapped_entity = mapped[0]
+            if not isinstance(mapped_entity, dict):
                 return {
                     "success": False,
-                    "errors": ["Properties is not a dictionary"],
+                    "errors": [str(mapped_entity)],
                     "response": None,
                 }
 
-            if not isinstance(relations, dict):
-                return {
-                    "success": False,
-                    "errors": ["Relations is not a dictionary"],
-                    "response": None,
-                }
-
-            entity_obj = Entity(
-                identifier=identifier,
-                blueprint=blueprint,
-                title=title,
-                properties=properties,
-                relations=relations,
-            )
+            identifier = mapped_entity.get("identifier", identifier)
+            entity_obj = Entity.parse_obj(mapped_entity)
 
             request_options = RequestOptions(
                 validation_only=True,
