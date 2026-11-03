@@ -39,7 +39,7 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         inputs = CreateAgentInputs.from_execution_properties(run.execution_properties)
         extra = inputs.config
         if inputs.enablePortMcp or inputs.virtualMcpServerIds:
-            extra = attach_port_mcp_settings_to_agent_config(
+            extra, _ = attach_port_mcp_settings_to_agent_config(
                 inputs.config,
                 enable_port_mcp=inputs.enablePortMcp,
                 virtual_mcp_server_ids=inputs.virtualMcpServerIds,

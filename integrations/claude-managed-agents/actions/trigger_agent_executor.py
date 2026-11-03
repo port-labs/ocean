@@ -28,6 +28,7 @@ from actions.abstract_executor import AbstractAnthropicExecutor
 from actions.port_mcp_utils import (
     PortMcpBinding,
     attach_managed_mcp_to_agent_payload,
+    attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_credential,
     get_or_create_mcp_vault,
     mcp_urls_to_ensure,
@@ -169,7 +170,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                 continue
             vault_id = vault_id or cached.vault_id
             await remint_port_mcp_credential(self.client, port_mcp.workflow_run, cached)
-            urls_to_resolve.remove(url)
+            urls_to_resolve.discard(url)
 
         if vault_id is None:
             vault_id = (await get_or_create_mcp_vault(self.client, vault_name)).id
@@ -237,8 +238,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
     async def _ensure_agent_port_mcp_configured(
         self, agent: BetaManagedAgentsAgent, port_mcp: PortMcpWorkflowContext
     ) -> BetaManagedAgentsAgent:
-        payload = attach_managed_mcp_to_agent_payload(agent, port_mcp.mcp_urls)
-        if payload is None:
+        payload, changed = attach_port_mcp_settings_to_agent_config(
+            {}, agent, enable_port_mcp=True, virtual_mcp_server_ids=port_mcp.mcp_urls
+        )
+        if not changed:
             return agent
         updated = await self.client.update_agent(
             agent.id,

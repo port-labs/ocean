@@ -210,6 +210,40 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ensure_port_mcp_vault_ready_tolerates_duplicate_mcp_urls() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+
+    from actions.port_mcp_utils import mcp_urls_to_ensure, port_mcp_binding_cache_key
+
+    port_url = "https://mcp.getport.io/v1"
+    run = workflow_run_with_port_mcp()
+    vault_name = run.execution_identity.identifier
+    binding = PortMcpBinding(
+        mcp_server_url=port_url,
+        vault_id="vault_1",
+        credential_id="cred_1",
+    )
+    client = MagicMock()
+    executor = build_executor(TriggerAgentExecutor, client)
+    executor._port_mcp_cache = TTLCache[PortMcpBinding](ttl_seconds=120, max_items=100)
+    executor._port_mcp_cache.set(
+        port_mcp_binding_cache_key(vault_name, port_url), binding
+    )
+    duplicate_urls = mcp_urls_to_ensure(True, []) + [port_url]
+
+    with patch(
+        "actions.trigger_agent_executor.remint_port_mcp_credential",
+        AsyncMock(),
+    ) as remint:
+        vault_id = await executor._ensure_port_mcp_vault_ready(
+            PortMcpWorkflowContext(run, run.execution_identity, None, duplicate_urls)
+        )
+
+    assert vault_id == "vault_1"
+    assert remint.await_count == 2
+
+
+@pytest.mark.asyncio
 async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None:
     client_mock = MagicMock()
     client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
