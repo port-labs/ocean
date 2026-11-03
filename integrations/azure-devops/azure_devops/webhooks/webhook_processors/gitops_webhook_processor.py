@@ -11,6 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
+from port_ocean.core.utils.utils import get_port_diff
 from integration import GitPortAppConfig
 from azure_devops.misc import extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -76,7 +77,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         return WebhookEventRawResults(
             updated_raw_results=[], deleted_raw_results=[]
-        )  # update happens in ocean.update_diff
+        )  # entities are written to Port directly in _process_ref_update
 
     async def _process_push_updates(
         self,
@@ -137,10 +138,8 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             new_entities = [Entity(**entity_dict) for entity_dict in new_entities_dict]
             old_entities = [Entity(**entity_dict) for entity_dict in old_entities_dict]
 
-            # Calculate diff and update Port
-            await ocean.update_diff(
-                {"before": old_entities, "after": new_entities},
-                UserAgentType.gitops,
-            )
+            diff = get_port_diff(old_entities, new_entities)
+            await ocean.register(diff.created + diff.modified, UserAgentType.gitops)
+            await ocean.unregister(diff.deleted, UserAgentType.gitops)
         except Exception as e:
             logger.error(f"Error processing ref update: {e}")
