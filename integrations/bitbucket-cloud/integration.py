@@ -1,14 +1,11 @@
 from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
-)
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
-from typing import Any, Literal, Type, Optional
+from bitbucket_cloud.raw_enricher import BitbucketRawEnricher
+from typing import Literal, Optional
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from pydantic.v1 import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
@@ -18,8 +15,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.utils.signal import signal_handler
 from loguru import logger
-
-FILE_PROPERTY_PREFIX = "file://"
 
 UserRole = Literal["member", "contributor", "admin", "owner"]
 
@@ -200,28 +195,9 @@ class BitbucketAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
-class GitManipulationHandler(JQEntityProcessor):
-    async def _search(
-        self, data: dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX) :]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX) :]}"]'
-            )
-            entity_processor = FileEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern, field)
-
-
 class BitbucketHandlerMixin(HandlerMixin):
     logger.info("Initializing BitbucketHandlerMixin")
-    EntityProcessorClass = GitManipulationHandler
+    RawEnricherClass = BitbucketRawEnricher
 
 
 class BitbucketLiveEventsProcessorManager(

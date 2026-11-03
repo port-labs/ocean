@@ -6,9 +6,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from bitbucket_cloud.raw_enricher import BitbucketRawEnricher
 from integration import (
     BitbucketIntegration,
-    GitManipulationHandler,
     BitbucketLiveEventsProcessorManager,
 )
 
@@ -56,24 +56,24 @@ def mock_resource_config() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_bitbucket_integration_uses_gitmanipulation_handler(
+async def test_bitbucket_integration_uses_bitbucket_raw_enricher(
     mock_context: MagicMock, mock_signal_handler: AsyncMock
 ) -> None:
-    """Test that BitbucketIntegration uses GitManipulationHandler as its EntityProcessorClass"""
+    """Test that BitbucketIntegration uses BitbucketRawEnricher as its RawEnricherClass"""
     # Arrange & Act
 
     with patch("integration.signal_handler", mock_signal_handler):
         integration = BitbucketIntegration(mock_context)
 
         # Assert
-        assert integration.EntityProcessorClass == GitManipulationHandler
+        assert integration.RawEnricherClass == BitbucketRawEnricher
 
 
 @pytest.mark.asyncio
-async def test_bitbucket_webhook_manager_uses_gitmanipulation_handler(
+async def test_bitbucket_webhook_manager_uses_bitbucket_raw_enricher(
     mock_context: MagicMock, mock_signal_handler: AsyncMock
 ) -> None:
-    """Test that BitbucketLiveEventsProcessorManager uses GitManipulationHandler as its EntityProcessorClass"""
+    """Test that BitbucketLiveEventsProcessorManager uses BitbucketRawEnricher as its RawEnricherClass"""
     # Arrange & Act
     with patch("integration.signal_handler", mock_signal_handler):
         integration = BitbucketIntegration(mock_context)
@@ -81,4 +81,4 @@ async def test_bitbucket_webhook_manager_uses_gitmanipulation_handler(
 
         # Assert
         assert isinstance(manager, BitbucketLiveEventsProcessorManager)
-        assert manager.EntityProcessorClass == GitManipulationHandler
+        assert manager.RawEnricherClass == BitbucketRawEnricher
