@@ -1,9 +1,9 @@
 import hashlib
 import json
 import os
-import re
 from contextlib import contextmanager
-from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+from datetime import datetime
+from typing import Any, Awaitable, Callable, Generator
 
 from loguru import logger
 
@@ -12,7 +12,6 @@ from port_ocean.clients.dsp.lifecycle_http import (
 )
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -21,6 +20,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import validate_result
 from port_ocean.exceptions.core import (
+    DSPProcessingUnavailableException,
     RawObjectValidationException,
     OceanAbortException,
     KindNotImplementedException,
@@ -31,8 +31,10 @@ from port_ocean.utils.async_http import _http_client
 from port_ocean.core.models import (
     IntegrationFeatureFlag,
     LakehouseDataEntry,
+    LakehouseDataEntryBatch,
     LakehouseDataEntryMetadata,
-    ProcessingMode,
+    LakehouseEventType,
+    LakehouseOperation,
 )
 
 
@@ -64,6 +66,58 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+def build_live_event_data_entry(
+    *,
+    resource: ResourceConfig,
+    resource_index: int,
+    items: list[Any],
+    operation: LakehouseOperation,
+) -> LakehouseDataEntry:
+    return build_lakehouse_data_entry(
+        items=items,
+        metadata=LakehouseDataEntryMetadata(
+            operation=operation,
+            resource_index=resource_index,
+            extraction_timestamp=int(datetime.now().timestamp() * 1000),
+            selector_hash=selector_hash_from_resource(resource),
+        ),
+        export_env_variables=resource.selector.export_env_variables,
+    )
+
+
+async def send_raw_live_event(
+    *,
+    event_id: str,
+    kind: str,
+    resync_start_time: datetime | None,
+    data_entries: list[LakehouseDataEntry],
+) -> None:
+    """Hand raw live-event data to the data-source-processor through the lakehouse.
+
+    Upserted and deleted items of one event and kind go in a single POST so the
+    lakehouse can correlate them under one event id.
+    """
+    if not data_entries:
+        return
+    logger.debug(
+        f"Sending {len(data_entries)} live event data entries to lakehouse",
+        event_id=event_id,
+        kind=kind,
+    )
+    await ocean.port_client.post_integration_raw_data_batch(
+        event_id,
+        LakehouseDataEntryBatch(
+            event_id=event_id,
+            type=LakehouseEventType.LIVE_EVENT.value,
+            kind=kind,
+            event_type=LakehouseEventType.LIVE_EVENT,
+            resync_start_time=resync_start_time,
+            extraction_timestamp=int(datetime.now().timestamp() * 1000),
+            data=data_entries,
+        ),
+    )
 
 
 def selector_query_from_resource(resource: ResourceConfig) -> str | None:
@@ -108,70 +162,30 @@ def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
     return selector_hash_from_selector(normalized_selector)
 
 
-async def is_lakehouse_data_enabled() -> bool:
-    """Check if lakehouse data is enabled.
+DSP_REQUIRED_FEATURE_FLAGS = (
+    IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE,
+    IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED,
+)
 
-    This function checks the organization feature flags and config to determine
-    if lakehouse data sending is enabled. It handles errors gracefully since
-    lakehouse sending is intended to be best-effort and should not block core
-    processing flows.
 
-    Returns:
-        bool: True if lakehouse data is enabled, False otherwise (including on error)
+async def ensure_dsp_processing_available() -> None:
+    """Fail fast when the organization cannot process raw data through the DSP.
+
+    The data-source-processor is the only processing mode: Ocean extracts raw data and
+    hands it off, so without the lakehouse and the DSP feature flags nothing would reach Port.
     """
-    try:
-        flags = await ocean.port_client.get_organization_feature_flags()
-        if (
-            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
-            and ocean.config.lakehouse_enabled
-        ):
-            return True
-        return False
-    except Exception as e:
-        logger.bind(local_only=True).warning(
-            f"Failed to check lakehouse feature flags, assuming disabled: {e}"
+    if not ocean.config.lakehouse_enabled:
+        raise DSPProcessingUnavailableException(
+            "OCEAN__LAKEHOUSE_ENABLED=false is no longer supported: raw data is processed "
+            "exclusively by the data-source-processor through the lakehouse"
         )
-        return False
-
-
-async def is_dsp_mode_enabled() -> bool:
-    """Check if DSP (Data Source Processor) mode is active.
-
-    DSP mode offloads all transform/load/reconciliation to an external service.
-    Ocean still extracts raw data and forwards it to the lakehouse, but skips
-    all entity processing.  Requires processing_mode=dsp (the default), lakehouse
-    enabled, and the right org feature flags.  Errors are swallowed so this never
-    blocks core flows.
-
-    Returns:
-        bool: True only when all four conditions are met, False otherwise.
-    """
-    try:
-        if ocean.config.processing_mode != ProcessingMode.dsp:
-            return False
-        if not ocean.config.lakehouse_enabled:
-            logger.bind(local_only=True).warning(
-                "DSP mode requested but lakehouse_enabled is False, falling back to ocean-core"
-            )
-            return False
-        flags = await ocean.port_client.get_organization_feature_flags()
-        if (
-            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
-            and IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
-        ):
-            return True
-        logger.bind(local_only=True).warning(
-            "DSP mode requested but required feature flags are missing "
-            f"(LAKEHOUSE_ELIGIBLE={IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags}, "
-            f"DATA_SOURCE_PROCESSOR_ENABLED={IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags}), "
-            "falling back to ocean-core"
+    flags = await ocean.port_client.get_organization_feature_flags()
+    missing_flags = [flag for flag in DSP_REQUIRED_FEATURE_FLAGS if flag not in flags]
+    if missing_flags:
+        raise DSPProcessingUnavailableException(
+            "The organization is missing the feature flags required for data-source-processor "
+            f"processing: {', '.join(missing_flags)}"
         )
-        return False
-    except Exception as e:
-        logger.bind(local_only=True).warning(
-            f"Failed to check DSP mode, falling back to ocean-core: {e}"
-        )
-        return False
 
 
 async def is_live_event_payload_logging_enabled() -> bool:
@@ -221,65 +235,6 @@ async def is_redis_live_events_enabled() -> bool:
         return False
 
 
-def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
-    """
-    Revised function to extract a simple path suitable for del() by analyzing pipe segments.
-    """
-    expr = jq_expression.strip()
-
-    # 1. Handle surrounding parentheses and extract the main chain
-    if expr.startswith("("):
-        match_paren = re.match(r"\((.*?)\)", expr, re.DOTALL)
-        if match_paren:
-            chain = match_paren.group(1).strip()
-        else:
-            return None
-    else:
-        chain = expr
-
-    # 2. Split the chain by the main pipe operator (excluding pipes inside quotes or brackets,
-    # but for simplicity here, we split naively and check segments)
-    segments = chain.split("|")
-
-    # 3. Analyze each segment for a simple path
-    for segment in segments:
-        segment = segment.strip()
-
-        # Ignore variable assignment segments like '. as $root'
-        if re.match(r"^\.\s+as\s+\$\w+", segment):
-            continue
-
-        # Ignore identity and variable access like '.' or '$items'
-        if segment == "." or segment.startswith("$"):
-            continue
-
-        # Look for the first genuine path accessor (e.g., .key, .[index], .key.nested, .key[0])
-        # This regex looks for a starting dot and follows it with path components
-        # (alphanumeric keys or bracketed accessors, where brackets can follow words directly)
-        # Pattern: Start with .word or .[index], then optionally more:
-        #   - .word (dot followed by word)
-        #   - [index] (bracket directly after word, no dot)
-        #   - .[index] (dot followed by bracket)
-        path_match = re.match(
-            r"(\.[\w]+|\.\[[^\]]+\])(\.[\w]+|\[[^\]]+\]|\.\[[^\]]+\])*", segment
-        )
-
-        if path_match:
-            path = path_match.group(0).strip()
-
-            # If the path is immediately followed by a simple fallback (// value),
-            # we consider the path complete.
-            if re.search(r"\s*//\s*(\[\]|null|\.|\{.*?\})", segment):
-                return path
-
-            # If the path is just a path segment followed by nothing or the end of a complex
-            # expression (like .file.content.raw) we return it.
-            return path
-
-    # Default case: No suitable path found after checking all segments
-    return None
-
-
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
     try:
@@ -309,46 +264,6 @@ async def resync_function_wrapper(
         return results
 
 
-async def handle_items_to_parse(
-    result: RAW_RESULT,
-    items_to_parse_name: str,
-    items_to_parse: str | None = None,
-    items_to_parse_top_level_transform: bool = True,
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    delete_target = extract_jq_deletion_path_revised(items_to_parse) or "."
-    jq_expression = f". | del({delete_target})"
-    batch_size = ocean.config.yield_items_to_parse_batch_size
-
-    entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
-
-    for item in result:
-        items_to_parse_data = await entity_processor._search(item, items_to_parse)
-        if items_to_parse_top_level_transform:
-            transformed = await entity_processor._search(item, jq_expression)
-            if transformed is None:
-                logger.warning(
-                    f"Top-level transform '{jq_expression}' returned None for item, skipping..."
-                )
-                continue
-            item = transformed
-        if not isinstance(items_to_parse_data, list):
-            logger.warning(
-                f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
-                f" Skipping..."
-            )
-            continue
-        batch = []
-        for parsed_item in items_to_parse_data:
-            if len(batch) >= batch_size:
-                yield batch
-                batch = []
-            merged_item = {**item}
-            merged_item[items_to_parse_name] = parsed_item
-            batch.append(merged_item)
-        if batch:
-            yield batch
-
-
 async def send_raw_data_examples(result: RAW_RESULT, kind: str, amount: int) -> int:
     if amount <= 0 or not result:
         return 0
@@ -370,9 +285,6 @@ async def send_raw_data_examples(result: RAW_RESULT, kind: str, amount: int) -> 
 async def resync_generator_wrapper(
     fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE],
     kind: str,
-    items_to_parse_name: str,
-    items_to_parse: str | None = None,
-    items_to_parse_top_level_transform: bool = True,
     send_raw_data_examples_amount: int = 0,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
@@ -390,18 +302,7 @@ async def resync_generator_wrapper(
                         0, remaining_examples_to_send - sent_examples
                     )
 
-                    if items_to_parse and not await is_dsp_mode_enabled():
-                        items_to_parse_generator = handle_items_to_parse(
-                            result,
-                            items_to_parse_name,
-                            items_to_parse,
-                            items_to_parse_top_level_transform,
-                        )
-                        del result
-                        async for batch in items_to_parse_generator:
-                            yield batch
-                    else:
-                        yield result
+                    yield result
 
             except OceanAbortException as error:
                 errors.append(error)

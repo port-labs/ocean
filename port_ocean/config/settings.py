@@ -30,11 +30,9 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     EventListenerType,
     LiveEventsConsumerType,
-    ProcessingMode,
     Runtime,
 )
 from port_ocean.utils.misc import (
-    get_cgroup_cpu_limit,
     get_integration_name,
     get_spec_file,
 )
@@ -43,6 +41,12 @@ from port_ocean.consumers.redis_connection_settings import RedisConnectionSettin
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 ALLOWED_INCREMENTAL_SYNC_INTERVALS = (15, 30, 60)
+REMOVED_LOCAL_PROCESSING_ENVS = (
+    "OCEAN__PROCESSING_MODE",
+    "OCEAN__YIELD_ITEMS_TO_PARSE_BATCH_SIZE",
+    "OCEAN__PROCESS_IN_QUEUE_TIMEOUT",
+    "OCEAN__PROCESS_IN_QUEUE_MAX_WORKERS",
+)
 
 
 class SslX509Settings(BaseOceanModel):
@@ -422,12 +426,6 @@ class IntegrationConfiguration(BaseOceanSettings):
     disable_ip_outbound_blocker: bool | None = None
     lakehouse_buffer_interval_seconds: float = 10.0
     lakehouse_buffer_max_count: int = 50
-    processing_mode: ProcessingMode = ProcessingMode.dsp
-    yield_items_to_parse_batch_size: int = 200
-    process_in_queue_timeout: int = 120
-    process_in_queue_max_workers: int = Field(
-        default_factory=lambda: get_cgroup_cpu_limit()
-    )
     delete_entities_max_batch_size: int = 1000
     streaming: StreamingSettings = Field(default_factory=StreamingSettings)
     actions_processor: ActionsProcessorSettings = Field(
@@ -452,6 +450,13 @@ class IntegrationConfiguration(BaseOceanSettings):
                 "Ocean always runs in single_process mode.",
                 process_execution_mode=process_execution_mode,
             )
+        for env_name in REMOVED_LOCAL_PROCESSING_ENVS:
+            if os.environ.get(env_name):
+                logger.warning(
+                    f"{env_name} is no longer supported and will be ignored. "
+                    "Raw data is always processed by the data-source-processor.",
+                    value=os.environ.get(env_name),
+                )
         return values
 
     @field_validator("metrics", mode="before")

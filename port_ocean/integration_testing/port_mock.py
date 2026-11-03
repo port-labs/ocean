@@ -1,18 +1,45 @@
 import json as json_lib
 import re
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import unquote_plus
 
 import httpx
 
+from port_ocean.core.integrations.mixins.utils import DSP_REQUIRED_FEATURE_FLAGS
 from port_ocean.integration_testing.transport import InterceptTransport
+
+
+@dataclass
+class RawDataBatch:
+    """A batch of raw items Ocean handed to the data-source-processor through the lakehouse."""
+
+    sync_id: str
+    kind: str
+    event_type: str
+    data: list[dict[str, Any]]
+
+    def items(self, operation: str | None = None) -> list[dict[str, Any]]:
+        return [
+            item
+            for entry in self.data
+            if operation is None or entry["metadata"]["operation"] == operation
+            for item in entry["items"]
+        ]
+
+
+@dataclass
+class LifecycleCall:
+    method: str
+    path: str
+    body: dict[str, Any] | None
 
 
 class PortMockResponder:
     """Pre-configured mock for Port API endpoints used during resync.
 
-    Handles auth, integration config, entity upsert (with capture), blueprints,
-    entity search, migrations, and resync state updates.
+    Handles auth, integration config, raw data lake writes and lifecycle calls (with capture),
+    direct entity writes (with capture), blueprints, entity search and migrations.
     """
 
     def __init__(
@@ -23,6 +50,8 @@ class PortMockResponder:
         search_entities_response: list[dict[str, Any]] | None = None,
     ) -> None:
         self.transport = InterceptTransport(strict=False)
+        self.raw_batches: list[RawDataBatch] = []
+        self.lifecycle_calls: list[LifecycleCall] = []
         self.upserted_entities: list[dict[str, Any]] = []
         self.deleted_entity_ids: list[str] = []
         self.deleted_entities: list[dict[str, Any]] = []
@@ -31,6 +60,13 @@ class PortMockResponder:
         self.blueprints = blueprints or {}
         self.search_entities_response = search_entities_response or []
         self._setup_routes()
+
+    def clear_captured(self) -> None:
+        self.raw_batches.clear()
+        self.lifecycle_calls.clear()
+        self.upserted_entities.clear()
+        self.deleted_entity_ids.clear()
+        self.deleted_entities.clear()
 
     def _setup_routes(self) -> None:
         # Auth
@@ -44,6 +80,20 @@ class PortMockResponder:
                     "tokenType": "Bearer",
                 }
             },
+        )
+
+        # Raw data handed to the data-source-processor
+        self.transport.add_route(
+            "POST",
+            "/lake/write/",
+            self._handle_lake_write,
+        )
+
+        # Lifecycle API (resync and kind boundaries, abort polling)
+        self.transport.add_route(
+            None,
+            "/v1/lifecycle/",
+            self._handle_lifecycle,
         )
 
         # Integration config (returns mapping config)
@@ -122,20 +172,15 @@ class PortMockResponder:
         self.transport.add_route(
             "GET",
             "/v1/organization",
-            {"json": {"organization": {"featureFlags": []}}},
-        )
-
-        # Metrics endpoints - must be before generic integration route
-        self.transport.add_route(
-            "PUT",
-            "/syncMetrics",
-            {"json": {"ok": True}},
-        )
-
-        self.transport.add_route(
-            "POST",
-            "/syncMetrics",
-            {"json": {"ok": True}},
+            {
+                "json": {
+                    "organization": {
+                        "featureFlags": [
+                            flag.value for flag in DSP_REQUIRED_FEATURE_FLAGS
+                        ]
+                    }
+                }
+            },
         )
 
         # Resync request (integ-service)
@@ -151,6 +196,32 @@ class PortMockResponder:
             "/v1/blueprints/",
             self._handle_blueprint,
         )
+
+    def _handle_lake_write(self, request: httpx.Request) -> dict[str, Any]:
+        """Handle POST {ingestUrl}/lake/write/.../sync/{sync_id}/kind/{kind}."""
+        segments = request.url.path.strip("/").split("/")
+        body = json_lib.loads(request.content.decode("utf-8"))
+        sync_id = unquote_plus(segments[segments.index("sync") + 1])
+        self.raw_batches.append(
+            RawDataBatch(
+                sync_id=sync_id,
+                kind=body["kind"],
+                event_type=body["eventType"],
+                data=body["data"],
+            )
+        )
+        return {"json": {"ok": True}}
+
+    def _handle_lifecycle(self, request: httpx.Request) -> dict[str, Any]:
+        body = (
+            json_lib.loads(request.content.decode("utf-8")) if request.content else None
+        )
+        self.lifecycle_calls.append(
+            LifecycleCall(method=request.method, path=request.url.path, body=body)
+        )
+        if request.method == "GET":
+            return {"json": {"status": "running"}}
+        return {"json": {"ok": True}}
 
     def _handle_search_entities(self, request: httpx.Request) -> dict[str, Any]:
         """Handle POST /v1/entities/search — returns entities for reconciliation diff."""

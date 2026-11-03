@@ -46,8 +46,8 @@ class BaseIntegrationTest:
             def create_integration_config(self) -> dict:
                 return {"integration": {"identifier": "test", "type": "my-type", "config": {}}}
 
-            async def test_resync_produces_entities(self, resync: ResyncResult):
-                assert len(resync.upserted_entities) > 0
+            async def test_resync_extracts_items(self, resync: ResyncResult):
+                assert resync.raw_items("item") == [{"id": 1}]
     """
 
     @property
@@ -83,11 +83,10 @@ class BaseIntegrationTest:
         }
 
     def get_port_search_entities_response(self) -> list[dict[str, Any]] | None:
-        """Override to return entities that 'exist in Port' for reconciliation tests.
+        """Override to return entities that 'exist in Port' for entity searches.
 
-        When set, search_entities during reconciliation will return these entities.
-        Use this to test deletion: entities in this list but not in the new resync
-        will be deleted.
+        Reconciliation runs in the data-source-processor; this only feeds integration
+        code that searches Port entities itself.
         """
         return None
 

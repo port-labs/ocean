@@ -20,9 +20,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
-)
 from port_ocean.core.handlers.queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -39,7 +36,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
-from port_ocean.core.models import Entity
+from port_ocean.core.models import LakehouseOperation
 from port_ocean.exceptions.webhook_processor import (
     RetryableError,
     WebhookEventNotSupportedError,
@@ -307,8 +304,6 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config = MagicMock()
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
-        ocean_mock.config.process_in_queue_max_workers = 4
-        ocean_mock.config.process_in_queue_timeout = 10
         ocean_mock.config.allow_environment_variables_jq_access = True
         ocean_mock.port_client = mock_port_client
         ocean_mock.integration_router = APIRouter()
@@ -320,23 +315,18 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
 def mock_context(mock_ocean: Ocean) -> PortOceanContext:
     context = PortOceanContext(mock_ocean)
     ocean._app = context.app
-    # Set up integration.entity_processor for multiprocess _calculate_entity access
     mock_ocean.integration = MagicMock()
-    mock_ocean.integration.entity_processor = JQEntityProcessor(context)
     return context
 
 
-entity = Entity(
-    identifier="repo-one",
-    blueprint="service",
-    title="repo-one",
-    team=[],
-    properties={
-        "url": "https://example.com/repo-one",
-        "defaultBranch": "main",
-    },
-    relations={},
-)
+def _assert_live_event_upserts(mock_send_raw_live_event: AsyncMock) -> None:
+    assert mock_send_raw_live_event.await_args is not None
+    data_entries = mock_send_raw_live_event.await_args.kwargs["data_entries"]
+    assert data_entries
+    assert all(
+        entry["metadata"]["operation"] == LakehouseOperation.UPSERT
+        for entry in data_entries
+    )
 
 
 @pytest.mark.asyncio
@@ -779,15 +769,9 @@ async def test_processWebhookRequest_maxRetriesExceeded_exceptionRaised(
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_entityUpserted(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -797,16 +781,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
-    # Mock lakehouse as disabled for integration tests
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
-        AsyncMock(return_value=False),
-    )
     processed_events: list[WebhookEventRawResults] = []
-    mock_upsert.return_value = [entity]
 
     class TestProcessor(AbstractWebhookProcessor):
         def __init__(self, event: WebhookEvent) -> None:
@@ -904,22 +879,16 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
 
     assert len(processed_events) == 1
 
-    mock_upsert.assert_called_once()
-    mock_delete.assert_not_called()
+    mock_send_raw_live_event.assert_awaited_once()
+    _assert_live_event_upserts(mock_send_raw_live_event)
 
     await mock_context.app.webhook_manager.shutdown()
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -929,10 +898,6 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
-    mock_upsert.return_value = [entity]
     test_state = {"exception_thrown": None}
 
     class TestProcessor(AbstractWebhookProcessor):
@@ -1025,22 +990,15 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         pytest.fail("Event processing timed out")
 
     assert isinstance(test_state["exception_thrown"], asyncio.TimeoutError) is True
-    mock_upsert.assert_not_called()
-    mock_delete.assert_not_called()
+    mock_send_raw_live_event.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpserted(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -1050,11 +1008,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
     test_state = {"exception_thrown": None}
-    mock_upsert.return_value = [entity]
 
     class TestProcessor(AbstractWebhookProcessor):
         async def authenticate(
@@ -1150,22 +1104,15 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
         is True
     )
 
-    mock_upsert.assert_not_called()
-    mock_delete.assert_not_called()
+    mock_send_raw_live_event.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedForMultipleProcessors_entitiesUpserted(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -1175,16 +1122,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
-    # Mock lakehouse as disabled for integration tests
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
-        AsyncMock(return_value=False),
-    )
     processed_events: list[WebhookEventRawResults] = []
-    mock_upsert.return_value = [entity]
 
     class TestProcessorA(AbstractWebhookProcessor):
         async def authenticate(
@@ -1344,22 +1282,16 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 2
-    assert mock_upsert.call_count == 1
-    mock_delete.assert_not_called()
+    assert mock_send_raw_live_event.await_count == 1
+    _assert_live_event_upserts(mock_send_raw_live_event)
 
     await mock_context.app.webhook_manager.shutdown()
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwithRetry_entityUpserted(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -1369,16 +1301,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
-    # Mock lakehouse as disabled for integration tests
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
-        AsyncMock(return_value=False),
-    )
     processed_events: list[WebhookEventRawResults] = []
-    mock_upsert.return_value = [entity]
     test_state = {"retry": False}
 
     class TestProcessor(AbstractWebhookProcessor):
@@ -1482,22 +1405,16 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
 
     assert len(processed_events) == 1
     assert test_state["retry"] is True
-    mock_upsert.assert_called_once()
-    mock_delete.assert_not_called()
+    mock_send_raw_live_event.assert_awaited_once()
+    _assert_live_event_upserts(mock_send_raw_live_event)
 
     await mock_context.app.webhook_manager.shutdown()
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwithRetry_exceededMaxRetries_entityNotUpserted(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -1507,16 +1424,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
-    # Mock lakehouse as disabled for integration tests
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
-        AsyncMock(return_value=False),
-    )
     processed_events: list[WebhookEventRawResults] = []
-    mock_upsert.return_value = [entity]
     test_state = {"retry": False, "exception": False}
 
     class TestProcessor(AbstractWebhookProcessor):
@@ -1626,22 +1534,15 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     assert len(processed_events) == 0
     assert test_state["retry"] is True
     assert test_state["exception"] is True
-    mock_upsert.assert_not_called()
-    mock_delete.assert_not_called()
+    mock_send_raw_live_event.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()
 
 
 @pytest.mark.asyncio
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
-)
-@patch(
-    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
-)
+@patch("port_ocean.core.integrations.mixins.live_events.send_raw_live_event")
 async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlySuccessfulResultsProcessed(
-    mock_delete: AsyncMock,
-    mock_upsert: AsyncMock,
+    mock_send_raw_live_event: AsyncMock,
     mock_context: PortOceanContext,
     mock_port_app_config: PortAppConfig,
     monkeypatch: pytest.MonkeyPatch,
@@ -1651,16 +1552,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.handler.ocean", mock_context
     )
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
-    )
-    # Mock lakehouse as disabled for integration tests
-    monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
-        AsyncMock(return_value=False),
-    )
     processed_events: list[WebhookEventRawResults] = []
-    mock_upsert.return_value = [entity]
 
     class SuccessfulProcessor(AbstractWebhookProcessor):
         async def authenticate(
@@ -1776,7 +1668,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
         pytest.fail("Event processing timed out")
 
     assert len(processed_events) == 1
-    assert mock_upsert.call_count == 1
-    mock_delete.assert_not_called()
+    assert mock_send_raw_live_event.await_count == 1
+    _assert_live_event_upserts(mock_send_raw_live_event)
 
     await mock_context.app.webhook_manager.shutdown()

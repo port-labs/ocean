@@ -7,6 +7,27 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.59.0 (2026-11-10)
+
+
+### Breaking Changes
+
+- The data-source-processor is now the only processing mode. Ocean extracts raw data and hands it off through the lakehouse; it no longer maps raw data to entities, diffs them against Port, upserts them or reconciles stale entities itself.
+- Integrations fail to start when `OCEAN__LAKEHOUSE_ENABLED=false` or when the organization lacks the `LAKEHOUSE_ELIGIBLE` / `DATA_SOURCE_PROCESSOR_ENABLED` feature flags.
+- Removed `JQEntityProcessor`, `JQEntityProcessorSync`, `BaseEntityProcessor`, `HttpEntitiesStateApplier`, `BaseEntitiesStateApplier`, `EntityTopologicalSorter`, `ocean.update_diff`, `ocean.update_raw_diff`, `ocean.sync`, `RawEntityDiff`, `EntityDiff`, `EntitySelectorDiff`, `CalculationResult` and `ProcessingMode.ocean_core`. Removed `EntityProcessorClass`.
+- `ocean.register_raw` / `ocean.unregister_raw` send raw items to the data-source-processor as a live event and return `None` instead of the mapped entities.
+- Removed the `OCEAN__PROCESSING_MODE`, `OCEAN__YIELD_ITEMS_TO_PARSE_BATCH_SIZE`, `OCEAN__PROCESS_IN_QUEUE_TIMEOUT` and `OCEAN__PROCESS_IN_QUEUE_MAX_WORKERS` settings (a warning is logged when they are set), and the sync metrics reporting that only the local transform used.
+- `integration_testing`: `ResyncResult.raw_batches` / `raw_items()` and `lifecycle_calls` capture what a resync hands to Port; `upserted_entities` only holds entities written directly with `ocean.register`.
+- `file://` and `search://` mapping values are no longer supported. Use the `includedFiles` and `searchQueries` selectors instead.
+
+
+### Features
+
+- `ocean.register` / `ocean.unregister` write already-built entities straight to Port (no mapping), for flows such as GitOps that own their entities.
+- `port_ocean.utils.jq.evaluate` for integration-side JQ expressions (request templates, data paths).
+- `PortClient.calculate_mapping` maps one raw item through a resource mapping using the data-source-processor's existing `/integration/mapping-calculation` endpoint.
+
+
 ## 0.58.3 (2026-11-09)
 
 
