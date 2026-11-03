@@ -7,6 +7,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.57.0 (2026-11-03)
+
+
+### Features
+
+- >-
+    Added optional Redis-backed centralized rate limiting in ocean-core, off unless
+    OCEAN__CENTRALIZED_RATE_LIMITER__ENABLED is true. RetryTransport
+    coordinates cross-pod admission by sync tier (HIGH/MEDIUM/LOW) using
+    OCEAN__CENTRALIZED_RATE_LIMITER__REDIS__* (same connection model as live-events Redis).
+    Integrations publish parsed vendor rate-limit state via record_centralized_rate_limit
+    and pass the vendor rate-limit wrapper on RetryConfig per HTTP client; local limiters
+    and retry backoff remain as fallback.
+
+
 ## 0.56.5 (2026-11-02)
 
 
