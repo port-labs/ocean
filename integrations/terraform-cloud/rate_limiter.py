@@ -3,6 +3,7 @@ import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import AsyncIterator
 
 import httpx
@@ -13,7 +14,7 @@ MAX_CONCURRENT_REQUESTS = 10
 # Headroom for the requests already in flight when the budget is read.
 PAUSE_AT_REMAINING = 3
 # The only ids this integration sends. Organization segments are names, not ids.
-RESOURCE_ID_PREFIXES = ("ws-", "run-", "sv-")
+RESOURCE_ID_PREFIXES = ("ws-", "run-", "sv-", "asmtres-")
 
 
 @dataclass
@@ -44,9 +45,8 @@ def budget_key(url: httpx.URL) -> str:
 class TerraformRateLimiter:
     """Paces requests from HCP Terraform's own rate limit headers.
 
-    The budget is 30 requests per window, and x-ratelimit-reset puts that window at
-    roughly 14 seconds. A per-second limiter cannot express that: the 25 per second this
-    replaces spends a whole window in just over a second.
+    Every response reports what is left of the budget and when it resets, so the pacing
+    follows the window the API is enforcing instead of a rate fixed up front.
 
     One budget covers an endpoint shape rather than an individual resource, so budget_key
     collapses resource ids. Draining one workspace's runs also returns 429 on a second
@@ -116,3 +116,10 @@ class TerraformRateLimiter:
             f"Rate limit for {key}: {info.remaining}/{info.limit} remaining, "
             f"resets in {info.seconds_until_reset:.2f}s"
         )
+
+
+@lru_cache(maxsize=1)
+def shared_rate_limiter() -> TerraformRateLimiter:
+    """HCP Terraform meters the token, not the client, so every client in the process
+    spends one budget: webhook setup drains the window the resync then starts in."""
+    return TerraformRateLimiter()

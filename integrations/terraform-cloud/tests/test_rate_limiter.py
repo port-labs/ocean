@@ -5,7 +5,9 @@ from contextlib import suppress
 import httpx
 import pytest
 
+from client import TerraformClient
 from rate_limiter import TerraformRateLimiter, budget_key
+from webhook_processors.webhook_client import TerraformWebhookClient
 
 
 class TestBudgetKey:
@@ -15,6 +17,10 @@ class TestBudgetKey:
             ("/api/v2/workspaces/ws-b6PJa69T989mRSNy/runs", "workspaces/*/runs"),
             ("/api/v2/workspaces/ws-QmFPKBwJErJ3LeQr/runs", "workspaces/*/runs"),
             ("/api/v2/runs/run-CZcmD7eagjhyXavN", "runs/*"),
+            (
+                "/api/v2/assessment-results/asmtres-UG5rE9L1373hMYMA",
+                "assessment-results/*",
+            ),
             (
                 "/api/v2/state-versions/sv-g4rqST72reoHjo1P/outputs",
                 "state-versions/*/outputs",
@@ -215,3 +221,15 @@ class TestBudget:
         await refreshing
 
         assert limiter._budgets["workspaces/*/runs"].remaining == 29
+
+
+class TestSharedRateLimiter:
+    def test_every_client_spends_one_budget(self) -> None:
+        """Webhook setup drains the window the resync then starts in."""
+        resync_client = TerraformClient("https://app.terraform.io", "test-token")
+        webhook_client = TerraformWebhookClient("https://app.terraform.io", "test-token")
+
+        assert (
+            resync_client.client._transport._rate_limiter  # type: ignore[attr-defined]
+            is webhook_client.client._transport._rate_limiter  # type: ignore[attr-defined]
+        )

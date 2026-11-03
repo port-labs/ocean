@@ -11,7 +11,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.cache import cache_iterator_result
 
-from rate_limiter import TerraformRateLimiter
+from rate_limiter import shared_rate_limiter
 from retry_transport import TerraformRetryTransport
 
 HEALTH_ASSESSMENT_TRIGGER_SCOPE = "assessment"
@@ -62,7 +62,7 @@ class TerraformClient:
         self.api_url = f"{self.terraform_base_url}/api/v2"
         self.client = OceanAsyncClient(
             transport_class=TerraformRetryTransport,
-            transport_kwargs={"rate_limiter": TerraformRateLimiter()},
+            transport_kwargs={"rate_limiter": shared_rate_limiter()},
             timeout=ocean.config.client_timeout,
             headers=self.base_headers,
         )
