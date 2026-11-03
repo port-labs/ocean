@@ -36,8 +36,6 @@ class AwardEmoji(BaseModel):
 CHANGED_FILES_BATCH_SIZE = 100
 CHANGED_PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
 GIT_NULL_SHA = "0" * 40
-# Push events read per project before giving up and listing the project in full.
-PUSH_EVENT_MAX_PAGES = 20
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
@@ -274,13 +272,13 @@ class GitLabClient:
         Events come newest first and the ``after`` filter only takes a date, so
         pages are read until an event at or before ``since`` shows up. Returns
         ``None`` when the history can't be trusted and a full listing is needed:
-        a page that isn't a list (a GET 403/404 comes back as ``{}``), or no
-        cursor event within ``PUSH_EVENT_MAX_PAGES`` pages.
+        a page that isn't a list (a GET 403/404 comes back as ``{}``).
         """
         pushes: list[dict[str, Any]] = []
         page_size = RestClient.DEFAULT_PAGE_SIZE
         encoded_path = quote(project_path, safe="")
-        for page in range(1, PUSH_EVENT_MAX_PAGES + 1):
+        page = 1
+        while True:
             events = await self.rest.send_api_request(
                 "GET",
                 f"projects/{encoded_path}/events",
@@ -303,11 +301,7 @@ class GitLabClient:
             if reached_since or len(events) < page_size:
                 # Events come newest first, so reversing puts the oldest push first.
                 return pushes[::-1]
-        logger.warning(
-            f"No push event before {since.isoformat()} in {project_path} within "
-            f"{PUSH_EVENT_MAX_PAGES} pages, full listing needed"
-        )
-        return None
+            page += 1
 
     async def _unchanged_since(
         self, project_path: str, since: datetime, ref: str

@@ -174,22 +174,6 @@ async def test_unreadable_push_events_need_full_listing(client: GitLabClient) ->
     client.compare_repository.assert_not_awaited()
 
 
-async def test_no_cursor_event_within_page_cap_needs_full_listing(
-    client: GitLabClient,
-) -> None:
-    events = [_push(f"2026-10-20T0{hour}:00:00Z", f"C{hour}") for hour in range(1, 6)]
-    _mock_rest(client, events, {})
-    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
-
-    with (
-        patch.object(RestClient, "DEFAULT_PAGE_SIZE", 2),
-        patch("gitlab.clients.gitlab_client.PUSH_EVENT_MAX_PAGES", 2),
-    ):
-        assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
-
-    client.compare_repository.assert_not_awaited()
-
-
 @pytest.fixture
 def run_cache() -> Iterator[dict[str, Any]]:
     """An in-memory cache provider, so the per-run cache behaves as it does during a sync."""
