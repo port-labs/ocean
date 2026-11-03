@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from typing import cast
 
 import httpx
+from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
+    BetaManagedAgentsSessionEvent,
+)
 from anthropic.types.beta.sessions.beta_managed_agents_session_deleted_event import (
     BetaManagedAgentsSessionDeletedEvent,
 )
@@ -187,7 +191,9 @@ class StreamManager:
                 async with stream:
                     async for event in stream:
                         try:
-                            log = format_session_event(event)
+                            log = format_session_event(
+                                cast(BetaManagedAgentsSessionEvent, event)
+                            )
                         except Exception as exc:
                             logger.debug(
                                 f"StreamManager: skipping unparseable event "

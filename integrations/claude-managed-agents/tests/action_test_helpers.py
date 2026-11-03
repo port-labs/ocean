@@ -11,6 +11,12 @@ from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
 )
+from anthropic.types.beta.sessions.beta_managed_agents_base64_image_source_param import (
+    BetaManagedAgentsBase64ImageSourceParam,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_image_block_param import (
+    BetaManagedAgentsImageBlockParam,
+)
 from anthropic.types.beta.sessions.beta_managed_agents_text_block import (
     BetaManagedAgentsTextBlock,
 )
@@ -50,6 +56,17 @@ def port_settings(**kwargs: Any) -> PortSettings:
         client_secret=kwargs.pop("client_secret", "secret"),
         base_url="https://api.getport.io",
         **kwargs,
+    )
+
+
+def image_block(
+    data: str = "AAA", media_type: str = "image/png"
+) -> BetaManagedAgentsImageBlockParam:
+    return BetaManagedAgentsImageBlockParam(
+        type="image",
+        source=BetaManagedAgentsBase64ImageSourceParam(
+            type="base64", media_type=media_type, data=data
+        ),
     )
 
 
