@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added incremental sync for file and folder kinds. File and folder project listings are narrowed by updated_after, and changed paths are found with a commit compare from the last commit before the cursor. Falls back to a full tree listing when the diff cannot be trusted.
+changelog: Added incremental sync for file, folder, skill and plugin kinds. Projects are narrowed by updated_after, and changed paths come from a commit compare from the last commit before the cursor. Falls back to a full listing when the diff cannot be trusted. Deleted files, folders, skills and plugins are removed by the next full resync.
