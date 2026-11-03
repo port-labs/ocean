@@ -134,11 +134,14 @@ def get_spec_kinds(path: Path = Path(".")) -> list[str]:
 
 
 def load_module(file_path: str) -> ModuleType:
-    spec = spec_from_file_location("module.name", file_path)
+    module_name = Path(file_path).stem
+    spec = spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
         raise Exception(f"Failed to load integration from path: {file_path}")
 
     module = module_from_spec(spec)
+    # Registered so pickle (e.g. loguru's enqueued handlers) can resolve classes defined in it
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
     return module
