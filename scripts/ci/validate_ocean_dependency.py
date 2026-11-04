@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -17,7 +18,20 @@ from ocean_release.ocean_dependency import validate_ocean_dependency_bumps  # no
 
 
 def main() -> int:
-    errors = validate_ocean_dependency_bumps(GitContext(REPO_ROOT))
+    parser = argparse.ArgumentParser(
+        description=(
+            "Validate that every integration pins port_ocean to the core "
+            "version on the PR base ref"
+        )
+    )
+    parser.add_argument(
+        "--base",
+        default="origin/main",
+        help="Git ref for ocean-core version (default: origin/main)",
+    )
+    args = parser.parse_args()
+
+    errors = validate_ocean_dependency_bumps(GitContext(REPO_ROOT), base_ref=args.base)
 
     if not errors:
         print("Ocean dependency validation passed")

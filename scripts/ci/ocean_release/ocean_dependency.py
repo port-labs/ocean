@@ -8,19 +8,25 @@ from .git_context import GitContext
 from .version import parse_port_ocean_dependency_version, parse_version
 
 
-def validate_ocean_dependency_bumps(git: GitContext) -> list[str]:
-    """Ensure every integration's ``port_ocean`` matches core's version."""
+def validate_ocean_dependency_bumps(git: GitContext, *, base_ref: str) -> list[str]:
+    """Ensure every integration's ``port_ocean`` matches core on ``base_ref``.
+
+    Core is read from the PR base (usually ``main``), not the PR head, so
+    CoreBump / release-intent PRs can advance ocean-core before the follow-up
+    ``bump-all`` PR updates integrations.
+    """
+    core_pyproject = git.repo_root / "pyproject.toml"
     try:
-        core_version = parse_version(
-            git.read_worktree(git.repo_root / "pyproject.toml")
-        )
+        core_version = parse_version(git.read_at_ref(base_ref, core_pyproject))
     except (OSError, ValueError) as exc:
-        return [f"ocean-core: could not read version from pyproject.toml ({exc})"]
+        return [
+            f"ocean-core: could not read version from {base_ref}:pyproject.toml ({exc})"
+        ]
 
     integrations = list_integrations(git.repo_root)
     print(
         f"Checking {len(integrations)} integration(s) pin port_ocean to "
-        f"^{core_version}"
+        f"^{core_version} (core on {base_ref})"
     )
 
     outdated: list[str] = []
