@@ -291,7 +291,8 @@ async def test_resync_plugins_accumulates_manifests_per_project() -> None:
     )
 
     batches = [
-        batch async for batch in resync_plugins(client, selector, {"active": True})  # type: ignore[arg-type]
+        batch
+        async for batch in resync_plugins(client, selector, {"active": True})  # type: ignore[arg-type]
     ]
 
     assert client.search_calls == []

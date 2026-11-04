@@ -105,6 +105,13 @@ def parse_file_content(
         return content
 
 
+@dataclass(frozen=True)
+class ChangedPaths:
+    """Changed paths since a cursor. ``paths`` is None when a full listing is needed."""
+
+    paths: list[str] | None
+
+
 @dataclass
 class SearchQuery:
     """Parsed components of a file search path pattern.

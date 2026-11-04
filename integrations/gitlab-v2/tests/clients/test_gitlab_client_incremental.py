@@ -7,7 +7,8 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from gitlab.clients.gitlab_client import GitLabClient, _ancestor_dirs
+from gitlab.clients.gitlab_client import GitLabClient, ancestor_dirs
+from gitlab.helpers.utils import ChangedPaths
 from gitlab.clients.rest_client import RestClient
 from gitlab.helpers.utils import build_search_query
 
@@ -66,6 +67,8 @@ def _mock_rest(
     tip_committed_date: str | None = "2026-10-01T00:00:00+00:00",
 ) -> None:
     client.rest = MagicMock()
+    # The real feed keeps older pushes too, so it reaches back past the cursor.
+    feed = [*events, _push("2026-10-18T08:00:00Z", "BEFORE_CURSOR")]
 
     async def send_api_request(
         method: str, path: str, params: dict[str, Any] | None = None, **_: Any
@@ -73,7 +76,7 @@ def _mock_rest(
         if path.endswith("/events"):
             assert params is not None
             size, page = params["per_page"], params["page"]
-            return events[(page - 1) * size : page * size]
+            return feed[(page - 1) * size : page * size]
         sha = path.rsplit("/", 1)[-1]
         if sha == "main":
             return {"committed_date": tip_committed_date}
@@ -100,7 +103,9 @@ async def test_changed_paths_compares_from_branch_tip_before_first_push(
         }
     )
 
-    result = await client.get_changed_paths_since(PROJECT, SINCE, "main")
+    result = (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths
 
     assert result == ["a.yaml"]
     client.compare_repository.assert_awaited_once_with("group/repo", "C0", "main")
@@ -122,7 +127,9 @@ async def test_late_pushed_commit_is_not_skipped(client: GitLabClient) -> None:
         return_value={"diffs": [{"new_path": "late.yaml", "deleted_file": False}]}
     )
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["late.yaml"]
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths == ["late.yaml"]
     assert client.compare_repository.call_args.args[1] == "C0"
 
 
@@ -130,7 +137,9 @@ async def test_pushes_to_other_refs_are_ignored(client: GitLabClient) -> None:
     _mock_rest(client, [_push("2026-10-18T10:00:00Z", "C0", ref="feature")], {})
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths == []
     client.compare_repository.assert_not_awaited()
 
 
@@ -150,9 +159,11 @@ async def test_pushes_are_read_across_pages_until_cursor(client: GitLabClient) -
     )
 
     with patch.object(RestClient, "DEFAULT_PAGE_SIZE", 2):
-        assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == [
-            "a.yaml"
-        ]
+        assert (
+            await client.changed_paths_since(
+                PROJECT["path_with_namespace"], SINCE, "main"
+            )
+        ).paths == ["a.yaml"]
 
     client.compare_repository.assert_awaited_once_with("group/repo", "C1", "main")
     event_calls = [
@@ -170,7 +181,9 @@ async def test_unreadable_push_events_need_full_listing(client: GitLabClient) ->
     client.rest.send_api_request = AsyncMock(return_value={})
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
     client.compare_repository.assert_not_awaited()
 
 
@@ -193,50 +206,15 @@ def run_cache() -> Iterator[dict[str, Any]]:
 
 
 @pytest.mark.usefixtures("run_cache")
-async def test_compare_is_computed_once_per_run(client: GitLabClient) -> None:
-    _mock_rest(
-        client,
-        [_push("2026-10-18T10:00:00Z", "C0")],
-        {"C0": {"id": "C0", "parent_ids": ["P"]}},
-    )
-    client.compare_repository = AsyncMock(  # type: ignore[method-assign]
-        return_value={"diffs": [{"new_path": "a.yaml", "deleted_file": False}]}
-    )
-
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["a.yaml"]
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == ["a.yaml"]
-    client.compare_repository.assert_awaited_once()
-
-
 @pytest.mark.usefixtures("run_cache")
-async def test_unchanged_result_is_cached_for_the_run(client: GitLabClient) -> None:
-    _mock_rest(client, [], {}, tip_committed_date="2026-10-01T00:00:00+00:00")
-    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
-
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
-    # One events page and one tip read, both made by the first call only.
-    assert client.rest.send_api_request.await_count == 2  # type: ignore[attr-defined]
-    client.compare_repository.assert_not_awaited()
-
-
-async def test_no_push_and_tip_before_cursor_is_unchanged(
-    client: GitLabClient,
-) -> None:
-    _mock_rest(client, [], {}, tip_committed_date="2026-10-01T00:00:00+00:00")
-    client.compare_repository = AsyncMock()  # type: ignore[method-assign]
-
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") == []
-    client.compare_repository.assert_not_awaited()
-
-
-async def test_no_push_but_tip_after_cursor_needs_full_listing(
-    client: GitLabClient,
-) -> None:
+async def test_no_push_after_cursor_is_unchanged(client: GitLabClient) -> None:
+    """No push event means no change, even when the branch tip is newer than the cursor."""
     _mock_rest(client, [], {}, tip_committed_date="2026-10-20T00:00:00+00:00")
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths == []
     client.compare_repository.assert_not_awaited()
 
 
@@ -246,7 +224,9 @@ async def test_branch_created_after_cursor_needs_full_listing(
     _mock_rest(client, [_push("2026-10-18T10:00:00Z", None)], {})
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
     client.compare_repository.assert_not_awaited()
 
 
@@ -258,7 +238,9 @@ async def test_changed_paths_none_for_root_base_commit(client: GitLabClient) -> 
     )
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
     client.compare_repository.assert_not_awaited()
 
 
@@ -272,7 +254,9 @@ async def test_changed_paths_none_on_compare_timeout(client: GitLabClient) -> No
         return_value={"diffs": [], "compare_timeout": True}
     )
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
 
 
 async def test_compare_without_diffs_needs_full_listing(client: GitLabClient) -> None:
@@ -284,22 +268,34 @@ async def test_compare_without_diffs_needs_full_listing(client: GitLabClient) ->
     )
     client.compare_repository = AsyncMock(return_value={})  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
 
 
 async def test_unreadable_base_commit_needs_full_listing(client: GitLabClient) -> None:
     _mock_rest(client, [_push("2026-10-18T10:00:00Z", "C0")], {"C0": {}})
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
     client.compare_repository.assert_not_awaited()
 
 
-async def test_unreadable_branch_tip_needs_full_listing(client: GitLabClient) -> None:
-    _mock_rest(client, [], {}, tip_committed_date=None)
+async def test_feed_ending_before_cursor_needs_full_listing(
+    client: GitLabClient,
+) -> None:
+    """The feed runs out before reaching the cursor, so a push after it may be missing."""
+    client.rest = MagicMock()
+    client.rest.send_api_request = AsyncMock(
+        return_value=[_push("2026-10-18T11:00:00Z", "C1")]
+    )
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
     client.compare_repository.assert_not_awaited()
 
 
@@ -313,7 +309,9 @@ async def test_changed_paths_none_on_http_error(client: GitLabClient) -> None:
         side_effect=httpx.ConnectError("boom")
     )
 
-    assert await client.get_changed_paths_since(PROJECT, SINCE, "main") is None
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None
 
 
 @pytest.mark.parametrize(
@@ -324,13 +322,13 @@ async def test_changed_paths_none_on_http_error(client: GitLabClient) -> None:
         ("a/b/c.txt", {"a", "a/b"}),
     ],
 )
-def test_ancestor_dirs(path: str, expected: set[str]) -> None:
-    assert _ancestor_dirs(path) == expected
+def testancestor_dirs(path: str, expected: set[str]) -> None:
+    assert ancestor_dirs(path) == expected
 
 
 async def test_changed_files_fall_back_to_tree_walk(client: GitLabClient) -> None:
     query = build_search_query("**/*.yaml")
-    client.get_changed_paths_since = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
     full_walk_batch = [{"path": "full/a.yaml", "project_id": 1}]
 
     with patch.object(
@@ -348,8 +346,8 @@ async def test_changed_files_fall_back_to_tree_walk(client: GitLabClient) -> Non
 
 async def test_changed_files_filtered_by_pattern(client: GitLabClient) -> None:
     query = build_search_query("**/*.yaml")
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["a/b/app.yaml", "README.md"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["a/b/app.yaml", "README.md"])
     )
     client._process_file_batch = AsyncMock(  # type: ignore[method-assign]
         side_effect=lambda batch, repo, skip_parsing: batch
@@ -368,8 +366,10 @@ async def test_changed_folders_yield_only_changed_children(
     client: GitLabClient,
 ) -> None:
     client.get_project = AsyncMock(return_value=PROJECT)  # type: ignore[method-assign]
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["docs/api/v1/openapi.yaml", "docs/readme.md", "other/x.txt"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(
+            paths=["docs/api/v1/openapi.yaml", "docs/readme.md", "other/x.txt"]
+        )
     )
     tree_items = [
         {"type": "tree", "path": "docs/api"},
@@ -399,21 +399,21 @@ async def test_changed_folders_yield_only_changed_children(
 async def test_unreadable_project_yields_no_folders(client: GitLabClient) -> None:
     """An explicit branch skips the project's default branch, so an empty project must stop here."""
     client.get_project = AsyncMock(return_value={})  # type: ignore[method-assign]
-    client.get_changed_paths_since = AsyncMock()  # type: ignore[method-assign]
+    client.changed_paths_since = AsyncMock()  # type: ignore[method-assign]
 
     batches = await _collect(
         client.get_repository_folders_since("docs", "group/repo", SINCE, branch="dev")
     )
 
     assert batches == []
-    client.get_changed_paths_since.assert_not_awaited()
+    client.changed_paths_since.assert_not_awaited()
 
 
 async def test_changed_folders_fall_back_to_full_listing(
     client: GitLabClient,
 ) -> None:
     client.get_project = AsyncMock(return_value=PROJECT)  # type: ignore[method-assign]
-    client.get_changed_paths_since = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
 
     with patch.object(
         client,
@@ -426,3 +426,41 @@ async def test_changed_folders_fall_back_to_full_listing(
 
     assert batches == [[{"folder": {"path": "docs"}}]]
     full_listing.assert_called_once_with("docs", "group/repo", "main")
+
+
+async def test_force_push_compares_from_the_old_tip(client: GitLabClient) -> None:
+    """A force push rewrites history, but the old tip is still a valid base."""
+    _mock_rest(
+        client,
+        [_push("2026-10-18T10:00:00Z", "C1")],
+        {"C1": {"id": "C1", "parent_ids": ["P"]}},
+    )
+    client.compare_repository = AsyncMock(  # type: ignore[method-assign]
+        return_value={"diffs": [{"new_path": "a.yaml", "deleted_file": False}]}
+    )
+
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths == ["a.yaml"]
+    client.compare_repository.assert_awaited_once_with("group/repo", "C1", "main")
+
+
+async def test_deleted_branch_needs_full_listing(client: GitLabClient) -> None:
+    """Deleting a branch is a push with no new tip; the compare to it fails, so nothing is trusted."""
+    deletion = {
+        "created_at": "2026-10-18T10:00:00Z",
+        "push_data": {
+            "ref": "main",
+            "ref_type": "branch",
+            "action": "removed",
+            "commit_from": "C1",
+            "commit_to": None,
+        },
+    }
+    _mock_rest(client, [deletion], {"C1": {"id": "C1", "parent_ids": ["P"]}})
+    # GitLab answers a compare against a missing ref with a 404, which comes back as {}.
+    client.compare_repository = AsyncMock(return_value={})  # type: ignore[method-assign]
+
+    assert (
+        await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
+    ).paths is None

@@ -8,6 +8,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient
+from gitlab.helpers.utils import ChangedPaths
 from gitlab.helpers import skill_plugin_resync as resync
 
 pytestmark = pytest.mark.asyncio
@@ -60,22 +61,22 @@ def _selector(
 
 
 async def test_plugin_changed_when_compare_unavailable(client: GitLabClient) -> None:
-    client.get_changed_paths_since = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
 
     assert await resync._plugin_changed(client, PROJECT, SINCE, ["claude"]) is True
 
 
 async def test_plugin_changed_on_manifest_change(client: GitLabClient) -> None:
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["README.md", ".claude-plugin/plugin.json"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["README.md", ".claude-plugin/plugin.json"])
     )
 
     assert await resync._plugin_changed(client, PROJECT, SINCE, ["claude"]) is True
 
 
 async def test_plugin_unchanged_for_unrelated_paths(client: GitLabClient) -> None:
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["src/app.py"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["src/app.py"])
     )
 
     assert await resync._plugin_changed(client, PROJECT, SINCE, ["claude"]) is False
@@ -94,9 +95,13 @@ async def test_plugin_incremental_rebuilds_only_touched_projects(
         "path_with_namespace": "group/quiet",
         "default_branch": "main",
     }
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        side_effect=lambda project, *_: (
-            [".claude-plugin/plugin.json"] if project is touched else ["src/app.py"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        side_effect=lambda project_path, *_: ChangedPaths(
+            paths=(
+                [".claude-plugin/plugin.json"]
+                if project_path == touched["path_with_namespace"]
+                else ["src/app.py"]
+            )
         )
     )
     rebuilt = [{"plugin": {"name": "p"}, "repo": touched, "__branch": "main"}]
@@ -127,8 +132,8 @@ async def test_plugin_incremental_rebuilds_only_touched_projects(
 async def test_skill_incremental_fetches_only_changed_skill_md(
     client: GitLabClient,
 ) -> None:
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["skills/foo/SKILL.md", "README.md"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["skills/foo/SKILL.md", "README.md"])
     )
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
@@ -144,8 +149,8 @@ async def test_skill_incremental_fetches_only_changed_skill_md(
 
 
 async def test_skill_incremental_skips_unrelated_changes(client: GitLabClient) -> None:
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["README.md"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["README.md"])
     )
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
@@ -162,7 +167,7 @@ async def test_skill_incremental_skips_unrelated_changes(client: GitLabClient) -
 async def test_skill_incremental_falls_back_to_full_search_per_project(
     client: GitLabClient,
 ) -> None:
-    client.get_changed_paths_since = AsyncMock(return_value=None)  # type: ignore[method-assign]
+    client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
     client.search_files_matching_patterns = MagicMock(  # type: ignore[method-assign]
         side_effect=lambda *a, **k: _gen([])
     )
@@ -182,8 +187,8 @@ async def test_skill_incremental_falls_back_to_full_search_per_project(
 async def test_skill_incremental_adds_owner_for_bundle_file(
     client: GitLabClient,
 ) -> None:
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["skills/foo/scripts/run.py"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["skills/foo/scripts/run.py"])
     )
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
@@ -210,8 +215,8 @@ async def test_skill_incremental_adds_owner_for_bundle_file(
 async def test_bundle_file_ignored_without_include_skill_folder(
     client: GitLabClient,
 ) -> None:
-    client.get_changed_paths_since = AsyncMock(  # type: ignore[method-assign]
-        return_value=["skills/foo/scripts/run.py"]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["skills/foo/scripts/run.py"])
     )
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 

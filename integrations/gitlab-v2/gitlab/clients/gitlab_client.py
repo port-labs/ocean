@@ -12,12 +12,13 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
+from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils.time import convert_str_to_utc_datetime
 from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import (
+    ChangedPaths,
     build_search_query,
     parse_file_content,
     SearchQuery,
@@ -78,7 +79,7 @@ def _tree_match_pattern(query: SearchQuery) -> str:
     return f"**/{query.filename}" if query.directory is None else query.path
 
 
-def _ancestor_dirs(path: str) -> set[str]:
+def ancestor_dirs(path: str) -> set[str]:
     """Return every directory containing ``path``: ``a/b/c.txt`` -> ``{"a", "a/b"}``."""
     parts = path.split("/")[:-1]
     return {"/".join(parts[:depth]) for depth in range(1, len(parts) + 1)}
@@ -123,6 +124,11 @@ def _minimize_tree_roots(roots: set[str]) -> list[str]:
             continue
         kept.append(root)
     return kept
+
+
+def _is_branch_push_to(event: dict[str, Any], ref: str) -> bool:
+    push = event.get("push_data") or {}
+    return push.get("ref_type") == "branch" and push.get("ref") == ref
 
 
 class GitLabClient:
@@ -172,73 +178,35 @@ class GitLabClient:
             params={"from": from_sha, "to": to_sha},
         )
 
-    async def get_changed_paths_since(
-        self, project: dict[str, Any], since: datetime, ref: str
-    ) -> list[str] | None:
-        """Return the paths changed on ``ref`` since ``since``, or ``None`` for a full listing.
+    async def changed_paths_since(
+        self, project_path: str, since: datetime, ref: str
+    ) -> ChangedPaths:
+        """Paths changed on ``ref`` since ``since``; ``paths`` is None when a full listing is needed.
 
         The base is the branch tip before the first push to ``ref`` after ``since``, taken
-        from the push event. A commit made before the cursor but pushed after it is
-        therefore included, which a commit-time lookup would miss. Returns ``None`` when the
-        diff cannot be trusted and a full listing is needed: the branch was created after the
-        cursor, the base is a root commit (its own files never appear in a root-to-tip diff),
-        GitLab reports a compare timeout or overflow, or an API call fails.
+        from the push event. No push to ``ref`` after ``since`` means nothing changed. A full
+        listing is needed when the push feed does not reach back to ``since``, the base is a
+        root commit or unreadable, GitLab reports a compare timeout or overflow, or an API
+        call fails.
         """
-        result = await self._changed_paths_for_run(
-            project["path_with_namespace"], since, ref
-        )
-        return result["paths"]
-
-    @cache_coroutine_result()
-    async def _changed_paths_for_run(
-        self, project_path: str, since: datetime, ref: str
-    ) -> dict[str, Any]:
-        """Share one compare per project and ref across the kinds of a run.
-
-        Wrapped in a dict because the cache skips falsy values, and ``[]`` (nothing changed)
-        and ``None`` (full listing) must still be cached.
-        """
-        return {"paths": await self._compare_changed_paths(project_path, since, ref)}
-
-    async def _compare_changed_paths(
-        self, project_path: str, since: datetime, ref: str
-    ) -> list[str] | None:
-        since_iso = since.isoformat()
         try:
-            pushes = await self._pushes_to_ref_since(project_path, since, ref)
-            if pushes is None:
-                return None
-            if not pushes:
-                return await self._unchanged_since(project_path, since, ref)
-
-            base_sha = pushes[0]["push_data"].get("commit_from")
-            if not base_sha or base_sha == GIT_NULL_SHA:
-                logger.info(
-                    f"Branch '{ref}' in {project_path} was created after {since_iso}, full listing needed"
-                )
-                return None
-            base = await self.rest.send_api_request(
-                "GET",
-                f"projects/{quote(project_path, safe='')}/repository/commits/{base_sha}",
-            )
-            if not base:
-                logger.warning(
-                    f"Base commit {base_sha} in {project_path} is not readable, full listing needed"
-                )
-                return None
-            if not base.get("parent_ids"):
-                logger.info(
-                    f"Base commit {base_sha} in {project_path} is a root commit, full listing needed"
-                )
-                return None
-
+            events = await self._push_events_since(project_path, since)
+            if events is None:
+                return ChangedPaths(paths=None)
+            ref_pushes = [event for event in events if _is_branch_push_to(event, ref)]
+            if not ref_pushes:
+                return ChangedPaths(paths=[])
+            # Events come newest first, so the last one is the first push after ``since``.
+            base_sha = await self._push_base_sha(project_path, ref_pushes[-1], ref)
+            if base_sha is None:
+                return ChangedPaths(paths=None)
             compare = await self.compare_repository(project_path, base_sha, ref)
         except httpx.HTTPError as err:
             logger.warning(
-                f"Failed to compare '{ref}' in {project_path} since {since_iso}, "
+                f"Failed to compare '{ref}' in {project_path} since {since.isoformat()}, "
                 f"full listing needed: {err}"
             )
-            return None
+            return ChangedPaths(paths=None)
 
         # A 403/404 on a GET comes back as {} (see base_client), which has no diffs.
         # Treat that as an untrusted compare, not as "nothing changed".
@@ -246,37 +214,60 @@ class GitLabClient:
             logger.warning(
                 f"Compare for {project_path} returned no diffs (not readable or not found), full listing needed"
             )
-            return None
-
+            return ChangedPaths(paths=None)
         if compare.get("compare_timeout") or compare.get("overflow"):
             logger.warning(
                 f"Compare incomplete for {project_path} (timeout or overflow), full listing needed"
             )
-            return None
+            return ChangedPaths(paths=None)
 
-        changed_paths = [
+        paths = [
             diff["new_path"]
             for diff in compare["diffs"]
             if not diff.get("deleted_file")
         ]
-        logger.info(
-            f"Found {len(changed_paths)} changed paths in {project_path} since {since_iso}"
+        logger.info(f"Found {len(paths)} changed paths in {project_path}")
+        return ChangedPaths(paths=paths)
+
+    async def _push_base_sha(
+        self, project_path: str, push: dict[str, Any], ref: str
+    ) -> str | None:
+        """The commit the branch had before ``push``, or None when it cannot be a diff base."""
+        base_sha = push["push_data"].get("commit_from")
+        if not base_sha or base_sha == GIT_NULL_SHA:
+            logger.info(
+                f"Branch '{ref}' in {project_path} was created after the cursor, full listing needed"
+            )
+            return None
+        base = await self.rest.send_api_request(
+            "GET",
+            f"projects/{quote(project_path, safe='')}/repository/commits/{base_sha}",
         )
-        return changed_paths
+        if not base:
+            logger.warning(
+                f"Base commit {base_sha} in {project_path} is not readable, full listing needed"
+            )
+            return None
+        if not base.get("parent_ids"):
+            logger.info(
+                f"Base commit {base_sha} in {project_path} is a root commit, full listing needed"
+            )
+            return None
+        return base_sha
 
-    async def _pushes_to_ref_since(
-        self, project_path: str, since: datetime, ref: str
+    async def _push_events_since(
+        self, project_path: str, since: datetime
     ) -> list[dict[str, Any]] | None:
-        """Push events to branch ``ref`` created after ``since``, oldest first.
+        """Push events newer than ``since``, newest first, for every branch and tag.
 
-        Events come newest first and the ``after`` filter only takes a date, so
-        pages are read until an event at or before ``since`` shows up. Returns
-        ``None`` when the history can't be trusted and a full listing is needed:
-        a page that isn't a list (a GET 403/404 comes back as ``{}``).
+        Pages through the events feed until an event at or before ``since`` shows up.
+        Returns None, with a warning, when the feed cannot be read (a 403/404 comes back
+        as ``{}``) or ends before reaching ``since``: pushes after ``since`` may then be
+        missing, so the caller needs a full listing.
         """
-        pushes: list[dict[str, Any]] = []
-        page_size = RestClient.DEFAULT_PAGE_SIZE
         encoded_path = quote(project_path, safe="")
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        newer: list[dict[str, Any]] = []
         page = 1
         while True:
             events = await self.rest.send_api_request(
@@ -289,47 +280,16 @@ class GitLabClient:
                     f"Push events for {project_path} are not readable, full listing needed"
                 )
                 return None
-            reached_since = False
             for event in events:
                 if convert_str_to_utc_datetime(event["created_at"]) <= since:
-                    reached_since = True
-                    break
-                push = event.get("push_data") or {}
-                if push.get("ref_type") == "branch" and push.get("ref") == ref:
-                    pushes.append(event)
-            # A short page is the end of the feed, so every push is already seen.
-            if reached_since or len(events) < page_size:
-                # Events come newest first, so reversing puts the oldest push first.
-                return pushes[::-1]
+                    return newer
+                newer.append(event)
+            if len(events) < page_size:
+                logger.warning(
+                    f"Push events for {project_path} end before {since.isoformat()}, full listing needed"
+                )
+                return None
             page += 1
-
-    async def _unchanged_since(
-        self, project_path: str, since: datetime, ref: str
-    ) -> list[str] | None:
-        """No push reached ``ref`` after ``since``: nothing changed if its tip predates the cursor."""
-        tip = await self.rest.send_api_request(
-            "GET",
-            f"projects/{quote(project_path, safe='')}/repository/commits/{quote(ref, safe='')}",
-        )
-        if not tip.get("committed_date"):
-            logger.warning(
-                f"Branch '{ref}' in {project_path} is not readable, full listing needed"
-            )
-            return None
-        if convert_str_to_utc_datetime(tip["committed_date"]) <= since:
-            logger.info(
-                f"No push to '{ref}' in {project_path} since {since.isoformat()}"
-            )
-            return []
-        logger.info(
-            f"'{ref}' in {project_path} has commits after {since.isoformat()} but no push event, full listing needed"
-        )
-        return None
-
-    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}/releases/{tag_name}"
-        )
 
     async def get_project(
         self,
@@ -1095,8 +1055,8 @@ class GitLabClient:
         if not ref:
             return
 
-        changed_paths = await self.get_changed_paths_since(project, since, ref)
-        if changed_paths is None:
+        changed = await self.changed_paths_since(project_path, since, ref)
+        if changed.paths is None:
             async for batch in self._search_files_in_repository(
                 project_path, "blobs", query, skip_parsing, should_use_tree=True
             ):
@@ -1106,7 +1066,7 @@ class GitLabClient:
         match_pattern = _tree_match_pattern(query)
         matching_paths = [
             path
-            for path in changed_paths
+            for path in changed.paths
             if glob.globmatch(path, match_pattern, flags=CHANGED_PATH_GLOB_FLAGS)
         ]
         if not matching_paths:
@@ -1151,7 +1111,7 @@ class GitLabClient:
         """Incremental counterpart of ``search_files_in_projects`` for the tree strategy.
 
         Only files changed since ``since`` are fetched. Projects whose diff cannot be
-        trusted fall back to a full tree walk (see ``get_changed_paths_since``).
+        trusted fall back to a full tree walk (see ``changed_paths_since``).
         """
         logger.info(
             f"Starting incremental file search for '{query.path}' since {since.isoformat()}"
@@ -1260,10 +1220,10 @@ class GitLabClient:
         if not effective_branch:
             return
 
-        changed_paths = await self.get_changed_paths_since(
-            project, since, effective_branch
+        changed = await self.changed_paths_since(
+            project["path_with_namespace"], since, effective_branch
         )
-        if changed_paths is None:
+        if changed.paths is None:
             async for folders_batch in self.get_repository_folders(
                 path, repository, effective_branch
             ):
@@ -1280,8 +1240,8 @@ class GitLabClient:
 
         changed_dirs = {
             folder
-            for changed in changed_paths
-            for folder in _ancestor_dirs(changed)
+            for changed_path in changed.paths
+            for folder in ancestor_dirs(changed_path)
             if is_match(folder)
         }
         if not changed_dirs:

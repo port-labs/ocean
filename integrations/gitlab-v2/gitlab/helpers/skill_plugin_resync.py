@@ -77,8 +77,8 @@ async def resync_skills_incremental(
             if not patterns or not ref:
                 continue
 
-            changed = await client.get_changed_paths_since(project, since, ref)
-            if changed is None:
+            changed = await client.changed_paths_since(repo, since, ref)
+            if changed.paths is None:
                 async for files_batch in client.search_files_matching_patterns(
                     patterns, skip_parsing=True, repositories=[project]
                 ):
@@ -97,7 +97,7 @@ async def resync_skills_incremental(
                 client,
                 project,
                 ref,
-                changed,
+                changed.paths,
                 patterns,
                 selector.include_skill_folder,
             )
@@ -285,10 +285,12 @@ async def _plugin_changed(
     ref = client._project_tree_ref(project)
     if not ref:
         return False
-    changed = await client.get_changed_paths_since(project, since, ref)
-    if changed is None:
+    changed = await client.changed_paths_since(
+        project["path_with_namespace"], since, ref
+    )
+    if changed.paths is None:
         return True
-    return any(path_touches_plugin(path, providers) for path in changed)
+    return any(path_touches_plugin(path, providers) for path in changed.paths)
 
 
 async def _plugins_for_projects(
