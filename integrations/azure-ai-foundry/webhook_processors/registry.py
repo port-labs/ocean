@@ -1,0 +1,1 @@
+WEBHOOK_PATH = "/webhook"

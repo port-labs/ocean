@@ -1,0 +1,484 @@
+[
+    {
+        "identifier": "foundry_agent",
+        "title": "Foundry Agent",
+        "description": "A Microsoft Foundry agent in the configured project (Agent Control Plane registry row).",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "title": "Agent kind",
+                    "description": "Agent type from the active version (prompt, hosted, container_app, workflow)."
+                },
+                "model": {
+                    "type": "string",
+                    "title": "Model",
+                    "description": "Model deployment name used by the active agent version."
+                },
+                "instructions": {
+                    "type": "string",
+                    "title": "Instructions",
+                    "description": "System instructions for the agent."
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "description": "Top-level agent state (for example enabled)."
+                },
+                "configurationState": {
+                    "type": "string",
+                    "title": "Configuration state",
+                    "description": "Whether agent configuration is enabled in Foundry."
+                },
+                "version": {
+                    "type": "string",
+                    "title": "Active version",
+                    "description": "Published version number of the latest agent version."
+                },
+                "versionStatus": {
+                    "type": "string",
+                    "title": "Version status",
+                    "description": "Status of the latest version (for example active)."
+                },
+                "agentGuid": {
+                    "type": "string",
+                    "title": "Agent GUID",
+                    "description": "Stable Foundry identifier for the agent resource."
+                },
+                "toolCount": {
+                    "type": "number",
+                    "title": "Tool count",
+                    "description": "Number of tools on the active version definition."
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description",
+                    "description": "Agent version description from Foundry."
+                },
+                "sourcePlatform": {
+                    "type": "string",
+                    "title": "Source platform",
+                    "description": "Originating control-plane platform (default Azure AI Foundry)."
+                },
+                "owner": {
+                    "type": "string",
+                    "title": "Owner",
+                    "description": "Owner from Foundry metadata (convention-based; no native owner field)."
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata",
+                    "description": "Foundry metadata key-value pairs (up to 16 keys)."
+                },
+                "tools": {
+                    "type": "array",
+                    "title": "Tools",
+                    "description": "Tools configured on the active agent version."
+                },
+                "entraPrincipalId": {
+                    "type": "string",
+                    "title": "Entra principal ID",
+                    "description": "Microsoft Entra principal ID for the agent managed identity."
+                },
+                "entraClientId": {
+                    "type": "string",
+                    "title": "Entra client ID",
+                    "description": "Microsoft Entra application (client) ID for the agent identity."
+                },
+                "entraIdentityStatus": {
+                    "type": "string",
+                    "title": "Entra identity status",
+                    "description": "Status of the agent instance identity in Foundry."
+                },
+                "identityBlueprintId": {
+                    "type": "string",
+                    "title": "Identity blueprint ID",
+                    "description": "Managed agent identity blueprint identifier when present."
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at",
+                    "description": "When the active version was created."
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at",
+                    "description": "When the agent was last updated, if reported."
+                },
+                "metricsInputTokens": {
+                    "type": "number",
+                    "title": "Input tokens (window)",
+                    "description": "Sum of AgentInputTokens for the observability window."
+                },
+                "metricsOutputTokens": {
+                    "type": "number",
+                    "title": "Output tokens (window)",
+                    "description": "Sum of AgentOutputTokens for the observability window."
+                },
+                "metricsResponses": {
+                    "type": "number",
+                    "title": "Responses (window)",
+                    "description": "Sum of AgentResponses for the observability window."
+                },
+                "metricsRuns": {
+                    "type": "number",
+                    "title": "Runs (window)",
+                    "description": "Sum of AgentRuns for the observability window."
+                },
+                "metricsToolCalls": {
+                    "type": "number",
+                    "title": "Tool calls (window)",
+                    "description": "Sum of AgentToolCalls for the observability window."
+                },
+                "metricsEstimatedCostUsd": {
+                    "type": "number",
+                    "title": "Estimated cost USD (window)",
+                    "description": "Sum of AgentModelEstimatedCost for the observability window."
+                },
+                "metricsWindowDays": {
+                    "type": "number",
+                    "title": "Metrics window (days)",
+                    "description": "Lookback window used for observability totals."
+                },
+                "metricsAsOf": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Metrics as of",
+                    "description": "When observability totals were fetched during resync."
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "modelDeployment": {
+                "title": "Model deployment",
+                "target": "foundry_model_deployment",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "foundry_agent_version",
+        "title": "Foundry Agent Version",
+        "description": "A published version of a Foundry agent (inventory for Agent Control Plane).",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "agentId": {
+                    "type": "string",
+                    "title": "Agent",
+                    "description": "Parent agent name."
+                },
+                "version": {
+                    "type": "string",
+                    "title": "Version",
+                    "description": "Version number or identifier."
+                },
+                "kind": {
+                    "type": "string",
+                    "title": "Agent kind"
+                },
+                "model": {
+                    "type": "string",
+                    "title": "Model"
+                },
+                "instructions": {
+                    "type": "string",
+                    "title": "Instructions"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "versionStatus": {
+                    "type": "string",
+                    "title": "Version status"
+                },
+                "isDraft": {
+                    "type": "boolean",
+                    "title": "Draft"
+                },
+                "sourcePlatform": {
+                    "type": "string",
+                    "title": "Source platform"
+                },
+                "owner": {
+                    "type": "string",
+                    "title": "Owner"
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "tools": {
+                    "type": "array",
+                    "title": "Tools"
+                },
+                "toolCount": {
+                    "type": "number",
+                    "title": "Tool count"
+                },
+                "entraPrincipalId": {
+                    "type": "string",
+                    "title": "Entra principal ID"
+                },
+                "entraClientId": {
+                    "type": "string",
+                    "title": "Entra client ID"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "agent": {
+                "title": "Agent",
+                "target": "foundry_agent",
+                "required": true,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "foundry_model_deployment",
+        "title": "Foundry Deployment",
+        "description": "A model deployed for inference in the project (one catalog row per deployment name).",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "model": {
+                    "type": "string",
+                    "title": "Model name",
+                    "description": "Publisher model id (for example gpt-5)."
+                },
+                "modelVersion": {
+                    "type": "string",
+                    "title": "Model version",
+                    "description": "Publisher model version string."
+                },
+                "modelPublisher": {
+                    "type": "string",
+                    "title": "Publisher",
+                    "description": "Model publisher (for example OpenAI, Microsoft)."
+                },
+                "deploymentType": {
+                    "type": "string",
+                    "title": "Deployment type",
+                    "description": "Foundry deployment type (for example ModelDeployment)."
+                },
+                "sku": {
+                    "type": "string",
+                    "title": "Deployment SKU",
+                    "description": "Azure capacity/pricing tier (for example GlobalStandard)."
+                },
+                "capabilities": {
+                    "type": "object",
+                    "title": "Capabilities",
+                    "description": "Capability flags returned by Foundry (chat_completion, embeddings, etc.)."
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "foundry_conversation",
+        "title": "Foundry Conversation",
+        "description": "OpenAI conversation memory used with prompt and Responses agents (multi-turn chat history).",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at",
+                    "description": "When the conversation was created."
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata",
+                    "description": "Optional conversation metadata from Foundry (may include agent hints)."
+                },
+                "promptTokens": {
+                    "type": "number",
+                    "title": "Prompt tokens",
+                    "description": "Summed input tokens from related responses."
+                },
+                "completionTokens": {
+                    "type": "number",
+                    "title": "Completion tokens",
+                    "description": "Summed output tokens from related responses."
+                },
+                "totalTokens": {
+                    "type": "number",
+                    "title": "Total tokens",
+                    "description": "Summed total tokens from related responses."
+                },
+                "toolCallCount": {
+                    "type": "number",
+                    "title": "Tool calls",
+                    "description": "Tool/MCP/function calls counted across related response outputs."
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "agents": {
+                "title": "Agents",
+                "target": "foundry_agent",
+                "required": false,
+                "many": true
+            },
+            "modelDeployments": {
+                "title": "Model deployments",
+                "target": "foundry_model_deployment",
+                "required": false,
+                "many": true
+            }
+        }
+    },
+    {
+        "identifier": "foundry_response",
+        "title": "Foundry Response",
+        "description": "A single Foundry Responses API run (resp_*) with usage and tool-call metrics.",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "description": "Terminal or in-progress response status from Foundry."
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "promptTokens": {
+                    "type": "number",
+                    "title": "Prompt tokens"
+                },
+                "completionTokens": {
+                    "type": "number",
+                    "title": "Completion tokens"
+                },
+                "totalTokens": {
+                    "type": "number",
+                    "title": "Total tokens"
+                },
+                "toolCallCount": {
+                    "type": "number",
+                    "title": "Tool calls",
+                    "description": "Tool/MCP/function calls in this response output."
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "conversation": {
+                "title": "Conversation",
+                "target": "foundry_conversation",
+                "required": false,
+                "many": false
+            },
+            "agent": {
+                "title": "Agent",
+                "target": "foundry_agent",
+                "required": false,
+                "many": false
+            },
+            "modelDeployment": {
+                "title": "Model deployment",
+                "target": "foundry_model_deployment",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "foundry_skill",
+        "title": "Foundry Skill",
+        "description": "Versioned skill bundle for Responses shell environments.",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "latestVersion": {
+                    "type": "string",
+                    "title": "Latest version"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated at"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "foundry_memory_store",
+        "title": "Foundry Memory Store",
+        "description": "Persistent memory store for Foundry agents.",
+        "icon": "Azure",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created at"
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    }
+]
