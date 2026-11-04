@@ -1,24 +1,20 @@
-from typing import Any, cast
+from typing import cast
 from loguru import logger
 from github.helpers.utils import (
-    GithubClientType,
     ObjectKind,
     enrich_with_organization,
     enrich_with_repository,
 )
-from github.clients.client_factory import create_github_client_for_org
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.exporters.pull_request_exporter import (
-    GraphQLPullRequestExporter,
-    RestPullRequestExporter,
+from github.core.exporters.pull_request_exporter import fetch_single_pull_request
+from github.core.exporters.pull_request_exporter.utils import (
+    matches_pull_request_selector_states,
 )
-from github.core.options import SinglePullRequestOptions
 from integration import GithubPullRequestConfig
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -65,27 +61,12 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[data_to_delete],
             )
 
-        is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
-        exporter: AbstractGithubExporter[Any] = (
-            GraphQLPullRequestExporter(
-                await create_github_client_for_org(
-                    organization, GithubClientType.GRAPHQL
-                )
-            )
-            if is_graphql_api
-            else RestPullRequestExporter(
-                await create_github_client_for_org(organization)
-            )
-        )
-        data_to_upsert = await exporter.get_resource(
-            SinglePullRequestOptions(
-                organization=organization,
-                repo_name=repo_name,
-                pr_number=number,
-                repo=repo if is_graphql_api else None,
-                enrich_with_first_commit=config.selector.enrich_with_first_commit,
-                exclude_graphql_fields=config.selector.exclude_graphql_fields,
-            )
+        data_to_upsert = await fetch_single_pull_request(
+            organization=organization,
+            repo_name=repo_name,
+            pr_number=number,
+            resource_config=config,
+            repo=repo,
         )
         if not data_to_upsert:
             logger.warning(
@@ -96,8 +77,8 @@ class BasePullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        pr_state = data_to_upsert.get("state", "")
-        if pr_state and pr_state not in config.selector.states:
+        pr_state = data_to_upsert.get("state") or ""
+        if not matches_pull_request_selector_states(pr_state, config.selector.states):
             logger.info(
                 f"Pull request {repo_name}/{number} has state '{pr_state}' which is "
                 f"excluded by selector states {config.selector.states}, deleting"

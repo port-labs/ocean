@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from github.actions.abstract_github_executor import (
+    MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS,
+)
 from github.actions.refresh_pull_requests_executor import (
     MAX_PULL_REQUESTS_TO_REFRESH,
     RefreshPullRequestsExecutor,
@@ -25,6 +28,7 @@ from port_ocean.core.models import (
 )
 
 MODULE = "github.actions.refresh_pull_requests_executor"
+FETCH_MODULE = "github.core.exporters.pull_request_exporter.fetch"
 PR_URL = "https://github.com/port-labs/ocean/pull/42"
 RAW_PR = {
     "number": 42,
@@ -102,7 +106,9 @@ def patched_ocean(port_app_config: MagicMock) -> Generator[MagicMock, None, None
     mock_ocean = MagicMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
     mock_ocean.port_client.post_run_log = AsyncMock()
-    mock_ocean.register_raw = AsyncMock()
+    mock_ocean.integration._register_resource_raw = AsyncMock(
+        return_value=MagicMock(errors=[])
+    )
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock(
         return_value=port_app_config
     )
@@ -143,10 +149,16 @@ def mock_github_client() -> MagicMock:
 def create_github_client(
     mock_github_client: MagicMock,
 ) -> Generator[AsyncMock, None, None]:
-    with patch(
-        f"{MODULE}.create_github_client_for_org",
-        new=AsyncMock(return_value=mock_github_client),
-    ) as create_client:
+    with (
+        patch(
+            f"{MODULE}.create_github_client_for_org",
+            new=AsyncMock(return_value=mock_github_client),
+        ),
+        patch(
+            f"{FETCH_MODULE}.create_github_client_for_org",
+            new=AsyncMock(return_value=mock_github_client),
+        ) as create_client,
+    ):
         yield create_client
 
 
@@ -157,8 +169,11 @@ def executor(
     create_github_client: AsyncMock,
 ) -> Generator[RefreshPullRequestsExecutor, None, None]:
     with (
-        patch(f"{MODULE}.GraphQLPullRequestExporter", return_value=graphql_exporter),
-        patch(f"{MODULE}.RestPullRequestExporter", return_value=rest_exporter),
+        patch(
+            f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+            return_value=graphql_exporter,
+        ),
+        patch(f"{FETCH_MODULE}.RestPullRequestExporter", return_value=rest_exporter),
     ):
         yield RefreshPullRequestsExecutor()
 
@@ -178,7 +193,7 @@ class TestRefreshPullRequestsExecutor:
 
         graphql_exporter.get_resource.assert_not_called()
         rest_exporter.get_resource.assert_not_called()
-        patched_ocean.register_raw.assert_not_called()
+        patched_ocean.integration._register_resource_raw.assert_not_called()
         patched_ocean.integration.port_app_config_handler.get_port_app_config.assert_not_called()
         mock_port_client.report_run_completed.assert_called_once_with(
             run,
@@ -211,18 +226,49 @@ class TestRefreshPullRequestsExecutor:
             )
         )
         rest_exporter.get_resource.assert_not_called()
-        patched_ocean.register_raw.assert_awaited_once_with(
-            ObjectKind.PULL_REQUEST, [RAW_PR]
-        )
+        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        register_args = patched_ocean.integration._register_resource_raw.await_args
+        assert register_args.args[1] == [RAW_PR]
         completed = mock_port_client.report_run_completed.call_args
         assert completed.args[0] is run
         assert completed.kwargs["success"] is True
-        assert "Refreshed 1, skipped 0, failed 0." in completed.kwargs["message"]
+        assert (
+            "Refreshed 1, skipped 0, failed 0, unknown 0."
+            in completed.kwargs["message"]
+        )
         assert "port-labs/ocean#42" in completed.kwargs["message"]
         assert PR_URL in completed.kwargs["message"]
         create_github_client.assert_awaited_once_with(
             "port-labs", GithubClientType.GRAPHQL
         )
+
+    @pytest.mark.asyncio
+    async def test_registers_all_fetched_prs_in_one_call_per_mapping(
+        self,
+        executor: RefreshPullRequestsExecutor,
+        graphql_exporter: MagicMock,
+        patched_ocean: MagicMock,
+    ) -> None:
+        async def get_resource(
+            options: SinglePullRequestOptions,
+        ) -> dict[str, Any]:
+            return {**RAW_PR, "number": options["pr_number"]}
+
+        graphql_exporter.get_resource = AsyncMock(side_effect=get_resource)
+        await executor.execute(
+            make_run(
+                {
+                    "pullRequests": [
+                        pull_request_item(pr_number=42),
+                        pull_request_item(pr_number=43),
+                    ]
+                }
+            )
+        )
+
+        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        raws = patched_ocean.integration._register_resource_raw.await_args.args[1]
+        assert [raw["number"] for raw in raws] == [42, 43]
 
     @pytest.mark.asyncio
     async def test_two_prs_one_not_found_still_succeeds(
@@ -251,7 +297,10 @@ class TestRefreshPullRequestsExecutor:
         await executor.execute(run)
 
         assert graphql_exporter.get_resource.await_count == 2
-        patched_ocean.register_raw.assert_awaited_once()
+        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        register_args = patched_ocean.integration._register_resource_raw.await_args
+        assert len(register_args.args[1]) == 1
+        assert register_args.args[1][0]["number"] == 42
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is True
         assert "Refreshed 1" in completed["message"]
@@ -291,7 +340,7 @@ class TestRefreshPullRequestsExecutor:
         await executor.execute(run)
 
         assert graphql_exporter.get_resource.await_count == 2
-        patched_ocean.register_raw.assert_awaited_once()
+        patched_ocean.integration._register_resource_raw.assert_awaited_once()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is False
         assert "failed 1" in completed["message"]
@@ -314,12 +363,13 @@ class TestRefreshPullRequestsExecutor:
             }
         )
         with pytest.raises(
-            InvalidActionParametersException, match="cannot contain more"
+            InvalidActionParametersException,
+            match=f"at most {MAX_PULL_REQUESTS_TO_REFRESH}",
         ):
             await executor.execute(run)
 
         graphql_exporter.get_resource.assert_not_called()
-        patched_ocean.register_raw.assert_not_called()
+        patched_ocean.integration._register_resource_raw.assert_not_called()
         patched_ocean.integration.port_app_config_handler.get_port_app_config.assert_not_called()
 
     @pytest.mark.asyncio
@@ -340,7 +390,7 @@ class TestRefreshPullRequestsExecutor:
         await executor.execute(run)
 
         graphql_exporter.get_resource.assert_awaited_once()
-        patched_ocean.register_raw.assert_awaited_once()
+        patched_ocean.integration._register_resource_raw.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_uses_rest_exporter_when_config_is_rest(
@@ -357,11 +407,14 @@ class TestRefreshPullRequestsExecutor:
         )
         with (
             patch(
-                f"{MODULE}.GraphQLPullRequestExporter", return_value=graphql_exporter
+                f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+                return_value=graphql_exporter,
             ),
-            patch(f"{MODULE}.RestPullRequestExporter", return_value=rest_exporter),
             patch(
-                f"{MODULE}.create_github_client_for_org",
+                f"{FETCH_MODULE}.RestPullRequestExporter", return_value=rest_exporter
+            ),
+            patch(
+                f"{FETCH_MODULE}.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_github_client),
             ) as create_client,
         ):
@@ -383,7 +436,7 @@ class TestRefreshPullRequestsExecutor:
         create_client.assert_awaited_with("port-labs")
 
     @pytest.mark.asyncio
-    async def test_prefers_graphql_when_both_resources_exist(
+    async def test_fetches_each_pr_for_each_resource_config(
         self,
         graphql_exporter: MagicMock,
         rest_exporter: MagicMock,
@@ -400,11 +453,14 @@ class TestRefreshPullRequestsExecutor:
         )
         with (
             patch(
-                f"{MODULE}.GraphQLPullRequestExporter", return_value=graphql_exporter
+                f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+                return_value=graphql_exporter,
             ),
-            patch(f"{MODULE}.RestPullRequestExporter", return_value=rest_exporter),
             patch(
-                f"{MODULE}.create_github_client_for_org",
+                f"{FETCH_MODULE}.RestPullRequestExporter", return_value=rest_exporter
+            ),
+            patch(
+                f"{FETCH_MODULE}.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_github_client),
             ) as create_client,
         ):
@@ -413,8 +469,10 @@ class TestRefreshPullRequestsExecutor:
             )
 
         graphql_exporter.get_resource.assert_awaited_once()
-        rest_exporter.get_resource.assert_not_called()
-        create_client.assert_awaited_with("port-labs", GithubClientType.GRAPHQL)
+        rest_exporter.get_resource.assert_awaited_once()
+        assert patched_ocean.integration._register_resource_raw.await_count == 2
+        create_client.assert_any_await("port-labs", GithubClientType.GRAPHQL)
+        create_client.assert_any_await("port-labs")
 
     @pytest.mark.asyncio
     async def test_skips_pr_not_in_selector_states(
@@ -429,10 +487,11 @@ class TestRefreshPullRequestsExecutor:
         )
         with (
             patch(
-                f"{MODULE}.GraphQLPullRequestExporter", return_value=graphql_exporter
+                f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+                return_value=graphql_exporter,
             ),
             patch(
-                f"{MODULE}.create_github_client_for_org",
+                f"{FETCH_MODULE}.create_github_client_for_org",
                 new=AsyncMock(return_value=mock_github_client),
             ),
         ):
@@ -440,10 +499,109 @@ class TestRefreshPullRequestsExecutor:
                 make_run({"pullRequests": [pull_request_item()]})
             )
 
-        patched_ocean.register_raw.assert_not_called()
+        patched_ocean.integration._register_resource_raw.assert_not_called()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is True
         assert "skipped 1" in completed["message"]
+
+    @pytest.mark.asyncio
+    async def test_refreshes_merged_graphql_pr_when_closed_is_selected(
+        self,
+        graphql_exporter: MagicMock,
+        mock_github_client: MagicMock,
+        mock_port_client: MagicMock,
+        patched_ocean: MagicMock,
+    ) -> None:
+        patched_ocean.integration.port_app_config_handler.get_port_app_config = (
+            AsyncMock(
+                return_value=make_port_app_config(
+                    make_pr_resource_config("graphql", ["closed"])
+                )
+            )
+        )
+        graphql_exporter.get_resource = AsyncMock(
+            return_value={**RAW_PR, "state": "merged"}
+        )
+        with (
+            patch(
+                f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+                return_value=graphql_exporter,
+            ),
+            patch(
+                f"{FETCH_MODULE}.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_github_client),
+            ),
+        ):
+            await RefreshPullRequestsExecutor().execute(
+                make_run({"pullRequests": [pull_request_item()]})
+            )
+
+        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        completed = mock_port_client.report_run_completed.call_args.kwargs
+        assert completed["success"] is True
+        assert "Refreshed 1" in completed["message"]
+        assert "skipped 0" in completed["message"]
+
+    @pytest.mark.asyncio
+    async def test_skips_merged_graphql_pr_when_only_open_is_selected(
+        self,
+        graphql_exporter: MagicMock,
+        mock_github_client: MagicMock,
+        mock_port_client: MagicMock,
+        patched_ocean: MagicMock,
+    ) -> None:
+        graphql_exporter.get_resource = AsyncMock(
+            return_value={**RAW_PR, "state": "merged"}
+        )
+        with (
+            patch(
+                f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+                return_value=graphql_exporter,
+            ),
+            patch(
+                f"{FETCH_MODULE}.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_github_client),
+            ),
+        ):
+            await RefreshPullRequestsExecutor().execute(
+                make_run({"pullRequests": [pull_request_item()]})
+            )
+
+        patched_ocean.integration._register_resource_raw.assert_not_called()
+        completed = mock_port_client.report_run_completed.call_args.kwargs
+        assert completed["success"] is True
+        assert "skipped 1" in completed["message"]
+
+    @pytest.mark.asyncio
+    async def test_unrecognized_pr_state_is_unknown(
+        self,
+        graphql_exporter: MagicMock,
+        mock_github_client: MagicMock,
+        mock_port_client: MagicMock,
+        patched_ocean: MagicMock,
+    ) -> None:
+        graphql_exporter.get_resource = AsyncMock(
+            return_value={**RAW_PR, "state": "mystery"}
+        )
+        with (
+            patch(
+                f"{FETCH_MODULE}.GraphQLPullRequestExporter",
+                return_value=graphql_exporter,
+            ),
+            patch(
+                f"{FETCH_MODULE}.create_github_client_for_org",
+                new=AsyncMock(return_value=mock_github_client),
+            ),
+        ):
+            await RefreshPullRequestsExecutor().execute(
+                make_run({"pullRequests": [pull_request_item()]})
+            )
+
+        patched_ocean.integration._register_resource_raw.assert_not_called()
+        completed = mock_port_client.report_run_completed.call_args.kwargs
+        assert completed["success"] is True
+        assert "unknown 1" in completed["message"]
+        assert "unrecognized state 'mystery'" in completed["message"]
 
     @pytest.mark.asyncio
     async def test_missing_pull_requests_input_raises(
@@ -470,3 +628,37 @@ class TestRefreshPullRequestsExecutor:
         run = make_run({"pullRequests": []})
         assert await executor.is_close_to_rate_limit(run) is False
         assert await executor.get_remaining_seconds_until_rate_limit(run) == 0.0
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_helpers_consider_all_orgs(self) -> None:
+        close_info = MagicMock()
+        close_info.remaining = MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS - 1
+        close_info.seconds_until_reset = 30
+        ok_info = MagicMock()
+        ok_info.remaining = MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS + 100
+        ok_info.seconds_until_reset = 90
+        close_client = MagicMock()
+        close_client.get_rate_limit_status.return_value = close_info
+        ok_client = MagicMock()
+        ok_client.get_rate_limit_status.return_value = ok_info
+
+        async def create_client(
+            organization: str, *_args: object, **_kwargs: object
+        ) -> MagicMock:
+            return close_client if organization == "org-a" else ok_client
+
+        run = make_run(
+            {
+                "pullRequests": [
+                    pull_request_item(org="org-a", pr_number=1),
+                    pull_request_item(org="org-b", pr_number=2),
+                ]
+            }
+        )
+        with patch(
+            f"{MODULE}.create_github_client_for_org",
+            new=AsyncMock(side_effect=create_client),
+        ):
+            executor = RefreshPullRequestsExecutor()
+            assert await executor.is_close_to_rate_limit(run) is True
+            assert await executor.get_remaining_seconds_until_rate_limit(run) == 30

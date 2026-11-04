@@ -20,7 +20,10 @@ from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
-from github.core.exporters.pull_request_exporter.utils import filter_prs_by_date
+from github.core.exporters.pull_request_exporter.utils import (
+    filter_prs_by_date,
+    matches_pull_request_selector_states,
+)
 from integration import GithubPullRequestSelector
 
 
@@ -1639,6 +1642,26 @@ class TestGraphQLPullRequestExporterInternals:
         assert normalized["__repository"] == "repo1"
         assert normalized["__repository_object"] == {"name": "repo1"}
         assert normalized["__organization"] == "org"
+
+
+@pytest.mark.parametrize(
+    "state,selector_states,expected",
+    [
+        ("open", ["open"], True),
+        ("closed", ["closed"], True),
+        ("merged", ["closed"], True),
+        ("MERGED", ["closed"], True),
+        ("merged", ["open"], False),
+        ("closed", ["open"], False),
+        ("open", ["closed"], False),
+        ("", ["open"], True),
+        (None, ["open"], True),
+    ],
+)
+def test_matches_pull_request_selector_states(
+    state: str | None, selector_states: list[str], expected: bool
+) -> None:
+    assert matches_pull_request_selector_states(state, selector_states) is expected
 
 
 def test_filter_prs_by_date_skips_items_missing_field() -> None:
