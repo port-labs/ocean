@@ -23,8 +23,17 @@ class RegionPolicy(BaseModel):
         description="Regions to exclude e.g. ['us-east-1', 'eu-west-1']. If set, all regions except these are synced.",
     )
 
+    def is_region_allowed(self, region: str) -> bool:
+        if region in self.deny:
+            return False
+        if region in self.allow:
+            return True
+        if self.allow:
+            return False
+        return True
 
-class AWSResourceSelector(Selector):
+
+class AWSRegionPolicySelector(Selector):
     region_policy: RegionPolicy = Field(
         alias="regionPolicy",
         default_factory=RegionPolicy,
@@ -33,14 +42,6 @@ class AWSResourceSelector(Selector):
         "Set 'allow' to sync only specific regions, or 'deny' to exclude specific regions. "
         "If both are empty, all regions are synced. "
         'Example: {"allow": ["us-east-1", "eu-west-1"]} or {"deny": ["cn-north-1"]}.',
-    )
-    include_actions: List[str] = Field(
-        alias="includeActions",
-        default_factory=list,
-        max_items=3,
-        title="Include Actions",
-        description="Additional AWS resource types to include when fetching resources (max 3). "
-        "EC2 Action Example: [DescribeInstanceStatusAction].",
     )
     max_concurrent_accounts: int = Field(
         alias="maxConcurrentAccounts",
@@ -53,37 +54,18 @@ class AWSResourceSelector(Selector):
     )
 
     def is_region_allowed(self, region: str) -> bool:
-        """
-        Determines if a given region is allowed based on the query regions policy.
-        This method checks the `region_policy` attribute to decide if the specified
-        region should be allowed or denied. The policy can contain "allow" and "deny" lists
-        which dictate the behavior.
+        return self.region_policy.is_region_allowed(region)
 
-        Scenarios:
-        - If `region_policy` is not set or empty, the method returns True, allowing all regions.
-        - If the region is listed in the "deny" list of `region_policy`, the method returns False.
-        - If the region is listed in the "allow" list of `region_policy`, the method returns True.
-        - If the region is not listed in either "allow" or "deny" lists, the method returns False.
-        - If the region is listed in both "allow" and "deny" lists, the method returns False.
-        - If the policy denies regions but does not explicitly allow any, and the specific region is not in the deny list, then the region is considered allowed.
-        - If the policy allows regions but does not explicitly deny any, and the specific region is not in the allow list, then the region is considered denied.
-        Args:
-            region (str): The region to be checked.
 
-        Returns:
-            bool: True if the region is allowed, False otherwise.
-        """
-        if not self.region_policy.allow and not self.region_policy.deny:
-            return True
-        if region in self.region_policy.deny:
-            return False
-        if region in self.region_policy.allow:
-            return True
-        if self.region_policy.deny and not self.region_policy.allow:
-            return True
-        if self.region_policy.allow and not self.region_policy.deny:
-            return False
-        return False
+class AWSResourceSelector(AWSRegionPolicySelector):
+    include_actions: List[str] = Field(
+        alias="includeActions",
+        default_factory=list,
+        max_items=3,
+        title="Include Actions",
+        description="Additional AWS resource types to include when fetching resources (max 3). "
+        "EC2 Action Example: [DescribeInstanceStatusAction].",
+    )
 
 
 class AWSResourceConfig(ResourceConfig):
@@ -428,25 +410,7 @@ class AWSSNSTopicResourceConfig(AWSResourceConfig):
     )
 
 
-class AWSCustomKindSelector(Selector):
-    region_policy: RegionPolicy = Field(
-        alias="regionPolicy",
-        default_factory=RegionPolicy,
-        title="Region Policy",
-        description="Controls which AWS regions to include or exclude during resync. "
-        "Set 'allow' to sync only specific regions, or 'deny' to exclude specific regions. "
-        "If both are empty, all regions are synced. "
-        'Example: {"allow": ["us-east-1", "eu-west-1"]} or {"deny": ["cn-north-1"]}.',
-    )
-    max_concurrent_accounts: int = Field(
-        alias="maxConcurrentAccounts",
-        default=5,
-        title="Max Concurrent Accounts",
-        description="Maximum number of AWS accounts to process concurrently. "
-        "Higher values speed up resync but increase API rate limit pressure and memory usage. "
-        "Recommended range: 2-10. Reduce if you encounter throttling errors.",
-        gte=1,
-    )
+class AWSCustomKindSelector(AWSRegionPolicySelector):
     use_get_resource_api: bool = Field(
         alias="useGetResourceAPI",
         default=False,
@@ -463,21 +427,8 @@ class AWSCustomKindSelector(Selector):
         "automatically during sync.",
     )
 
-    def is_region_allowed(self, region: str) -> bool:
-        if not self.region_policy.allow and not self.region_policy.deny:
-            return True
-        if region in self.region_policy.deny:
-            return False
-        if region in self.region_policy.allow:
-            return True
-        if self.region_policy.deny and not self.region_policy.allow:
-            return True
-        if self.region_policy.allow and not self.region_policy.deny:
-            return False
-        return False
 
-
-class AWSCustomKindResourceConfig(ResourceConfig):
+class AWSCustomKindResourceConfig(AWSResourceConfig):
     kind: str = Field(
         title="Custom AWS Resource Kind",
         description="Map any resource type supported by the "
