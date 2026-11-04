@@ -493,8 +493,6 @@ class AWSCustomKindResourceConfig(ResourceConfig):
 
 
 class AWSPortAppConfig(PortAppConfig):
-    allow_custom_kinds: ClassVar[bool] = False
-
     resources: List[
         AWSS3BucketResourceConfig
         | AWSEC2InstanceResourceConfig
