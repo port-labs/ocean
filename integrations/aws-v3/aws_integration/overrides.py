@@ -28,9 +28,7 @@ class RegionPolicy(BaseModel):
             return False
         if region in self.allow:
             return True
-        if self.allow:
-            return False
-        return True
+        return not self.allow
 
 
 class AWSRegionPolicySelector(Selector):
