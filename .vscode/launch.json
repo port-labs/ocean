@@ -524,6 +524,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-ai-foundry",
+      "envFile": "${workspaceFolder}/integrations/azure-ai-foundry/.env",
+      "justMyCode": true,
+      "name": "Run azure-ai-foundry integration",
+      "program": "${workspaceFolder}/integrations/azure-ai-foundry/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-ai-foundry/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/cursor-cloud-agents",
       "envFile": "${workspaceFolder}/integrations/cursor-cloud-agents/.env",
       "justMyCode": true,
