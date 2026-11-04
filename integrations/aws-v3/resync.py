@@ -161,11 +161,13 @@ class ResyncAWSService:
         exporter_cls: Type[IResourceExporter[Any]],
         request_cls: Type[ResourceRequestModel],
         regional: bool,
+        scope_to_region: bool = False,
     ):
         self.kind = kind
         self.exporter_cls = exporter_cls
         self.request_cls = request_cls
         self.regional = regional
+        self.scope_to_region = scope_to_region
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
         self.include_actions = self.aws_resource_config.selector.include_actions
@@ -175,11 +177,16 @@ class ResyncAWSService:
         )
 
     def _create_options_factory(self, account_id: str) -> Callable[[str], Any]:
+        extra_options: dict[str, Any] = (
+            {"scope_to_region": True} if self.scope_to_region else {}
+        )
+
         def options_factory(region: str) -> Any:
             return self.request_cls(
                 region=region,
                 include=self.include_actions,
                 account_id=account_id,
+                **extra_options,
             )
 
         return options_factory

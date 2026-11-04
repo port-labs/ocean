@@ -91,10 +91,26 @@ class AWSResourceConfig(ResourceConfig):
     )
 
 
+class AWSS3BucketSelector(AWSResourceSelector):
+    regional_bucket_discovery: bool = Field(
+        alias="regionalBucketDiscovery",
+        default=False,
+        title="Regional Bucket Discovery",
+        description="If true, buckets are listed per region (only regions allowed by regionPolicy, or all "
+        "enabled regions if regionPolicy is empty) and processed through each region's own endpoint. "
+        "If false (default), buckets are listed account-wide through a single client and regionPolicy "
+        "only selects that client's region.",
+    )
+
+
 class AWSS3BucketResourceConfig(AWSResourceConfig):
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "s3:ListAllMyBuckets",
         "s3:GetBucketTagging",
+    )
+    selector: AWSS3BucketSelector = Field(
+        title="Selector",
+        description="Selector for the AWS S3 Bucket resource.",
     )
     kind: Literal["AWS::S3::Bucket"] = Field(
         title="AWS S3 Bucket",

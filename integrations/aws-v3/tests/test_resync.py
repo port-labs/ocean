@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import resync
 from integration import AWSResourceConfig, AWSResourceSelector, RegionPolicy
+from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from aws.core.modeling.resource_models import ResourceRequestModel
 from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
@@ -386,3 +387,88 @@ class TestResyncResource:
             out.append(batch)
 
         assert out == [["ok"]]
+
+
+class TestScopeToRegionOptions:
+    def _service(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        scope_to_region: bool,
+        exporter_cls: Optional[Type[Any]] = None,
+    ) -> resync.ResyncAWSService:
+        selector = AWSResourceSelector(
+            regionPolicy=RegionPolicy(allow=["us-east-1"], deny=[]),
+            includeActions=[],
+            query="*",
+        )
+        port_cfg = PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier="id", title=None, icon=None, blueprint="bp", team=None
+                )
+            ),
+            itemsToParse=None,
+        )
+        cfg = AWSResourceConfig(kind="Kind", selector=selector, port=port_cfg)
+        monkeypatch.setattr(resync, "event", SimpleNamespace(resource_config=cfg))
+        return resync.ResyncAWSService(
+            "AWS::S3::Bucket",
+            exporter_cls or _make_exporter({}),
+            PaginatedBucketRequest,
+            regional=scope_to_region,
+            scope_to_region=scope_to_region,
+        )
+
+    def test_default_request_is_not_scoped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        service = self._service(monkeypatch, scope_to_region=False)
+        options = service._create_options_factory("111111111111")("us-east-1")
+        assert options.scope_to_region is False
+
+    def test_scoped_request_sets_flag_per_region(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        service = self._service(monkeypatch, scope_to_region=True)
+        factory = service._create_options_factory("111111111111")
+        for region in ["us-east-1", "us-west-2"]:
+            options = factory(region)
+            assert options.region == region
+            assert options.scope_to_region is True
+
+    @pytest.mark.asyncio
+    async def test_scoped_resync_queries_every_allowed_region(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_semaphore_iter: None,
+        fake_stream_tasks: None,
+    ) -> None:
+        async def _accounts() -> AsyncIterator[Tuple[Dict[str, str], Any]]:
+            yield ({"Id": "111111111111", "Name": "Account 1"}, object())
+
+        monkeypatch.setattr(resync, "get_all_account_sessions", lambda: _accounts())
+        monkeypatch.setattr(
+            resync,
+            "get_allowed_regions",
+            AsyncMock(return_value=["us-east-1", "us-west-2"]),
+        )
+        seen: List[Tuple[str, bool]] = []
+
+        class _Exporter:
+            def __init__(self, session: Any) -> None:
+                self.session = session
+
+            async def get_paginated_resources(
+                self, options: PaginatedBucketRequest
+            ) -> AsyncIterator[Any]:
+                seen.append((options.region, options.scope_to_region))
+                yield [options.region]
+
+        service = self._service(
+            monkeypatch, scope_to_region=True, exporter_cls=_Exporter
+        )
+
+        out = [batch async for batch in service]
+
+        assert sorted(out) == [["us-east-1"], ["us-west-2"]]
+        assert sorted(seen) == [("us-east-1", True), ("us-west-2", True)]

@@ -8,7 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.probe import ProbeContext
 
-from integration import AWSResourceConfig
+from integration import AWSResourceConfig, AWSS3BucketSelector
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.organizations.account.exporter import (
@@ -103,16 +103,25 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         break
 
 
+def _use_regional_bucket_discovery() -> bool:
+    selector = event.resource_config.selector if event.resource_config else None
+    return (
+        isinstance(selector, AWSS3BucketSelector) and selector.regional_bucket_discovery
+    )
+
+
 @ocean.on_resync()
 async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind not in kind_to_export_metadata:
         return
 
     metadata = kind_to_export_metadata[ObjectKind(kind)]
+    scope_to_region = _use_regional_bucket_discovery()
     async for batch in ResyncAWSService(
         kind=kind,
         exporter_cls=metadata.exporter,
         request_cls=metadata.paginated_request_model,
-        regional=metadata.regional,
+        regional=metadata.regional or scope_to_region,
+        scope_to_region=scope_to_region,
     ):
         yield batch
