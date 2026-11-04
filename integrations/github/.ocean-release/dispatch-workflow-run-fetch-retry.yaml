@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Retry fetching the dispatched workflow run with backoff (up to ~45s) when GitHub returns 404 right after dispatch, instead of failing the action run with "Workflow run <id> not found", and report the workflow conclusion right away when the fetched run has already finished
