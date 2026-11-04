@@ -1,6 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: >-
-  Prevent duplicate Cursor agents when create/trigger POSTs time out by disabling
-  HTTP retries on non-idempotent agent mutations and using Ocean client_timeout
-  for Cursor API calls.
