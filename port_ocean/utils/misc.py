@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 from time import time
 from types import ModuleType
-from typing import Any, Callable, Type, TYPE_CHECKING, TypeVar
+from typing import Any, Callable, Mapping, Type, TYPE_CHECKING, TypeVar
 from uuid import uuid4
 
 import tomli
@@ -245,3 +245,17 @@ def run_async_in_new_event_loop(coro: Any) -> None:
         loop.run_until_complete(coro)
     finally:
         loop.close()
+
+
+def decode_redis_hash(raw: Mapping[Any, Any]) -> dict[str, str]:
+    """Turn a Redis hash into ``str`` keys and values.
+
+    redis-py returns ``bytes`` when ``decode_responses`` is off. Tests and a
+    client with decoding on may already pass ``str``.
+    """
+    decoded: dict[str, str] = {}
+    for key, value in raw.items():
+        k = key.decode() if isinstance(key, bytes) else str(key)
+        v = value.decode() if isinstance(value, bytes) else str(value)
+        decoded[k] = v
+    return decoded

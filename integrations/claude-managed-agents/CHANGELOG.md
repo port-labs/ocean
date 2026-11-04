@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.15.2 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 0.15.1 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 0.15.0 (2026-11-02)
+
+
+### Features
+
+- Send the Port images that a prompt links to as image content blocks, labeled in the prompt as `[Image N: description]`
+
+
+## 0.14.1 (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 0.14.0 (2026-11-01)
+
+
+### Features
+
+- Report per-trigger relative session cost/tokens on trigger_agent completion and map cumulative session list cost onto claude_session entities.
+
+
+## 0.13.4 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 0.13.3 (2026-10-29)
+
+
+### Bug Fixes
+
+- Match Port MCP vault credentials by exact URL and skip agent Port MCP ensure when execution identity is missing
+
+
+## 0.13.2 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
 ## 0.13.1 (2026-10-25)
 
 

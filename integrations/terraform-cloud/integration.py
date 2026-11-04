@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic.v1 import Field
 
@@ -75,6 +75,82 @@ class HealthAssessmentResourceConfig(ResourceConfig):
     )
 
 
+class TeamSelector(Selector):
+    search: Optional[str] = Field(
+        default=None,
+        title="Search",
+        description="Fetch only teams whose name contains this string. Case-insensitive.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        return {"q": self.search} if self.search else {}
+
+
+class TeamResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.TEAM] = Field(
+        title="Terraform Team",
+        description="Terraform team resource kind.",
+    )
+    selector: TeamSelector = Field(
+        title="Terraform Team Selector",
+        description="Selector for the terraform team resource.",
+    )
+
+
+class OrganizationMembershipSelector(Selector):
+    status: Optional[Literal["active", "invited"]] = Field(
+        default=None,
+        title="Status",
+        description="Fetch only memberships with this status. Fetches both active members and pending invites when unset.",
+    )
+
+    search: Optional[str] = Field(
+        default=None,
+        title="Search",
+        description="Fetch only memberships whose username or email contains this string. Case-insensitive.",
+    )
+    emails: Optional[list[str]] = Field(
+        default=None,
+        title="Emails",
+        description="Fetch only the memberships with these exact email addresses. Case-sensitive.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        params: dict[str, str] = {}
+        if self.status:
+            params["filter[status]"] = self.status
+        if self.search:
+            params["q"] = self.search
+        if self.emails:
+            params["filter[email]"] = ",".join(self.emails)
+        return params
+
+
+class OrganizationMembershipResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ORGANIZATION_MEMBERSHIP] = Field(
+        title="Terraform Organization Membership",
+        description="Terraform organization membership resource kind.",
+    )
+    selector: OrganizationMembershipSelector = Field(
+        title="Terraform Organization Membership Selector",
+        description="Selector for the terraform organization membership resource.",
+    )
+
+
+class TeamWorkspaceAccessResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.TEAM_WORKSPACE_ACCESS] = Field(
+        title="Terraform Team Workspace Access",
+        description="Terraform team workspace access resource kind.",
+    )
+
+
+class TeamProjectAccessResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.TEAM_PROJECT_ACCESS] = Field(
+        title="Terraform Team Project Access",
+        description="Terraform team project access resource kind.",
+    )
+
+
 class TerraformCloudPortAppConfig(PortAppConfig):
     resources: list[
         StateFileResourceConfig
@@ -84,6 +160,10 @@ class TerraformCloudPortAppConfig(PortAppConfig):
         | RunResourceConfig
         | StateVersionResourceConfig
         | HealthAssessmentResourceConfig
+        | TeamResourceConfig
+        | OrganizationMembershipResourceConfig
+        | TeamWorkspaceAccessResourceConfig
+        | TeamProjectAccessResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]

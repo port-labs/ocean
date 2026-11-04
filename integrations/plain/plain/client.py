@@ -39,6 +39,7 @@ from plain.queries import (
     LIST_THREADS,
     LIST_USERS,
     LIST_WEBHOOK_TARGETS,
+    MY_PERMISSIONS,
     THREAD_DISCUSSION_IDS,
     THREAD_DISCUSSIONS,
     THREAD_TIMELINE,
@@ -118,6 +119,21 @@ class PlainClient:
                 [{"message": "Plain returned a response without data"}]
             )
         return data
+
+    async def get_my_permissions(self) -> dict[str, bool]:
+        """Return the permissions granted to the current Plain API key."""
+        data = await self.execute(MY_PERMISSIONS, operation_name="MyPermissions")
+        my_permissions = data.get("myPermissions")
+        if not isinstance(my_permissions, dict):
+            raise PlainGraphQLError(
+                [{"message": "Plain myPermissions returned an unexpected response"}]
+            )
+        raw_permissions = my_permissions.get("permissions")
+        if not isinstance(raw_permissions, list):
+            raise PlainGraphQLError(
+                [{"message": "Plain myPermissions returned no permissions list"}]
+            )
+        return {permission: True for permission in raw_permissions if permission}
 
     async def paginate_connection(
         self,
