@@ -520,6 +520,11 @@ class GitLabClient:
             logger.info(f"Received batch with {len(tags_batch)} tags")
             yield tags_batch
 
+    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/releases/{tag_name}"
+        )
+
     async def get_releases(
         self,
         projects_batch: list[dict[str, Any]],
