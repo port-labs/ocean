@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.22.20 (2026-11-04)
+
+
+### Bug Fixes
+
+- Retry fetching the dispatched workflow run with backoff (up to ~45s) when GitHub returns 404 right after dispatch, instead of failing the action run with "Workflow run <id> not found", and report the workflow conclusion right away when the fetched run has already finished
+
+
+## 6.22.19 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 6.22.18 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
 ## 6.22.17 (2026-11-01)
 
 
