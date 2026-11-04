@@ -4,7 +4,6 @@ resources:
   - kind: agent
     selector:
       query: 'true'
-      includeObservabilityMetrics: false
     port:
       entity:
         mappings:

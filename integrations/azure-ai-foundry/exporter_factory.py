@@ -1,7 +1,4 @@
-from clients.client_factory import (
-    create_agent_observability_client,
-    create_foundry_client,
-)
+from clients.client_factory import create_foundry_client
 from core.exporters.agents_exporter import AgentsExporter
 from core.exporters.agent_versions_exporter import AgentVersionsExporter
 from core.exporters.conversations_exporter import ConversationsExporter
@@ -15,10 +12,7 @@ def create_agent_versions_exporter() -> AgentVersionsExporter:
 
 
 def create_agents_exporter() -> AgentsExporter:
-    return AgentsExporter(
-        create_foundry_client(),
-        observability_client=create_agent_observability_client(),
-    )
+    return AgentsExporter(create_foundry_client())
 
 
 def create_model_deployments_exporter() -> ModelDeploymentsExporter:

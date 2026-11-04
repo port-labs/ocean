@@ -21,7 +21,7 @@ def project_name_from_endpoint(endpoint: str) -> str:
     normalized = endpoint.rstrip("/")
     if "/projects/" not in normalized:
         raise ValueError(
-            "foundryProjectEndpoint must include /projects/{projectName} for observability metrics"
+            "foundryProjectEndpoint must include /projects/{projectName} for Port MCP and ARM project scope"
         )
     return normalized.split("/projects/")[-1].split("/")[0]
 
