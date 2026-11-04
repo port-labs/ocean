@@ -288,6 +288,54 @@ def test_attach_virtual_mcp_without_full_port() -> None:
     )
 
 
+def test_attach_replace_swaps_virtual_set_keeps_other_mcp() -> None:
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+
+    keep_tool = MagicMock()
+    keep_tool.type = "other"
+    keep_tool.mcp_server_name = "other"
+    old_virtual_tool = MagicMock()
+    old_virtual_tool.type = "mcp_toolset"
+    old_virtual_tool.mcp_server_name = "port-virtual-mcp-old"
+    port_tool = MagicMock()
+    port_tool.type = "mcp_toolset"
+    port_tool.mcp_server_name = PORT_MCP_SERVER_NAME
+
+    agent = MagicMock()
+    agent.mcp_servers = [
+        BetaManagedAgentsMCPServerURLDefinition(
+            type="url", name="other", url="https://example.com"
+        ),
+        BetaManagedAgentsMCPServerURLDefinition(
+            type="url",
+            name="port-virtual-mcp-old",
+            url="https://mcp.getport.io/v1/virtual-server/old",
+        ),
+        BetaManagedAgentsMCPServerURLDefinition(
+            type="url",
+            name=PORT_MCP_SERVER_NAME,
+            url="https://mcp.getport.io/v1",
+        ),
+    ]
+    agent.tools = [keep_tool, old_virtual_tool, port_tool]
+
+    result, _ = attach_port_mcp_settings_to_agent_config(
+        {},
+        existing_agent=agent,
+        enable_port_mcp=False,
+        virtual_mcp_server_ids=["payments"],
+        replace=True,
+    )
+
+    names = {getattr(s, "name", None) for s in result["mcp_servers"]}
+    assert names == {"other", "port-virtual-mcp-payments"}
+    assert keep_tool in result["tools"]
+    assert old_virtual_tool not in result["tools"]
+    assert port_tool not in result["tools"]
+
+
 @pytest.mark.asyncio
 async def test_ensure_port_mcp_binding_creates_virtual_credentials() -> None:
     client = MagicMock()

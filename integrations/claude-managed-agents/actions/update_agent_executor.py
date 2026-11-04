@@ -61,12 +61,13 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
             if value
         }
         config = payload.pop("config", None) or {}
-        if self.enablePortMcp or self.virtualMcpServerIds:
+        if self.enablePortMcp is not None or self.virtualMcpServerIds is not None:
             config, _ = attach_port_mcp_settings_to_agent_config(
                 config,
                 existing_agent=existing_agent,
                 enable_port_mcp=bool(self.enablePortMcp),
                 virtual_mcp_server_ids=self.virtualMcpServerIds or [],
+                replace=True,
             )
         return {**payload, **config}
 
