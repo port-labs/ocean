@@ -754,6 +754,36 @@ class TestGraphQLPullRequestExporter:
         assert pr["state"] == "open"
         assert "firstCommit" not in pr
 
+    async def test_get_resource_returns_none_when_pull_request_missing(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        with (
+            patch(
+                "github.core.exporters.pull_request_exporter.core.parse_github_options",
+                return_value=(
+                    "repo1",
+                    "test-org",
+                    {"pr_number": 101, "repo": {"name": "repo1"}},
+                ),
+            ),
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                return_value={"data": {"repository": {"pullRequest": None}}},
+            ),
+        ):
+            pr = await exporter.get_resource(
+                SinglePullRequestOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    pr_number=101,
+                )
+            )
+
+        assert pr is None
+
     async def test_get_resource_respects_exclude_graphql_fields(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
