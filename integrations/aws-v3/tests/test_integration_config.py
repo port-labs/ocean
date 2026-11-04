@@ -1,7 +1,7 @@
 import pytest
 from pydantic.v1 import ValidationError
 
-from integration import (
+from aws_integration.overrides import (
     AWSCustomKindResourceConfig,
     AWSPortAppConfig,
     AWSS3BucketResourceConfig,
@@ -72,16 +72,3 @@ def test_aws_s3_bucket_still_resolves_to_first_class_config() -> None:
     assert len(config.resources) == 1
     assert isinstance(config.resources[0], AWSS3BucketResourceConfig)
     assert config.resources[0].kind == "AWS::S3::Bucket"
-
-
-def test_aws_custom_kind_config_class_matches_overrides_module() -> None:
-    from aws_integration.overrides import AWSCustomKindResourceConfig as OverridesClass
-
-    resource = AWSCustomKindResourceConfig.parse_obj(
-        {
-            "kind": "AWS::IAM::Role",
-            "selector": {"query": "true"},
-            "port": _minimal_port_mapping().dict(),
-        }
-    )
-    assert isinstance(resource, OverridesClass)

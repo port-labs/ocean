@@ -1,4 +1,4 @@
-from integration import AWSPortAppConfig
+from aws_integration.overrides import AWSPortAppConfig
 from aws.probe.permissions import AwsKindPermissionVerdict
 from port_ocean.core.handlers.port_app_config.validators import (
     get_kind_probe_permissions,

@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock
 
 import resync
-from integration import AWSResourceConfig, AWSResourceSelector, RegionPolicy
+from aws_integration.overrides import AWSResourceConfig, AWSResourceSelector, RegionPolicy
 from aws.core.modeling.resource_models import ResourceRequestModel
 from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
