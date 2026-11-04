@@ -23,8 +23,8 @@ from collections import defaultdict
 
 from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
-    COMPARE_MAX_FILES,
-    COMPARE_TRUSTED_STATUSES,
+    GITHUB_COMPARE_FILE_CAP,
+    COMPARE_BASE_IS_ANCESTOR_STATUSES,
     build_batch_file_query,
     decode_content,
     extract_file_index,
@@ -560,12 +560,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         """
         diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
         files = diff.get("files", [])
-        if diff.get("status") not in COMPARE_TRUSTED_STATUSES:
+        if diff.get("status") not in COMPARE_BASE_IS_ANCESTOR_STATUSES:
             logger.info(
                 f"Untrusted compare status '{diff.get('status')}' for {repo_name}@{branch}; using full tree"
             )
             return None
-        if len(files) >= COMPARE_MAX_FILES:
+        if len(files) >= GITHUB_COMPARE_FILE_CAP:
             logger.info(
                 f"Compare for {repo_name}@{branch} may be truncated ({len(files)} files); using full tree"
             )

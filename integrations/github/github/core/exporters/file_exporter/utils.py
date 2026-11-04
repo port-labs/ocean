@@ -43,8 +43,8 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
 GRAPHQL_MAX_FILE_SIZE = 100_000
 FIELD_NAME_PATTERN = re.compile(r"^file_(\d+)$")
-COMPARE_MAX_FILES = 300
-COMPARE_TRUSTED_STATUSES = ("ahead", "identical")
+GITHUB_COMPARE_FILE_CAP = 300
+COMPARE_BASE_IS_ANCESTOR_STATUSES = ("ahead", "identical")
 
 
 class FileObject(TypedDict):
@@ -210,19 +210,15 @@ class FilePatternMappingBuilder:
                             )
                         )
 
-        search_options = [
+        return [
             ListFileSearchOptions(
                 organization=org,
                 repo_name=repo,
                 files=items,
+                changed_since=changed_since,
             )
             for (org, repo), items in repo_map.items()
         ]
-        if changed_since:
-            # The file exporter diffs each branch against its state at the cursor.
-            for option in search_options:
-                option["changed_since"] = changed_since
-        return search_options
 
 
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
