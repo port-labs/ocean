@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add AWSCustomKindResourceConfig and selector models for Cloud Control custom kinds (not yet exposed in port-app-config)
