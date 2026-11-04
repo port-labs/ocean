@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .git_context import GitContext
 from .models import ReleaseTarget
+from .ocean_dependency import validate_ocean_dependency_bumps
 from .release_file import parse_release_file, target_from_release_path
 from .version import (
     parse_version,
@@ -15,6 +16,7 @@ from .version import (
 
 def validate(git: GitContext, *, base_ref: str, head_ref: str) -> list[str]:
     errors: list[str] = []
+    errors.extend(validate_ocean_dependency_bumps(git))
     release_files_by_target = _release_files_by_target(git, base_ref, head_ref)
     targets = git.changed_release_targets(base_ref, head_ref)
     core_covers_integrations = _core_intent_covers_integrations(
