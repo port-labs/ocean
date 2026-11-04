@@ -28,23 +28,6 @@ class AgentSelector(Selector):
         title="Include versions",
         description="Fetch agent version metadata (additional API calls per agent).",
     )
-    include_observability_metrics: bool = Field(
-        default=False,
-        alias="includeObservabilityMetrics",
-        title="Include observability metrics",
-        description=(
-            "Run a single grouped metrics query (Log Analytics Kusto when configured, "
-            "otherwise Azure Monitor) and attach totals to each agent."
-        ),
-    )
-    observability_window_days: int = Field(
-        default=30,
-        ge=1,
-        le=90,
-        alias="observabilityWindowDays",
-        title="Observability window (days)",
-        description="Lookback window for agent usage metrics (max 90 days).",
-    )
 
 
 class AgentResourceConfig(ResourceConfig):

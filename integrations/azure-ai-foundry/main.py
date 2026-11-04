@@ -8,7 +8,6 @@ from port_ocean.utils.signal import signal_handler
 
 from actions.registry import register_action_executors
 from clients.client_factory import (
-    create_agent_observability_client,
     create_foundry_client,
     create_webhook_client,
 )
@@ -37,8 +36,6 @@ async def on_resync_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = create_agents_exporter()
     async for page in exporter.get_paginated_resources(
         include_versions=selector.include_versions,
-        include_observability_metrics=selector.include_observability_metrics,
-        observability_window_days=selector.observability_window_days,
     ):
         if page:
             yield page
@@ -111,7 +108,7 @@ async def on_start() -> None:
         logger.info("Resolved Azure ARM scope from Foundry project endpoint")
     except ValueError as error:
         logger.info(
-            f"ARM scope not resolved at startup (optional until deploy/MCP/observability): {error}"
+            f"ARM scope not resolved at startup (optional until deploy/MCP): {error}"
         )
 
     if not ocean.app.config.event_listener.should_process_webhooks:
@@ -133,4 +130,3 @@ async def on_start() -> None:
 
 async def _close_foundry_client() -> None:
     await create_foundry_client().close()
-    await create_agent_observability_client().close()

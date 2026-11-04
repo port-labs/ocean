@@ -5,10 +5,6 @@ from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from clients.agent_observability_client import (
-    AgentObservabilityClient,
-    enrich_agent_with_observability,
-)
 from clients.http.foundry_client import FoundryHttpClient
 from clients.quota_client import create_quota_client
 from core.exporters.abstract_exporter import AbstractFoundryExporter
@@ -23,38 +19,15 @@ from foundry_incremental import AGENT_INCREMENTAL
 
 
 class AgentsExporter(AbstractFoundryExporter[FoundryHttpClient]):
-    def __init__(
-        self,
-        client: FoundryHttpClient,
-        *,
-        observability_client: AgentObservabilityClient | None = None,
-    ) -> None:
-        super().__init__(client)
-        self._observability_client = observability_client
-
     async def get_paginated_resources(
         self,
         *,
         include_versions: bool = False,
-        include_observability_metrics: bool = False,
-        observability_window_days: int = 30,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         cursor = active_incremental_cursor()
         params = AGENT_INCREMENTAL.merge_params({}, cursor)
         quota = create_quota_client()
         project_endpoint = get_project_endpoint()
-        metrics_by_agent_id = {}
-        if include_observability_metrics and self._observability_client is not None:
-            try:
-                metrics_by_agent_id = (
-                    await self._observability_client.fetch_totals_by_agent_id(
-                        window_days=observability_window_days
-                    )
-                )
-            except Exception as error:
-                logger.warning(
-                    f"Failed to fetch agent observability metrics: {error}"
-                )
 
         async for page in paginate_with_strategy(
             self.client.send_paginated_request(
@@ -73,11 +46,7 @@ class AgentsExporter(AbstractFoundryExporter[FoundryHttpClient]):
                 )
                 continue
             batch = [
-                enrich_agent_with_observability(
-                    enrich_with_project(_normalize_agent(item)),
-                    metrics_by_agent_id,
-                )
-                for item in page
+                enrich_with_project(_normalize_agent(item)) for item in page
             ]
             if include_versions:
                 batch = await _attach_versions(self.client, project_endpoint, batch)

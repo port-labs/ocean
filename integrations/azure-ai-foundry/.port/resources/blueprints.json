@@ -107,47 +107,6 @@
                     "format": "date-time",
                     "title": "Updated at",
                     "description": "When the agent was last updated, if reported."
-                },
-                "metricsInputTokens": {
-                    "type": "number",
-                    "title": "Input tokens (window)",
-                    "description": "Sum of AgentInputTokens for the observability window."
-                },
-                "metricsOutputTokens": {
-                    "type": "number",
-                    "title": "Output tokens (window)",
-                    "description": "Sum of AgentOutputTokens for the observability window."
-                },
-                "metricsResponses": {
-                    "type": "number",
-                    "title": "Responses (window)",
-                    "description": "Sum of AgentResponses for the observability window."
-                },
-                "metricsRuns": {
-                    "type": "number",
-                    "title": "Runs (window)",
-                    "description": "Sum of AgentRuns for the observability window."
-                },
-                "metricsToolCalls": {
-                    "type": "number",
-                    "title": "Tool calls (window)",
-                    "description": "Sum of AgentToolCalls for the observability window."
-                },
-                "metricsEstimatedCostUsd": {
-                    "type": "number",
-                    "title": "Estimated cost USD (window)",
-                    "description": "Sum of AgentModelEstimatedCost for the observability window."
-                },
-                "metricsWindowDays": {
-                    "type": "number",
-                    "title": "Metrics window (days)",
-                    "description": "Lookback window used for observability totals."
-                },
-                "metricsAsOf": {
-                    "type": "string",
-                    "format": "date-time",
-                    "title": "Metrics as of",
-                    "description": "When observability totals were fetched during resync."
                 }
             },
             "required": []

@@ -41,7 +41,7 @@
       "type": "string",
       "required": false,
       "sensitive": false,
-      "description": "Azure subscription ID for the Cognitive Services account that hosts this Foundry project. Required for Port MCP project connections, model deploy/delete, and Monitor observability unless ARM discovery is available to the integration identity."
+      "description": "Azure subscription ID for the Cognitive Services account that hosts this Foundry project. Required for Port MCP project connections and model deploy/delete unless ARM discovery is available to the integration identity."
     },
     {
       "name": "azureResourceGroupName",
@@ -49,13 +49,6 @@
       "required": false,
       "sensitive": false,
       "description": "Resource group of the Foundry Cognitive Services account. Set together with azureSubscriptionId."
-    },
-    {
-      "name": "logAnalyticsWorkspaceId",
-      "type": "string",
-      "required": false,
-      "sensitive": false,
-      "description": "Optional Log Analytics workspace GUID for grouped agent observability (Kusto). Otherwise Monitor metrics use ARM scope from azureSubscriptionId/azureResourceGroupName or discovery from the project endpoint."
     },
     {
       "name": "azureTenantId",
