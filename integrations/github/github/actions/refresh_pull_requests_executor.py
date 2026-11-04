@@ -6,8 +6,6 @@ import httpx
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 
-from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 from port_ocean.core.ocean_types import RAW_ITEM
@@ -67,7 +65,6 @@ class _RefreshOutcome:
     detail: str
     url: str | None = None
     raw: RAW_ITEM | None = None
-    resource_config: GithubPullRequestConfig | None = None
 
 
 def _pull_request_configs(
@@ -114,9 +111,6 @@ def _completion_message(outcomes: list[_RefreshOutcome]) -> str:
 
 class RefreshPullRequestsExecutor(AbstractGithubExecutor):
     ACTION_NAME = "refresh_pull_requests"
-
-    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        return None
 
     def _orgs_for_rate_limit(self, run: IntegrationRun) -> list[str]:
         try:
@@ -196,18 +190,15 @@ class RefreshPullRequestsExecutor(AbstractGithubExecutor):
             should_raise=False,
         )
 
-        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-            fetch_outcomes = await throttle_batch_operation(
-                [
-                    partial(self._fetch_one, pull_request, resource_config)
-                    for resource_config in resource_configs
-                    for pull_request in pull_requests
-                ],
-                MAX_CONCURRENT_PR_REFRESHES,
-            )
-            outcomes = await self._register_fetched(
-                resource_configs, list(fetch_outcomes)
-            )
+        fetch_outcomes = await throttle_batch_operation(
+            [
+                partial(self._fetch_one, pull_request, resource_config)
+                for resource_config in resource_configs
+                for pull_request in pull_requests
+            ],
+            MAX_CONCURRENT_PR_REFRESHES,
+        )
+        outcomes = await self._register_fetched(list(fetch_outcomes))
 
         failed = sum(1 for outcome in outcomes if outcome.status == "failed")
         message = _completion_message(outcomes)
@@ -221,60 +212,36 @@ class RefreshPullRequestsExecutor(AbstractGithubExecutor):
 
     async def _register_fetched(
         self,
-        resource_configs: list[GithubPullRequestConfig],
         fetch_outcomes: list[_RefreshOutcome],
     ) -> list[_RefreshOutcome]:
         outcomes: list[_RefreshOutcome] = [
             outcome for outcome in fetch_outcomes if outcome.status != "refreshed"
         ]
-        for resource_config in resource_configs:
-            fetched = [
-                outcome
-                for outcome in fetch_outcomes
-                if outcome.resource_config is resource_config
-                and outcome.status == "refreshed"
-                and outcome.raw is not None
-            ]
-            if not fetched:
-                continue
-            raws = [outcome.raw for outcome in fetched if outcome.raw is not None]
-            try:
-                result = await ocean.integration._register_resource_raw(
-                    resource_config,
-                    raws,
-                    UserAgentType.exporter,
-                    True,
-                )
-            except Exception as error:
-                logger.exception(
-                    "Failed to upsert pull requests for {api} mapping",
-                    api=resource_config.selector.api,
-                )
-                outcomes.extend(
-                    _RefreshOutcome(
-                        ref=outcome.ref,
-                        status="failed",
-                        detail=f"catalog upsert failed: {error}",
-                        url=outcome.url,
-                    )
-                    for outcome in fetched
-                )
-                continue
+        fetched = [
+            outcome
+            for outcome in fetch_outcomes
+            if outcome.status == "refreshed" and outcome.raw is not None
+        ]
+        if not fetched:
+            return outcomes
 
-            if result.errors:
-                detail = "; ".join(str(error) for error in result.errors)
-                outcomes.extend(
-                    _RefreshOutcome(
-                        ref=outcome.ref,
-                        status="failed",
-                        detail=f"catalog upsert failed: {detail}",
-                        url=outcome.url,
-                    )
-                    for outcome in fetched
+        raws = [outcome.raw for outcome in fetched if outcome.raw is not None]
+        try:
+            await ocean.register_raw(ObjectKind.PULL_REQUEST, raws)
+        except Exception as error:
+            logger.exception("Failed to upsert pull requests into the catalog")
+            outcomes.extend(
+                _RefreshOutcome(
+                    ref=outcome.ref,
+                    status="failed",
+                    detail=f"catalog upsert failed: {error}",
+                    url=outcome.url,
                 )
-                continue
+                for outcome in fetched
+            )
+            return outcomes
 
-            outcomes.extend(fetched)
+        outcomes.extend(fetched)
         return outcomes
 
     async def _fetch_one(
@@ -343,5 +310,4 @@ class RefreshPullRequestsExecutor(AbstractGithubExecutor):
             detail="ok",
             url=url,
             raw=raw,
-            resource_config=resource_config,
         )

@@ -1,5 +1,4 @@
-from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Generator, Literal
+from typing import Any, Generator, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -91,11 +90,6 @@ def make_port_app_config(
     return port_app_config
 
 
-@asynccontextmanager
-async def mock_event_context(*args: Any, **kwargs: Any) -> AsyncIterator[None]:
-    yield
-
-
 @pytest.fixture
 def port_app_config() -> MagicMock:
     return make_port_app_config()
@@ -106,16 +100,11 @@ def patched_ocean(port_app_config: MagicMock) -> Generator[MagicMock, None, None
     mock_ocean = MagicMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
     mock_ocean.port_client.post_run_log = AsyncMock()
-    mock_ocean.integration._register_resource_raw = AsyncMock(
-        return_value=MagicMock(errors=[])
-    )
+    mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock(
         return_value=port_app_config
     )
-    with (
-        patch(f"{MODULE}.ocean", mock_ocean),
-        patch(f"{MODULE}.event_context", mock_event_context),
-    ):
+    with patch(f"{MODULE}.ocean", mock_ocean):
         yield mock_ocean
 
 
@@ -193,7 +182,7 @@ class TestRefreshPullRequestsExecutor:
 
         graphql_exporter.get_resource.assert_not_called()
         rest_exporter.get_resource.assert_not_called()
-        patched_ocean.integration._register_resource_raw.assert_not_called()
+        patched_ocean.register_raw.assert_not_called()
         patched_ocean.integration.port_app_config_handler.get_port_app_config.assert_not_called()
         mock_port_client.report_run_completed.assert_called_once_with(
             run,
@@ -226,9 +215,9 @@ class TestRefreshPullRequestsExecutor:
             )
         )
         rest_exporter.get_resource.assert_not_called()
-        patched_ocean.integration._register_resource_raw.assert_awaited_once()
-        register_args = patched_ocean.integration._register_resource_raw.await_args
-        assert register_args.args[1] == [RAW_PR]
+        patched_ocean.register_raw.assert_awaited_once_with(
+            ObjectKind.PULL_REQUEST, [RAW_PR]
+        )
         completed = mock_port_client.report_run_completed.call_args
         assert completed.args[0] is run
         assert completed.kwargs["success"] is True
@@ -243,7 +232,7 @@ class TestRefreshPullRequestsExecutor:
         )
 
     @pytest.mark.asyncio
-    async def test_registers_all_fetched_prs_in_one_call_per_mapping(
+    async def test_registers_all_fetched_prs_in_one_call(
         self,
         executor: RefreshPullRequestsExecutor,
         graphql_exporter: MagicMock,
@@ -266,8 +255,9 @@ class TestRefreshPullRequestsExecutor:
             )
         )
 
-        patched_ocean.integration._register_resource_raw.assert_awaited_once()
-        raws = patched_ocean.integration._register_resource_raw.await_args.args[1]
+        patched_ocean.register_raw.assert_awaited_once()
+        kind, raws = patched_ocean.register_raw.await_args.args
+        assert kind == ObjectKind.PULL_REQUEST
         assert [raw["number"] for raw in raws] == [42, 43]
 
     @pytest.mark.asyncio
@@ -297,8 +287,8 @@ class TestRefreshPullRequestsExecutor:
         await executor.execute(run)
 
         assert graphql_exporter.get_resource.await_count == 2
-        patched_ocean.integration._register_resource_raw.assert_awaited_once()
-        register_args = patched_ocean.integration._register_resource_raw.await_args
+        patched_ocean.register_raw.assert_awaited_once()
+        register_args = patched_ocean.register_raw.await_args
         assert len(register_args.args[1]) == 1
         assert register_args.args[1][0]["number"] == 42
         completed = mock_port_client.report_run_completed.call_args.kwargs
@@ -340,7 +330,7 @@ class TestRefreshPullRequestsExecutor:
         await executor.execute(run)
 
         assert graphql_exporter.get_resource.await_count == 2
-        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        patched_ocean.register_raw.assert_awaited_once()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is False
         assert "failed 1" in completed["message"]
@@ -369,7 +359,7 @@ class TestRefreshPullRequestsExecutor:
             await executor.execute(run)
 
         graphql_exporter.get_resource.assert_not_called()
-        patched_ocean.integration._register_resource_raw.assert_not_called()
+        patched_ocean.register_raw.assert_not_called()
         patched_ocean.integration.port_app_config_handler.get_port_app_config.assert_not_called()
 
     @pytest.mark.asyncio
@@ -390,7 +380,7 @@ class TestRefreshPullRequestsExecutor:
         await executor.execute(run)
 
         graphql_exporter.get_resource.assert_awaited_once()
-        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        patched_ocean.register_raw.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_uses_rest_exporter_when_config_is_rest(
@@ -470,7 +460,9 @@ class TestRefreshPullRequestsExecutor:
 
         graphql_exporter.get_resource.assert_awaited_once()
         rest_exporter.get_resource.assert_awaited_once()
-        assert patched_ocean.integration._register_resource_raw.await_count == 2
+        patched_ocean.register_raw.assert_awaited_once_with(
+            ObjectKind.PULL_REQUEST, [RAW_PR, RAW_PR]
+        )
         create_client.assert_any_await("port-labs", GithubClientType.GRAPHQL)
         create_client.assert_any_await("port-labs")
 
@@ -499,7 +491,7 @@ class TestRefreshPullRequestsExecutor:
                 make_run({"pullRequests": [pull_request_item()]})
             )
 
-        patched_ocean.integration._register_resource_raw.assert_not_called()
+        patched_ocean.register_raw.assert_not_called()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is True
         assert "skipped 1" in completed["message"]
@@ -536,7 +528,7 @@ class TestRefreshPullRequestsExecutor:
                 make_run({"pullRequests": [pull_request_item()]})
             )
 
-        patched_ocean.integration._register_resource_raw.assert_awaited_once()
+        patched_ocean.register_raw.assert_awaited_once()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is True
         assert "Refreshed 1" in completed["message"]
@@ -567,7 +559,7 @@ class TestRefreshPullRequestsExecutor:
                 make_run({"pullRequests": [pull_request_item()]})
             )
 
-        patched_ocean.integration._register_resource_raw.assert_not_called()
+        patched_ocean.register_raw.assert_not_called()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is True
         assert "skipped 1" in completed["message"]
@@ -597,7 +589,7 @@ class TestRefreshPullRequestsExecutor:
                 make_run({"pullRequests": [pull_request_item()]})
             )
 
-        patched_ocean.integration._register_resource_raw.assert_not_called()
+        patched_ocean.register_raw.assert_not_called()
         completed = mock_port_client.report_run_completed.call_args.kwargs
         assert completed["success"] is True
         assert "unknown 1" in completed["message"]
