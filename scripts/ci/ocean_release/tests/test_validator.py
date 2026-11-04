@@ -74,14 +74,9 @@ def _integration_target(repo_root: Path, name: str) -> ReleaseTarget:
     )
 
 
-def _write_pyproject(
-    path: Path, version: str = "0.1.0", *, port_ocean: str | None = None
-) -> None:
+def _write_pyproject(path: Path, version: str = "0.1.0") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = f'name = "demo"\nversion = "{version}"\n'
-    if port_ocean is not None:
-        content += f'port_ocean = {{version = "{port_ocean}", extras = ["cli"]}}\n'
-    path.write_text(content, encoding="utf-8")
+    path.write_text(f'name = "demo"\nversion = "{version}"\n', encoding="utf-8")
 
 
 def _write_release(path: Path) -> None:
@@ -96,7 +91,7 @@ def test_core_intent_covers_changed_integration(tmp_path: Path) -> None:
     core = _core_target(tmp_path)
     integration = _integration_target(tmp_path, "github")
     _write_pyproject(core.pyproject_path)
-    _write_pyproject(integration.pyproject_path, port_ocean="^0.1.0")
+    _write_pyproject(integration.pyproject_path)
     release_rel = ".ocean-release/core/combined.yaml"
     _write_release(tmp_path / release_rel)
 
@@ -111,8 +106,7 @@ def test_core_intent_covers_changed_integration(tmp_path: Path) -> None:
 
 def test_integration_only_still_requires_own_release(tmp_path: Path) -> None:
     integration = _integration_target(tmp_path, "github")
-    _write_pyproject(tmp_path / "pyproject.toml")
-    _write_pyproject(integration.pyproject_path, port_ocean="^0.1.0")
+    _write_pyproject(integration.pyproject_path)
 
     git = FakeGit(repo_root=tmp_path, targets=[integration])
 
@@ -126,7 +120,7 @@ def test_core_plus_integration_without_any_intent_fails(tmp_path: Path) -> None:
     core = _core_target(tmp_path)
     integration = _integration_target(tmp_path, "jira")
     _write_pyproject(core.pyproject_path)
-    _write_pyproject(integration.pyproject_path, port_ocean="^0.1.0")
+    _write_pyproject(integration.pyproject_path)
 
     git = FakeGit(repo_root=tmp_path, targets=[core, integration])
 
@@ -141,8 +135,7 @@ def test_integration_intent_still_required_when_only_core_changed_elsewhere(
 ) -> None:
     """A core intent without a core code change does not cover integrations."""
     integration = _integration_target(tmp_path, "github")
-    _write_pyproject(tmp_path / "pyproject.toml")
-    _write_pyproject(integration.pyproject_path, port_ocean="^0.1.0")
+    _write_pyproject(integration.pyproject_path)
     release_rel = ".ocean-release/core/orphan.yaml"
     _write_release(tmp_path / release_rel)
 

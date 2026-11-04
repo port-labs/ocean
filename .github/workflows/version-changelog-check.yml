@@ -28,6 +28,9 @@ jobs:
       - name: Fetch base branch
         run: git fetch origin ${{ steps.base-branch.outputs.base }}
 
+      - name: Check integrations pin latest Ocean
+        run: python3 scripts/ci/validate_ocean_dependency.py
+
       - name: Validate release intent
         run: |
           python3 scripts/ci/validate_ocean_release.py \
