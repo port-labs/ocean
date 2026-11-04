@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.26 (2026-11-04)
+
+
+### Bug Fixes
+
+- >-
+    Prevent duplicate Cursor agents when create/trigger POSTs time out by disabling
+    HTTP retries on non-idempotent agent mutations and using Ocean client_timeout
+    for Cursor API calls.
+
+
+## 0.2.25 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
 ## 0.2.24 (2026-11-02)
 
 
