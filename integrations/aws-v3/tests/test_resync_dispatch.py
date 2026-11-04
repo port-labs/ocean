@@ -9,7 +9,7 @@ from aws.core.exporters.cloudcontrol.resource.models import (
 )
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.core.helpers.types import ObjectKind
-from integration import (
+from aws_integration.overrides import (
     AWSCustomKindResourceConfig,
     AWSResourceConfig,
     AWSResourceSelector,
