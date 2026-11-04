@@ -6,7 +6,12 @@ import pytest
 from unittest.mock import AsyncMock
 
 import resync
-from integration import AWSResourceConfig, AWSResourceSelector, RegionPolicy
+from integration import (
+    AWSResourceConfig,
+    AWSResourceSelector,
+    AWSS3BucketSelector,
+    RegionPolicy,
+)
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from aws.core.modeling.resource_models import ResourceRequestModel
 from port_ocean.core.handlers.port_app_config.models import (
@@ -387,6 +392,33 @@ class TestResyncResource:
             out.append(batch)
 
         assert out == [["ok"]]
+
+
+class TestUseRegionalBucketDiscovery:
+    @pytest.mark.parametrize(
+        ("selector", "expected"),
+        [
+            (AWSResourceSelector(query="true"), False),
+            (AWSS3BucketSelector(query="true"), False),
+            (AWSS3BucketSelector(query="true", regionalBucketDiscovery=True), True),
+        ],
+    )
+    def test_reads_flag_from_event_selector(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        selector: AWSResourceSelector,
+        expected: bool,
+    ) -> None:
+        monkeypatch.setattr(
+            resync,
+            "event",
+            SimpleNamespace(resource_config=SimpleNamespace(selector=selector)),
+        )
+        assert resync.use_regional_bucket_discovery() is expected
+
+    def test_no_resource_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(resync, "event", SimpleNamespace(resource_config=None))
+        assert resync.use_regional_bucket_discovery() is False
 
 
 class TestScopeToRegionOptions:

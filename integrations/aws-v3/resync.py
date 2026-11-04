@@ -12,7 +12,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from integration import AWSResourceConfig
+from integration import AWSResourceConfig, AWSS3BucketSelector
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
@@ -25,6 +25,13 @@ if TYPE_CHECKING:
 
 _MAX_CONCURRENT_REGIONS = 10
 _MAX_CONCURRENT_ACCOUNTS = 5
+
+
+def use_regional_bucket_discovery() -> bool:
+    selector = event.resource_config.selector if event.resource_config else None
+    return (
+        isinstance(selector, AWSS3BucketSelector) and selector.regional_bucket_discovery
+    )
 
 
 def filter_regions_for_exporter(
