@@ -437,7 +437,7 @@ class AWSCustomKindResourceConfig(AWSResourceConfig):
         "(for example AWS::IAM::Role).",
         regex=AWS_CLOUD_CONTROL_TYPE_PATTERN,
     )
-    selector: AWSCustomKindSelector = Field(
+    selector: AWSCustomKindSelector = Field(  # type: ignore[assignment]
         title="Selector",
         description="Selector for the custom AWS Cloud Control resource kind.",
     )
