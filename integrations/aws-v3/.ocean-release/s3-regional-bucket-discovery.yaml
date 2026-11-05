@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added the opt-in `regionalBucketDiscovery` selector for `AWS::S3::Bucket`. When enabled, buckets are listed per region using the ListBuckets `BucketRegion` filter (limited to `regionPolicy` when set) and each bucket is processed through its own regional endpoint. Default behavior is unchanged.
