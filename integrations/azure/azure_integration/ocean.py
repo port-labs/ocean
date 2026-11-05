@@ -29,6 +29,26 @@ from azure_integration.utils import (
 from azure_integration.webhook.webhook_processors.resource_event_processor import (
     AzureResourceEventProcessor,
 )
+from azure_integration.foundry.actions.registry import register_action_executors
+from azure_integration.foundry.clients.client_factory import (
+    create_webhook_client_for_account,
+)
+from azure_integration.foundry.discovery import discover_foundry_projects
+from azure_integration.foundry.kinds import ObjectKind
+from azure_integration.foundry.resync import (
+    resync_foundry_agent_versions,
+    resync_foundry_agents,
+    resync_foundry_conversations,
+    resync_foundry_memory_stores,
+    resync_foundry_model_deployments,
+    resync_foundry_projects,
+    resync_foundry_responses,
+)
+from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
+    ConversationWebhookProcessor,
+)
+from azure_integration.foundry.webhook_processors.registry import WEBHOOK_PATH
+from port_ocean.utils.signal import signal_handler
 
 
 def _resolve_resync_method_for_resource(
@@ -52,6 +72,57 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind, resource_selector.api_version
     ):
         yield resources_batch
+
+
+@ocean.on_incremental_resync(ObjectKind.FOUNDRY_PROJECT)
+@ocean.on_resync(ObjectKind.FOUNDRY_PROJECT)
+async def on_resync_foundry_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_projects(kind):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.AGENT)
+@ocean.on_resync(ObjectKind.AGENT)
+async def on_resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_agents(kind):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.AGENT_VERSION)
+@ocean.on_resync(ObjectKind.AGENT_VERSION)
+async def on_resync_foundry_agent_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_agent_versions(kind):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.MODEL_DEPLOYMENT)
+@ocean.on_resync(ObjectKind.MODEL_DEPLOYMENT)
+async def on_resync_foundry_model_deployments(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_model_deployments(kind):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.CONVERSATION)
+@ocean.on_resync(ObjectKind.CONVERSATION)
+async def on_resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_conversations(kind):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.RESPONSE)
+@ocean.on_resync(ObjectKind.RESPONSE)
+async def on_resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_responses(kind):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.MEMORY_STORE)
+@ocean.on_resync(ObjectKind.MEMORY_STORE)
+async def on_resync_foundry_memory_stores(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync_foundry_memory_stores(kind):
+        yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUPS)
@@ -210,28 +281,43 @@ async def on_start() -> None:
     azure_client_id = ocean.integration_config.get("azure_client_id")
     azure_client_secret = ocean.integration_config.get("azure_client_secret")
     azure_tenant_id = ocean.integration_config.get("azure_tenant_id")
-    if not azure_client_id or not azure_client_secret or not azure_tenant_id:
+    if azure_client_id and azure_client_secret and azure_tenant_id:
+        os.environ["AZURE_CLIENT_ID"] = azure_client_id
+        os.environ["AZURE_CLIENT_SECRET"] = azure_client_secret
+        os.environ["AZURE_TENANT_ID"] = azure_tenant_id
+        logger.info("Azure client credentials set up from integration config")
+    else:
         logger.info(
             "Integration wasn't provided with override configuration for initializing client, proceeding with default"
         )
+
+    register_action_executors()
+    from azure_integration.foundry.clients.client_factory import clear_client_cache
+
+    signal_handler.register(clear_client_cache)
+
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info("Skipping Foundry webhook registration because webhooks are disabled")
         return
 
-    if azure_client_id:
-        logger.info(
-            "Detected Azure client id, setting up environment variable for client id"
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "Skipping Foundry webhook registration: set OCEAN__BASE_URL so Foundry "
+            "can deliver response.* events"
         )
-        os.environ["AZURE_CLIENT_ID"] = azure_client_id
-    if azure_client_secret:
-        logger.info(
-            "Detected Azure client secret, setting up environment variable for client secret"
-        )
-        os.environ["AZURE_CLIENT_SECRET"] = azure_client_secret
-    if azure_tenant_id:
-        logger.info(
-            "Detected Azure tenant id, setting up environment variable for tenant id"
-        )
-        os.environ["AZURE_TENANT_ID"] = azure_tenant_id
-    logger.info("Azure client credentials set up")
+        return
+
+    try:
+        projects = await discover_foundry_projects()
+    except Exception as error:
+        logger.warning(f"Foundry discovery failed at startup (continuing): {error}")
+        return
+
+    hosts = {project.account_base_url for project in projects}
+    for account_base in hosts:
+        await create_webhook_client_for_account(account_base).upsert_webhook(base_url)
 
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ConversationWebhookProcessor)

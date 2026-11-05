@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Introduce Azure AI Foundry integration with incremental sync for agents, model deployments, and sessions.

@@ -7,6 +7,16 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from pydantic.v1 import Field, validator
 
+from azure_integration.foundry.kinds import (
+    AgentResourceConfig,
+    AgentVersionResourceConfig,
+    ConversationResourceConfig,
+    FoundryProjectResourceConfig,
+    MemoryStoreResourceConfig,
+    ModelDeploymentResourceConfig,
+    ResponseResourceConfig,
+)
+
 
 class AzureSpecificKindSelector(Selector):
     api_version: str = Field(
@@ -83,6 +93,13 @@ class AzurePortAppConfig(PortAppConfig):
         | AzureSubscriptionResourceConfig
         | AzureCloudResourceConfig
         | AzureCustomKindResourceConfig
+        | FoundryProjectResourceConfig
+        | AgentResourceConfig
+        | AgentVersionResourceConfig
+        | ModelDeploymentResourceConfig
+        | ConversationResourceConfig
+        | ResponseResourceConfig
+        | MemoryStoreResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore
