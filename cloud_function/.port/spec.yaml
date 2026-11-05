@@ -1,0 +1,15 @@
+description: Cloud Function integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Under Development
+    resources: [ ] # fully custom
+configurations:
+  - name: secrets
+    type: object
+    sensitive: true
+    description: Secrets passed to the cloud function for upstream authentication
+  - name: function_url
+    type: url
+    required: true
+    description: the HTTP invocation URL for the cloud function
