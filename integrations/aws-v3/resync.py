@@ -6,14 +6,21 @@ from typing import Any, Callable, List, Type, AsyncIterator, cast, TYPE_CHECKING
 
 from loguru import logger
 from port_ocean.context.event import event
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
 
-from aws_integration.overrides import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig, AWSCustomKindResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
+from aws.core.exporters.cloudcontrol import (
+    CloudControlExporter,
+    PaginatedCloudControlResourceRequest,
+    resolve_cloud_control_resource_scope,
+)
+from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.auth.session_factory import AccountInfo
@@ -170,9 +177,10 @@ class ResyncAWSService:
         self.request_extras = request_extras or {}
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
-        self.include_actions = self.aws_resource_config.selector.include_actions
+        selector = self.aws_resource_config.selector
+        self.include_actions = getattr(selector, "include_actions", [])
         self.max_concurrent_accounts = (
-            self.aws_resource_config.selector.max_concurrent_accounts
+            getattr(selector, "max_concurrent_accounts", None)
             or _MAX_CONCURRENT_ACCOUNTS
         )
 
@@ -283,3 +291,33 @@ class ResyncAWSService:
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
+
+
+def should_resync_via_cloud_control(kind: str, resource_config: ResourceConfig) -> bool:
+    if kind in kind_to_export_metadata:
+        return False
+    return isinstance(resource_config, AWSCustomKindResourceConfig)
+
+
+async def resync_cloud_control_custom_kind(
+    kind: str,
+    resource_config: AWSCustomKindResourceConfig,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = resource_config.selector
+    scope = resolve_cloud_control_resource_scope(kind, selector.resource_scope)
+    logger.info(
+        f"Resyncing custom Cloud Control kind {kind} using {scope} scope strategy"
+    )
+
+    async for batch in ResyncAWSService(
+        kind=kind,
+        exporter_cls=CloudControlExporter,
+        request_cls=PaginatedCloudControlResourceRequest,
+        regional=scope == "regional",
+        request_extras={
+            "type_name": kind,
+            "use_get_resource_api": selector.use_get_resource_api,
+            "resource_scope": selector.resource_scope,
+        },
+    ):
+        yield batch
