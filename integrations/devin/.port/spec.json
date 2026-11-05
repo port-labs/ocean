@@ -1,0 +1,242 @@
+{
+  "title": "Devin",
+  "description": "Devin integration for Port Ocean",
+  "icon": "Devin",
+  "docs": "https://docs.port.io/agent-management/external-agents/devin",
+  "recommendedInstallationMethod": "Saas",
+  "defaultInstallationId": "devin",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "AI Agents",
+      "resources": [
+        {
+          "kind": "session"
+        },
+        {
+          "kind": "playbook"
+        },
+        {
+          "kind": "knowledge-note"
+        },
+        {
+          "kind": "secret"
+        }
+      ]
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    }
+  },
+  "configurations": [
+    {
+      "name": "devinApiKey",
+      "type": "string",
+      "required": true,
+      "sensitive": true,
+      "description": "Devin service-user API key (starts with cog_). Create one under Devin Settings -> Service users with permissions to manage sessions, read playbooks, knowledge and secrets, and read organization members."
+    },
+    {
+      "name": "devinOrgId",
+      "type": "string",
+      "required": true,
+      "sensitive": false,
+      "description": "The Devin organization ID the service user belongs to. All API calls are scoped to this organization."
+    },
+    {
+      "name": "devinApiHost",
+      "type": "url",
+      "required": false,
+      "sensitive": false,
+      "default": "https://api.devin.ai",
+      "description": "The host of the Devin API. If not specified, the default will be https://api.devin.ai."
+    },
+    {
+      "name": "sessionTrackingIntervalSeconds",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 30,
+      "description": "How often, in seconds, the integration polls Devin for sessions that have a Port run waiting on them. This is also how often new session messages are posted to the run logs."
+    },
+    {
+      "name": "sessionTrackingMaxHours",
+      "type": "integer",
+      "required": false,
+      "sensitive": false,
+      "default": 72,
+      "description": "How long a Port run may wait for its Devin session turn before it is reported as failed with a timeout."
+    }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_session",
+      "icon": "Devin",
+      "description": "Start a new Devin session with a prompt. When reportCompletion is true, the Port run stays in progress until Devin finishes the turn (or fails), Devin's messages are posted to the run logs while it works, and the run output includes the pull requests, structured output, ACU usage and start/end timestamps.",
+      "inputs": [
+        {
+          "name": "prompt",
+          "title": "Prompt",
+          "type": "string",
+          "description": "The task for Devin.",
+          "required": true
+        },
+        {
+          "name": "playbookId",
+          "title": "Playbook ID",
+          "type": "string",
+          "description": "Optional Devin playbook to run, for example playbook-0123456789abcdef.",
+          "required": false
+        },
+        {
+          "name": "repos",
+          "title": "Repositories",
+          "type": "array",
+          "description": "Optional repositories for Devin to work on, for example [\"your-org/your-repo\"].",
+          "required": false
+        },
+        {
+          "name": "knowledgeIds",
+          "title": "Knowledge note IDs",
+          "type": "array",
+          "description": "Optional knowledge note IDs to attach to the session.",
+          "required": false
+        },
+        {
+          "name": "secretIds",
+          "title": "Secret IDs",
+          "type": "array",
+          "description": "Optional organization secret IDs to make available to the session.",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "title": "Tags",
+          "type": "array",
+          "description": "Optional tags to add to the session. Tags starting with port: are reserved for the integration.",
+          "required": false
+        },
+        {
+          "name": "maxAcuLimit",
+          "title": "Max ACU limit",
+          "type": "number",
+          "description": "Optional cap on the ACUs the session may consume.",
+          "required": false
+        },
+        {
+          "name": "structuredOutputSchema",
+          "title": "Structured output schema",
+          "type": "jqObject",
+          "description": "Optional JSON schema for Devin's structured output. When set, the structured output is returned in the run output.",
+          "required": false
+        },
+        {
+          "name": "createAsUserEmail",
+          "title": "Create as user (email)",
+          "type": "string",
+          "description": "Optional email of a Devin organization member to create the session on behalf of, for example {{ .trigger.by.user.email }}. When no member matches, the session is created as the service user and a warning is logged.",
+          "required": false
+        },
+        {
+          "name": "reportCompletion",
+          "title": "Report completion",
+          "type": "boolean",
+          "description": "When true, keeps the Port run in progress until Devin finishes the turn and streams Devin's messages to the run logs. When false, completes the Port run as soon as the session is created.",
+          "default": true,
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced configuration shallow-merged onto the Devin create-session request body, for example {\"devin_mode\": \"fast\", \"bypass_approval\": true, \"session_secrets\": [...], \"attachment_urls\": [...]}. Typed inputs above take precedence. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "send_message",
+      "icon": "Devin",
+      "description": "Send a follow-up message to an existing Devin session. Rejected while the session is still working on a previous turn. When reportCompletion is true, the Port run stays in progress until Devin finishes this turn, and only this turn's messages are posted to the run logs.",
+      "inputs": [
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "The Devin session ID, for example devin-0123456789abcdef.",
+          "required": true
+        },
+        {
+          "name": "message",
+          "title": "Message",
+          "type": "string",
+          "description": "The follow-up message for Devin.",
+          "required": true
+        },
+        {
+          "name": "messageAsUserEmail",
+          "title": "Send as user (email)",
+          "type": "string",
+          "description": "Optional email of a Devin organization member to send the message on behalf of, for example {{ .trigger.by.user.email }}.",
+          "required": false
+        },
+        {
+          "name": "reportCompletion",
+          "title": "Report completion",
+          "type": "boolean",
+          "description": "When true, keeps the Port run in progress until Devin finishes this turn. When false, completes the Port run as soon as the message is sent.",
+          "default": true,
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced configuration shallow-merged onto the Devin send-message request body, for example {\"attachment_urls\": [...]}. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "terminate_session",
+      "icon": "Devin",
+      "description": "Terminate a Devin session. If a Port run is waiting on the session, that run is reported as failed.",
+      "inputs": [
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "The Devin session ID, for example devin-0123456789abcdef.",
+          "required": true
+        },
+        {
+          "name": "archive",
+          "title": "Archive",
+          "type": "boolean",
+          "description": "Whether to also archive the session.",
+          "default": false,
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "archive_session",
+      "icon": "Devin",
+      "description": "Archive a Devin session.",
+      "inputs": [
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "The Devin session ID, for example devin-0123456789abcdef.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
