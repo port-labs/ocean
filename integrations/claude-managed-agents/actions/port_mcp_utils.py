@@ -24,17 +24,10 @@ from port_ocean.core.models import WorkflowNodeRun
 
 PORT_MCP_SERVER_NAME = "port"
 PORT_MCP_CREDENTIAL_NAME = "port-mcp"
-_PORT_TOOLSET: dict[str, Any] = {
-    "type": "mcp_toolset",
-    "mcp_server_name": PORT_MCP_SERVER_NAME,
-    "default_config": {
-        "enabled": True,
-        "permission_policy": {"type": "always_allow"},
-    },
-}
 
 
 class PortMcpBinding(BaseModel):
+    mcp_server_url: str
     vault_id: str
     credential_id: str
 
@@ -44,15 +37,33 @@ def _normalize_port_mcp_url(url: str) -> str:
     return url.rstrip("/")
 
 
+def virtual_mcp_server_url(identifier: str) -> str:
+    return _normalize_port_mcp_url(
+        f"{_required_port_mcp_url()}/virtual-server/{identifier}"
+    )
+
+
+def port_family_mcp_urls_on_agent(
+    mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
+) -> list[str]:
+    """Port MCP + virtual-server URLs already bound on an agent."""
+    port_base = _normalize_port_mcp_url(_required_port_mcp_url())
+    return [
+        _normalize_port_mcp_url(server.url)
+        for server in mcp_servers
+        if _normalize_port_mcp_url(server.url).startswith(port_base)
+    ]
+
+
+def _is_port_family_mcp_name(name: str) -> bool:
+    return name == PORT_MCP_SERVER_NAME or name.startswith("port-virtual-mcp-")
+
+
 def _merge_mcp_servers_by_url(
     list1: list[BetaManagedAgentsMCPServerURLDefinition],
     list2: list[BetaManagedAgentsMCPServerURLDefinition],
 ) -> list[BetaManagedAgentsMCPServerURLDefinition]:
     return list({_normalize_port_mcp_url(d.url): d for d in list1 + list2}.values())
-
-
-def _is_port_mcp_toolset(tool: Tool) -> bool:
-    return tool.type == "mcp_toolset" and tool.mcp_server_name == PORT_MCP_SERVER_NAME
 
 
 def _is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
@@ -75,97 +86,178 @@ def _required_port_mcp_url() -> str:
     return port_mcp_url
 
 
+def _port_mcp_toolset(port_mcp_server_name: str) -> dict[str, Any]:
+    return {
+        "type": "mcp_toolset",
+        "mcp_server_name": port_mcp_server_name,
+        "default_config": {
+            "enabled": True,
+            "permission_policy": {"type": "always_allow"},
+        },
+    }
+
+
 def is_agent_configured_with_port_mcp(
+    port_mcp_url: str,
     mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
 ) -> bool:
-    port_mcp_url = ocean.config.port.mcp_url
-    return port_mcp_url is not None and any(
+    return any(
         _normalize_port_mcp_url(s.url) == _normalize_port_mcp_url(port_mcp_url)
         for s in mcp_servers
     )
 
 
 def _swap_stale_port_mcp_config(
+    port_mcp_server_name: str,
     mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
     tools: list[Tool],
 ) -> tuple[list[BetaManagedAgentsMCPServerURLDefinition], list[Tool]]:
-    servers = [s for s in mcp_servers if s.name != PORT_MCP_SERVER_NAME]
-    refreshed_tools = [t for t in tools if not _is_port_mcp_toolset(t)]
+    servers = [s for s in mcp_servers if s.name != port_mcp_server_name]
+    refreshed_tools = [
+        t
+        for t in tools
+        if not (t.type == "mcp_toolset" and t.mcp_server_name == port_mcp_server_name)
+    ]
     return servers, refreshed_tools
+
+
+def _credential_display_name(url: str) -> str:
+    port_mcp_url = _normalize_port_mcp_url(_required_port_mcp_url())
+    normalized = _normalize_port_mcp_url(url)
+    if normalized == port_mcp_url:
+        return PORT_MCP_CREDENTIAL_NAME
+    return f"port-virtual-{normalized.rsplit('/', maxsplit=1)[-1]}"
 
 
 def attach_port_mcp_settings_to_agent_config(
     proposed_config: dict[str, Any],
     existing_agent: BetaManagedAgentsAgent | None = None,
-) -> dict[str, Any]:
-    """Attach the Port MCP server + toolset to agent config. Pass
-    ``existing_agent`` on update to keep existing tools/mcp_servers."""
-    port_mcp_url = _required_port_mcp_url()
+    *,
+    enable_port_mcp: bool,
+    virtual_mcp_server_ids: list[str],
+    replace: bool = False,
+) -> tuple[dict[str, Any], bool]:
+    """Attach Port MCP and optional virtual MCP servers + toolsets.
+
+    ``replace=False`` (trigger): ensure/merge onto the existing agent.
+    ``replace=True`` (update): drop existing Port/virtual MCP bindings first,
+    then set exactly ``enable_port_mcp`` + ``virtual_mcp_server_ids``.
+    Non-Port MCP servers/tools are always kept.
+    """
     agent_servers = (existing_agent.mcp_servers or []) if existing_agent else []
     agent_tools = (existing_agent.tools or []) if existing_agent else []
     proposed_servers = cast(
         list[BetaManagedAgentsMCPServerURLDefinition],
         proposed_config.get("mcp_servers") or [],
     )
-    mcp_servers = _merge_mcp_servers_by_url(agent_servers, proposed_servers)
-    if not is_agent_configured_with_port_mcp(mcp_servers):
-        mcp_servers, agent_tools = _swap_stale_port_mcp_config(mcp_servers, agent_tools)
-        mcp_servers.append(
-            BetaManagedAgentsMCPServerURLDefinition(
-                type="url", name=PORT_MCP_SERVER_NAME, url=port_mcp_url
+    if replace:
+        agent_servers = [
+            s for s in agent_servers if not _is_port_family_mcp_name(s.name)
+        ]
+        agent_tools = [
+            t
+            for t in agent_tools
+            if not (
+                t.type == "mcp_toolset" and _is_port_family_mcp_name(t.mcp_server_name)
             )
+        ]
+        proposed_servers = [
+            s for s in proposed_servers if not _is_port_family_mcp_name(s.name)
+        ]
+
+    mcp_servers = _merge_mcp_servers_by_url(agent_servers, proposed_servers)
+    tools = list(agent_tools)
+    changed = replace
+
+    targets: list[tuple[str, str]] = []
+    if enable_port_mcp:
+        targets.append((_required_port_mcp_url(), PORT_MCP_SERVER_NAME))
+    for identifier in virtual_mcp_server_ids:
+        targets.append(
+            (virtual_mcp_server_url(identifier), f"port-virtual-mcp-{identifier}")
         )
-        return {
-            **proposed_config,
-            "mcp_servers": mcp_servers,
-            "tools": [*agent_tools, _PORT_TOOLSET],
-        }
-    return proposed_config
+
+    for url, name in targets:
+        if is_agent_configured_with_port_mcp(url, mcp_servers):
+            continue
+        changed = True
+        mcp_servers, tools = _swap_stale_port_mcp_config(name, mcp_servers, tools)
+        mcp_servers.append(
+            BetaManagedAgentsMCPServerURLDefinition(type="url", name=name, url=url)
+        )
+        tools.append(cast(Tool, _port_mcp_toolset(name)))
+
+    return {
+        **proposed_config,
+        "mcp_servers": mcp_servers,
+        "tools": tools,
+    }, changed
 
 
-async def ensure_port_mcp_binding(
-    client: AnthropicClient, run: WorkflowNodeRun, vault_name: str
-) -> PortMcpBinding:
-    """Find or create the user's vault, then (re)mint its Port MCP credential."""
-    port_mcp_url = _required_port_mcp_url()
-    vault_match = await find_first_match_in_generator(
-        client.paginate(client.beta.vaults.list()),
-        functools.partial(_is_vault_name_matching, name=vault_name),
+async def get_or_create_mcp_vault(
+    client: AnthropicClient, vault_name: str
+) -> BetaManagedAgentsVault:
+    vault_match = cast(
+        BetaManagedAgentsVault | None,
+        await find_first_match_in_generator(
+            client.paginate(client.beta.vaults.list()),
+            functools.partial(_is_vault_name_matching, name=vault_name),
+        ),
     )
-    raw_vault: Any
     if vault_match is None:
         logger.info(f"Creating Port MCP vault '{vault_name}'")
-        raw_vault = await client.beta.vaults.create(display_name=vault_name)
-    else:
-        raw_vault = vault_match
-    vault = cast(BetaManagedAgentsVault, raw_vault)
+        return await client.beta.vaults.create(display_name=vault_name)
 
-    credential_match = await find_first_match_in_generator(
-        client.paginate(client.beta.vaults.credentials.list(vault_id=vault.id)),
-        functools.partial(_is_vault_credential_url_matching, url=port_mcp_url),
-    )
+    return vault_match
+
+
+async def ensure_port_mcp_credential(
+    client: AnthropicClient,
+    run: WorkflowNodeRun,
+    vault_id: str,
+    mcp_server_url: str,
+) -> PortMcpBinding:
+    """Create or remint the vault credential for one MCP URL."""
     access_token = get_run_access_token(run)
     if access_token is None:
         raise RuntimeError("portAccessToken is required when executionIdentity is set")
+
+    url = _normalize_port_mcp_url(mcp_server_url)
+    credential_match = await find_first_match_in_generator(
+        client.paginate(client.beta.vaults.credentials.list(vault_id=vault_id)),
+        functools.partial(_is_vault_credential_url_matching, url=url),
+    )
+    display_name = _credential_display_name(url)
     if credential_match is None:
-        logger.info(f"Creating Port MCP credential '{PORT_MCP_CREDENTIAL_NAME}'")
+        logger.info(f"Creating Port MCP credential '{display_name}'")
         raw_credential: Any = await client.beta.vaults.credentials.create(
-            vault.id,
+            vault_id,
             auth={
                 "type": "static_bearer",
                 "token": access_token,
-                "mcp_server_url": port_mcp_url,
+                "mcp_server_url": url,
             },
-            display_name=PORT_MCP_CREDENTIAL_NAME,
+            display_name=display_name,
         )
+        credential = cast(BetaManagedAgentsCredential, raw_credential)
     else:
-        raw_credential = credential_match
-    credential = cast(BetaManagedAgentsCredential, raw_credential)
-    if credential_match is not None:
-        await remint_port_mcp_credential(
-            client, run, PortMcpBinding(vault_id=vault.id, credential_id=credential.id)
+        credential = cast(BetaManagedAgentsCredential, credential_match)
+        binding = PortMcpBinding(
+            mcp_server_url=url,
+            vault_id=vault_id,
+            credential_id=credential.id,
         )
-    return PortMcpBinding(vault_id=vault.id, credential_id=credential.id)
+        await remint_port_mcp_credential(client, run, binding)
+    return PortMcpBinding(
+        mcp_server_url=url,
+        vault_id=vault_id,
+        credential_id=credential.id,
+    )
+
+
+def port_mcp_binding_cache_key(vault_name: str, mcp_server_url: str) -> str:
+    # Vault name scopes the cache per user vault; the same MCP URL is stored on many vaults.
+    return f"{vault_name}:{mcp_server_url}"
 
 
 async def remint_port_mcp_credential(
