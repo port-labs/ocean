@@ -1,0 +1,5 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Remove the OCEAN__CENTRALIZED_RATE_LIMITER__ENABLED flag so the centralized
+  rate limiter is on for every integration.
