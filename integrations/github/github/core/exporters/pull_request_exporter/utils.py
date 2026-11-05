@@ -1,7 +1,17 @@
 from datetime import UTC, datetime
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any, AsyncIterator, Callable, Iterable, Optional
 
 from loguru import logger
+
+
+def matches_pull_request_selector_states(
+    state: str | None, selector_states: Iterable[str]
+) -> bool:
+    """Whether a fetched PR belongs in the mapping. GraphQL ``merged`` counts as ``closed``."""
+    if not state:
+        return True
+    normalized = "closed" if state.lower() == "merged" else state.lower()
+    return normalized in {item.lower() for item in selector_states}
 
 
 def filter_prs_by_date(
