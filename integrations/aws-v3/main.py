@@ -19,7 +19,7 @@ from aws.core.helpers.utils import is_access_denied_exception
 from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
-from resync import ResyncAWSService, use_regional_bucket_discovery
+from resync import ResyncAWSService
 from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
@@ -109,12 +109,12 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     metadata = kind_to_export_metadata[ObjectKind(kind)]
-    scope_to_region = use_regional_bucket_discovery()
+    selector = cast(AWSResourceConfig, event.resource_config).selector
     async for batch in ResyncAWSService(
         kind=kind,
         exporter_cls=metadata.exporter,
         request_cls=metadata.paginated_request_model,
-        regional=metadata.regional or scope_to_region,
-        scope_to_region=scope_to_region,
+        regional=metadata.resolve_regional(selector),
+        request_extras=metadata.build_request_extras(selector),
     ):
         yield batch

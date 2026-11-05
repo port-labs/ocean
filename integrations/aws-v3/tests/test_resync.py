@@ -12,7 +12,9 @@ from aws_integration.overrides import (
     AWSS3BucketSelector,
     RegionPolicy,
 )
+from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
+from aws.core.helpers.types import ObjectKind
 from aws.core.modeling.resource_models import ResourceRequestModel
 from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
@@ -394,86 +396,71 @@ class TestResyncResource:
         assert out == [["ok"]]
 
 
-class TestUseRegionalBucketDiscovery:
-    @pytest.mark.parametrize(
-        ("selector", "expected"),
-        [
-            (AWSResourceSelector(query="true"), False),
-            (AWSS3BucketSelector(query="true"), False),
-            (AWSS3BucketSelector(query="true", regionalBucketDiscovery=True), True),
-        ],
+def _patch_event_selector(
+    monkeypatch: pytest.MonkeyPatch, selector: AWSResourceSelector
+) -> None:
+    port_cfg = PortResourceConfig(
+        entity=MappingsConfig(
+            mappings=EntityMapping(
+                identifier="id", title=None, icon=None, blueprint="bp", team=None
+            )
+        ),
+        itemsToParse=None,
     )
-    def test_reads_flag_from_event_selector(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        selector: AWSResourceSelector,
-        expected: bool,
-    ) -> None:
-        monkeypatch.setattr(
-            resync,
-            "event",
-            SimpleNamespace(resource_config=SimpleNamespace(selector=selector)),
-        )
-        assert resync.use_regional_bucket_discovery() is expected
-
-    def test_no_resource_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(resync, "event", SimpleNamespace(resource_config=None))
-        assert resync.use_regional_bucket_discovery() is False
+    cfg = AWSResourceConfig(kind="Kind", selector=selector, port=port_cfg)
+    monkeypatch.setattr(resync, "event", SimpleNamespace(resource_config=cfg))
 
 
-class TestScopeToRegionOptions:
-    def _service(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        scope_to_region: bool,
-        exporter_cls: Optional[Type[Any]] = None,
-    ) -> resync.ResyncAWSService:
-        selector = AWSResourceSelector(
-            regionPolicy=RegionPolicy(allow=["us-east-1"], deny=[]),
-            includeActions=[],
-            query="*",
-        )
-        port_cfg = PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier="id", title=None, icon=None, blueprint="bp", team=None
-                )
-            ),
-            itemsToParse=None,
-        )
-        cfg = AWSResourceConfig(kind="Kind", selector=selector, port=port_cfg)
-        monkeypatch.setattr(resync, "event", SimpleNamespace(resource_config=cfg))
-        return resync.ResyncAWSService(
-            "AWS::S3::Bucket",
-            exporter_cls or _make_exporter({}),
-            PaginatedBucketRequest,
-            regional=scope_to_region,
-            scope_to_region=scope_to_region,
-        )
-
-    def test_default_request_is_not_scoped(
+class TestRequestExtras:
+    def test_no_extras_builds_plain_request(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        service = self._service(monkeypatch, scope_to_region=False)
+        _patch_event_selector(monkeypatch, AWSResourceSelector(query="true"))
+        service = resync.ResyncAWSService(
+            "AWS::S3::Bucket",
+            _make_exporter({}),
+            PaginatedBucketRequest,
+            regional=False,
+        )
         options = service._create_options_factory("111111111111")("us-east-1")
         assert options.scope_to_region is False
 
-    def test_scoped_request_sets_flag_per_region(
+    def test_extras_are_added_to_every_region_request(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        service = self._service(monkeypatch, scope_to_region=True)
+        _patch_event_selector(monkeypatch, AWSResourceSelector(query="true"))
+        service = resync.ResyncAWSService(
+            "AWS::S3::Bucket",
+            _make_exporter({}),
+            PaginatedBucketRequest,
+            regional=True,
+            request_extras={"scope_to_region": True},
+        )
         factory = service._create_options_factory("111111111111")
         for region in ["us-east-1", "us-west-2"]:
             options = factory(region)
             assert options.region == region
             assert options.scope_to_region is True
 
+
+class TestRegionalBucketDiscoveryResync:
     @pytest.mark.asyncio
-    async def test_scoped_resync_queries_every_allowed_region(
+    @pytest.mark.parametrize(
+        ("regional_bucket_discovery", "expected_calls"),
+        [
+            # Global: first region succeeds, stop; account-wide listing.
+            (False, [("us-east-1", False)]),
+            # Regional: one scoped listing per allowed region.
+            (True, [("us-east-1", True), ("us-west-2", True)]),
+        ],
+    )
+    async def test_s3_metadata_drives_strategy_and_request(
         self,
         monkeypatch: pytest.MonkeyPatch,
         fake_semaphore_iter: None,
         fake_stream_tasks: None,
+        regional_bucket_discovery: bool,
+        expected_calls: List[Tuple[str, bool]],
     ) -> None:
         async def _accounts() -> AsyncIterator[Tuple[Dict[str, str], Any]]:
             yield ({"Id": "111111111111", "Name": "Account 1"}, object())
@@ -484,7 +471,11 @@ class TestScopeToRegionOptions:
             "get_allowed_regions",
             AsyncMock(return_value=["us-east-1", "us-west-2"]),
         )
-        seen: List[Tuple[str, bool]] = []
+        selector = AWSS3BucketSelector(
+            query="true", regionalBucketDiscovery=regional_bucket_discovery
+        )
+        _patch_event_selector(monkeypatch, selector)
+        calls: List[Tuple[str, bool]] = []
 
         class _Exporter:
             def __init__(self, session: Any) -> None:
@@ -493,14 +484,19 @@ class TestScopeToRegionOptions:
             async def get_paginated_resources(
                 self, options: PaginatedBucketRequest
             ) -> AsyncIterator[Any]:
-                seen.append((options.region, options.scope_to_region))
+                calls.append((options.region, options.scope_to_region))
                 yield [options.region]
 
-        service = self._service(
-            monkeypatch, scope_to_region=True, exporter_cls=_Exporter
+        metadata = kind_to_export_metadata[ObjectKind.S3_BUCKET]
+        service = resync.ResyncAWSService(
+            "AWS::S3::Bucket",
+            cast(Type[Any], _Exporter),
+            metadata.paginated_request_model,
+            regional=metadata.resolve_regional(selector),
+            request_extras=metadata.build_request_extras(selector),
         )
 
         out = [batch async for batch in service]
 
-        assert sorted(out) == [["us-east-1"], ["us-west-2"]]
-        assert sorted(seen) == [("us-east-1", True), ("us-west-2", True)]
+        assert sorted(calls) == expected_calls
+        assert sorted(out) == [[region] for region, _ in expected_calls]

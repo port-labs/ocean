@@ -5,6 +5,7 @@ from aws_integration.overrides import (
     AWSCustomKindResourceConfig,
     AWSPortAppConfig,
     AWSS3BucketResourceConfig,
+    AWSS3BucketSelector,
 )
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -72,3 +73,20 @@ def test_aws_s3_bucket_still_resolves_to_first_class_config() -> None:
     assert len(config.resources) == 1
     assert isinstance(config.resources[0], AWSS3BucketResourceConfig)
     assert config.resources[0].kind == "AWS::S3::Bucket"
+
+
+def test_aws_s3_bucket_parses_regional_bucket_discovery() -> None:
+    config = AWSPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "AWS::S3::Bucket",
+                    "selector": {"query": "true", "regionalBucketDiscovery": True},
+                    "port": _minimal_port_mapping().dict(),
+                }
+            ]
+        }
+    )
+    selector = config.resources[0].selector
+    assert isinstance(selector, AWSS3BucketSelector)
+    assert selector.regional_bucket_discovery is True
