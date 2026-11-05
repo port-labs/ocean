@@ -175,7 +175,7 @@ class TestPullRequestReviewWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
+            "github.core.exporters.pull_request_exporter.fetch.RestPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_review_webhook_processor.handle_event(
@@ -221,7 +221,7 @@ class TestPullRequestReviewWebhookProcessor:
         mock_exporter.get_resource.return_value = fetched_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
+            "github.core.exporters.pull_request_exporter.fetch.RestPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_review_webhook_processor.handle_event(

@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from integration import AWSPortAppConfig
+from aws_integration.overrides import AWSPortAppConfig
 from port_ocean.core.handlers.port_app_config.validators import (
     get_kind_probe_permissions,
 )

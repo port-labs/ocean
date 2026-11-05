@@ -15,7 +15,15 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
 
     INTEGRATION=$(basename "${FOLDER}")
 
-    echo "Bumping integration ${INTEGRATION}"
+    CURRENT_OCEAN=$(
+        sed -n 's/^port_ocean = {version = "\([^"]*\)".*/\1/p' "${FOLDER}/pyproject.toml" | head -1
+    )
+    if [[ "${CURRENT_OCEAN}" == "${VERSION}" ]]; then
+        echo "Skipping ${INTEGRATION}: already on ${VERSION}"
+        continue
+    fi
+
+    echo "Bumping integration ${INTEGRATION} (${CURRENT_OCEAN} -> ${VERSION})"
 
     cd "${FOLDER}" || return
 

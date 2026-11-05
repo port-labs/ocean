@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.58.0 (2026-11-04)
+
+
+### Features
+
+- Decrypt AES-GCM sealed sensitive execution properties on claimed workflow integration-action node runs
+
+
 ## 0.57.0 (2026-11-03)
 
 
