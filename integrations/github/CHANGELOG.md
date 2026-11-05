@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.23.0 (2026-11-05)
+
+
+### Features
+
+- Added a refresh_pull_requests action that refetches specific pull requests from GitHub and upserts them using the existing mapping
+
+
 ## 6.22.21 (2026-11-04)
 
 
