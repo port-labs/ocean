@@ -50,6 +50,21 @@ def test_page_size_property() -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_api_request_does_not_set_retry_extensions(
+    client: CursorAgentsClient,
+) -> None:
+    inner: Any = client._client
+    request = httpx.Request("POST", "https://api.cursor.com/v1/agents")
+    inner.request = AsyncMock(
+        return_value=httpx.Response(200, json={"id": "bc-1"}, request=request)
+    )
+
+    await client.send_api_request("POST", "/v1/agents", json_body={"prompt": {}})
+
+    assert "extensions" not in inner.request.await_args.kwargs
+
+
+@pytest.mark.asyncio
 async def test_paginate_by_cursor_follows_next_cursor(
     client: CursorAgentsClient,
 ) -> None:

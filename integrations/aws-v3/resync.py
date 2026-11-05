@@ -12,7 +12,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from integration import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel

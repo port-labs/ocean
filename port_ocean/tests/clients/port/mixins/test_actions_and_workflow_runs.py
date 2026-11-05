@@ -98,12 +98,16 @@ def test_workflow_node_run_parses_port_mcp_claim_fields() -> None:
                 "type": "actor",
                 "identifier": "user@example.com",
             },
+            "encryptedProperties": ["api_token"],
             "config": {
                 "type": "INTEGRATION_ACTION",
                 "installationId": "claude",
                 "integrationProvider": "claude-managed-agents",
                 "integrationInvocationType": "trigger_agent",
-                "integrationActionExecutionProperties": {},
+                "integrationActionExecutionProperties": {
+                    "api_token": "aes.ciphertext",
+                    "repo": "ocean",
+                },
             },
         }
     )
@@ -111,6 +115,8 @@ def test_workflow_node_run_parses_port_mcp_claim_fields() -> None:
     assert run.execution_identity is not None
     assert run.execution_identity.type == "actor"
     assert run.execution_identity.identifier == "user@example.com"
+    assert run.encrypted_properties == ["api_token"]
+    assert run.execution_properties["api_token"] == "aes.ciphertext"
 
 
 @pytest.fixture

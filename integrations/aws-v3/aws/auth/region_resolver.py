@@ -3,7 +3,7 @@ from typing import List, Set, Optional
 from loguru import logger
 
 from aws.utils import Consts, RegionHelper
-from integration import AWSResourceSelector
+from aws_integration.overrides import AWSResourceSelector
 
 
 class RegionResolver:
