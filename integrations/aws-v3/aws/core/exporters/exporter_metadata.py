@@ -96,6 +96,7 @@ from aws.core.exporters.rds.db_instance.live_events import RDS_DB_INSTANCE_LIVE_
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.s3 import PaginatedBucketRequest, S3BucketExporter
 from aws.core.exporters.s3.bucket.live_events import S3_BUCKET_LIVE_EVENTS
+from aws.core.exporters.s3.bucket.metadata import S3BucketExporterMetadata
 from aws.core.exporters.ses import (
     PaginatedConfigurationSetRequest,
     PaginatedEmailIdentityRequest,
@@ -116,7 +117,7 @@ from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.helpers.types import ObjectKind
 
 kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
-    ObjectKind.S3_BUCKET: ExporterMetadata(
+    ObjectKind.S3_BUCKET: S3BucketExporterMetadata(
         S3BucketExporter,
         PaginatedBucketRequest,
         regional=False,
