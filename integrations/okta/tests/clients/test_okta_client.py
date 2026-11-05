@@ -4,7 +4,35 @@ import pytest
 from typing import Any, AsyncGenerator, Dict, List
 from unittest.mock import Mock, patch, AsyncMock
 
-from okta.clients.http.client import OktaClient
+from okta.clients.http.client import OktaClient, build_okta_base_url
+
+
+@pytest.mark.parametrize(
+    ("okta_domain", "expected"),
+    [
+        ("test.okta.com", "https://test.okta.com/api/v1"),
+        ("test.okta.com/", "https://test.okta.com/api/v1"),
+        ("http://localhost:8080", "http://localhost:8080/api/v1"),
+        ("http://localhost:8080/", "http://localhost:8080/api/v1"),
+        ("http://localhost:8080/api/v1", "http://localhost:8080/api/v1"),
+        ("https://custom.okta.com", "https://custom.okta.com/api/v1"),
+        ("https://custom.okta.com/api/v1", "https://custom.okta.com/api/v1"),
+    ],
+)
+def test_build_okta_base_url(okta_domain: str, expected: str) -> None:
+    # Act + Assert
+    assert build_okta_base_url(okta_domain) == expected
+
+
+def test_client_base_url_uses_http_when_domain_is_full_url() -> None:
+    # Arrange
+    client = OktaClient(
+        okta_domain="http://localhost:8080",
+        api_token="test_token",
+    )
+
+    # Act + Assert
+    assert client.base_url == "http://localhost:8080/api/v1"
 
 
 class TestOktaClient:
