@@ -5,6 +5,7 @@ from typing import Any, ClassVar
 from pydantic.v1 import BaseModel, Field, validator
 
 from port_ocean.clients.port.types import RequestOptions
+from port_ocean.core.utils.mapping_refs import rewrite_mapping_refs
 
 CUSTOM_KIND = "__custom__"
 ProbePermissions = tuple[str, ...] | dict[str, tuple[str, ...]]
@@ -207,7 +208,9 @@ class PortAppConfig(BaseModel):
             entity = resource.get("port", {}).get("entity", {})
             mappings = entity.get("mappings")
             if mappings is not None and not isinstance(mappings, list):
-                entity["mappings"] = [mappings]
+                mappings = [mappings]
+            if mappings is not None:
+                entity["mappings"] = rewrite_mapping_refs(mappings)
         return mapping
 
     class Config:

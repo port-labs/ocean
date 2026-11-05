@@ -18,10 +18,12 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.raw_enricher import MappingRefRawEnricher
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.integrations.mixins.utils import selector_hash_from_resource
 from port_ocean.core.models import LakehouseOperation, LakehouseEventType
+from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.ocean import Ocean
 
 one_webhook_event_raw_results_for_creation = WebhookEventRawResults(
@@ -392,3 +394,67 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
         assert delete_entry["metadata"]["selector_hash"] == selector_hash_from_resource(
             webhook_results.resource
         )
+
+
+class ReadmeEnricher(MappingRefRawEnricher):
+    async def resolve_file_ref(self, item: RAW_ITEM, path: str) -> Any:
+        return f"{item['name']}:{path}"
+
+
+def _webhook_results_with_file_ref() -> WebhookEventRawResults:
+    webhook_results = WebhookEventRawResults(
+        updated_raw_results=[{"name": "repo-one"}],
+        deleted_raw_results=[{"name": "repo-two"}],
+    )
+    webhook_results.resource = ResourceConfig(
+        kind="repository",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    blueprint='"service"',
+                    properties={"readme": "file://README.md"},
+                )
+            )
+        ),
+    )
+    webhook_results._webhook_trace_id = "test-event-id"
+    return webhook_results
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("dsp_enabled", [True, False])
+async def test_send_webhook_raw_data_to_lakehouse_enriches_items_only_in_dsp_mode(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    dsp_enabled: bool,
+) -> None:
+    mock_live_events_mixin._raw_enricher = ReadmeEnricher(mock_context)
+    mock_batch = AsyncMock()
+    with (
+        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch(
+            "port_ocean.core.integrations.mixins.live_events.is_dsp_mode_enabled",
+            AsyncMock(return_value=dsp_enabled),
+        ),
+        patch.object(
+            mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
+        ),
+    ):
+        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
+            [_webhook_results_with_file_ref()]
+        )
+
+    upsert_entry, delete_entry = mock_batch.call_args[0][1]["data"]
+    if dsp_enabled:
+        assert upsert_entry["items"] == [
+            {"name": "repo-one", "__includedFiles": {"README.md": "repo-one:README.md"}}
+        ]
+        assert delete_entry["items"] == [
+            {"name": "repo-two", "__includedFiles": {"README.md": "repo-two:README.md"}}
+        ]
+    else:
+        assert upsert_entry["items"] == [{"name": "repo-one"}]
+        assert delete_entry["items"] == [{"name": "repo-two"}]
