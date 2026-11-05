@@ -7,6 +7,24 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.58.1 (2026-11-05)
+
+
+### Bug Fixes
+
+- >-
+    Remove the OCEAN__CENTRALIZED_RATE_LIMITER__ENABLED flag so the centralized
+    rate limiter is on for every integration.
+
+
+## 0.58.0 (2026-11-04)
+
+
+### Features
+
+- Decrypt AES-GCM sealed sensitive execution properties on claimed workflow integration-action node runs
+
+
 ## 0.57.0 (2026-11-03)
 
 
