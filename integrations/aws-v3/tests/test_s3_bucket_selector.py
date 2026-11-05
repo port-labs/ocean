@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from integration import (
+from aws_integration.overrides import (
     AWSPortAppConfig,
     AWSS3BucketResourceConfig,
     AWSS3BucketSelector,

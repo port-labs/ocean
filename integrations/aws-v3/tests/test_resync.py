@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock
 
 import resync
-from integration import (
+from aws_integration.overrides import (
     AWSResourceConfig,
     AWSResourceSelector,
     AWSS3BucketSelector,
