@@ -147,6 +147,45 @@ class TestGetResourceAction:
         ]
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "The requested resource does not exist",
+            "Handler returned AccessDenied for this resource",
+        ],
+    )
+    async def test_execute_continues_when_general_service_exception_wraps_recoverable_error(
+        self, action: GetResourceAction, message: str
+    ) -> None:
+        async def mock_get_resource(TypeName: str, Identifier: str) -> dict[str, Any]:
+            if Identifier == "role-2":
+                raise ClientError(
+                    {
+                        "Error": {
+                            "Code": "GeneralServiceException",
+                            "Message": message,
+                        }
+                    },
+                    "GetResource",
+                )
+            return {
+                "ResourceDescription": {
+                    "Identifier": Identifier,
+                    "Properties": json.dumps({"RoleName": Identifier}),
+                }
+            }
+
+        action.client.get_resource.side_effect = mock_get_resource
+
+        result = await action._execute(_action_input("role-1", "role-2", "role-3"))
+
+        assert result == [
+            {"RoleName": "role-1", "Identifier": "role-1"},
+            {},
+            {"RoleName": "role-3", "Identifier": "role-3"},
+        ]
+
+    @pytest.mark.asyncio
     async def test_execute_with_non_recoverable_exception(
         self, action: GetResourceAction
     ) -> None:

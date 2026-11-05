@@ -100,6 +100,34 @@ def test_is_access_denied_exception() -> None:
     assert is_access_denied_exception(_client_error("NoSuchBucket")) is False
 
 
+def test_is_access_denied_exception_unwraps_general_service_exception() -> None:
+    error = ClientError(
+        {
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Handler returned AccessDenied for this resource",
+            }
+        },
+        "GetResource",
+    )
+
+    assert is_access_denied_exception(error) is True
+
+
+def test_is_resource_not_found_exception_unwraps_general_service_exception() -> None:
+    error = ClientError(
+        {
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "The requested resource does not exist",
+            }
+        },
+        "GetResource",
+    )
+
+    assert is_resource_not_found_exception(error) is True
+
+
 def test_is_cloud_control_type_unavailable_exception() -> None:
     assert (
         is_cloud_control_type_unavailable_exception(
