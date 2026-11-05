@@ -9,6 +9,7 @@ from dateutil.parser import parse
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 from port_ocean.utils.cache import cache_coroutine_result
 from loguru import logger
 
@@ -78,6 +79,13 @@ class AbstractGitHubAuthenticator(ABC):
     ) -> None:
         self._rate_limit_notifier = notifier
 
+    def _notifier_for(
+        self, rate_limiter: RateLimitWrapper | None
+    ) -> Callable[[httpx.Response], Coroutine[Any, Any, None]] | None:
+        if rate_limiter is None:
+            return self._rate_limit_notifier
+        return rate_limiter.notify_transport_rate_limit_retry
+
     async def _get_headers_dict(self) -> Dict[str, str]:
         return (await self.get_headers()).as_dict()
 
@@ -86,6 +94,7 @@ class AbstractGitHubAuthenticator(ABC):
         *,
         extra_retryable_methods: frozenset[str] = frozenset(),
         extra_retryable_status: frozenset[int] = frozenset(),
+        rate_limiter: RateLimitWrapper | None = None,
     ) -> httpx.AsyncClient:
         default_methods = frozenset(
             ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
@@ -105,12 +114,13 @@ class AbstractGitHubAuthenticator(ABC):
             max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
             base_delay=1.0,
             max_attempts=10,
+            rate_limiter=rate_limiter,
         )
         return OceanAsyncClient(
             GitHubRetryTransport,
             retry_config=retry_config,
             transport_kwargs={
-                "rate_limit_notifier": self._rate_limit_notifier,
+                "rate_limit_notifier": self._notifier_for(rate_limiter),
                 "token_refresher": self._get_headers_dict,
             },
             timeout=ocean.config.client_timeout,
@@ -118,6 +128,7 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
+        """HTTP client for token fetches and probes. Sync traffic does not use it."""
         if self._http_client is None:
             self._http_client = self._make_client()
         return self._http_client
