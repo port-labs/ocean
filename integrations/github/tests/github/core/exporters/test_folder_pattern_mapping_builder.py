@@ -1,12 +1,19 @@
+from github.helpers.repository_change import RepositoryChange
 import importlib
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from github.core.exporters.folder_exporter.utils import FolderPatternMappingBuilder
-from integration import FolderSelector, RepositoryBranchMapping
+from integration import (
+    FolderSelector,
+    RepositoryBranchMapping,
+    RepositorySourceModel,
+)
 from port_ocean.context.event import event_context
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource_context
 from integration import GithubPortAppConfig
@@ -27,6 +34,11 @@ def github_main(mock_ocean_context: None) -> Any:
         patch.object(
             ocean.app.integration,
             "on_resync",
+            side_effect=lambda function, _: function,
+        ),
+        patch.object(
+            ocean.app.integration,
+            "on_incremental_resync",
             side_effect=lambda function, _: function,
         ),
     ):
@@ -159,7 +171,7 @@ async def test_resync_folders_skips_inaccessible_organizations(
                 ]
 
     assert batches == [[{"id": "1"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_folder])
+    pattern_builder.build.assert_awaited_once_with([allowed_folder], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -203,7 +215,7 @@ async def test_resync_files_skips_inaccessible_organizations(
                 batches = [batch async for batch in github_main.resync_files("file")]
 
     assert batches == [[{"path": "a.yml"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_file])
+    pattern_builder.build.assert_awaited_once_with([allowed_file], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -328,3 +340,329 @@ async def test_resync_files_routes_selectors_to_matching_authenticators(
         (first_file,),
         (second_file,),
     }
+
+
+@pytest.mark.asyncio
+async def test_folder_pattern_mapping_builder_lists_repos_per_selector() -> None:
+    org_exporter = MagicMock()
+    org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
+        [{"login": "test-org", "type": "Organization"}]
+    )
+    list_calls: List[Dict[str, Any]] = []
+
+    def list_repos(options: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+        list_calls.append(options)
+        return _aiter_one([{"name": "repo1", "default_branch": "main"}])
+
+    repo_exporter = MagicMock()
+    repo_exporter.get_paginated_resources = list_repos
+    pushed_since = datetime(2026, 10, 1, tzinfo=timezone.utc)
+
+    builder = FolderPatternMappingBuilder(org_exporter, repo_exporter, repo_type="all")
+    selectors = [
+        FolderSelector(organization="test-org", path="services/*"),
+        FolderSelector(organization="test-org", path="libs/*"),
+    ]
+    async with event_context("test_event") as event:
+        event.port_app_config = GithubPortAppConfig(repository_type="all", resources=[])
+        result = await builder.build(
+            selectors, changed_since=RepositoryChange.pushed(pushed_since)
+        )
+
+    assert len(list_calls) == 2
+    assert all(
+        call["changed_since"] == RepositoryChange.pushed(pushed_since)
+        for call in list_calls
+    )
+    assert [f["path"] for f in result[0]["folders"]] == ["services/*", "libs/*"]
+
+
+@pytest.mark.asyncio
+async def test_resync_folders_passes_incremental_cursor(github_main: Any) -> None:
+    cursor = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    folder = MagicMock(organization="allowed", included_files=[])
+    folder_exporter = MagicMock()
+    folder_exporter.get_paginated_resources.return_value = _aiter_one([])
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(github_main, "RestFolderExporter", return_value=folder_exporter),
+        patch.object(
+            github_main, "FolderPatternMappingBuilder", return_value=pattern_builder
+        ),
+        with_active_incremental_cursor(cursor),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(
+                    kind="folder",
+                    selector=MagicMock(folders=[folder], included_files=[]),
+                )
+            ):
+                [batch async for batch in github_main.resync_folders("folder")]
+
+    pattern_builder.build.assert_awaited_once_with(
+        [folder], changed_since=RepositoryChange.pushed(cursor)
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_skills_passes_cursor_to_builder(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    skill_path = MagicMock(
+        path=".claude/skills/**/SKILL.md",
+        organization="allowed",
+        repos=None,
+        exclude_archived=False,
+    )
+    skill_exporter = MagicMock()
+    skill_exporter.get_paginated_resources.return_value = _aiter_one([{"skill": {}}])
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(github_main, "SkillExporter", return_value=skill_exporter),
+        patch.object(
+            github_main, "FilePatternMappingBuilder", return_value=pattern_builder
+        ),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(kind="skill", selector=MagicMock(paths=[skill_path]))
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [b async for b in github_main.resync_skills("skill")]
+                else:
+                    batches = [b async for b in github_main.resync_skills("skill")]
+
+    assert batches == [[{"skill": {}}]]
+    pattern_builder.build.assert_awaited_once()
+    assert pattern_builder.build.await_args is not None
+    file_patterns = pattern_builder.build.await_args.args[0]
+    assert [p.path for p in file_patterns] == [".claude/skills/**/SKILL.md"]
+    assert pattern_builder.build.await_args.kwargs == {
+        "changed_since": RepositoryChange.pushed(cursor)
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_plugins_lists_repos_per_path(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    list_calls: List[Dict[str, Any]] = []
+
+    def list_repos(options: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+        list_calls.append(options)
+        return _aiter_one([{"name": "repo1", "default_branch": "main"}])
+
+    org_exporter = MagicMock()
+    org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
+        [{"login": "allowed", "type": "Organization"}]
+    )
+    repo_exporter = MagicMock()
+    repo_exporter.get_paginated_resources = list_repos
+    plugin_exporter = MagicMock()
+    plugin_exporter.get_paginated_resources = MagicMock(
+        side_effect=lambda options: _aiter_one([{"plugin": {"name": "p"}}])
+    )
+    paths = [
+        RepositorySourceModel.parse_obj({"organization": "allowed"}),
+        RepositorySourceModel.parse_obj({"organization": "allowed"}),
+    ]
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(
+            github_main, "RestOrganizationExporter", return_value=org_exporter
+        ),
+        patch.object(github_main, "RestRepositoryExporter", return_value=repo_exporter),
+        patch.object(github_main, "PluginExporter", return_value=plugin_exporter),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(
+                    kind="plugin",
+                    selector=MagicMock(paths=paths, providers=["claude"]),
+                )
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [
+                            b async for b in github_main.resync_plugins("plugin")
+                        ]
+                else:
+                    batches = [b async for b in github_main.resync_plugins("plugin")]
+
+    # Each path entry lists the org again.
+    assert len(list_calls) == 2
+    assert all(
+        call.get("changed_since") == RepositoryChange.pushed(cursor)
+        for call in list_calls
+    )
+    assert batches == [[{"plugin": {"name": "p"}}], [{"plugin": {"name": "p"}}]]
+    repositories = plugin_exporter.get_paginated_resources.call_args.args[0][
+        "repositories"
+    ]
+    assert [(r["repository"]["name"], r["branch"]) for r in repositories] == [
+        ("repo1", "main")
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_mcp_passes_cursor_to_builder(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    mcp_path = MagicMock(
+        path=".mcp.json", organization="allowed", repos=None, exclude_archived=False
+    )
+    mcp_exporter = MagicMock()
+    mcp_exporter.get_paginated_resources.return_value = _aiter_one([{"server": {}}])
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(
+                    return_value=[MagicMock(organization="allowed")]
+                )
+            ),
+        ),
+        patch.object(github_main, "McpExporter", return_value=mcp_exporter),
+        patch.object(
+            github_main, "FilePatternMappingBuilder", return_value=pattern_builder
+        ),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(kind="mcp", selector=MagicMock(paths=[mcp_path]))
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [b async for b in github_main.resync_mcp("mcp")]
+                else:
+                    batches = [b async for b in github_main.resync_mcp("mcp")]
+
+    assert batches == [[{"server": {}}]]
+    pattern_builder.build.assert_awaited_once()
+    assert pattern_builder.build.await_args is not None
+    file_patterns = pattern_builder.build.await_args.args[0]
+    assert [p.path for p in file_patterns] == [".mcp.json"]
+    assert pattern_builder.build.await_args.kwargs == {
+        "changed_since": RepositoryChange.pushed(cursor)
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_tags_lists_only_pushed_repos(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    repo_options_seen: List[Dict[str, Any]] = []
+
+    def list_repos(options: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+        repo_options_seen.append(options)
+        return _aiter_one([{"name": "repo1", "default_branch": "main"}])
+
+    org_exporter = MagicMock()
+    org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
+        [{"login": "test-org", "type": "Organization"}]
+    )
+    repo_exporter = MagicMock()
+    repo_exporter.get_paginated_resources = list_repos
+    tag_exporter = MagicMock()
+    tag_exporter.get_paginated_resources = MagicMock(
+        side_effect=lambda options: _aiter_one([{"name": "v1.0.0"}])
+    )
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(return_value=[MagicMock()])
+            ),
+        ),
+        patch.object(
+            github_main, "RestOrganizationExporter", return_value=org_exporter
+        ),
+        patch.object(github_main, "RestRepositoryExporter", return_value=repo_exporter),
+        patch.object(github_main, "RestTagExporter", return_value=tag_exporter),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(
+                    kind="tag",
+                    selector=MagicMock(repo_search=None, exclude_archived=False),
+                )
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [b async for b in github_main.resync_tags("tag")]
+                else:
+                    batches = [b async for b in github_main.resync_tags("tag")]
+
+    assert batches == [[{"name": "v1.0.0"}]]
+    assert repo_options_seen[0].get("changed_since") == RepositoryChange.pushed(cursor)
+    tag_options = tag_exporter.get_paginated_resources.call_args.args[0]
+    assert (tag_options["organization"], tag_options["repo_name"]) == (
+        "test-org",
+        "repo1",
+    )

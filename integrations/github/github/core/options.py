@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from github.helpers.repository_change import RepositoryChange
 from github.helpers.utils import PackageType
 from pydantic.v1 import BaseModel, Field
 
@@ -28,8 +29,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     search_params: NotRequired[Optional[RepoSearchParams]]
     exclude_archived: NotRequired[bool]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
-    updated_since: NotRequired[Optional[datetime]]
-    pushed_since: NotRequired[Optional[datetime]]
+    changed_since: NotRequired[Optional[RepositoryChange]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -265,6 +265,7 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+    changed_since: NotRequired[Optional[RepositoryChange]]
 
 
 class ListSkillSearchOptions(TypedDict):

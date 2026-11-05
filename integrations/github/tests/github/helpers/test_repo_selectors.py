@@ -1,10 +1,15 @@
+from github.helpers.repository_change import RepositoryChange
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from github.core.options import ListRepositoryOptions
-from github.helpers.repo_selectors import AllRepositorySelector, ExactRepositorySelector
+from github.helpers.repo_selectors import (
+    AllRepositorySelector,
+    ExactRepositorySelector,
+)
 from integration import RepositorySourceModel
 
 
@@ -116,3 +121,83 @@ class TestExactRepositorySelector:
         ]
 
         assert results == []
+
+
+@pytest.mark.asyncio
+class TestPushedSinceFiltering:
+    async def test_all_selector_forwards_pushed_since(self) -> None:
+        pushed_since = datetime(2026, 10, 1, tzinfo=timezone.utc)
+        selector = RepositorySourceModel.parse_obj({})
+        repo_exporter = MagicMock()
+        repo_exporter.get_paginated_resources = _make_paginated_resources_mock(
+            [[{"name": "repo1", "default_branch": "main"}]]
+        )
+
+        strategy = AllRepositorySelector("repository")
+        [
+            _
+            async for _ in strategy.select_repos(
+                selector,
+                repo_exporter,
+                "test-org",
+                "Organization",
+                changed_since=RepositoryChange.pushed(pushed_since),
+            )
+        ]
+
+        called_options = repo_exporter.get_paginated_resources.call_args.args[0]
+        assert called_options["changed_since"] == RepositoryChange.pushed(pushed_since)
+
+    async def test_all_selector_omits_pushed_since_on_full_resync(self) -> None:
+        selector = RepositorySourceModel.parse_obj({})
+        repo_exporter = MagicMock()
+        repo_exporter.get_paginated_resources = _make_paginated_resources_mock([[]])
+
+        strategy = AllRepositorySelector("repository")
+        [
+            _
+            async for _ in strategy.select_repos(
+                selector, repo_exporter, "test-org", "Organization"
+            )
+        ]
+
+        called_options = repo_exporter.get_paginated_resources.call_args.args[0]
+        assert "changed_since" not in called_options
+
+    async def test_exact_selector_skips_repos_not_pushed_since(self) -> None:
+        pushed_since = datetime(2026, 10, 1, tzinfo=timezone.utc)
+        selector = RepositorySourceModel.parse_obj(
+            {"repos": [{"name": "stale"}, {"name": "fresh"}, {"name": "unknown"}]}
+        )
+        repo_exporter = MagicMock()
+        repos = {
+            "stale": {
+                "name": "stale",
+                "default_branch": "main",
+                "pushed_at": "2026-09-01T00:00:00Z",
+            },
+            "fresh": {
+                "name": "fresh",
+                "default_branch": "main",
+                "pushed_at": "2026-10-02T00:00:00Z",
+            },
+            "unknown": {"name": "unknown", "default_branch": "main"},
+        }
+
+        with patch(
+            "github.helpers.repo_selectors.get_repository_metadata",
+            new=AsyncMock(side_effect=lambda _client, _org, name: repos[name]),
+        ):
+            strategy = ExactRepositorySelector()
+            results = [
+                result[0]
+                async for result in strategy.select_repos(
+                    selector,
+                    repo_exporter,
+                    "test-org",
+                    "Organization",
+                    changed_since=RepositoryChange.pushed(pushed_since),
+                )
+            ]
+
+        assert results == ["fresh", "unknown"]

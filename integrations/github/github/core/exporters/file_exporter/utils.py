@@ -30,7 +30,10 @@ from github.core.options import (
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import GithubClientType, matches_glob_pattern
-from github.helpers.repo_selectors import CompositeRepositorySelector
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+)
+from github.helpers.repository_change import RepositoryChange
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -40,6 +43,8 @@ YAML_FILE_SUFFIX = (".yaml", ".yml")
 MAX_FILE_SIZE = 1024 * 1024  # 1MB limit in bytes
 GRAPHQL_MAX_FILE_SIZE = 100_000
 FIELD_NAME_PATTERN = re.compile(r"^file_(\d+)$")
+GITHUB_COMPARE_FILE_CAP = 300
+COMPARE_BASE_IS_ANCESTOR_STATUSES = ("ahead", "identical")
 
 
 class FileObject(TypedDict):
@@ -175,7 +180,9 @@ class FilePatternMappingBuilder:
         self.repo_exporter = repo_exporter
 
     async def build(
-        self, files: List["GithubFilePattern"]
+        self,
+        files: List["GithubFilePattern"],
+        changed_since: RepositoryChange | None = None,
     ) -> List[ListFileSearchOptions]:
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
@@ -187,9 +194,12 @@ class FilePatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    org_type = org["type"]
                     async for repo_name, branch, _ in self.repo_selector.select_repos(
-                        file_sel, self.repo_exporter, org_login, org_type
+                        file_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org["type"],
+                        changed_since=changed_since,
                     ):
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
@@ -205,6 +215,7 @@ class FilePatternMappingBuilder:
                 organization=org,
                 repo_name=repo,
                 files=items,
+                changed_since=changed_since,
             )
             for (org, repo), items in repo_map.items()
         ]
