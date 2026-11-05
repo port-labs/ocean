@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.1.23 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
+## 3.1.22 (2026-11-04)
+
+
+### Improvements
+
+- Add AWSCustomKindResourceConfig and selector models for Cloud Control custom kinds (not yet exposed in port-app-config)
+
+
 ## 3.1.21 (2026-11-03)
 
 

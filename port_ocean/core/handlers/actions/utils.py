@@ -52,3 +52,33 @@ def get_run_access_token(run: IntegrationRun) -> str | None:
         )
 
     return _decrypt_run_access_token(run)
+
+
+def decrypt_encrypted_execution_properties(run: IntegrationRun) -> None:
+    """Decrypt AES-GCM execution property leaves listed in ``encryptedProperties``.
+
+    Port seals sensitive workflow-node action inputs with the org client secret and
+    returns their names in ``encryptedProperties`` on claim. Mutates
+    ``integrationActionExecutionProperties`` in place.
+    """
+    if not isinstance(run, WorkflowNodeRun) or not run.encrypted_properties:
+        return
+
+    props = run.integration_config.integrationActionExecutionProperties
+    secret = ocean.config.port.client_secret
+    for key in run.encrypted_properties:
+        value = props.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            raise ActionExecutionError(
+                f'Encrypted property "{key}" must be a string ciphertext,'
+                f" got {type(value).__name__}"
+            )
+        try:
+            props[key] = decrypt_aes256_gcm(secret, value)
+        except Exception as error:
+            raise ActionExecutionError(
+                f'Failed to decrypt execution property "{key}"'
+                " (org clientSecret mismatch?)"
+            ) from error
