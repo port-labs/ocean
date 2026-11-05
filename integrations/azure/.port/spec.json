@@ -1,6 +1,6 @@
 {
   "title": "Azure",
-  "description": "Azure integration for Port Ocean",
+  "description": "Azure integration for Port Ocean, including Azure Resource Manager resources and auto-discovered Azure AI Foundry projects.",
   "icon": "Azure",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/azure",
   "formMappingEnabled": true,
@@ -28,10 +28,43 @@
           "kind": "storageContainer"
         }
       ]
+    },
+    {
+      "type": "exporter",
+      "section": "AI Agents",
+      "resources": [
+        {
+          "kind": "foundryProject"
+        },
+        {
+          "kind": "agent"
+        },
+        {
+          "kind": "agent-version"
+        },
+        {
+          "kind": "model-deployment"
+        },
+        {
+          "kind": "conversation"
+        },
+        {
+          "kind": "response"
+        },
+        {
+          "kind": "memory-store"
+        }
+      ]
     }
   ],
   "saas": {
-    "enabled": false
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    },
+    "incrementalSync": {
+      "enabled": true
+    }
   },
   "configurations": [
     {
@@ -119,6 +152,272 @@
             "*/read"
           ],
           "type": "array"
+        }
+      ]
+    }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_agent",
+      "icon": "Azure",
+      "description": "Create a Foundry agent in the configured project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "model",
+          "title": "Model deployment",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "instructions",
+          "title": "Instructions",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Attach Port MCP",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "Create a project connection and agent MCP tool pointing at Port MCP using the ARM scope discovered for projectEndpoint."
+        }
+      ]
+    },
+    {
+      "name": "update_agent",
+      "icon": "Azure",
+      "description": "Update a Foundry agent",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model deployment",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "instructions",
+          "title": "Instructions",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "delete_agent",
+      "icon": "Azure",
+      "description": "Delete a Foundry agent",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "deploy_model_deployment",
+      "icon": "Azure",
+      "description": "Deploy a model in the configured Foundry project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "modelName",
+          "title": "Model name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "modelVersion",
+          "title": "Model version",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "modelPublisher",
+          "title": "Model publisher",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "skuName",
+          "title": "SKU name",
+          "type": "string",
+          "required": false,
+          "default": "GlobalStandard"
+        },
+        {
+          "name": "deploymentType",
+          "title": "Deployment type",
+          "type": "string",
+          "required": false,
+          "default": "ModelDeployment"
+        }
+      ]
+    },
+    {
+      "name": "delete_model_deployment",
+      "icon": "Azure",
+      "description": "Delete a model deployment from the configured Foundry project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "invoke_agent",
+      "icon": "Azure",
+      "description": "Invoke a Foundry agent via the Responses API",
+      "allowedExecutionIdentities": [
+        "actor",
+        "service_account"
+      ],
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "input",
+          "title": "Input",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
+        },
+        {
+          "name": "conversationMetadata",
+          "title": "Conversation metadata",
+          "type": "jqObject",
+          "required": false,
+          "description": "Optional metadata to set on the conversation before invoke (for example subject, ticket id, or owner). Applied on create when conversationId is omitted, or patched onto an existing conversationId."
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Use Port MCP (remint per invoke)",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "Create a project connection and agent MCP tool pointing at Port MCP using the ARM scope discovered for projectEndpoint."
+        },
+        {
+          "name": "reportInvocationStatus",
+          "title": "Report invocation status",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "When true, keeps the run open until a terminal Foundry response.* webhook completes it (requires OCEAN__BASE_URL and a registered Foundry webhook). Falls back to SSE terminal completion when webhook signing secret is unavailable."
+        }
+      ]
+    },
+    {
+      "name": "invoke_model",
+      "icon": "Azure",
+      "description": "Invoke a model deployment via the project openai/v1/responses API",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "input",
+          "title": "Input",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
         }
       ]
     }

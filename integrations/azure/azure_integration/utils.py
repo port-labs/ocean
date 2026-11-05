@@ -27,6 +27,13 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     RESOURCE_GROUPS = "Microsoft.Resources/resourceGroups"
     SUBSCRIPTION = "subscription"
     CLOUD_RESOURCE = "cloudResource"
+    FOUNDRY_PROJECT = "foundryProject"
+    FOUNDRY_AGENT = "agent"
+    FOUNDRY_AGENT_VERSION = "agent-version"
+    FOUNDRY_MODEL_DEPLOYMENT = "model-deployment"
+    FOUNDRY_CONVERSATION = "conversation"
+    FOUNDRY_RESPONSE = "response"
+    FOUNDRY_MEMORY_STORE = "memory-store"
 
 
 def get_current_resource_config() -> (
