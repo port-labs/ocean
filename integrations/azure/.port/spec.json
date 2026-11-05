@@ -54,6 +54,18 @@
       "type": "string",
       "sensitive": true,
       "description": "Azure Tenant ID. For more information on how to create and manage credentials, see the <a href=\"https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal\" target=\"_blank\">Azure documentation</a>"
+    },
+    {
+      "name": "azureManagementBaseUrl",
+      "required": false,
+      "type": "string",
+      "description": "Optional override for the Azure Resource Manager API base URL. When omitted, the integration uses the public Azure ARM endpoint."
+    },
+    {
+      "name": "azureAuthorityHost",
+      "required": false,
+      "type": "string",
+      "description": "Optional override for the Microsoft Entra authority host (sets AZURE_AUTHORITY_HOST). When omitted, the Azure SDK uses the default public Entra endpoint."
     }
   ],
   "deploymentMethodRequirements": [
