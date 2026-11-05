@@ -4,8 +4,12 @@ from typing import Any
 
 from loguru import logger
 
-from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME
+from gitlab.clients.gitlab_client import (
+    GitLabClient,
+    _literal_tree_prefix,
+    ancestor_dirs,
+)
+from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME, matches_skill_path
 
 TEXT_FILE_EXTENSIONS: frozenset[str] = frozenset(
     {
@@ -56,6 +60,71 @@ def skill_dir_prefix(skill_md_path: str) -> str:
     """Path prefix shared by every file inside the skill folder ("" at repo root)."""
     skill_dir = str(PurePosixPath(skill_md_path).parent)
     return "" if skill_dir == "." else f"{skill_dir}/"
+
+
+async def find_owning_skill_md_paths(
+    client: GitLabClient,
+    project: dict[str, Any],
+    ref: str,
+    changed_paths: set[str],
+    path_globs: list[str],
+) -> set[str]:
+    """SKILL.md paths of the closest skill containing each changed path.
+
+    Walks up from each changed path and lists only the folders that could hold a
+    matching SKILL.md, nearest first, stopping at the first one found. A folder is
+    listed at most once per call. A file inside a nested skill belongs only to that
+    skill, so outer skills are not rebuilt for it. Adding or removing a nested SKILL.md
+    moves its folder out of or into the parent's bundle, so the parent is its owner.
+    """
+    skill_roots = {_literal_tree_prefix(pattern) for pattern in path_globs}
+    skill_md_by_folder: dict[str, str | None] = {}
+    owners: set[str] = set()
+    for path in changed_paths:
+        for folder in _folders_nearest_first(path):
+            if not _can_hold_skill(folder, skill_roots):
+                continue
+            if folder not in skill_md_by_folder:
+                skill_md_by_folder[folder] = await _skill_md_in_folder(
+                    client, project, ref, folder, path_globs
+                )
+            owner = skill_md_by_folder[folder]
+            if owner is not None:
+                owners.add(owner)
+                break
+    return owners
+
+
+def _folders_nearest_first(path: str) -> list[str]:
+    """Folders containing ``path``, deepest first; the repository root (``""``) last."""
+    return sorted(ancestor_dirs(path), key=len, reverse=True) + [""]
+
+
+def _can_hold_skill(folder: str, skill_roots: set[str]) -> bool:
+    """True when ``folder`` is inside, or is, a root that the skill globs search."""
+    return any(
+        not root or folder == root or folder.startswith(f"{root}/")
+        for root in skill_roots
+    )
+
+
+async def _skill_md_in_folder(
+    client: GitLabClient,
+    project: dict[str, Any],
+    ref: str,
+    folder: str,
+    path_globs: list[str],
+) -> str | None:
+    """The SKILL.md directly inside ``folder`` if it matches the globs, from one listing."""
+    async for batch in client.get_repository_tree(
+        project, folder, ref, recursive=False
+    ):
+        for entry in batch:
+            if entry.get("type") == "blob" and matches_skill_path(
+                entry["path"], path_globs
+            ):
+                return entry["path"]
+    return None
 
 
 def select_skill_folder_files(

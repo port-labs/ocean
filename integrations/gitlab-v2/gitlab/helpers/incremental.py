@@ -41,6 +41,27 @@ def build_project_list_params(
     return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
 
 
+def build_project_updated_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects`` used by file and folder listings.
+
+    Filters by ``updated_after`` and drops selector timestamp filters on incremental runs.
+    GitLab rejects an ``updated_after`` filter without sorting by ``updated_at``, so the
+    listing is ordered by it on incremental runs.
+    """
+    params = base_params
+    if cursor is not None:
+        params = {
+            key: value
+            for key, value in base_params.items()
+            if key not in TIMESTAMP_SELECTORS
+        }
+        params["order_by"] = "updated_at"
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
+
+
 def build_issue_params(
     options: IssueOptions,
     updated_after: Optional[datetime],
