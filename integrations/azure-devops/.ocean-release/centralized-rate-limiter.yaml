@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Wire Azure DevOps into the centralized rate limiter. Each Azure organization has its own Redis pool, admission runs before each retry, and the local limiter stays as the fallback.
