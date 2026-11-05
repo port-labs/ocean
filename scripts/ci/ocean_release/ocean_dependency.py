@@ -34,9 +34,9 @@ def validate_ocean_dependency_bumps(git: GitContext, *, base_ref: str) -> list[s
         pyproject = git.repo_root / "integrations" / name / "pyproject.toml"
         head_version = parse_port_ocean_dependency_version(git.read_worktree(pyproject))
         if head_version is None:
-            raise ValueError(
+            return [
                 f"{name}: port_ocean dependency version is required in pyproject.toml"
-            )
+            ]
         if head_version.lstrip("^") != core_version:
             outdated.append(f"{name}={head_version}")
 
