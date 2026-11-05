@@ -38,6 +38,12 @@ def make_client(remaining: int, seconds_until_reset: float) -> MagicMock:
         limit=5000,
         reset_time=int(time.time()) + int(seconds_until_reset),
     )
+    rate_limiter = MagicMock()
+    rate_limiter.is_close_to_rate_limit.return_value = (
+        remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
+    )
+    rate_limiter.seconds_until_rate_limit_reset.return_value = seconds_until_reset
+    client.rate_limiter = rate_limiter
     return client
 
 
@@ -79,6 +85,11 @@ class TestAbstractGithubExecutorClientSelection:
 
         assert client is user_client
         personal_auth.assert_called_once_with("gho_user", "test-org")
+        rest_client_cls.assert_called_once_with(
+            github_host="https://api.github.com",
+            authenticator=personal_auth.return_value,
+            centralized_rate_limit=False,
+        )
         create_app_client.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -140,7 +151,8 @@ class TestAbstractGithubExecutorRateLimits:
         self,
     ) -> None:
         client = MagicMock(spec=GithubRestClient)
-        client.get_rate_limit_status.return_value = None
+        client.rate_limiter = MagicMock()
+        client.rate_limiter.is_close_to_rate_limit.return_value = False
         executor = StubGithubExecutor()
         run = make_run()
 
@@ -169,7 +181,8 @@ class TestAbstractGithubExecutorRateLimits:
         self,
     ) -> None:
         client = MagicMock(spec=GithubRestClient)
-        client.get_rate_limit_status.return_value = None
+        client.rate_limiter = MagicMock()
+        client.rate_limiter.seconds_until_rate_limit_reset.return_value = 0.0
         executor = StubGithubExecutor()
         run = make_run()
 
