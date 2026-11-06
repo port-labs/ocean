@@ -9,6 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
+from port_ocean.core.handlers.entity_processor import JQEntityProcessor
 from port_ocean.core.models import Entity
 
 from github.helpers.utils import ObjectKind
@@ -20,6 +21,7 @@ from integration import (
     GithubPortAppConfig,
 )
 from github.webhook.webhook_processors.check_runs.file_validation import (
+    MAX_REPORTED_ITEM_ERRORS,
     ResourceConfigToPatternMapping,
     FileValidationService,
     _format_port_http_error,
@@ -508,6 +510,277 @@ class TestFileValidation:
         mock_update_check.assert_called_once()
         assert mock_update_check.call_args.args[4] == "failure"
         assert port_message in mock_update_check.call_args.args[7]
+
+
+@pytest.fixture
+def items_resource_config() -> GithubFileResourceConfig:
+    return GithubFileResourceConfig(
+        kind=ObjectKind.FILE,
+        selector=GithubFileSelector(
+            query="true",
+            files=[
+                GithubFilePattern(
+                    organization="test-org",
+                    path="services.yaml",
+                    repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
+                    validationCheck=True,
+                ),
+            ],
+        ),
+        port=PortResourceConfig(
+            itemsToParse=".content.services",
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".item.name",
+                    title=".item.name",
+                    blueprint='"service"',
+                    properties={"owner": ".item.owner"},
+                )
+            ),
+        ),
+    )
+
+
+def _services_file(content: Any) -> FileObject:
+    return FileObject(
+        organization="test-org",
+        content=content,
+        path="services.yaml",
+        repository={"name": "test-repo"},
+        metadata={"name": "services.yaml", "path": "services.yaml"},
+        branch="main",
+        name="services.yaml",
+        __base_jq=".content",
+    )
+
+
+@pytest.fixture
+def real_items_to_parse() -> Any:
+    with (
+        patch.object(
+            ocean.app.integration, "entity_processor", JQEntityProcessor(ocean)
+        ),
+        patch.object(ocean.app.config, "yield_items_to_parse_batch_size", 100),
+    ):
+        yield
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("real_items_to_parse")
+class TestItemsToParseValidation:
+    async def test_validates_every_item(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        file = _services_file(
+            {
+                "services": [
+                    {"name": "svc-a", "owner": "team-a"},
+                    {"name": "svc-b", "owner": "team-b"},
+                ]
+            }
+        )
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            mock_upsert.side_effect = lambda entity, **_: entity
+
+            result = await validation_service._validate_file_against_port(
+                file, items_resource_config
+            )
+
+        assert result["success"] is True
+        validated = [call.kwargs["entity"] for call in mock_upsert.call_args_list]
+        assert sorted(entity.identifier for entity in validated) == ["svc-a", "svc-b"]
+        assert {entity.properties["owner"] for entity in validated} == {
+            "team-a",
+            "team-b",
+        }
+
+    async def test_reports_failing_item_path(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        file = _services_file(
+            {
+                "services": [
+                    {"name": "svc-a", "owner": "team-a"},
+                    {"name": "svc-b", "owner": "broken"},
+                ]
+            }
+        )
+
+        async def upsert(entity: Entity, **_: Any) -> Entity:
+            if entity.properties["owner"] == "broken":
+                raise _http_status_error(
+                    422, json_body={"ok": False, "message": "bad owner"}
+                )
+            return entity
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            mock_upsert.side_effect = upsert
+
+            result = await validation_service._validate_file_against_port(
+                file, items_resource_config
+            )
+
+        assert result["success"] is False
+        assert result["errors"] == [".content.services[1]: bad owner"]
+
+    async def test_fails_when_items_to_parse_is_not_a_list(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        file = _services_file({"services": {"name": "svc-a"}})
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            result = await validation_service._validate_file_against_port(
+                file, items_resource_config
+            )
+
+        assert result["success"] is False
+        assert "must return a list" in result["errors"][0]
+        mock_upsert.assert_not_called()
+
+    async def test_empty_items_list_passes(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        file = _services_file({"services": []})
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            result = await validation_service._validate_file_against_port(
+                file, items_resource_config
+            )
+
+        assert result["success"] is True
+        mock_upsert.assert_not_called()
+
+    async def test_caps_reported_item_errors(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        item_count = MAX_REPORTED_ITEM_ERRORS + 5
+        file = _services_file(
+            {
+                "services": [
+                    {"name": f"svc-{i}", "owner": "x"} for i in range(item_count)
+                ]
+            }
+        )
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            mock_upsert.return_value = False
+
+            result = await validation_service._validate_file_against_port(
+                file, items_resource_config
+            )
+
+        assert result["success"] is False
+        assert len(result["errors"]) == MAX_REPORTED_ITEM_ERRORS + 1
+        assert result["errors"][-1] == "... and 5 more item errors"
+        assert mock_upsert.call_count == item_count
+
+    async def test_skips_items_not_matching_selector_query(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        items_resource_config.selector.query = '.item.type == "service"'
+        file = _services_file(
+            {
+                "services": [
+                    {"name": "lib-a", "type": "library"},
+                    {"name": "svc-a", "type": "service", "owner": "team-a"},
+                    {"name": "svc-b", "type": "service", "owner": "broken"},
+                ]
+            }
+        )
+
+        async def upsert(entity: Entity, **_: Any) -> Entity:
+            if entity.properties["owner"] == "broken":
+                raise _http_status_error(
+                    422, json_body={"ok": False, "message": "bad owner"}
+                )
+            return entity
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            mock_upsert.side_effect = upsert
+
+            result = await validation_service._validate_file_against_port(
+                file, items_resource_config
+            )
+
+        validated = sorted(
+            call.kwargs["entity"].identifier for call in mock_upsert.call_args_list
+        )
+        assert validated == ["svc-a", "svc-b"]
+        assert result["errors"] == [".content.services[2]: bad owner"]
+
+    async def test_skips_file_not_matching_selector_query(
+        self, file_resource_config: GithubFileResourceConfig, file_object: FileObject
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        file_resource_config.selector.query = '.path == "other.yaml"'
+
+        with patch.object(
+            ocean.port_client, "upsert_entity", new_callable=AsyncMock
+        ) as mock_upsert:
+            result = await validation_service._validate_file_against_port(
+                file_object, file_resource_config
+            )
+
+        assert result["success"] is True
+        mock_upsert.assert_not_called()
+
+    async def test_pull_request_check_fails_on_bad_item(
+        self, items_resource_config: GithubFileResourceConfig
+    ) -> None:
+        validation_service = FileValidationService("test-org")
+        file = _services_file(
+            {
+                "services": [
+                    {"name": "svc-a", "owner": "team-a"},
+                    {"name": "svc-missing", "owner": "team-b"},
+                ]
+            }
+        )
+
+        async def upsert(entity: Entity, **_: Any) -> Entity | bool:
+            return False if entity.identifier == "svc-missing" else entity
+
+        with (
+            patch.object(
+                validation_service.check_runs, "create_validation_check"
+            ) as mock_create_check,
+            patch.object(
+                validation_service.check_runs, "update_check_run"
+            ) as mock_update_check,
+            patch.object(
+                ocean.port_client, "upsert_entity", new_callable=AsyncMock
+            ) as mock_upsert,
+        ):
+            mock_create_check.return_value = "check-run-id-123"
+            mock_upsert.side_effect = upsert
+
+            await validation_service.validate_pull_request_files(
+                file, items_resource_config, "head-sha-456", 101
+            )
+
+        assert mock_update_check.call_args.args[4] == "failure"
+        details = mock_update_check.call_args.args[7]
+        assert ".content.services[1]" in details
+        assert "svc-missing" in details
 
 
 class TestFormatPortHttpError:
