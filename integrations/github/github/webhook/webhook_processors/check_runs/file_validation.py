@@ -204,46 +204,41 @@ class FileValidationService:
             validation_check_details,
         )
 
-    async def _validate_file_against_port(
-        self, file: FileObject, resource_config: GithubFileResourceConfig
-    ) -> ValidationResult:
-        """Validate the entities sync would create: expand itemsToParse, then apply the selector query."""
-        jq_processor = JQEntityProcessor(ocean)
-        selector_query = resource_config.selector.query
-        items_to_parse = resource_config.port.items_to_parse
-        if not items_to_parse:
-            if not await jq_processor._search_as_bool(dict(file), selector_query):
-                return {"success": True, "errors": [], "response": None}
-            return await self._validate_entity_against_port(file, resource_config)
-
-        raw_items: List[Dict[str, Any]] = []
-        async for batch in handle_items_to_parse(
-            [dict(file)],
-            resource_config.port.items_to_parse_name,
-            items_to_parse,
-            resource_config.port.items_to_parse_top_level_transform,
-        ):
-            raw_items.extend(batch)
-
-        if not raw_items:
-            parsed_items = await jq_processor._search(dict(file), items_to_parse)
-            if not isinstance(parsed_items, list):
-                return {
-                    "success": False,
-                    "errors": [
-                        f"itemsToParse expression '{items_to_parse}' must return "
-                        f"a list, got {type(parsed_items).__name__}"
-                    ],
-                    "response": None,
-                }
-            return {"success": True, "errors": [], "response": []}
-
-        selected_items = [
-            (index, raw_item)
-            for index, raw_item in enumerate(raw_items)
-            if await jq_processor._search_as_bool(raw_item, selector_query)
+    async def _expand_items(
+        self,
+        file: FileObject,
+        resource_config: GithubFileResourceConfig,
+        items_to_parse: str,
+        jq_processor: JQEntityProcessor,
+    ) -> tuple[List[Dict[str, Any]], Optional[str]]:
+        """Raw items sync would map. An empty list is valid; a non-list is an error."""
+        raw_items = [
+            item
+            async for batch in handle_items_to_parse(
+                [dict(file)],
+                resource_config.port.items_to_parse_name,
+                items_to_parse,
+                resource_config.port.items_to_parse_top_level_transform,
+            )
+            for item in batch
         ]
+        if raw_items:
+            return raw_items, None
 
+        # handle_items_to_parse only warns when the expression is not a list.
+        parsed_items = await jq_processor._search(dict(file), items_to_parse)
+        if isinstance(parsed_items, list):
+            return [], None
+        return [], (
+            f"itemsToParse expression '{items_to_parse}' must return a list, "
+            f"got {type(parsed_items).__name__}"
+        )
+
+    async def _validate_items(
+        self,
+        raw_items: List[Dict[str, Any]],
+        resource_config: GithubFileResourceConfig,
+    ) -> List[ValidationResult]:
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_ITEM_VALIDATIONS)
 
         async def validate_item(raw_item: Dict[str, Any]) -> ValidationResult:
@@ -252,10 +247,39 @@ class FileValidationService:
                     cast(FileObject, raw_item), resource_config
                 )
 
-        results = await asyncio.gather(
-            *(validate_item(raw_item) for _, raw_item in selected_items)
+        return list(
+            await asyncio.gather(*(validate_item(raw_item) for raw_item in raw_items))
         )
 
+    async def _validate_file_against_port(
+        self, file: FileObject, resource_config: GithubFileResourceConfig
+    ) -> ValidationResult:
+        """Validate the entities sync would create: expand itemsToParse, then apply the selector query."""
+        jq_processor = JQEntityProcessor(ocean)
+        items_to_parse = resource_config.port.items_to_parse
+        if not items_to_parse:
+            if not await jq_processor._search_as_bool(
+                dict(file), resource_config.selector.query
+            ):
+                return {"success": True, "errors": [], "response": None}
+            return await self._validate_entity_against_port(file, resource_config)
+
+        raw_items, error = await self._expand_items(
+            file, resource_config, items_to_parse, jq_processor
+        )
+        if error:
+            return {"success": False, "errors": [error], "response": None}
+
+        selected_items = [
+            (index, raw_item)
+            for index, raw_item in enumerate(raw_items)
+            if await jq_processor._search_as_bool(
+                raw_item, resource_config.selector.query
+            )
+        ]
+        results = await self._validate_items(
+            [raw_item for _, raw_item in selected_items], resource_config
+        )
         errors = [
             f"{items_to_parse}[{index}]: {error}"
             for (index, _), result in zip(selected_items, results)
@@ -266,7 +290,6 @@ class FileValidationService:
             errors = errors[:MAX_REPORTED_ITEM_ERRORS] + [
                 f"... and {hidden_count} more item errors"
             ]
-
         return {
             "success": not errors,
             "errors": errors,
