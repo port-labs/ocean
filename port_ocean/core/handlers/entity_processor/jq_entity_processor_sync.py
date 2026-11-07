@@ -76,9 +76,20 @@ class JQEntityProcessorSync:
                 end = index + 1
                 body: list[str] = []
                 while end < length and filter[end] != "'":
-                    if filter[end] == "\\":
-                        body.append("\\\\")
-                    elif filter[end] == '"':
+                    if filter[end] == "\\" and end + 1 < length:
+                        if filter[end + 1] == '"':
+                            body.append('\\"')
+                            end += 2
+                            continue
+                        if filter[end + 1] == "'":
+                            body.append("'")
+                            end += 2
+                            continue
+                        body.append(filter[end])
+                        body.append(filter[end + 1])
+                        end += 2
+                        continue
+                    if filter[end] == '"':
                         body.append('\\"')
                     else:
                         body.append(filter[end])
@@ -102,7 +113,6 @@ class JQEntityProcessorSync:
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
         if pattern in _COMPILED_PATTERNS:
-
             return _COMPILED_PATTERNS[pattern]
         compiled_pattern = jq.compile(pattern)
         _COMPILED_PATTERNS[pattern] = compiled_pattern

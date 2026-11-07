@@ -67,6 +67,19 @@ class TestJQEntityProcessorSync:
         assert result == '"it\'s"'
         assert JQEntityProcessor._format_filter("(.name + '/')") == '(.name + "/")'
 
+        # Test single-quoted backslashes and quotes
+        result = mocked_processor._format_filter("'\\(.name)'")
+        assert result == '"\\(.name)"'
+
+        result = mocked_processor._format_filter("'hello\\nworld'")
+        assert result == '"hello\\nworld"'
+
+        result = mocked_processor._format_filter("'hello \"world\"'")
+        assert result == '"hello \\"world\\""'
+
+        result = mocked_processor._format_filter("'it\\'s'")
+        assert result == '"it\'s"'
+
     def test_compile(self, mocked_processor: JQEntityProcessorSync) -> None:
         """Test pattern compilation."""
         pattern = ".foo"
@@ -139,6 +152,19 @@ class TestJQEntityProcessorSync:
         data = {"name": None}
         result = mocked_processor._search(data, "if .name then .name else '' end")
         assert result == ""
+
+    def test_search_single_quoted_interpolation_and_newline(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        data = {"name": "ocean"}
+        result = mocked_processor._search(data, "'\\(.name)'")
+        assert result == "ocean"
+
+        result = mocked_processor._search(data, "'hello\\n\\(.name)'")
+        assert result == "hello\nocean"
+
+        result = mocked_processor._search(data, "'hello \"\\(.name)\"'")
+        assert result == 'hello "ocean"'
 
     def test_search_returns_none_on_error(
         self, mocked_processor: JQEntityProcessorSync
