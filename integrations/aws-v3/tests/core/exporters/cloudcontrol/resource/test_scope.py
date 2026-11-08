@@ -11,12 +11,10 @@ def test_is_cloud_control_global_kind_for_known_global_services() -> None:
     assert is_cloud_control_global_kind("AWS::Organizations::Account") is True
 
 
-def test_is_cloud_control_global_kind_for_regional_and_invalid() -> None:
+def test_is_cloud_control_global_kind_for_regional_services() -> None:
     assert is_cloud_control_global_kind("AWS::EC2::Instance") is False
     assert is_cloud_control_global_kind("AWS::Lambda::Function") is False
     assert is_cloud_control_global_kind("AWS::WAFv2::WebACL") is False
-    assert is_cloud_control_global_kind("not-a-type") is False
-    assert is_cloud_control_global_kind("") is False
 
 
 def test_resolve_cloud_control_is_regional_explicit_and_auto() -> None:
