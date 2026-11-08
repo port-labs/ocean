@@ -54,7 +54,7 @@ Thank you for your interest in contributing to the AWS-v3 integration! This docu
 - [ ] Implemented actions in `aws/core/exporters/{service}/{resource}/actions.py`
 - [ ] Created exporter in `aws/core/exporters/{service}/{resource}/exporter.py`
 - [ ] Added resync handler in `main.py`
-- [ ] Updated `.port/spec.json`
+- [ ] Updated `.port/spec.yaml`
 - [ ] Added package `__init__.py`
 - [ ] Added to `.port/resources/blueprints.json`
 - [ ] Added to `.port/resources/port-app-config.yml`
@@ -92,5 +92,5 @@ aws-v3/
 ├── main.py
 ├── integration.py
 └── .port/
-    └── spec.json
+    └── spec.yaml
 ```
