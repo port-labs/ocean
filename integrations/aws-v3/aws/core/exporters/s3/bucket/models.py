@@ -33,4 +33,10 @@ class SingleBucketRequest(ResourceRequestModel):
     bucket_name: str = Field(..., description="The name of the S3 bucket to export")
 
 
-class PaginatedBucketRequest(ResourceRequestModel): ...
+class PaginatedBucketRequest(ResourceRequestModel):
+    """Options for exporting S3 buckets."""
+
+    scope_to_region: bool = Field(
+        default=False,
+        description="Only list buckets located in the request region (ListBuckets BucketRegion filter)",
+    )

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
+    from port_ocean.rate_limiting.centralized_rate_limiter import CentralizedRateLimiter
     from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
     from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
@@ -75,6 +76,10 @@ class PortOceanContext:
     @property
     def port_client(self) -> "PortClient":
         return self.app.port_client
+
+    @property
+    def centralized_rate_limiter(self) -> "CentralizedRateLimiter | None":
+        return self.app.centralized_rate_limiter
 
     @property
     def event_listener_type(self) -> EventListenerType:

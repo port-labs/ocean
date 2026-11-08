@@ -4,6 +4,8 @@
   "title": "Plain",
   "docs": "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/available-integrations/project-management/plain/",
   "formMappingEnabled": true,
+  "testConnectionAvailable": true,
+  "testConnectionScopes": [],
   "features": [
     {
       "type": "exporter",

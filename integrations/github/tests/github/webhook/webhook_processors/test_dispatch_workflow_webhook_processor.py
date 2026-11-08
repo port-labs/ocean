@@ -71,10 +71,13 @@ def resource_config() -> ResourceConfig:
 
 @pytest.fixture
 def mock_ocean() -> Generator[MagicMock, None, None]:
-    with patch(
-        "github.webhook.webhook_processors.workflow_run."
-        "dispatch_workflow_webhook_processor.ocean"
-    ) as ocean:
+    with (
+        patch(
+            "github.webhook.webhook_processors.workflow_run."
+            "dispatch_workflow_webhook_processor.ocean"
+        ) as ocean,
+        patch("github.actions.utils.ocean", ocean),
+    ):
         ocean.port_client = MagicMock()
         ocean.port_client.find_run_by_external_id = AsyncMock(
             return_value=make_run({"reportWorkflowStatus": True})

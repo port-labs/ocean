@@ -12,7 +12,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from integration import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
@@ -161,11 +161,13 @@ class ResyncAWSService:
         exporter_cls: Type[IResourceExporter[Any]],
         request_cls: Type[ResourceRequestModel],
         regional: bool,
+        request_extras: dict[str, Any] | None = None,
     ):
         self.kind = kind
         self.exporter_cls = exporter_cls
         self.request_cls = request_cls
         self.regional = regional
+        self.request_extras = request_extras or {}
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
         self.include_actions = self.aws_resource_config.selector.include_actions
@@ -180,6 +182,7 @@ class ResyncAWSService:
                 region=region,
                 include=self.include_actions,
                 account_id=account_id,
+                **self.request_extras,
             )
 
         return options_factory

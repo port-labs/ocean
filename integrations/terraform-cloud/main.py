@@ -9,7 +9,11 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from utils import ObjectKind, init_terraform_client, should_fetch_health_assessment
-from integration import StateFileResourceConfig
+from integration import (
+    StateFileResourceConfig,
+    OrganizationMembershipResourceConfig,
+    TeamResourceConfig,
+)
 from helpers.state_version_enricher import enrich_state_versions_with_output_data
 from helpers.workspace_enricher import enrich_workspaces_with_tags
 from webhook_processors.run_webhook_processor import RunWebhookProcessor
@@ -65,6 +69,50 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             async for runs in stream_async_iterators_tasks(*tasks):
                 yield runs
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    selector = cast(TeamResourceConfig, event.resource_config).selector
+
+    async for teams in terraform_client.get_paginated_teams(selector.to_params()):
+        logger.info(f"Received a batch of {len(teams)} teams")
+        yield teams
+
+
+@ocean.on_resync(ObjectKind.ORGANIZATION_MEMBERSHIP)
+async def resync_organization_memberships(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    selector = cast(
+        OrganizationMembershipResourceConfig, event.resource_config
+    ).selector
+
+    async for memberships in terraform_client.get_paginated_organization_memberships(
+        selector.to_params()
+    ):
+        logger.info(f"Received a batch of {len(memberships)} organization memberships")
+        yield memberships
+
+
+@ocean.on_resync(ObjectKind.TEAM_WORKSPACE_ACCESS)
+async def resync_team_workspace_access(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    async for access_records in terraform_client.get_paginated_team_workspace_access():
+        logger.info(
+            f"Received a batch of {len(access_records)} team workspace access records"
+        )
+        yield access_records
+
+
+@ocean.on_resync(ObjectKind.TEAM_PROJECT_ACCESS)
+async def resync_team_project_access(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    async for access_records in terraform_client.get_paginated_team_project_access():
+        logger.info(
+            f"Received a batch of {len(access_records)} team project access records"
+        )
+        yield access_records
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)

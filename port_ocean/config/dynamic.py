@@ -17,6 +17,18 @@ from pydantic.fields import FieldInfo
 from port_ocean.config.base import BaseOceanModel, sensitive_field
 
 
+class DynamicIntegrationConfig(BaseOceanModel):
+    """Spec-driven integration config that also keeps undeclared keys.
+
+    Fields from ``.port/spec.json`` are typed and validated. Extra keys (for
+    example env-only overrides not exposed in the spec) are preserved so
+    integrations can read them from ``ocean.integration_config`` rather than
+    reading straight from the env.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
 def _normalize_no_trailing_slash_url(value: Any) -> Any:
     if value is None:
         return value
@@ -93,7 +105,7 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
 
     dynamic_model = create_model(  # type: ignore
         "Config",
-        __base__=BaseOceanModel,
+        __base__=DynamicIntegrationConfig,
         **fields,
         __validators__={
             "dynamic_parse": field_validator("*", mode="before")(
