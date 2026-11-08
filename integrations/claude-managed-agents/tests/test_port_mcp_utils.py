@@ -181,7 +181,9 @@ def test_apply_port_mcp_replaces_stale_virtual_mcp_named_server() -> None:
 
     assert changed is True
     assert len(result["mcp_servers"]) == 1
-    assert getattr(result["mcp_servers"][0], "name", None) == "port-virtual-mcp-payments"
+    assert (
+        getattr(result["mcp_servers"][0], "name", None) == "port-virtual-mcp-payments"
+    )
     assert (
         getattr(result["mcp_servers"][0], "url", None)
         == "https://mcp.getport.io/v1/virtual-server/payments"
