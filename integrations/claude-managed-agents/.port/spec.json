@@ -215,7 +215,45 @@
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
-          "description": "Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "description": "Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}. For git mounts, include github_repository resources; authorization tokens can come from git auth inputs below.",
+          "required": false
+        },
+        {
+          "name": "gitProvider",
+          "title": "Git provider",
+          "type": "string",
+          "description": "Git provider for managed auth on session mounts and optional provider MCP. Currently only 'github' is supported. Omit when not using managed git auth.",
+          "required": false,
+          "enum": ["github"]
+        },
+        {
+          "name": "gitAuthMethod",
+          "title": "Git auth method",
+          "type": "string",
+          "description": "How to authenticate with the git provider. Required when gitProvider is set. Currently only 'pat' (personal access token) is supported.",
+          "required": false,
+          "enum": ["pat"]
+        },
+        {
+          "name": "gitAccessToken",
+          "title": "Git access token",
+          "type": "string",
+          "description": "GitHub personal access token (or fine-grained PAT) used when gitAuthMethod is 'pat'. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}. Injected into github_repository mounts that omit authorization_token, and into the GitHub MCP vault credential when enableGitMcp is true.",
+          "required": false
+        },
+        {
+          "name": "enableGitMcp",
+          "title": "Enable git provider MCP",
+          "type": "boolean",
+          "description": "When true (default), attaches a vault credential for the provider MCP server (GitHub Copilot MCP by default) and ensures the agent declares that MCP server. Required for opening PRs via MCP. When false, mount auth still works for clone/commit/push, but PR creation via MCP is unavailable.",
+          "default": true,
+          "required": false
+        },
+        {
+          "name": "gitMcpServerUrl",
+          "title": "Git MCP server URL",
+          "type": "string",
+          "description": "Override the provider MCP server URL. Defaults to https://api.githubcopilot.com/mcp/. Ignored when enableGitMcp is false.",
           "required": false
         },
         {
