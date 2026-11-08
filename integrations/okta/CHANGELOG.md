@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.251 (2026-11-08)
+
+
+### Improvements
+
+- Allow oktaDomain to be a full URL rather than just injecting domain
+
+
 ## 0.1.250 (2026-11-05)
 
 
