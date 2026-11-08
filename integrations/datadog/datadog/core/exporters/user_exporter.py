@@ -70,7 +70,13 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
                 if not user_id or user_id in seen:
                     continue
                 seen.add(user_id)
-                user = await self.get_resource(GetUserOptions(resource_id=user_id))
+                try:
+                    user = await self.get_resource(GetUserOptions(resource_id=user_id))
+                except HTTPStatusError:
+                    logger.warning(
+                        f"Skipping user '{user_id}' from audit events; Datadog user fetch failed"
+                    )
+                    continue
                 if user:
                     users.append(user)
 
