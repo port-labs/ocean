@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.21.0 (2026-11-05)
+
+
+### Features
+
+- Wire Azure DevOps into the centralized rate limiter. Each Azure organization has its own Redis pool, admission runs before each retry, and the local limiter stays as the fallback.
+
+
+## 0.20.30 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
 ## 0.20.29 (2026-11-04)
 
 

@@ -238,7 +238,16 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             )
             return None
 
-        pr_node = response["data"]["repository"]["pullRequest"]
+        repository = (response.get("data") or {}).get("repository")
+        pr_node = (
+            repository.get("pullRequest") if isinstance(repository, dict) else None
+        )
+        if not pr_node:
+            logger.warning(
+                f"[GraphQL] PR {organization}/{repo_name}#{pr_number} not found"
+            )
+            return None
+
         return self._normalize_pr_node(
             pr_node,
             repo,

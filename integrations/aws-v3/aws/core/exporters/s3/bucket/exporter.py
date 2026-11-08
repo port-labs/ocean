@@ -52,8 +52,13 @@ class S3BucketExporter(IResourceExporter[list[dict[str, Any]]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             paginator = proxy.get_paginator("list_buckets", "Buckets")
+            # AWS only honors BucketRegion on that region's own endpoint, which
+            # the proxy above already targets.
+            paginate_kwargs: dict[str, Any] = (
+                {"BucketRegion": options.region} if options.scope_to_region else {}
+            )
 
-            async for buckets in paginator.paginate():
+            async for buckets in paginator.paginate(**paginate_kwargs):
                 action_result = await inspector.inspect(
                     buckets,
                     options.include,
