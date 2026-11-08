@@ -1,5 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: >-
-  Scaffold new integrations with .port/spec.json instead of .port/spec.yaml,
-  matching every shipped integration and the registry's spec.json format.
