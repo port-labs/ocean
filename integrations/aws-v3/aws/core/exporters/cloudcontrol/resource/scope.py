@@ -1,4 +1,4 @@
-from typing import Literal, assert_never
+from typing import Literal
 
 CloudControlResourceScope = Literal["auto", "regional", "global"]
 ResolvedCloudControlResourceScope = Literal["regional", "global"]
@@ -32,12 +32,8 @@ def resolve_cloud_control_resource_scope(
     resource_scope: CloudControlResourceScope,
 ) -> ResolvedCloudControlResourceScope:
     """Resolve ``auto`` / ``regional`` / ``global`` into a concrete scope."""
-    match resource_scope:
-        case "global":
-            return "global"
-        case "regional":
-            return "regional"
-        case "auto":
-            return "global" if is_cloud_control_global_kind(type_name) else "regional"
-        case _:
-            assert_never(resource_scope)
+    if resource_scope == "global":
+        return "global"
+    if resource_scope == "regional":
+        return "regional"
+    return "global" if is_cloud_control_global_kind(type_name) else "regional"
