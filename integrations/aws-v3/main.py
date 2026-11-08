@@ -1,5 +1,6 @@
 from typing import cast
 
+from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.probe import AwsPermissionProbe
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
@@ -7,7 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.probe import ProbeContext
 
-from aws_integration.overrides import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig, AWSCustomKindResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.organizations.account.exporter import (
@@ -18,7 +19,11 @@ from aws.core.helpers.utils import is_access_denied_exception
 from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
-from resync import resync_from_resource_config
+from resync import (
+    ResyncAWSService,
+    resync_cloud_control_custom_kind,
+    should_resync_via_cloud_control,
+)
 from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
@@ -104,5 +109,26 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 
 @ocean.on_resync()
 async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_from_resource_config(kind, event.resource_config):
+    if kind in kind_to_export_metadata:
+        metadata = kind_to_export_metadata[ObjectKind(kind)]
+        selector = cast(AWSResourceConfig, event.resource_config).selector
+        async for batch in ResyncAWSService(
+            kind=kind,
+            exporter_cls=metadata.exporter,
+            request_cls=metadata.paginated_request_model,
+            regional=metadata.resolve_regional(selector),
+            request_extras=metadata.build_request_extras(selector),
+        ):
+            yield batch
+        return
+
+    resource_config = event.resource_config
+    if resource_config is None or not should_resync_via_cloud_control(
+        kind, resource_config
+    ):
+        return
+
+    async for batch in resync_cloud_control_custom_kind(
+        kind, cast(AWSCustomKindResourceConfig, resource_config)
+    ):
         yield batch

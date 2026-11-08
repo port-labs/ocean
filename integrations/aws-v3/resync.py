@@ -21,7 +21,6 @@ from aws.core.exporters.cloudcontrol import (
     resolve_cloud_control_is_regional,
 )
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
-from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.auth.session_factory import AccountInfo
@@ -32,7 +31,6 @@ if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
 
 _MAX_CONCURRENT_REGIONS = 10
-_MAX_CONCURRENT_ACCOUNTS = 5
 
 
 def filter_regions_for_exporter(
@@ -178,11 +176,9 @@ class ResyncAWSService:
         self.request_extras = request_extras or {}
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
-        selector = self.aws_resource_config.selector
-        self.include_actions = getattr(selector, "include_actions", [])
+        self.include_actions = self.aws_resource_config.selector.include_actions
         self.max_concurrent_accounts = (
-            getattr(selector, "max_concurrent_accounts", None)
-            or _MAX_CONCURRENT_ACCOUNTS
+            self.aws_resource_config.selector.max_concurrent_accounts
         )
 
     def _create_options_factory(self, account_id: str) -> Callable[[str], Any]:
@@ -300,69 +296,26 @@ def should_resync_via_cloud_control(kind: str, resource_config: ResourceConfig) 
     return isinstance(resource_config, AWSCustomKindResourceConfig)
 
 
-async def resync_via_aws_service(
-    *,
+async def resync_cloud_control_custom_kind(
     kind: str,
-    exporter_cls: Type[IResourceExporter[Any]],
-    request_cls: Type[ResourceRequestModel],
-    regional: bool,
-    request_extras: dict[str, Any] | None = None,
+    resource_config: AWSCustomKindResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in ResyncAWSService(
-        kind=kind,
-        exporter_cls=exporter_cls,
-        request_cls=request_cls,
-        regional=regional,
-        request_extras=request_extras,
-    ):
-        yield batch
-
-
-def build_resync_service_kwargs(
-    kind: str, resource_config: ResourceConfig
-) -> dict[str, Any] | None:
-    if kind in kind_to_export_metadata:
-        metadata = kind_to_export_metadata[ObjectKind(kind)]
-        selector = cast(AWSResourceConfig, resource_config).selector
-        return {
-            "kind": kind,
-            "exporter_cls": metadata.exporter,
-            "request_cls": metadata.paginated_request_model,
-            "regional": metadata.resolve_regional(selector),
-            "request_extras": metadata.build_request_extras(selector),
-        }
-
-    if not should_resync_via_cloud_control(kind, resource_config):
-        return None
-
-    custom_config = cast(AWSCustomKindResourceConfig, resource_config)
-    custom_selector = custom_config.selector
-    regional = resolve_cloud_control_is_regional(kind, custom_selector.resource_scope)
+    selector = resource_config.selector
+    regional = resolve_cloud_control_is_regional(kind, selector.resource_scope)
     logger.info(
         f"Resyncing custom Cloud Control kind {kind} using "
         f"{'regional' if regional else 'global'} scope strategy"
     )
-    return {
-        "kind": kind,
-        "exporter_cls": CloudControlExporter,
-        "request_cls": PaginatedCloudControlResourceRequest,
-        "regional": regional,
-        "request_extras": {
+
+    async for batch in ResyncAWSService(
+        kind=kind,
+        exporter_cls=CloudControlExporter,
+        request_cls=PaginatedCloudControlResourceRequest,
+        regional=regional,
+        request_extras={
             "type_name": kind,
-            "use_get_resource_api": custom_selector.use_get_resource_api,
-            "resource_scope": custom_selector.resource_scope,
+            "use_get_resource_api": selector.use_get_resource_api,
+            "resource_scope": selector.resource_scope,
         },
-    }
-
-
-async def resync_from_resource_config(
-    kind: str,
-    resource_config: ResourceConfig | None,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if resource_config is None:
-        return
-    service_kwargs = build_resync_service_kwargs(kind, resource_config)
-    if service_kwargs is None:
-        return
-    async for batch in resync_via_aws_service(**service_kwargs):
+    ):
         yield batch
