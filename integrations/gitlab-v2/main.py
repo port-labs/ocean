@@ -178,14 +178,13 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    if sync_cursor is None:
-        params = build_project_params(
+    params = (
+        build_incremental_projects_params(include_only_active_projects, sync_cursor)
+        if sync_cursor is not None
+        else build_project_params(
             include_only_active_projects=include_only_active_projects
         )
-    else:
-        params = build_incremental_projects_params(
-            include_only_active_projects, sync_cursor
-        )
+    )
     async for projects_batch in client.get_projects(
         params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
@@ -301,18 +300,20 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if selector.pipeline_query_params
         else None
     )
-    if sync_cursor is None:
-        pipeline_params = build_pipeline_params(pipeline_query_params)
-        projects_params = build_project_params(
-            include_only_active_projects=include_only_active_projects
-        )
-    else:
-        pipeline_params = build_incremental_pipeline_params(
-            pipeline_query_params, sync_cursor
-        )
-        projects_params = build_incremental_project_updated_params(
+    pipeline_params = (
+        build_incremental_pipeline_params(pipeline_query_params, sync_cursor)
+        if sync_cursor is not None
+        else build_pipeline_params(pipeline_query_params)
+    )
+    projects_params = (
+        build_incremental_project_updated_params(
             include_only_active_projects, sync_cursor
         )
+        if sync_cursor is not None
+        else build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    )
 
     async for projects_batch in client.get_projects(
         params=projects_params,
@@ -405,14 +406,15 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
-    if sync_cursor is None:
-        projects_params = build_project_params(
-            include_only_active_projects=include_only_active_projects
-        )
-    else:
-        projects_params = build_incremental_project_updated_params(
+    projects_params = (
+        build_incremental_project_updated_params(
             include_only_active_projects, sync_cursor
         )
+        if sync_cursor is not None
+        else build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    )
     async for projects_batch in client.get_projects(
         params=projects_params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
@@ -571,31 +573,32 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return enriched_batch
 
     lists_projects = search_strategy in ("projectSearch", "repositoryTree")
-    if not lists_projects:
-        # groupSearch lists groups, which aren't filtered by the cursor,
-        # so full and incremental runs send the same query.
-        params = build_group_params(
-            include_only_active_groups=include_only_active_groups
+    # groupSearch lists groups, which aren't filtered by the cursor,
+    # so full and incremental runs send the same query.
+    params = (
+        build_group_params(include_only_active_groups=include_only_active_groups)
+        if not lists_projects
+        else (
+            build_incremental_project_updated_params(
+                include_only_active_groups, sync_cursor
+            )
+            if sync_cursor is not None
+            else build_project_params(
+                include_only_active_projects=include_only_active_groups
+            )
         )
-    elif sync_cursor is None:
-        params = build_project_params(
-            include_only_active_projects=include_only_active_groups
-        )
-    else:
-        params = build_incremental_project_updated_params(
-            include_only_active_groups, sync_cursor
-        )
+    )
 
-    if sync_cursor is not None and search_strategy == "repositoryTree":
-        files_stream = client.search_changed_files_in_projects(
+    files_stream = (
+        client.search_changed_files_in_projects(
             build_search_query(search_path),
             sync_cursor,
             skip_parsing=skip_parsing,
             repositories=repositories,
             params=params,
         )
-    else:
-        files_stream = client.search_files(
+        if sync_cursor is not None and search_strategy == "repositoryTree"
+        else client.search_files(
             scope,
             build_search_query(search_path),
             skip_parsing=skip_parsing,
@@ -603,6 +606,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             params=params,
             strategy=search_strategy,
         )
+    )
 
     async for files_batch in files_stream:
         enriched_batch = await _enrich_and_yield(files_batch)
@@ -616,18 +620,20 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
-    if sync_cursor is None:
-        project_params = build_project_params(
-            include_only_active_projects=selector.include_only_active_groups
-        )
-        stream = resync_skills(client, selector, project_params)
-    else:
-        project_params = build_incremental_project_updated_params(
+    project_params = (
+        build_incremental_project_updated_params(
             selector.include_only_active_groups, sync_cursor
         )
-        stream = resync_skills_incremental(
-            client, selector, project_params, sync_cursor
+        if sync_cursor is not None
+        else build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
         )
+    )
+    stream = (
+        resync_skills_incremental(client, selector, project_params, sync_cursor)
+        if sync_cursor is not None
+        else resync_skills(client, selector, project_params)
+    )
     async for batch in stream:
         yield batch
 
@@ -638,18 +644,20 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
-    if sync_cursor is None:
-        project_params = build_project_params(
-            include_only_active_projects=selector.include_only_active_groups
-        )
-        stream = resync_plugins(client, selector, project_params)
-    else:
-        project_params = build_incremental_project_updated_params(
+    project_params = (
+        build_incremental_project_updated_params(
             selector.include_only_active_groups, sync_cursor
         )
-        stream = resync_plugins_incremental(
-            client, selector, project_params, sync_cursor
+        if sync_cursor is not None
+        else build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
         )
+    )
+    stream = (
+        resync_plugins_incremental(client, selector, project_params, sync_cursor)
+        if sync_cursor is not None
+        else resync_plugins(client, selector, project_params)
+    )
     async for batch in stream:
         yield batch
 
@@ -775,10 +783,11 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
     selector_params = selector.generate_query_params() or None
-    if sync_cursor is None:
-        params = selector_params
-    else:
-        params = build_cursor_updated_after_params(selector_params, sync_cursor)
+    params = (
+        build_cursor_updated_after_params(selector_params, sync_cursor)
+        if sync_cursor is not None
+        else selector_params
+    )
     async for batch in _resync_deployments(
         selector.include_only_active_projects,
         params,
