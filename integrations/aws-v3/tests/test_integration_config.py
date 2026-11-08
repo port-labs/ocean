@@ -26,7 +26,23 @@ def _minimal_port_mapping() -> PortResourceConfig:
     )
 
 
+def test_aws_port_app_config_rejects_custom_cloud_control_kind() -> None:
+    with pytest.raises(ValidationError):
+        AWSPortAppConfig.parse_obj(
+            {
+                "resources": [
+                    {
+                        "kind": "AWS::IAM::Role",
+                        "selector": {"query": "true"},
+                        "port": _minimal_port_mapping().dict(),
+                    }
+                ]
+            }
+        )
+
+
 def test_aws_custom_kind_resource_config_parses_cloud_control_type() -> None:
+    """Model exists for Cloud Control custom kinds (not yet in AWSPortAppConfig)."""
     resource = AWSCustomKindResourceConfig.parse_obj(
         {
             "kind": "AWS::IAM::Role",

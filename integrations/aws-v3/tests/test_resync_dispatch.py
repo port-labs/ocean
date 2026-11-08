@@ -4,10 +4,11 @@ import pytest
 
 import resync
 from aws.core.exporters.cloudcontrol import CloudControlExporter
+from aws.core.exporters.cloudcontrol.resource.metadata import CloudControlExporterMetadata
 from aws.core.exporters.cloudcontrol.resource.models import (
     PaginatedCloudControlResourceRequest,
 )
-from aws.core.exporters.exporter_metadata import kind_to_export_metadata
+from aws.core.exporters.exporter_metadata import get_exporter_metadata, kind_to_export_metadata
 from aws.core.helpers.types import ObjectKind
 from aws_integration.overrides import (
     AWSCustomKindResourceConfig,
@@ -33,27 +34,27 @@ def _minimal_port_mapping() -> PortResourceConfig:
     )
 
 
-def test_should_resync_via_cloud_control_false_for_first_class_kind() -> None:
+def test_get_exporter_metadata_for_first_class_kind() -> None:
     config = AWSResourceConfig(
         kind=ObjectKind.S3_BUCKET,
         selector=AWSResourceSelector(query="true"),
         port=_minimal_port_mapping(),
     )
-    assert resync.should_resync_via_cloud_control(ObjectKind.S3_BUCKET, config) is False
+    metadata = get_exporter_metadata(ObjectKind.S3_BUCKET, config)
+    assert metadata is kind_to_export_metadata[ObjectKind.S3_BUCKET]
 
 
-def test_should_resync_via_cloud_control_false_for_unknown_first_class_config() -> None:
+def test_get_exporter_metadata_none_for_unknown_kind_with_generic_config() -> None:
     config = AWSResourceConfig(
         kind="AWS::DoesNot::Exist",
         selector=AWSResourceSelector(query="true"),
         port=_minimal_port_mapping(),
     )
-    assert (
-        resync.should_resync_via_cloud_control("AWS::DoesNot::Exist", config) is False
-    )
+    assert get_exporter_metadata("AWS::DoesNot::Exist", config) is None
 
 
-def test_should_resync_via_cloud_control_true_for_custom_kind_config() -> None:
+def test_get_exporter_metadata_cloud_control_for_custom_kind_config() -> None:
+    """Custom kinds are not in AWSPortAppConfig yet; config is parsed directly."""
     config = AWSCustomKindResourceConfig.parse_obj(
         {
             "kind": "AWS::IAM::Role",
@@ -61,7 +62,10 @@ def test_should_resync_via_cloud_control_true_for_custom_kind_config() -> None:
             "port": _minimal_port_mapping().dict(),
         }
     )
-    assert resync.should_resync_via_cloud_control("AWS::IAM::Role", config) is True
+    metadata = get_exporter_metadata("AWS::IAM::Role", config)
+    assert isinstance(metadata, CloudControlExporterMetadata)
+    assert metadata.exporter is CloudControlExporter
+    assert metadata.type_name == "AWS::IAM::Role"
 
 
 @pytest.mark.asyncio
