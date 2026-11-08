@@ -1,6 +1,6 @@
 from pydantic import ConfigDict, Field
 
-from aws.core.exporters.cloudcontrol.resource.scope import CloudControlResourceScope
+from aws.core.exporters.cloud_control_scope import CloudControlResourceScope
 from aws.core.modeling.resource_models import (
     BaseAWSPropertiesModel,
     ResourceModel,
@@ -25,18 +25,15 @@ class CloudControlResource(ResourceModel[CloudControlResourceProperties]):
 
 class SingleCloudControlResourceRequest(ResourceRequestModel):
     type_name: str = Field(
-        ...,
         description="CloudFormation type name to fetch, e.g. AWS::IAM::Role",
     )
     identifier: str = Field(
-        ...,
         description="Cloud Control identifier of the resource to fetch",
     )
 
 
 class PaginatedCloudControlResourceRequest(ResourceRequestModel):
     type_name: str = Field(
-        ...,
         description="CloudFormation type name to list, e.g. AWS::IAM::Role",
     )
     use_get_resource_api: bool = Field(
@@ -44,6 +41,6 @@ class PaginatedCloudControlResourceRequest(ResourceRequestModel):
         description="When True, hydrate each listed identifier with GetResource",
     )
     resource_scope: CloudControlResourceScope = Field(
-        default="auto",
+        default=CloudControlResourceScope.AUTO,
         description="Whether this Cloud Control type is regional, global, or inferred",
     )

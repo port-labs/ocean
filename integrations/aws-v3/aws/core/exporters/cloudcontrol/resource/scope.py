@@ -1,6 +1,4 @@
-from typing import Literal
-
-CloudControlResourceScope = Literal["auto", "regional", "global"]
+from aws.core.exporters.cloud_control_scope import CloudControlResourceScope
 
 CLOUD_CONTROL_GLOBAL_SERVICES: frozenset[str] = frozenset(
     {
@@ -29,8 +27,8 @@ def resolve_cloud_control_is_regional(
     resource_scope: CloudControlResourceScope,
 ) -> bool:
     """Resolve ``auto`` / ``regional`` / ``global`` into whether resync is regional."""
-    if resource_scope == "global":
+    if resource_scope == CloudControlResourceScope.GLOBAL:
         return False
-    if resource_scope == "regional":
+    if resource_scope == CloudControlResourceScope.REGIONAL:
         return True
     return not is_cloud_control_global_kind(type_name)

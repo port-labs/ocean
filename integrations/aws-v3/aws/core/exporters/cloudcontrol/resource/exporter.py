@@ -73,7 +73,7 @@ class CloudControlExporter(IResourceExporter[CloudControlActionInput]):
                     ],
                     type_name=options.type_name,
                 ),
-                [],
+                include=options.include,
                 extra_context={
                     "AccountId": options.account_id,
                     "Region": options.region,

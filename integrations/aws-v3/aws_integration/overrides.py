@@ -2,6 +2,8 @@ from typing import ClassVar, List, Literal
 
 from pydantic.v1 import BaseModel, Field
 
+from aws.core.exporters.cloud_control_scope import CloudControlResourceScope
+
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -433,9 +435,9 @@ class AWSCustomKindSelector(AWSRegionPolicySelector):
         "resource details instead of relying solely on list results. This makes an additional "
         "API call per resource, which may increase latency and consume more API rate limit quota.",
     )
-    resource_scope: Literal["auto", "regional", "global"] = Field(
+    resource_scope: CloudControlResourceScope = Field(
         alias="resourceScope",
-        default="auto",
+        default=CloudControlResourceScope.AUTO,
         title="Resource Scope",
         description="Whether this Cloud Control type is regional, global, or should be inferred "
         "automatically during sync.",
