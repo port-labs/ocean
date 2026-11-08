@@ -137,6 +137,35 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             yield result
             offset += page_size
 
+    async def _paginate_by_search_cursor(
+        self,
+        url: str,
+        *,
+        data_key: str = "data",
+        page_size: int = MAX_PAGE_SIZE,
+        extra_body: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Cursor-based pagination for POST search endpoints. Sends the previous
+        response's meta.page.after as page.cursor until empty or no next cursor."""
+        cursor: str | None = None
+        while True:
+            page: dict[str, Any] = {"limit": page_size}
+            if cursor:
+                page["cursor"] = cursor
+            body: dict[str, Any] = {**(extra_body or {}), "page": page}
+            result = await self.client.send_api_request(
+                url, json_data=body, method="POST"
+            )
+
+            items = result.get(data_key, [])
+            if not items:
+                break
+
+            yield items
+            cursor = result.get("meta", {}).get("page", {}).get("after")
+            if not cursor:
+                break
+
 
 class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
     """Mixin for exporters that support single resource fetching."""

@@ -4,6 +4,7 @@ from typing import Callable, cast
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
@@ -102,10 +103,16 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
+@ocean.on_incremental_resync(ObjectKind.USER)
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sync_cursor = active_incremental_cursor()
     async for users in _resync_across_orgs(
-        lambda client: UserExporter(client).get_paginated_resources(),
+        lambda client: (
+            UserExporter(client).get_paginated_resources()
+            if sync_cursor is None
+            else UserExporter(client).get_changed_users(since=sync_cursor)
+        ),
         context="User exporter",
     ):
         yield users
