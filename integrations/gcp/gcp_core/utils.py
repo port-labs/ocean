@@ -131,6 +131,7 @@ class AssetTypesWithSpecialHandling(enum.StrEnum):
     FOLDER = "cloudresourcemanager.googleapis.com/Folder"
     CLOUD_RESOURCE = "cloudResource"
     CLOUD_FUNCTION = "gcpCloudFunction"
+    IAM_POLICY = "iamPolicy"
 
 
 def get_current_resource_config() -> (
@@ -225,6 +226,10 @@ async def get_quotas_for_project(
                 )
                 return (topic_rate_limiter, topic_semaphore)
             case _:
+                # shortcut: iamPolicy shares the SearchAllResources limiter, and its logs name that
+                # quota id, though SearchAllIamPolicies is a separate bucket - same 400/min per project
+                # today, 3000 vs 1500 per org. Give it its own quota class once GCP publishes a quota id
+                # for it, or at organization container scope.
                 asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
                     project_id
                 )

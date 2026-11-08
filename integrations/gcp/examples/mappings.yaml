@@ -19,3 +19,28 @@ resources:
             filter: .filter
           relations:
             project: .__project.name
+  - kind: iamPolicy
+    selector:
+      query: "true"
+      # One search per project covers every type listed here. Map each of them as a
+      # gcpCloudResource too, or the cloudResource relation below creates stub entities.
+      # Exception: cloudresourcemanager.googleapis.com/Project grants are project-level and
+      # carried by the project relation - .resource holds the project id, gcpProject the number.
+      assetTypes:
+        - iam.googleapis.com/ServiceAccount
+    port:
+      itemsToParse: '(.policy.bindings // []) | map(. as $b | $b.members[] | {role: $b.role, member: ., condition: $b.condition})'
+      entity:
+        mappings:
+          identifier: '(.resource + "|" + .item.role + "|" + .item.member + ((.item.condition // {}) | tojson)) | @base64'
+          title: '.item.member + " -> " + .item.role + " on " + (.resource | split("/") | last)'
+          blueprint: '"gcpIamPolicyBinding"'
+          properties:
+            role: .item.role
+            member: .item.member
+            resource: .resource
+            assetType: .asset_type
+            condition: .item.condition
+          relations:
+            project: .project
+            cloudResource: .resource

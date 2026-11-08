@@ -115,6 +115,69 @@ async def search_all_resources_in_project(
             )
 
 
+async def search_all_iam_policies_per_project(
+    project: dict[str, Any],
+    asset_types: list[str],
+    semaphore: BoundedSemaphore,
+    policy_query: str | None = None,
+    **kwargs: Any,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Search the explicit IAM allow policies the caller has ``cloudasset.assets.searchAllIamPolicies``
+    permission on within the project's scope. `asset_types` is a repeated request field, so every
+    mapped asset type is covered by a single search per project.
+
+    `PermissionDenied` is deliberately NOT swallowed here, unlike `search_all_resources_in_project`:
+    grants drive deletion in Port, so yielding nothing on a failed lookup would make Ocean reconcile
+    away every grant entity it holds for the project while reporting the resync successful.
+    `iterate_per_available_project` defers the error so sibling projects still sync, but a deferred error
+    stops Ocean's delete phase for every kind in the config, not just this one (`_resync_reconciliation`
+    sums errors across all resources), so the permission has to hold on every project in scope.
+    """
+    async with semaphore:
+        project_name = project["name"]
+        logger.info(
+            f"Searching IAM policies for {asset_types} in project {project_name}"
+        )
+
+        request: dict[str, Any] = {
+            "scope": project_name,
+            "asset_types": asset_types,
+        }
+        if policy_query:
+            request["query"] = policy_query
+
+        async_assets_client = get_asset_client()
+        try:
+            async for policies in paginated_query(
+                async_assets_client,
+                "search_all_iam_policies",
+                request,
+                lambda response: parse_protobuf_messages(response.results),
+                kwargs.get("rate_limiter"),
+            ):
+                yield policies
+        except NotFound as e:
+            logger.info(
+                f"Couldn't perform search_all_iam_policies on project {project_name} since it's deleted. Error: {str(e)}"
+            )
+        except PermissionDenied as e:
+            logger.error(
+                f"Service account doesn't have permissions to search IAM policies within project {project_name}. "
+                f"Grant cloudasset.assets.searchAllIamPolicies on every project in scope. Error: {str(e.message)}"
+            )
+            raise
+        except Exception:
+            logger.exception(
+                f"Unexpected error while searching IAM policies for {asset_types} in project {project_name}"
+            )
+            raise
+        else:
+            logger.info(
+                f"Successfully searched all IAM policies within project {project_name}"
+            )
+
+
 async def list_all_topics_per_project(
     project: dict[str, Any], **kwargs: Any
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
