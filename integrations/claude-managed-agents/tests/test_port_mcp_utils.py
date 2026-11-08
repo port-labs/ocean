@@ -59,7 +59,7 @@ def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
     )
 
     with patch(
-        "actions.port_mcp_utils.ocean",
+        "claude_managed_agents.actions.port_mcp_utils.ocean",
         SimpleNamespace(config=SimpleNamespace(port=SimpleNamespace(mcp_url=port))),
     ):
         assert not _agent_has_mcp_url(port, servers)
@@ -208,8 +208,8 @@ async def test_ensure_port_mcp_binding_creates_vault_and_credential() -> None:
     mock_ocean = mock_ocean_with_client_secret()
 
     with (
-        patch("actions.port_mcp_utils.ocean", mock_ocean),
-        patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+        patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
     ):
         vault = await get_or_create_mcp_vault(client, "port-mcp-user@example.com")
         binding = await ensure_port_mcp_credential(
@@ -277,8 +277,8 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
     mock_ocean = mock_ocean_with_client_secret()
 
     with (
-        patch("actions.port_mcp_utils.ocean", mock_ocean),
-        patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+        patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
     ):
         vault = await get_or_create_mcp_vault(client, "port-mcp-user@example.com")
         binding = await ensure_port_mcp_credential(
@@ -387,8 +387,8 @@ async def test_ensure_port_mcp_binding_creates_virtual_credentials() -> None:
     mock_ocean = mock_ocean_with_client_secret()
 
     with (
-        patch("actions.port_mcp_utils.ocean", mock_ocean),
-        patch("actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+        patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
     ):
         vault = await get_or_create_mcp_vault(client, "vault")
         bindings = [

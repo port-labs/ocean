@@ -74,9 +74,9 @@ async def test_cancel_session_interrupts_running_session() -> None:
 
     run = cancel_run()
     with (
-        patch("actions.cancel_session_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.cancel_session_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
     ):
         await executor.execute(run)
 
@@ -100,9 +100,9 @@ async def test_cancel_session_forwards_session_thread_id() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.cancel_session_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.cancel_session_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
     ):
         await executor.execute(cancel_run(sessionThreadId="thr_1"))
 
@@ -119,8 +119,8 @@ async def test_cancel_session_rejects_non_running_session(status: str) -> None:
 
     mock_ocean = build_mock_ocean()
     with (
-        patch("actions.cancel_session_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.cancel_session_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
     ):
         with pytest.raises(ActionExecutionError) as exc_info:
             await executor.execute(cancel_run())
@@ -138,8 +138,8 @@ async def test_cancel_session_wraps_upstream_failure() -> None:
 
     mock_ocean = build_mock_ocean()
     with (
-        patch("actions.cancel_session_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.cancel_session_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
     ):
         with pytest.raises(ActionExecutionError, match="boom"):
             await executor.execute(cancel_run())
@@ -161,9 +161,9 @@ async def test_cancel_session_sets_workflow_node_outputs() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.cancel_session_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.cancel_session_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
     ):
         await executor.execute(run)
 

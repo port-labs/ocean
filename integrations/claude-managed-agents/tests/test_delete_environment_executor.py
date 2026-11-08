@@ -33,9 +33,9 @@ async def test_delete_environment_executor_deletes_and_completes() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.delete_environment_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.delete_environment_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
     ):
         await executor.execute(run)
 
@@ -65,9 +65,9 @@ async def test_delete_environment_executor_reports_failure_on_api_error() -> Non
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.delete_environment_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.delete_environment_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
     ):
         with pytest.raises(ActionExecutionError, match="env not found"):
             await executor.execute(run)
@@ -94,9 +94,9 @@ async def test_delete_environment_executor_posts_warn_log_when_catalog_deregiste
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.delete_environment_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.delete_environment_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
     ):
         await executor.execute(run)
 

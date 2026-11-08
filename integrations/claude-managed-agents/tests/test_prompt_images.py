@@ -84,7 +84,7 @@ def png(data: str, mime: str = "image/png") -> httpx.Response:
 async def test_the_link_becomes_a_label_and_the_image_follows_the_prompt() -> None:
     mock_ocean = port_client_answering(png("AAA"))
 
-    with patch("actions.prompt_images.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.prompt_images.ocean", mock_ocean):
         loaded = await load_prompt_images(
             f'{{"screenshot": "![the page]({ASSETS}/a.png)"}}'
         )
@@ -108,7 +108,7 @@ async def test_the_link_becomes_a_label_and_the_image_follows_the_prompt() -> No
 async def test_a_link_used_twice_is_one_image_with_one_label() -> None:
     mock_ocean = port_client_answering(png("AAA"))
 
-    with patch("actions.prompt_images.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.prompt_images.ocean", mock_ocean):
         loaded = await load_prompt_images(f"{ASSETS}/a.png and again {ASSETS}/a.png")
 
     assert loaded.prompt == "[Image 1] and again [Image 1]"
@@ -126,7 +126,7 @@ async def test_an_image_that_cannot_be_loaded_is_labeled_and_the_others_are_kept
         png("CCC", "image/svg+xml"),
     )
 
-    with patch("actions.prompt_images.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.prompt_images.ocean", mock_ocean):
         loaded = await load_prompt_images(
             f"![gone]({ASSETS}/gone.png) ![b]({ASSETS}/b.jpg) ![c]({ASSETS}/c.svg)"
         )
@@ -145,7 +145,7 @@ async def test_an_image_that_cannot_be_loaded_is_labeled_and_the_others_are_kept
 async def test_a_prompt_without_images_is_left_as_it_is_and_makes_no_request() -> None:
     mock_ocean = port_client_answering()
 
-    with patch("actions.prompt_images.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.prompt_images.ocean", mock_ocean):
         loaded = await load_prompt_images("fix the bug")
 
     assert loaded.prompt == "fix the bug"
@@ -159,7 +159,7 @@ async def test_images_over_the_limit_are_not_fetched_and_are_labeled() -> None:
     mock_ocean = port_client_answering(*[png("AAA")] * MAX_PROMPT_IMAGES)
     prompt = " ".join(f"{ASSETS}/{i}.png" for i in range(count))
 
-    with patch("actions.prompt_images.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.prompt_images.ocean", mock_ocean):
         loaded = await load_prompt_images(prompt)
 
     assert mock_ocean.port_client.client.get.await_count == MAX_PROMPT_IMAGES
@@ -188,7 +188,7 @@ async def test_images_are_fetched_a_few_at_a_time() -> None:
     mock_ocean.port_client.client.get = AsyncMock(side_effect=answer)
     prompt = " ".join(f"{ASSETS}/{i}.png" for i in range(MAX_PROMPT_IMAGES))
 
-    with patch("actions.prompt_images.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.prompt_images.ocean", mock_ocean):
         loaded = await load_prompt_images(prompt)
 
     assert loaded.failed == []

@@ -74,7 +74,7 @@ async def test_normalize_session_config_injects_github_pat() -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {"github_authorization_token": "ghp_test"}
 
-    with patch("actions.utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
         api_config = await normalize_session_config(
             {
                 "resources": [
@@ -91,7 +91,7 @@ async def test_normalize_session_config_requires_github_pat() -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {}
 
-    with patch("actions.utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
         with pytest.raises(ActionExecutionError, match="github_authorization_token"):
             await normalize_session_config(
                 {
@@ -110,7 +110,7 @@ async def test_normalize_session_config_skips_repos_with_existing_token() -> Non
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {}
 
-    with patch("actions.utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
         api_config = await normalize_session_config(
             {
                 "resources": [
