@@ -268,7 +268,7 @@ integrations/{integration-name}/
 │   └── {kind}/
 │       └── a.json
 ├── .port/
-│   ├── spec.yaml              # Integration metadata, configs, features
+│   ├── spec.json              # Integration metadata, configs, features
 │   └── resources/
 │       ├── blueprints.json    # Default Port blueprints
 │       ├── port-app-config.yml # Default mappings
@@ -440,8 +440,8 @@ class ClientFactory:
     @classmethod
     def get_client(cls) -> ServiceClient:
         if ServiceClient not in cls._instances:
-            # Config keys come from spec.yaml (camelCase there, snake_case here)
-            # Example: serviceUrl in spec.yaml -> ocean.integration_config["service_url"]
+            # Config keys come from spec.json (camelCase there, snake_case here)
+            # Example: serviceUrl in spec.json -> ocean.integration_config["service_url"]
             cls._instances[ServiceClient] = ServiceClient(
                 base_url=ocean.integration_config["service_url"],
                 api_token=ocean.integration_config["service_token"],
@@ -616,7 +616,7 @@ The generated structure at `integrations/{name}/` includes:
 - `main.py` - Empty handlers to fill in
 - `integration.py` - Base integration class
 - `pyproject.toml` - Dependencies (add `aiolimiter` here)
-- `.port/spec.yaml` - Metadata to customize
+- `.port/spec.json` - Metadata to customize
 - `.port/resources/` - Blueprints and mappings to create
 
 Continue from this generated scaffold rather than creating files from scratch.
@@ -761,41 +761,60 @@ The `.port/` directory contains configurations that are **automatically provisio
 
 | File | Purpose | Provisioned? |
 |------|---------|--------------|
-| `spec.yaml` | Integration metadata, config fields, features | Yes (required) |
+| `spec.json` | Integration metadata, config fields, features | Yes (required) |
 | `resources/blueprints.json` | Default blueprint definitions | Yes |
 | `resources/port-app-config.yml` | Default resource mappings | Yes |
 
 Note: Examples live in `{integration_name}/examples/`, NOT in `.port/`.
 
-### Step 4.1: spec.yaml Structure
+### Step 4.1: spec.json Structure
 
-```yaml
-title: {Service Name}
-description: {Service name} integration for Port Ocean
-icon: {IconName}
-docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/{category}/{integration}
-features:
-  - type: exporter
-    section: {Category}  # e.g., Security, Git Providers, Cloud
-    resources:
-      - kind: {kind-1}
-      - kind: {kind-2}
-configurations:
-  - name: {serviceName}BaseUrl  # camelCase
-    required: false
-    default: https://api.service.com
-    type: url
-    description: Base URL for the API
-  - name: {serviceName}ApiKey
-    required: true
-    type: string
-    sensitive: true
-    description: API key for authentication
-saas:
-  enabled: true
-  liveEvents:
-    enabled: {true if webhooks implemented}
+```json
+{
+  "title": "{Service Name}",
+  "description": "{Service name} integration for Port Ocean",
+  "icon": "{IconName}",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/{category}/{integration}",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "{Category}",
+      "resources": [
+        { "kind": "{kind-1}" },
+        { "kind": "{kind-2}" }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "{serviceName}BaseUrl",
+      "required": false,
+      "default": "https://api.service.com",
+      "type": "url",
+      "description": "Base URL for the API"
+    },
+    {
+      "name": "{serviceName}ApiKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "API key for authentication"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    }
+  }
+}
 ```
+
+JSON has no comments, so the hints go here:
+- `section` is the catalog category, for example Security, Git Providers or Cloud.
+- Configuration names are camelCase.
+- Set `saas.liveEvents.enabled` to `true` only when webhooks are implemented.
+- Keep the spec in `.port/spec.json`, as every integration does: Ocean reads `spec.json` first and ignores a `spec.yaml` next to it.
 
 ### Step 4.2: Selectors and BaseModels per Kind
 
@@ -820,7 +839,7 @@ class ResourceSelector(BaseModel):
 **Design principles:**
 - **OOTB defaults should be fast** - Flags that 10x data volume default to `False`
 - **Document impact** - Describe what each flag does and its performance cost
-- **Expose in spec.yaml** - Make selectors configurable via integration config
+- **Expose in spec.json** - Make selectors configurable via integration config
 - **Use in exporters** - Pass selector options to `get_paginated_resources()`
 
 Example usage in exporter:
@@ -883,7 +902,7 @@ Documentation should cover:
    - How to obtain credentials (step-by-step)
 
 2. **Configuration**
-   - Each config field from spec.yaml with description
+   - Each config field from spec.json with description
    - Example values
    - Sensitive field handling
 

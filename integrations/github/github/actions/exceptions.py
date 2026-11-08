@@ -49,6 +49,10 @@ class ReviewPullRequestError(PullRequestActionError):
     DEFAULT_STATUS_LABEL = "Review failed"
 
 
+class RefreshPullRequestsError(PullRequestActionError):
+    DEFAULT_STATUS_LABEL = "Refresh failed"
+
+
 class CommentActionError(ActionExecutionError):
     @classmethod
     def from_response(cls, response: httpx.Response, prefix: str) -> Self:

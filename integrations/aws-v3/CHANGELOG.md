@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.2.2 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
+## 3.2.1 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
+## 3.2.0 (2026-11-05)
+
+
+### Features
+
+- Added the opt-in `regionalBucketDiscovery` selector for `AWS::S3::Bucket`. When enabled, buckets are listed per region using the ListBuckets `BucketRegion` filter (limited to `regionPolicy` when set) and each bucket is processed through its own regional endpoint. Default behavior is unchanged.
+
+
+## 3.1.23 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
 ## 3.1.22 (2026-11-04)
 
 

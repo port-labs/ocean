@@ -304,6 +304,9 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     execution_identity: ResolvedExecutionIdentity | None = Field(
         default=None, alias="executionIdentity"
     )
+    encrypted_properties: list[str] | None = Field(
+        default=None, alias="encryptedProperties"
+    )
 
     @root_validator(skip_on_failure=True)
     def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:
