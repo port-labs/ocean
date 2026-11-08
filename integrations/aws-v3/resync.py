@@ -336,8 +336,8 @@ def build_resync_service_kwargs(
         return None
 
     custom_config = cast(AWSCustomKindResourceConfig, resource_config)
-    selector = custom_config.selector
-    regional = resolve_cloud_control_is_regional(kind, selector.resource_scope)
+    custom_selector = custom_config.selector
+    regional = resolve_cloud_control_is_regional(kind, custom_selector.resource_scope)
     logger.info(
         f"Resyncing custom Cloud Control kind {kind} using "
         f"{'regional' if regional else 'global'} scope strategy"
@@ -349,8 +349,8 @@ def build_resync_service_kwargs(
         "regional": regional,
         "request_extras": {
             "type_name": kind,
-            "use_get_resource_api": selector.use_get_resource_api,
-            "resource_scope": selector.resource_scope,
+            "use_get_resource_api": custom_selector.use_get_resource_api,
+            "resource_scope": custom_selector.resource_scope,
         },
     }
 
