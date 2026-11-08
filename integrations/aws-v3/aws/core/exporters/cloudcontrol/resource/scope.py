@@ -1,7 +1,6 @@
 from typing import Literal
 
 CloudControlResourceScope = Literal["auto", "regional", "global"]
-ResolvedCloudControlResourceScope = Literal["regional", "global"]
 
 CLOUD_CONTROL_GLOBAL_SERVICES: frozenset[str] = frozenset(
     {
@@ -27,13 +26,13 @@ def is_cloud_control_global_kind(type_name: str) -> bool:
     return parts[1].lower() in CLOUD_CONTROL_GLOBAL_SERVICES
 
 
-def resolve_cloud_control_resource_scope(
+def resolve_cloud_control_is_regional(
     type_name: str,
     resource_scope: CloudControlResourceScope,
-) -> ResolvedCloudControlResourceScope:
-    """Resolve ``auto`` / ``regional`` / ``global`` into a concrete scope."""
+) -> bool:
+    """Resolve ``auto`` / ``regional`` / ``global`` into whether resync is regional."""
     if resource_scope == "global":
-        return "global"
+        return False
     if resource_scope == "regional":
-        return "regional"
-    return "global" if is_cloud_control_global_kind(type_name) else "regional"
+        return True
+    return not is_cloud_control_global_kind(type_name)

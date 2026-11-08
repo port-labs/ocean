@@ -1,10 +1,10 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Type
 
-from aws.core.exporters.cloudcontrol.resource.properties import (
-    parse_cloud_control_properties,
+from aws.core.helpers.utils import (
+    execute_concurrent_aws_operations,
+    parse_json_object_dict,
 )
-from aws.core.helpers.utils import execute_concurrent_aws_operations
 from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 
 GET_RESOURCE_CONCURRENCY_LIMIT = 10
@@ -13,7 +13,7 @@ GET_RESOURCE_CONCURRENCY_LIMIT = 10
 @dataclass
 class CloudControlResourceIdentifier:
     identifier: str
-    properties: dict[str, Any] = field(default_factory=dict)
+    properties: dict[str, Any]
 
 
 @dataclass
@@ -40,7 +40,14 @@ class GetResourceAction(Action[CloudControlActionInput]):
         async def fetch_resource(
             item: CloudControlResourceIdentifier,
         ) -> dict[str, Any]:
-            return await self._fetch_resource(type_name, item)
+            response = await self.client.get_resource(
+                TypeName=type_name, Identifier=item.identifier
+            )
+            description = response["ResourceDescription"]
+            return {
+                **parse_json_object_dict(description.get("Properties")),
+                "Identifier": description.get("Identifier", item.identifier),
+            }
 
         return await execute_concurrent_aws_operations(
             input_items=resources.items,
@@ -49,17 +56,6 @@ class GetResourceAction(Action[CloudControlActionInput]):
             operation_name="Cloud Control GetResource",
             concurrency_limit=GET_RESOURCE_CONCURRENCY_LIMIT,
         )
-
-    async def _fetch_resource(
-        self, type_name: str, item: CloudControlResourceIdentifier
-    ) -> dict[str, Any]:
-        response = await self.client.get_resource(
-            TypeName=type_name, Identifier=item.identifier
-        )
-        description = response["ResourceDescription"]
-        properties = parse_cloud_control_properties(description.get("Properties"))
-        identifier = description.get("Identifier", item.identifier)
-        return {**properties, "Identifier": identifier}
 
 
 class CloudControlActionsMap(ActionMap[CloudControlActionInput]):

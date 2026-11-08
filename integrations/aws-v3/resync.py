@@ -18,7 +18,7 @@ from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.cloudcontrol import (
     CloudControlExporter,
     PaginatedCloudControlResourceRequest,
-    resolve_cloud_control_resource_scope,
+    resolve_cloud_control_is_regional,
 )
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
@@ -304,16 +304,17 @@ async def resync_cloud_control_custom_kind(
     resource_config: AWSCustomKindResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = resource_config.selector
-    scope = resolve_cloud_control_resource_scope(kind, selector.resource_scope)
+    regional = resolve_cloud_control_is_regional(kind, selector.resource_scope)
     logger.info(
-        f"Resyncing custom Cloud Control kind {kind} using {scope} scope strategy"
+        f"Resyncing custom Cloud Control kind {kind} using "
+        f"{'regional' if regional else 'global'} scope strategy"
     )
 
     async for batch in ResyncAWSService(
         kind=kind,
         exporter_cls=CloudControlExporter,
         request_cls=PaginatedCloudControlResourceRequest,
-        regional=scope == "regional",
+        regional=regional,
         request_extras={
             "type_name": kind,
             "use_get_resource_api": selector.use_get_resource_api,

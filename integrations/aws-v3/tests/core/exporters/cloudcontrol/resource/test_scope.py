@@ -1,6 +1,6 @@
 from aws.core.exporters.cloudcontrol.resource.scope import (
     is_cloud_control_global_kind,
-    resolve_cloud_control_resource_scope,
+    resolve_cloud_control_is_regional,
 )
 
 
@@ -19,15 +19,8 @@ def test_is_cloud_control_global_kind_for_regional_and_invalid() -> None:
     assert is_cloud_control_global_kind("") is False
 
 
-def test_resolve_cloud_control_resource_scope_explicit_and_auto() -> None:
-    assert (
-        resolve_cloud_control_resource_scope("AWS::EC2::Instance", "global") == "global"
-    )
-    assert resolve_cloud_control_resource_scope("AWS::IAM::Role", "regional") == (
-        "regional"
-    )
-    assert resolve_cloud_control_resource_scope("AWS::IAM::Role", "auto") == "global"
-    assert (
-        resolve_cloud_control_resource_scope("AWS::Lambda::Function", "auto")
-        == "regional"
-    )
+def test_resolve_cloud_control_is_regional_explicit_and_auto() -> None:
+    assert resolve_cloud_control_is_regional("AWS::EC2::Instance", "global") is False
+    assert resolve_cloud_control_is_regional("AWS::IAM::Role", "regional") is True
+    assert resolve_cloud_control_is_regional("AWS::IAM::Role", "auto") is False
+    assert resolve_cloud_control_is_regional("AWS::Lambda::Function", "auto") is True

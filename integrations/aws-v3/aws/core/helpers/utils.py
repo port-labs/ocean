@@ -1,3 +1,4 @@
+import json
 from typing import Any, Callable, Awaitable, TypeVar, cast
 from aiobotocore.session import AioSession
 from aws.auth.region_resolver import RegionResolver
@@ -6,6 +7,26 @@ import asyncio
 from botocore.exceptions import ClientError
 
 T = TypeVar("T")
+
+
+def parse_json_object_dict(raw: Any) -> dict[str, Any]:
+    """Parse JSON (or pass through a dict) into a ``dict[str, Any]``.
+
+    Invalid, missing, or non-object payloads yield an empty dict so callers
+    can tolerate per-item parse failures without failing a batch.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, str) or not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Failed to parse JSON object, using empty dict")
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return parsed
 
 
 def require_aws_resource(

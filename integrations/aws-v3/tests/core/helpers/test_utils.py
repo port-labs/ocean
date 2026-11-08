@@ -1,6 +1,8 @@
 from typing import Any
 
 import asyncio
+import json
+
 import pytest
 from botocore.exceptions import ClientError
 
@@ -8,6 +10,7 @@ from aws.core.helpers.utils import (
     execute_concurrent_aws_operations,
     is_recoverable_aws_exception,
     is_throttling_exception,
+    parse_json_object_dict,
     require_aws_resource,
 )
 
@@ -213,3 +216,21 @@ class TestRequireAwsResource:
             )
 
         assert exc_info.value.response["Error"]["Code"] == "ClusterNotFoundException"
+
+
+def test_parse_json_object_dict_from_json_string() -> None:
+    parsed = parse_json_object_dict('{"RoleName": "admin", "Path": "/"}')
+    assert parsed == {"RoleName": "admin", "Path": "/"}
+
+
+def test_parse_json_object_dict_from_dict() -> None:
+    payload = {"RoleName": "admin"}
+    assert parse_json_object_dict(payload) is payload
+
+
+def test_parse_json_object_dict_empty_and_invalid() -> None:
+    assert parse_json_object_dict(None) == {}
+    assert parse_json_object_dict("") == {}
+    assert parse_json_object_dict("[]") == {}
+    assert parse_json_object_dict("{not-json") == {}
+    assert parse_json_object_dict(json.dumps(["not", "an", "object"])) == {}

@@ -14,11 +14,11 @@ from aws.core.exporters.cloudcontrol.resource.models import (
     PaginatedCloudControlResourceRequest,
     SingleCloudControlResourceRequest,
 )
-from aws.core.exporters.cloudcontrol.resource.properties import (
-    parse_cloud_control_properties,
-)
 from aws.core.helpers.types import SupportedServices
-from aws.core.helpers.utils import is_cloud_control_type_unavailable_exception
+from aws.core.helpers.utils import (
+    is_cloud_control_type_unavailable_exception,
+    parse_json_object_dict,
+)
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -59,7 +59,7 @@ class CloudControlExporter(IResourceExporter[CloudControlActionInput]):
                 Identifier=options.identifier,
             )
             description = response["ResourceDescription"]
-            properties = parse_cloud_control_properties(description.get("Properties"))
+            properties = parse_json_object_dict(description.get("Properties"))
             identifier = description.get("Identifier", options.identifier)
 
             inspector = self._inspector(proxy.client, options.type_name)
@@ -98,7 +98,7 @@ class CloudControlExporter(IResourceExporter[CloudControlActionInput]):
                     items = [
                         CloudControlResourceIdentifier(
                             identifier=resource.get("Identifier", ""),
-                            properties=parse_cloud_control_properties(
+                            properties=parse_json_object_dict(
                                 resource.get("Properties")
                             ),
                         )
