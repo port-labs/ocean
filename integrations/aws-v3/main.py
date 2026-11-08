@@ -104,11 +104,7 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 
 @ocean.on_resync()
 async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_config = event.resource_config
-    if resource_config is None:
-        return
-
     async for batch in resync_from_resource_config(
-        kind, cast(AWSResourceConfig, resource_config)
+        kind, cast(AWSResourceConfig, event.resource_config)
     ):
         yield batch
