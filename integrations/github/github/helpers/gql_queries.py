@@ -1,4 +1,5 @@
-from collections.abc import Iterable
+import json
+from collections.abc import Iterable, Mapping
 
 from github.core.options import PullRequestGraphQLOptions
 
@@ -563,6 +564,81 @@ query PullRequestDetails(
     pullRequest(number: $prNumber) {{
 {generate_pr_fields(options, extra_excluded_fields, include_required_fields)}
     }}
+  }}
+}}
+"""
+
+
+REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE = 100
+
+
+def _pr_required_checks_selection(pr_number: int, after: str | None) -> str:
+    # isRequired takes the PR as an inline argument, so the selection cannot be a
+    # shared fragment.
+    after_argument = f", after: {json.dumps(after)}" if after else ""
+    return f"""
+      number
+      headRefOid
+      baseRef {{
+        refUpdateRule {{
+          requiredStatusCheckContexts
+        }}
+      }}
+      commits(last: 1) {{
+        nodes {{
+          commit {{
+            oid
+            statusCheckRollup {{
+              contexts(first: {REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE}{after_argument}) {{
+                pageInfo {{
+                  hasNextPage
+                  endCursor
+                }}
+                nodes {{
+                  __typename
+                  ... on CheckRun {{
+                    name
+                    status
+                    conclusion
+                    isRequired(pullRequestNumber: {pr_number})
+                  }}
+                  ... on StatusContext {{
+                    context
+                    state
+                    isRequired(pullRequestNumber: {pr_number})
+                  }}
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}"""
+
+
+def required_checks_alias(pr_number: int) -> str:
+    return f"pr_{pr_number}"
+
+
+def generate_pull_requests_required_checks_gql(
+    cursors_by_pr_number: Mapping[int, str | None],
+) -> str:
+    """One aliased pullRequest selection per PR, each reading a page of its check contexts.
+
+    ``cursors_by_pr_number`` maps a PR number to the contexts cursor to continue from
+    (``None`` for the first page).
+    """
+    selections = "\n".join(
+        f"""    {required_checks_alias(number)}: pullRequest(number: {number}) {{
+{_pr_required_checks_selection(number, after)}
+    }}""" for number, after in cursors_by_pr_number.items()
+    )
+    return f"""
+query PullRequestsRequiredChecks(
+  $organization: String!,
+  $repo: String!
+) {{
+  repository(owner: $organization, name: $repo) {{
+{selections}
   }}
 }}
 """
