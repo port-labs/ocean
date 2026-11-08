@@ -38,6 +38,9 @@ def agent_id_from_response(response: dict[str, Any]) -> str | None:
 
 
 def model_deployment_id_from_response(response: dict[str, Any]) -> str | None:
+    direct = response.get("model_deployment_id")
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
     model = response.get("model")
     if isinstance(model, str) and model.strip():
         return model.strip()
@@ -61,6 +64,11 @@ def normalize_foundry_response(source: dict[str, Any]) -> dict[str, Any] | None:
     usage = source.get("usage")
     if isinstance(usage, dict):
         merge_usage_into_row(row, usage)
+    else:
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            value = source.get(key)
+            if value is not None and key not in row:
+                row[key] = int(value)
     tool_calls = count_tool_calls_in_response(source)
     if tool_calls:
         row["tool_call_count"] = tool_calls

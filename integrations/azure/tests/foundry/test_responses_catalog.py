@@ -7,6 +7,25 @@ def test_agent_id_from_response_agent_dict() -> None:
     )
 
 
+def test_normalize_foundry_response_flat_list_fields() -> None:
+    row = normalize_foundry_response(
+        {
+            "id": "resp_list",
+            "conversation_id": "conv_1",
+            "status": "completed",
+            "created_at": "2026-11-05T09:49:58+00:00",
+            "prompt_tokens": 8,
+            "completion_tokens": 10,
+            "total_tokens": 18,
+            "model_deployment_id": "gpt-4o-mini",
+        }
+    )
+    assert row is not None
+    assert row["prompt_tokens"] == 8
+    assert row["model_deployment_id"] == "gpt-4o-mini"
+    assert "tool_call_count" not in row
+
+
 def test_normalize_foundry_response() -> None:
     row = normalize_foundry_response(
         {

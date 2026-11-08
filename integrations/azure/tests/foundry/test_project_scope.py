@@ -26,6 +26,10 @@ def test_enrich_with_project_adds_metadata() -> None:
     assert enriched["id"] == "agent-1"
     assert enriched["name"] == "demo"
     assert (
-        enriched["foundryProjectEndpoint"]
+        enriched["__foundryProjectEndpoint"]
         == "https://acct.services.ai.azure.com/api/projects/demo"
+    )
+    assert enriched["__foundryProjectId"] == (
+        "/subscriptions/sub/resourceGroups/rg/providers/"
+        "Microsoft.CognitiveServices/accounts/acct/projects/demo"
     )

@@ -12,6 +12,7 @@ from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.clients.client_factory import create_arm_deployments_client, create_foundry_client, create_project_connections_client
+from azure_integration.foundry.discovery import resolve_project_by_endpoint
 from azure_integration.foundry.helpers.catalog_sync import catalog_delete_stub, normalize_catalog_payload
 from azure_integration.foundry.helpers.project_scope import (
     enrich_with_project,
@@ -23,7 +24,7 @@ from azure_integration.foundry.kinds import ObjectKind
 
 def _project_endpoint_from_run(run: IntegrationRun) -> str:
     props = run.execution_properties or {}
-    endpoint = props.get("projectEndpoint") or props.get("foundryProjectEndpoint")
+    endpoint = props.get("projectEndpoint")
     if isinstance(endpoint, str) and endpoint.strip():
         return endpoint.rstrip("/")
     raise ActionExecutionError(
@@ -48,7 +49,16 @@ class AbstractFoundryExecutor(AbstractExecutor):
         return 0.0
 
     async def execute(self, run: IntegrationRun) -> None:
-        with project_endpoint_context(_project_endpoint_from_run(run)):
+        endpoint = _project_endpoint_from_run(run)
+        project_arm_id: str | None = None
+        try:
+            project_arm_id = (await resolve_project_by_endpoint(endpoint)).project_arm_id
+        except ValueError:
+            logger.warning(
+                f"No discovered Foundry project for endpoint {endpoint}; "
+                "catalog upserts may miss foundryProject relation"
+            )
+        with project_endpoint_context(endpoint, project_arm_id=project_arm_id):
             await self.execute_foundry(run)
 
     @abstractmethod

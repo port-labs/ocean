@@ -100,7 +100,8 @@
       "properties": {
         "endpoint": {
           "title": "Project endpoint",
-          "type": "string"
+          "type": "string",
+          "format": "url"
         },
         "accountName": {
           "title": "Account name",
@@ -248,10 +249,6 @@
           "format": "date-time",
           "title": "Updated at",
           "description": "When the agent was last updated, if reported."
-        },
-        "foundryProjectEndpoint": {
-          "title": "Foundry project endpoint",
-          "type": "string"
         }
       },
       "required": []
@@ -353,10 +350,6 @@
           "type": "string",
           "format": "date-time",
           "title": "Updated at"
-        },
-        "foundryProjectEndpoint": {
-          "title": "Foundry project endpoint",
-          "type": "string"
         }
       },
       "required": []
@@ -416,10 +409,6 @@
           "type": "string",
           "format": "date-time",
           "title": "Updated at"
-        },
-        "foundryProjectEndpoint": {
-          "title": "Foundry project endpoint",
-          "type": "string"
         }
       },
       "required": []
@@ -470,10 +459,6 @@
           "type": "number",
           "title": "Tool calls",
           "description": "Tool/MCP/function calls counted across related response outputs."
-        },
-        "foundryProjectEndpoint": {
-          "title": "Foundry project endpoint",
-          "type": "string"
         }
       },
       "required": []
@@ -502,7 +487,7 @@
   {
     "identifier": "foundry_response",
     "title": "Foundry Response",
-    "description": "A single Foundry Responses API run (resp_*) with usage and tool-call metrics.",
+    "description": "A single Foundry Responses API run (resp_*) with token usage metrics.",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -527,15 +512,6 @@
         "totalTokens": {
           "type": "number",
           "title": "Total tokens"
-        },
-        "toolCallCount": {
-          "type": "number",
-          "title": "Tool calls",
-          "description": "Tool/MCP/function calls in this response output."
-        },
-        "foundryProjectEndpoint": {
-          "title": "Foundry project endpoint",
-          "type": "string"
         }
       },
       "required": []
@@ -544,12 +520,6 @@
       "conversation": {
         "title": "Conversation",
         "target": "foundry_conversation",
-        "required": false,
-        "many": false
-      },
-      "agent": {
-        "title": "Agent",
-        "target": "foundry_agent",
         "required": false,
         "many": false
       },
@@ -584,10 +554,6 @@
         "metadata": {
           "type": "object",
           "title": "Metadata"
-        },
-        "foundryProjectEndpoint": {
-          "title": "Foundry project endpoint",
-          "type": "string"
         }
       },
       "required": []

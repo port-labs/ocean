@@ -51,7 +51,12 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
         },
     )
 
+    mock_project = MagicMock(project_arm_id="arm-project-id")
     with (
+        patch(
+            "azure_integration.foundry.actions.abstract_executor.resolve_project_by_endpoint",
+            AsyncMock(return_value=mock_project),
+        ),
         patch("azure_integration.foundry.actions.deploy_model_deployment_executor.ocean") as mock_ocean,
         patch("azure_integration.foundry.actions.abstract_executor.ocean") as mock_ocean_base,
     ):
@@ -81,7 +86,12 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
         },
     )
 
+    mock_project = MagicMock(project_arm_id="arm-project-id")
     with (
+        patch(
+            "azure_integration.foundry.actions.abstract_executor.resolve_project_by_endpoint",
+            AsyncMock(return_value=mock_project),
+        ),
         patch("azure_integration.foundry.actions.delete_model_deployment_executor.ocean") as mock_ocean,
         patch("azure_integration.foundry.actions.abstract_executor.ocean") as mock_ocean_base,
     ):

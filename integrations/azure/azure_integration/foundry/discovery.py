@@ -252,7 +252,7 @@ def foundry_project_to_raw(project: FoundryProject) -> dict[str, Any]:
         "type": "Microsoft.CognitiveServices/accounts/projects",
         "location": project.location,
         "tags": project.tags or {},
-        "foundryProjectEndpoint": project.endpoint,
+        "__foundryProjectEndpoint": project.endpoint,
         "accountArmId": project.account_arm_id,
         "accountName": project.account_name,
         "subscriptionId": project.subscription_id,

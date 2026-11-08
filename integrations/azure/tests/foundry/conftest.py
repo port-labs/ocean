@@ -14,6 +14,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 TEST_PROJECT_ENDPOINT = "https://acct.services.ai.azure.com/api/projects/demo"
+TEST_PROJECT_ARM_ID = (
+    "/subscriptions/sub/resourceGroups/rg/providers/"
+    "Microsoft.CognitiveServices/accounts/acct/projects/demo"
+)
 
 TEST_INTEGRATION_CONFIG: dict[str, Any] = {
     "azure_tenant_id": "tenant",
@@ -40,5 +44,7 @@ def mock_ocean_context() -> None:
 
 @pytest.fixture(autouse=True)
 def foundry_project_context():
-    with project_endpoint_context(TEST_PROJECT_ENDPOINT) as endpoint:
+    with project_endpoint_context(
+        TEST_PROJECT_ENDPOINT, project_arm_id=TEST_PROJECT_ARM_ID
+    ) as endpoint:
         yield endpoint

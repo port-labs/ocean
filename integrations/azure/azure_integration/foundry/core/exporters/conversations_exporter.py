@@ -67,14 +67,17 @@ def _normalize_conversation(item: dict[str, object]) -> dict[str, object]:
     metadata = item.get("metadata")
     if isinstance(metadata, dict):
         normalized["metadata"] = metadata
-    for key in (
-        "prompt_tokens",
-        "completion_tokens",
-        "total_tokens",
-        "tool_call_count",
-        "participant_agent_ids",
-        "participant_model_deployment_ids",
-    ):
-        if key in item:
-            normalized[key] = item[key]
+    normalized["prompt_tokens"] = int(item.get("prompt_tokens") or 0)
+    normalized["completion_tokens"] = int(item.get("completion_tokens") or 0)
+    normalized["total_tokens"] = int(item.get("total_tokens") or 0)
+    if item.get("tool_call_count") is not None:
+        normalized["tool_call_count"] = int(item["tool_call_count"])
+    agents = item.get("participant_agent_ids")
+    normalized["participant_agent_ids"] = (
+        list(agents) if isinstance(agents, list) else []
+    )
+    models = item.get("participant_model_deployment_ids")
+    normalized["participant_model_deployment_ids"] = (
+        list(models) if isinstance(models, list) else []
+    )
     return normalized

@@ -79,7 +79,7 @@ async def test_discover_foundry_projects_across_subscriptions() -> None:
         == "https://acct.services.ai.azure.com/api/projects/demo"
     )
     raw = foundry_project_to_raw(projects[0])
-    assert raw["foundryProjectEndpoint"] == projects[0].endpoint
+    assert raw["__foundryProjectEndpoint"] == projects[0].endpoint
     assert raw["subscriptionId"] == "sub-1"
 
 

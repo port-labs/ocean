@@ -48,6 +48,11 @@ async def build_conversation_rollup(
             merge_response_into_conversation_rollup(
                 rollup, response_row, source=source
             )
+    rollup.setdefault("prompt_tokens", 0)
+    rollup.setdefault("completion_tokens", 0)
+    rollup.setdefault("total_tokens", 0)
+    rollup.setdefault("participant_agent_ids", [])
+    rollup.setdefault("participant_model_deployment_ids", [])
     return rollup
 
 

@@ -29,8 +29,8 @@ from azure_integration.foundry.kinds import (
 
 def _stamp_project(item: dict[str, Any], *, endpoint: str, project_arm_id: str) -> dict[str, Any]:
     stamped = dict(item)
-    stamped["foundryProjectEndpoint"] = endpoint
-    stamped["foundryProjectId"] = project_arm_id
+    stamped["__foundryProjectEndpoint"] = endpoint
+    stamped["__foundryProjectId"] = project_arm_id
     return stamped
 
 
@@ -55,7 +55,9 @@ async def _resync_across_projects(
             f"Syncing Foundry resources for project {project.project_name} "
             f"({project.endpoint})"
         )
-        with project_endpoint_context(project.endpoint):
+        with project_endpoint_context(
+            project.endpoint, project_arm_id=project.project_arm_id
+        ):
             async for page in fetch_pages():
                 if page:
                     yield [

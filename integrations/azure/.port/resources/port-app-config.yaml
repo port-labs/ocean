@@ -141,7 +141,7 @@ resources:
           title: .name
           blueprint: '"foundry_project"'
           properties:
-            endpoint: .foundryProjectEndpoint
+            endpoint: .__foundryProjectEndpoint
             accountName: .accountName
             subscriptionId: .subscriptionId
             resourceGroupName: .resourceGroupName
@@ -156,7 +156,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '(.foundryProjectEndpoint // "") + "/" + (.id // .name | tostring)'
+          identifier: (.id // .name | tostring)
           title: .name // .id
           blueprint: '"foundry_agent"'
           properties:
@@ -172,23 +172,21 @@ resources:
             toolCount: .tool_count
             tools: .tools
             sourcePlatform: .source_platform
-            owner: .owner
             metadata: .metadata
             entraPrincipalId: .entra_principal_id
             entraClientId: .entra_client_id
             identityBlueprintId: .identity_blueprint_id
             createdAt: .created_at
-            foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
             modelDeployment: .model
-            foundryProject: .foundryProjectId
+            foundryProject: .__foundryProjectId
   - kind: foundry-agent-version
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: '(.foundryProjectEndpoint // "") + "/" + (.id | tostring)'
+          identifier: (.id | tostring)
           title: .id
           blueprint: '"foundry_agent_version"'
           properties:
@@ -201,24 +199,21 @@ resources:
             versionStatus: .version_status
             isDraft: .is_draft
             sourcePlatform: .source_platform
-            owner: .owner
             metadata: .metadata
             tools: .tools
             toolCount: .tool_count
             entraPrincipalId: .entra_principal_id
             entraClientId: .entra_client_id
             createdAt: .created_at
-            updatedAt: .updated_at
-            foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
-            agent: '(.foundryProjectEndpoint // "") + "/" + (.agent_id | tostring)'
+            agent: (.agent_id | tostring)
   - kind: foundry-model-deployment
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: '(.foundryProjectEndpoint // "") + "/" + (.id // .name | tostring)'
+          identifier: (.id // .name | tostring)
           title: .name // .id
           blueprint: '"foundry_model_deployment"'
           properties:
@@ -228,11 +223,8 @@ resources:
             deploymentType: .deployment_type
             sku: .sku
             capabilities: .capabilities
-            createdAt: .created_at
-            updatedAt: .updated_at
-            foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
-            foundryProject: .foundryProjectId
+            foundryProject: .__foundryProjectId
   - kind: foundry-conversation
     selector:
       query: 'true'
@@ -240,21 +232,20 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '(.foundryProjectEndpoint // "") + "/" + (.id | tostring)'
+          identifier: (.id | tostring)
           title: .id
           blueprint: '"foundry_conversation"'
           properties:
             createdAt: .created_at
             metadata: .metadata
-            promptTokens: .prompt_tokens
-            completionTokens: .completion_tokens
-            totalTokens: .total_tokens
-            toolCallCount: .tool_call_count
-            foundryProjectEndpoint: .foundryProjectEndpoint
+            promptTokens: (.prompt_tokens // 0)
+            completionTokens: (.completion_tokens // 0)
+            totalTokens: (.total_tokens // 0)
+            toolCallCount: (.tool_call_count // 0)
           relations:
-            agents: .participant_agent_ids
-            modelDeployments: .participant_model_deployment_ids
-            foundryProject: .foundryProjectId
+            agents: (.participant_agent_ids // [])
+            modelDeployments: (.participant_model_deployment_ids // [])
+            foundryProject: .__foundryProjectId
   - kind: foundry-response
     selector:
       query: 'true'
@@ -262,7 +253,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '(.foundryProjectEndpoint // "") + "/" + (.id | tostring)'
+          identifier: (.id | tostring)
           title: .id
           blueprint: '"foundry_response"'
           properties:
@@ -271,19 +262,16 @@ resources:
             promptTokens: .prompt_tokens
             completionTokens: .completion_tokens
             totalTokens: .total_tokens
-            toolCallCount: .tool_call_count
-            foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
-            conversation: '(.foundryProjectEndpoint // "") + "/" + (.conversation_id | tostring)'
-            agent: .agent_id
-            modelDeployment: .model_deployment_id
+            conversation: (.conversation_id | tostring)
+            modelDeployment: (.model_deployment_id | tostring)
   - kind: foundry-memory-store
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: '(.foundryProjectEndpoint // "") + "/" + (.id // .name | tostring)'
+          identifier: (.id // .name | tostring)
           title: .name // .id
           blueprint: '"foundry_memory_store"'
           properties:
@@ -291,6 +279,5 @@ resources:
             description: .description
             createdAt: .created_at
             metadata: .metadata
-            foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
-            foundryProject: .foundryProjectId
+            foundryProject: .__foundryProjectId
