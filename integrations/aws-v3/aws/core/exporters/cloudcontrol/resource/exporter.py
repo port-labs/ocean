@@ -105,8 +105,6 @@ class CloudControlExporter(IResourceExporter[CloudControlActionInput]):
                         for resource in resources
                         if resource.get("Identifier")
                     ]
-                    if not items:
-                        continue
                     yield await inspector.inspect(
                         CloudControlActionInput(
                             items=items,
