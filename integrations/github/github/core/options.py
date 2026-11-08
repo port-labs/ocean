@@ -267,7 +267,6 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
-    changed_since: NotRequired[Optional[RepositoryChange]]
 
 
 class PluginRepositoryOptions(SingleOrganizationOptions):

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import partial
 from typing import Any, Dict, List, Tuple
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -7,9 +8,7 @@ from github.core.options import (
     ListOrganizationOptions,
     ListFolderOptions,
 )
-from github.helpers.repo_selectors import (
-    CompositeRepositorySelector,
-)
+from github.helpers.repo_selectors import RepositorySelector, SelectRepos
 from github.helpers.repository_change import RepositoryChange
 from integration import FolderSelector
 
@@ -22,15 +21,27 @@ class FolderPatternMappingBuilder:
         repo_type: str,
     ):
         self.org_exporter = org_exporter
-        self.repo_selector = CompositeRepositorySelector(repo_type)
+        self.repo_selector = RepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
-    async def build(
+    async def build(self, folders: List[FolderSelector]) -> List[ListFolderOptions]:
+        """Full resync: map every selected repo to its folder patterns."""
+        return await self._build(folders, self.repo_selector.select_repos)
+
+    async def build_changed_since(
+        self, folders: List[FolderSelector], change: RepositoryChange
+    ) -> List[ListFolderOptions]:
+        """Incremental resync: map only repos changed since ``change``."""
+        return await self._build(
+            folders,
+            partial(self.repo_selector.select_repos_changed_since, change=change),
+        )
+
+    async def _build(
         self,
         folders: List[FolderSelector],
-        changed_since: RepositoryChange | None = None,
+        select_repos: SelectRepos,
     ) -> List[ListFolderOptions]:
-        """Map each repo to its folder patterns; with ``changed_since`` only repos changed since then."""
         repo_map: Dict[Tuple[str, str], List[FolderSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
@@ -45,12 +56,8 @@ class FolderPatternMappingBuilder:
                         repo_name,
                         branch,
                         repo_obj,
-                    ) in self.repo_selector.select_repos(
-                        folder_sel,
-                        self.repo_exporter,
-                        org_login,
-                        org["type"],
-                        changed_since=changed_since,
+                    ) in select_repos(
+                        folder_sel, self.repo_exporter, org_login, org["type"]
                     ):
                         key = (org_login, repo_name)
                         repo_map[key].append(

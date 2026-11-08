@@ -1,4 +1,4 @@
-from github.helpers.repository_change import RepositoryChange
+from github.helpers.repository_change import RepositoryChange, RepositoryChangeField
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,8 +7,7 @@ import pytest
 
 from github.core.options import ListRepositoryOptions
 from github.helpers.repo_selectors import (
-    AllRepositorySelector,
-    ExactRepositorySelector,
+    RepositorySelector,
 )
 from integration import RepositorySourceModel
 
@@ -29,7 +28,7 @@ def _make_paginated_resources_mock(
 
 
 @pytest.mark.asyncio
-class TestAllRepositorySelector:
+class TestRepositorySelectorListing:
     async def test_select_repos_passes_exclude_archived_through(self) -> None:
         selector = RepositorySourceModel.parse_obj({"excludeArchived": True})
         repo_exporter = MagicMock()
@@ -37,7 +36,7 @@ class TestAllRepositorySelector:
             [[{"name": "repo1", "default_branch": "main", "archived": False}]]
         )
 
-        strategy = AllRepositorySelector("repository")
+        strategy = RepositorySelector("repository")
         results = [
             result
             async for result in strategy.select_repos(
@@ -58,7 +57,7 @@ class TestAllRepositorySelector:
             [[{"name": "repo1", "default_branch": "main", "archived": True}]]
         )
 
-        strategy = AllRepositorySelector("repository")
+        strategy = RepositorySelector("repository")
         [
             result
             async for result in strategy.select_repos(
@@ -71,7 +70,7 @@ class TestAllRepositorySelector:
 
 
 @pytest.mark.asyncio
-class TestExactRepositorySelector:
+class TestRepositorySelectorExplicitRepos:
     async def test_select_repos_ignores_exclude_archived(self) -> None:
         """Explicitly listed repos are always included, regardless of the
         selector's `exclude_archived` value or the repo's own archived status -
@@ -96,7 +95,7 @@ class TestExactRepositorySelector:
             "github.helpers.repo_selectors.get_repository_metadata",
             new=AsyncMock(return_value=archived_repo),
         ):
-            strategy = ExactRepositorySelector()
+            strategy = RepositorySelector("repository")
             results = [
                 result
                 async for result in strategy.select_repos(
@@ -106,21 +105,25 @@ class TestExactRepositorySelector:
 
         assert results == [("explicit-repo", "main", archived_repo)]
 
-    async def test_select_repos_returns_nothing_when_no_repos_configured(
+    async def test_select_repos_does_not_list_org_when_repos_configured(
         self,
     ) -> None:
-        selector = RepositorySourceModel.parse_obj({"excludeArchived": True})
+        selector = RepositorySourceModel.parse_obj({"repos": [{"name": "explicit"}]})
         repo_exporter = MagicMock()
 
-        strategy = ExactRepositorySelector()
-        results = [
-            result
-            async for result in strategy.select_repos(
-                selector, repo_exporter, "test-org", "Organization"
-            )
-        ]
+        with patch(
+            "github.helpers.repo_selectors.get_repository_metadata",
+            new=AsyncMock(return_value={"name": "explicit", "default_branch": "dev"}),
+        ):
+            results = [
+                result[:2]
+                async for result in RepositorySelector("repository").select_repos(
+                    selector, repo_exporter, "test-org", "Organization"
+                )
+            ]
 
-        assert results == []
+        assert results == [("explicit", "dev")]
+        repo_exporter.get_paginated_resources.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -133,15 +136,15 @@ class TestPushedSinceFiltering:
             [[{"name": "repo1", "default_branch": "main"}]]
         )
 
-        strategy = AllRepositorySelector("repository")
+        strategy = RepositorySelector("repository")
         [
             _
-            async for _ in strategy.select_repos(
+            async for _ in strategy.select_repos_changed_since(
                 selector,
                 repo_exporter,
                 "test-org",
                 "Organization",
-                changed_since=RepositoryChange.pushed(pushed_since),
+                RepositoryChange(pushed_since, RepositoryChangeField.PUSHED),
             )
         ]
 
@@ -153,7 +156,7 @@ class TestPushedSinceFiltering:
         repo_exporter = MagicMock()
         repo_exporter.get_paginated_resources = _make_paginated_resources_mock([[]])
 
-        strategy = AllRepositorySelector("repository")
+        strategy = RepositorySelector("repository")
         [
             _
             async for _ in strategy.select_repos(
@@ -188,15 +191,15 @@ class TestPushedSinceFiltering:
             "github.helpers.repo_selectors.get_repository_metadata",
             new=AsyncMock(side_effect=lambda _client, _org, name: repos[name]),
         ):
-            strategy = ExactRepositorySelector()
+            strategy = RepositorySelector("repository")
             results = [
                 result[0]
-                async for result in strategy.select_repos(
+                async for result in strategy.select_repos_changed_since(
                     selector,
                     repo_exporter,
                     "test-org",
                     "Organization",
-                    changed_since=RepositoryChange.pushed(pushed_since),
+                    RepositoryChange(pushed_since, RepositoryChangeField.PUSHED),
                 )
             ]
 

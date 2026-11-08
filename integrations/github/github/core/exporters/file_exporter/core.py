@@ -1,5 +1,16 @@
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
+from functools import partial
+from typing import (
+    Any,
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    cast,
+)
 from urllib.parse import quote
 import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -37,6 +48,9 @@ from github.core.exporters.file_exporter.file_processor import (
     FileProcessor,
     FileResponseValidator,
 )
+
+# (organization, repo_name, branch, pattern) -> matched tree entries
+MatchFiles = Callable[[str, str, str, str], Awaitable[List[Dict[str, Any]]]]
 
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
@@ -93,8 +107,21 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Search for files across repositories and fetch their content."""
+        """Full resync: every file matching the patterns, with content."""
+        async for batch in self._export(options, self._match_files_full):
+            yield batch
 
+    async def get_paginated_resources_changed_since(
+        self, options: List[ListFileSearchOptions], change: RepositoryChange
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Incremental resync: only matching files changed since ``change``, with content."""
+        match = partial(self._match_files_incremental, changed_since=change)
+        async for batch in self._export(options, match):
+            yield batch
+
+    async def _export(
+        self, options: List[ListFileSearchOptions], match: MatchFiles
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         graphql_files = []
         rest_files = []
         fetch_errors = []
@@ -103,16 +130,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             data = dict(repo_options)
             repo_name = cast(str, data["repo_name"])
             files = cast(List[FileSearchOptions], data["files"])
-            changed_since = cast(Optional[RepositoryChange], data.get("changed_since"))
 
             logger.debug(
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
             try:
-                gql, rest = await self.collect_matched_files(
-                    repo_name, files, changed_since=changed_since
-                )
+                gql, rest = await self.collect_matched_files(repo_name, files, match)
                 graphql_files.extend(gql)
                 rest_files.extend(rest)
             except GitHubTreeFetchError as e:
@@ -122,11 +146,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
-            yield result
+            if batch := self._transform_batch(result, options):
+                yield batch
 
         logger.info(f"Processing {len(rest_files)} REST API files")
         async for result in self.process_rest_api_files(rest_files):
-            yield result
+            if batch := self._transform_batch(result, options):
+                yield batch
 
         if fetch_errors:
             raise OceanAbortException(
@@ -134,17 +160,22 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Kind will be marked as synced with issues, entities preserved."
             ) from fetch_errors[0]
 
+    def _transform_batch(
+        self, files: List[Dict[str, Any]], options: List[ListFileSearchOptions]
+    ) -> List[Dict[str, Any]]:
+        """Turn a batch of fetched files into the raw items to emit (identity here)."""
+        return files
+
     async def collect_matched_files(
         self,
         repo_name: str,
         file_patterns: List[FileSearchOptions],
-        changed_since: RepositoryChange | None = None,
+        match_files: MatchFiles,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """Resolve file patterns to fetch lists, partitioned by GraphQL vs REST.
 
-        When ``changed_since`` is set, uses the incremental path (compare API);
-        otherwise scans the full recursive tree. Both paths produce the same
-        match shape so downstream fetch routing stays identical.
+        ``match_files`` is ``_match_files_full`` or ``_match_files_incremental``; both
+        return the same shape so downstream fetch routing stays identical.
         """
         graphql_files = []
         rest_files = []
@@ -169,10 +200,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
 
-            # Incremental: only files changed since the cursor. Full: every matching file in the tree.
-            matched = await self._match_files(
-                organization, repo_name, branch, pattern, changed_since
-            )
+            matched = await match_files(organization, repo_name, branch, pattern)
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
@@ -195,34 +223,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     f"File {path} will be fetched via {fetch_method} from {organization}"
                 )
 
-                # Route by fetch method: GraphQL fetches are batched later, REST fetches one by one.
                 if fetch_method == GithubClientType.GRAPHQL:
                     graphql_files.append(file_info)
                 else:
                     rest_files.append(file_info)
 
         return graphql_files, rest_files
-
-    async def _match_files(
-        self,
-        organization: str,
-        repo_name: str,
-        branch: str,
-        pattern: str,
-        changed_since: RepositoryChange | None,
-    ) -> List[Dict[str, Any]]:
-        """Pick the sync mode for one pattern.
-
-        - Incremental (``changed_since`` set): ``_match_files_incremental``.
-        - Full (no ``changed_since``): ``_match_files_full``.
-        """
-        if changed_since:
-            # Incremental sync: only files changed since the cursor.
-            return await self._match_files_incremental(
-                organization, repo_name, branch, pattern, changed_since
-            )
-        # Full sync: every matching file in the recursive tree.
-        return await self._match_files_full(organization, repo_name, branch, pattern)
 
     async def _match_files_full(
         self,

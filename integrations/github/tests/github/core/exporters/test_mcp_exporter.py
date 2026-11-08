@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, Dict, List
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.file_exporter.core import RestFileExporter
@@ -56,12 +56,19 @@ class TestMcpExporter:
         }
 
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [_file_object(".mcp.json", content)]
 
         exporter = McpExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
@@ -91,12 +98,19 @@ class TestMcpExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [_file_object("mcp.json", "not-json-object")]
 
         exporter = McpExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
@@ -110,12 +124,19 @@ class TestMcpExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [_file_object("mcp.json", {"unrelated": True})]
 
         exporter = McpExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
@@ -131,7 +152,7 @@ class TestMcpExporter:
         content = {"mcpServers": {"port": {"url": "https://mcp.port.io/v1"}}}
 
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [
                 _file_object(
@@ -142,7 +163,14 @@ class TestMcpExporter:
             ]
 
         exporter = McpExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(

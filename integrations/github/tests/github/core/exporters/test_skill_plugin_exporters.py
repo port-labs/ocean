@@ -58,12 +58,19 @@ class TestSkillExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [_file_object(".cursor/skills/hello/SKILL.md", SKILL_MD)]
 
         exporter = SkillExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
@@ -85,7 +92,7 @@ class TestSkillExporter:
         which already carries the git blob SHA returned by the GitHub API."""
 
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [
                 _file_object(
@@ -96,7 +103,14 @@ class TestSkillExporter:
             ]
 
         exporter = SkillExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
@@ -111,12 +125,19 @@ class TestSkillExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [_file_object("skills/hello/SKILL.md", SKILL_MD)]
 
         exporter = SkillExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
@@ -130,12 +151,19 @@ class TestSkillExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         async def fake_files(
-            _self: RestFileExporter, _options: Any
+            _self: RestFileExporter, _files: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield [_file_object("skills/hello/SKILL.md", None)]  # type: ignore[arg-type]
 
         exporter = SkillExporter(rest_client)
-        with patch.object(RestFileExporter, "get_paginated_resources", fake_files):
+        with (
+            patch.object(RestFileExporter, "process_graphql_files", fake_files),
+            patch.object(
+                RestFileExporter,
+                "collect_matched_files",
+                AsyncMock(return_value=([], [])),
+            ),
+        ):
             batches = [
                 batch
                 async for batch in exporter.get_paginated_resources(
