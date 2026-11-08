@@ -7,9 +7,13 @@ from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
 
-from claude_managed_agents.actions.abstract_action_input import AbstractAnthropicActionInput
+from claude_managed_agents.actions.abstract_action_input import (
+    AbstractAnthropicActionInput,
+)
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
-from claude_managed_agents.actions.port_mcp_utils import attach_port_mcp_settings_to_agent_config
+from claude_managed_agents.actions.port_mcp_utils import (
+    attach_port_mcp_settings_to_agent_config,
+)
 from claude_managed_agents.integration import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"

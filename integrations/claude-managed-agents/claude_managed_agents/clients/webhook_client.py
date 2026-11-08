@@ -10,7 +10,9 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 
-from claude_managed_agents.clients.exceptions import WebhookSigningSecretNotConfiguredError
+from claude_managed_agents.clients.exceptions import (
+    WebhookSigningSecretNotConfiguredError,
+)
 
 # Platform Console admin API (not covered by the Anthropic SDK webhooks resource).
 _WEBHOOKS_BETA = "webhooks-2026-03-01"

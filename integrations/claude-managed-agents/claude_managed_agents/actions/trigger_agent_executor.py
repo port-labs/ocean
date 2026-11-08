@@ -23,7 +23,9 @@ from port_ocean.core.models import (
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field, model_validator
 from port_ocean.utils.ttl_cache import TTLCache
-from claude_managed_agents.actions.abstract_action_input import AbstractAnthropicActionInput
+from claude_managed_agents.actions.abstract_action_input import (
+    AbstractAnthropicActionInput,
+)
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
 from claude_managed_agents.actions.port_mcp_utils import (
     PortMcpBinding,
@@ -34,7 +36,10 @@ from claude_managed_agents.actions.port_mcp_utils import (
     port_mcp_binding_cache_key,
     remint_port_mcp_credential,
 )
-from claude_managed_agents.actions.prompt_images import load_prompt_images, prompt_without_images
+from claude_managed_agents.actions.prompt_images import (
+    load_prompt_images,
+    prompt_without_images,
+)
 from claude_managed_agents.actions.types import TriggerAgentSessionOutput
 from claude_managed_agents.actions.utils import (
     build_external_id,

@@ -1,7 +1,9 @@
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from claude_managed_agents.core.exporters.abstract_exporter import AbstractAnthropicExporter
+from claude_managed_agents.core.exporters.abstract_exporter import (
+    AbstractAnthropicExporter,
+)
 
 
 class SkillsExporter(AbstractAnthropicExporter):

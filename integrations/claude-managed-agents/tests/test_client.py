@@ -14,7 +14,10 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 
-from claude_managed_agents.clients.anthropic_client import AnthropicClient, RateLimitInfo
+from claude_managed_agents.clients.anthropic_client import (
+    AnthropicClient,
+    RateLimitInfo,
+)
 from claude_managed_agents.clients.exceptions import UnexpectedApiResponseError
 from tests.action_test_helpers import image_block
 

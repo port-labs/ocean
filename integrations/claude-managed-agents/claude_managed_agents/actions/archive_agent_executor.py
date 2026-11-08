@@ -4,7 +4,9 @@ from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
 
-from claude_managed_agents.actions.abstract_action_input import AbstractAnthropicActionInput
+from claude_managed_agents.actions.abstract_action_input import (
+    AbstractAnthropicActionInput,
+)
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
 from claude_managed_agents.integration import ObjectKind
 

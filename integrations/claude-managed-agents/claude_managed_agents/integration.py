@@ -3,7 +3,11 @@ from typing import Literal
 
 from pydantic.v1 import Field
 
-from port_ocean.core.handlers.port_app_config.models import Selector, ResourceConfig, PortAppConfig
+from port_ocean.core.handlers.port_app_config.models import (
+    Selector,
+    ResourceConfig,
+    PortAppConfig,
+)
 
 
 class ObjectKind(StrEnum):

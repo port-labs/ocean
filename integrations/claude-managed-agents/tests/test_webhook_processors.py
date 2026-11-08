@@ -51,19 +51,27 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.models import WorkflowNodeRun
 
 from claude_managed_agents.actions.utils import build_external_id
-from claude_managed_agents.webhook_processors.session_webhook_processor import SessionWebhookProcessor
+from claude_managed_agents.webhook_processors.session_webhook_processor import (
+    SessionWebhookProcessor,
+)
 from claude_managed_agents.webhook_processors.trigger_agent_webhook_processor import (
     _INTERACTION_EVENT_TYPES,
     SESSION_COMPLETED_STATUS_LABEL,
     SESSION_FAILED_STATUS_LABEL,
     TriggerAgentWebhookProcessor,
 )
-from claude_managed_agents.webhook_processors.agent_webhook_processor import AgentWebhookProcessor
-from claude_managed_agents.webhook_processors.environment_webhook_processor import EnvironmentWebhookProcessor
+from claude_managed_agents.webhook_processors.agent_webhook_processor import (
+    AgentWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.environment_webhook_processor import (
+    EnvironmentWebhookProcessor,
+)
 from claude_managed_agents.webhook_processors.memory_store_webhook_processor import (
     MemoryStoreWebhookProcessor,
 )
-from claude_managed_agents.webhook_processors.vault_webhook_processor import VaultWebhookProcessor
+from claude_managed_agents.webhook_processors.vault_webhook_processor import (
+    VaultWebhookProcessor,
+)
 from anthropic.types.beta import BetaManagedAgentsSessionUsageEvent
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,

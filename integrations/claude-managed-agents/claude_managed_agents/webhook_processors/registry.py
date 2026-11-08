@@ -1,12 +1,20 @@
 from port_ocean.context.ocean import ocean
 
-from claude_managed_agents.webhook_processors.agent_webhook_processor import AgentWebhookProcessor
-from claude_managed_agents.webhook_processors.environment_webhook_processor import EnvironmentWebhookProcessor
+from claude_managed_agents.webhook_processors.agent_webhook_processor import (
+    AgentWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.environment_webhook_processor import (
+    EnvironmentWebhookProcessor,
+)
 from claude_managed_agents.webhook_processors.memory_store_webhook_processor import (
     MemoryStoreWebhookProcessor,
 )
-from claude_managed_agents.webhook_processors.session_webhook_processor import SessionWebhookProcessor
-from claude_managed_agents.webhook_processors.vault_webhook_processor import VaultWebhookProcessor
+from claude_managed_agents.webhook_processors.session_webhook_processor import (
+    SessionWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.vault_webhook_processor import (
+    VaultWebhookProcessor,
+)
 
 WEBHOOK_PATH = "/webhook"
 

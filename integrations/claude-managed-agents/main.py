@@ -9,7 +9,10 @@ from claude_managed_agents.actions.registry import register_action_executors
 from claude_managed_agents.clients.client_factory import create_webhook_client
 from port_ocean.utils.signal import signal_handler
 
-from claude_managed_agents.stream_manager import get_stream_manager, reattach_active_sessions
+from claude_managed_agents.stream_manager import (
+    get_stream_manager,
+    reattach_active_sessions,
+)
 from claude_managed_agents.exporter_factory import (
     create_agents_exporter,
     create_environments_exporter,
@@ -26,7 +29,9 @@ from claude_managed_agents.integration import (
     SessionResourceConfig,
     VaultResourceConfig,
 )
-from claude_managed_agents.webhook_processors.registry import register_live_events_webhooks
+from claude_managed_agents.webhook_processors.registry import (
+    register_live_events_webhooks,
+)
 
 
 @ocean.on_resync(ObjectKind.AGENT)
