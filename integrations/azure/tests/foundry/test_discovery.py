@@ -6,6 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from azure_integration.foundry.discovery import (
+    _data_plane_project_name,
+    _endpoint_from_project_properties,
+    _project_from_arm,
     clear_foundry_project_cache,
     discover_foundry_projects,
     foundry_project_to_raw,
@@ -113,3 +116,52 @@ async def test_discover_skips_forbidden_subscriptions() -> None:
         projects = await discover_foundry_projects(force_refresh=True)
 
     assert projects == []
+
+
+def test_data_plane_project_name_strips_account_prefix() -> None:
+    assert _data_plane_project_name("omby-project-resource/omby-project") == "omby-project"
+    assert _data_plane_project_name("demo") == "demo"
+
+
+def test_endpoint_from_project_properties_normalizes_cognitiveservices_host() -> None:
+    project = {
+        "properties": {
+            "endpoint": (
+                "https://acct.cognitiveservices.azure.com/"
+                "api/projects/my-proj"
+            )
+        }
+    }
+    assert (
+        _endpoint_from_project_properties(project)
+        == "https://acct.services.ai.azure.com/api/projects/my-proj"
+    )
+
+
+def test_project_from_arm_uses_services_ai_host_and_short_project_name() -> None:
+    account = {
+        "id": (
+            "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+            "Microsoft.CognitiveServices/accounts/omby-project-resource"
+        ),
+        "name": "omby-project-resource",
+        "location": "eastus",
+        "properties": {
+            "customSubDomainName": "omby-project-resource",
+            "endpoint": "https://omby-project-resource.cognitiveservices.azure.com/",
+        },
+        "tags": {},
+    }
+    project = {
+        "id": f"{account['id']}/projects/omby-project",
+        "name": "omby-project-resource/omby-project",
+        "location": "eastus",
+        "tags": {},
+    }
+    found = _project_from_arm(account, project)
+    assert found is not None
+    assert (
+        found.endpoint
+        == "https://omby-project-resource.services.ai.azure.com/api/projects/omby-project"
+    )
+    assert found.project_name == "omby-project"

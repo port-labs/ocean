@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Enable Port-hosted (SaaS) installation for the Azure integration. Live events remain self-hosted via Event Grid / Terraform.

@@ -34,25 +34,25 @@
       "section": "AI Agents",
       "resources": [
         {
-          "kind": "foundryProject"
+          "kind": "Microsoft.CognitiveServices/accounts/projects"
         },
         {
-          "kind": "agent"
+          "kind": "foundry-agent"
         },
         {
-          "kind": "agent-version"
+          "kind": "foundry-agent-version"
         },
         {
-          "kind": "model-deployment"
+          "kind": "foundry-model-deployment"
         },
         {
-          "kind": "conversation"
+          "kind": "foundry-conversation"
         },
         {
-          "kind": "response"
+          "kind": "foundry-response"
         },
         {
-          "kind": "memory-store"
+          "kind": "foundry-memory-store"
         }
       ]
     }

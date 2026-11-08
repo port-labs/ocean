@@ -7,15 +7,17 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 
+FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
+
 
 class ObjectKind(StrEnum):
-    FOUNDRY_PROJECT = "foundryProject"
-    AGENT = "agent"
-    MODEL_DEPLOYMENT = "model-deployment"
-    AGENT_VERSION = "agent-version"
-    CONVERSATION = "conversation"
-    RESPONSE = "response"
-    MEMORY_STORE = "memory-store"
+    FOUNDRY_PROJECT = FOUNDRY_ARM_PROJECT_KIND
+    AGENT = "foundry-agent"
+    MODEL_DEPLOYMENT = "foundry-model-deployment"
+    AGENT_VERSION = "foundry-agent-version"
+    CONVERSATION = "foundry-conversation"
+    RESPONSE = "foundry-response"
+    MEMORY_STORE = "foundry-memory-store"
 
 
 class FoundryProjectSelector(Selector):
@@ -23,7 +25,9 @@ class FoundryProjectSelector(Selector):
 
 
 class FoundryProjectResourceConfig(ResourceConfig):
-    kind: Literal["foundryProject"] = Field(title="Foundry project")
+    kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
+        title="Foundry project (ARM)"
+    )
     selector: FoundryProjectSelector = Field(default_factory=FoundryProjectSelector)
 
 
@@ -37,7 +41,7 @@ class AgentSelector(Selector):
 
 
 class AgentResourceConfig(ResourceConfig):
-    kind: Literal["agent"] = Field(title="Agent")
+    kind: Literal["foundry-agent"] = Field(title="Foundry agent")
     selector: AgentSelector = Field(default_factory=AgentSelector)
 
 
@@ -46,7 +50,7 @@ class ModelDeploymentSelector(Selector):
 
 
 class ModelDeploymentResourceConfig(ResourceConfig):
-    kind: Literal["model-deployment"] = Field(title="Model deployment")
+    kind: Literal["foundry-model-deployment"] = Field(title="Foundry model deployment")
     selector: ModelDeploymentSelector = Field(default_factory=ModelDeploymentSelector)
 
 
@@ -64,8 +68,8 @@ class ConversationSelector(Selector):
 
 
 class ConversationResourceConfig(ResourceConfig):
-    kind: Literal["conversation"] = Field(
-        title="Conversation",
+    kind: Literal["foundry-conversation"] = Field(
+        title="Foundry conversation",
         description=(
             "OpenAI conversation threads (metadata; token and participant rollups from response sync)."
         ),
@@ -87,8 +91,8 @@ class ResponseSelector(Selector):
 
 
 class ResponseResourceConfig(ResourceConfig):
-    kind: Literal["response"] = Field(
-        title="Response",
+    kind: Literal["foundry-response"] = Field(
+        title="Foundry response",
         description=(
             "Foundry Responses API runs (usage, tool calls) linked to conversations."
         ),
@@ -101,7 +105,7 @@ class MemoryStoreSelector(Selector):
 
 
 class MemoryStoreResourceConfig(ResourceConfig):
-    kind: Literal["memory-store"] = Field(title="Memory store")
+    kind: Literal["foundry-memory-store"] = Field(title="Foundry memory store")
     selector: MemoryStoreSelector = Field(default_factory=MemoryStoreSelector)
 
 
@@ -110,5 +114,5 @@ class AgentVersionSelector(Selector):
 
 
 class AgentVersionResourceConfig(ResourceConfig):
-    kind: Literal["agent-version"] = Field(title="Agent version")
+    kind: Literal["foundry-agent-version"] = Field(title="Foundry agent version")
     selector: AgentVersionSelector = Field(default_factory=AgentVersionSelector)

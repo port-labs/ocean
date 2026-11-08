@@ -62,13 +62,34 @@ def _account_host(account: dict[str, Any]) -> str | None:
     host_key = str(custom or name or "").strip()
     if not host_key:
         return None
-    # Prefer explicit endpoint hostname when Azure returns one
-    endpoint = props.get("endpoint") if isinstance(props, dict) else None
-    if isinstance(endpoint, str) and endpoint.strip():
-        hostname = urlparse(endpoint).hostname
-        if hostname:
-            return hostname
+    # Data-plane APIs use *.services.ai.azure.com, not *.cognitiveservices.azure.com.
     return f"{host_key}.services.ai.azure.com"
+
+
+def _data_plane_project_name(arm_project_name: str) -> str:
+    """ARM may return ``account/project``; Foundry URLs use the project segment only."""
+    segment = arm_project_name.strip().strip("/")
+    if "/" in segment:
+        return segment.rsplit("/", 1)[-1]
+    return segment
+
+
+def _endpoint_from_project_properties(project: dict[str, Any]) -> str | None:
+    props = project.get("properties") if isinstance(project.get("properties"), dict) else {}
+    endpoint = props.get("endpoint") if isinstance(props, dict) else None
+    if not isinstance(endpoint, str) or not endpoint.strip():
+        return None
+    parsed = urlparse(endpoint.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return None
+    path = parsed.path.rstrip("/")
+    if not path.startswith("/api/projects/"):
+        return None
+    host = parsed.hostname
+    if host and host.endswith(".cognitiveservices.azure.com"):
+        subdomain = host.removesuffix(".cognitiveservices.azure.com")
+        host = f"{subdomain}.services.ai.azure.com"
+    return f"{parsed.scheme}://{host}{path}"
 
 
 async def _management_headers() -> dict[str, str]:
@@ -161,11 +182,15 @@ def _project_from_arm(
         return None
     subscription_id, resource_group, account_name = parsed
     host = _account_host(account)
-    project_name = str(project.get("name") or "").strip()
+    arm_project_name = str(project.get("name") or "").strip()
+    project_name = _data_plane_project_name(arm_project_name)
     if not host or not project_name:
         return None
-    project_id = str(project.get("id") or f"{account_id}/projects/{project_name}")
-    endpoint = f"https://{host}/api/projects/{project_name}"
+    project_id = str(project.get("id") or f"{account_id}/projects/{arm_project_name}")
+    endpoint = _endpoint_from_project_properties(project) or (
+        f"https://{host}/api/projects/{project_name}"
+    )
+    endpoint_host = urlparse(endpoint).hostname or host
     tags = project.get("tags") if isinstance(project.get("tags"), dict) else account.get("tags")
     location = project.get("location") or account.get("location")
     return FoundryProject(
@@ -176,7 +201,7 @@ def _project_from_arm(
         project_name=project_name,
         project_arm_id=project_id,
         endpoint=endpoint,
-        account_endpoint_host=host,
+        account_endpoint_host=endpoint_host,
         location=str(location) if location else None,
         tags=tags if isinstance(tags, dict) else None,
     )

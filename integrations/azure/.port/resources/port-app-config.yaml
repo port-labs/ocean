@@ -10,7 +10,7 @@ resources:
           title: .display_name
           blueprint: '"azureSubscription"'
           properties:
-            tags: .tags
+            tags: .tags // {}
   - kind: Microsoft.Resources/resourceGroups
     selector:
       query: 'true'
@@ -26,7 +26,7 @@ resources:
           properties:
             location: .location
             provisioningState: .properties.provisioningState + .properties.provisioning_state
-            tags: .tags
+            tags: .tags // {}
           relations:
             subscription: >-
               .id | split("/") | .[1] |= ascii_downcase |.[2] |= ascii_downcase
@@ -46,7 +46,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -66,7 +66,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -86,7 +86,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -106,7 +106,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -126,12 +126,12 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
               | .[:5] |join("/")
-  - kind: foundryProject
+  - kind: Microsoft.CognitiveServices/accounts/projects
     selector:
       query: 'true'
     port:
@@ -146,11 +146,11 @@ resources:
             subscriptionId: .subscriptionId
             resourceGroupName: .resourceGroupName
             location: .location
-            tags: .tags
+            tags: .tags // {}
           relations:
             subscription: >-
               "/subscriptions/" + (.subscriptionId | ascii_downcase)
-  - kind: agent
+  - kind: foundry-agent
     selector:
       query: 'true'
     port:
@@ -182,7 +182,7 @@ resources:
           relations:
             modelDeployment: .model
             foundryProject: .foundryProjectId
-  - kind: agent-version
+  - kind: foundry-agent-version
     selector:
       query: 'true'
     port:
@@ -212,7 +212,7 @@ resources:
             foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
             agent: '(.foundryProjectEndpoint // "") + "/" + (.agent_id | tostring)'
-  - kind: model-deployment
+  - kind: foundry-model-deployment
     selector:
       query: 'true'
     port:
@@ -233,7 +233,7 @@ resources:
             foundryProjectEndpoint: .foundryProjectEndpoint
           relations:
             foundryProject: .foundryProjectId
-  - kind: conversation
+  - kind: foundry-conversation
     selector:
       query: 'true'
       sinceDays: 365
@@ -255,7 +255,7 @@ resources:
             agents: .participant_agent_ids
             modelDeployments: .participant_model_deployment_ids
             foundryProject: .foundryProjectId
-  - kind: response
+  - kind: foundry-response
     selector:
       query: 'true'
       sinceDays: 365
@@ -277,7 +277,7 @@ resources:
             conversation: '(.foundryProjectEndpoint // "") + "/" + (.conversation_id | tostring)'
             agent: .agent_id
             modelDeployment: .model_deployment_id
-  - kind: memory-store
+  - kind: foundry-memory-store
     selector:
       query: 'true'
     port:
