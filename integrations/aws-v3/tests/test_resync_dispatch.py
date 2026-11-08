@@ -65,7 +65,7 @@ def test_should_resync_via_cloud_control_true_for_custom_kind_config() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resync_cloud_control_custom_kind_builds_service(
+async def test_resync_from_resource_config_builds_cloud_control_service(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict[str, Any]] = []
@@ -93,9 +93,7 @@ async def test_resync_cloud_control_custom_kind_builds_service(
         }
     )
 
-    async for _ in resync.resync_cloud_control_custom_kind(
-        "AWS::IAM::Role", custom_config
-    ):
+    async for _ in resync.resync_from_resource_config("AWS::IAM::Role", custom_config):
         pass
 
     assert len(calls) == 1

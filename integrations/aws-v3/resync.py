@@ -21,6 +21,7 @@ from aws.core.exporters.cloudcontrol import (
     resolve_cloud_control_is_regional,
 )
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
+from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.auth.session_factory import AccountInfo
@@ -299,26 +300,69 @@ def should_resync_via_cloud_control(kind: str, resource_config: ResourceConfig) 
     return isinstance(resource_config, AWSCustomKindResourceConfig)
 
 
-async def resync_cloud_control_custom_kind(
+async def resync_via_aws_service(
+    *,
     kind: str,
-    resource_config: AWSCustomKindResourceConfig,
+    exporter_cls: Type[IResourceExporter[Any]],
+    request_cls: Type[ResourceRequestModel],
+    regional: bool,
+    request_extras: dict[str, Any] | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = resource_config.selector
+    async for batch in ResyncAWSService(
+        kind=kind,
+        exporter_cls=exporter_cls,
+        request_cls=request_cls,
+        regional=regional,
+        request_extras=request_extras,
+    ):
+        yield batch
+
+
+def build_resync_service_kwargs(
+    kind: str, resource_config: ResourceConfig
+) -> dict[str, Any] | None:
+    if kind in kind_to_export_metadata:
+        metadata = kind_to_export_metadata[ObjectKind(kind)]
+        selector = cast(AWSResourceConfig, resource_config).selector
+        return {
+            "kind": kind,
+            "exporter_cls": metadata.exporter,
+            "request_cls": metadata.paginated_request_model,
+            "regional": metadata.resolve_regional(selector),
+            "request_extras": metadata.build_request_extras(selector),
+        }
+
+    if not should_resync_via_cloud_control(kind, resource_config):
+        return None
+
+    custom_config = cast(AWSCustomKindResourceConfig, resource_config)
+    selector = custom_config.selector
     regional = resolve_cloud_control_is_regional(kind, selector.resource_scope)
     logger.info(
         f"Resyncing custom Cloud Control kind {kind} using "
         f"{'regional' if regional else 'global'} scope strategy"
     )
-
-    async for batch in ResyncAWSService(
-        kind=kind,
-        exporter_cls=CloudControlExporter,
-        request_cls=PaginatedCloudControlResourceRequest,
-        regional=regional,
-        request_extras={
+    return {
+        "kind": kind,
+        "exporter_cls": CloudControlExporter,
+        "request_cls": PaginatedCloudControlResourceRequest,
+        "regional": regional,
+        "request_extras": {
             "type_name": kind,
             "use_get_resource_api": selector.use_get_resource_api,
             "resource_scope": selector.resource_scope,
         },
-    ):
+    }
+
+
+async def resync_from_resource_config(
+    kind: str,
+    resource_config: ResourceConfig | None,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if resource_config is None:
+        return
+    service_kwargs = build_resync_service_kwargs(kind, resource_config)
+    if service_kwargs is None:
+        return
+    async for batch in resync_via_aws_service(**service_kwargs):
         yield batch
