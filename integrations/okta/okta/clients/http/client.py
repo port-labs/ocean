@@ -22,6 +22,13 @@ _DEFAULT_IGNORED_ERRORS = [
 ]
 
 
+def build_okta_base_url(okta_domain: str) -> str:
+    value = okta_domain.rstrip("/")
+    if value.startswith(("http://", "https://")):
+        return value if value.endswith("/api/v1") else f"{value}/api/v1"
+    return f"https://{value}/api/v1"
+
+
 class OktaClient:
     """Okta API client."""
 
@@ -37,13 +44,15 @@ class OktaClient:
         """Initialize the Okta client.
 
         Args:
-            okta_domain: The Okta domain (e.g., 'dev-123456.okta.com')
+            okta_domain: The Okta domain (e.g., 'dev-123456.okta.com') or a full
+                base URL including scheme (e.g., 'https://dev-123456.okta.com')
             api_token: The Okta API token
             max_retries: Maximum number of retries for failed requests
         """
         self.okta_domain = okta_domain.rstrip("/")
         self.api_token = api_token
         self.max_retries = max_retries
+        self.base_url = build_okta_base_url(self.okta_domain)
 
     def _should_ignore_error(
         self,
@@ -60,11 +69,6 @@ class OktaClient:
                 )
                 return True
         return False
-
-    @property
-    def base_url(self) -> str:
-        """Get the base URL for Okta API."""
-        return f"https://{self.okta_domain}/api/v1"
 
     async def _make_request(
         self,

@@ -17,6 +17,11 @@ CHANGELOG_SECTIONS = {
 
 VERSION_RE = re.compile(r'^version\s*=\s*"([^"]+)"', re.MULTILINE)
 NAME_RE = re.compile(r'^name = "([^"]+)"', re.MULTILINE)
+# Matches the live dependency line only (not commented path overrides).
+PORT_OCEAN_DEP_VERSION_RE = re.compile(
+    r'^port_ocean\s*=\s*\{[^\n]*\bversion\s*=\s*"([^"]+)"',
+    re.MULTILINE,
+)
 OCEAN_VERSION_RE = re.compile(
     r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?P<suffix>-(?:beta|dev|post1))?$"
 )
@@ -31,6 +36,12 @@ def parse_version(pyproject_content: str) -> str:
     if not match:
         raise ValueError("Could not find version in pyproject.toml")
     return match.group(1)
+
+
+def parse_port_ocean_dependency_version(pyproject_content: str) -> str | None:
+    """Return the port_ocean dependency version constraint, if present."""
+    match = PORT_OCEAN_DEP_VERSION_RE.search(pyproject_content)
+    return match.group(1) if match else None
 
 
 def parse_integration_type(pyproject_content: str, fallback: str) -> str:

@@ -1,3 +1,4 @@
+from datadog.core.exporters.catalog_entity_exporter import CatalogEntityExporter
 from datadog.core.exporters.team_exporter import TeamExporter
 from datadog.core.exporters.user_exporter import UserExporter
 from datadog.core.exporters.host_exporter import HostExporter
@@ -12,6 +13,7 @@ from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicy
 from datadog.core.exporters.org_exporter import OrgExporter
 
 __all__ = [
+    "CatalogEntityExporter",
     "HostExporter",
     "MonitorExporter",
     "OrgExporter",

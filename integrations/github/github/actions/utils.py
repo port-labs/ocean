@@ -2,6 +2,23 @@ import json
 from typing import Any
 
 import httpx
+from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+
+# Status labels for the GitHub `workflow_run.conclusion` values, shown on the
+# Port run. Anything unmapped echoes the raw conclusion. Keep every label to
+# two words at most so it stays readable in Port's UI.
+CONCLUSION_STATUS_LABELS = {
+    "success": "Workflow succeeded",
+    "failure": "Workflow failed",
+    "cancelled": "Workflow cancelled",
+    "timed_out": "Workflow timeout",
+    "skipped": "Workflow skipped",
+    "neutral": "Workflow neutral",
+    "action_required": "Action required",
+    "stale": "Workflow stale",
+}
 
 
 def build_external_id(workflow_run: dict[str, Any]) -> str:
@@ -26,3 +43,26 @@ def extract_error_message(response: httpx.Response) -> str:
             return message if isinstance(message, str) else json.dumps(message)
 
     return response.text.strip() or f"HTTP {response.status_code}"
+
+
+async def report_workflow_run_conclusion(
+    run: IntegrationRun, workflow_run: dict[str, Any]
+) -> None:
+    """Mark the Port run completed based on a finished GitHub workflow run."""
+    conclusion = workflow_run["conclusion"]
+    success = conclusion in ("success", "skipped", "neutral")
+    logger.info(
+        f"Updating run {run.id} with workflow conclusion: {conclusion}",
+        run_id=run.id,
+        conclusion=conclusion,
+    )
+
+    if isinstance(run, WorkflowNodeRun):
+        run.output["conclusion"] = conclusion
+
+    await ocean.port_client.report_run_completed(
+        run,
+        success,
+        f"Workflow completed: {conclusion}",
+        status_label=CONCLUSION_STATUS_LABELS.get(conclusion, f"Workflow {conclusion}"),
+    )

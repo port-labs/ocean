@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.24.0 (2026-11-05)
+
+
+### Features
+
+- Wire GitHub REST and GraphQL into the centralized rate limiter. Admission runs before each retry, and the local limiter stays as the fallback.
+
+
+## 6.23.1 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
+## 6.23.0 (2026-11-05)
+
+
+### Features
+
+- Added a refresh_pull_requests action that refetches specific pull requests from GitHub and upserts them using the existing mapping
+
+
+## 6.22.21 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
+## 6.22.20 (2026-11-04)
+
+
+### Bug Fixes
+
+- Retry fetching the dispatched workflow run with backoff (up to ~45s) when GitHub returns 404 right after dispatch, instead of failing the action run with "Workflow run <id> not found", and report the workflow conclusion right away when the fetched run has already finished
+
+
+## 6.22.19 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 6.22.18 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 6.22.17 (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 6.22.16 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 6.22.15 (2026-10-28)
+
+
+### Bug Fixes
+
+- Fixed legacy dispatch_workflow tracking missing GitHub runs created in the same second as the poll timestamp.
+
+
 ## 6.22.14 (2026-10-26)
 
 

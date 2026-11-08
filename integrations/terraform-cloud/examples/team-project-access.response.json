@@ -1,0 +1,47 @@
+{
+  "id": "tprj-Hox3K15K5FPc44vf",
+  "type": "team-projects",
+  "attributes": {
+    "access": "read",
+    "project-access": {
+      "settings": "read",
+      "teams": "none",
+      "variable-sets": "none"
+    },
+    "workspace-access": {
+      "create": false,
+      "move": false,
+      "locking": false,
+      "delete": false,
+      "runs": "read",
+      "variables": "read",
+      "state-versions": "read",
+      "sentinel-mocks": "none",
+      "run-tasks": false,
+      "policy-overrides": false
+    }
+  },
+  "relationships": {
+    "team": {
+      "data": {
+        "id": "team-VSwwhbxrXgmMktRa",
+        "type": "teams"
+      },
+      "links": {
+        "related": "/api/v2/teams/team-VSwwhbxrXgmMktRa"
+      }
+    },
+    "project": {
+      "data": {
+        "id": "prj-e6ZqJ2QW9BFisfW4",
+        "type": "projects"
+      },
+      "links": {
+        "related": "/api/v2/projects/prj-e6ZqJ2QW9BFisfW4"
+      }
+    }
+  },
+  "links": {
+    "self": "/api/v2/team-projects/tprj-Hox3K15K5FPc44vf"
+  }
+}

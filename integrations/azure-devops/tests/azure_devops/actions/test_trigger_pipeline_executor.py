@@ -190,6 +190,22 @@ async def test_identity_http_error_still_closes_user_client(
     client.aclose.assert_not_called()
 
 
+def test_client_for_token_stays_on_the_local_limiter(
+    executor: TriggerPipelineExecutor,
+    client: MagicMock,
+    mock_context: PortOceanContext,
+) -> None:
+    mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
+    client._organization_base_url = "https://dev.azure.com/test-org"
+    client.webhook_auth_username = None
+    client.excluded_tags = None
+
+    user_client = executor._client_for_token("entra-user-token")
+
+    assert user_client._rate_limiter._redis_enabled is False
+    assert user_client._rate_limiter.pool == "test-org"
+
+
 @pytest.mark.asyncio
 async def test_identity_run_uses_user_token_client(
     executor: TriggerPipelineExecutor,
