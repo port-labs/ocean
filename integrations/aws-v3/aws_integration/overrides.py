@@ -2,7 +2,7 @@ from typing import ClassVar, List, Literal
 
 from pydantic.v1 import BaseModel, Field
 
-from aws.core.exporters.cloud_control_scope import CloudControlResourceScope
+from aws_integration.cloud_control_scope import CloudControlResourceScope
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,

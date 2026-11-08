@@ -1,4 +1,4 @@
-from aws.core.exporters.cloud_control_scope import CloudControlResourceScope
+from aws_integration.cloud_control_scope import CloudControlResourceScope
 
 CLOUD_CONTROL_GLOBAL_SERVICES: frozenset[str] = frozenset(
     {

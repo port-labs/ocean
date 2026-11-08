@@ -1,6 +1,6 @@
 from pydantic import ConfigDict, Field
 
-from aws.core.exporters.cloud_control_scope import CloudControlResourceScope
+from aws_integration.cloud_control_scope import CloudControlResourceScope
 from aws.core.modeling.resource_models import (
     BaseAWSPropertiesModel,
     ResourceModel,

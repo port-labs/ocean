@@ -4,11 +4,16 @@ import pytest
 
 import resync
 from aws.core.exporters.cloudcontrol import CloudControlExporter
-from aws.core.exporters.cloudcontrol.resource.metadata import CloudControlExporterMetadata
+from aws.core.exporters.cloudcontrol.resource.metadata import (
+    CloudControlExporterMetadata,
+)
 from aws.core.exporters.cloudcontrol.resource.models import (
     PaginatedCloudControlResourceRequest,
 )
-from aws.core.exporters.exporter_metadata import get_exporter_metadata, kind_to_export_metadata
+from aws.core.exporters.exporter_metadata import (
+    get_exporter_metadata,
+    kind_to_export_metadata,
+)
 from aws.core.helpers.types import ObjectKind
 from aws_integration.overrides import (
     AWSCustomKindResourceConfig,
