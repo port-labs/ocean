@@ -13,11 +13,11 @@ from typing import Optional, Self
 
 import httpx
 
+from port_ocean.context.ocean import ocean
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.utils import (
     await_centralized_rate_limit,
     record_centralized_rate_limit,
-    use_centralized_rate_limiting,
 )
 
 
@@ -29,9 +29,18 @@ class RateLimitWrapper(ABC):
     request is not delayed twice.
     """
 
-    def __init__(self, pool: str) -> None:
-        """``pool`` is the Redis bucket for this client, such as ``rest``."""
+    def __init__(self, pool: str, *, redis_enabled: bool = True) -> None:
+        """``pool`` is the Redis bucket for this client, such as ``rest``.
+
+        ``redis_enabled`` is false for a credential that must not read or write
+        that bucket, such as an identity-propagated user token. The local
+        limiter still applies.
+        """
         self.pool = pool
+        self._redis_enabled = redis_enabled
+
+    def _redis_admission_enabled(self) -> bool:
+        return self._redis_enabled and ocean.centralized_rate_limiter is not None
 
     async def __aenter__(self) -> Self:
         """Take the local semaphore for the ``async with`` body.
@@ -39,7 +48,7 @@ class RateLimitWrapper(ABC):
         With Redis on this is a no-op. The wait happens in ``acquire``, once
         per attempt, instead of holding a process-local slot across retries.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return self
         await self._local_acquire()
         return self
@@ -51,26 +60,23 @@ class RateLimitWrapper(ABC):
         In local mode the semaphore was already taken in ``__aenter__``, so
         there is nothing left to wait for here.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             await await_centralized_rate_limit(self.pool)
 
     async def record_rate_limit_response(
-        self, response: httpx.Response, *, context: str = "transport-retry"
+        self, response: httpx.Response, *, context: str = ""
     ) -> None:
-        """Publish vendor headers, or update the local limiter.
+        """Publish vendor headers, or pass the response to the local limiter.
 
-        A Redis publish is skipped when the subclass cannot parse quota
-        headers, so a header-less response does not overwrite a good hash
-        with zeros. ``is_rate_limited`` comes from the subclass, usually a
-        429, and is what sets ``blocked_until``.
+        Redis on publishes the parsed quota. A response the subclass cannot
+        parse is skipped, so a header-less response does not overwrite a good
+        hash with zeros. ``is_rate_limited`` comes from the subclass, usually
+        a 429, and is what sets ``blocked_until``.
 
-        In local mode the default context is ``transport-retry``, which
-        ``RetryTransport`` uses. The integration transport has already
-        applied that response, so ingesting it again would double-count.
-        A resource context such as ``/repos`` is a normal response and does
-        update the local limiter.
+        Redis off forwards the response to the local limiter. That limiter
+        already decides how a retry and a normal response update its state.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             state = self._parse_centralized_state(response, context)
             if state is not None:
                 await record_centralized_rate_limit(
@@ -78,9 +84,6 @@ class RateLimitWrapper(ABC):
                     state,
                     is_rate_limited=self._centralized_is_rate_limited(response),
                 )
-            return
-        # Transport retries already updated the local limiter before this call.
-        if context == "transport-retry":
             return
         await self._local_ingest_response(response, context)
 
@@ -91,7 +94,7 @@ class RateLimitWrapper(ABC):
         exc_tb: Optional[TracebackType],
     ) -> None:
         """Release the local semaphore. Redis holds nothing for this request."""
-        if not use_centralized_rate_limiting():
+        if not self._redis_admission_enabled():
             await self._local_release(exc_type, exc_val, exc_tb)
 
     def is_close_to_rate_limit(self) -> bool:
@@ -100,22 +103,22 @@ class RateLimitWrapper(ABC):
         Redis admission already applied that pause, so this stays false and
         the executor does not sleep again.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return False
-        return self._local_is_close_to_rate_limit()
+        return self._local_is_close_to_rate_limit
 
     def seconds_until_rate_limit_reset(self) -> float:
         """How long the action executor should sleep. Zero when Redis is on."""
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return 0.0
-        return self._local_seconds_until_rate_limit_reset()
+        return self._local_seconds_until_rate_limit_reset
 
     async def notify_transport_rate_limit_retry(self, response: httpx.Response) -> None:
         """Tell the local limiter that the transport is about to sleep on a 429.
 
         Redis admission covers that wait, so the local lock is not taken.
         """
-        if use_centralized_rate_limiting():
+        if self._redis_admission_enabled():
             return
         await self._notify_transport_rate_limit_retry(response)
 
@@ -154,10 +157,12 @@ class RateLimitWrapper(ABC):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         """True when this response should set the shared ``blocked_until``."""
 
+    @property
     @abstractmethod
     def _local_is_close_to_rate_limit(self) -> bool:
         """Local-limiter view of whether an action run should pause."""
 
+    @property
     @abstractmethod
     def _local_seconds_until_rate_limit_reset(self) -> float:
         """Local-limiter sleep before the next action run."""

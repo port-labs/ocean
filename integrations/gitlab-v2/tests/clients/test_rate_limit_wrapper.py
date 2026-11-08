@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -119,8 +120,8 @@ async def test_centralized_acquire_waits_on_the_pool() -> None:
     wrapper = _wrapper()
     with (
         patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
+            "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+            SimpleNamespace(centralized_rate_limiter=object()),
         ),
         patch(
             "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",

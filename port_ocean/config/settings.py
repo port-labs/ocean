@@ -39,7 +39,7 @@ from port_ocean.utils.misc import (
     get_spec_file,
 )
 from port_ocean.utils.time import parse_interval_to_minutes
-from port_ocean.consumers.redis_connection import RedisConnectionSettings
+from port_ocean.consumers.redis_connection_settings import RedisConnectionSettings
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 ALLOWED_INCREMENTAL_SYNC_INTERVALS = (15, 30, 60)
