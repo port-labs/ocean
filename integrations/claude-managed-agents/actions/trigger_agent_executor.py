@@ -99,11 +99,9 @@ def port_mcp_workflow_context(
     Input flags drive ensure/merge onto the agent. Remint targets come from the
     agent after ensure (including Port/virtual already present when inputs omit them).
     """
-    if not isinstance(run, WorkflowNodeRun):
+    if not isinstance(run, WorkflowNodeRun) or run.execution_identity is None:
         return None
     identity = run.execution_identity
-    if identity is None:
-        return None
     has_input = inputs.enablePortMcp or bool(inputs.virtualMcpServerIds)
     has_existing = bool(
         agent is not None and port_family_mcp_urls_on_agent(agent.mcp_servers or [])

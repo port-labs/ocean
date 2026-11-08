@@ -37,7 +37,7 @@ def _normalize_port_mcp_url(url: str) -> str:
     return url.rstrip("/")
 
 
-def virtual_mcp_server_url(identifier: str) -> str:
+def get_virtual_mcp_server_url(identifier: str) -> str:
     return _normalize_port_mcp_url(
         f"{_required_port_mcp_url()}/virtual-server/{identifier}"
     )
@@ -48,11 +48,12 @@ def port_family_mcp_urls_on_agent(
 ) -> list[str]:
     """Port MCP + virtual-server URLs already bound on an agent."""
     port_base = _normalize_port_mcp_url(_required_port_mcp_url())
-    return [
-        _normalize_port_mcp_url(server.url)
-        for server in mcp_servers
-        if _normalize_port_mcp_url(server.url).startswith(port_base)
-    ]
+    urls: list[str] = []
+    for server in mcp_servers:
+        normalized = _normalize_port_mcp_url(server.url)
+        if normalized.startswith(port_base):
+            urls.append(normalized)
+    return urls
 
 
 def _is_port_family_mcp_name(name: str) -> bool:
@@ -97,14 +98,23 @@ def _port_mcp_toolset(port_mcp_server_name: str) -> dict[str, Any]:
     }
 
 
-def is_agent_configured_with_port_mcp(
-    port_mcp_url: str,
+def _tool_mcp_server_name(tool: Tool | dict[str, Any]) -> str | None:
+    if isinstance(tool, dict):
+        if tool.get("type") != "mcp_toolset":
+            return None
+        name = tool.get("mcp_server_name")
+        return name if isinstance(name, str) else None
+    if tool.type != "mcp_toolset":
+        return None
+    return tool.mcp_server_name
+
+
+def _agent_has_mcp_url(
+    mcp_url: str,
     mcp_servers: list[BetaManagedAgentsMCPServerURLDefinition],
 ) -> bool:
-    return any(
-        _normalize_port_mcp_url(s.url) == _normalize_port_mcp_url(port_mcp_url)
-        for s in mcp_servers
-    )
+    target = _normalize_port_mcp_url(mcp_url)
+    return any(_normalize_port_mcp_url(s.url) == target for s in mcp_servers)
 
 
 def _swap_stale_port_mcp_config(
@@ -114,9 +124,7 @@ def _swap_stale_port_mcp_config(
 ) -> tuple[list[BetaManagedAgentsMCPServerURLDefinition], list[Tool]]:
     servers = [s for s in mcp_servers if s.name != port_mcp_server_name]
     refreshed_tools = [
-        t
-        for t in tools
-        if not (t.type == "mcp_toolset" and t.mcp_server_name == port_mcp_server_name)
+        t for t in tools if _tool_mcp_server_name(t) != port_mcp_server_name
     ]
     return servers, refreshed_tools
 
@@ -158,7 +166,8 @@ def attach_port_mcp_settings_to_agent_config(
             t
             for t in agent_tools
             if not (
-                t.type == "mcp_toolset" and _is_port_family_mcp_name(t.mcp_server_name)
+                (name := _tool_mcp_server_name(t)) is not None
+                and _is_port_family_mcp_name(name)
             )
         ]
         proposed_servers = [
@@ -174,11 +183,11 @@ def attach_port_mcp_settings_to_agent_config(
         targets.append((_required_port_mcp_url(), PORT_MCP_SERVER_NAME))
     for identifier in virtual_mcp_server_ids:
         targets.append(
-            (virtual_mcp_server_url(identifier), f"port-virtual-mcp-{identifier}")
+            (get_virtual_mcp_server_url(identifier), f"port-virtual-mcp-{identifier}")
         )
 
     for url, name in targets:
-        if is_agent_configured_with_port_mcp(url, mcp_servers):
+        if _agent_has_mcp_url(url, mcp_servers):
             continue
         changed = True
         mcp_servers, tools = _swap_stale_port_mcp_config(name, mcp_servers, tools)
@@ -220,7 +229,9 @@ async def ensure_port_mcp_credential(
     """Create or remint the vault credential for one MCP URL."""
     access_token = get_run_access_token(run)
     if access_token is None:
-        raise RuntimeError("portAccessToken is required when executionIdentity is set")
+        raise RuntimeError(
+            "portAccessToken is required to mint Port-family MCP vault credentials"
+        )
 
     url = _normalize_port_mcp_url(mcp_server_url)
     credential_match = await find_first_match_in_generator(
@@ -263,11 +274,12 @@ def port_mcp_binding_cache_key(vault_name: str, mcp_server_url: str) -> str:
 async def remint_port_mcp_credential(
     client: AnthropicClient, run: WorkflowNodeRun, binding: PortMcpBinding
 ) -> None:
-    """Remint the vault credential for a continued session, verifying the
-    run's identity still matches the session's owner. No-op if unowned."""
+    """Refresh the vault bearer token from the workflow run's portAccessToken."""
     access_token = get_run_access_token(run)
     if access_token is None:
-        raise RuntimeError("portAccessToken is required when executionIdentity is set")
+        raise RuntimeError(
+            "portAccessToken is required to remint Port-family MCP vault credentials"
+        )
     await client.beta.vaults.credentials.update(
         binding.credential_id,
         vault_id=binding.vault_id,

@@ -13,7 +13,7 @@ from actions.port_mcp_utils import (
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_credential,
     get_or_create_mcp_vault,
-    is_agent_configured_with_port_mcp,
+    _agent_has_mcp_url,
 )
 
 
@@ -62,7 +62,7 @@ def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
         "actions.port_mcp_utils.ocean",
         SimpleNamespace(config=SimpleNamespace(port=SimpleNamespace(mcp_url=port))),
     ):
-        assert not is_agent_configured_with_port_mcp(port, servers)
+        assert not _agent_has_mcp_url(port, servers)
     assert _is_vault_credential_url_matching(credential, getport)
     assert not _is_vault_credential_url_matching(credential, port)
 
@@ -156,6 +156,38 @@ def test_apply_port_mcp_replaces_stale_port_named_server() -> None:
     assert len(result["tools"]) == 1
     assert result["tools"][0]["mcp_server_name"] == PORT_MCP_SERVER_NAME
     assert result["tools"][0]["default_config"]["enabled"] is True
+
+
+def test_apply_port_mcp_replaces_stale_virtual_mcp_named_server() -> None:
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+
+    stale = BetaManagedAgentsMCPServerURLDefinition(
+        type="url",
+        name="port-virtual-mcp-payments",
+        url="https://mcp.old-region.example/v1/virtual-server/payments",
+    )
+    agent = MagicMock()
+    agent.mcp_servers = [stale]
+    agent.tools = []
+
+    result, changed = attach_port_mcp_settings_to_agent_config(
+        {},
+        existing_agent=agent,
+        enable_port_mcp=False,
+        virtual_mcp_server_ids=["payments"],
+    )
+
+    assert changed is True
+    assert len(result["mcp_servers"]) == 1
+    assert getattr(result["mcp_servers"][0], "name", None) == "port-virtual-mcp-payments"
+    assert (
+        getattr(result["mcp_servers"][0], "url", None)
+        == "https://mcp.getport.io/v1/virtual-server/payments"
+    )
+    assert len(result["tools"]) == 1
+    assert result["tools"][0]["mcp_server_name"] == "port-virtual-mcp-payments"
 
 
 @pytest.mark.asyncio
