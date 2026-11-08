@@ -105,13 +105,15 @@ def build_pipeline_params(
     return merge_updated_after_params(api_query_params, cursor)
 
 
-def build_deployment_params(
+def build_cursor_updated_after_params(
     api_query_params: dict[str, Any] | None,
     cursor: datetime,
 ) -> dict[str, Any]:
-    """Incremental query params for ``GET /projects/{id}/deployments``.
+    """Drop selector timestamp filters and ``order_by``, then apply the cursor.
 
-    Drops selector timestamp filters and ``order_by``, keeps other filters
+    Keeps non-timestamp filters. ``updated_after``, ``updated_before``,
+    ``finished_after``, ``finished_before``, and ``order_by`` from the selector
+    are replaced by the cursor ``updated_after`` and ``order_by=updated_at``.
     """
     params = {
         key: value
@@ -121,6 +123,20 @@ def build_deployment_params(
     params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
     params["order_by"] = "updated_at"
     return params
+
+
+def build_incremental_project_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Project-list params for an incremental run.
+
+    A cursor replaces selector timestamp filters with ``updated_after`` and
+    ``order_by=updated_at``. A full resync keeps ``base_params``.
+    """
+    if cursor is None:
+        return base_params
+    return build_cursor_updated_after_params(base_params, cursor)
 
 
 def merge_updated_after_params(
