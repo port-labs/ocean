@@ -26,9 +26,9 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_interrupt_event impo
 from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import (
     BetaManagedAgentsUserMessageEvent,
 )
-from actions.abstract_executor import AbstractAnthropicExecutor
-from actions.port_mcp_utils import PORT_MCP_SERVER_NAME
-from clients.anthropic_client import RateLimitInfo
+from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
+from claude_managed_agents.actions.port_mcp_utils import PORT_MCP_SERVER_NAME
+from claude_managed_agents.clients.anthropic_client import RateLimitInfo
 from port_ocean.config.settings import PortSettings
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.tests.helpers.aes_gcm import encrypt_aes256_gcm

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.port_mcp_utils import (
+from claude_managed_agents.actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
     PortMcpBinding,
     _is_vault_credential_url_matching,

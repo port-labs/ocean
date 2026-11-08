@@ -5,12 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.cancel_session_executor import (
+from claude_managed_agents.actions.cancel_session_executor import (
     SESSION_CANCELLED_STATUS_LABEL,
     SESSION_NOT_CANCELLABLE_STATUS_LABEL,
     CancelSessionExecutor,
 )
-from actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 

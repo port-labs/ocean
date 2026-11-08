@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from actions.prompt_images import (
+from claude_managed_agents.actions.prompt_images import (
     MAX_CONCURRENT_FETCHES,
     MAX_IMAGE_BYTES,
     MAX_PROMPT_IMAGES,

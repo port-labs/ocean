@@ -5,12 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.exceptions import InvalidActionParametersException
-from actions.update_agent_executor import (
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.update_agent_executor import (
     AGENT_UPDATED_STATUS_LABEL,
     UpdateAgentExecutor,
 )
-from actions.port_mcp_utils import (
+from claude_managed_agents.actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
 )
 from port_ocean.core.models import ActionRun, WorkflowNodeRun

@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from clients.exceptions import WebhookSigningSecretNotConfiguredError
-from clients.webhook_client import ClaudeWebhookClient, _WEBHOOK_EVENTS
+from claude_managed_agents.clients.exceptions import WebhookSigningSecretNotConfiguredError
+from claude_managed_agents.clients.webhook_client import ClaudeWebhookClient, _WEBHOOK_EVENTS
 
 
 @pytest.fixture

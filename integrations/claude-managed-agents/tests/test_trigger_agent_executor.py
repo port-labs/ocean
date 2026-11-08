@@ -9,8 +9,8 @@ import httpx
 import pytest
 from anthropic import APIStatusError
 
-from actions.exceptions import InvalidActionParametersException
-from actions.trigger_agent_executor import (
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.trigger_agent_executor import (
     PORT_IDENTITY_ID_KEY,
     PortMcpWorkflowContext,
     SESSION_NOT_CONTINUABLE_STATUS_LABEL,
@@ -18,9 +18,9 @@ from actions.trigger_agent_executor import (
     TriggerAgentInputs,
     port_mcp_workflow_context,
 )
-from actions.prompt_images import PromptImages
-from actions.types import TriggerAgentSessionOutput
-from actions.port_mcp_utils import (
+from claude_managed_agents.actions.prompt_images import PromptImages
+from claude_managed_agents.actions.types import TriggerAgentSessionOutput
+from claude_managed_agents.actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
     PortMcpBinding,
 )
@@ -206,7 +206,7 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
     from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
         BetaManagedAgentsMCPServerURLDefinition,
     )
-    from actions.port_mcp_utils import port_mcp_binding_cache_key
+    from claude_managed_agents.actions.port_mcp_utils import port_mcp_binding_cache_key
 
     port_url = "https://mcp.getport.io/v1"
     virtual_url = "https://mcp.getport.io/v1/virtual-server/payments"
@@ -272,7 +272,7 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
 async def test_ensure_port_mcp_vault_ready_remints_each_cached_url_once() -> None:
     from port_ocean.utils.ttl_cache import TTLCache
 
-    from actions.port_mcp_utils import port_mcp_binding_cache_key
+    from claude_managed_agents.actions.port_mcp_utils import port_mcp_binding_cache_key
 
     port_url = "https://mcp.getport.io/v1"
     run = workflow_run_with_port_mcp()

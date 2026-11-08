@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.delete_environment_executor import (
+from claude_managed_agents.actions.delete_environment_executor import (
     ENVIRONMENT_DELETED_STATUS_LABEL,
     DeleteEnvironmentExecutor,
 )
-from actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 

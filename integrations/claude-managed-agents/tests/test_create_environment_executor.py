@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.create_environment_executor import (
+from claude_managed_agents.actions.create_environment_executor import (
     ENVIRONMENT_CREATED_STATUS_LABEL,
     CreateEnvironmentExecutor,
 )
-from actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 

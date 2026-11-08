@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.exceptions import InvalidActionParametersException
-from actions.update_environment_executor import (
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.update_environment_executor import (
     ENVIRONMENT_UPDATED_STATUS_LABEL,
     UpdateEnvironmentExecutor,
 )

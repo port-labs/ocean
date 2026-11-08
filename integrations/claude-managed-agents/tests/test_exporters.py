@@ -6,12 +6,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.exporters.agents_exporter import AgentsExporter
-from core.exporters.environments_exporter import EnvironmentsExporter
-from core.exporters.memory_stores_exporter import MemoryStoresExporter
-from core.exporters.sessions_exporter import SessionsExporter
-from core.exporters.skills_exporter import SkillsExporter
-from core.exporters.vaults_exporter import VaultsExporter
+from claude_managed_agents.core.exporters.agents_exporter import AgentsExporter
+from claude_managed_agents.core.exporters.environments_exporter import EnvironmentsExporter
+from claude_managed_agents.core.exporters.memory_stores_exporter import MemoryStoresExporter
+from claude_managed_agents.core.exporters.sessions_exporter import SessionsExporter
+from claude_managed_agents.core.exporters.skills_exporter import SkillsExporter
+from claude_managed_agents.core.exporters.vaults_exporter import VaultsExporter
 
 
 def _model(data: dict[str, Any]) -> MagicMock:

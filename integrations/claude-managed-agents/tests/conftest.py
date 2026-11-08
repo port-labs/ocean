@@ -40,7 +40,7 @@ def _port_mcp_test_context() -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _reset_trigger_agent_executor_caches() -> Iterator[None]:
-    from actions.trigger_agent_executor import TriggerAgentExecutor
+    from claude_managed_agents.actions.trigger_agent_executor import TriggerAgentExecutor
 
     TriggerAgentExecutor._agent_cache._store.clear()
     TriggerAgentExecutor._port_mcp_cache._store.clear()

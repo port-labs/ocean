@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from anthropic.types.beta_monetary_amount import BetaMonetaryAmount
 
-from actions.types import list_cost_to_usd
-from actions.utils import (
+from claude_managed_agents.actions.types import list_cost_to_usd
+from claude_managed_agents.actions.utils import (
     build_external_id,
     build_session_link,
     normalize_session_config,
