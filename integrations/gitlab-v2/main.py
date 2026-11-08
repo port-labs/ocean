@@ -15,6 +15,9 @@ import asyncio
 from gitlab.clients.client_factory import create_gitlab_client
 from gitlab.clients.utils import (
     build_group_params,
+    build_issue_params,
+    build_merge_request_params,
+    build_pipeline_params,
     build_project_params,
     build_branch_params,
 )
@@ -25,13 +28,10 @@ from gitlab.helpers.utils import (
 )
 from gitlab.helpers.incremental import (
     build_cursor_updated_after_params,
-    build_incremental_project_params,
-    build_issue_params,
-    build_merge_request_params,
-    build_pipeline_params,
-    build_project_list_params,
-    build_project_updated_params,
-    resolve_effective_datetime,
+    build_incremental_merge_request_params,
+    build_incremental_pipeline_params,
+    build_incremental_project_updated_params,
+    build_incremental_projects_params,
 )
 from gitlab.helpers.skill_plugin_resync import (
     resync_plugins,
@@ -178,10 +178,14 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    params = build_project_list_params(
-        build_project_params(include_only_active_projects=include_only_active_projects),
-        sync_cursor,
-    )
+    if sync_cursor is None:
+        params = build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    else:
+        params = build_incremental_projects_params(
+            include_only_active_projects, sync_cursor
+        )
     async for projects_batch in client.get_projects(
         params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
@@ -213,15 +217,16 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabIssueResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
-    params = build_issue_params(
-        IssueOptions(
-            issue_type=selector.issue_type,
-            labels=selector.labels,
-            non_archived=selector.non_archived,
-            state=selector.state,
-        ),
-        resolve_effective_datetime(sync_cursor, selector.updated_after_datetime),
+    options = IssueOptions(
+        issue_type=selector.issue_type,
+        labels=selector.labels,
+        non_archived=selector.non_archived,
+        state=selector.state,
     )
+    if sync_cursor is None:
+        params = build_issue_params(options, selector.updated_after_datetime)
+    else:
+        params = build_issue_params(options, sync_cursor)
 
     async for groups_batch in client.get_groups(
         params=build_group_params(
@@ -244,14 +249,15 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
-    params = build_pipeline_params(
-        (
-            selector.api_query_params.generate_query_params()
-            if selector.api_query_params
-            else None
-        ),
-        sync_cursor,
+    api_query_params = (
+        selector.api_query_params.generate_query_params()
+        if selector.api_query_params
+        else None
     )
+    if sync_cursor is None:
+        params = build_pipeline_params(api_query_params)
+    else:
+        params = build_incremental_pipeline_params(api_query_params, sync_cursor)
 
     async for projects_batch in client.get_projects(
         params=build_project_params(
@@ -290,22 +296,26 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
-    pipeline_params = build_pipeline_params(
-        (
-            selector.pipeline_query_params.generate_query_params()
-            if selector.pipeline_query_params
-            else None
-        ),
-        sync_cursor,
+    pipeline_query_params = (
+        selector.pipeline_query_params.generate_query_params()
+        if selector.pipeline_query_params
+        else None
     )
+    if sync_cursor is None:
+        pipeline_params = build_pipeline_params(pipeline_query_params)
+        projects_params = build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    else:
+        pipeline_params = build_incremental_pipeline_params(
+            pipeline_query_params, sync_cursor
+        )
+        projects_params = build_incremental_project_updated_params(
+            include_only_active_projects, sync_cursor
+        )
 
     async for projects_batch in client.get_projects(
-        params=build_incremental_project_params(
-            build_project_params(
-                include_only_active_projects=include_only_active_projects
-            ),
-            sync_cursor,
-        ),
+        params=projects_params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -335,9 +345,10 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         for state in states:
-            params = build_merge_request_params(
-                state, sync_cursor, lookback_updated_after
-            )
+            if sync_cursor is None:
+                params = build_merge_request_params(state, lookback_updated_after)
+            else:
+                params = build_incremental_merge_request_params(state, sync_cursor)
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
             )
@@ -364,13 +375,16 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
+    if sync_cursor is None:
+        projects_params = build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    else:
+        projects_params = build_incremental_project_updated_params(
+            include_only_active_projects, sync_cursor
+        )
     async for projects_batch in client.get_projects(
-        params=build_incremental_project_params(
-            build_project_params(
-                include_only_active_projects=include_only_active_projects
-            ),
-            sync_cursor,
-        ),
+        params=projects_params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -391,13 +405,16 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
 
+    if sync_cursor is None:
+        projects_params = build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    else:
+        projects_params = build_incremental_project_updated_params(
+            include_only_active_projects, sync_cursor
+        )
     async for projects_batch in client.get_projects(
-        params=build_incremental_project_params(
-            build_project_params(
-                include_only_active_projects=include_only_active_projects
-            ),
-            sync_cursor,
-        ),
+        params=projects_params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -553,16 +570,21 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 file_entity["__includedFiles"] = files_cache[repo_key]
         return enriched_batch
 
-    params = (
-        build_project_updated_params(
-            build_project_params(
-                include_only_active_projects=include_only_active_groups
-            ),
-            sync_cursor,
+    lists_projects = search_strategy in ("projectSearch", "repositoryTree")
+    if not lists_projects:
+        # groupSearch lists groups, which aren't filtered by the cursor,
+        # so full and incremental runs send the same query.
+        params = build_group_params(
+            include_only_active_groups=include_only_active_groups
         )
-        if search_strategy in ("projectSearch", "repositoryTree")
-        else build_group_params(include_only_active_groups=include_only_active_groups)
-    )
+    elif sync_cursor is None:
+        params = build_project_params(
+            include_only_active_projects=include_only_active_groups
+        )
+    else:
+        params = build_incremental_project_updated_params(
+            include_only_active_groups, sync_cursor
+        )
 
     if sync_cursor is not None and search_strategy == "repositoryTree":
         files_stream = client.search_changed_files_in_projects(
@@ -594,15 +616,15 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
-    project_params = build_project_updated_params(
-        build_project_params(
-            include_only_active_projects=selector.include_only_active_groups
-        ),
-        sync_cursor,
-    )
     if sync_cursor is None:
+        project_params = build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
+        )
         stream = resync_skills(client, selector, project_params)
     else:
+        project_params = build_incremental_project_updated_params(
+            selector.include_only_active_groups, sync_cursor
+        )
         stream = resync_skills_incremental(
             client, selector, project_params, sync_cursor
         )
@@ -616,15 +638,15 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
-    project_params = build_project_updated_params(
-        build_project_params(
-            include_only_active_projects=selector.include_only_active_groups
-        ),
-        sync_cursor,
-    )
     if sync_cursor is None:
+        project_params = build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
+        )
         stream = resync_plugins(client, selector, project_params)
     else:
+        project_params = build_incremental_project_updated_params(
+            selector.include_only_active_groups, sync_cursor
+        )
         stream = resync_plugins_incremental(
             client, selector, project_params, sync_cursor
         )
@@ -641,10 +663,14 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     include_only_active_projects = selector.include_only_active_projects
     sync_cursor = active_incremental_cursor()
-    projects_params = build_project_updated_params(
-        build_project_params(include_only_active_projects=include_only_active_projects),
-        sync_cursor,
-    )
+    if sync_cursor is None:
+        projects_params = build_project_params(
+            include_only_active_projects=include_only_active_projects
+        )
+    else:
+        projects_params = build_incremental_project_updated_params(
+            include_only_active_projects, sync_cursor
+        )
 
     def folders_stream(
         path: str, repository: str, branch: str | None = None
@@ -749,11 +775,10 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
     sync_cursor = active_incremental_cursor()
     selector_params = selector.generate_query_params() or None
-    params = (
-        build_cursor_updated_after_params(selector_params, sync_cursor)
-        if sync_cursor is not None
-        else selector_params
-    )
+    if sync_cursor is None:
+        params = selector_params
+    else:
+        params = build_cursor_updated_after_params(selector_params, sync_cursor)
     async for batch in _resync_deployments(
         selector.include_only_active_projects,
         params,
