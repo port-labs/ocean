@@ -5,26 +5,7 @@ from loguru import logger
 import asyncio
 from botocore.exceptions import ClientError
 
-from aws.core.helpers.aws_errors import (
-    is_access_denied_exception,
-    is_cloud_control_type_unavailable_exception,
-    is_recoverable_aws_exception,
-    is_resource_not_found_exception,
-    is_throttling_exception,
-)
-
 T = TypeVar("T")
-
-__all__ = [
-    "execute_concurrent_aws_operations",
-    "get_allowed_regions",
-    "is_access_denied_exception",
-    "is_cloud_control_type_unavailable_exception",
-    "is_recoverable_aws_exception",
-    "is_resource_not_found_exception",
-    "is_throttling_exception",
-    "require_aws_resource",
-]
 
 
 def require_aws_resource(
@@ -44,6 +25,146 @@ def require_aws_resource(
     raise ClientError(
         {"Error": {"Code": error_code, "Message": message}},
         operation_name,
+    )
+
+
+def _general_service_exception_message_contains(
+    exception: Exception, patterns: tuple[str, ...]
+) -> bool:
+    response = getattr(exception, "response", None)
+    if not isinstance(response, dict):
+        return False
+
+    error = response.get("Error", {})
+    if error.get("Code") != "GeneralServiceException":
+        return False
+
+    message = error.get("Message", "").lower()
+    return any(pattern in message for pattern in patterns)
+
+
+def is_access_denied_exception(e: Exception) -> bool:
+    access_denied_error_codes = [
+        "AccessDenied",
+        "AccessDeniedException",
+        "UnauthorizedOperation",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        if error_code in access_denied_error_codes:
+            return True
+    return _general_service_exception_message_contains(
+        e,
+        (
+            "access denied",
+            "accessdenied",
+            "unauthorized",
+            "forbidden",
+            "permission denied",
+        ),
+    )
+
+
+def is_resource_not_found_exception(e: Exception) -> bool:
+    resource_not_found_error_codes = [
+        "ResourceNotFoundException",
+        "ResourceNotFound",
+        "ResourceNotFoundFault",
+        "RepositoryPolicyNotFoundException",
+        "LifecyclePolicyNotFoundException",
+        "RepositoryNotFoundException",
+        "ClusterNotFoundException",
+        "ServiceNotFoundException",
+        "TaskDefinitionNotFoundException",
+        "NotFoundException",
+        "NoSuchBucket",
+        "DBInstanceNotFound",
+        "DBClusterNotFoundFault",
+        "CacheClusterNotFoundFault",
+        "InvalidInstanceID.NotFound",
+        "InvalidVolume.NotFound",
+        "AWS.SimpleQueueService.NonExistentQueue",
+        "PipelineNotFoundException",
+        "PipelineExecutionNotFoundException",
+        "DeploymentDoesNotExistException",
+        "UserNotFoundFault",
+        "404",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        if error_code in resource_not_found_error_codes:
+            return True
+    return _general_service_exception_message_contains(
+        e,
+        (
+            "not found",
+            "notfound",
+            "does not exist",
+            "resourcenotfound",
+        ),
+    )
+
+
+def is_cloud_control_type_unavailable_exception(e: Exception) -> bool:
+    """Return True when Cloud Control cannot handle the requested type in this region.
+
+    Covers types that are not registered, not available, or do not support the
+    requested Cloud Control action (typically ListResources / GetResource).
+    """
+    unavailable_error_codes = [
+        "TypeNotFoundException",
+        "CFNRegistryException",
+        "UnsupportedActionException",
+        "ResourceNotExistsError",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        if error_code in unavailable_error_codes:
+            return True
+        if error_code == "GeneralServiceException":
+            error_message = response.get("Error", {}).get("Message", "").lower()
+            return any(
+                pattern in error_message
+                for pattern in (
+                    "type not found",
+                    "is not registered",
+                    "resource type is not available in this region",
+                )
+            )
+    return False
+
+
+def is_throttling_exception(e: Exception) -> bool:
+    throttling_error_codes = [
+        "ThrottlingException",
+        "Throttling",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        return error_code in throttling_error_codes
+    return False
+
+
+def is_recoverable_aws_exception(exception: Exception) -> bool:
+    """
+    Check if an AWS exception is recoverable and the action can continue.
+    Recoverable exceptions (ResourceNotFound, AccessDenied, Throttling) allow processing to continue.
+    Non-recoverable exceptions should be re-raised to break the action.
+
+    Args:
+        exception: The exception to check
+
+    Returns:
+        True if exception is recoverable and processing can continue, False if it should be re-raised
+    """
+    return (
+        is_resource_not_found_exception(exception)
+        or is_access_denied_exception(exception)
+        or is_throttling_exception(exception)
     )
 
 
