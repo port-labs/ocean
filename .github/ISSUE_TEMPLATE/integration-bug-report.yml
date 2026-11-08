@@ -14,7 +14,7 @@ body:
     attributes:
       label: Integration Version
       description: >
-        The version of the integration, can be extracted via the spec.yml file in the .port folder, or the docker container image tag
+        The version of the integration, can be extracted via the pyproject.toml file of the integration, or the docker container image tag
     validations:
       required: true
   - type: textarea

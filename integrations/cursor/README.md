@@ -11,7 +11,7 @@ Port Ocean integration for Cursor analytics and usage APIs.
 
 ## Configuration
 
-See `.port/spec.yaml` for complete configuration fields.
+See `.port/spec.json` for complete configuration fields.
 
 ## Selector date configuration
 

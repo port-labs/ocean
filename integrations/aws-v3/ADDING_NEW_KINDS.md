@@ -388,20 +388,24 @@ async def resync_your_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 ### Step 7: Update Port Specification
 
-**File:** `.port/spec.yaml`
+**File:** `.port/spec.json`
 
 Add your resource kind to the resources list:
 
-```yaml
-features:
-  - type: exporter
-    section: Cloud Providers
-    resources:
-      - kind: AWS::Account::Info
-      - kind: AWS::S3::Bucket
-      - kind: AWS::EC2::Instance
-      - kind: AWS::ECS::Cluster
-      - kind: AWS::YourService::YourResource  # Add your kind here
+```json
+"features": [
+  {
+    "type": "exporter",
+    "section": "Cloud Providers",
+    "resources": [
+      { "kind": "AWS::Account::Info" },
+      { "kind": "AWS::S3::Bucket" },
+      { "kind": "AWS::EC2::Instance" },
+      { "kind": "AWS::ECS::Cluster" },
+      { "kind": "AWS::YourService::YourResource" }
+    ]
+  }
+]
 ```
 
 ### Step 8: Create Blueprint
