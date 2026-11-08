@@ -5,78 +5,76 @@ from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.foundry.clients.http.base_client import BaseFoundryClient
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
-from azure_integration.foundry.clients.quota_client import create_quota_client
-from azure_integration.foundry.core.exporters.abstract_exporter import AbstractFoundryExporter
+from azure_integration.foundry.foundry_incremental import AGENT_VERSION_INCREMENTAL
 from azure_integration.foundry.helpers.metadata import (
     get_source_platform_name,
     merge_metadata,
     owner_from_metadata,
 )
-from azure_integration.foundry.helpers.project_scope import enrich_with_project, get_project_endpoint
-from azure_integration.foundry.helpers.utils import region_from_project_endpoint, timestamp_to_iso
-from azure_integration.foundry.foundry_incremental import AGENT_VERSION_INCREMENTAL
+from azure_integration.foundry.helpers.project_scope import (
+    enrich_with_project,
+    get_project_endpoint,
+)
+from azure_integration.foundry.helpers.utils import timestamp_to_iso
 
 
-class AgentVersionsExporter(AbstractFoundryExporter[FoundryHttpClient]):
-    async def get_paginated_resources(self, **_options: object) -> ASYNC_GENERATOR_RESYNC_TYPE:
+class AgentVersionsExporter:
+    def __init__(self, client: FoundryHttpClient) -> None:
+        self.client = client
+
+    async def get_paginated_resources(
+        self, **_options: object
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         cursor = active_incremental_cursor()
-        params = AGENT_VERSION_INCREMENTAL.merge_params({}, cursor)
-        quota = create_quota_client()
         project_endpoint = get_project_endpoint()
+        saw_agent = False
 
-        agents_payload = await self.client.send_api_request(
-            self.client.build_url(project_endpoint, "agents"),
-            params={"limit": BaseFoundryClient.PAGE_SIZE},
-        )
-        agents = self.client.items_from_payload(agents_payload)
-        if not agents:
-            logger.info("No agents found; skipping agent version export")
-            return
-
-        for agent in agents:
-            agent_name = agent.get("name") or agent.get("id")
-            if not agent_name:
-                continue
-            agent_name_str = str(agent_name)
-            versions_payload = await self.client.send_api_request(
-                self.client.build_url(
-                    project_endpoint, f"agents/{agent_name_str}/versions"
-                ),
-                params={"limit": BaseFoundryClient.PAGE_SIZE},
-            )
-            versions = self.client.items_from_payload(versions_payload)
-            if not versions:
-                latest = agent.get("versions")
-                if isinstance(latest, dict) and isinstance(latest.get("latest"), dict):
-                    versions = [latest["latest"]]
-
-            async for page in paginate_with_strategy(
-                _version_pages(versions, agent_name_str),
-                cursor=cursor,
-                strategy=AGENT_VERSION_INCREMENTAL,
-            ):
-                check = await quota.check_before_batch(
-                    region=region_from_project_endpoint(project_endpoint),
-                    batch_size=len(page),
-                )
-                if not check.allowed:
-                    logger.warning(
-                        f"Skipping agent-version batch for {agent_name_str}: "
-                        f"{check.message}"
-                    )
+        async for agents_page in self.client.send_paginated_request(
+            project_endpoint, "agents", params={"limit": FoundryHttpClient.PAGE_SIZE}
+        ):
+            for agent in agents_page:
+                agent_name = agent.get("name") or agent.get("id")
+                if not agent_name:
                     continue
-                batch = [
-                    enrich_with_project(_normalize_agent_version(item, agent_name_str))
-                    for item in page
-                ]
-                if batch:
-                    yield batch
+                saw_agent = True
+                agent_name_str = str(agent_name)
+                versions: list[dict[str, object]] = []
+                async for version_page in self.client.send_paginated_request(
+                    project_endpoint,
+                    f"agents/{agent_name_str}/versions",
+                    params={"limit": FoundryHttpClient.PAGE_SIZE},
+                ):
+                    versions.extend(version_page)
+                if not versions:
+                    latest = agent.get("versions")
+                    if isinstance(latest, dict) and isinstance(
+                        latest.get("latest"), dict
+                    ):
+                        versions = [latest["latest"]]
+                if not versions:
+                    continue
+
+                async for page in paginate_with_strategy(
+                    _version_pages(versions),
+                    cursor=cursor,
+                    strategy=AGENT_VERSION_INCREMENTAL,
+                ):
+                    batch = [
+                        enrich_with_project(
+                            _normalize_agent_version(item, agent_name_str)
+                        )
+                        for item in page
+                    ]
+                    if batch:
+                        yield batch
+
+        if not saw_agent:
+            logger.info("No agents found; skipping agent version export")
 
 
 async def _version_pages(
-    versions: list[dict[str, object]], agent_id: str
+    versions: list[dict[str, object]],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if versions:
         yield versions

@@ -1,9 +1,20 @@
-from azure_integration.foundry.core.exporters.agent_versions_exporter import _normalize_agent_version
+from azure_integration.foundry.core.exporters.agent_versions_exporter import (
+    _normalize_agent_version,
+)
 from azure_integration.foundry.core.exporters.agents_exporter import _normalize_agent
-from azure_integration.foundry.core.exporters.conversations_exporter import _normalize_conversation
-from azure_integration.foundry.core.exporters.model_deployments_exporter import _normalize_deployment
-from azure_integration.foundry.helpers.conversation_catalog import conversation_row_from_response
-from azure_integration.foundry.helpers.usage_metrics import count_tool_calls_in_response, merge_usage_into_row
+from azure_integration.foundry.core.exporters.conversations_exporter import (
+    _normalize_conversation,
+)
+from azure_integration.foundry.core.exporters.model_deployments_exporter import (
+    _normalize_deployment,
+)
+from azure_integration.foundry.helpers.conversation_catalog import (
+    conversation_row_from_response,
+)
+from azure_integration.foundry.helpers.usage_metrics import (
+    count_tool_calls_in_response,
+    merge_usage_into_row,
+)
 
 
 def test_normalize_agent_flattens_latest_definition() -> None:
@@ -37,7 +48,7 @@ def test_normalize_agent_flattens_latest_definition() -> None:
     assert normalized["configuration_state"] == "enabled"
     assert normalized["tool_count"] == 2
     assert normalized["source_platform"] == "Azure AI Foundry"
-    assert normalized["created_at"].endswith("+00:00")
+    assert str(normalized["created_at"]).endswith("+00:00")
 
 
 def test_normalize_agent_version() -> None:
@@ -106,7 +117,7 @@ def test_normalize_conversation_maps_created_at_and_metadata() -> None:
     )
     assert normalized["id"] == "conv_abc"
     assert normalized["participant_agent_ids"] == ["Omby-agent"]
-    assert normalized["created_at"].endswith("+00:00")
+    assert str(normalized["created_at"]).endswith("+00:00")
     assert normalized["metadata"] == {"team": "platform"}
 
 

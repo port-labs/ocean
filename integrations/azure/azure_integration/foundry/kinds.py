@@ -20,18 +20,18 @@ class ObjectKind(StrEnum):
     MEMORY_STORE = "foundry-memory-store"
 
 
-class FoundryProjectSelector(Selector):
-    pass
+class FoundrySelector(Selector):
+    query: str = Field(default="true")
 
 
 class FoundryProjectResourceConfig(ResourceConfig):
     kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
         title="Foundry project (ARM)"
     )
-    selector: FoundryProjectSelector = Field(default_factory=FoundryProjectSelector)
+    selector: FoundrySelector = Field(default_factory=FoundrySelector)
 
 
-class AgentSelector(Selector):
+class AgentSelector(FoundrySelector):
     include_versions: bool = Field(
         default=False,
         alias="includeVersions",
@@ -45,16 +45,12 @@ class AgentResourceConfig(ResourceConfig):
     selector: AgentSelector = Field(default_factory=AgentSelector)
 
 
-class ModelDeploymentSelector(Selector):
-    pass
-
-
 class ModelDeploymentResourceConfig(ResourceConfig):
     kind: Literal["foundry-model-deployment"] = Field(title="Foundry model deployment")
-    selector: ModelDeploymentSelector = Field(default_factory=ModelDeploymentSelector)
+    selector: FoundrySelector = Field(default_factory=FoundrySelector)
 
 
-class ConversationSelector(Selector):
+class ConversationSelector(FoundrySelector):
     since_days: int = Field(
         default=365,
         ge=1,
@@ -77,7 +73,7 @@ class ConversationResourceConfig(ResourceConfig):
     selector: ConversationSelector = Field(default_factory=ConversationSelector)
 
 
-class ResponseSelector(Selector):
+class ResponseSelector(FoundrySelector):
     since_days: int = Field(
         default=365,
         ge=1,
@@ -100,19 +96,11 @@ class ResponseResourceConfig(ResourceConfig):
     selector: ResponseSelector = Field(default_factory=ResponseSelector)
 
 
-class MemoryStoreSelector(Selector):
-    pass
-
-
 class MemoryStoreResourceConfig(ResourceConfig):
     kind: Literal["foundry-memory-store"] = Field(title="Foundry memory store")
-    selector: MemoryStoreSelector = Field(default_factory=MemoryStoreSelector)
-
-
-class AgentVersionSelector(Selector):
-    pass
+    selector: FoundrySelector = Field(default_factory=FoundrySelector)
 
 
 class AgentVersionResourceConfig(ResourceConfig):
     kind: Literal["foundry-agent-version"] = Field(title="Foundry agent version")
-    selector: AgentVersionSelector = Field(default_factory=AgentVersionSelector)
+    selector: FoundrySelector = Field(default_factory=FoundrySelector)

@@ -5,7 +5,9 @@ from typing import Any
 from loguru import logger
 from pydantic import Field
 
-from azure_integration.foundry.actions.abstract_action_input import AbstractFoundryActionInput
+from azure_integration.foundry.actions.abstract_action_input import (
+    AbstractFoundryActionInput,
+)
 from azure_integration.foundry.clients.client_factory import create_foundry_client
 from azure_integration.foundry.helpers.project_scope import get_project_endpoint
 
@@ -16,9 +18,7 @@ def response_resource_path(response_id: str) -> str:
 
 async def fetch_foundry_response(response_id: str) -> dict[str, Any] | None:
     client = create_foundry_client()
-    url = client.build_url(
-        get_project_endpoint(), response_resource_path(response_id)
-    )
+    url = client.build_url(get_project_endpoint(), response_resource_path(response_id))
     try:
         payload = await client.send_api_request(url, method="GET")
     except Exception as error:

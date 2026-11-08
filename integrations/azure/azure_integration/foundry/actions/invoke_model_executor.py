@@ -2,11 +2,22 @@ from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.actions.responses_invoke_mixin import ResponsesInvokeMixin
-from azure_integration.foundry.helpers.conversation_api import resolve_conversation_for_invoke
-from azure_integration.foundry.helpers.model_responses_api import InvokeModelInputs, build_model_responses_invoke
-from azure_integration.foundry.webhook_processors.conversation_webhook_processor import ConversationWebhookProcessor
-from azure_integration.foundry.webhook_processors.registry import WEBHOOK_PATH
+from azure_integration.foundry.actions.responses_invoke_mixin import (
+    ResponsesInvokeMixin,
+)
+from azure_integration.foundry.helpers.conversation_api import (
+    resolve_conversation_for_invoke,
+)
+from azure_integration.foundry.helpers.model_responses_api import (
+    InvokeModelInputs,
+    build_model_responses_invoke,
+)
+from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
+    WEBHOOK_PATH,
+)
+from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
+    ConversationWebhookProcessor,
+)
 
 
 class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):

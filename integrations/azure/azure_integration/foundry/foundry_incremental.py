@@ -1,4 +1,4 @@
-"""Incremental sync strategies for Azure AI Foundry Agent Service resources."""
+"""Incremental sync strategies for Azure AI Foundry resources."""
 
 from datetime import datetime
 from typing import Any
@@ -23,31 +23,15 @@ class FoundryClientSideCutoffStrategy(ClientSideCutoffStrategy):
         return item_time < cursor
 
 
-AGENT_INCREMENTAL = FoundryClientSideCutoffStrategy(
-    stop_field="updated_at",
-    query_params={"order": "desc"},
-)
+def _cutoff(stop_field: str) -> FoundryClientSideCutoffStrategy:
+    return FoundryClientSideCutoffStrategy(
+        stop_field=stop_field, query_params={"order": "desc"}
+    )
 
-AGENT_VERSION_INCREMENTAL = FoundryClientSideCutoffStrategy(
-    stop_field="created_at",
-    query_params={"order": "desc"},
-)
 
-CONVERSATION_INCREMENTAL = FoundryClientSideCutoffStrategy(
-    stop_field="created_at",
-    query_params={"order": "desc"},
-)
-
-RESPONSE_INCREMENTAL = FoundryClientSideCutoffStrategy(
-    stop_field="created_at",
-    query_params={"order": "desc"},
-)
-
-MODEL_DEPLOYMENT_INCREMENTAL = FoundryClientSideCutoffStrategy(
-    stop_field="updated_at",
-    query_params={"order": "desc"},
-)
-MEMORY_STORE_INCREMENTAL = FoundryClientSideCutoffStrategy(
-    stop_field="created_at",
-    query_params={"order": "desc"},
-)
+AGENT_INCREMENTAL = _cutoff("updated_at")
+AGENT_VERSION_INCREMENTAL = _cutoff("created_at")
+CONVERSATION_INCREMENTAL = _cutoff("created_at")
+RESPONSE_INCREMENTAL = _cutoff("created_at")
+MODEL_DEPLOYMENT_INCREMENTAL = _cutoff("updated_at")
+MEMORY_STORE_INCREMENTAL = _cutoff("created_at")

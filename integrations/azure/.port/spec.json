@@ -187,14 +187,6 @@
           "title": "Instructions",
           "type": "string",
           "required": false
-        },
-        {
-          "name": "enablePortMcp",
-          "title": "Attach Port MCP",
-          "type": "boolean",
-          "required": false,
-          "default": true,
-          "description": "Create a project connection and agent MCP tool pointing at Port MCP using the ARM scope discovered for projectEndpoint."
         }
       ]
     },
@@ -332,10 +324,6 @@
       "name": "invoke_agent",
       "icon": "Azure",
       "description": "Invoke a Foundry agent via the Responses API",
-      "allowedExecutionIdentities": [
-        "actor",
-        "service_account"
-      ],
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -369,14 +357,6 @@
           "type": "jqObject",
           "required": false,
           "description": "Optional metadata to set on the conversation before invoke (for example subject, ticket id, or owner). Applied on create when conversationId is omitted, or patched onto an existing conversationId."
-        },
-        {
-          "name": "enablePortMcp",
-          "title": "Use Port MCP (remint per invoke)",
-          "type": "boolean",
-          "required": false,
-          "default": true,
-          "description": "Create a project connection and agent MCP tool pointing at Port MCP using the ARM scope discovered for projectEndpoint."
         },
         {
           "name": "reportInvocationStatus",

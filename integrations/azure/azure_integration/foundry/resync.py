@@ -27,13 +27,6 @@ from azure_integration.foundry.kinds import (
 )
 
 
-def _stamp_project(item: dict[str, Any], *, endpoint: str, project_arm_id: str) -> dict[str, Any]:
-    stamped = dict(item)
-    stamped["__foundryProjectEndpoint"] = endpoint
-    stamped["__foundryProjectId"] = project_arm_id
-    return stamped
-
-
 async def resync_foundry_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     projects = await discover_foundry_projects(force_refresh=True)
@@ -60,14 +53,7 @@ async def _resync_across_projects(
         ):
             async for page in fetch_pages():
                 if page:
-                    yield [
-                        _stamp_project(
-                            item,
-                            endpoint=project.endpoint,
-                            project_arm_id=project.project_arm_id,
-                        )
-                        for item in page
-                    ]
+                    yield page
 
 
 async def resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -115,7 +101,9 @@ async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 
     async def fetch() -> ASYNC_GENERATOR_RESYNC_TYPE:
         exporter = create_conversations_exporter()
-        async for page in exporter.get_paginated_resources(since_days=selector.since_days):
+        async for page in exporter.get_paginated_resources(
+            since_days=selector.since_days
+        ):
             yield page
 
     async for page in _resync_across_projects(fetch):
@@ -128,7 +116,9 @@ async def resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async def fetch() -> ASYNC_GENERATOR_RESYNC_TYPE:
         exporter = create_responses_exporter()
-        async for page in exporter.get_paginated_resources(since_days=selector.since_days):
+        async for page in exporter.get_paginated_resources(
+            since_days=selector.since_days
+        ):
             yield page
 
     async for page in _resync_across_projects(fetch):
@@ -147,7 +137,9 @@ async def resync_foundry_memory_stores(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         yield page
 
 
-FOUNDRY_RESYNC_HANDLERS: dict[str, Callable[[str], AsyncIterator[list[dict[str, Any]]]]] = {
+FOUNDRY_RESYNC_HANDLERS: dict[
+    str, Callable[[str], AsyncIterator[list[dict[str, Any]]]]
+] = {
     ObjectKind.FOUNDRY_PROJECT: resync_foundry_projects,
     ObjectKind.AGENT: resync_foundry_agents,
     ObjectKind.AGENT_VERSION: resync_foundry_agent_versions,

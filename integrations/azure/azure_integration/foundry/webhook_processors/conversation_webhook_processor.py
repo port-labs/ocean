@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
@@ -16,8 +15,12 @@ from azure_integration.foundry.helpers.invoke_completion import (
     complete_invoke_run_from_webhook,
     find_in_progress_run_for_response,
 )
-from azure_integration.foundry.helpers.webhook_scope import response_id_from_webhook_payload
-from azure_integration.foundry.webhook_processors.abstract_webhook_processor import AbstractFoundryWebhookProcessor
+from azure_integration.foundry.helpers.webhook_scope import (
+    response_id_from_webhook_payload,
+)
+from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
+    AbstractFoundryWebhookProcessor,
+)
 
 _RESPONSE_TERMINAL_EVENTS = {
     "response.completed",
@@ -28,7 +31,7 @@ _RESPONSE_TERMINAL_EVENTS = {
 
 
 class ConversationWebhookProcessor(AbstractFoundryWebhookProcessor):
-    """Completes ``invoke_agent`` runs correlated by Foundry ``response.*`` webhooks."""
+    """Completes invoke runs correlated by Foundry ``response.*`` webhooks."""
 
     @classmethod
     def get_processor_type(cls) -> WebhookProcessorType:
@@ -46,7 +49,9 @@ class ConversationWebhookProcessor(AbstractFoundryWebhookProcessor):
         event_type = self.get_event_type(payload)
         response_id = response_id_from_webhook_payload(payload)
         if not response_id:
-            logger.warning(f"Ignoring Foundry webhook without response id ({event_type})")
+            logger.warning(
+                f"Ignoring Foundry webhook without response id ({event_type})"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )

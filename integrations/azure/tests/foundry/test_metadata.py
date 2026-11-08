@@ -1,4 +1,7 @@
-from azure_integration.foundry.helpers.metadata import merge_metadata, owner_from_metadata
+from azure_integration.foundry.helpers.metadata import (
+    merge_metadata,
+    owner_from_metadata,
+)
 
 
 def test_owner_from_metadata_uses_first_matching_key() -> None:

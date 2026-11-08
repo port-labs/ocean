@@ -1,6 +1,9 @@
 from datetime import UTC, datetime
 
-from azure_integration.foundry.helpers.utils import parse_foundry_timestamp, timestamp_to_iso
+from azure_integration.foundry.helpers.utils import (
+    parse_foundry_timestamp,
+    timestamp_to_iso,
+)
 
 
 def test_parse_foundry_timestamp_unix_string() -> None:

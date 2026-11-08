@@ -218,8 +218,7 @@
           "integrationActionExecutionProperties": {
             "name": "{{ .outputs.trigger.name }}",
             "model": "{{ .outputs.trigger.model }}",
-            "instructions": "{{ .outputs.trigger.instructions }}",
-            "enablePortMcp": true
+            "instructions": "{{ .outputs.trigger.instructions }}"
           },
           "onFailure": "terminate"
         },
@@ -450,11 +449,7 @@
             "agentId": "{{ .outputs.trigger.agent }}",
             "input": "{{ .outputs.trigger.input }}",
             "conversationId": "{{ .outputs.trigger.conversationId }}",
-            "enablePortMcp": true,
             "reportInvocationStatus": true
-          },
-          "executionIdentity": {
-            "type": "actor"
           },
           "onFailure": "terminate"
         },

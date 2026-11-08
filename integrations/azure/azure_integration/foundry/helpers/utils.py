@@ -1,16 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from port_ocean.utils.time import convert_str_to_utc_datetime
-
-
-def region_from_project_endpoint(project_endpoint: str) -> str | None:
-    host = project_endpoint.split("//", maxsplit=1)[-1].split("/", maxsplit=1)[0]
-    parts = host.split(".")
-    if len(parts) >= 3 and parts[-2] == "api":
-        return parts[-3]
-    return None
 
 
 def parse_foundry_timestamp(value: object) -> datetime | None:
@@ -43,3 +35,19 @@ def timestamp_to_iso(value: object) -> str | None:
     if value is not None:
         return str(value)
     return None
+
+
+def effective_conversation_cutoff(
+    incremental_cursor: datetime | None,
+    *,
+    since_days: int | None,
+) -> datetime | None:
+    """Latest cutoff: incremental cursor and/or relative ``since`` window."""
+    bounds: list[datetime] = []
+    if incremental_cursor is not None:
+        bounds.append(incremental_cursor)
+    if since_days is not None:
+        bounds.append(datetime.now(UTC) - timedelta(days=since_days))
+    if not bounds:
+        return None
+    return max(bounds)

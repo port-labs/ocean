@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-from typing import Any
+from collections.abc import AsyncGenerator, Awaitable
+from typing import Any, Protocol
 from urllib.parse import urljoin
 
 import httpx
 from port_ocean.helpers.async_client import OceanAsyncClient
 
-from azure_integration.foundry.clients.auth.abstract_authenticator import AbstractAzureAuthenticator
-from azure_integration.foundry.clients.http.base_client import BaseFoundryClient
+
+class _HeaderProvider(Protocol):
+    def get_authorization_header(self) -> Awaitable[dict[str, str]]: ...
 
 
 class FoundryApiError(Exception):
@@ -17,15 +18,17 @@ class FoundryApiError(Exception):
         self.status_code = status_code
 
 
-class FoundryHttpClient(BaseFoundryClient):
-    """Generic HTTP client for Microsoft Foundry project data-plane APIs."""
+class FoundryHttpClient:
+    """HTTP client for Microsoft Foundry project data-plane APIs."""
+
+    PAGE_SIZE = 100
 
     def __init__(
         self,
         *,
-        authenticator: AbstractAzureAuthenticator,
+        authenticator: _HeaderProvider,
         api_version: str,
-        page_size: int = BaseFoundryClient.PAGE_SIZE,
+        page_size: int = PAGE_SIZE,
     ) -> None:
         self._authenticator = authenticator
         self._api_version = api_version
@@ -34,16 +37,10 @@ class FoundryHttpClient(BaseFoundryClient):
 
     async def close(self) -> None:
         await self._http.aclose()
-        if hasattr(self._authenticator, "close"):
-            await self._authenticator.close()
-
-    async def get_authorization_headers(self) -> dict[str, str]:
-        return await self._authenticator.get_authorization_header()
 
     def build_url(self, project_endpoint: str, path: str) -> str:
         base = project_endpoint.rstrip("/") + "/"
-        normalized_path = path.lstrip("/")
-        return urljoin(base, normalized_path)
+        return urljoin(base, path.lstrip("/"))
 
     @staticmethod
     def uses_openai_compatible_routes(endpoint: str) -> bool:
@@ -60,9 +57,8 @@ class FoundryHttpClient(BaseFoundryClient):
         extra_headers: dict[str, str] | None = None,
     ) -> dict[str, Any] | list[Any]:
         query_params = dict(params or {})
-        if method.upper() in {"GET", "DELETE", "POST", "PATCH", "PUT"}:
-            if not self.uses_openai_compatible_routes(endpoint):
-                query_params.setdefault("api-version", self._api_version)
+        if not self.uses_openai_compatible_routes(endpoint):
+            query_params.setdefault("api-version", self._api_version)
         headers = {
             **await self._authenticator.get_authorization_header(),
             **(extra_headers or {}),
@@ -74,7 +70,8 @@ class FoundryHttpClient(BaseFoundryClient):
             json=json_body,
             headers=headers,
         )
-        if response.status_code == 404:
+        # Missing resource: GET/DELETE are empty; mutations must fail.
+        if response.status_code == 404 and method.upper() in {"GET", "DELETE"}:
             return {}
         if response.is_error:
             detail = response.text[:2000] if response.text else response.reason_phrase
@@ -119,7 +116,6 @@ class FoundryHttpClient(BaseFoundryClient):
         params: dict[str, Any] | None = None,
         extra_headers: dict[str, str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Paginate OpenAI-style list responses using ``after`` + ``has_more``."""
         request_params = dict(params or {})
         request_params.setdefault("limit", self._page_size)
         while True:

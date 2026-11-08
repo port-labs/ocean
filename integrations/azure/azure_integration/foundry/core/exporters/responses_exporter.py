@@ -1,23 +1,33 @@
 from __future__ import annotations
 
-from loguru import logger
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
-from azure_integration.foundry.clients.quota_client import create_quota_client
-from azure_integration.foundry.core.exporters.abstract_exporter import AbstractFoundryExporter
-from azure_integration.foundry.foundry_incremental import CONVERSATION_INCREMENTAL, RESPONSE_INCREMENTAL
-from azure_integration.foundry.helpers.conversation_rollup import build_conversation_rollup, register_conversation_rollups
-from azure_integration.foundry.helpers.conversation_sync import effective_conversation_cutoff
-from azure_integration.foundry.helpers.project_scope import enrich_with_project, get_project_endpoint
-from azure_integration.foundry.helpers.responses_catalog import normalize_foundry_response
-from azure_integration.foundry.helpers.utils import region_from_project_endpoint
+from azure_integration.foundry.foundry_incremental import (
+    CONVERSATION_INCREMENTAL,
+    RESPONSE_INCREMENTAL,
+)
+from azure_integration.foundry.helpers.conversation_rollup import (
+    build_conversation_rollup,
+    register_conversation_rollups,
+)
+from azure_integration.foundry.helpers.utils import effective_conversation_cutoff
+from azure_integration.foundry.helpers.project_scope import (
+    enrich_with_project,
+    get_project_endpoint,
+)
+from azure_integration.foundry.helpers.responses_catalog import (
+    normalize_foundry_response,
+)
 
 
-class ResponsesExporter(AbstractFoundryExporter[FoundryHttpClient]):
+class ResponsesExporter:
     """Foundry Responses API objects, related to conversations with rollup refresh."""
+
+    def __init__(self, client: FoundryHttpClient) -> None:
+        self.client = client
 
     async def get_paginated_resources(
         self,
@@ -31,7 +41,6 @@ class ResponsesExporter(AbstractFoundryExporter[FoundryHttpClient]):
         )
         conversation_cutoff = effective_conversation_cutoff(None, since_days=since_days)
         conv_params = CONVERSATION_INCREMENTAL.merge_params({}, None)
-        quota = create_quota_client()
         project_endpoint = get_project_endpoint()
 
         async for conv_page in paginate_with_strategy(
@@ -70,9 +79,7 @@ class ResponsesExporter(AbstractFoundryExporter[FoundryHttpClient]):
                         if not response_row:
                             continue
                         touched = True
-                        responses_batch.append(
-                            enrich_with_project(dict(response_row))
-                        )
+                        responses_batch.append(enrich_with_project(dict(response_row)))
 
                 if touched:
                     rollups_to_register.append(
@@ -84,18 +91,6 @@ class ResponsesExporter(AbstractFoundryExporter[FoundryHttpClient]):
                         )
                     )
 
-            if not responses_batch:
-                continue
-
-            check = await quota.check_before_batch(
-                region=region_from_project_endpoint(project_endpoint),
-                batch_size=len(responses_batch),
-            )
-            if not check.allowed:
-                logger.warning(
-                    f"Skipping response batch for {project_endpoint}: {check.message}"
-                )
-                continue
-
-            yield responses_batch
-            await register_conversation_rollups(rollups_to_register)
+            if responses_batch:
+                yield responses_batch
+                await register_conversation_rollups(rollups_to_register)

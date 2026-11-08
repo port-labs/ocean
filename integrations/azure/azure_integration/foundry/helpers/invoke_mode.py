@@ -14,7 +14,9 @@ def foundry_webhook_completion_available() -> bool:
     return True
 
 
-def invoke_agent_completion_mode(*, report_invocation_status: bool) -> tuple[bool, bool]:
+def invoke_agent_completion_mode(
+    *, report_invocation_status: bool
+) -> tuple[bool, bool]:
     """Return ``(use_background, complete_on_sse_terminal)`` for invoke_agent."""
     if not report_invocation_status:
         return False, False

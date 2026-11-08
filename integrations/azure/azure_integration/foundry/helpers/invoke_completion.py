@@ -12,24 +12,35 @@ from azure_integration.foundry.helpers.conversation_catalog import (
     register_catalog_conversation,
 )
 from azure_integration.foundry.helpers.model_responses_api import fetch_foundry_response
-from azure_integration.foundry.helpers.responses_catalog import catalog_agent_id, normalize_foundry_response
+from azure_integration.foundry.helpers.responses_catalog import (
+    catalog_agent_id,
+    normalize_foundry_response,
+)
 from azure_integration.foundry.helpers.webhook_scope import (
     build_response_external_id,
     extract_assistant_text_from_response,
     usage_from_response,
 )
-from azure_integration.foundry.helpers.catalog_sync import normalize_catalog_payload
-from azure_integration.foundry.helpers.port_entity_links import build_foundry_response_entity_page_url
-from azure_integration.foundry.helpers.project_scope import enrich_with_project
+from azure_integration.foundry.helpers.catalog_sync import register_catalog_rows
+from azure_integration.foundry.helpers.port_entity_links import (
+    build_foundry_response_entity_page_url,
+)
 from azure_integration.foundry.kinds import ObjectKind
-from port_ocean.context.event import EventType, event_context
 
 COMPLETED_STATUS_LABEL = "Response completed"
 FAILED_STATUS_LABEL = "Response failed"
 INVOCATION_SUBMITTED_STATUS_LABEL = "Invoke submitted"
 
 _completion_lock = asyncio.Lock()
-_completed_invoke_run_ids: set[str] = set()
+_MAX_COMPLETED_RUN_IDS = 1024
+_completed_invoke_run_ids: dict[str, None] = {}
+
+
+def _remember_completed_run(run_id: str) -> None:
+    _completed_invoke_run_ids[run_id] = None
+    while len(_completed_invoke_run_ids) > _MAX_COMPLETED_RUN_IDS:
+        _completed_invoke_run_ids.pop(next(iter(_completed_invoke_run_ids)))
+
 
 _TERMINAL_SSE_TYPES = {
     "response.completed": True,
@@ -81,29 +92,7 @@ async def register_catalog_response_from_body(
         row["agent_id"] = catalog_agent_id(fallback_agent_id)
     if not row.get("model_deployment_id") and fallback_model_deployment_id:
         row["model_deployment_id"] = fallback_model_deployment_id.strip()
-    try:
-        batch = [
-            enrich_with_project(
-                normalize_catalog_payload(ObjectKind.RESPONSE, row)
-            )
-        ]
-        await ocean.integration.port_app_config_handler.get_port_app_config(
-            use_cache=False
-        )
-        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-            await ocean.register_raw(ObjectKind.RESPONSE, batch)
-        return True
-    except Exception as error:
-        logger.warning(
-            f"Failed to register response {row.get('id')} in catalog (continuing): {error}"
-        )
-        await ocean.port_client.post_run_log(
-            run,
-            f"Catalog response upsert failed: {error}",
-            level="WARNING",
-            should_raise=False,
-        )
-        return False
+    return await register_catalog_rows(ObjectKind.RESPONSE, [row], run)
 
 
 async def complete_invoke_run_for_response(
@@ -122,16 +111,17 @@ async def complete_invoke_run_for_response(
         if run.id in _completed_invoke_run_ids:
             return False
         if not ocean.port_client.is_run_in_progress(run):
-            _completed_invoke_run_ids.add(run.id)
+            _remember_completed_run(run.id)
             return False
-        _completed_invoke_run_ids.add(run.id)
+        _remember_completed_run(run.id)
 
+    output = run.output if isinstance(run, WorkflowNodeRun) else {}
     agent_id = str(
-        run.execution_properties.get("agentId") or run.output.get("agentId") or ""
+        run.execution_properties.get("agentId") or output.get("agentId") or ""
     )
     deployment_name = str(
         run.execution_properties.get("deploymentName")
-        or run.output.get("deploymentName")
+        or output.get("deploymentName")
         or ""
     ).strip()
     display_body = await response_body_for_catalog(response_id, response_body)
@@ -178,9 +168,7 @@ async def complete_invoke_run_for_response(
 
     resolved_label = status_label
     if resolved_label is None:
-        resolved_label = (
-            COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
-        )
+        resolved_label = COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
 
     logger.info(
         f"Completing run {run.id} from {source} "
@@ -230,11 +218,10 @@ async def complete_invoke_run_from_sse(
     if success is None:
         return False
     response_body = response_body_from_sse_event(parsed)
-    response_id = str(
-        (response_body or {}).get("id")
-        or run.output.get("responseId")
-        or ""
+    bound_response_id = (
+        run.output.get("responseId") if isinstance(run, WorkflowNodeRun) else None
     )
+    response_id = str((response_body or {}).get("id") or bound_response_id or "")
     if not response_id:
         return False
     return await complete_invoke_run_for_response(

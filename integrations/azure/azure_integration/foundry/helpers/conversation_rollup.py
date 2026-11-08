@@ -45,9 +45,7 @@ async def build_conversation_rollup(
             response_row = normalize_foundry_response(source)
             if not response_row:
                 continue
-            merge_response_into_conversation_rollup(
-                rollup, response_row, source=source
-            )
+            merge_response_into_conversation_rollup(rollup, response_row, source=source)
     rollup.setdefault("prompt_tokens", 0)
     rollup.setdefault("completion_tokens", 0)
     rollup.setdefault("total_tokens", 0)

@@ -7,11 +7,15 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from azure_integration.foundry.actions.deploy_model_deployment_executor import DeployModelDeploymentExecutor
-from azure_integration.foundry.actions.delete_model_deployment_executor import DeleteModelDeploymentExecutor
+from azure_integration.foundry.actions.deploy_model_deployment_executor import (
+    DeployModelDeploymentExecutor,
+)
+from azure_integration.foundry.actions.delete_model_deployment_executor import (
+    DeleteModelDeploymentExecutor,
+)
 
 
-def _run(action_type: str, execution_properties: dict) -> WorkflowNodeRun:
+def _run(action_type: str, execution_properties: dict[str, object]) -> WorkflowNodeRun:
     return WorkflowNodeRun(
         id="run-1",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
@@ -31,7 +35,9 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
     executor.arm_deployments = MagicMock()
     executor.arm_deployments.upsert_model_deployment = AsyncMock()
     executor.client = MagicMock()
-    executor.client.build_url = MagicMock(return_value="https://example/deployments/gpt-5")
+    executor.client.build_url = MagicMock(
+        return_value="https://example/deployments/gpt-5"
+    )
     executor.client.send_api_request = AsyncMock(
         return_value={
             "name": "gpt-5",
@@ -57,12 +63,18 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
             "azure_integration.foundry.actions.abstract_executor.resolve_project_by_endpoint",
             AsyncMock(return_value=mock_project),
         ),
-        patch("azure_integration.foundry.actions.deploy_model_deployment_executor.ocean") as mock_ocean,
-        patch("azure_integration.foundry.actions.abstract_executor.ocean") as mock_ocean_base,
+        patch(
+            "azure_integration.foundry.actions.deploy_model_deployment_executor.ocean"
+        ) as mock_ocean,
+        patch(
+            "azure_integration.foundry.helpers.catalog_sync.ocean"
+        ) as mock_ocean_base,
     ):
         mock_ocean.port_client.post_run_log = AsyncMock()
         mock_ocean.port_client.report_run_completed = AsyncMock()
-        mock_ocean_base.integration.port_app_config_handler.get_port_app_config = AsyncMock()
+        mock_ocean_base.integration.port_app_config_handler.get_port_app_config = (
+            AsyncMock()
+        )
         mock_ocean_base.register_raw = AsyncMock()
         mock_ocean_base.port_client.post_run_log = AsyncMock()
 
@@ -92,12 +104,18 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
             "azure_integration.foundry.actions.abstract_executor.resolve_project_by_endpoint",
             AsyncMock(return_value=mock_project),
         ),
-        patch("azure_integration.foundry.actions.delete_model_deployment_executor.ocean") as mock_ocean,
-        patch("azure_integration.foundry.actions.abstract_executor.ocean") as mock_ocean_base,
+        patch(
+            "azure_integration.foundry.actions.delete_model_deployment_executor.ocean"
+        ) as mock_ocean,
+        patch(
+            "azure_integration.foundry.helpers.catalog_sync.ocean"
+        ) as mock_ocean_base,
     ):
         mock_ocean.port_client.post_run_log = AsyncMock()
         mock_ocean.port_client.report_run_completed = AsyncMock()
-        mock_ocean_base.integration.port_app_config_handler.get_port_app_config = AsyncMock()
+        mock_ocean_base.integration.port_app_config_handler.get_port_app_config = (
+            AsyncMock()
+        )
         mock_ocean_base.unregister_raw = AsyncMock()
         mock_ocean_base.port_client.post_run_log = AsyncMock()
 

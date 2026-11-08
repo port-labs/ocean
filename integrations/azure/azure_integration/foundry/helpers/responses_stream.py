@@ -23,7 +23,11 @@ def parse_responses_sse_payload(payload: str) -> dict[str, Any] | None:
 
 def response_id_from_sse_event(parsed: dict[str, Any]) -> str | None:
     event_type = parsed.get("type")
-    if event_type not in {"response.created", "response.in_progress", "response.completed"}:
+    if event_type not in {
+        "response.created",
+        "response.in_progress",
+        "response.completed",
+    }:
         return None
     response = parsed.get("response")
     if isinstance(response, dict) and response.get("id"):

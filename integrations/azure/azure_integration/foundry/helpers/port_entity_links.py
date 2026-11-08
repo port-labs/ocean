@@ -15,7 +15,9 @@ def port_app_base_url() -> str | None:
     return api_url.replace("api.", "app.").removesuffix("/v1")
 
 
-def build_entity_page_url(blueprint_identifier: str, entity_identifier: str) -> str | None:
+def build_entity_page_url(
+    blueprint_identifier: str, entity_identifier: str
+) -> str | None:
     base = port_app_base_url()
     if not base or not entity_identifier:
         return None

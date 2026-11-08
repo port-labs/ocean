@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock, patch
 
-from azure_integration.foundry.helpers.port_entity_links import build_entity_page_url, build_foundry_response_entity_page_url
+from azure_integration.foundry.helpers.port_entity_links import (
+    build_entity_page_url,
+    build_foundry_response_entity_page_url,
+)
 
 
 def test_build_entity_page_url_from_app_url() -> None:

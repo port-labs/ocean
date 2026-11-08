@@ -34,20 +34,13 @@ from azure_integration.foundry.clients.client_factory import (
     create_webhook_client_for_account,
 )
 from azure_integration.foundry.discovery import discover_foundry_projects
-from azure_integration.foundry.kinds import ObjectKind
-from azure_integration.foundry.resync import (
-    resync_foundry_agent_versions,
-    resync_foundry_agents,
-    resync_foundry_conversations,
-    resync_foundry_memory_stores,
-    resync_foundry_model_deployments,
-    resync_foundry_projects,
-    resync_foundry_responses,
+from azure_integration.foundry.resync import FOUNDRY_RESYNC_HANDLERS
+from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
+    WEBHOOK_PATH,
 )
 from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
     ConversationWebhookProcessor,
 )
-from azure_integration.foundry.webhook_processors.registry import WEBHOOK_PATH
 from port_ocean.utils.signal import signal_handler
 
 
@@ -74,55 +67,9 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield resources_batch
 
 
-@ocean.on_incremental_resync(ObjectKind.FOUNDRY_PROJECT)
-@ocean.on_resync(ObjectKind.FOUNDRY_PROJECT)
-async def on_resync_foundry_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_projects(kind):
-        yield batch
-
-
-@ocean.on_incremental_resync(ObjectKind.AGENT)
-@ocean.on_resync(ObjectKind.AGENT)
-async def on_resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_agents(kind):
-        yield batch
-
-
-@ocean.on_incremental_resync(ObjectKind.AGENT_VERSION)
-@ocean.on_resync(ObjectKind.AGENT_VERSION)
-async def on_resync_foundry_agent_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_agent_versions(kind):
-        yield batch
-
-
-@ocean.on_incremental_resync(ObjectKind.MODEL_DEPLOYMENT)
-@ocean.on_resync(ObjectKind.MODEL_DEPLOYMENT)
-async def on_resync_foundry_model_deployments(
-    kind: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_model_deployments(kind):
-        yield batch
-
-
-@ocean.on_incremental_resync(ObjectKind.CONVERSATION)
-@ocean.on_resync(ObjectKind.CONVERSATION)
-async def on_resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_conversations(kind):
-        yield batch
-
-
-@ocean.on_incremental_resync(ObjectKind.RESPONSE)
-@ocean.on_resync(ObjectKind.RESPONSE)
-async def on_resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_responses(kind):
-        yield batch
-
-
-@ocean.on_incremental_resync(ObjectKind.MEMORY_STORE)
-@ocean.on_resync(ObjectKind.MEMORY_STORE)
-async def on_resync_foundry_memory_stores(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_foundry_memory_stores(kind):
-        yield batch
+for _foundry_kind, _foundry_handler in FOUNDRY_RESYNC_HANDLERS.items():
+    ocean.on_resync(_foundry_kind)(_foundry_handler)
+    ocean.on_incremental_resync(_foundry_kind)(_foundry_handler)
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUPS)
@@ -297,7 +244,9 @@ async def on_start() -> None:
     signal_handler.register(clear_client_cache)
 
     if not ocean.app.config.event_listener.should_process_webhooks:
-        logger.info("Skipping Foundry webhook registration because webhooks are disabled")
+        logger.info(
+            "Skipping Foundry webhook registration because webhooks are disabled"
+        )
         return
 
     base_url = ocean.app.base_url

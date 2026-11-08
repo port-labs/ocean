@@ -7,23 +7,24 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
 )
 
-from azure_integration.foundry.clients.webhook_client import (
-    _signing_secrets,
-)
+from azure_integration.foundry.clients.webhook_client import iter_signing_secrets
 from azure_integration.foundry.helpers.webhook_verification import (
     WebhookSignatureError,
     verify_standard_webhook,
 )
 
+WEBHOOK_PATH = "/webhook"
+
 
 class AbstractFoundryWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        if not _signing_secrets:
-            logger.warning(
-                "Skipping Foundry webhook verification because no in-process "
-                "signing secret is available"
+        secrets = iter_signing_secrets()
+        if not secrets:
+            logger.error(
+                "Rejecting Foundry webhook: no in-process signing secret "
+                "(webhook was not created by this process)"
             )
-            return True
+            return False
 
         request = self.event._original_request
         if request is None:
@@ -31,14 +32,16 @@ class AbstractFoundryWebhookProcessor(AbstractWebhookProcessor):
             return False
 
         raw_body = await request.body()
-        for secret in _signing_secrets.values():
+        for secret in secrets:
             try:
                 verify_standard_webhook(raw_body, headers, secret=secret)
                 return True
             except WebhookSignatureError:
                 continue
 
-        logger.error("Foundry webhook signature verification failed for all cached secrets")
+        logger.error(
+            "Foundry webhook signature verification failed for all cached secrets"
+        )
         return False
 
     async def validate_payload(self, payload: EventPayload) -> bool:

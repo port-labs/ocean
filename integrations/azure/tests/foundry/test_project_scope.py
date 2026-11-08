@@ -7,8 +7,7 @@ from azure_integration.foundry.helpers.project_scope import (
 
 def test_get_project_endpoint() -> None:
     assert (
-        get_project_endpoint()
-        == "https://acct.services.ai.azure.com/api/projects/demo"
+        get_project_endpoint() == "https://acct.services.ai.azure.com/api/projects/demo"
     )
 
 

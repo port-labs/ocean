@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from azure_integration.foundry.helpers.conversation_api import resolve_conversation_for_invoke
+from azure_integration.foundry.helpers.conversation_api import (
+    resolve_conversation_for_invoke,
+)
 
 
 def _client() -> MagicMock:

@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 from urllib.parse import urlparse
 
 from loguru import logger
 
-from azure_integration.foundry.discovery import (
-    discover_foundry_projects,
-    resolve_project_by_endpoint,
-)
+from azure_integration.foundry.discovery import resolve_project_by_endpoint
 from azure_integration.foundry.helpers.project_scope import get_project_endpoint
 
 _DEFAULT_API_VERSION = "2025-06-01"
@@ -53,19 +49,8 @@ def account_name_from_project_endpoint(project_endpoint: str) -> str | None:
     return hostname.split(".", maxsplit=1)[0] or None
 
 
-def parse_cognitive_services_account_arm_id(
-    resource_id: str,
-) -> tuple[str, str, str] | None:
-    from azure_integration.foundry.discovery import _parse_account_id
-
-    return _parse_account_id(resource_id)
-
-
-async def ensure_arm_deployment_scope(
-    config: dict[str, Any] | None = None,
-) -> ArmDeploymentScope:
-    """Resolve ARM scope for the current Foundry project context via discovery."""
-    del config  # discovery uses ocean SP credentials only
+async def ensure_arm_deployment_scope() -> ArmDeploymentScope:
+    """Resolve ARM scope for the current Foundry project via discovery."""
     endpoint = get_project_endpoint()
     account_key = account_name_from_project_endpoint(endpoint) or endpoint
     cached = _scope_by_account.get(account_key)
@@ -86,29 +71,3 @@ async def ensure_arm_deployment_scope(
         f"account={scope.account_name}"
     )
     return scope
-
-
-def get_arm_deployment_scope(config: dict[str, Any] | None = None) -> ArmDeploymentScope:
-    del config
-    endpoint = get_project_endpoint()
-    account_key = account_name_from_project_endpoint(endpoint) or endpoint
-    cached = _scope_by_account.get(account_key)
-    if cached is not None:
-        return cached
-    raise ValueError(
-        "ARM scope has not been resolved for the current Foundry project yet. "
-        f"(endpoint: {endpoint})"
-    )
-
-
-async def warm_arm_scopes_from_discovery() -> None:
-    for project in await discover_foundry_projects():
-        key = project.account_name
-        if key in _scope_by_account:
-            continue
-        _scope_by_account[key] = ArmDeploymentScope(
-            subscription_id=project.subscription_id,
-            resource_group_name=project.resource_group_name,
-            account_name=project.account_name,
-            api_version=_DEFAULT_API_VERSION,
-        )

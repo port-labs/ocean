@@ -2,7 +2,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from azure_integration.foundry.helpers.invoke_completion import response_body_for_catalog, register_catalog_response_from_body
+from azure_integration.foundry.helpers.invoke_completion import (
+    response_body_for_catalog,
+    register_catalog_response_from_body,
+)
 
 
 @pytest.mark.asyncio
@@ -26,13 +29,19 @@ async def test_register_applies_model_deployment_fallback() -> None:
     ctx.__aenter__ = AsyncMock(return_value=None)
     ctx.__aexit__ = AsyncMock(return_value=None)
     with (
-        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
-        patch("azure_integration.foundry.helpers.invoke_completion.enrich_with_project", side_effect=lambda x: x),
+        patch("azure_integration.foundry.helpers.catalog_sync.ocean", mock_ocean),
         patch(
-            "azure_integration.foundry.helpers.invoke_completion.normalize_catalog_payload",
+            "azure_integration.foundry.helpers.catalog_sync.enrich_with_project",
+            side_effect=lambda x: x,
+        ),
+        patch(
+            "azure_integration.foundry.helpers.catalog_sync.normalize_catalog_payload",
             side_effect=lambda _kind, row: row,
         ),
-        patch("azure_integration.foundry.helpers.invoke_completion.event_context", return_value=ctx),
+        patch(
+            "azure_integration.foundry.helpers.catalog_sync.event_context",
+            return_value=ctx,
+        ),
     ):
         ok = await register_catalog_response_from_body(
             {"id": "resp_1", "status": "completed"},
@@ -40,5 +49,6 @@ async def test_register_applies_model_deployment_fallback() -> None:
             fallback_model_deployment_id="gpt-4o-mini",
         )
     assert ok is True
+    assert mock_ocean.register_raw.await_args is not None
     batch = mock_ocean.register_raw.await_args.args[1]
     assert batch[0]["model_deployment_id"] == "gpt-4o-mini"

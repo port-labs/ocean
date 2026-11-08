@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Awaitable
+from typing import Any, Protocol
 
 import httpx
 from loguru import logger
@@ -18,16 +19,19 @@ _RESPONSE_WEBHOOK_EVENTS = [
     "response.incomplete",
 ]
 
-# account host -> signing secret captured at webhook create time
 _signing_secrets: dict[str, str] = {}
 
 
-def get_signing_secret_for_host(account_host: str) -> str | None:
-    return _signing_secrets.get(account_host)
+class _HeaderProvider(Protocol):
+    def get_authorization_header(self) -> Awaitable[dict[str, str]]: ...
 
 
 def has_any_signing_secret() -> bool:
     return bool(_signing_secrets)
+
+
+def iter_signing_secrets() -> list[str]:
+    return list(_signing_secrets.values())
 
 
 def clear_webhook_secret_cache() -> None:
@@ -39,24 +43,14 @@ class FoundryWebhookClient:
         self,
         *,
         http: OceanAsyncClient,
-        authenticator: object,
+        authenticator: _HeaderProvider,
         account_base_url: str,
-        verify_secrets: bool = True,
     ) -> None:
         self._http = http
         self._authenticator = authenticator
         self._account_base_url = account_base_url.rstrip("/")
-        self._verify_secrets = verify_secrets
         host = self._account_base_url.removeprefix("https://").removeprefix("http://")
         self._account_host = host.split("/")[0]
-
-    @property
-    def verify_webhook_secrets(self) -> bool:
-        return self._verify_secrets and bool(self.signing_secret)
-
-    @property
-    def has_webhook_secret(self) -> bool:
-        return bool(self.signing_secret)
 
     @property
     def signing_secret(self) -> str | None:
@@ -99,6 +93,18 @@ class FoundryWebhookClient:
             raise httpx.HTTPError("Unexpected create webhook response")
         return body
 
+    async def delete_webhook_endpoint(self, endpoint_id: str) -> None:
+        url = f"{dashboard_webhook_endpoints_url(self._account_base_url)}/{endpoint_id}"
+        headers = await self._auth_headers()
+        response = await self._http.delete(url, headers=headers)
+        if response.status_code not in {200, 202, 204, 404}:
+            response.raise_for_status()
+
+    def _cache_secret(self, created: dict[str, Any]) -> None:
+        secret = created.get("signing_secret") or created.get("secret")
+        if isinstance(secret, str) and secret:
+            _signing_secrets[self._account_host] = secret
+
     async def upsert_webhook(self, base_url: str) -> None:
         webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
         try:
@@ -110,19 +116,20 @@ class FoundryWebhookClient:
                 ),
                 None,
             )
+            if existing is not None and not self.signing_secret:
+                endpoint_id = str(existing.get("id") or "")
+                if endpoint_id:
+                    logger.warning(
+                        f"Recreating Foundry webhook for {self._account_host} "
+                        "so signature verification has a signing secret"
+                    )
+                    await self.delete_webhook_endpoint(endpoint_id)
+                    existing = None
+
             if existing is not None:
                 current = set(existing.get("event_types") or [])
                 if set(_RESPONSE_WEBHOOK_EVENTS).issubset(current):
-                    if not self.signing_secret:
-                        logger.warning(
-                            f"Foundry webhook already registered for {self._account_host} "
-                            "but signing secret is unknown in this process; "
-                            "signature verification disabled until recreated"
-                        )
-                    else:
-                        logger.info(
-                            f"Foundry webhook already registered for {webhook_url}"
-                        )
+                    logger.info(f"Foundry webhook already registered for {webhook_url}")
                     return
                 logger.warning(
                     "Foundry webhook URL exists but event_types differ; "
@@ -134,13 +141,7 @@ class FoundryWebhookClient:
                 webhook_url=webhook_url,
                 event_types=_RESPONSE_WEBHOOK_EVENTS,
             )
-            secret = created.get("signing_secret") or created.get("secret")
-            if isinstance(secret, str) and secret:
-                _signing_secrets[self._account_host] = secret
-                logger.info(
-                    f"Created Foundry webhook for {self._account_host}; "
-                    "signing secret cached in-process"
-                )
+            self._cache_secret(created)
             logger.info(f"Registered Foundry webhook for {webhook_url}")
         except httpx.HTTPError as error:
             logger.error(

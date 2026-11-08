@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 
-def merge_usage_into_row(row: dict[str, object], usage: dict[str, object]) -> None:
+def _as_int(value: Any) -> int:
+    return int(value)
+
+
+def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
     prompt = usage.get("prompt_tokens")
     if prompt is None:
         prompt = usage.get("input_tokens")
@@ -12,18 +16,18 @@ def merge_usage_into_row(row: dict[str, object], usage: dict[str, object]) -> No
         completion = usage.get("output_tokens")
     total = usage.get("total_tokens")
     if prompt is not None:
-        row["prompt_tokens"] = int(prompt)
+        row["prompt_tokens"] = _as_int(prompt)
     if completion is not None:
-        row["completion_tokens"] = int(completion)
+        row["completion_tokens"] = _as_int(completion)
     if total is not None:
-        row["total_tokens"] = int(total)
+        row["total_tokens"] = _as_int(total)
     elif prompt is not None and completion is not None:
-        row["total_tokens"] = int(prompt) + int(completion)
+        row["total_tokens"] = _as_int(prompt) + _as_int(completion)
 
 
 def add_usage_rows(
     totals: dict[str, int],
-    usage: dict[str, object] | None,
+    usage: dict[str, Any] | None,
 ) -> None:
     if not isinstance(usage, dict):
         return
@@ -31,16 +35,16 @@ def add_usage_rows(
     completion = usage.get("completion_tokens") or usage.get("output_tokens")
     total = usage.get("total_tokens")
     if prompt is not None:
-        totals["prompt_tokens"] = totals.get("prompt_tokens", 0) + int(prompt)
+        totals["prompt_tokens"] = totals.get("prompt_tokens", 0) + _as_int(prompt)
     if completion is not None:
-        totals["completion_tokens"] = totals.get("completion_tokens", 0) + int(
+        totals["completion_tokens"] = totals.get("completion_tokens", 0) + _as_int(
             completion
         )
     if total is not None:
-        totals["total_tokens"] = totals.get("total_tokens", 0) + int(total)
+        totals["total_tokens"] = totals.get("total_tokens", 0) + _as_int(total)
     elif prompt is not None and completion is not None:
-        totals["total_tokens"] = totals.get("total_tokens", 0) + int(prompt) + int(
-            completion
+        totals["total_tokens"] = (
+            totals.get("total_tokens", 0) + _as_int(prompt) + _as_int(completion)
         )
 
 

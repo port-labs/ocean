@@ -43,7 +43,7 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture(autouse=True)
-def foundry_project_context():
+def foundry_project_context() -> Any:
     with project_endpoint_context(
         TEST_PROJECT_ENDPOINT, project_arm_id=TEST_PROJECT_ARM_ID
     ) as endpoint:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from typing import Any, Iterator
 
 _project_endpoint: ContextVar[str | None] = ContextVar(
@@ -18,7 +18,7 @@ def project_endpoint_context(
 ) -> Iterator[str]:
     normalized = endpoint.rstrip("/")
     endpoint_token = _project_endpoint.set(normalized)
-    arm_token: object | None = None
+    arm_token: Token[str | None] | None = None
     if project_arm_id:
         arm_token = _project_arm_id.set(project_arm_id)
     try:
@@ -43,8 +43,7 @@ def project_name_from_endpoint(endpoint: str) -> str:
     normalized = endpoint.rstrip("/")
     if "/projects/" not in normalized:
         raise ValueError(
-            "project endpoint must include /projects/{projectName} for Port MCP "
-            "and ARM project scope"
+            "project endpoint must include /projects/{projectName} for ARM project scope"
         )
     return normalized.split("/projects/")[-1].split("/")[0]
 

@@ -6,7 +6,9 @@ from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
 
-from azure_integration.foundry.actions.abstract_action_input import AbstractFoundryActionInput
+from azure_integration.foundry.actions.abstract_action_input import (
+    AbstractFoundryActionInput,
+)
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.helpers.agent_api import build_update_agent_body
 

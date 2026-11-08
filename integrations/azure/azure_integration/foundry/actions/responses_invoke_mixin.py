@@ -4,7 +4,11 @@ from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun, WorkflowNodeRunStatus
+from port_ocean.core.models import (
+    IntegrationRun,
+    WorkflowNodeRun,
+    WorkflowNodeRunStatus,
+)
 
 from azure_integration.foundry.helpers.invoke_completion import (
     INVOCATION_SUBMITTED_STATUS_LABEL,
@@ -23,7 +27,6 @@ class ResponsesInvokeMixin:
     """Shared Responses API invoke + SSE streaming for agent and model actions."""
 
     client: Any
-    project_endpoint: str
 
     async def execute_responses_invoke(
         self,
@@ -164,7 +167,6 @@ class ResponsesInvokeMixin:
                     "statusLabel": INVOKE_RUNNING_STATUS_LABEL,
                 },
             )
-            run.output.update(extra_output)
         logger.info(
             f"Bound run {run.id} to Foundry response {response_id} (external {external_id})"
         )

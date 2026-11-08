@@ -48,6 +48,6 @@ def conversation_row_from_response(
 async def register_catalog_conversation(
     row: dict[str, Any], run: IntegrationRun
 ) -> None:
-    from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+    from azure_integration.foundry.helpers.catalog_sync import register_catalog_rows
 
-    await AbstractFoundryExecutor().register_entity(ObjectKind.CONVERSATION, row, run)
+    await register_catalog_rows(ObjectKind.CONVERSATION, [row], run)

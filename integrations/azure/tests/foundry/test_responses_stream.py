@@ -44,7 +44,9 @@ def test_format_completed_usage() -> None:
             },
         }
     )
-    assert message == "Response completed (inputTokens=10, outputTokens=5, totalTokens=15)"
+    assert (
+        message == "Response completed (inputTokens=10, outputTokens=5, totalTokens=15)"
+    )
 
 
 def test_response_id_from_sse_created() -> None:

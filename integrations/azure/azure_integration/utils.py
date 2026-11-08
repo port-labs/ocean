@@ -3,6 +3,7 @@ import enum
 import typing
 
 from port_ocean.context.event import event
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
@@ -11,8 +12,6 @@ from azure_integration.overrides import (
     AzureCloudResourceConfig,
     AzureCloudResourceSelector,
     AzureSpecificKindSelector,
-    AzureResourceGroupResourceConfig,
-    AzureSubscriptionResourceConfig,
 )
 
 BATCH_SIZE = 20
@@ -85,22 +84,8 @@ def resolve_resource_type_from_resource_uri(resource_uri: str) -> str:
 
 def get_resource_configs_with_resource_kind(
     resource_kind: str,
-    resource_configs: typing.List[
-        typing.Union[
-            AzureResourceGroupResourceConfig,
-            AzureSubscriptionResourceConfig,
-            AzureCloudResourceConfig,
-            AzureCustomKindResourceConfig,
-        ]
-    ],
-) -> list[
-    typing.Union[
-        AzureResourceGroupResourceConfig,
-        AzureSubscriptionResourceConfig,
-        AzureCloudResourceConfig,
-        AzureCustomKindResourceConfig,
-    ]
-]:
+    resource_configs: typing.Sequence[ResourceConfig],
+) -> list[ResourceConfig]:
     """
     Returns the resource configs that have the resource kind
 

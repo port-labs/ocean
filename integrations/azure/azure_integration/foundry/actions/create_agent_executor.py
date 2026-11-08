@@ -6,9 +6,10 @@ from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
 
-from azure_integration.foundry.actions.abstract_action_input import AbstractFoundryActionInput
+from azure_integration.foundry.actions.abstract_action_input import (
+    AbstractFoundryActionInput,
+)
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.helpers.port_mcp import ensure_port_mcp_on_agent
 from azure_integration.foundry.helpers.agent_api import build_create_agent_body
 
 
@@ -17,7 +18,6 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     model: str = Field(min_length=1)
     instructions: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    enablePortMcp: bool = Field(default=True)
 
 
 class CreateAgentExecutor(AbstractFoundryExecutor):
@@ -52,13 +52,6 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
 
         logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         agent_id = str(agent.get("id") or agent.get("name") or inputs.name)
-        if inputs.enablePortMcp:
-            await ensure_port_mcp_on_agent(
-                self.client,
-                self.project_connections,
-                agent_id=agent_id,
-                run=run,
-            )
         await self.sync_agent_catalog(agent_id, run)
 
         if isinstance(run, WorkflowNodeRun):

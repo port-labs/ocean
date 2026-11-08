@@ -81,5 +81,7 @@ def usage_from_response(response: dict[str, Any]) -> dict[str, int | None]:
     elif (
         result.get("inputTokens") is not None and result.get("outputTokens") is not None
     ):
-        result["totalTokens"] = int(result["inputTokens"]) + int(result["outputTokens"])
+        result["totalTokens"] = int(result["inputTokens"] or 0) + int(
+            result["outputTokens"] or 0
+        )
     return result

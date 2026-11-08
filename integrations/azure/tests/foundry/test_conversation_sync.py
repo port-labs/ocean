@@ -1,7 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
-from azure_integration.foundry.helpers.conversation_sync import effective_conversation_cutoff
-from azure_integration.foundry.helpers.responses_catalog import merge_response_into_conversation_rollup
+from azure_integration.foundry.helpers.utils import effective_conversation_cutoff
+from azure_integration.foundry.helpers.responses_catalog import (
+    merge_response_into_conversation_rollup,
+)
 
 
 def test_effective_cutoff_uses_since_days_only() -> None:

@@ -1,10 +1,11 @@
-from azure_integration.foundry.helpers.responses_catalog import agent_id_from_response, normalize_foundry_response
+from azure_integration.foundry.helpers.responses_catalog import (
+    agent_id_from_response,
+    normalize_foundry_response,
+)
 
 
 def test_agent_id_from_response_agent_dict() -> None:
-    assert (
-        agent_id_from_response({"agent": {"name": "Omby-agent:6"}}) == "Omby-agent"
-    )
+    assert agent_id_from_response({"agent": {"name": "Omby-agent:6"}}) == "Omby-agent"
 
 
 def test_normalize_foundry_response_flat_list_fields() -> None:

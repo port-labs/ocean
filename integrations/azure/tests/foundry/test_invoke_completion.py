@@ -16,7 +16,7 @@ from azure_integration.foundry.helpers.invoke_completion import (
 
 def _workflow_run(run_id: str) -> WorkflowNodeRun:
     return WorkflowNodeRun(
-        identifier=run_id,
+        id=run_id,
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
@@ -43,13 +43,23 @@ async def test_complete_invoke_run_is_idempotent() -> None:
 
     with (
         patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
-        patch("azure_integration.foundry.helpers.invoke_completion.register_catalog_conversation", AsyncMock()),
-        patch("azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body", AsyncMock(return_value=True)),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_conversation",
+            AsyncMock(),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body",
+            AsyncMock(return_value=True),
+        ),
         patch(
             "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
-            AsyncMock(return_value={"id": "resp_1", "status": "completed", "usage": {}}),
+            AsyncMock(
+                return_value={"id": "resp_1", "status": "completed", "usage": {}}
+            ),
         ),
-        patch("azure_integration.foundry.stream_manager.get_stream_manager") as mock_manager,
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
     ):
         mock_manager.return_value.untrack_for_run = AsyncMock()
         first, second = await asyncio.gather(
@@ -85,7 +95,10 @@ async def test_complete_invoke_run_sets_response_entity_link_when_registered() -
 
     with (
         patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
-        patch("azure_integration.foundry.helpers.invoke_completion.register_catalog_conversation", AsyncMock()),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_conversation",
+            AsyncMock(),
+        ),
         patch(
             "azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body",
             AsyncMock(return_value=True),
@@ -96,9 +109,13 @@ async def test_complete_invoke_run_sets_response_entity_link_when_registered() -
         ),
         patch(
             "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
-            AsyncMock(return_value={"id": "resp_1", "status": "completed", "usage": {}}),
+            AsyncMock(
+                return_value={"id": "resp_1", "status": "completed", "usage": {}}
+            ),
         ),
-        patch("azure_integration.foundry.stream_manager.get_stream_manager") as mock_manager,
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
     ):
         mock_manager.return_value.untrack_for_run = AsyncMock()
         await complete_invoke_run_for_response(
@@ -131,9 +148,17 @@ async def test_sse_completion_does_not_register_catalog() -> None:
     register = AsyncMock(return_value=True)
     with (
         patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
-        patch("azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body", register),
-        patch("azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog", AsyncMock(return_value={"id": "resp_1"})),
-        patch("azure_integration.foundry.stream_manager.get_stream_manager") as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body",
+            register,
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
+            AsyncMock(return_value={"id": "resp_1"}),
+        ),
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
     ):
         mock_manager.return_value.untrack_for_run = AsyncMock()
         await complete_invoke_run_for_response(

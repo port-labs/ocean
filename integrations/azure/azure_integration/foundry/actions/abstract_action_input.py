@@ -1,8 +1,11 @@
 from typing import Any, Self
 
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from azure_integration.foundry.actions.exceptions import InvalidActionParametersException
+
+class InvalidActionParametersException(ActionExecutionError):
+    """Raised when action execution properties fail validation."""
 
 
 class AbstractFoundryActionInput(BaseModel):

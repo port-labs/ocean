@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -155,7 +155,7 @@ class ResponsesStreamManager:
                 await response.aclose()
 
 
-async def _iter_sse_lines(response: httpx.Response):
+async def _iter_sse_lines(response: httpx.Response) -> AsyncIterator[str]:
     async for chunk in response.aiter_lines():
         if chunk:
             yield chunk

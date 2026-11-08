@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from azure_integration.foundry.helpers.conversation_catalog import conversation_id_from_response
+from azure_integration.foundry.helpers.conversation_catalog import (
+    conversation_id_from_response,
+)
 from azure_integration.foundry.helpers.usage_metrics import (
     add_usage_rows,
     count_tool_calls_in_response,
@@ -92,7 +94,12 @@ def merge_response_into_conversation_rollup(
     }
     add_usage_rows(totals, source.get("usage"))
     totals["tool_call_count"] = count_tool_calls_in_response(source)
-    for key in ("prompt_tokens", "completion_tokens", "total_tokens", "tool_call_count"):
+    for key in (
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "tool_call_count",
+    ):
         delta = int(totals.get(key) or 0)
         if delta:
             rollup[key] = int(rollup.get(key) or 0) + delta
