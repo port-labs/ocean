@@ -24,11 +24,19 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
     systemPrompt: str | None = None
     config: dict[str, Any] | None = None
     enablePortMcp: bool | None = None
+    virtualMcpServerIds: list[str] | None = None
 
     @model_validator(mode="after")
     def at_least_one_update_field(self) -> "UpdateAgentInputs":
         if not any(
-            [self.name, self.model, self.systemPrompt, self.config, self.enablePortMcp]
+            [
+                self.name,
+                self.model,
+                self.systemPrompt,
+                self.config,
+                self.enablePortMcp,
+                self.virtualMcpServerIds,
+            ]
         ):
             raise ValueError(
                 "at least one of name, model, systemPrompt, or config must be provided"
@@ -47,14 +55,19 @@ class UpdateAgentInputs(AbstractAnthropicActionInput):
         payload = {
             rename.get(field, field): value
             for field, value in self.model_dump(
-                exclude={"agentId", "enablePortMcp"}, exclude_none=True
+                exclude={"agentId", "enablePortMcp", "virtualMcpServerIds"},
+                exclude_none=True,
             ).items()
             if value
         }
         config = payload.pop("config", None) or {}
-        if self.enablePortMcp:
-            config = attach_port_mcp_settings_to_agent_config(
-                config, existing_agent=existing_agent
+        if self.enablePortMcp is not None or self.virtualMcpServerIds is not None:
+            config, _ = attach_port_mcp_settings_to_agent_config(
+                config,
+                existing_agent=existing_agent,
+                enable_port_mcp=bool(self.enablePortMcp),
+                virtual_mcp_server_ids=self.virtualMcpServerIds or [],
+                replace=True,
             )
         return {**payload, **config}
 
