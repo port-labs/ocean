@@ -18,7 +18,7 @@ from gitlab.helpers.incremental import (
 
 
 @pytest.fixture
-def no_visibility_params(monkeypatch):
+def no_visibility_params(monkeypatch: pytest.MonkeyPatch) -> None:
     """Visibility config needs a Port event context; these tests don't use it."""
     monkeypatch.setattr("gitlab.clients.utils.build_visibility_params", lambda: {})
 
@@ -39,7 +39,9 @@ def _options() -> IssueOptions:
 # --- Projects -----------------------------------------------------------------
 
 
-def test_incremental_projects_sets_last_activity_after(no_visibility_params) -> None:
+def test_incremental_projects_sets_last_activity_after(
+    no_visibility_params: None,
+) -> None:
     assert build_incremental_projects_params(True, CURSOR) == {
         "active": True,
         "last_activity_after": CURSOR.isoformat(),
@@ -47,7 +49,7 @@ def test_incremental_projects_sets_last_activity_after(no_visibility_params) -> 
 
 
 def test_incremental_project_updated_sets_updated_after_and_order(
-    no_visibility_params,
+    no_visibility_params: None,
 ) -> None:
     assert build_incremental_project_updated_params(True, CURSOR) == {
         "active": True,
@@ -57,7 +59,7 @@ def test_incremental_project_updated_sets_updated_after_and_order(
 
 
 def test_incremental_project_updated_without_active_filter(
-    no_visibility_params,
+    no_visibility_params: None,
 ) -> None:
     assert build_incremental_project_updated_params(None, CURSOR) == {
         "updated_after": CURSOR.isoformat(),
