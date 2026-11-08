@@ -21,8 +21,6 @@ def is_cloud_control_global_kind(type_name: str) -> bool:
     Uses the service segment of ``AWS::Service::Resource`` (e.g. ``IAM``).
     """
     parts = type_name.split("::")
-    if len(parts) < 2:
-        return False
     return parts[1].lower() in CLOUD_CONTROL_GLOBAL_SERVICES
 
 
