@@ -159,45 +159,28 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.id // .name | tostring)
-          title: .name // .id
+          identifier: .id
+          title: .name
           blueprint: '"foundry_agent"'
           properties:
             kind: .versions.latest.definition.kind
             model: .versions.latest.definition.model
             instructions: .versions.latest.definition.instructions
             description: .versions.latest.description
-            status: .status // .state
-            configurationState: .configuration_state // .configurationState
-            version: (.versions.latest.version | tostring)
+            status: .state
+            configurationState: .configuration_state
+            version: .versions.latest.version
             versionStatus: .versions.latest.status
-            agentGuid: (.versions.latest.agent_guid // .versions.latest.agentGuid | tostring)
+            agentGuid: .versions.latest.agent_guid
             toolCount: ((.versions.latest.definition.tools // []) | length)
             tools: .versions.latest.definition.tools
-            metadata: .metadata
-            entraPrincipalId: >-
-              (.versions.latest.instance_identity.principal_id
-              // .versions.latest.instance_identity.principalId
-              // .versions.latest.instanceIdentity.principal_id
-              // .versions.latest.instanceIdentity.principalId | tostring)
-            entraClientId: >-
-              (.versions.latest.instance_identity.client_id
-              // .versions.latest.instance_identity.clientId
-              // .versions.latest.instanceIdentity.client_id
-              // .versions.latest.instanceIdentity.clientId | tostring)
-            identityBlueprintId: >-
-              (.versions.latest.blueprint_reference.blueprint_id
-              // .versions.latest.blueprint_reference.blueprintId
-              // .versions.latest.blueprintReference.blueprint_id
-              // .versions.latest.blueprintReference.blueprintId | tostring)
-            createdAt: >-
-              (.versions.latest.created_at // .versions.latest.createdAt // .created_at // .createdAt) as $t
-              | if $t == null then null
-                elif ($t | type) == "number" then ($t | todate)
-                elif ($t | tostring | test("^[0-9]+$")) then ($t | tonumber | todate)
-                else $t end
+            metadata: .versions.latest.metadata
+            entraPrincipalId: .versions.latest.instance_identity.principal_id
+            entraClientId: .versions.latest.instance_identity.client_id
+            identityBlueprintId: .versions.latest.blueprint_reference.blueprint_id
+            createdAt: .versions.latest.created_at | todate
           relations:
-            modelDeployment: .versions.latest.definition.model
+            modelDeployment: .__foundryProjectId + "/deployments/" + .versions.latest.definition.model
             foundryProject: .__foundryProjectId
   - kind: foundry-agent
     selector:
@@ -206,15 +189,15 @@ resources:
       project:
         apiVersion: '2025-06-01'
     port:
-      itemsToParse: .versions // []
+      itemsToParse: .versions
       entity:
         mappings:
-          identifier: (.item.id | tostring)
+          identifier: .item.id
           title: .item.id
           blueprint: '"foundry_agent_version"'
           properties:
             agentId: .item.agent_id
-            version: (.item.version // .item.id | tostring)
+            version: .item.version
             kind: .item.definition.kind
             model: .item.definition.model
             instructions: .item.definition.instructions
@@ -224,24 +207,11 @@ resources:
             metadata: .item.metadata
             tools: .item.definition.tools
             toolCount: ((.item.definition.tools // []) | length)
-            entraPrincipalId: >-
-              (.item.instance_identity.principal_id
-              // .item.instance_identity.principalId
-              // .item.instanceIdentity.principal_id
-              // .item.instanceIdentity.principalId | tostring)
-            entraClientId: >-
-              (.item.instance_identity.client_id
-              // .item.instance_identity.clientId
-              // .item.instanceIdentity.client_id
-              // .item.instanceIdentity.clientId | tostring)
-            createdAt: >-
-              (.item.created_at // .item.createdAt) as $t
-              | if $t == null then null
-                elif ($t | type) == "number" then ($t | todate)
-                elif ($t | tostring | test("^[0-9]+$")) then ($t | tonumber | todate)
-                else $t end
+            entraPrincipalId: .item.instance_identity.principal_id
+            entraClientId: .item.instance_identity.client_id
+            createdAt: .item.created_at | todate
           relations:
-            agent: (.item.agent_id | tostring)
+            agent: .item.agent_id
   - kind: foundry-model-deployment
     selector:
       query: 'true'
@@ -250,15 +220,15 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.id // .name | tostring)
-          title: .name // .id
+          identifier: .__foundryProjectId + "/deployments/" + .name
+          title: .name
           blueprint: '"foundry_model_deployment"'
           properties:
-            model: .model // .modelName
-            modelVersion: .modelVersion // .model_version
-            modelPublisher: .modelPublisher // .model_publisher
-            deploymentType: .type // .deploymentType // .deployment_type
-            sku: (.sku.name // .sku)
+            model: .modelName
+            modelVersion: .modelVersion
+            modelPublisher: .modelPublisher
+            deploymentType: .type
+            sku: .sku.name
             capabilities: .capabilities
           relations:
             foundryProject: .__foundryProjectId
@@ -271,16 +241,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.id | tostring)
+          identifier: .id
           title: .id
           blueprint: '"foundry_conversation"'
           properties:
-            createdAt: >-
-              (.created_at // .createdAt) as $t
-              | if $t == null then null
-                elif ($t | type) == "number" then ($t | todate)
-                elif ($t | tostring | test("^[0-9]+$")) then ($t | tonumber | todate)
-                else $t end
+            createdAt: .created_at | todate
             metadata: .metadata
             promptTokens: (.prompt_tokens // 0)
             completionTokens: (.completion_tokens // 0)
@@ -288,7 +253,9 @@ resources:
             toolCallCount: (.tool_call_count // 0)
           relations:
             agents: (.participant_agent_ids // [])
-            modelDeployments: (.participant_model_deployment_ids // [])
+            modelDeployments: >-
+              .__foundryProjectId as $project
+              | [(.participant_model_deployment_ids // [])[] | $project + "/deployments/" + .]
             foundryProject: .__foundryProjectId
   - kind: foundry-response
     selector:
@@ -299,24 +266,18 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.id | tostring)
+          identifier: .id
           title: .id
           blueprint: '"foundry_response"'
           properties:
             status: .status
-            createdAt: >-
-              (.created_at // .createdAt) as $t
-              | if $t == null then null
-                elif ($t | type) == "number" then ($t | todate)
-                elif ($t | tostring | test("^[0-9]+$")) then ($t | tonumber | todate)
-                else $t end
-            promptTokens: (.usage.prompt_tokens // .usage.input_tokens // .prompt_tokens)
-            completionTokens: (.usage.completion_tokens // .usage.output_tokens // .completion_tokens)
-            totalTokens: (.usage.total_tokens // .total_tokens)
+            createdAt: .created_at | todate
+            promptTokens: .usage.input_tokens
+            completionTokens: .usage.output_tokens
+            totalTokens: .usage.total_tokens
           relations:
-            conversation: >-
-              (.conversation_id // .conversationId // .conversation.id // .conversation | tostring)
-            modelDeployment: (.model_deployment_id // .model | tostring)
+            conversation: .conversation.id
+            modelDeployment: .__foundryProjectId + "/deployments/" + .model
   - kind: foundry-memory-store
     selector:
       query: 'true'
@@ -325,18 +286,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.id // .name | tostring)
-          title: .name // .id
+          identifier: .id
+          title: .name
           blueprint: '"foundry_memory_store"'
           properties:
             name: .name
             description: .description
-            createdAt: >-
-              (.created_at // .createdAt) as $t
-              | if $t == null then null
-                elif ($t | type) == "number" then ($t | todate)
-                elif ($t | tostring | test("^[0-9]+$")) then ($t | tonumber | todate)
-                else $t end
+            createdAt: .created_at | todate
             metadata: .metadata
           relations:
             foundryProject: .__foundryProjectId
