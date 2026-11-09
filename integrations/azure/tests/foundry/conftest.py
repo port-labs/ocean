@@ -15,7 +15,6 @@ TEST_INTEGRATION_CONFIG: dict[str, Any] = {
     "azure_tenant_id": "tenant",
     "azure_client_id": "client",
     "azure_client_secret": "secret",
-    "api_version": "v1",
 }
 
 

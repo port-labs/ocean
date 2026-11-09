@@ -5,7 +5,20 @@ from typing import Any, Protocol
 from urllib.parse import urljoin
 
 import httpx
+from azure.identity.aio import DefaultAzureCredential
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
+
+from azure_integration.foundry.clients.http.retry_transport import (
+    FOUNDRY_RETRY_AFTER_HEADERS,
+    FoundryRetryTransport,
+)
+
+_FOUNDRY_SCOPE = "https://ai.azure.com/.default"
+_DEFAULT_API_VERSION = "v1"
+
+_credential: DefaultAzureCredential | None = None
+_client: FoundryHttpClient | None = None
 
 
 class _HeaderProvider(Protocol):
@@ -18,6 +31,18 @@ class FoundryApiError(Exception):
         self.status_code = status_code
 
 
+class FoundryAuthenticator:
+    def __init__(self) -> None:
+        global _credential
+        if _credential is None:
+            _credential = DefaultAzureCredential()
+        self._credential = _credential
+
+    async def get_authorization_header(self) -> dict[str, str]:
+        token = await self._credential.get_token(_FOUNDRY_SCOPE)
+        return {"Authorization": f"Bearer {token.token}"}
+
+
 class FoundryHttpClient:
     """HTTP client for Microsoft Foundry project data-plane APIs."""
 
@@ -27,13 +52,17 @@ class FoundryHttpClient:
         self,
         *,
         authenticator: _HeaderProvider,
-        api_version: str,
+        api_version: str = _DEFAULT_API_VERSION,
         page_size: int = PAGE_SIZE,
     ) -> None:
         self._authenticator = authenticator
         self._api_version = api_version
         self._page_size = page_size
-        self._http = OceanAsyncClient(timeout=httpx.Timeout(60.0))
+        self._http = OceanAsyncClient(
+            FoundryRetryTransport,
+            retry_config=RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS),
+            timeout=httpx.Timeout(60.0),
+        )
 
     async def close(self) -> None:
         await self._http.aclose()
@@ -157,30 +186,19 @@ class FoundryHttpClient:
             url = next_url
             request_params = {}
 
-    async def open_responses_stream(
-        self,
-        invoke_url: str,
-        body: dict[str, Any],
-        *,
-        params: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        headers = await self._authenticator.get_authorization_header()
-        headers["Accept"] = "text/event-stream"
-        stream_body = {**body, "stream": True}
-        query_params = dict(params or {})
-        if not self.uses_openai_compatible_routes(invoke_url):
-            query_params.setdefault("api-version", self._api_version)
-        response = await self._http.request(
-            "POST",
-            invoke_url,
-            params=query_params or None,
-            json=stream_body,
-            headers=headers,
-        )
-        if response.is_error:
-            detail = response.text[:2000] if response.text else response.reason_phrase
-            raise FoundryApiError(
-                f"Foundry stream {response.status_code}: {detail}",
-                status_code=response.status_code,
-            )
-        return response
+
+def create_foundry_client() -> FoundryHttpClient:
+    global _client
+    if _client is None:
+        _client = FoundryHttpClient(authenticator=FoundryAuthenticator())
+    return _client
+
+
+async def clear_foundry_client() -> None:
+    global _client, _credential
+    if _client is not None:
+        await _client.close()
+    if _credential is not None:
+        await _credential.close()
+    _client = None
+    _credential = None

@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.foundry.clients.client_factory import create_foundry_client
+from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 from azure_integration.foundry.core.exporters.conversations_exporter import (
     ConversationsExporter,
