@@ -690,3 +690,76 @@ async def test_resync_tags_lists_only_pushed_repos(
         "test-org",
         "repo1",
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cursor",
+    [None, datetime(2026, 10, 1, tzinfo=timezone.utc)],
+    ids=["full-resync", "incremental"],
+)
+async def test_resync_branches_lists_only_pushed_repos(
+    github_main: Any, cursor: datetime | None
+) -> None:
+    repo_options_seen: List[Dict[str, Any]] = []
+
+    def list_repos(options: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+        repo_options_seen.append(options)
+        return _aiter_one([{"name": "repo1", "default_branch": "main"}])
+
+    org_exporter = MagicMock()
+    org_exporter.get_paginated_resources = lambda *args, **kwargs: _aiter_one(
+        [{"login": "test-org", "type": "Organization"}]
+    )
+    repo_exporter = MagicMock()
+    repo_exporter.get_paginated_resources = list_repos
+    branch_exporter = MagicMock()
+    branch_exporter.get_paginated_resources = MagicMock(
+        side_effect=lambda options: _aiter_one([{"name": "main"}])
+    )
+
+    with (
+        patch.object(github_main, "create_github_client", return_value=MagicMock()),
+        patch.object(
+            github_main,
+            "get_auth_provider",
+            return_value=MagicMock(
+                list_authenticators=AsyncMock(return_value=[MagicMock()])
+            ),
+        ),
+        patch.object(
+            github_main, "RestOrganizationExporter", return_value=org_exporter
+        ),
+        patch.object(github_main, "RestRepositoryExporter", return_value=repo_exporter),
+        patch.object(github_main, "RestBranchExporter", return_value=branch_exporter),
+    ):
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(repository_type="all")
+            async with resource_context(
+                MagicMock(
+                    kind="branch",
+                    selector=MagicMock(
+                        repo_search=None,
+                        exclude_archived=False,
+                        protection_rules=False,
+                        detailed=False,
+                        branch_names=[],
+                        default_branch_only=False,
+                    ),
+                )
+            ):
+                if cursor:
+                    with with_active_incremental_cursor(cursor):
+                        batches = [
+                            b async for b in github_main.resync_branches("branch")
+                        ]
+                else:
+                    batches = [b async for b in github_main.resync_branches("branch")]
+
+    assert batches == [[{"name": "main"}]]
+    assert repo_options_seen[0].get("changed_since") == RepositoryChange.pushed(cursor)
+    branch_options = branch_exporter.get_paginated_resources.call_args.args[0]
+    assert (branch_options["organization"], branch_options["repo_name"]) == (
+        "test-org",
+        "repo1",
+    )
