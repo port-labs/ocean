@@ -320,7 +320,7 @@
   {
     "identifier": "foundry_conversation",
     "title": "Foundry Conversation",
-    "description": "Foundry conversation index (metadata). Azure retains live conversation/Responses state ~30 days; Port only syncs what Foundry still exposes. Token usage lives on related foundry_response entities.",
+    "description": "Foundry conversation metadata (~30d Azure retention). Token and tool-call totals aggregate from related foundry_response entities.",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -337,6 +337,70 @@
         }
       },
       "required": []
+    },
+    "aggregationProperties": {
+      "responseCount": {
+        "title": "Response count",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "totalPromptTokens": {
+        "title": "Total prompt tokens",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "sum",
+          "property": "promptTokens"
+        }
+      },
+      "totalCompletionTokens": {
+        "title": "Total completion tokens",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "sum",
+          "property": "completionTokens"
+        }
+      },
+      "totalTokens": {
+        "title": "Total tokens",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "sum",
+          "property": "totalTokens"
+        }
+      },
+      "totalCachedTokens": {
+        "title": "Total cached tokens",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "sum",
+          "property": "cachedTokens"
+        }
+      },
+      "totalReasoningTokens": {
+        "title": "Total reasoning tokens",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "sum",
+          "property": "reasoningTokens"
+        }
+      },
+      "totalToolCalls": {
+        "title": "Total tool calls",
+        "target": "foundry_response",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "sum",
+          "property": "toolCallCount"
+        }
+      }
     },
     "relations": {
       "foundryProject": {

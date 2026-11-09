@@ -237,22 +237,10 @@ resources:
             promptTokens: .usage.input_tokens
             completionTokens: .usage.output_tokens
             totalTokens: .usage.total_tokens
-            cachedTokens: >-
-              .usage.input_token_details.cached_tokens
-              // .usage.input_tokens_details.cached_tokens
-              // 0
-            reasoningTokens: >-
-              .usage.output_token_details.reasoning_tokens
-              // .usage.output_tokens_details.reasoning_tokens
-              // 0
+            cachedTokens: .usage.input_token_details.cached_tokens
+            reasoningTokens: .usage.output_token_details.reasoning_tokens
             toolCalls: >-
-              [.output[]?
-              | select(.type == "mcp_call"
-                or .type == "function_call"
-                or .type == "tool_call"
-                or .type == "code_interpreter_call"
-                or .type == "file_search_call"
-                or .type == "web_search_call")]
+              [.output[]? | select((.type // "") | endswith("_call"))]
           relations:
             conversation: .conversation.id
   - kind: foundry-memory-store
