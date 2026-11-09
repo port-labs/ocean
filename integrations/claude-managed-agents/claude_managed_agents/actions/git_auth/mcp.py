@@ -55,22 +55,16 @@ def is_agent_configured_with_git_mcp(
 
 
 def attach_git_mcp_settings_to_agent_config(
-    proposed_config: dict[str, Any],
     spec: AgentMcpEnsureSpec,
-    existing_agent: BetaManagedAgentsAgent | None = None,
+    agent: BetaManagedAgentsAgent,
 ) -> dict[str, Any]:
-    """Attach the provider MCP server + toolset to agent config."""
-    agent_servers = list((existing_agent.mcp_servers or []) if existing_agent else [])
-    agent_tools = list((existing_agent.tools or []) if existing_agent else [])
-    proposed_servers = cast(
-        list[BetaManagedAgentsMCPServerURLDefinition],
-        proposed_config.get("mcp_servers") or [],
-    )
-    mcp_servers = _merge_mcp_servers_by_url(agent_servers + proposed_servers)
-    if is_agent_configured_with_git_mcp(mcp_servers, spec):
-        return proposed_config
+    """Build an update payload that attaches the provider MCP server + toolset."""
+    agent_servers = list(agent.mcp_servers or [])
+    agent_tools = list(agent.tools or [])
+    if is_agent_configured_with_git_mcp(agent_servers, spec):
+        return {}
 
-    mcp_servers = [s for s in mcp_servers if s.name != spec.name]
+    mcp_servers = [s for s in agent_servers if s.name != spec.name]
     tools = [
         t
         for t in agent_tools
@@ -81,18 +75,10 @@ def attach_git_mcp_settings_to_agent_config(
             type="url", name=spec.name, url=spec.url
         )
     )
-    toolset = {**_GITHUB_TOOLSET, "mcp_server_name": spec.name}
     return {
-        **proposed_config,
         "mcp_servers": mcp_servers,
-        "tools": [*tools, toolset],
+        "tools": [*tools, {**_GITHUB_TOOLSET, "mcp_server_name": spec.name}],
     }
-
-
-def _merge_mcp_servers_by_url(
-    servers: list[BetaManagedAgentsMCPServerURLDefinition],
-) -> list[BetaManagedAgentsMCPServerURLDefinition]:
-    return list({normalize_mcp_server_url(s.url): s for s in servers}.values())
 
 
 async def ensure_git_mcp_credential(
@@ -110,7 +96,8 @@ async def ensure_git_mcp_credential(
     if vault_id is None:
         vault_match = await find_first_match_in_generator(
             client.paginate(client.beta.vaults.list()),
-            lambda vault: cast(BetaManagedAgentsVault, vault).display_name == vault_name,
+            lambda vault: cast(BetaManagedAgentsVault, vault).display_name
+            == vault_name,
         )
         if vault_match is None:
             logger.info(f"Creating git MCP vault '{vault_name}'")

@@ -103,7 +103,10 @@ def test_attach_git_mcp_settings_adds_server_and_toolset() -> None:
         name=GITHUB_MCP_SERVER_NAME,
         url=DEFAULT_GITHUB_MCP_SERVER_URL.rstrip("/"),
     )
-    result = attach_git_mcp_settings_to_agent_config({}, spec)
+    agent = MagicMock()
+    agent.mcp_servers = []
+    agent.tools = []
+    result = attach_git_mcp_settings_to_agent_config(spec, agent)
     assert any(
         getattr(s, "name", None) == GITHUB_MCP_SERVER_NAME
         for s in result["mcp_servers"]
@@ -121,9 +124,11 @@ def test_attach_git_mcp_is_idempotent() -> None:
         name=GITHUB_MCP_SERVER_NAME,
         url=DEFAULT_GITHUB_MCP_SERVER_URL.rstrip("/"),
     )
-    once = attach_git_mcp_settings_to_agent_config({}, spec)
     agent = MagicMock()
+    agent.mcp_servers = []
+    agent.tools = []
+    once = attach_git_mcp_settings_to_agent_config(spec, agent)
     agent.mcp_servers = once["mcp_servers"]
     agent.tools = once["tools"]
-    twice = attach_git_mcp_settings_to_agent_config({}, spec, existing_agent=agent)
+    twice = attach_git_mcp_settings_to_agent_config(spec, agent)
     assert twice == {}

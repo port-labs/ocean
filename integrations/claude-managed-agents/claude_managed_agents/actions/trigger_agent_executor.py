@@ -309,9 +309,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         updated = await self.client.update_agent(
             agent.id,
             version=agent.version,
-            payload=attach_git_mcp_settings_to_agent_config(
-                {}, spec, existing_agent=agent
-            ),
+            payload=attach_git_mcp_settings_to_agent_config(spec, agent),
         )
         self._agent_cache.set(agent.id, updated)
         return updated
