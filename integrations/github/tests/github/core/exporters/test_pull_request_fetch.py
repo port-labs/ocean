@@ -75,7 +75,7 @@ async def test_fetch_single_pull_request_uses_graphql_exporter() -> None:
             enrich_with_first_commit=False,
             exclude_graphql_fields=["additions"],
             include_required_checks_status=False,
-            required_checks_ignore=[],
+            excluded_required_checks=[],
         )
     )
 
@@ -116,7 +116,7 @@ async def test_fetch_single_pull_request_uses_rest_exporter() -> None:
             enrich_with_first_commit=False,
             exclude_graphql_fields=[],
             include_required_checks_status=False,
-            required_checks_ignore=[],
+            excluded_required_checks=[],
         )
     )
 

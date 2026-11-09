@@ -624,27 +624,22 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="includeRequiredChecksStatus",
         default=False,
         description=(
-            "When enabled, open pull requests are enriched with the status of only the checks "
-            "GitHub requires for merging into the base branch (branch protection / rulesets): "
-            "required_checks_status (success, failure, pending or none), required_checks_failing, "
-            "required_checks_pending and required_checks_sha. "
-            "A status of none means no check is required (nothing blocks the pull request), "
-            "while null means it could not be determined. A merge gate that waits for success "
-            "alone will block pull requests that have no required checks, so accept none as well. "
-            "Use requiredChecksIgnore to leave out required checks that never settle, such as a merge queue check. "
-            "Requires the api selector to be set to graphql; it is ignored when api is rest. "
-            "Costs one extra GraphQL query per 5 open pull requests on every resync, and one per "
-            "pull request refresh on a pull request or review event."
+            "Adds the status of the checks GitHub requires for merging to open pull requests: "
+            "required_checks_status (success, failure, pending, no_required_checks or unknown), "
+            "required_checks_failing and required_checks_pending (check names), and "
+            "required_checks_sha (the head commit the status was computed for). "
+            "Costs one extra GraphQL query per 5 open pull requests. "
+            "Requires the graphql api; it is ignored when the api selector is rest."
         ),
     )
-    required_checks_ignore: list[str] = Field(
-        title="Required Checks Ignore",
-        alias="requiredChecksIgnore",
+    excluded_required_checks: list[str] = Field(
+        title="Excluded Required Checks",
+        alias="excludedRequiredChecks",
         default_factory=list,
         description=(
-            "Check names (glob patterns, e.g. 'aviator/*') excluded from the required checks status, "
-            "for required checks that should not block it, such as a merge queue check that stays pending. "
-            "Only used when includeRequiredChecksStatus is enabled."
+            "Required check names (glob patterns, e.g. 'aviator/*') to leave out of "
+            "required_checks_status, for checks that should not block it, such as a merge "
+            "queue check that stays pending. Only used with includeRequiredChecksStatus."
         ),
     )
 

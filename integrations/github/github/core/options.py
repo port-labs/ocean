@@ -46,7 +46,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
     include_required_checks_status: NotRequired[bool]
-    required_checks_ignore: NotRequired[list[str]]
+    excluded_required_checks: NotRequired[list[str]]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -64,7 +64,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
     include_required_checks_status: NotRequired[bool]
-    required_checks_ignore: NotRequired[list[str]]
+    excluded_required_checks: NotRequired[list[str]]
 
 
 class PullRequestGraphQLOptions(BaseModel):

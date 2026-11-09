@@ -3,7 +3,7 @@
 GitHub's combined rollup (``statusCheckRollup``) covers every check on the head
 commit, so one optional or never-settling check (for example a merge queue check) keeps
 it pending forever. This module narrows it down to the required checks, optionally
-minus a configurable ignore list, the way GitHub's own merge gate sees them: a required
+minus a configurable exclusion list, the way GitHub's own merge gate sees them: a required
 check is satisfied by the latest run of that name.
 
 GraphQL flags required checks itself (``isRequired``), so ``GraphQLRequiredChecksEnricher``
@@ -13,25 +13,32 @@ them into the result.
 
 import asyncio
 from dataclasses import dataclass
-from fnmatch import fnmatchcase
+from itertools import batched
 from typing import Any, Iterable, Literal, Mapping, Optional, Sequence
 
 import httpx
 from loguru import logger
 
-from github.clients.auth.retry_transport import GATEWAY_TIMEOUT_STATUS_CODES
 from github.clients.http.graphql_client import GithubGraphQLClient
-from github.helpers.exceptions import GraphQLErrorGroup
+from github.helpers.exceptions import (
+    GraphQLClientError,
+    GraphQLErrorGroup,
+    GraphQLForbiddenFieldError,
+    RateLimitException,
+)
 from github.helpers.gql_queries import (
     REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE,
     generate_pull_requests_required_checks_gql,
     required_checks_alias,
 )
+from github.helpers.utils import matches_glob_pattern
 
 CheckOutcome = Literal["success", "failure", "pending"]
-# "none" means no check is required (the PR is mergeable as far as checks go), while a
-# null status means it could not be determined.
-RequiredChecksStatus = Literal["success", "failure", "pending", "none"]
+# "no_required_checks" means no check is required (nothing blocks the PR on checks),
+# while "unknown" means the status could not be determined.
+RequiredChecksStatus = Literal[
+    "success", "failure", "pending", "no_required_checks", "unknown"
+]
 
 REQUIRED_CHECKS_STATUS_FIELD = "required_checks_status"
 REQUIRED_CHECKS_FAILING_FIELD = "required_checks_failing"
@@ -44,6 +51,11 @@ _FAILING_STATUS_STATES = frozenset({"FAILURE", "ERROR"})
 
 GRAPHQL_PRS_PER_QUERY = 5
 # Page sizes of the check contexts to try when GitHub rejects the query as too heavy.
+# Deliberately not ``reduce_graphql_page_size`` (steps of 5): a query reads up to
+# GRAPHQL_PRS_PER_QUERY pull requests' checks at once, so every rejected attempt is
+# slow, and stepping down by 5 would burn many of them before finding a size that fits.
+# Halving gets there in at most four tries; the transport already shrinks ``first`` on
+# gateway timeouts itself.
 _CONTEXTS_PAGE_SIZE_BACKOFF = (REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE, 50, 25, 10)
 # A pull request with more checks than this is reported as unknown rather than read
 # without bound.
@@ -88,8 +100,8 @@ def status_context_outcome(state: Optional[str]) -> CheckOutcome:
     return "pending"
 
 
-def _is_ignored(name: str, ignore: Iterable[str]) -> bool:
-    return any(fnmatchcase(name, pattern) for pattern in ignore)
+def _is_excluded(name: str, excluded: Iterable[str]) -> bool:
+    return any(matches_glob_pattern(name, pattern) for pattern in excluded)
 
 
 def _latest_outcome(observations: Sequence[ObservedCheck]) -> CheckOutcome:
@@ -114,7 +126,7 @@ def summarize_required_checks(
     *,
     expected: Sequence[str],
     observed: Sequence[ObservedCheck],
-    ignore: Sequence[str],
+    excluded: Sequence[str],
     sha: Optional[str],
 ) -> RequiredChecksSummary:
     """Reduce the required check names and the reported checks to the status.
@@ -123,17 +135,19 @@ def summarize_required_checks(
       consumer can react as soon as one fails).
     * ``pending``: a required check is still running, or has not been reported yet.
     * ``success``: every required check passed or was skipped.
-    * ``none``: no required check applies once ``ignore`` is applied.
+    * ``no_required_checks``: no required check applies once ``excluded`` is applied.
     """
     reports_by_name: dict[str, list[ObservedCheck]] = {}
 
     # An expected check with no report yet stays an empty list, i.e. pending.
     for name in expected:
-        if not _is_ignored(name, ignore):
+        if not _is_excluded(name, excluded):
             reports_by_name.setdefault(name, [])
 
     for observed_check in observed:
-        if observed_check.is_required and not _is_ignored(observed_check.name, ignore):
+        if observed_check.is_required and not _is_excluded(
+            observed_check.name, excluded
+        ):
             reports_by_name.setdefault(observed_check.name, []).append(observed_check)
 
     failing: list[str] = []
@@ -147,7 +161,7 @@ def summarize_required_checks(
 
     status: RequiredChecksStatus
     if not reports_by_name:
-        status = "none"
+        status = "no_required_checks"
     elif failing:
         status = "failure"
     elif pending:
@@ -159,21 +173,14 @@ def summarize_required_checks(
     )
 
 
-def pop_required_checks_options(options: dict[str, Any]) -> tuple[bool, list[str]]:
-    """Take the required checks options out of exporter options.
-
-    Returns ``(include_required_checks_status, required_checks_ignore)``.
-    """
-    include = bool(options.pop("include_required_checks_status", False))
-    ignore = list(options.pop("required_checks_ignore", None) or [])
-    return include, ignore
-
-
 def apply_required_checks(
     pull_request: dict[str, Any], summary: Optional[RequiredChecksSummary]
 ) -> None:
-    """Write the summary onto the raw PR; ``None`` (unknown) leaves every field null."""
-    pull_request[REQUIRED_CHECKS_STATUS_FIELD] = summary.status if summary else None
+    """Write the summary onto the raw PR; ``None`` (unknown) sets the status to
+    ``unknown`` and leaves the other fields null."""
+    pull_request[REQUIRED_CHECKS_STATUS_FIELD] = (
+        summary.status if summary else "unknown"
+    )
     pull_request[REQUIRED_CHECKS_FAILING_FIELD] = summary.failing if summary else None
     pull_request[REQUIRED_CHECKS_PENDING_FIELD] = summary.pending if summary else None
     pull_request[REQUIRED_CHECKS_SHA_FIELD] = summary.sha if summary else None
@@ -190,14 +197,22 @@ class _GraphQLPullRequestChecks:
     complete: bool = True
 
 
+# What reading the checks can fail with: GraphQL errors, HTTP errors and rate limits.
+# Anything else is a bug and should surface rather than leave the status unknown.
+_FETCH_ERRORS = (
+    GraphQLErrorGroup,
+    GraphQLForbiddenFieldError,
+    GraphQLClientError,
+    RateLimitException,
+    httpx.HTTPError,
+)
+
+
 def _is_too_heavy(error: Exception) -> bool:
     """Whether GitHub rejected the query for its size, so fewer PRs may fit."""
-    if isinstance(error, GraphQLErrorGroup):
-        return True
-    return (
-        isinstance(error, httpx.HTTPStatusError)
-        and error.response.status_code in GATEWAY_TIMEOUT_STATUS_CODES
-    )
+    return isinstance(
+        error, GraphQLErrorGroup
+    ) or GithubGraphQLClient._is_query_too_expensive(error)
 
 
 class GraphQLRequiredChecksEnricher:
@@ -218,12 +233,12 @@ class GraphQLRequiredChecksEnricher:
         client: GithubGraphQLClient,
         organization: str,
         repo_name: str,
-        ignore: Sequence[str],
+        excluded: Sequence[str],
     ) -> None:
         self._client = client
         self._organization = organization
         self._repo_name = repo_name
-        self._ignore = list(ignore)
+        self._excluded = list(excluded)
 
     async def enrich(self, pull_requests: list[dict[str, Any]]) -> None:
         """Set the required checks fields on each pull request, in place."""
@@ -231,10 +246,7 @@ class GraphQLRequiredChecksEnricher:
         if not numbers:
             return
 
-        chunks = [
-            numbers[start : start + GRAPHQL_PRS_PER_QUERY]
-            for start in range(0, len(numbers), GRAPHQL_PRS_PER_QUERY)
-        ]
+        chunks = [list(chunk) for chunk in batched(numbers, GRAPHQL_PRS_PER_QUERY)]
         summaries: dict[int, Optional[RequiredChecksSummary]] = {}
         for chunk_summaries in await asyncio.gather(
             *(self._summarize_chunk(chunk) for chunk in chunks)
@@ -252,7 +264,7 @@ class GraphQLRequiredChecksEnricher:
     ) -> dict[int, Optional[RequiredChecksSummary]]:
         try:
             checks = await self._fetch_chunk(numbers)
-        except Exception as error:
+        except _FETCH_ERRORS as error:
             if _is_too_heavy(error) and len(numbers) > 1:
                 middle = len(numbers) // 2
                 logger.warning(
@@ -287,7 +299,7 @@ class GraphQLRequiredChecksEnricher:
             summaries[number] = summarize_required_checks(
                 expected=pr_checks.expected,
                 observed=pr_checks.observed,
-                ignore=self._ignore,
+                excluded=self._excluded,
                 sha=pr_checks.sha,
             )
         return summaries

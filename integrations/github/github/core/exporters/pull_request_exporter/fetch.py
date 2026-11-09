@@ -45,6 +45,6 @@ async def fetch_single_pull_request(
             include_required_checks_status=(
                 resource_config.selector.include_required_checks_status
             ),
-            required_checks_ignore=resource_config.selector.required_checks_ignore,
+            excluded_required_checks=resource_config.selector.excluded_required_checks,
         )
     )

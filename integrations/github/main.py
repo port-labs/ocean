@@ -606,11 +606,6 @@ async def resync_pull_requests(
         if is_graphql_api
         else RestPullRequestExporter(rest_client)
     )
-    if config.selector.include_required_checks_status and not is_graphql_api:
-        logger.warning(
-            "includeRequiredChecksStatus is only supported with api: graphql; "
-            "required_checks_* fields will not be set for this pull-request mapping"
-        )
 
     fetch_errors: list[Exception] = []
 
@@ -656,7 +651,7 @@ async def resync_pull_requests(
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
                                 include_required_checks_status=config.selector.include_required_checks_status,
-                                required_checks_ignore=config.selector.required_checks_ignore,
+                                excluded_required_checks=config.selector.excluded_required_checks,
                             )
                         )
                     )

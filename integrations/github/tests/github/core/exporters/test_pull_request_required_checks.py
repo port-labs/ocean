@@ -43,10 +43,10 @@ def _optional(name: str, outcome: str) -> ObservedCheck:
 def _summarize(
     expected: list[str],
     observed: list[ObservedCheck],
-    ignore: Optional[list[str]] = None,
+    excluded: Optional[list[str]] = None,
 ) -> Any:
     return summarize_required_checks(
-        expected=expected, observed=observed, ignore=ignore or [], sha="abc"
+        expected=expected, observed=observed, excluded=excluded or [], sha="abc"
     )
 
 
@@ -90,11 +90,11 @@ class TestOutcomes:
 
 
 class TestSummarizeRequiredChecks:
-    def test_ignored_pending_check_does_not_block_success(self) -> None:
+    def test_excluded_pending_check_does_not_block_success(self) -> None:
         summary = _summarize(
             [GATE, AVIATOR],
             [_required(GATE, "success"), _required(AVIATOR, "pending")],
-            ignore=[AVIATOR],
+            excluded=[AVIATOR],
         )
 
         assert summary.status == "success"
@@ -102,7 +102,7 @@ class TestSummarizeRequiredChecks:
         assert summary.pending == []
         assert summary.sha == "abc"
 
-    def test_without_ignore_the_pending_check_blocks(self) -> None:
+    def test_without_exclusion_the_pending_check_blocks(self) -> None:
         summary = _summarize(
             [GATE, AVIATOR],
             [_required(GATE, "success"), _required(AVIATOR, "pending")],
@@ -138,21 +138,21 @@ class TestSummarizeRequiredChecks:
     def test_no_required_checks_is_none(self) -> None:
         summary = _summarize([], [_optional("wiz", "failure")])
 
-        assert summary.status == "none"
+        assert summary.status == "no_required_checks"
 
-    def test_only_ignored_required_checks_is_none(self) -> None:
+    def test_only_excluded_required_checks_is_no_required_checks(self) -> None:
         summary = _summarize(
-            [AVIATOR], [_required(AVIATOR, "pending")], ignore=[AVIATOR]
+            [AVIATOR], [_required(AVIATOR, "pending")], excluded=[AVIATOR]
         )
 
-        assert summary.status == "none"
+        assert summary.status == "no_required_checks"
 
-    def test_ignore_supports_glob_patterns(self) -> None:
+    def test_exclusions_support_glob_patterns(self) -> None:
         summary = _summarize(
-            ["aviator/checks", "aviator/other"], [], ignore=["aviator/*"]
+            ["aviator/checks", "aviator/other"], [], excluded=["aviator/*"]
         )
 
-        assert summary.status == "none"
+        assert summary.status == "no_required_checks"
 
     def test_latest_run_wins_over_a_superseded_failure(self) -> None:
         summary = _summarize(
@@ -281,12 +281,12 @@ def _heavy_query_error() -> httpx.HTTPStatusError:
 async def _enrich_one(
     graphql_client: GithubGraphQLClient,
     send_api_request: Any,
-    ignore: Optional[list[str]] = None,
+    excluded: Optional[list[str]] = None,
     pull_request: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     pull_request = pull_request or {"number": 7}
     enricher = GraphQLRequiredChecksEnricher(
-        graphql_client, "test-org", "repo1", ignore or []
+        graphql_client, "test-org", "repo1", excluded or []
     )
     with patch.object(graphql_client, "send_api_request", send_api_request):
         await enricher.enrich([pull_request])
@@ -318,7 +318,7 @@ class TestGraphQLRequiredChecksEnricher:
         pr = await _enrich_one(
             graphql_client,
             AsyncMock(return_value=_gql_response(pr_7=node)),
-            ignore=[AVIATOR],
+            excluded=[AVIATOR],
         )
 
         assert pr["required_checks_status"] == "success"
@@ -342,7 +342,7 @@ class TestGraphQLRequiredChecksEnricher:
         ):
             await enricher.enrich(pull_requests)
 
-        assert pull_requests[0]["required_checks_status"] == "none"
+        assert pull_requests[0]["required_checks_status"] == "no_required_checks"
 
     async def test_reports_failing_required_status_context(
         self, graphql_client: GithubGraphQLClient
@@ -471,14 +471,22 @@ class TestGraphQLRequiredChecksEnricher:
     async def test_failed_query_leaves_status_unknown(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
-        send_api_request = AsyncMock(side_effect=RuntimeError("boom"))
+        send_api_request = AsyncMock(side_effect=httpx.ConnectError("boom"))
 
         pr = await _enrich_one(graphql_client, send_api_request)
 
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
         assert pr["required_checks_failing"] is None
         # Not a size problem, so it is not retried.
         assert send_api_request.await_count == 1
+
+    async def test_unexpected_errors_are_not_swallowed(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        send_api_request = AsyncMock(side_effect=RuntimeError("bug"))
+
+        with pytest.raises(RuntimeError, match="bug"):
+            await _enrich_one(graphql_client, send_api_request)
 
     async def test_missing_pull_request_leaves_status_unknown(
         self, graphql_client: GithubGraphQLClient
@@ -487,7 +495,7 @@ class TestGraphQLRequiredChecksEnricher:
             graphql_client, AsyncMock(return_value=_gql_response(pr_7=None))
         )
 
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
 
     async def test_pull_request_that_is_no_longer_open_is_left_unknown(
         self, graphql_client: GithubGraphQLClient
@@ -498,7 +506,7 @@ class TestGraphQLRequiredChecksEnricher:
             graphql_client, AsyncMock(return_value=_gql_response(pr_7=node))
         )
 
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
 
     async def test_check_with_unknown_is_required_leaves_status_unknown(
         self, graphql_client: GithubGraphQLClient
@@ -516,7 +524,7 @@ class TestGraphQLRequiredChecksEnricher:
             graphql_client, AsyncMock(return_value=_gql_response(pr_7=node))
         )
 
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
         assert pr["required_checks_pending"] is None
 
 
@@ -582,7 +590,7 @@ class TestGraphQLRequiredChecksEnricherBackoff:
 
         pr = await _enrich_one(graphql_client, send_api_request)
 
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
         assert send_api_request.await_count == 1
 
     async def test_stops_following_cursors_after_the_page_limit(
@@ -605,7 +613,7 @@ class TestGraphQLRequiredChecksEnricherBackoff:
         pr = await _enrich_one(graphql_client, AsyncMock(side_effect=fake_send))
 
         assert calls == MAX_CONTEXT_PAGES_PER_PR
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
 
     async def test_stops_when_the_cursor_does_not_advance(
         self, graphql_client: GithubGraphQLClient
@@ -621,7 +629,7 @@ class TestGraphQLRequiredChecksEnricherBackoff:
         pr = await _enrich_one(graphql_client, send_api_request)
 
         assert send_api_request.await_count == 2
-        assert pr["required_checks_status"] is None
+        assert pr["required_checks_status"] == "unknown"
 
 
 class TestRequiredChecksQuery:
@@ -675,7 +683,7 @@ class TestExportersRequiredChecks:
                     pr_number=7,
                     repo={"name": "repo1"},
                     include_required_checks_status=True,
-                    required_checks_ignore=[AVIATOR],
+                    excluded_required_checks=[AVIATOR],
                 )
             )
 
@@ -780,7 +788,7 @@ class TestExportersRequiredChecks:
                             states=["open", "closed"],
                             max_results=None,
                             include_required_checks_status=True,
-                            required_checks_ignore=[AVIATOR],
+                            excluded_required_checks=[AVIATOR],
                         )
                     )
                 ]
@@ -806,9 +814,36 @@ class TestExportersRequiredChecks:
                     repo_name="repo1",
                     pr_number=7,
                     include_required_checks_status=True,
-                    required_checks_ignore=[AVIATOR],
+                    excluded_required_checks=[AVIATOR],
                 )
             )
 
         assert result is not None
         assert "required_checks_status" not in result
+
+    async def test_rest_exporter_warns_once_when_required_checks_are_requested(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestPullRequestExporter(rest_client)
+        pull_request = {"id": 1, "number": 7, "state": "open"}
+
+        with (
+            patch.object(
+                rest_client, "send_api_request", AsyncMock(return_value=pull_request)
+            ),
+            patch(
+                "github.core.exporters.pull_request_exporter.core.logger"
+            ) as mock_logger,
+        ):
+            for _ in range(2):
+                await exporter.get_resource(
+                    SinglePullRequestOptions(
+                        organization="test-org",
+                        repo_name="repo1",
+                        pr_number=7,
+                        include_required_checks_status=True,
+                    )
+                )
+
+        mock_logger.warning.assert_called_once()
+        assert "only supported with api: graphql" in str(mock_logger.warning.call_args)
