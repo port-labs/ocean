@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.17.0 (2026-11-09)
+
+
+### Features
+
+- Added gitAccessToken on trigger_agent so sessions can inject auth into github_repository mounts
+
+
+## 0.16.2 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.16.1 (2026-11-09)
+
+
+### Improvements
+
+- Moved files into subdirectory to avoid local development import conflicts with other integrations
+
+
+## 0.16.0 (2026-11-08)
+
+
+### Features
+
+- Add virtual MCP server support via virtualMcpServerIds on create, update, and trigger agent actions.
+
+
+## 0.15.5 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
+## 0.15.4 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
+## 0.15.3 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
+## 0.15.2 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 0.15.1 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
 ## 0.15.0 (2026-11-02)
 
 

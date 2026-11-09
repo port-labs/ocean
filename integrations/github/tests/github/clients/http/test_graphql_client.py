@@ -7,10 +7,17 @@ from github.clients.auth.retry_transport import (
     GitHubRetryTransport,
 )
 from github.clients.graphql_page_reduction import MIN_GRAPHQL_PAGE_SIZE
+from github.clients.auth.personal_access_token_authenticator import (
+    PersonalTokenAuthenticator,
+)
 from github.clients.http.graphql_client import (
     GithubGraphQLClient,
     GraphQLFallback,
     PAGE_SIZE,
+)
+from github.clients.http.rest_client import GithubRestClient
+from github.clients.rate_limiter.rate_limit_wrapper import (
+    github_centralized_rate_limit_pool,
 )
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
@@ -460,18 +467,18 @@ class TestGithubGraphQLClient:
                 ):
                     pass
 
-    def test_is_query_too_expensive_keys_on_gateway_status(self) -> None:
+    def testis_query_too_expensive_keys_on_gateway_status(self) -> None:
         # Gateway timeouts signal an over-budget query and trigger the fallback.
         for status in (502, 504, 499):
-            assert GithubGraphQLClient._is_query_too_expensive(_gateway_error(status))
+            assert GithubGraphQLClient.is_query_too_expensive(_gateway_error(status))
         # A plain 500 is a generic server error, not an over-budget signal, so it
         # gets page-size backoff but never the field-stripping query fallback.
-        assert not GithubGraphQLClient._is_query_too_expensive(_gateway_error(500))
+        assert not GithubGraphQLClient.is_query_too_expensive(_gateway_error(500))
         for status in (400, 403, 404):
-            assert not GithubGraphQLClient._is_query_too_expensive(
+            assert not GithubGraphQLClient.is_query_too_expensive(
                 _gateway_error(status)
             )
-        assert not GithubGraphQLClient._is_query_too_expensive(GraphQLErrorGroup([]))
+        assert not GithubGraphQLClient.is_query_too_expensive(GraphQLErrorGroup([]))
 
     @pytest.mark.asyncio
     async def test_handle_graphql_errors_detects_rate_limit_response(
@@ -693,6 +700,47 @@ class TestGithubGraphQLClientRetryConfig:
         with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
             mock_ocean.config.client_timeout = 60
             assert gql1.client is not gql2.client
+
+    def test_rest_and_graphql_keep_separate_pools(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        other = PersonalTokenAuthenticator("another-token")
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            rest = GithubRestClient(github_host=_GQL_HOST, authenticator=authenticator)
+            graphql = GithubGraphQLClient(
+                github_host=_GQL_HOST, authenticator=authenticator
+            )
+            other_rest = GithubRestClient(github_host=_GQL_HOST, authenticator=other)
+            rest_transport = cast(GitHubRetryTransport, rest.client._transport)
+            graphql_transport = cast(GitHubRetryTransport, graphql.client._transport)
+            rest_limiter = rest_transport._retry_config.rate_limiter
+            graphql_limiter = graphql_transport._retry_config.rate_limiter
+
+        assert rest_limiter is rest.rate_limiter
+        assert graphql_limiter is graphql.rate_limiter
+        assert rest_limiter is not graphql_limiter
+        scope = authenticator.rate_limit_scope
+        assert rest_limiter.pool == github_centralized_rate_limit_pool("rest", scope)
+        assert graphql_limiter.pool == github_centralized_rate_limit_pool(
+            "graphql", scope
+        )
+        assert (
+            other_rest.centralized_rate_limit_pool != rest.centralized_rate_limit_pool
+        )
+
+    def test_user_token_client_does_not_use_redis(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            client = GithubRestClient(
+                github_host=_GQL_HOST,
+                authenticator=authenticator,
+                centralized_rate_limit=False,
+            )
+
+        assert client.rate_limiter._redis_enabled is False
 
     @pytest.mark.asyncio
     async def test_graphql_client_retries_post_on_transient_error(

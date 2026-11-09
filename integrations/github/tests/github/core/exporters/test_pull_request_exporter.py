@@ -20,7 +20,10 @@ from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
-from github.core.exporters.pull_request_exporter.utils import filter_prs_by_date
+from github.core.exporters.pull_request_exporter.utils import (
+    filter_prs_by_date,
+    matches_pull_request_selector_states,
+)
 from integration import GithubPullRequestSelector
 
 
@@ -753,6 +756,36 @@ class TestGraphQLPullRequestExporter:
         assert pr["commits"] == 3
         assert pr["state"] == "open"
         assert "firstCommit" not in pr
+
+    async def test_get_resource_returns_none_when_pull_request_missing(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        with (
+            patch(
+                "github.core.exporters.pull_request_exporter.core.parse_github_options",
+                return_value=(
+                    "repo1",
+                    "test-org",
+                    {"pr_number": 101, "repo": {"name": "repo1"}},
+                ),
+            ),
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                return_value={"data": {"repository": {"pullRequest": None}}},
+            ),
+        ):
+            pr = await exporter.get_resource(
+                SinglePullRequestOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    pr_number=101,
+                )
+            )
+
+        assert pr is None
 
     async def test_get_resource_respects_exclude_graphql_fields(
         self, graphql_client: GithubGraphQLClient
@@ -1609,6 +1642,26 @@ class TestGraphQLPullRequestExporterInternals:
         assert normalized["__repository"] == "repo1"
         assert normalized["__repository_object"] == {"name": "repo1"}
         assert normalized["__organization"] == "org"
+
+
+@pytest.mark.parametrize(
+    "state,selector_states,expected",
+    [
+        ("open", ["open"], True),
+        ("closed", ["closed"], True),
+        ("merged", ["closed"], True),
+        ("MERGED", ["closed"], True),
+        ("merged", ["open"], False),
+        ("closed", ["open"], False),
+        ("open", ["closed"], False),
+        ("", ["open"], True),
+        (None, ["open"], True),
+    ],
+)
+def test_matches_pull_request_selector_states(
+    state: str | None, selector_states: list[str], expected: bool
+) -> None:
+    assert matches_pull_request_selector_states(state, selector_states) is expected
 
 
 def test_filter_prs_by_date_skips_items_missing_field() -> None:

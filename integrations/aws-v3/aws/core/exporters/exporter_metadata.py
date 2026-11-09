@@ -83,6 +83,11 @@ from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.live_events import MEMORYDB_USER_LIVE_EVENTS
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
 from aws.core.helpers.metadata.types import ExporterMetadata
+from aws.core.exporters.cloudcontrol.resource.metadata import (
+    CloudControlExporterMetadata,
+)
+from aws_integration.overrides import AWSCustomKindResourceConfig
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from aws.core.exporters.msk import MskClusterExporter, MskServerlessClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.msk.serverless_cluster.models import (
@@ -96,6 +101,7 @@ from aws.core.exporters.rds.db_instance.live_events import RDS_DB_INSTANCE_LIVE_
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.s3 import PaginatedBucketRequest, S3BucketExporter
 from aws.core.exporters.s3.bucket.live_events import S3_BUCKET_LIVE_EVENTS
+from aws.core.exporters.s3.bucket.metadata import S3BucketExporterMetadata
 from aws.core.exporters.ses import (
     PaginatedConfigurationSetRequest,
     PaginatedEmailIdentityRequest,
@@ -116,7 +122,7 @@ from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.helpers.types import ObjectKind
 
 kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
-    ObjectKind.S3_BUCKET: ExporterMetadata(
+    ObjectKind.S3_BUCKET: S3BucketExporterMetadata(
         S3BucketExporter,
         PaginatedBucketRequest,
         regional=False,
@@ -257,3 +263,13 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         live_events=SNS_TOPIC_LIVE_EVENTS,
     ),
 }
+
+
+def get_exporter_metadata(
+    kind: str, resource_config: ResourceConfig | None = None
+) -> ExporterMetadata | None:
+    if kind in kind_to_export_metadata:
+        return kind_to_export_metadata[ObjectKind(kind)]
+    if isinstance(resource_config, AWSCustomKindResourceConfig):
+        return CloudControlExporterMetadata.for_type(kind)
+    return None

@@ -17,48 +17,17 @@ jobs:
         if: needs.detect-changes.outputs.has_integration_code_changes != 'true'
         run: echo "No integration changes detected"
 
-      - name: Set up Python 3.12
-        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Checkout code
         if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Setup
-        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
-        run: |
-          pip install toml-cli yq packaging
-
-      - name: Check Ocean version 🌊
+      - name: Validate integration version format
         if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
         run: |
           git remote add ocean-origin https://github.com/port-labs/ocean.git
           git fetch ocean-origin
-          changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
-          package_version=$(curl -s https://pypi.org/pypi/port-ocean/json | jq -r '.info.version')
-          for dir in $changed_dirs; do
-            pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
-            if [ -n "$pyproject_file" ]; then
-              installed_version=$(toml get  tool.poetry.dependencies.port_ocean.version --toml-path $pyproject_file)
-              is_version_updated=$(python -c "from packaging import version;print(version.parse('$installed_version'.lstrip('^')) >= version.parse('$package_version'))")
-
-              if [ "$is_version_updated" = "False" ]; then
-                echo "ERROR: Ocean version in $pyproject_file is not updated to latest version -> $package_version"
-                exit 1
-              else
-                echo "Ocean version is valid in $pyproject_file"
-              fi
-            fi
-          done
-
-      - name: Validate integration version format
-        if: needs.detect-changes.outputs.has_integration_code_changes == 'true'
-        run: |
           changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
           for dir in $changed_dirs; do
             pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
