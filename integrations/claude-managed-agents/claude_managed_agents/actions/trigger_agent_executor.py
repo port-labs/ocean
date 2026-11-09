@@ -28,11 +28,7 @@ from claude_managed_agents.actions.abstract_action_input import (
 )
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
 from claude_managed_agents.actions.git_auth import (
-    AgentMcpEnsureSpec,
     ResolvedGitAccess,
-    attach_git_mcp_settings_to_agent_config,
-    ensure_git_mcp_credential,
-    is_agent_configured_with_git_mcp,
     resolve_git_auth,
 )
 from claude_managed_agents.actions.port_mcp_utils import (
@@ -88,8 +84,6 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     gitProvider: Literal["github"] | None = None
     gitAuthMethod: Literal["bearerToken"] | None = None
     gitAccessToken: str | None = Field(default=None, min_length=1)
-    enableGitMcp: bool = True
-    gitMcpServerUrl: str | None = None
     _git_access: ResolvedGitAccess | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
@@ -101,11 +95,7 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     @model_validator(mode="after")
     def validate_git_auth_inputs(self) -> Self:
         if self.gitAccessToken:
-            self._git_access = resolve_git_auth(
-                self.gitAccessToken,
-                enable_git_mcp=self.enableGitMcp,
-                git_mcp_server_url=self.gitMcpServerUrl,
-            )
+            self._git_access = resolve_git_auth(self.gitAccessToken)
         return self
 
     @property
@@ -300,74 +290,21 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         self._agent_cache.set(agent.id, updated)
         return updated
 
-    async def _ensure_agent_git_mcp_configured(
-        self, agent: BetaManagedAgentsAgent, spec: AgentMcpEnsureSpec
-    ) -> BetaManagedAgentsAgent:
-        if is_agent_configured_with_git_mcp(agent.mcp_servers or [], spec):
-            return agent
-        updated = await self.client.update_agent(
-            agent.id,
-            version=agent.version,
-            payload=attach_git_mcp_settings_to_agent_config(spec, agent),
-        )
-        self._agent_cache.set(agent.id, updated)
-        return updated
-
-    async def _attach_git_mcp_to_session_config(
-        self,
-        api_config: dict[str, Any],
-        inputs: TriggerAgentInputs,
-        git_access: ResolvedGitAccess,
-        port_mcp_vault_id: str | None,
-        run: IntegrationRun,
-    ) -> dict[str, Any]:
-        if git_access.mcp is None:
-            return api_config
-
-        vault_name = inputs.vaultName
-        if vault_name is None and isinstance(run, WorkflowNodeRun):
-            vault_name = (
-                run.execution_identity.identifier if run.execution_identity else None
-            )
-        if vault_name is None:
-            raise ActionExecutionError(
-                "A vault name is required to attach git MCP credentials. "
-                "Provide vaultName, or run with an execution identity "
-                "(and optionally enablePortMcp)."
-            )
-
-        binding = await ensure_git_mcp_credential(
-            self.client,
-            vault_id=port_mcp_vault_id,
-            vault_name=vault_name,
-            mcp=git_access.mcp,
-        )
-        vault_ids = list(api_config.get("vault_ids") or [])
-        if binding.vault_id not in vault_ids:
-            vault_ids.append(binding.vault_id)
-        return {**api_config, "vault_ids": vault_ids}
-
     async def _create_new_trigger_session(
         self,
         inputs: TriggerAgentInputs,
         port_mcp: PortMcpWorkflowContext | None,
         agent: BetaManagedAgentsAgent,
         git_access: ResolvedGitAccess | None,
-        run: IntegrationRun,
     ) -> BetaManagedAgentsSession:
         api_config = await normalize_session_config(
             inputs.config,
             mount_token=git_access.mount_token if git_access else None,
         )
-        port_mcp_vault_id: str | None = None
         if port_mcp is not None:
             port_mcp_vault_id = await self._ensure_port_mcp_vault_ready(port_mcp, agent)
             api_config = session_config_with_port_mcp(
                 api_config, port_mcp_vault_id, port_mcp.execution_identity
-            )
-        if git_access is not None:
-            api_config = await self._attach_git_mcp_to_session_config(
-                api_config, inputs, git_access, port_mcp_vault_id, run
             )
         session = await self.client.create_session(
             inputs.agentId,
@@ -441,27 +378,14 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         git_access = inputs.git_access
         if port_mcp is not None:
             agent = await self._ensure_agent_port_mcp_configured(agent, port_mcp)
-        if git_access is not None and git_access.agent_mcp is not None:
-            agent = await self._ensure_agent_git_mcp_configured(
-                agent, git_access.agent_mcp
-            )
 
         if inputs.sessionId:
             session = await self._ensure_session_continuable(inputs.sessionId, run)
-            port_mcp_vault_id: str | None = None
             if port_mcp is not None:
-                port_mcp_vault_id = await self._ensure_port_mcp_vault_ready(
-                    port_mcp, agent
-                )
-            if git_access is not None and git_access.mcp is not None:
-                # Remint git MCP credential on continue; mounts last for the
-                # session lifetime and are not updated.
-                await self._attach_git_mcp_to_session_config(
-                    {}, inputs, git_access, port_mcp_vault_id, run
-                )
+                await self._ensure_port_mcp_vault_ready(port_mcp, agent)
         else:
             session = await self._create_new_trigger_session(
-                inputs, port_mcp, agent, git_access, run
+                inputs, port_mcp, agent, git_access
             )
 
         user_message = await self._send_prompt(session.id, inputs.prompt, run)

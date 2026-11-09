@@ -236,7 +236,7 @@
           "name": "gitProvider",
           "title": "Git provider",
           "type": "string",
-          "description": "Git provider for managed auth on session mounts and optional provider MCP. Currently only 'github' is supported. Omit when not using managed git auth.",
+          "description": "Git provider for managed auth on session mounts. Currently only 'github' is supported. Omit when not using managed git auth. Provider MCP (for example GitHub tools) is available through Port MCP / virtual MCP servers.",
           "required": false,
           "enum": ["github"]
         },
@@ -253,22 +253,7 @@
           "title": "Git access token",
           "type": "string",
           "sensitive": true,
-          "description": "GitHub token used when gitAuthMethod is 'bearerToken'. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}. Injected into github_repository mounts that omit authorization_token, and into the GitHub MCP vault credential when enableGitMcp is true.",
-          "required": false
-        },
-        {
-          "name": "enableGitMcp",
-          "title": "Enable git provider MCP",
-          "type": "boolean",
-          "description": "When true (default), attaches a vault credential for the provider MCP server (GitHub Copilot MCP by default) and ensures the agent declares that MCP server. Required for opening PRs via MCP. When false, mount auth still works for clone/commit/push, but PR creation via MCP is unavailable.",
-          "default": true,
-          "required": false
-        },
-        {
-          "name": "gitMcpServerUrl",
-          "title": "Git MCP server URL",
-          "type": "string",
-          "description": "Override the provider MCP server URL. Defaults to https://api.githubcopilot.com/mcp/. Ignored when enableGitMcp is false.",
+          "description": "GitHub token used when gitAuthMethod is 'bearerToken'. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}. Injected into github_repository mounts that omit authorization_token.",
           "required": false
         },
         {
