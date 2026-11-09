@@ -38,7 +38,8 @@ GRAPHQL_PRS_PER_QUERY = 5
 # GRAPHQL_PRS_PER_QUERY pull requests' checks at once, so every rejected attempt is
 # slow, and stepping down by 5 would burn many of them before finding a size that fits.
 # Halving gets there in at most four tries; the transport already shrinks ``first`` on
-# gateway timeouts itself.
+# gateway timeouts itself. Only a single pull request walks it: a query for several is
+# split instead (see ``_query``).
 _CONTEXTS_PAGE_SIZE_BACKOFF = (REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE, 50, 25, 10)
 # A pull request with more checks than this is reported as unknown rather than read
 # without bound.
@@ -60,7 +61,7 @@ def _is_too_heavy(error: Exception) -> bool:
     """Whether GitHub rejected the query for its size, so fewer PRs may fit."""
     return isinstance(
         error, GraphQLErrorGroup
-    ) or GithubGraphQLClient._is_query_too_expensive(error)
+    ) or GithubGraphQLClient.is_query_too_expensive(error)
 
 
 class GraphQLRequiredChecksEnricher:
@@ -193,29 +194,40 @@ class GraphQLRequiredChecksEnricher:
         return checks
 
     async def _query(self, cursors: Mapping[int, Optional[str]]) -> dict[str, Any]:
-        """One query, with smaller pages of checks when GitHub rejects it as too heavy."""
+        """One query. A single pull request is retried with smaller pages of checks when
+        GitHub rejects it as too heavy.
+
+        A query for several pull requests is not: it is split by the caller anyway, and
+        walking the page sizes at every level of the split multiplies the requests.
+        """
         query = generate_pull_requests_required_checks_gql(cursors)
-        last_error: Optional[GraphQLErrorGroup] = None
-        for page_size in _CONTEXTS_PAGE_SIZE_BACKOFF:
-            variables = {"organization": self._organization, "repo": self._repo_name}
-            payload = self._client.build_graphql_payload(
-                query, variables, page_size=page_size
-            )
+        page_sizes = (
+            _CONTEXTS_PAGE_SIZE_BACKOFF
+            if len(cursors) == 1
+            else (REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE,)
+        )
+        for page_size in page_sizes[:-1]:
             try:
-                response = await self._client.send_api_request(
-                    self._client.base_url,
-                    method="POST",
-                    json_data=payload,
-                    query_path="repository.pullRequest.requiredChecks",
-                    query_params={**variables, "pullRequests": list(cursors)},
-                )
-            except GraphQLErrorGroup as error:
-                last_error = error
+                return await self._send(query, cursors, page_size)
+            except GraphQLErrorGroup:
                 logger.warning(
                     f"[GraphQL] Required checks query failed at first={page_size} for "
                     f"{self._organization}/{self._repo_name}#{list(cursors)}"
                 )
-                continue
-            return ((response.get("data") or {}).get("repository")) or {}
-        assert last_error is not None
-        raise last_error
+        return await self._send(query, cursors, page_sizes[-1])
+
+    async def _send(
+        self, query: str, cursors: Mapping[int, Optional[str]], page_size: int
+    ) -> dict[str, Any]:
+        variables = {"organization": self._organization, "repo": self._repo_name}
+        payload = self._client.build_graphql_payload(
+            query, variables, page_size=page_size
+        )
+        response = await self._client.send_api_request(
+            self._client.base_url,
+            method="POST",
+            json_data=payload,
+            query_path="repository.pullRequest.requiredChecks",
+            query_params={**variables, "pullRequests": list(cursors)},
+        )
+        return ((response.get("data") or {}).get("repository")) or {}

@@ -15,14 +15,15 @@ It holds the pure logic: reading a pull request's GraphQL node into
 from dataclasses import dataclass
 from typing import Any, Iterable, Literal, Mapping, Optional, Sequence
 
-from github.helpers.utils import matches_glob_pattern
+from wcmatch import fnmatch
 
 CheckOutcome = Literal["success", "failure", "pending"]
 # "no_required_checks" means no check is required (nothing blocks the PR on checks),
 # while "unknown" means the status could not be determined.
-RequiredChecksStatus = Literal[
-    "success", "failure", "pending", "no_required_checks", "unknown"
-]
+RequiredChecksStatus = Literal["success", "failure", "pending", "no_required_checks"]
+# What a pull request reports when its status could not be determined; the summary
+# never holds it.
+UNKNOWN_REQUIRED_CHECKS_STATUS = "unknown"
 
 REQUIRED_CHECKS_STATUS_FIELD = "required_checks_status"
 REQUIRED_CHECKS_FAILING_FIELD = "required_checks_failing"
@@ -72,8 +73,16 @@ def status_context_outcome(state: Optional[str]) -> CheckOutcome:
     return "pending"
 
 
+# Check names are not paths (``ci/build`` is one name), so ``*`` has to cross ``/``, and
+# GitHub matches them case-sensitively. wcmatch's extended globs (``@(a|b)``) keep the
+# syntax of the integration's other globs.
+_EXCLUSION_FLAGS = fnmatch.EXTMATCH | fnmatch.CASE | fnmatch.DOTMATCH
+
+
 def _is_excluded(name: str, excluded: Iterable[str]) -> bool:
-    return any(matches_glob_pattern(name, pattern) for pattern in excluded)
+    return any(
+        fnmatch.fnmatch(name, pattern, flags=_EXCLUSION_FLAGS) for pattern in excluded
+    )
 
 
 def _latest_outcome(observations: Sequence[ObservedCheck]) -> CheckOutcome:
@@ -151,7 +160,7 @@ def apply_required_checks(
     """Write the summary onto the raw PR; ``None`` (unknown) sets the status to
     ``unknown`` and leaves the other fields null."""
     pull_request[REQUIRED_CHECKS_STATUS_FIELD] = (
-        summary.status if summary else "unknown"
+        summary.status if summary else UNKNOWN_REQUIRED_CHECKS_STATUS
     )
     pull_request[REQUIRED_CHECKS_FAILING_FIELD] = summary.failing if summary else None
     pull_request[REQUIRED_CHECKS_PENDING_FIELD] = summary.pending if summary else None

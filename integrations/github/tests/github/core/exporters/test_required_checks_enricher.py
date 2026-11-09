@@ -396,6 +396,45 @@ class TestGraphQLRequiredChecksEnricherBackoff:
 
         assert {pr["required_checks_status"] for pr in prs} == {"success"}
 
+    async def test_a_persistent_graphql_error_does_not_walk_the_ladder_at_every_split(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        send_api_request = AsyncMock(
+            side_effect=GraphQLErrorGroup([GraphQLClientError("too heavy")])
+        )
+        enricher = GraphQLRequiredChecksEnricher(
+            graphql_client, "test-org", "repo1", []
+        )
+        prs: list[dict[str, Any]] = [{"number": number} for number in range(1, 6)]
+
+        with patch.object(graphql_client, "send_api_request", send_api_request):
+            await enricher.enrich(prs)
+
+        # 5 pull requests split into 1 + 1 + 1 + 1 + 1 over 4 splits: one query per
+        # split, and the four page sizes only for each single pull request.
+        assert send_api_request.await_count == 4 + 5 * 4
+        assert {pr["required_checks_status"] for pr in prs} == {"unknown"}
+
+    async def test_several_pull_requests_are_queried_at_the_full_page_size_only(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        send_api_request = AsyncMock(
+            side_effect=GraphQLErrorGroup([GraphQLClientError("too heavy")])
+        )
+        enricher = GraphQLRequiredChecksEnricher(
+            graphql_client, "test-org", "repo1", []
+        )
+
+        with patch.object(graphql_client, "send_api_request", send_api_request):
+            await enricher.enrich([{"number": 1}, {"number": 2}])
+
+        sizes = [
+            call.kwargs["json_data"]["variables"]["first"]
+            for call in send_api_request.await_args_list
+        ]
+        # One attempt for the pair, then the ladder for each pull request on its own.
+        assert sizes == [100] + [100, 50, 25, 10] * 2
+
     async def test_a_single_pull_request_that_is_too_heavy_is_left_unknown(
         self, graphql_client: GithubGraphQLClient
     ) -> None:

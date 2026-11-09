@@ -197,3 +197,26 @@ class TestSummarizeRequiredChecks:
         )
 
         assert summary.status == "failure"
+
+
+class TestExclusionPatterns:
+    @pytest.mark.parametrize(
+        "name, pattern, excluded",
+        [
+            ("aviator/checks", "aviator/checks", True),
+            ("aviator/checks", "aviator/*", True),
+            ("aviator/checks", "aviator*", True),
+            ("aviator/checks", "*checks", True),
+            ("aviator/checks", "*", True),
+            ("wiz/scan", "@(aviator|wiz)/*", True),
+            ("ci/circleci: build", "ci/*", True),
+            ("Aviator/Checks", "aviator/*", False),
+            ("aviator/checks", "wiz*", False),
+        ],
+    )
+    def test_names_are_matched_as_plain_strings_and_case_sensitively(
+        self, name: str, pattern: str, excluded: bool
+    ) -> None:
+        summary = _summarize([name], [], excluded=[pattern])
+
+        assert (summary.status == "no_required_checks") is excluded
