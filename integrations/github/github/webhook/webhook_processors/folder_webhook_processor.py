@@ -17,6 +17,7 @@ from github.enrichments.included_files import (
     IncludedFilesEnricher,
     FolderIncludedFilesStrategy,
 )
+from github.enrichments.included_files.utils import repo_branch_matches
 from integration import FolderSelector, GithubFolderResourceConfig
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -88,19 +89,22 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> bool:
         """
         Checks if the provided repository and branch match the conditions specified in the pattern.
+
+        Unset / null selector branch means default branch only (same as resync /
+        ``repo_branch_matches``), not any branch.
         """
         if (
             pattern.organization is not None
             and pattern.organization.casefold() != organization.casefold()
-        ) or not pattern.repos:
+        ):
             return False
 
-        for selector_repo in pattern.repos:
-            if selector_repo.name == repository["name"] and (
-                not selector_repo.branch or selector_repo.branch == branch
-            ):
-                return True
-        return False
+        return repo_branch_matches(
+            repos=pattern.repos,
+            repo_name=repository["name"],
+            branch=branch,
+            default_branch=repository.get("default_branch"),
+        )
 
     def _filter_changed_folders(
         self,

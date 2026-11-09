@@ -1,0 +1,32 @@
+{
+  "id": "asmtres-66efb162c1f1",
+  "type": "assessment-results",
+  "attributes": {
+    "succeeded": true,
+    "all-checks-succeeded": true,
+    "checks-errored": 0,
+    "checks-failed": 0,
+    "checks-passed": 0,
+    "checks-unknown": 0,
+    "created-at": "2026-02-13T11:40:28.530Z",
+    "drifted": false,
+    "error-message": null,
+    "resources-drifted": 0,
+    "resources-undrifted": 4
+  },
+  "relationships": {
+    "workspace": {
+      "data": {
+        "id": "ws-71ac4fae",
+        "type": "workspaces"
+      }
+    }
+  },
+  "links": {
+    "self": "/api/v2/assessment-results/asmtres-66efb162c1f1",
+    "json-output": "/api/v2/assessment-results/asmtres-66efb162c1f1/json-output",
+    "json-schema": "/api/v2/assessment-results/asmtres-66efb162c1f1/json-schema",
+    "log-output": "/api/v2/assessment-results/asmtres-66efb162c1f1/log-output",
+    "health-json-redacted": "/api/v2/assessment-results/asmtres-66efb162c1f1/health-json-redacted"
+  }
+}

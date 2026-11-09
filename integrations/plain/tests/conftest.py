@@ -24,6 +24,7 @@ try:
     mock_ocean_app.config.event_listener.should_resync = True
     mock_ocean_app.integration.on_resync.side_effect = _passthrough
     mock_ocean_app.integration.on_start.side_effect = _passthrough
+    mock_ocean_app.integration.on_probe.side_effect = _passthrough
     initialize_port_ocean_context(mock_ocean_app)
 except PortOceanContextAlreadyInitializedError:
     pass

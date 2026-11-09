@@ -21,7 +21,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from integration import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig, selector_include_actions
 from aws.auth.session_factory import get_session_for_account
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.core.helpers.metadata.types import (
@@ -162,9 +162,9 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
 
         include_actions: list[str] = []
         if resource_config is not None:
-            include_actions = cast(
-                AWSResourceConfig, resource_config
-            ).selector.include_actions
+            include_actions = selector_include_actions(
+                cast(AWSResourceConfig, resource_config).selector
+            )
 
         exporter = metadata.exporter(session)
         options = live_events.request_factory(context, include_actions)

@@ -33,7 +33,7 @@ def test_list_threads_query_includes_relations_labels_and_fields() -> None:
 
 
 def test_thread_kind_is_registered_in_spec() -> None:
-    assert "kind: thread" in exporter_kinds()
+    assert "thread" in exporter_kinds()
 
 
 async def test_get_threads_yields_pages_with_assignee_typename() -> None:

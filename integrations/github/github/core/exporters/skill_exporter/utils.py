@@ -24,6 +24,13 @@ DEFAULT_SKILL_PATHS: list[str] = [
 SKILL_MD_FILENAME = "SKILL.md"
 
 
+class SkillFile(BaseModel):
+    """A text file bundled from the skill folder, with a path relative to it."""
+
+    path: str
+    content: str
+
+
 class Skill(BaseModel):
     """Normalized Agent Skill parsed out of a single SKILL.md file."""
 
@@ -35,6 +42,7 @@ class Skill(BaseModel):
     skill_md_path: str = Field(serialization_alias="skillMdPath")
     root: str
     blob_sha: Optional[str] = None
+    files: Optional[list[SkillFile]] = None
 
 
 class SkillRawItem(BaseModel):
@@ -109,6 +117,7 @@ def _build_skill(
     content: str,
     path_globs: list[str],
     blob_sha: Optional[str] = None,
+    files: Optional[list[SkillFile]] = None,
 ) -> Skill:
     frontmatter, body = _parse_skill_markdown(content)
     path_obj = Path(skill_md_path)
@@ -131,6 +140,7 @@ def _build_skill(
         skill_md_path=skill_md_path,
         root=_infer_skill_root(skill_md_path, path_globs),
         blob_sha=blob_sha,
+        files=files,
     )
 
 
@@ -143,6 +153,7 @@ def build_skill_raw_item(
     path_globs: list[str],
     organization: Optional[str] = None,
     blob_sha: Optional[str] = None,
+    files: Optional[list[SkillFile]] = None,
 ) -> dict[str, Any]:
     """Single entry point for building a skill raw item.
 
@@ -156,6 +167,7 @@ def build_skill_raw_item(
             content=content,
             path_globs=path_globs,
             blob_sha=blob_sha,
+            files=files,
         ),
         repository=repository,
         branch=branch,

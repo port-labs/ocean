@@ -360,6 +360,30 @@ async def test_finalize() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "terminal_status",
+    [ProbeStatus.FAILED, ProbeStatus.INTERNAL_FAILURE, ProbeStatus.COMPLETED],
+)
+async def test_finalize_preserves_terminal_status(
+    terminal_status: ProbeStatus,
+) -> None:
+    # Arrange
+    context = ProbeContext(probe_id="probe-1")
+    context.status = terminal_status
+    context.message = "already terminal"
+
+    # Act
+    with patch.object(context, "update_progress") as mock_update_progress:
+        await context.finalize()
+
+    # Assert
+    assert context.status == terminal_status
+    assert context.message == "already terminal"
+    assert context.ended_at is not None
+    mock_update_progress.assert_called_once_with()
+
+
+@pytest.mark.asyncio
 async def test_fail() -> None:
     # Arrange
     context = ProbeContext(probe_id="probe-1")

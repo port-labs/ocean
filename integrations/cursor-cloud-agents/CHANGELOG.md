@@ -7,6 +7,193 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.30 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.2.29 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
+## 0.2.28 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
+## 0.2.27 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
+## 0.2.26 (2026-11-04)
+
+
+### Bug Fixes
+
+- >-
+    Prevent duplicate Cursor agents when create/trigger POSTs time out by disabling
+    HTTP retries on non-idempotent agent mutations and using Ocean client_timeout
+    for Cursor API calls.
+
+
+## 0.2.25 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 0.2.24 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 0.2.23 (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 0.2.22 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 0.2.21 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 0.2.20 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 0.2.19 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 0.2.18 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 0.2.17 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 0.2.16 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 0.2.15 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 0.2.14 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 0.2.13 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.2.12 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.2.11 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 0.2.10 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 0.2.9 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 0.2.8 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
 ## 0.2.7 (2026-10-11)
 
 

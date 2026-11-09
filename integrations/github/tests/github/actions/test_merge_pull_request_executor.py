@@ -211,6 +211,25 @@ class TestMergePullRequestExecutor:
             await executor.execute(run)
 
     @pytest.mark.asyncio
+    async def test_merged_response_without_sha(
+        self,
+        executor: MergePullRequestExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        mock_rest_client.send_api_request = AsyncMock(return_value={"merged": True})
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "prNumber": 42,
+                "mergeMethod": "merge",
+            }
+        )
+        await executor.execute(run)
+        mock_port_client.report_run_completed.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_partition_key(self, executor: MergePullRequestExecutor) -> None:
         run = make_run({"org": "port-labs", "repo": "ocean", "prNumber": 42})
         assert await executor._get_partition_key(run) == "port-labs/ocean"

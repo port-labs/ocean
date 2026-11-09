@@ -461,7 +461,12 @@ async def test_resync_skills_passes_cursor_to_builder(
         async with event_context("test_event") as event:
             event.port_app_config = MagicMock(repository_type="all")
             async with resource_context(
-                MagicMock(kind="skill", selector=MagicMock(paths=[skill_path]))
+                MagicMock(
+                    kind="skill",
+                    selector=MagicMock(
+                        paths=[skill_path], include_skill_folder=False
+                    ),
+                )
             ):
                 if cursor:
                     with with_active_incremental_cursor(cursor):
@@ -483,6 +488,14 @@ async def test_resync_skills_passes_cursor_to_builder(
     )
     file_patterns = build.await_args.args[0]
     assert [p.path for p in file_patterns] == [".claude/skills/**/SKILL.md"]
+    skill_call = (
+        skill_exporter.get_paginated_resources
+        if cursor is None
+        else skill_exporter.get_paginated_resources_changed_since
+    )
+    skill_options = skill_call.call_args.args[0]
+    assert skill_options["include_skill_folder"] is False
+    assert skill_options["repositories"] == []
 
 
 @pytest.mark.asyncio

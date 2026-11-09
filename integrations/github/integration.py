@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic.v1 import BaseModel, Field, root_validator
+from pydantic.v1 import BaseModel, Field, root_validator, validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -363,6 +363,16 @@ class GithubSkillSelector(Selector):
             "multi-org filtration."
         ),
     )
+    include_skill_folder: bool = Field(
+        title="Include skill folder",
+        alias="includeSkillFolder",
+        default=False,
+        description=(
+            "Bundle every text file in the skill folder (e.g. references/, "
+            "scripts/) into `skill.files` as a list of `{path, content}`. "
+            "Skills whose SKILL.md and folder files exceed 1MB in total are skipped."
+        ),
+    )
 
     class Config:
         @staticmethod
@@ -395,8 +405,19 @@ class GithubPluginSelector(Selector):
         title="Providers",
         default=list(DEFAULT_PLUGIN_PROVIDERS),
         description=(
-            "Agent plugin providers to detect. A repository is treated as a "
-            "plugin when any matching manifest/dir exists."
+            "Agent plugin providers to detect. A plugin root is created wherever "
+            "a matching manifest or directory marker exists in the repository."
+        ),
+    )
+    max_depth: Optional[int] = Field(
+        title="Max plugin root depth",
+        alias="maxDepth",
+        default=None,
+        description=(
+            "Maximum number of path segments in a plugin root to ingest. "
+            "A plugin at the repository root has depth 0; "
+            "`plugins/frontend-toolkit` has depth 2. Leave unset to scan the "
+            "full tree. When set, must be greater than or equal to 1."
         ),
     )
     paths: list[RepositorySourceModel] = Field(
@@ -407,6 +428,12 @@ class GithubPluginSelector(Selector):
             "Multiple entries enable multi-org filtration."
         ),
     )
+
+    @validator("max_depth")
+    def validate_max_depth(cls, value: Optional[int]) -> Optional[int]:
+        if value is not None and value < 1:
+            raise ValueError("maxDepth must be greater than or equal to 1")
+        return value
 
 
 class GithubPluginResourceConfig(ResourceConfig):
@@ -421,7 +448,7 @@ class GithubPluginResourceConfig(ResourceConfig):
     )
     selector: GithubPluginSelector = Field(
         title="Plugin selector",
-        description="Selector for discovering agent plugin repositories.",
+        description="Selector for discovering agent plugins.",
     )
 
 
@@ -689,6 +716,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
         title="Include External IdP Group",
         default=False,
         description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
+    )
+    include_group_mappings: bool = Field(
+        title="Include Team Sync Group Mappings",
+        default=False,
+        description="Include the IdP groups mapped to each team via GET /orgs/{org}/teams/{slug}/team-sync/group-mappings. Only available for organizations using GitHub Enterprise Cloud with team synchronization enabled.",
     )
 
 

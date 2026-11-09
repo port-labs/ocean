@@ -25,7 +25,7 @@ def test_list_companies_query_contains_company_fields() -> None:
 
 
 def test_company_kind_is_registered_in_spec() -> None:
-    assert "kind: company" in exporter_kinds()
+    assert "company" in exporter_kinds()
 
 
 def _client() -> PlainClient:

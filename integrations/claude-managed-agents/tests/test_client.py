@@ -14,11 +14,12 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 
-from clients.anthropic_client import AnthropicClient, RateLimitInfo
-from clients.exceptions import (
-    UnexpectedApiResponseError,
-    WebhookSigningSecretNotConfiguredError,
+from claude_managed_agents.clients.anthropic_client import (
+    AnthropicClient,
+    RateLimitInfo,
 )
+from claude_managed_agents.clients.exceptions import UnexpectedApiResponseError
+from tests.action_test_helpers import image_block
 
 
 class _Model:
@@ -54,10 +55,11 @@ def client() -> AnthropicClient:
         api_host="https://api.anthropic.com",
         api_key="test-api-key",
         console_host="https://platform.claude.com",
-        webhook_signing_secret="whsec_test",
         page_size=2,
+        anthropic_version="2023-06-01",
     )
     instance._client = MagicMock()
+    instance._anthropic_http = MagicMock()
     return instance
 
 
@@ -85,7 +87,7 @@ async def test_paginate_batches_results(client: AnthropicClient) -> None:
 
     batches = [batch async for batch in client.paginate(_list_call())]
 
-    assert batches == [[{"id": "a1"}, {"id": "a2"}], [{"id": "a3"}]]
+    assert batches == [[items[0], items[1]], [items[2]]]
 
 
 @pytest.mark.asyncio
@@ -113,14 +115,27 @@ async def test_get_session_returns_sdk_model(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_vault_serializes_result(client: AnthropicClient) -> None:
+async def test_get_vault_returns_sdk_model(client: AnthropicClient) -> None:
     inner: Any = client._client
-    inner.beta.vaults.retrieve = AsyncMock(return_value=_Model({"id": "vault_1"}))
+    vault = _Model({"id": "vault_1"})
+    inner.beta.vaults.retrieve = AsyncMock(return_value=vault)
 
     result = await client.get_vault("vault_1")
 
-    assert result == {"id": "vault_1"}
+    assert result is vault
     inner.beta.vaults.retrieve.assert_awaited_once_with("vault_1")
+
+
+@pytest.mark.asyncio
+async def test_get_memory_store_returns_sdk_model(client: AnthropicClient) -> None:
+    inner: Any = client._client
+    memory_store = _Model({"id": "ms_1"})
+    inner.beta.memory_stores.retrieve = AsyncMock(return_value=memory_store)
+
+    result = await client.get_memory_store("ms_1")
+
+    assert result is memory_store
+    inner.beta.memory_stores.retrieve.assert_awaited_once_with("ms_1")
 
 
 @pytest.mark.asyncio
@@ -168,7 +183,8 @@ async def test_create_agent_builds_payload_and_drops_none(
     client: AnthropicClient,
 ) -> None:
     inner: Any = client._client
-    inner.beta.agents.create = AsyncMock(return_value=_Model({"id": "agent_1"}))
+    agent = _Model({"id": "agent_1"})
+    inner.beta.agents.create = AsyncMock(return_value=agent)
 
     result = await client.create_agent(
         name="my-agent",
@@ -177,7 +193,7 @@ async def test_create_agent_builds_payload_and_drops_none(
         extra={"description": "demo", "metadata": None},
     )
 
-    assert result == {"id": "agent_1"}
+    assert result is agent
     inner.beta.agents.create.assert_awaited_once_with(
         name="my-agent",
         model="claude-opus-4-6",
@@ -227,7 +243,7 @@ async def test_create_session_forwards_extra(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_user_message_event_shape(client: AnthropicClient) -> None:
+async def test_senduser_message_event_shape(client: AnthropicClient) -> None:
     inner: Any = client._client
     sent_event = BetaManagedAgentsUserMessageEvent(
         id="evt_1",
@@ -247,6 +263,40 @@ async def test_send_user_message_event_shape(client: AnthropicClient) -> None:
             {
                 "type": "user.message",
                 "content": [{"type": "text", "text": "hello there"}],
+            }
+        ],
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_user_message_sends_the_extra_content_after_the_text(
+    client: AnthropicClient,
+) -> None:
+    inner: Any = client._client
+    sent_event = BetaManagedAgentsUserMessageEvent(
+        id="evt_1",
+        type="user.message",
+        content=[BetaManagedAgentsTextBlock(type="text", text="look")],
+    )
+    inner.beta.sessions.events.send = AsyncMock(
+        return_value=MagicMock(data=[sent_event])
+    )
+    image = image_block()
+
+    await client.send_user_message(
+        "sess_1", "look", [{"type": "text", "text": "Image 1:"}, image]
+    )
+
+    inner.beta.sessions.events.send.assert_awaited_once_with(
+        "sess_1",
+        events=[
+            {
+                "type": "user.message",
+                "content": [
+                    {"type": "text", "text": "look"},
+                    {"type": "text", "text": "Image 1:"},
+                    image,
+                ],
             }
         ],
     )
@@ -275,18 +325,6 @@ async def test_send_user_message_raises_on_unexpected_event_type(
 
     with pytest.raises(UnexpectedApiResponseError, match="session.status_idle"):
         await client.send_user_message("sess_1", "hello there")
-
-
-def test_unwrap_webhook_without_secret_raises() -> None:
-    instance = AnthropicClient(
-        api_host="https://api.anthropic.com",
-        api_key="test-api-key",
-        console_host="https://platform.claude.com",
-        webhook_signing_secret=None,
-    )
-    assert instance.has_webhook_secret is False
-    with pytest.raises(WebhookSigningSecretNotConfiguredError):
-        instance.unwrap_webhook("{}", {})
 
 
 # --- Rate limit + workspace-id capture, via the request/response hooks -----
@@ -395,7 +433,9 @@ async def test_on_request_sleeps_when_pool_exhausted(
     async def _fake_sleep(seconds: float) -> None:
         sleep_calls.append(seconds)
 
-    monkeypatch.setattr("clients.anthropic_client.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep
+    )
 
     client._create_rate_limit_info = RateLimitInfo(
         limit=300, remaining=0, reset=datetime.now(timezone.utc) + timedelta(seconds=10)
@@ -419,7 +459,9 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
         nonlocal slept
         slept = True
 
-    monkeypatch.setattr("clients.anthropic_client.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep
+    )
 
     client._read_rate_limit_info = RateLimitInfo(
         limit=1200, remaining=0, reset=datetime.now(timezone.utc) - timedelta(seconds=5)

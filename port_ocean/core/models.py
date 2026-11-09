@@ -142,6 +142,8 @@ class IntegrationFeatureFlag(StrEnum):
     )
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
     LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
+    LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED = "LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED"
+    AWS_V3_CUSTOM_KINDS_ENABLED = "AWS_V3_CUSTOM_KINDS_ENABLED"
 
 
 class ProcessingMode(StrEnum):
@@ -276,6 +278,13 @@ class ActionRun(BaseModel, IntegrationRun):
         return self.status == ActionRunStatus.IN_PROGRESS
 
 
+class ResolvedExecutionIdentity(BaseModel):
+    """Claim-time execution identity (matches Port ResolvedExecutionIdentity)."""
+
+    type: Literal["actor", "service_account"]
+    identifier: str
+
+
 class WorkflowNodeRun(BaseModel, IntegrationRun):
     class WorkflowNode(BaseModel):
         config: WorkflowIntegrationActionConfig
@@ -291,6 +300,13 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     node: WorkflowNode | None = None
     output: dict[str, Any] = Field(default_factory=dict)
     identity_token: str | None = Field(default=None, alias="identityToken")
+    port_access_token: str | None = Field(default=None, alias="portAccessToken")
+    execution_identity: ResolvedExecutionIdentity | None = Field(
+        default=None, alias="executionIdentity"
+    )
+    encrypted_properties: list[str] | None = Field(
+        default=None, alias="encryptedProperties"
+    )
 
     @root_validator(skip_on_failure=True)
     def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:

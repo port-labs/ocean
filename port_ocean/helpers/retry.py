@@ -21,6 +21,10 @@ from dateutil.parser import isoparse
 import logging
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.context.ocean import ocean
+from port_ocean.helpers.sync_tier import (
+    derive_sync_tier_multiplier as _derive_sync_tier_multiplier,
+)
+from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
@@ -68,13 +72,17 @@ class RetryConfig:
         retry_after_headers: Optional[List[str]] = None,
         additional_retry_status_codes: Optional[Iterable[int]] = None,
         ignore_retry_after_status_codes: Optional[Iterable[int]] = None,
+        apply_sync_tier_jitter: bool = True,
+        rate_limiter: Optional[RateLimitWrapper] = None,
     ):
         """
         Initialize retry configuration.
 
         Args:
             max_attempts: Maximum number of retry attempts
-            max_backoff_wait: Maximum backoff wait time in seconds
+            max_backoff_wait: Maximum backoff wait time in seconds (one ceiling for all
+                sync tiers). Override per integration when honoring long vendor reset
+                windows (e.g. GitHub).
             base_delay: Base delay for exponential backoff
             jitter_ratio: Jitter ratio for backoff (0-0.5)
             respect_retry_after_header: Whether to respect Retry-After header
@@ -84,12 +92,21 @@ class RetryConfig:
             additional_retry_status_codes: Additional status codes to retry (extends system defaults)
             ignore_retry_after_status_codes: Status codes that should ignore Retry-After/rate-limit headers
                 and always fall back to exponential backoff.
+            apply_sync_tier_jitter: Whether to scale the computed sleep time by this pod's
+                sync tier, auto-detected from settings (see `port_ocean.helpers.sync_tier`).
+                Set to False to opt out, e.g. when an integration already applies its own
+                tier-aware backoff.
+            rate_limiter: Integration rate-limit wrapper; required on third-party HTTP
+                clients (e.g. GitHub). None only for the Port API client (default).
         """
         self.max_attempts = max_attempts
         self.max_backoff_wait = max_backoff_wait
         self.base_delay = base_delay
         self.jitter_ratio = jitter_ratio
         self.respect_retry_after_header = respect_retry_after_header
+        self.apply_sync_tier_jitter = apply_sync_tier_jitter
+        self.sync_tier_multiplier = _derive_sync_tier_multiplier(apply_sync_tier_jitter)
+        self.rate_limiter = rate_limiter
 
         # Default retryable methods - always include these unless explicitly overridden
         default_methods = frozenset(
@@ -625,13 +642,17 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if header_value := (headers.get(header_name) or "").strip():
                     sleep_time = self._parse_retry_header(header_value)
                     if sleep_time is not None:
-                        return min(sleep_time, self._retry_config.max_backoff_wait)
+                        return self._apply_sync_tier_jitter(sleep_time)
 
         # Fall back to exponential backoff
         backoff = self._retry_config.base_delay * (2 ** (attempts_made - 1))
         jitter = (backoff * self._retry_config.jitter_ratio) * random.choice([1, -1])
         total_backoff = backoff + jitter
-        return min(total_backoff, self._retry_config.max_backoff_wait)
+        return self._apply_sync_tier_jitter(total_backoff)
+
+    def _apply_sync_tier_jitter(self, sleep_time: float) -> float:
+        scaled = sleep_time * self._retry_config.sync_tier_multiplier
+        return min(scaled, self._retry_config.max_backoff_wait)
 
     def _parse_retry_header(self, header_value: str) -> Optional[float]:
         """Parse retry header value and return sleep time in seconds.
@@ -698,8 +719,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             error = None
             response = None
             try:
+                rate_limiter = self._retry_config.rate_limiter
+                if rate_limiter is not None:
+                    await rate_limiter.acquire()
                 response = await send_method(request)
                 response.request = request
+                if rate_limiter is not None:
+                    await rate_limiter.record_rate_limit_response(response)
                 await self.after_retry_async(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)

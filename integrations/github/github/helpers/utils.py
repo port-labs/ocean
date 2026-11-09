@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from github.core.options import ListRepositoryOptions
 
 
-BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
+BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE | glob.EXTGLOB
 
 
 class GithubClientType(StrEnum):

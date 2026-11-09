@@ -23,7 +23,7 @@ def test_list_tenants_query_contains_tenant_fields() -> None:
 
 
 def test_tenant_kind_is_registered_in_spec() -> None:
-    assert "kind: tenant" in exporter_kinds()
+    assert "tenant" in exporter_kinds()
 
 
 def _client() -> PlainClient:

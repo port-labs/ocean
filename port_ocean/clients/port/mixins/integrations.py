@@ -30,6 +30,10 @@ INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
 
 RESYNC_STALE_ERROR_CODE = "resync_stale"
+INTEGRATION_IN_PROGRESS_ERROR = "integration_is_in_progress"
+SPEC_PATCH_RETRY_ATTEMPTS = 8
+SPEC_PATCH_RETRY_INITIAL_SECONDS = 2.0
+SPEC_PATCH_RETRY_BACKOFF = 1.5
 
 
 def _is_resync_stale_lakehouse_response(response: httpx.Response) -> bool:
@@ -48,6 +52,18 @@ def _is_resync_stale_lakehouse_response(response: httpx.Response) -> bool:
     else:
         code = payload.get("code")
     return code == RESYNC_STALE_ERROR_CODE
+
+
+def _is_integration_in_progress_error(error: httpx.HTTPStatusError) -> bool:
+    if error.response.status_code != 400:
+        return False
+    try:
+        body = error.response.json()
+    except ValueError:
+        return False
+    if not isinstance(body, dict):
+        return False
+    return body.get("error") == INTEGRATION_IN_PROGRESS_ERROR
 
 
 INTEGRATION_POLLING_RETRY_LIMIT = 30
@@ -270,13 +286,37 @@ class IntegrationClientMixin:
 
         json["version"] = self.integration_version
 
-        response = await self.client.patch(
-            f"{self.auth.api_url}/integration/{self.integration_identifier}",
-            headers=headers,
-            json=json,
-        )
-        handle_port_status_code(response)
-        return response.json()["integration"]
+        async def _send_patch() -> dict:
+            response = await self.client.patch(
+                f"{self.auth.api_url}/integration/{self.integration_identifier}",
+                headers=headers,
+                json=json,
+            )
+            handle_port_status_code(response)
+            return response.json()["integration"]
+
+        # Spec patches race SaaS operator updates (`integration_is_in_progress`).
+        if spec is None:
+            return await _send_patch()
+
+        delay = SPEC_PATCH_RETRY_INITIAL_SECONDS
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                return await _send_patch()
+            except httpx.HTTPStatusError as error:
+                if (
+                    not _is_integration_in_progress_error(error)
+                    or attempt >= SPEC_PATCH_RETRY_ATTEMPTS
+                ):
+                    raise
+                logger.info(
+                    "Integration still updating; retrying spec patch "
+                    f"({attempt}/{SPEC_PATCH_RETRY_ATTEMPTS}) in {delay:.1f}s"
+                )
+                await asyncio.sleep(delay)
+                delay *= SPEC_PATCH_RETRY_BACKOFF
 
     async def patch_integration_config(
         self,

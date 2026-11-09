@@ -16,23 +16,38 @@ class _CompareClient(Protocol):
     ) -> dict[str, Any]: ...
 
 
-def collect_paths_from_commits(payload: dict[str, Any]) -> tuple[set[str], set[str]]:
-    """Collect added/modified and removed paths from the push payload commits list."""
-    changed_files: set[str] = set()
+def collect_paths_from_commits(
+    payload: dict[str, Any],
+) -> tuple[set[str], set[str], set[str]]:
+    """Collect added/modified and removed paths from the push payload commits list.
+
+    Returns ``(changed, removed, modified)``. ``modified`` is paths that existed
+    before the push and still exist after it (not added in this push).
+    """
+    added_files: set[str] = set()
+    modified_files: set[str] = set()
     removed_files: set[str] = set()
     for commit in payload.get("commits") or []:
-        changed_files.update(commit.get("added") or [])
-        changed_files.update(commit.get("modified") or [])
+        added_files.update(commit.get("added") or [])
+        modified_files.update(commit.get("modified") or [])
         removed_files.update(commit.get("removed") or [])
-    return changed_files, removed_files
+    changed_files = added_files | modified_files
+    modified_files -= added_files
+    return changed_files, removed_files, modified_files
 
 
 def paths_from_compare_diffs(
     diffs: list[dict[str, Any]],
-) -> tuple[set[str], set[str]]:
-    """Map GitLab compare `diffs` entries to changed and removed path sets."""
+) -> tuple[set[str], set[str], set[str]]:
+    """Map GitLab compare `diffs` entries to changed, removed, and modified paths.
+
+    Returns ``(changed, removed, modified)``. ``modified`` is in-place edits
+    (same path before and after). Renames contribute the old path to
+    ``removed`` and the new path to ``changed`` only.
+    """
     changed_files: set[str] = set()
     removed_files: set[str] = set()
+    modified_files: set[str] = set()
     for diff in diffs:
         if diff.get("deleted_file"):
             old_path = diff.get("old_path")
@@ -46,7 +61,10 @@ def paths_from_compare_diffs(
             old_path = diff.get("old_path")
             if isinstance(old_path, str) and old_path and old_path != new_path:
                 removed_files.add(old_path)
-    return changed_files, removed_files
+            continue
+        if not diff.get("new_file") and isinstance(new_path, str) and new_path:
+            modified_files.add(new_path)
+    return changed_files, removed_files, modified_files
 
 
 def _is_usable_sha(sha: Any) -> TypeGuard[str]:
@@ -57,14 +75,15 @@ async def resolve_push_path_changes(
     client: _CompareClient,
     project_path: str | int,
     payload: dict[str, Any],
-) -> tuple[set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str]]:
     """
-    Resolve changed/removed paths for a push hook.
+    Resolve changed/removed/modified paths for a push hook.
 
-    GitLab caps the commits list embedded in a push hook, so the repository
-    compare API is the source of truth whenever `before`/`after` can be
-    compared. The commits list is only used when compare is impossible
-    (branch create/delete) or the compare call fails.
+    Returns ``(changed, removed, modified)``. GitLab caps the commits list
+    embedded in a push hook, so the repository compare API is the source of
+    truth whenever `before`/`after` can be compared. The commits list is only
+    used when compare is impossible (branch create/delete) or the compare
+    call fails.
     """
     before = payload.get("before")
     after = payload.get("after")

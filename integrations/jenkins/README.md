@@ -180,7 +180,7 @@ pipeline {
 
 ## Ingesting Jenkins objects
 
-The Jenkins integration uses a YAML configuration to describe the process of loading data into the developer portal.
+The Jenkins integration uses a YAML configuration to describe the process of loading data into Port.
 
 Here is an example snippet from the config which demonstrates the process for getting job data from Jenkins:
 

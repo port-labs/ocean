@@ -7,6 +7,7 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
+    Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -18,10 +19,27 @@ class TeamResourceConfig(ResourceConfig):
     )
 
 
+class LabelSelector(Selector):
+    include_label_children: bool = Field(
+        default=False,
+        alias="includeLabelChildren",
+        title="Include Label Children",
+        description=(
+            "When true, paginate nested label children past Linear's default "
+            "page size (up to 1000 children per label). Default false preserves "
+            "existing behavior."
+        ),
+    )
+
+
 class LabelResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.LABEL] = Field(
         title="Linear Label",
         description="Linear label resource kind.",
+    )
+    selector: LabelSelector = Field(
+        title="Label Selector",
+        description="Selector for the Linear label resource.",
     )
 
 

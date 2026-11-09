@@ -66,7 +66,7 @@ class TestEnrichStateVersionsWithOutputData:
 
         assert len(result) == 2
         assert result[0]["__output"] == {"name": "output1"}
-        assert result[1]["__output"] == {}
+        assert result[1]["__output"] == []
 
     @pytest.mark.asyncio
     async def test_enrich_state_versions_preserves_original_data(

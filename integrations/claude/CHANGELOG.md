@@ -7,6 +7,182 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.36 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.3.35 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
+## 0.3.34 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
+## 0.3.33 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
+## 0.3.32 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 0.3.31 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 0.3.30 (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 0.3.29 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
+## 0.3.28 (2026-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.2
+
+
+## 0.3.27 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.1
+
+
+## 0.3.26 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.0
+
+
+## 0.3.25 (2026-10-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.6
+
+
+## 0.3.24 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.5
+
+
+## 0.3.23 (2026-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.4
+
+
+## 0.3.22 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.3
+
+
+## 0.3.21 (2026-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.2
+
+
+## 0.3.20 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.1
+
+
+## 0.3.19 (2026-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.55.0
+
+
+## 0.3.18 (2026-10-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.1
+
+
+## 0.3.17 (2026-10-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.54.0
+
+
+## 0.3.16 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.9
+
+
+## 0.3.15 (2026-10-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.53.8
+
+
 ## 0.3.14 (2026-10-11)
 
 

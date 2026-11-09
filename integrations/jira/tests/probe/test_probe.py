@@ -63,27 +63,76 @@ async def test_probe_deduplicates_permission_keys(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "error",
-    [
-        http_status_error(401),
-        httpx.ConnectError("connection refused"),
-    ],
-)
-async def test_probe_fails_when_authentication_cannot_be_verified(
+async def test_probe_fails_when_authentication_returns_401(
     mock_jira_probe: MockJiraProbe,
     probe_context: ProbeContext,
-    error: Exception,
 ) -> None:
+    # Arrange
     client = mock_jira_probe.configure_client(
-        verify_current_user=AsyncMock(side_effect=error),
+        verify_current_user=AsyncMock(side_effect=http_status_error(401)),
     )
     probe_context.available_kinds = ["project", "user"]
 
+    # Act
     await JiraPermissionProbe(probe_context).run()
 
+    # Assert
     assert probe_context.status is ProbeStatus.FAILED
-    assert probe_context.message == "Failed to verify Jira authentication."
+    assert probe_context.message == (
+        "Failed to verify Jira authentication. "
+        "Ensure the Jira URL, email, and an API token with the "
+        "read:jira-user scope are all valid."
+    )
+    assert probe_context.checks == []
+    client.get_current_user_permissions.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_probe_fails_when_authentication_returns_404(
+    mock_jira_probe: MockJiraProbe,
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    client = mock_jira_probe.configure_client(
+        verify_current_user=AsyncMock(side_effect=http_status_error(404)),
+    )
+    probe_context.available_kinds = ["project", "user"]
+
+    # Act
+    await JiraPermissionProbe(probe_context).run()
+
+    # Assert
+    assert probe_context.status is ProbeStatus.FAILED
+    assert probe_context.message == (
+        "Could not find the Jira site at the configured URL, "
+        "please ensure the Jira URL is correct."
+    )
+    assert probe_context.checks == []
+    client.get_current_user_permissions.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_probe_fails_when_authentication_endpoint_is_unreachable(
+    mock_jira_probe: MockJiraProbe,
+    probe_context: ProbeContext,
+) -> None:
+    # Arrange
+    client = mock_jira_probe.configure_client(
+        verify_current_user=AsyncMock(
+            side_effect=httpx.ConnectError("connection refused")
+        ),
+    )
+    probe_context.available_kinds = ["project", "user"]
+
+    # Act
+    await JiraPermissionProbe(probe_context).run()
+
+    # Assert
+    assert probe_context.status is ProbeStatus.FAILED
+    assert probe_context.message == (
+        "Jira could not be reached while verifying authentication: "
+        "connection refused"
+    )
     assert probe_context.checks == []
     client.get_current_user_permissions.assert_not_called()
 
@@ -94,7 +143,7 @@ async def test_probe_marks_permission_checks_failed_when_permission_lookup_fails
     probe_context: ProbeContext,
 ) -> None:
     mock_jira_probe.configure_client(
-        get_current_user_permissions=AsyncMock(side_effect=http_status_error(500)),
+        get_current_user_permissions=AsyncMock(side_effect=http_status_error(401)),
     )
     mock_jira_probe.configure_ocean({"atlassian_organization_id": "test-org-id"})
     probe_context.available_kinds = ["project", "user", "team"]
@@ -109,8 +158,10 @@ async def test_probe_marks_permission_checks_failed_when_permission_lookup_fails
         ProbeCheckStatus.SUCCESS,
     ]
     assert probe_context.checks[0].message == (
-        "Jira returned HTTP 500 while fetching user permissions"
+        "Jira returned HTTP 401 while fetching user permissions. "
+        "Required scope(s): read:jira-work."
     )
+    assert probe_context.checks[1].message == probe_context.checks[0].message
     mock_jira_probe.client.verify_teams_access.assert_awaited_once_with("test-org-id")
 
 

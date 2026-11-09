@@ -16,7 +16,7 @@ async def fetch_state_version_output(
         logger.warning(
             f"Failed to fetch output for state version {state_version['id']}: {e}"
         )
-        return {**state_version, "__output": {}}
+        return {**state_version, "__output": []}
 
 
 async def enrich_state_versions_with_output_data(

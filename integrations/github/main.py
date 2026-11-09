@@ -10,7 +10,11 @@ from github.clients.auth import get_auth_provider
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
 )
+from github.clients.auth.github_app.installation_registry import (
+    list_installations_authenticators,
+)
 from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
+from github.probe.app.probe import format_app_probe_auth_error
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
@@ -140,6 +144,7 @@ from github.helpers.repo_selectors import RepositorySelector
 from github.core.options import (
     ListOrganizationOptions,
     ListPluginOptions,
+    ListSkillSearchOptions,
     PluginRepositoryOptions,
 )
 from github.enrichments.included_files import (
@@ -234,10 +239,21 @@ async def probe(context: ProbeContext) -> ProbeContext:
         f"Probing GitHub permissions for {len(context.available_kinds)} resource kinds"
     )
     provider = get_auth_provider()
-    probe_flow = (
-        GitHubAppPermissionProbe if provider.is_app_auth() else GitHubPatPermissionProbe
-    )
-    await probe_flow(context, await provider.list_authenticators()).run()
+    if provider.is_app_auth():
+        try:
+            authenticators = await list_installations_authenticators(skip_retry=True)
+        except Exception as error:
+            await context.fail(
+                format_app_probe_auth_error(
+                    error,
+                    action="Failed to list GitHub App installations",
+                )
+            )
+            return context
+        await GitHubAppPermissionProbe(context, authenticators).run()
+        return context
+
+    await GitHubPatPermissionProbe(context, await provider.list_authenticators()).run()
     return context
 
 
@@ -401,6 +417,11 @@ async def resync_teams(
                         rest_client
                     ).enrich_teams_with_external_group(teams, org_name)
 
+                if selector.include_group_mappings:
+                    teams = await RestTeamExporter(
+                        rest_client
+                    ).enrich_teams_with_group_mappings(teams, org_name)
+
                 yield teams
 
 
@@ -442,7 +463,7 @@ async def resync_packages(
 async def resync_workflows(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync workflows; incremental runs only cover repos pushed since the cursor."""
+    """Resync workflows; incremental runs fetch all workflows for repos pushed since the cursor."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -476,9 +497,6 @@ async def resync_workflows(
                             options=ListWorkflowOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                updated_since=resolve_effective_datetime(
-                                    sync_cursor, None
-                                ),
                             )
                         )
                     )
@@ -1388,11 +1406,20 @@ async def resync_skills(
     change = RepositoryChange.pushed(sync_cursor)
     if change is None:
         repo_path_map = await pattern_builder.build(file_patterns)
-        skill_stream = skill_exporter.get_paginated_resources(repo_path_map)
+        skill_stream = skill_exporter.get_paginated_resources(
+            ListSkillSearchOptions(
+                repositories=repo_path_map,
+                include_skill_folder=selector.include_skill_folder,
+            )
+        )
     else:
         repo_path_map = await pattern_builder.build_changed_since(file_patterns, change)
         skill_stream = skill_exporter.get_paginated_resources_changed_since(
-            repo_path_map, change
+            ListSkillSearchOptions(
+                repositories=repo_path_map,
+                include_skill_folder=selector.include_skill_folder,
+            ),
+            change,
         )
 
     async for skills in skill_stream:
@@ -1420,7 +1447,9 @@ async def resync_plugins(
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
-    plugin_exporter = PluginExporter(rest_client, selector.providers)
+    plugin_exporter = PluginExporter(
+        rest_client, selector.providers, max_depth=selector.max_depth
+    )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_selector = RepositorySelector(app_config.repository_type)
     change = RepositoryChange.pushed(sync_cursor)

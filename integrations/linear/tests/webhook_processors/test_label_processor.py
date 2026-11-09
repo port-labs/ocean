@@ -4,12 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
+from integration import LabelResourceConfig, LabelSelector
 from webhook_processors.label_webhook_processor import LabelWebhookProcessor
 from linear.utils import ObjectKind
 
@@ -46,10 +45,10 @@ def non_label_payload() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def mock_resource_config() -> LabelResourceConfig:
+    return LabelResourceConfig(
         kind=ObjectKind.LABEL,
-        selector=Selector(query="true"),
+        selector=LabelSelector(query="true", includeLabelChildren=False),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -131,7 +130,7 @@ class TestLabelWebhookProcessor:
         mock_exporter: AsyncMock,
         label_processor: LabelWebhookProcessor,
         valid_label_payload: Dict[str, Any],
-        mock_resource_config: ResourceConfig,
+        mock_resource_config: LabelResourceConfig,
         action: str,
         expected_results: Dict[str, Any],
     ) -> None:

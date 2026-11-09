@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Optional
 
 import jwt
+
+from github.clients.constants import SKIP_RETRY_CONFIG
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 
@@ -82,14 +84,18 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         return response.json()
 
     async def fetch_installation_access_token(
-        self, installation_id: str
+        self, installation_id: str, *, skip_retry: bool = False
     ) -> GitHubToken:
         try:
             url = (
                 f"{self.github_host}/app/installations/{installation_id}/access_tokens"
             )
             headers = (await self.get_headers()).as_dict()
-            response = await self.client.post(url, headers=headers)
+            response = await self.client.post(
+                url,
+                headers=headers,
+                extensions=SKIP_RETRY_CONFIG if skip_retry else {},
+            )
             response.raise_for_status()
             data = response.json()
             return GitHubAppToken(
@@ -104,7 +110,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
 
     @cache_iterator_result()
     async def iter_app_installations(
-        self,
+        self, *, skip_retry: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url: Optional[str] = f"{self.github_host}/app/installations"
         headers = (await self.get_headers()).as_dict()
@@ -114,6 +120,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
                 url,
                 params={"per_page": self._INSTALLATIONS_PAGE_SIZE},
                 headers=headers,
+                extensions=SKIP_RETRY_CONFIG if skip_retry else {},
             )
             response.raise_for_status()
             page: list[dict[str, Any]] = response.json()

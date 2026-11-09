@@ -33,7 +33,7 @@ def test_list_machine_users_query_contains_fields() -> None:
 
 
 def test_machine_user_kind_is_registered_in_spec() -> None:
-    assert "kind: machine-user" in exporter_kinds()
+    assert "machine-user" in exporter_kinds()
 
 
 async def test_get_machine_users_yields_mocked_pages() -> None:

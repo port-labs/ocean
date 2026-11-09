@@ -4,6 +4,9 @@ from loguru import logger
 from port_ocean.core.models import IntegrationRun, RunKind
 import asyncio
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
+from port_ocean.core.handlers.actions.utils import (
+    decrypt_encrypted_execution_properties,
+)
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.processor_manager import (
@@ -210,8 +213,17 @@ class ExecutionManager:
                 for run in runs:
                     try:
                         if run.action_type not in self._actions_executors:
-                            await self._ack_and_fail_run_without_executor(
-                                run, run.action_type
+                            logger.warning(
+                                "No Executors registered to handle this action, failing run...",
+                                action_type=run.action_type,
+                                run_id=run.id,
+                            )
+                            await self._ack_and_fail_run(
+                                run,
+                                message=(
+                                    "No executor registered for action type"
+                                    f" '{run.action_type}'"
+                                ),
                             )
                             continue
 
@@ -219,6 +231,16 @@ class ExecutionManager:
                             logger.info(
                                 "Run is already being processed, skipping...",
                                 run_id=run.id,
+                            )
+                            continue
+
+                        try:
+                            decrypt_encrypted_execution_properties(run)
+                        except ActionExecutionError as e:
+                            await self._ack_and_fail_run(
+                                run,
+                                message=str(e),
+                                status_label="Decrypt failed",
                             )
                             continue
 
@@ -248,14 +270,12 @@ class ExecutionManager:
                 # Backoff to avoid overwhelming the API with requests
                 await asyncio.sleep(self._poll_check_interval_seconds)
 
-    async def _ack_and_fail_run_without_executor(
-        self, run: IntegrationRun, action_type: str
+    async def _ack_and_fail_run(
+        self,
+        run: IntegrationRun,
+        message: str,
+        status_label: str | None = None,
     ) -> None:
-        logger.warning(
-            "No Executors registered to handle this action, failing run...",
-            action_type=action_type,
-            run_id=run.id,
-        )
         try:
             await ocean.port_client.acknowledge_run(run)
         except RunAlreadyAcknowledgedError:
@@ -274,8 +294,9 @@ class ExecutionManager:
         await ocean.port_client.report_run_completed(
             run,
             success=False,
-            message=f"No executor registered for action type '{action_type}'",
+            message=message,
             should_raise=False,
+            **({"status_label": status_label} if status_label is not None else {}),
         )
 
     async def _get_queues_size(self) -> int:
@@ -539,7 +560,15 @@ class ExecutionManager:
                 except UserAuthRequiredError:
                     # Can also be raised here: the rate-limit check above resolves the user's
                     # token too (same code path as actual execution), so a vault miss can
-                    # surface before the run is even acknowledged.
+                    # surface before the run is even acknowledged. Ack it first so Port does
+                    # not offer the run to another claim while it waits for the user
+                    try:
+                        await ocean.port_client.acknowledge_run(run)
+                    except RunAlreadyAcknowledgedError:
+                        logger.warning(
+                            "Run already being processed by another worker, skipping execution",
+                        )
+                        return
                     await self._pause_run_for_user_auth(run)
                     return
                 except Exception as e:
