@@ -175,7 +175,6 @@ async def resync_iam_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rate_limiter, semaphore = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
         search_all_iam_policies_per_project,
-        # iterate_per_available_project reads asset_type only for its log context
         asset_type=kind,
         asset_types=selector.asset_types,
         policy_query=selector.policy_query,
