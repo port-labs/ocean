@@ -62,11 +62,18 @@ async def test_setup_leaves_limiter_unset_when_redis_connect_fails() -> None:
             "port_ocean.rate_limiting.bootstrap.create_redis_client_with_retry",
             new_callable=AsyncMock,
             side_effect=ConnectionError("down"),
-        ),
+        ) as connect,
     ):
         helper_cls.return_value.client_kwargs.return_value = {}
         await setup_centralized_rate_limiter(app, settings, org_id="org-down")
 
+    connect.assert_awaited_once_with(
+        settings.redis.url,
+        max_retries=2,
+        initial_backoff_seconds=1.0,
+        exponential_base=2.0,
+        socket_connect_timeout=1.0,
+    )
     assert app.centralized_rate_limiter is None
     helper_cls.return_value.cleanup.assert_called_once()
 

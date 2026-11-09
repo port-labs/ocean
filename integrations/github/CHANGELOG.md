@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.24.1 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
+## 6.24.0 (2026-11-05)
+
+
+### Features
+
+- Wire GitHub REST and GraphQL into the centralized rate limiter. Admission runs before each retry, and the local limiter stays as the fallback.
+
+
+## 6.23.1 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
 ## 6.23.0 (2026-11-05)
 
 

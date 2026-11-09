@@ -109,10 +109,12 @@ async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     metadata = kind_to_export_metadata[ObjectKind(kind)]
+    selector = cast(AWSResourceConfig, event.resource_config).selector
     async for batch in ResyncAWSService(
         kind=kind,
         exporter_cls=metadata.exporter,
         request_cls=metadata.paginated_request_model,
-        regional=metadata.regional,
+        regional=metadata.resolve_regional(selector),
+        request_extras=metadata.build_request_extras(selector),
     ):
         yield batch
