@@ -1,7 +1,7 @@
-from azure_integration.foundry.core.exporters.agent_versions_exporter import (
+from azure_integration.foundry.core.exporters.agents_exporter import (
+    _normalize_agent,
     _normalize_agent_version,
 )
-from azure_integration.foundry.core.exporters.agents_exporter import _normalize_agent
 from azure_integration.foundry.core.exporters.conversations_exporter import (
     _normalize_conversation,
 )
@@ -45,7 +45,6 @@ def test_normalize_agent_flattens_latest_definition() -> None:
     assert normalized["version_status"] == "active"
     assert normalized["configuration_state"] == "enabled"
     assert normalized["tool_count"] == 2
-    assert normalized["source_platform"] == "Azure AI Foundry"
     assert str(normalized["created_at"]).endswith("+00:00")
 
 

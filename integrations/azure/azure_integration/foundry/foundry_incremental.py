@@ -30,7 +30,6 @@ def _cutoff(stop_field: str) -> FoundryClientSideCutoffStrategy:
 
 
 AGENT_INCREMENTAL = _cutoff("updated_at")
-AGENT_VERSION_INCREMENTAL = _cutoff("created_at")
 CONVERSATION_INCREMENTAL = _cutoff("created_at")
 RESPONSE_INCREMENTAL = _cutoff("created_at")
 MODEL_DEPLOYMENT_INCREMENTAL = _cutoff("updated_at")

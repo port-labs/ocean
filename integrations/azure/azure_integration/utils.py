@@ -28,7 +28,6 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     CLOUD_RESOURCE = "cloudResource"
     FOUNDRY_PROJECT = "Microsoft.CognitiveServices/accounts/projects"
     FOUNDRY_AGENT = "foundry-agent"
-    FOUNDRY_AGENT_VERSION = "foundry-agent-version"
     FOUNDRY_MODEL_DEPLOYMENT = "foundry-model-deployment"
     FOUNDRY_CONVERSATION = "foundry-conversation"
     FOUNDRY_RESPONSE = "foundry-response"

@@ -40,9 +40,6 @@
           "kind": "foundry-agent"
         },
         {
-          "kind": "foundry-agent-version"
-        },
-        {
           "kind": "foundry-model-deployment"
         },
         {

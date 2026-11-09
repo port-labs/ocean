@@ -7,13 +7,11 @@ from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.options import ListConversationsOptions
 from azure_integration.foundry.foundry_incremental import CONVERSATION_INCREMENTAL
-from azure_integration.foundry.helpers.scope import (
-    enrich_with_project,
-    get_project_endpoint,
-)
 from azure_integration.foundry.helpers.utils import (
     effective_conversation_cutoff,
+    enrich_with_project,
     timestamp_to_iso,
 )
 
@@ -25,17 +23,16 @@ class ConversationsExporter:
         self.client = client
 
     async def get_paginated_resources(
-        self,
-        *,
-        since_days: int | None = 30,
-        **_options: object,
+        self, options: ListConversationsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        project_endpoint = options["project_endpoint"]
+        project_id = options["project_id"]
+        since_days = options.get("since_days", 30)
         incremental_cursor = active_incremental_cursor()
         cutoff = effective_conversation_cutoff(
             incremental_cursor, since_days=since_days
         )
         params = CONVERSATION_INCREMENTAL.merge_params({}, incremental_cursor)
-        project_endpoint = get_project_endpoint()
 
         async for page in paginate_with_strategy(
             self.client.send_cursor_paginated_request(
@@ -47,7 +44,12 @@ class ConversationsExporter:
             strategy=CONVERSATION_INCREMENTAL,
         ):
             batch = [
-                enrich_with_project(_normalize_conversation(item)) for item in page
+                enrich_with_project(
+                    _normalize_conversation(item),
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                )
+                for item in page
             ]
             if batch:
                 yield batch

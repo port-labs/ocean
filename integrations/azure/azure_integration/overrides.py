@@ -9,7 +9,6 @@ from pydantic.v1 import Field, validator
 
 from azure_integration.foundry.kinds import (
     AgentResourceConfig,
-    AgentVersionResourceConfig,
     ConversationResourceConfig,
     FoundryProjectResourceConfig,
     MemoryStoreResourceConfig,
@@ -95,7 +94,6 @@ class AzurePortAppConfig(PortAppConfig):
         | AzureCustomKindResourceConfig
         | FoundryProjectResourceConfig
         | AgentResourceConfig
-        | AgentVersionResourceConfig
         | ModelDeploymentResourceConfig
         | ConversationResourceConfig
         | ResponseResourceConfig

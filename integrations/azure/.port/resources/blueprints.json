@@ -195,16 +195,6 @@
           "title": "Description",
           "description": "Agent version description from Foundry."
         },
-        "sourcePlatform": {
-          "type": "string",
-          "title": "Source platform",
-          "description": "Originating control-plane platform (default Azure AI Foundry)."
-        },
-        "owner": {
-          "type": "string",
-          "title": "Owner",
-          "description": "Owner from Foundry metadata (convention-based; no native owner field)."
-        },
         "metadata": {
           "type": "object",
           "title": "Metadata",
@@ -308,14 +298,6 @@
         "isDraft": {
           "type": "boolean",
           "title": "Draft"
-        },
-        "sourcePlatform": {
-          "type": "string",
-          "title": "Source platform"
-        },
-        "owner": {
-          "type": "string",
-          "title": "Owner"
         },
         "metadata": {
           "type": "object",

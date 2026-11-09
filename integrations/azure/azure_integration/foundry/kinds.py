@@ -15,7 +15,6 @@ class ObjectKind(StrEnum):
     FOUNDRY_PROJECT = FOUNDRY_ARM_PROJECT_KIND
     AGENT = "foundry-agent"
     MODEL_DEPLOYMENT = "foundry-model-deployment"
-    AGENT_VERSION = "foundry-agent-version"
     CONVERSATION = "foundry-conversation"
     RESPONSE = "foundry-response"
     MEMORY_STORE = "foundry-memory-store"
@@ -61,7 +60,10 @@ class AgentSelector(FoundrySelector):
         default=False,
         alias="includeVersions",
         title="Include versions",
-        description="Fetch agent version metadata (additional API calls per agent).",
+        description=(
+            "Fetch full agent version history (additional API calls per agent). "
+            "Use with itemsToParse on .versions to map versions into a dedicated blueprint."
+        ),
     )
 
 
@@ -131,9 +133,4 @@ class ResponseResourceConfig(ResourceConfig):
 
 class MemoryStoreResourceConfig(ResourceConfig):
     kind: Literal["foundry-memory-store"] = Field(title="Foundry memory store")
-    selector: FoundrySelector = Field(default_factory=FoundrySelector)
-
-
-class AgentVersionResourceConfig(ResourceConfig):
-    kind: Literal["foundry-agent-version"] = Field(title="Foundry agent version")
     selector: FoundrySelector = Field(default_factory=FoundrySelector)

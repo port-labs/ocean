@@ -7,17 +7,9 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from azure_integration.foundry.helpers.scope import project_endpoint_context
-
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-
-TEST_PROJECT_ENDPOINT = "https://acct.services.ai.azure.com/api/projects/demo"
-TEST_PROJECT_ARM_ID = (
-    "/subscriptions/sub/resourceGroups/rg/providers/"
-    "Microsoft.CognitiveServices/accounts/acct/projects/demo"
-)
 
 TEST_INTEGRATION_CONFIG: dict[str, Any] = {
     "azure_tenant_id": "tenant",
@@ -42,11 +34,3 @@ def mock_ocean_context() -> None:
     except PortOceanContextAlreadyInitializedError:
         pass
     ocean.integration_config.update(TEST_INTEGRATION_CONFIG)
-
-
-@pytest.fixture(autouse=True)
-def foundry_project_context() -> Any:
-    with project_endpoint_context(
-        TEST_PROJECT_ENDPOINT, project_arm_id=TEST_PROJECT_ARM_ID
-    ) as endpoint:
-        yield endpoint

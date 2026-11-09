@@ -9,18 +9,21 @@ from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.exporters.conversations_exporter import (
+    _normalize_conversation,
+)
+from azure_integration.foundry.core.options import ListResponsesOptions
 from azure_integration.foundry.foundry_incremental import (
     CONVERSATION_INCREMENTAL,
     RESPONSE_INCREMENTAL,
 )
-from azure_integration.foundry.helpers.catalog_sync import normalize_catalog_payload
 from azure_integration.foundry.helpers.responses_catalog import (
     merge_response_into_conversation_rollup,
     normalize_foundry_response,
 )
-from azure_integration.foundry.helpers.scope import enrich_with_project, get_project_endpoint
 from azure_integration.foundry.helpers.utils import (
     effective_conversation_cutoff,
+    enrich_with_project,
     timestamp_to_iso,
 )
 from azure_integration.foundry.kinds import ObjectKind
@@ -33,18 +36,17 @@ class ResponsesExporter:
         self.client = client
 
     async def get_paginated_resources(
-        self,
-        *,
-        since_days: int | None = 30,
-        **_options: object,
+        self, options: ListResponsesOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        project_endpoint = options["project_endpoint"]
+        project_id = options["project_id"]
+        since_days = options.get("since_days", 30)
         response_cursor = active_incremental_cursor()
         response_cutoff = effective_conversation_cutoff(
             response_cursor, since_days=since_days
         )
         conversation_cutoff = effective_conversation_cutoff(None, since_days=since_days)
         conv_params = CONVERSATION_INCREMENTAL.merge_params({}, None)
-        project_endpoint = get_project_endpoint()
 
         async for conv_page in paginate_with_strategy(
             self.client.send_cursor_paginated_request(
@@ -82,7 +84,13 @@ class ResponsesExporter:
                         if not response_row:
                             continue
                         touched = True
-                        responses_batch.append(enrich_with_project(dict(response_row)))
+                        responses_batch.append(
+                            enrich_with_project(
+                                dict(response_row),
+                                project_endpoint=project_endpoint,
+                                project_id=project_id,
+                            )
+                        )
 
                 if touched:
                     rollups_to_register.append(
@@ -96,7 +104,11 @@ class ResponsesExporter:
 
             if responses_batch:
                 yield responses_batch
-                await _register_conversation_rollups(rollups_to_register)
+                await _register_conversation_rollups(
+                    rollups_to_register,
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                )
 
 
 async def _build_conversation_rollup(
@@ -136,13 +148,20 @@ async def _build_conversation_rollup(
     return rollup
 
 
-async def _register_conversation_rollups(raw_rows: list[dict[str, Any]]) -> None:
+async def _register_conversation_rollups(
+    raw_rows: list[dict[str, Any]],
+    *,
+    project_endpoint: str,
+    project_id: str,
+) -> None:
     if not raw_rows:
         return
     try:
         batch = [
             enrich_with_project(
-                normalize_catalog_payload(ObjectKind.CONVERSATION, dict(row))
+                _normalize_conversation(dict(row)),
+                project_endpoint=project_endpoint,
+                project_id=project_id,
             )
             for row in raw_rows
         ]

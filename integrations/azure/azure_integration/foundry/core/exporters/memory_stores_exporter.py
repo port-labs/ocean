@@ -5,12 +5,9 @@ from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.options import ListMemoryStoresOptions
 from azure_integration.foundry.foundry_incremental import MEMORY_STORE_INCREMENTAL
-from azure_integration.foundry.helpers.scope import (
-    enrich_with_project,
-    get_project_endpoint,
-)
-from azure_integration.foundry.helpers.utils import timestamp_to_iso
+from azure_integration.foundry.helpers.utils import enrich_with_project, timestamp_to_iso
 
 _MEMORY_STORES_FEATURE = "MemoryStores=V1Preview"
 
@@ -20,11 +17,12 @@ class MemoryStoresExporter:
         self.client = client
 
     async def get_paginated_resources(
-        self, **_options: object
+        self, options: ListMemoryStoresOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        project_endpoint = options["project_endpoint"]
+        project_id = options["project_id"]
         cursor = active_incremental_cursor()
         params = MEMORY_STORE_INCREMENTAL.merge_params({}, cursor)
-        project_endpoint = get_project_endpoint()
         headers = {"Foundry-Features": _MEMORY_STORES_FEATURE}
 
         async for page in paginate_with_strategy(
@@ -38,7 +36,12 @@ class MemoryStoresExporter:
             strategy=MEMORY_STORE_INCREMENTAL,
         ):
             batch = [
-                enrich_with_project(_normalize_memory_store(item)) for item in page
+                enrich_with_project(
+                    _normalize_memory_store(item),
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                )
+                for item in page
             ]
             if batch:
                 yield batch

@@ -1,8 +1,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from port_ocean.utils.time import convert_str_to_utc_datetime
+
+
+def enrich_with_project(
+    item: dict[str, Any],
+    *,
+    project_endpoint: str,
+    project_id: str | None = None,
+) -> dict[str, Any]:
+    """Attach Foundry project identity fields used by JQ mappings / relations."""
+    enriched = dict(item)
+    enriched["__foundryProjectEndpoint"] = project_endpoint.rstrip("/")
+    if project_id:
+        enriched["__foundryProjectId"] = project_id
+    return enriched
 
 
 def parse_foundry_timestamp(value: object) -> datetime | None:

@@ -1,18 +1,15 @@
 from __future__ import annotations
 
+from typing import Any
+
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from typing import Any
-
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.options import ListModelDeploymentsOptions
 from azure_integration.foundry.foundry_incremental import MODEL_DEPLOYMENT_INCREMENTAL
-from azure_integration.foundry.helpers.scope import (
-    enrich_with_project,
-    get_project_endpoint,
-)
-from azure_integration.foundry.helpers.utils import timestamp_to_iso
+from azure_integration.foundry.helpers.utils import enrich_with_project, timestamp_to_iso
 
 
 class ModelDeploymentsExporter:
@@ -20,11 +17,12 @@ class ModelDeploymentsExporter:
         self.client = client
 
     async def get_paginated_resources(
-        self, **_options: object
+        self, options: ListModelDeploymentsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        project_endpoint = options["project_endpoint"]
+        project_id = options["project_id"]
         cursor = active_incremental_cursor()
         params = MODEL_DEPLOYMENT_INCREMENTAL.merge_params({}, cursor)
-        project_endpoint = get_project_endpoint()
 
         async for page in paginate_with_strategy(
             self.client.send_paginated_request(
@@ -33,7 +31,16 @@ class ModelDeploymentsExporter:
             cursor=cursor,
             strategy=MODEL_DEPLOYMENT_INCREMENTAL,
         ):
-            yield [enrich_with_project(_normalize_deployment(item)) for item in page]
+            batch = [
+                enrich_with_project(
+                    _normalize_deployment(item),
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                )
+                for item in page
+            ]
+            if batch:
+                yield batch
 
 
 def _normalize_deployment(item: dict[str, Any]) -> dict[str, Any]:
