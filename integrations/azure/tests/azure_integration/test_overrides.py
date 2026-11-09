@@ -1,4 +1,9 @@
 import pytest
+from azure_integration.foundry.kinds import (
+    AgentResourceConfig,
+    DEFAULT_FOUNDRY_ARM_API_VERSION,
+    FoundryProjectResourceConfig,
+)
 from azure_integration.overrides import (
     AzurePortAppConfig,
     AzureResourceGroupResourceConfig,
@@ -172,6 +177,34 @@ def test_azure_custom_kind_virtual_machine_parses_correctly() -> None:
 
 def test_azure_port_app_config_allow_custom_kinds_is_enabled() -> None:
     assert AzurePortAppConfig.allow_custom_kinds is True
+
+
+def test_foundry_project_selector_api_version_defaults() -> None:
+    config = AzurePortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "Microsoft.CognitiveServices/accounts/projects",
+                    "selector": {"query": "true"},
+                    "port": CLOUD_RESOURCE_PORT_MAPPING,
+                },
+                {
+                    "kind": "foundry-agent",
+                    "selector": {
+                        "query": "true",
+                        "project": {"apiVersion": "2024-10-01"},
+                    },
+                    "port": CLOUD_RESOURCE_PORT_MAPPING,
+                },
+            ]
+        }
+    )
+    project = config.resources[0]
+    agent = config.resources[1]
+    assert isinstance(project, FoundryProjectResourceConfig)
+    assert project.selector.api_version == DEFAULT_FOUNDRY_ARM_API_VERSION
+    assert isinstance(agent, AgentResourceConfig)
+    assert agent.selector.project.api_version == "2024-10-01"
 
 
 def test_azure_port_app_config_parses_full_real_world_mapping() -> None:

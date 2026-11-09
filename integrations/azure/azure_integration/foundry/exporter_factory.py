@@ -15,6 +15,11 @@ from azure_integration.foundry.core.exporters.model_deployments_exporter import 
 from azure_integration.foundry.core.exporters.memory_stores_exporter import (
     MemoryStoresExporter,
 )
+from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
+
+
+def create_project_exporter() -> ProjectExporter:
+    return ProjectExporter()
 
 
 def create_agent_versions_exporter() -> AgentVersionsExporter:

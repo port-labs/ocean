@@ -134,6 +134,7 @@ resources:
   - kind: Microsoft.CognitiveServices/accounts/projects
     selector:
       query: 'true'
+      apiVersion: '2025-06-01'
     port:
       entity:
         mappings:
@@ -153,6 +154,8 @@ resources:
   - kind: foundry-agent
     selector:
       query: 'true'
+      project:
+        apiVersion: '2025-06-01'
     port:
       entity:
         mappings:
@@ -183,6 +186,8 @@ resources:
   - kind: foundry-agent-version
     selector:
       query: 'true'
+      project:
+        apiVersion: '2025-06-01'
     port:
       entity:
         mappings:
@@ -210,6 +215,8 @@ resources:
   - kind: foundry-model-deployment
     selector:
       query: 'true'
+      project:
+        apiVersion: '2025-06-01'
     port:
       entity:
         mappings:
@@ -229,6 +236,8 @@ resources:
     selector:
       query: 'true'
       sinceDays: 30
+      project:
+        apiVersion: '2025-06-01'
     port:
       entity:
         mappings:
@@ -250,6 +259,8 @@ resources:
     selector:
       query: 'true'
       sinceDays: 30
+      project:
+        apiVersion: '2025-06-01'
     port:
       entity:
         mappings:
@@ -268,6 +279,8 @@ resources:
   - kind: foundry-memory-store
     selector:
       query: 'true'
+      project:
+        apiVersion: '2025-06-01'
     port:
       entity:
         mappings:

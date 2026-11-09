@@ -1,13 +1,14 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic.v1 import Field
+from pydantic.v1 import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
 
 FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
+DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
 
 
 class ObjectKind(StrEnum):
@@ -20,15 +21,39 @@ class ObjectKind(StrEnum):
     MEMORY_STORE = "foundry-memory-store"
 
 
+class FoundryProjectFilters(BaseModel):
+    api_version: str = Field(
+        default=DEFAULT_FOUNDRY_ARM_API_VERSION,
+        alias="apiVersion",
+        title="API Version",
+        description="ARM API version used when discovering Foundry projects.",
+    )
+
+
+class FoundryProjectSelector(Selector):
+    query: str = Field(default="true")
+    api_version: str = Field(
+        default=DEFAULT_FOUNDRY_ARM_API_VERSION,
+        alias="apiVersion",
+        title="API Version",
+        description="ARM API version used when querying Foundry projects.",
+    )
+
+
 class FoundrySelector(Selector):
     query: str = Field(default="true")
+    project: FoundryProjectFilters = Field(
+        default_factory=FoundryProjectFilters,
+        title="Project discovery",
+        description="ARM filters used when discovering Foundry projects for this kind.",
+    )
 
 
 class FoundryProjectResourceConfig(ResourceConfig):
     kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
         title="Foundry project (ARM)"
     )
-    selector: FoundrySelector = Field(default_factory=FoundrySelector)
+    selector: FoundryProjectSelector = Field(default_factory=FoundryProjectSelector)
 
 
 class AgentSelector(FoundrySelector):
