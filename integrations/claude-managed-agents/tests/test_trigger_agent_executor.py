@@ -1257,8 +1257,6 @@ async def test_trigger_agent_git_token_injects_mount() -> None:
             "environmentId": "env_1",
             "prompt": "push a branch",
             "enablePortMcp": False,
-            "gitProvider": "github",
-            "gitAuthMethod": "bearerToken",
             "gitAccessToken": "ghp_test",
             "config": {
                 "resources": [

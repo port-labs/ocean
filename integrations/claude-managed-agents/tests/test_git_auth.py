@@ -18,37 +18,13 @@ def test_trigger_agent_inputs_accepts_git_access_token() -> None:
     assert inputs.gitAccessToken == "ghp_x"
 
 
-def test_trigger_agent_inputs_allows_git_fields_without_token() -> None:
-    inputs = TriggerAgentInputs.model_validate(
-        {
-            "agentId": "a1",
-            "prompt": "go",
-            "environmentId": "e1",
-            "gitProvider": "github",
-            "gitAuthMethod": "bearerToken",
-        }
-    )
-    assert inputs.gitAccessToken is None
-
-
-@pytest.mark.parametrize(
-    ("execution_properties", "match"),
-    [
-        ({"gitProvider": "gitlab"}, "gitProvider"),
-        ({"gitAuthMethod": "github_app"}, "gitAuthMethod"),
-        ({"gitAccessToken": ""}, "gitAccessToken"),
-    ],
-)
-def test_trigger_agent_inputs_rejects_invalid_git_auth(
-    execution_properties: dict[str, object],
-    match: str,
-) -> None:
-    with pytest.raises(InvalidActionParametersException, match=match):
+def test_trigger_agent_inputs_rejects_empty_git_access_token() -> None:
+    with pytest.raises(InvalidActionParametersException, match="gitAccessToken"):
         TriggerAgentInputs.from_execution_properties(
             {
                 "agentId": "a1",
                 "prompt": "go",
                 "environmentId": "e1",
-                **execution_properties,
+                "gitAccessToken": "",
             }
         )

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, Self
+from typing import Any, Self
 
 from anthropic import APIStatusError
 from anthropic.types.beta import BetaManagedAgentsAgent
@@ -77,8 +77,6 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     enablePortMcp: bool = True
     virtualMcpServerIds: list[str] = Field(default_factory=list)
     reportSessionStatus: bool = False
-    gitProvider: Literal["github"] | None = None
-    gitAuthMethod: Literal["bearerToken"] | None = None
     gitAccessToken: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")

@@ -229,31 +229,15 @@
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
-          "description": "Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}. For git mounts, include github_repository resources; authorization tokens can come from git auth inputs below.",
+          "description": "Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}. For git mounts, include github_repository resources; authorization tokens can come from gitAccessToken below.",
           "required": false
-        },
-        {
-          "name": "gitProvider",
-          "title": "Git provider",
-          "type": "string",
-          "description": "Git provider for managed auth on session mounts. Currently only 'github' is supported. Omit when not using managed git auth. Provider MCP (for example GitHub tools) is available through Port MCP / virtual MCP servers.",
-          "required": false,
-          "enum": ["github"]
-        },
-        {
-          "name": "gitAuthMethod",
-          "title": "Git auth method",
-          "type": "string",
-          "description": "How to authenticate with the git provider. Required when gitProvider is set. Currently only 'bearerToken' is supported.",
-          "required": false,
-          "enum": ["bearerToken"]
         },
         {
           "name": "gitAccessToken",
           "title": "Git access token",
           "type": "string",
           "sensitive": true,
-          "description": "GitHub token used when gitAuthMethod is 'bearerToken'. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}. Injected into github_repository mounts that omit authorization_token.",
+          "description": "GitHub token injected into github_repository mounts that omit authorization_token. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}.",
           "required": false
         },
         {
