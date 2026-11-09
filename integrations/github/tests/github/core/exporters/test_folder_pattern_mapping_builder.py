@@ -463,9 +463,7 @@ async def test_resync_skills_passes_cursor_to_builder(
             async with resource_context(
                 MagicMock(
                     kind="skill",
-                    selector=MagicMock(
-                        paths=[skill_path], include_skill_folder=False
-                    ),
+                    selector=MagicMock(paths=[skill_path], include_skill_folder=False),
                 )
             ):
                 if cursor:
