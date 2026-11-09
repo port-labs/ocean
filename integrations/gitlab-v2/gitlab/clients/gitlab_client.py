@@ -34,7 +34,8 @@ class AwardEmoji(BaseModel):
     name: str
 
 
-CHANGED_FILES_BATCH_SIZE = 100
+# Same batch size as a full resync, whose repository tree pages use the default page size.
+CHANGED_FILES_BATCH_SIZE = RestClient.DEFAULT_PAGE_SIZE
 CHANGED_PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
 GIT_NULL_SHA = "0" * 40
 
