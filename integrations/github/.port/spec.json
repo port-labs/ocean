@@ -820,6 +820,38 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "refresh_pull_requests",
+      "icon": "Github",
+      "description": "Refetch the given pull requests from GitHub and upsert them into Port using the existing pull-request mapping (reviews, checks, mergeability). Used as a targeted catch-up when live events were missed.",
+      "inputs": [
+        {
+          "name": "pullRequests",
+          "title": "Pull requests",
+          "type": "array",
+          "description": "Pull requests to refresh. Each item needs org, repo, and prNumber. Example: [{ \"org\": \"my-org\", \"repo\": \"api\", \"prNumber\": 42 }]",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "org": {
+                "type": "string",
+                "title": "Organization"
+              },
+              "repo": {
+                "type": "string",
+                "title": "Repository"
+              },
+              "prNumber": {
+                "type": "number",
+                "title": "Pull request number"
+              }
+            },
+            "required": ["org", "repo", "prNumber"]
+          }
+        }
+      ]
     }
   ],
   "installationDocs": {

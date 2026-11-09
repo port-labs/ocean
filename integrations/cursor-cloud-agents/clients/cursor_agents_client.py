@@ -22,9 +22,11 @@ class CursorAgentsClient:
     client exposes both surfaces rather than splitting into two clients.
 
     Cursor's Cloud Agents API does not expose rate-limit state via response
-    headers, so there is no proactive pacing here - `429`/`5xx` backoff is left
-    to Ocean's `extensions={"retryable": True}` RetryTransport (exponential
-    backoff), same as the `cursor` (usage metrics) integration's client.
+    headers, so there is no proactive pacing here - `429`/`5xx` backoff on GETs
+    (and other default retryable methods) is handled by Ocean's RetryTransport.
+    POST create/trigger calls are not retried: Ocean's transport excludes POST by
+    default, and enabling retries on those paths would duplicate agents/runs when
+    Cursor accepts the request but the client times out before the response.
     """
 
     def __init__(
@@ -32,7 +34,7 @@ class CursorAgentsClient:
         api_host: str,
         api_key: str,
         console_host: str,
-        request_timeout_seconds: int = 30,
+        request_timeout_seconds: int = 60,
     ) -> None:
         self._client = http_async_client
         self._base_url = api_host.rstrip("/")
@@ -67,7 +69,6 @@ class CursorAgentsClient:
             params=params,
             json=json_body,
             timeout=self._request_timeout_seconds,
-            extensions={"retryable": True},
         )
         try:
             response.raise_for_status()
