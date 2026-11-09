@@ -29,6 +29,9 @@ from azure_integration.utils import (
 from azure_integration.webhook.webhook_processors.resource_event_processor import (
     AzureResourceEventProcessor,
 )
+from azure_integration.foundry.clients.client_factory import clear_client_cache
+from azure_integration.foundry.resync import FOUNDRY_RESYNC_HANDLERS
+from port_ocean.utils.signal import signal_handler
 
 
 def _resolve_resync_method_for_resource(
@@ -52,6 +55,11 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind, resource_selector.api_version
     ):
         yield resources_batch
+
+
+for _foundry_kind, _foundry_handler in FOUNDRY_RESYNC_HANDLERS.items():
+    ocean.on_resync(_foundry_kind)(_foundry_handler)
+    ocean.on_incremental_resync(_foundry_kind)(_foundry_handler)
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUPS)
@@ -210,28 +218,17 @@ async def on_start() -> None:
     azure_client_id = ocean.integration_config.get("azure_client_id")
     azure_client_secret = ocean.integration_config.get("azure_client_secret")
     azure_tenant_id = ocean.integration_config.get("azure_tenant_id")
-    if not azure_client_id or not azure_client_secret or not azure_tenant_id:
+    if azure_client_id and azure_client_secret and azure_tenant_id:
+        os.environ["AZURE_CLIENT_ID"] = azure_client_id
+        os.environ["AZURE_CLIENT_SECRET"] = azure_client_secret
+        os.environ["AZURE_TENANT_ID"] = azure_tenant_id
+        logger.info("Azure client credentials set up from integration config")
+    else:
         logger.info(
             "Integration wasn't provided with override configuration for initializing client, proceeding with default"
         )
-        return
 
-    if azure_client_id:
-        logger.info(
-            "Detected Azure client id, setting up environment variable for client id"
-        )
-        os.environ["AZURE_CLIENT_ID"] = azure_client_id
-    if azure_client_secret:
-        logger.info(
-            "Detected Azure client secret, setting up environment variable for client secret"
-        )
-        os.environ["AZURE_CLIENT_SECRET"] = azure_client_secret
-    if azure_tenant_id:
-        logger.info(
-            "Detected Azure tenant id, setting up environment variable for tenant id"
-        )
-        os.environ["AZURE_TENANT_ID"] = azure_tenant_id
-    logger.info("Azure client credentials set up")
+    signal_handler.register(clear_client_cache)
 
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)

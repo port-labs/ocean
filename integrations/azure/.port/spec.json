@@ -1,6 +1,6 @@
 {
   "title": "Azure",
-  "description": "Azure integration for Port Ocean",
+  "description": "Azure integration for Port Ocean, including Azure Resource Manager resources and auto-discovered Azure AI Foundry projects.",
   "icon": "Azure",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/azure",
   "formMappingEnabled": true,
@@ -28,10 +28,43 @@
           "kind": "storageContainer"
         }
       ]
+    },
+    {
+      "type": "exporter",
+      "section": "AI Agents",
+      "resources": [
+        {
+          "kind": "Microsoft.CognitiveServices/accounts/projects"
+        },
+        {
+          "kind": "foundry-agent"
+        },
+        {
+          "kind": "foundry-agent-version"
+        },
+        {
+          "kind": "foundry-model-deployment"
+        },
+        {
+          "kind": "foundry-conversation"
+        },
+        {
+          "kind": "foundry-response"
+        },
+        {
+          "kind": "foundry-memory-store"
+        }
+      ]
     }
   ],
   "saas": {
-    "enabled": false
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    },
+    "incrementalSync": {
+      "enabled": true
+    }
   },
   "configurations": [
     {
@@ -122,5 +155,6 @@
         }
       ]
     }
-  ]
+  ],
+  "actionsProcessingEnabled": true
 }

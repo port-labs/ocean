@@ -10,7 +10,7 @@ resources:
           title: .display_name
           blueprint: '"azureSubscription"'
           properties:
-            tags: .tags
+            tags: .tags // {}
   - kind: Microsoft.Resources/resourceGroups
     selector:
       query: 'true'
@@ -26,7 +26,7 @@ resources:
           properties:
             location: .location
             provisioningState: .properties.provisioningState + .properties.provisioning_state
-            tags: .tags
+            tags: .tags // {}
           relations:
             subscription: >-
               .id | split("/") | .[1] |= ascii_downcase |.[2] |= ascii_downcase
@@ -46,7 +46,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -66,7 +66,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -86,7 +86,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -106,7 +106,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -126,8 +126,158 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
               | .[:5] |join("/")
+  - kind: Microsoft.CognitiveServices/accounts/projects
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"foundry_project"'
+          properties:
+            endpoint: .__foundryProjectEndpoint
+            accountName: .accountName
+            subscriptionId: .subscriptionId
+            resourceGroupName: .resourceGroupName
+            location: .location
+            tags: .tags // {}
+          relations:
+            subscription: >-
+              "/subscriptions/" + (.subscriptionId | ascii_downcase)
+  - kind: foundry-agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.id // .name | tostring)
+          title: .name // .id
+          blueprint: '"foundry_agent"'
+          properties:
+            kind: .kind
+            model: .model
+            instructions: .instructions
+            description: .description
+            status: .status
+            configurationState: .configuration_state
+            version: .version
+            versionStatus: .version_status
+            agentGuid: .agent_guid
+            toolCount: .tool_count
+            tools: .tools
+            sourcePlatform: .source_platform
+            metadata: .metadata
+            entraPrincipalId: .entra_principal_id
+            entraClientId: .entra_client_id
+            identityBlueprintId: .identity_blueprint_id
+            createdAt: .created_at
+          relations:
+            modelDeployment: .model
+            foundryProject: .__foundryProjectId
+  - kind: foundry-agent-version
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.id | tostring)
+          title: .id
+          blueprint: '"foundry_agent_version"'
+          properties:
+            agentId: .agent_id
+            version: .version
+            kind: .kind
+            model: .model
+            instructions: .instructions
+            description: .description
+            versionStatus: .version_status
+            isDraft: .is_draft
+            sourcePlatform: .source_platform
+            metadata: .metadata
+            tools: .tools
+            toolCount: .tool_count
+            entraPrincipalId: .entra_principal_id
+            entraClientId: .entra_client_id
+            createdAt: .created_at
+          relations:
+            agent: (.agent_id | tostring)
+  - kind: foundry-model-deployment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.id // .name | tostring)
+          title: .name // .id
+          blueprint: '"foundry_model_deployment"'
+          properties:
+            model: .model
+            modelVersion: .model_version
+            modelPublisher: .model_publisher
+            deploymentType: .deployment_type
+            sku: .sku
+            capabilities: .capabilities
+          relations:
+            foundryProject: .__foundryProjectId
+  - kind: foundry-conversation
+    selector:
+      query: 'true'
+      sinceDays: 365
+    port:
+      entity:
+        mappings:
+          identifier: (.id | tostring)
+          title: .id
+          blueprint: '"foundry_conversation"'
+          properties:
+            createdAt: .created_at
+            metadata: .metadata
+            promptTokens: (.prompt_tokens // 0)
+            completionTokens: (.completion_tokens // 0)
+            totalTokens: (.total_tokens // 0)
+            toolCallCount: (.tool_call_count // 0)
+          relations:
+            agents: (.participant_agent_ids // [])
+            modelDeployments: (.participant_model_deployment_ids // [])
+            foundryProject: .__foundryProjectId
+  - kind: foundry-response
+    selector:
+      query: 'true'
+      sinceDays: 365
+    port:
+      entity:
+        mappings:
+          identifier: (.id | tostring)
+          title: .id
+          blueprint: '"foundry_response"'
+          properties:
+            status: .status
+            createdAt: .created_at
+            promptTokens: .prompt_tokens
+            completionTokens: .completion_tokens
+            totalTokens: .total_tokens
+          relations:
+            conversation: (.conversation_id | tostring)
+            modelDeployment: (.model_deployment_id | tostring)
+  - kind: foundry-memory-store
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.id // .name | tostring)
+          title: .name // .id
+          blueprint: '"foundry_memory_store"'
+          properties:
+            name: .name
+            description: .description
+            createdAt: .created_at
+            metadata: .metadata
+          relations:
+            foundryProject: .__foundryProjectId
