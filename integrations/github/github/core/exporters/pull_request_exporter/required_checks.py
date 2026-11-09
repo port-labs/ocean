@@ -1,19 +1,14 @@
 """Status of only the checks GitHub requires for merging a pull request.
 
-GitHub's combined rollup (``statusCheckRollup`` / the commit status API) covers every
-check on the head commit, so one optional or never-settling check (for example a merge
-queue check) keeps it pending forever. This module narrows it down to the required
-checks, optionally minus a configurable ignore list.
+GitHub's combined rollup (``statusCheckRollup``) covers every check on the head
+commit, so one optional or never-settling check (for example a merge queue check) keeps
+it pending forever. This module narrows it down to the required checks, optionally
+minus a configurable ignore list, the way GitHub's own merge gate sees them: a required
+check is satisfied by the latest run of that name.
 
-The result is computed by the transport-agnostic ``summarize_required_checks`` from two
-inputs:
-
-* the checks that are *expected* (required by branch protection / rulesets), and
-* the checks *observed* on the head commit.
-
-Only GraphQL feeds it today (``GraphQLRequiredChecksEnricher``): its ``isRequired`` flag
-makes this cheap. A REST enricher would build the same two inputs from the branch
-protection, rulesets, check runs and commit statuses endpoints.
+GraphQL flags required checks itself (``isRequired``), so ``GraphQLRequiredChecksEnricher``
+only has to read the head commit's check contexts. ``summarize_required_checks`` turns
+them into the result.
 """
 
 import asyncio
@@ -21,15 +16,21 @@ from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from typing import Any, Iterable, Literal, Mapping, Optional, Sequence
 
+import httpx
 from loguru import logger
 
+from github.clients.auth.retry_transport import GATEWAY_TIMEOUT_STATUS_CODES
 from github.clients.http.graphql_client import GithubGraphQLClient
+from github.helpers.exceptions import GraphQLErrorGroup
 from github.helpers.gql_queries import (
+    REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE,
     generate_pull_requests_required_checks_gql,
     required_checks_alias,
 )
 
 CheckOutcome = Literal["success", "failure", "pending"]
+# "none" means no check is required (the PR is mergeable as far as checks go), while a
+# null status means it could not be determined.
 RequiredChecksStatus = Literal["success", "failure", "pending", "none"]
 
 REQUIRED_CHECKS_STATUS_FIELD = "required_checks_status"
@@ -38,40 +39,29 @@ REQUIRED_CHECKS_PENDING_FIELD = "required_checks_pending"
 REQUIRED_CHECKS_SHA_FIELD = "required_checks_sha"
 
 # GitHub treats these conclusions of a required check as passing.
-_PASSING_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
-_FAILING_STATUS_STATES = frozenset({"failure", "error"})
-_PASSING_STATUS_STATES = frozenset({"success"})
+_PASSING_CONCLUSIONS = frozenset({"SUCCESS", "NEUTRAL", "SKIPPED"})
+_FAILING_STATUS_STATES = frozenset({"FAILURE", "ERROR"})
 
 GRAPHQL_PRS_PER_QUERY = 5
-GRAPHQL_CONCURRENT_QUERIES = 3
-
-
-@dataclass(frozen=True)
-class ExpectedCheck:
-    """A check that branch protection or a ruleset requires."""
-
-    name: str
-    app_id: Optional[int] = None
-
-    def is_satisfied_by_source(self, observed: "ObservedCheck") -> bool:
-        # A missing or non-positive app id means "any app" in GitHub's settings.
-        if not self.app_id or self.app_id < 0 or observed.app_id is None:
-            return True
-        return self.app_id == observed.app_id
+# Page sizes of the check contexts to try when GitHub rejects the query as too heavy.
+_CONTEXTS_PAGE_SIZE_BACKOFF = (REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE, 50, 25, 10)
+# A pull request with more checks than this is reported as unknown rather than read
+# without bound.
+MAX_CONTEXT_PAGES_PER_PR = 10
 
 
 @dataclass(frozen=True)
 class ObservedCheck:
     """A check reported on the head commit.
 
-    ``is_required`` is set when the API says so itself (GraphQL ``isRequired``); when
-    ``None`` it is decided by matching against the expected checks.
+    ``started_at`` is when the check run started (or the status was created). ``None``
+    means it has not started yet, which makes it the newest report of its name.
     """
 
     name: str
     outcome: CheckOutcome
-    app_id: Optional[int] = None
-    is_required: Optional[bool] = None
+    is_required: bool
+    started_at: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -83,21 +73,17 @@ class RequiredChecksSummary:
 
 
 def check_run_outcome(status: Optional[str], conclusion: Optional[str]) -> CheckOutcome:
-    """Outcome of a check run, from either API (REST is lowercase, GraphQL uppercase)."""
-    if (status or "").lower() != "completed":
+    """Outcome of a GraphQL check run (``status`` and ``conclusion`` are uppercase enums)."""
+    if status != "COMPLETED" or not conclusion:
         return "pending"
-    normalized = (conclusion or "").lower()
-    if not normalized:
-        return "pending"
-    return "success" if normalized in _PASSING_CONCLUSIONS else "failure"
+    return "success" if conclusion in _PASSING_CONCLUSIONS else "failure"
 
 
 def status_context_outcome(state: Optional[str]) -> CheckOutcome:
-    """Outcome of a commit status, from either API."""
-    normalized = (state or "").lower()
-    if normalized in _PASSING_STATUS_STATES:
+    """Outcome of a GraphQL commit status (``state`` is an uppercase enum)."""
+    if state == "SUCCESS":
         return "success"
-    if normalized in _FAILING_STATUS_STATES:
+    if state in _FAILING_STATUS_STATES:
         return "failure"
     return "pending"
 
@@ -106,14 +92,32 @@ def _is_ignored(name: str, ignore: Iterable[str]) -> bool:
     return any(fnmatchcase(name, pattern) for pattern in ignore)
 
 
+def _latest_outcome(observations: Sequence[ObservedCheck]) -> CheckOutcome:
+    """Outcome of the most recent report of a check, like GitHub's merge gate.
+
+    A re-run as a new check suite leaves the superseded run in the rollup, so folding
+    every report of a name would let an old failure outlive the re-run that fixed it.
+    Reports tied for the latest (e.g. two that have not started) resolve to the worst.
+    """
+    latest = max((o.started_at is None, o.started_at or "") for o in observations)
+    outcomes = {
+        o.outcome
+        for o in observations
+        if (o.started_at is None, o.started_at or "") == latest
+    }
+    if "failure" in outcomes:
+        return "failure"
+    return "pending" if "pending" in outcomes else "success"
+
+
 def summarize_required_checks(
     *,
-    expected: Sequence[ExpectedCheck],
+    expected: Sequence[str],
     observed: Sequence[ObservedCheck],
     ignore: Sequence[str],
     sha: Optional[str],
 ) -> RequiredChecksSummary:
-    """Reduce expected and observed checks to the required checks status.
+    """Reduce the required check names and the reported checks to the status.
 
     * ``failure``: a required check failed (takes precedence over pending, so a
       consumer can react as soon as one fails).
@@ -121,38 +125,28 @@ def summarize_required_checks(
     * ``success``: every required check passed or was skipped.
     * ``none``: no required check applies once ``ignore`` is applied.
     """
-    outcomes_by_name: dict[str, list[CheckOutcome]] = {}
+    reports_by_name: dict[str, list[ObservedCheck]] = {}
 
     # An expected check with no report yet stays an empty list, i.e. pending.
-    for expected_check in expected:
-        if not _is_ignored(expected_check.name, ignore):
-            outcomes_by_name.setdefault(expected_check.name, [])
+    for name in expected:
+        if not _is_ignored(name, ignore):
+            reports_by_name.setdefault(name, [])
 
     for observed_check in observed:
-        if _is_ignored(observed_check.name, ignore):
-            continue
-        is_required = observed_check.is_required
-        if is_required is None:
-            is_required = any(
-                expected_check.name == observed_check.name
-                and expected_check.is_satisfied_by_source(observed_check)
-                for expected_check in expected
-            )
-        if is_required:
-            outcomes_by_name.setdefault(observed_check.name, []).append(
-                observed_check.outcome
-            )
+        if observed_check.is_required and not _is_ignored(observed_check.name, ignore):
+            reports_by_name.setdefault(observed_check.name, []).append(observed_check)
 
     failing: list[str] = []
     pending: list[str] = []
-    for name, outcomes in sorted(outcomes_by_name.items()):
-        if "failure" in outcomes:
+    for name, reports in sorted(reports_by_name.items()):
+        outcome = _latest_outcome(reports) if reports else "pending"
+        if outcome == "failure":
             failing.append(name)
-        elif not outcomes or "pending" in outcomes:
+        elif outcome == "pending":
             pending.append(name)
 
     status: RequiredChecksStatus
-    if not outcomes_by_name:
+    if not reports_by_name:
         status = "none"
     elif failing:
         status = "failure"
@@ -177,21 +171,33 @@ def pop_required_checks_options(options: dict[str, Any]) -> tuple[bool, list[str
 
 def apply_required_checks(
     pull_request: dict[str, Any], summary: Optional[RequiredChecksSummary]
-) -> dict[str, Any]:
+) -> None:
     """Write the summary onto the raw PR; ``None`` (unknown) leaves every field null."""
     pull_request[REQUIRED_CHECKS_STATUS_FIELD] = summary.status if summary else None
     pull_request[REQUIRED_CHECKS_FAILING_FIELD] = summary.failing if summary else None
     pull_request[REQUIRED_CHECKS_PENDING_FIELD] = summary.pending if summary else None
     pull_request[REQUIRED_CHECKS_SHA_FIELD] = summary.sha if summary else None
-    return pull_request
 
 
 @dataclass
 class _GraphQLPullRequestChecks:
     sha: Optional[str]
-    expected: list[ExpectedCheck]
+    expected: list[str]
     observed: list[ObservedCheck]
     next_cursor: Optional[str]
+    # False when any part of the data could not be trusted (a check whose
+    # isRequired came back null, or checks that could not all be read).
+    complete: bool = True
+
+
+def _is_too_heavy(error: Exception) -> bool:
+    """Whether GitHub rejected the query for its size, so fewer PRs may fit."""
+    if isinstance(error, GraphQLErrorGroup):
+        return True
+    return (
+        isinstance(error, httpx.HTTPStatusError)
+        and error.response.status_code in GATEWAY_TIMEOUT_STATUS_CODES
+    )
 
 
 class GraphQLRequiredChecksEnricher:
@@ -201,6 +207,10 @@ class GraphQLRequiredChecksEnricher:
     sheds fields when GitHub's budget is exceeded) is unaffected. Pull requests are
     read in small aliased batches, following the check contexts cursor of any pull
     request with more checks than a page.
+
+    A query GitHub finds too heavy is retried with smaller pages of checks and then
+    with fewer pull requests. Concurrency is bounded by the GraphQL client's own
+    limiter, which these queries share with the pull request list queries.
     """
 
     def __init__(
@@ -214,92 +224,143 @@ class GraphQLRequiredChecksEnricher:
         self._organization = organization
         self._repo_name = repo_name
         self._ignore = list(ignore)
-        self._semaphore = asyncio.Semaphore(GRAPHQL_CONCURRENT_QUERIES)
 
-    async def enrich(self, pull_requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def enrich(self, pull_requests: list[dict[str, Any]]) -> None:
+        """Set the required checks fields on each pull request, in place."""
         numbers = [pr["number"] for pr in pull_requests if pr.get("number")]
         if not numbers:
-            return pull_requests
+            return
 
         chunks = [
             numbers[start : start + GRAPHQL_PRS_PER_QUERY]
             for start in range(0, len(numbers), GRAPHQL_PRS_PER_QUERY)
         ]
-        chunk_results = await asyncio.gather(
-            *(self._summarize_chunk(chunk) for chunk in chunks)
-        )
         summaries: dict[int, Optional[RequiredChecksSummary]] = {}
-        for result in chunk_results:
-            summaries.update(result)
+        for chunk_summaries in await asyncio.gather(
+            *(self._summarize_chunk(chunk) for chunk in chunks)
+        ):
+            summaries.update(chunk_summaries)
 
         for pull_request in pull_requests:
             number = pull_request.get("number")
             apply_required_checks(
                 pull_request, summaries.get(number) if number else None
             )
-        return pull_requests
 
     async def _summarize_chunk(
         self, numbers: list[int]
     ) -> dict[int, Optional[RequiredChecksSummary]]:
-        async with self._semaphore:
-            try:
-                checks = await self._fetch_chunk(numbers)
-            except Exception:
+        try:
+            checks = await self._fetch_chunk(numbers)
+        except Exception as error:
+            if _is_too_heavy(error) and len(numbers) > 1:
+                middle = len(numbers) // 2
                 logger.warning(
-                    "[GraphQL] Failed to compute required checks status for "
-                    f"{self._organization}/{self._repo_name}#{numbers}",
-                    exc_info=True,
+                    f"[GraphQL] Required checks query for {self._organization}/"
+                    f"{self._repo_name}#{numbers} was too heavy; retrying as "
+                    f"{middle} and {len(numbers) - middle} pull request(s)"
                 )
-                return {number: None for number in numbers}
-
-        return {
-            number: (
-                summarize_required_checks(
-                    expected=pr_checks.expected,
-                    observed=pr_checks.observed,
-                    ignore=self._ignore,
-                    sha=pr_checks.sha,
+                halves = await asyncio.gather(
+                    self._summarize_chunk(numbers[:middle]),
+                    self._summarize_chunk(numbers[middle:]),
                 )
-                if (pr_checks := checks.get(number)) is not None
-                else None
+                return {**halves[0], **halves[1]}
+            logger.warning(
+                "[GraphQL] Failed to compute required checks status for "
+                f"{self._organization}/{self._repo_name}#{numbers}",
+                exc_info=True,
             )
-            for number in numbers
-        }
+            return {number: None for number in numbers}
+
+        summaries: dict[int, Optional[RequiredChecksSummary]] = {}
+        for number in numbers:
+            pr_checks = checks.get(number)
+            if pr_checks is None or not pr_checks.complete:
+                if pr_checks is not None:
+                    logger.warning(
+                        "[GraphQL] Required checks of "
+                        f"{self._organization}/{self._repo_name}#{number} could not be "
+                        "read completely; status is unknown"
+                    )
+                summaries[number] = None
+                continue
+            summaries[number] = summarize_required_checks(
+                expected=pr_checks.expected,
+                observed=pr_checks.observed,
+                ignore=self._ignore,
+                sha=pr_checks.sha,
+            )
+        return summaries
 
     async def _fetch_chunk(
         self, numbers: list[int]
     ) -> dict[int, _GraphQLPullRequestChecks]:
         checks: dict[int, _GraphQLPullRequestChecks] = {}
         cursors: dict[int, Optional[str]] = {number: None for number in numbers}
+        pages_read = {number: 0 for number in numbers}
 
         while cursors:
             repository = await self._query(cursors)
             next_cursors: dict[int, Optional[str]] = {}
-            for number in cursors:
+            for number, cursor in cursors.items():
                 pr_node = repository.get(required_checks_alias(number))
-                if not pr_node:
+                # Anything but an open PR (it may have closed since it was listed) has
+                # no required checks status.
+                if not pr_node or pr_node.get("state") != "OPEN":
                     continue
+
                 page = _parse_pull_request_node(pr_node)
-                if number in checks:
-                    checks[number].observed.extend(page.observed)
-                    checks[number].next_cursor = page.next_cursor
+                pages_read[number] += 1
+                pr_checks = checks.get(number)
+                if pr_checks is None:
+                    pr_checks = checks[number] = page
                 else:
-                    checks[number] = page
-                if page.next_cursor:
+                    pr_checks.observed.extend(page.observed)
+                    pr_checks.complete = pr_checks.complete and page.complete
+
+                if not page.next_cursor:
+                    continue
+                if (
+                    pages_read[number] >= MAX_CONTEXT_PAGES_PER_PR
+                    or page.next_cursor == cursor
+                ):
+                    logger.warning(
+                        f"[GraphQL] Stopped reading the checks of {self._organization}/"
+                        f"{self._repo_name}#{number} after {pages_read[number]} page(s)"
+                    )
+                    pr_checks.complete = False
+                else:
                     next_cursors[number] = page.next_cursor
             cursors = next_cursors
         return checks
 
     async def _query(self, cursors: Mapping[int, Optional[str]]) -> dict[str, Any]:
-        payload = self._client.build_graphql_payload(
-            generate_pull_requests_required_checks_gql(cursors),
-            {"organization": self._organization, "repo": self._repo_name},
-        )
-        response = await self._client.send_api_request(
-            self._client.base_url, method="POST", json_data=payload
-        )
-        return ((response.get("data") or {}).get("repository")) or {}
+        """One query, with smaller pages of checks when GitHub rejects it as too heavy."""
+        query = generate_pull_requests_required_checks_gql(cursors)
+        last_error: Optional[GraphQLErrorGroup] = None
+        for page_size in _CONTEXTS_PAGE_SIZE_BACKOFF:
+            variables = {"organization": self._organization, "repo": self._repo_name}
+            payload = self._client.build_graphql_payload(
+                query, variables, page_size=page_size
+            )
+            try:
+                response = await self._client.send_api_request(
+                    self._client.base_url,
+                    method="POST",
+                    json_data=payload,
+                    query_path="repository.pullRequest.requiredChecks",
+                    query_params={**variables, "pullRequests": list(cursors)},
+                )
+            except GraphQLErrorGroup as error:
+                last_error = error
+                logger.warning(
+                    f"[GraphQL] Required checks query failed at first={page_size} for "
+                    f"{self._organization}/{self._repo_name}#{list(cursors)}"
+                )
+                continue
+            return ((response.get("data") or {}).get("repository")) or {}
+        assert last_error is not None
+        raise last_error
 
 
 def _parse_pull_request_node(pr_node: Mapping[str, Any]) -> _GraphQLPullRequestChecks:
@@ -313,27 +374,41 @@ def _parse_pull_request_node(pr_node: Mapping[str, Any]) -> _GraphQLPullRequestC
     ) or []
 
     observed: list[ObservedCheck] = []
+    complete = True
     for node in contexts.get("nodes") or []:
         if not node:
             continue
         if node.get("__typename") == "CheckRun":
             name = node.get("name")
             outcome = check_run_outcome(node.get("status"), node.get("conclusion"))
+            started_at = node.get("startedAt")
         else:
             name = node.get("context")
             outcome = status_context_outcome(node.get("state"))
-        if name:
-            observed.append(
-                ObservedCheck(
-                    name=name, outcome=outcome, is_required=bool(node.get("isRequired"))
-                )
+            started_at = node.get("createdAt")
+        if not name:
+            continue
+        is_required = node.get("isRequired")
+        if is_required is None:
+            # Treating it as optional could drop a required check that passed, and
+            # treating it as required could block on an optional one: give up instead.
+            complete = False
+            continue
+        observed.append(
+            ObservedCheck(
+                name=name,
+                outcome=outcome,
+                is_required=is_required,
+                started_at=started_at,
             )
+        )
 
     return _GraphQLPullRequestChecks(
         sha=commit.get("oid") or pr_node.get("headRefOid"),
-        expected=[ExpectedCheck(name=context) for context in required_contexts],
+        expected=list(required_contexts),
         observed=observed,
         next_cursor=(
             page_info.get("endCursor") if page_info.get("hasNextPage") else None
         ),
+        complete=complete,
     )

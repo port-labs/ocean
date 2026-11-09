@@ -578,6 +578,7 @@ def _pr_required_checks_selection(pr_number: int, after: str | None) -> str:
     after_argument = f", after: {json.dumps(after)}" if after else ""
     return f"""
       number
+      state
       headRefOid
       baseRef {{
         refUpdateRule {{
@@ -589,7 +590,7 @@ def _pr_required_checks_selection(pr_number: int, after: str | None) -> str:
           commit {{
             oid
             statusCheckRollup {{
-              contexts(first: {REQUIRED_CHECKS_CONTEXTS_PAGE_SIZE}{after_argument}) {{
+              contexts(first: $first{after_argument}) {{
                 pageInfo {{
                   hasNextPage
                   endCursor
@@ -600,11 +601,13 @@ def _pr_required_checks_selection(pr_number: int, after: str | None) -> str:
                     name
                     status
                     conclusion
+                    startedAt
                     isRequired(pullRequestNumber: {pr_number})
                   }}
                   ... on StatusContext {{
                     context
                     state
+                    createdAt
                     isRequired(pullRequestNumber: {pr_number})
                   }}
                 }}
@@ -625,7 +628,8 @@ def generate_pull_requests_required_checks_gql(
     """One aliased pullRequest selection per PR, each reading a page of its check contexts.
 
     ``cursors_by_pr_number`` maps a PR number to the contexts cursor to continue from
-    (``None`` for the first page).
+    (``None`` for the first page). The page size is the ``$first`` variable, so the
+    retry transport can step it down when GitHub times the query out.
     """
     selections = "\n".join(
         f"""    {required_checks_alias(number)}: pullRequest(number: {number}) {{
@@ -635,7 +639,8 @@ def generate_pull_requests_required_checks_gql(
     return f"""
 query PullRequestsRequiredChecks(
   $organization: String!,
-  $repo: String!
+  $repo: String!,
+  $first: Int!
 ) {{
   repository(owner: $organization, name: $repo) {{
 {selections}

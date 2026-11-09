@@ -628,9 +628,13 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "GitHub requires for merging into the base branch (branch protection / rulesets): "
             "required_checks_status (success, failure, pending or none), required_checks_failing, "
             "required_checks_pending and required_checks_sha. "
+            "A status of none means no check is required (nothing blocks the pull request), "
+            "while null means it could not be determined. A merge gate that waits for success "
+            "alone will block pull requests that have no required checks, so accept none as well. "
             "Use requiredChecksIgnore to leave out required checks that never settle, such as a merge queue check. "
             "Requires the api selector to be set to graphql; it is ignored when api is rest. "
-            "Costs one extra GraphQL query per 5 open pull requests."
+            "Costs one extra GraphQL query per 5 open pull requests on every resync, and one per "
+            "pull request refresh on a pull request or review event."
         ),
     )
     required_checks_ignore: list[str] = Field(

@@ -262,7 +262,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             organization,
             gql_options=pr_gql_options,
         )
-        if include_required_checks and pull_request.get("state") == "open":
+        # ``state`` can be missing (excludeGraphqlFields): the enricher then checks the
+        # PR state itself, so that selector does not change whether this runs.
+        if include_required_checks and pull_request.get("state", "open") == "open":
             await GraphQLRequiredChecksEnricher(
                 self.client, organization, cast(str, repo_name), required_checks_ignore
             ).enrich([pull_request])
@@ -303,7 +305,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 incremental_cursor,
             ):
                 if required_checks_enricher:
-                    batch = await required_checks_enricher.enrich(batch)
+                    await required_checks_enricher.enrich(batch)
                 yield batch
 
         if "closed" in states:
