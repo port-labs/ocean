@@ -8,8 +8,9 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
-from tools.vendor_stub.match import find_best
+from tools.vendor_stub.match import condition_failures, find_best
 from tools.vendor_stub.mock_repo import MockRepo
+from tools.vendor_stub.models import MockResponse, PaginateRequest, Registration
 
 app = FastAPI(title="vendor-stub")
 mock_router = APIRouter(prefix="/__mock")
@@ -53,56 +54,44 @@ def _rewrite_link_header(link: str, stub_base: str) -> str:
     return re.sub(r"<([^>]+)>", repl, link)
 
 
-def _build_response(raw: dict[str, Any], stub_base: str) -> Response:
-    status = int(raw.get("status", 200))
-    headers = {str(k): str(v) for k, v in (raw.get("headers") or {}).items()}
+def _build_response(raw: MockResponse, stub_base: str) -> Response:
+    headers = {str(k): str(v) for k, v in raw.headers.items()}
     if "Link" in headers:
         headers["Link"] = _rewrite_link_header(headers["Link"], stub_base)
     if "link" in headers:
         headers["link"] = _rewrite_link_header(headers["link"], stub_base)
 
-    body = raw.get("body", {})
+    body = raw.body
     if isinstance(body, (dict, list)):
         body = _rewrite_next_urls(copy.deepcopy(body), stub_base)
-        return JSONResponse(content=body, status_code=status, headers=headers)
-    return Response(content=str(body), status_code=status, headers=headers)
+        return JSONResponse(content=body, status_code=raw.status, headers=headers)
+    return Response(content=str(body), status_code=raw.status, headers=headers)
 
 
 @mock_router.post("/register")
-async def register(payload: dict[str, Any]) -> dict[str, Any]:
+async def register(payload: Registration) -> dict[str, Any]:
     saved = MockRepo.add_registration(payload)
-    return {"ok": True, "registration": saved}
+    return {"ok": True, "registration": saved.model_dump()}
 
 
 @mock_router.post("/paginate")
-async def paginate(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+async def paginate(payload: PaginateRequest, request: Request) -> dict[str, Any]:
     """
     Register a page sequence. Each page is a full registration-ish response.
     Shared match conditions live at the top level; pages go in `pages`.
     """
-    pages: list[dict[str, Any]] = payload.get("pages") or []
-    if not pages:
-        return JSONResponse({"ok": False, "error": "pages required"}, status_code=400)
-
-    base = {k: v for k, v in payload.items() if k != "pages"}
-    # times-as-sequence: each match returns the next page response
-    responses = []
-    for page in pages:
-        responses.append(
-            {
-                "status": page.get("status", 200),
-                "body": page.get("body", {}),
-                "headers": page.get("headers") or {},
-            }
-        )
-    reg = {
-        **base,
-        "response": responses[0],
-        "times": responses,
-        "priority": base.get("priority", 10),
-    }
+    responses = list(payload.pages)
+    reg = Registration(
+        **payload.model_dump(exclude={"pages"}),
+        response=responses[0],
+        times=responses,
+    )
     saved = MockRepo.add_registration(reg)
-    return {"ok": True, "registration": saved, "stub_base": _stub_base(request)}
+    return {
+        "ok": True,
+        "registration": saved.model_dump(),
+        "stub_base": _stub_base(request),
+    }
 
 
 @mock_router.post("/reset")
@@ -123,7 +112,10 @@ async def calls() -> dict[str, Any]:
 
 @mock_router.get("/registrations")
 async def registrations() -> dict[str, Any]:
-    return {"ok": True, "registrations": MockRepo.list_registrations()}
+    return {
+        "ok": True,
+        "registrations": [r.model_dump() for r in MockRepo.list_registrations()],
+    }
 
 
 app.include_router(mock_router)
@@ -172,7 +164,6 @@ async def wildcard(request: Request, path: str) -> Response:
             best = None
             best_failed: list[str] = []
             best_score = -1
-            from tools.vendor_stub.match import condition_failures
 
             for candidate in regs:
                 c_failed = condition_failures(
@@ -183,26 +174,13 @@ async def wildcard(request: Request, path: str) -> Response:
                     headers=headers,
                     body_text=body_text,
                 )
-                set_count = sum(
-                    1
-                    for key in (
-                        "method",
-                        "path",
-                        "path_regex",
-                        "query",
-                        "headers",
-                        "body_contains",
-                        "body_field",
-                    )
-                    if candidate.get(key) is not None
-                )
-                score = set_count - len(c_failed)
+                score = candidate.condition_count() - len(c_failed)
                 if score > best_score:
                     best_score = score
                     best = {
-                        "id": candidate.get("id"),
-                        "method": candidate.get("method"),
-                        "path": candidate.get("path") or candidate.get("path_regex"),
+                        "id": candidate.id,
+                        "method": candidate.method,
+                        "path": candidate.path or candidate.path_regex,
                     }
                     best_failed = c_failed
             entry["closest_registration"] = best
@@ -216,14 +194,13 @@ async def wildcard(request: Request, path: str) -> Response:
             status_code=501,
         )
 
-    times = reg.get("times")
-    if isinstance(times, list):
-        nxt = MockRepo.next_sequence_response(reg["id"], times)
+    if isinstance(reg.times, list):
+        nxt = MockRepo.next_sequence_response(reg)
         if nxt is None:
             entry = {
                 **call,
                 "reason": "times sequence exhausted",
-                "registration_id": reg.get("id"),
+                "registration_id": reg.id,
             }
             MockRepo.log_unmatched(entry)
             return JSONResponse(
@@ -231,17 +208,16 @@ async def wildcard(request: Request, path: str) -> Response:
             )
         return _build_response(nxt, stub_base)
 
-    if isinstance(times, int):
+    if isinstance(reg.times, int):
         if not MockRepo.bump_times_remaining(reg):
             entry = {
                 **call,
                 "reason": "times count exhausted",
-                "registration_id": reg.get("id"),
+                "registration_id": reg.id,
             }
             MockRepo.log_unmatched(entry)
             return JSONResponse(
                 {"error": "unmatched", "reason": "times exhausted"}, status_code=501
             )
 
-    response_body = reg.get("response") or {}
-    return _build_response(response_body, stub_base)
+    return _build_response(reg.response, stub_base)

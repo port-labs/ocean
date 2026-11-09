@@ -4,58 +4,53 @@ import json
 import re
 from typing import Any
 
+from tools.vendor_stub.models import Registration
 
-def _path_matches(condition: dict[str, Any], path: str) -> bool:
-    exact = condition.get("path")
-    if exact is not None and exact == path:
+
+def _path_matches(reg: Registration, path: str) -> bool:
+    if reg.path is not None and reg.path == path:
         return True
-    pattern = condition.get("path_regex")
-    if pattern is not None:
-        return re.search(pattern, path) is not None
-    # no path condition set
-    return exact is None and pattern is None
+    if reg.path_regex is not None:
+        return re.search(reg.path_regex, path) is not None
+    return reg.path is None and reg.path_regex is None
 
 
-def _query_matches(condition: dict[str, Any], query: dict[str, str]) -> bool:
-    expected = condition.get("query")
-    if not expected:
+def _query_matches(reg: Registration, query: dict[str, str]) -> bool:
+    if not reg.query:
         return True
-    for key, value in expected.items():
+    for key, value in reg.query.items():
         if query.get(key) != str(value):
             return False
     return True
 
 
-def _headers_match(condition: dict[str, Any], headers: dict[str, str]) -> bool:
-    expected = condition.get("headers")
-    if not expected:
+def _headers_match(reg: Registration, headers: dict[str, str]) -> bool:
+    if not reg.headers:
         return True
     lower = {k.lower(): v for k, v in headers.items()}
-    for key, value in expected.items():
+    for key, value in reg.headers.items():
         if lower.get(key.lower()) != value:
             return False
     return True
 
 
-def _body_matches(condition: dict[str, Any], body_text: str) -> bool:
-    substring = condition.get("body_contains")
-    if substring is not None and substring not in body_text:
+def _body_matches(reg: Registration, body_text: str) -> bool:
+    if reg.body_contains is not None and reg.body_contains not in body_text:
         return False
 
-    body_field = condition.get("body_field")
-    if body_field:
+    if reg.body_field:
         try:
             payload = json.loads(body_text) if body_text else {}
         except json.JSONDecodeError:
             return False
-        for key, value in body_field.items():
+        for key, value in reg.body_field.items():
             if payload.get(key) != value:
                 return False
     return True
 
 
 def condition_failures(
-    reg: dict[str, Any],
+    reg: Registration,
     *,
     method: str,
     path: str,
@@ -65,11 +60,11 @@ def condition_failures(
 ) -> list[str]:
     """Return names of conditions that failed. Empty list means full match."""
     failed: list[str] = []
-    if reg.get("method") and reg["method"].upper() != method.upper():
+    if reg.method and reg.method.upper() != method.upper():
         failed.append("method")
-    if (
-        reg.get("path") is not None or reg.get("path_regex") is not None
-    ) and not _path_matches(reg, path):
+    if (reg.path is not None or reg.path_regex is not None) and not _path_matches(
+        reg, path
+    ):
         failed.append("path")
     if not _query_matches(reg, query):
         failed.append("query")
@@ -80,22 +75,22 @@ def condition_failures(
     return failed
 
 
-def matches(reg: dict[str, Any], **kwargs: Any) -> bool:
+def matches(reg: Registration, **kwargs: Any) -> bool:
     return not condition_failures(reg, **kwargs)
 
 
 def find_best(
-    registrations: list[dict[str, Any]],
+    registrations: list[Registration],
     *,
     method: str,
     path: str,
     query: dict[str, str],
     headers: dict[str, str],
     body_text: str,
-) -> tuple[dict[str, Any] | None, list[str]]:
+) -> tuple[Registration | None, list[str]]:
     """Return (matching registration, []) or (None, failures on closest)."""
-    full_matches: list[dict[str, Any]] = []
-    closest: dict[str, Any] | None = None
+    full_matches: list[Registration] = []
+    closest: Registration | None = None
     closest_failed: list[str] = []
     closest_score = -1
 
@@ -111,21 +106,7 @@ def find_best(
         if not failed:
             full_matches.append(reg)
             continue
-        # score = how many conditions were set and passed
-        set_count = sum(
-            1
-            for key in (
-                "method",
-                "path",
-                "path_regex",
-                "query",
-                "headers",
-                "body_contains",
-                "body_field",
-            )
-            if reg.get(key) is not None
-        )
-        score = set_count - len(failed)
+        score = reg.condition_count() - len(failed)
         if score > closest_score:
             closest_score = score
             closest = reg
@@ -135,5 +116,5 @@ def find_best(
         return None, closest_failed if closest else ["no registrations"]
 
     # priority desc, then insertion order (stable)
-    full_matches.sort(key=lambda r: r.get("priority", 0), reverse=True)
+    full_matches.sort(key=lambda r: r.priority, reverse=True)
     return full_matches[0], []
