@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import datetime
 from typing import Any, AsyncIterator
 
 from loguru import logger
@@ -11,16 +10,13 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.skill_folder import (
     attach_skill_folder_files,
-    find_owning_skill_md_paths,
 )
 from gitlab.helpers.skill_plugin import (
     PLUGIN_MANIFEST_PATHS,
     PluginProvider,
     detect_directory_providers,
     enrich_file_to_skill,
-    matches_skill_path,
     normalize_plugin,
-    path_touches_plugin,
     plugin_search_paths,
     provider_for_manifest_path,
 )
@@ -51,95 +47,6 @@ async def resync_skills(
         yield skills
 
 
-async def resync_skills_incremental(
-    client: GitLabClient,
-    selector: GitLabSkillSelector,
-    project_params: dict[str, Any] | None,
-    since: datetime,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Rebuild only the skills whose SKILL.md or bundle files changed since ``since``.
-
-    A project whose compare fails falls back to the full per-project search.
-    """
-    path_entries = selector.paths
-    path_globs = [entry.path for entry in path_entries]
-    patterns_by_repo, unrestricted_patterns = _partition_skill_patterns(path_entries)
-    repos_scope = [] if unrestricted_patterns else list(patterns_by_repo.keys())
-    emitted_keys: set[str] = set()
-
-    async for projects_batch in _iter_projects(client, repos_scope, project_params):
-        for project in projects_batch:
-            repo = project["path_with_namespace"]
-            patterns = list(
-                dict.fromkeys(unrestricted_patterns + patterns_by_repo.get(repo, []))
-            )
-            ref = client._project_tree_ref(project)
-            if not patterns or not ref:
-                continue
-
-            changed = await client.changed_paths_since(repo, since, ref)
-            if changed.paths is None:
-                async for files_batch in client.search_files_matching_patterns(
-                    patterns, skip_parsing=True, repositories=[project]
-                ):
-                    skills = await _build_skills(
-                        client,
-                        files_batch,
-                        path_globs,
-                        emitted_keys,
-                        selector.include_skill_folder,
-                    )
-                    if skills:
-                        yield skills
-                continue
-
-            skill_md_paths = await _changed_skill_md_paths(
-                client,
-                project,
-                ref,
-                changed.paths,
-                patterns,
-                selector.include_skill_folder,
-            )
-            if not skill_md_paths:
-                continue
-            files_batch = await client._process_file_batch(
-                [
-                    {"path": path, "ref": ref, "project_id": project["id"]}
-                    for path in sorted(skill_md_paths)
-                ],
-                repo,
-                skip_parsing=True,
-            )
-            skills = await _build_skills(
-                client,
-                files_batch,
-                path_globs,
-                emitted_keys,
-                selector.include_skill_folder,
-            )
-            if skills:
-                yield skills
-
-
-async def _changed_skill_md_paths(
-    client: GitLabClient,
-    project: dict[str, Any],
-    ref: str,
-    changed: list[str],
-    patterns: list[str],
-    include_skill_folder: bool,
-) -> set[str]:
-    """SKILL.md paths to rebuild: edited skills, plus owners of changed bundle files."""
-    direct = {path for path in changed if matches_skill_path(path, patterns)}
-    if not include_skill_folder:
-        return direct
-    owners = await find_owning_skill_md_paths(
-        client, project, ref, set(changed), patterns
-    )
-    return direct | owners
-
-
 async def _resync_skills_via_tree(
     client: GitLabClient,
     path_entries: list[GitLabSkillPath],
@@ -149,7 +56,7 @@ async def _resync_skills_via_tree(
     include_skill_folder: bool,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """One minimized tree-walk set per project, matching all applicable globs."""
-    patterns_by_repo, unrestricted_patterns = _partition_skill_patterns(path_entries)
+    patterns_by_repo, unrestricted_patterns = partition_skill_patterns(path_entries)
 
     # Common case: same globs for every project — concurrent tree walks.
     if unrestricted_patterns and not patterns_by_repo:
@@ -158,7 +65,7 @@ async def _resync_skills_via_tree(
             skip_parsing=True,
             params=project_params,
         ):
-            skills = await _build_skills(
+            skills = await build_skills(
                 client, files_batch, path_globs, emitted_keys, include_skill_folder
             )
             if skills:
@@ -166,7 +73,7 @@ async def _resync_skills_via_tree(
         return
 
     repos_scope = [] if unrestricted_patterns else list(patterns_by_repo.keys())
-    async for projects_batch in _iter_projects(client, repos_scope, project_params):
+    async for projects_batch in iter_projects(client, repos_scope, project_params):
         for project in projects_batch:
             repo = project["path_with_namespace"]
             patterns = list(
@@ -179,14 +86,14 @@ async def _resync_skills_via_tree(
                 skip_parsing=True,
                 repositories=[project],
             ):
-                skills = await _build_skills(
+                skills = await build_skills(
                     client, files_batch, path_globs, emitted_keys, include_skill_folder
                 )
                 if skills:
                     yield skills
 
 
-def _partition_skill_patterns(
+def partition_skill_patterns(
     path_entries: list[GitLabSkillPath],
 ) -> tuple[dict[str, list[str]], list[str]]:
     patterns_by_repo: dict[str, list[str]] = defaultdict(list)
@@ -200,7 +107,7 @@ def _partition_skill_patterns(
     return patterns_by_repo, unrestricted
 
 
-async def _build_skills(
+async def build_skills(
     client: GitLabClient,
     files_batch: list[dict[str, Any]],
     path_globs: list[str],
@@ -245,55 +152,13 @@ async def resync_plugins(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     # Projects are processed one page at a time and dropped once yielded, instead
     # of holding every project of the org until the last search path completes.
-    async for projects_batch in _iter_projects(client, selector.repos, project_params):
-        batch = await _plugins_for_projects(client, projects_batch, selector.providers)
+    async for projects_batch in iter_projects(client, selector.repos, project_params):
+        batch = await plugins_for_projects(client, projects_batch, selector.providers)
         if batch:
             yield batch
 
 
-async def resync_plugins_incremental(
-    client: GitLabClient,
-    selector: GitLabPluginSelector,
-    project_params: dict[str, Any] | None,
-    since: datetime,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Rebuild only the plugins of projects whose changes touch a plugin manifest or directory."""
-    providers = selector.providers
-    async for projects_batch in _iter_projects(client, selector.repos, project_params):
-        touched = [
-            project
-            for project in projects_batch
-            if await _plugin_changed(client, project, since, providers)
-        ]
-        if not touched:
-            continue
-        batch = await _plugins_for_projects(client, touched, providers)
-        if batch:
-            yield batch
-
-
-async def _plugin_changed(
-    client: GitLabClient,
-    project: dict[str, Any],
-    since: datetime,
-    providers: list[PluginProvider],
-) -> bool:
-    """True when the project's plugin may have changed since ``since``.
-
-    A failed or partial compare counts as changed, so the project is rebuilt in full.
-    """
-    ref = client._project_tree_ref(project)
-    if not ref:
-        return False
-    changed = await client.changed_paths_since(
-        project["path_with_namespace"], since, ref
-    )
-    if changed.paths is None:
-        return True
-    return any(path_touches_plugin(path, providers) for path in changed.paths)
-
-
-async def _plugins_for_projects(
+async def plugins_for_projects(
     client: GitLabClient,
     projects: list[dict[str, Any]],
     providers: list[PluginProvider],
@@ -334,7 +199,7 @@ async def _plugins_for_projects(
     return batch
 
 
-async def _iter_projects(
+async def iter_projects(
     client: GitLabClient,
     repos: list[str],
     project_params: dict[str, Any] | None,

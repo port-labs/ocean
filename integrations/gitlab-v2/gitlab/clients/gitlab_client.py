@@ -237,7 +237,7 @@ class GitLabClient:
         base_sha = push["push_data"].get("commit_from")
         if not base_sha or base_sha == GIT_NULL_SHA:
             logger.info(
-                f"Branch '{ref}' in {project_path} was created after the cursor, full listing needed"
+                f"Branch '{ref}' in {project_path} was created after the compared time, full listing needed"
             )
             return None
         base = await self.rest.send_api_request(
@@ -1114,13 +1114,13 @@ class GitLabClient:
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Incremental counterpart of ``search_files_in_projects`` for the tree strategy.
+        """Like ``search_files_in_projects`` with the tree strategy, for files changed since ``since``.
 
-        Only files changed since ``since`` are fetched. Projects whose diff cannot be
-        trusted fall back to a full tree walk (see ``changed_paths_since``).
+        Projects whose diff cannot be trusted fall back to a full tree walk
+        (see ``changed_paths_since``).
         """
         logger.info(
-            f"Starting incremental file search for '{query.path}' since {since.isoformat()}"
+            f"Starting search for files changed in '{query.path}' since {since.isoformat()}"
         )
 
         if repositories:
@@ -1212,7 +1212,7 @@ class GitLabClient:
         since: datetime,
         branch: Optional[str] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Incremental counterpart of ``get_repository_folders``.
+        """Like ``get_repository_folders``, limited to changes since ``since``.
 
         Yields only folders under ``path`` that contain a path changed since
         ``since``. Falls back to the full folder listing when the diff cannot be trusted.

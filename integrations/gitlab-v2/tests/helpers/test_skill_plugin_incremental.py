@@ -9,7 +9,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.utils import ChangedPaths
-from gitlab.helpers import skill_plugin_resync as resync
+from gitlab.helpers import incremental
 
 pytestmark = pytest.mark.asyncio
 
@@ -63,7 +63,7 @@ def _selector(
 async def test_plugin_changed_when_compare_unavailable(client: GitLabClient) -> None:
     client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
 
-    assert await resync._plugin_changed(client, PROJECT, SINCE, ["claude"]) is True
+    assert await incremental._plugin_changed(client, PROJECT, SINCE, ["claude"]) is True
 
 
 async def test_plugin_changed_on_manifest_change(client: GitLabClient) -> None:
@@ -71,7 +71,7 @@ async def test_plugin_changed_on_manifest_change(client: GitLabClient) -> None:
         return_value=ChangedPaths(paths=["README.md", ".claude-plugin/plugin.json"])
     )
 
-    assert await resync._plugin_changed(client, PROJECT, SINCE, ["claude"]) is True
+    assert await incremental._plugin_changed(client, PROJECT, SINCE, ["claude"]) is True
 
 
 async def test_plugin_unchanged_for_unrelated_paths(client: GitLabClient) -> None:
@@ -79,7 +79,9 @@ async def test_plugin_unchanged_for_unrelated_paths(client: GitLabClient) -> Non
         return_value=ChangedPaths(paths=["src/app.py"])
     )
 
-    assert await resync._plugin_changed(client, PROJECT, SINCE, ["claude"]) is False
+    assert (
+        await incremental._plugin_changed(client, PROJECT, SINCE, ["claude"]) is False
+    )
 
 
 async def test_plugin_incremental_rebuilds_only_touched_projects(
@@ -108,16 +110,16 @@ async def test_plugin_incremental_rebuilds_only_touched_projects(
 
     with (
         patch.object(
-            resync,
-            "_iter_projects",
+            incremental,
+            "iter_projects",
             side_effect=lambda *a, **k: _gen([[touched, untouched]]),
         ),
         patch.object(
-            resync, "_plugins_for_projects", AsyncMock(return_value=rebuilt)
+            incremental, "plugins_for_projects", AsyncMock(return_value=rebuilt)
         ) as rebuild,
     ):
         batches = await _collect(
-            resync.resync_plugins_incremental(
+            incremental.resync_plugins_incremental(
                 client,
                 cast(Any, SimpleNamespace(providers=["claude"], repos=[])),
                 None,
@@ -138,10 +140,10 @@ async def test_skill_incremental_fetches_only_changed_skill_md(
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
     with patch.object(
-        resync, "_iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
+        incremental, "iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
     ):
         await _collect(
-            resync.resync_skills_incremental(client, _selector(), None, SINCE)
+            incremental.resync_skills_incremental(client, _selector(), None, SINCE)
         )
 
     files = client._process_file_batch.call_args.args[0]
@@ -155,10 +157,10 @@ async def test_skill_incremental_skips_unrelated_changes(client: GitLabClient) -
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
     with patch.object(
-        resync, "_iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
+        incremental, "iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
     ):
         await _collect(
-            resync.resync_skills_incremental(client, _selector(), None, SINCE)
+            incremental.resync_skills_incremental(client, _selector(), None, SINCE)
         )
 
     client._process_file_batch.assert_not_awaited()
@@ -173,10 +175,10 @@ async def test_skill_incremental_falls_back_to_full_search_per_project(
     )
 
     with patch.object(
-        resync, "_iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
+        incremental, "iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
     ):
         await _collect(
-            resync.resync_skills_incremental(client, _selector(), None, SINCE)
+            incremental.resync_skills_incremental(client, _selector(), None, SINCE)
         )
 
     assert client.search_files_matching_patterns.call_args.kwargs["repositories"] == [
@@ -194,16 +196,16 @@ async def test_skill_incremental_adds_owner_for_bundle_file(
 
     with (
         patch.object(
-            resync, "_iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
+            incremental, "iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
         ),
         patch.object(
-            resync,
+            incremental,
             "find_owning_skill_md_paths",
             AsyncMock(return_value={"skills/foo/SKILL.md"}),
         ),
     ):
         await _collect(
-            resync.resync_skills_incremental(
+            incremental.resync_skills_incremental(
                 client, _selector(include_skill_folder=True), None, SINCE
             )
         )
@@ -221,10 +223,10 @@ async def test_bundle_file_ignored_without_include_skill_folder(
     client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
     with patch.object(
-        resync, "_iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
+        incremental, "iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
     ):
         await _collect(
-            resync.resync_skills_incremental(client, _selector(), None, SINCE)
+            incremental.resync_skills_incremental(client, _selector(), None, SINCE)
         )
 
     client._process_file_batch.assert_not_awaited()

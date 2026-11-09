@@ -33,12 +33,12 @@ from gitlab.helpers.incremental import (
     build_incremental_pipeline_params,
     build_incremental_project_updated_params,
     build_incremental_projects_params,
+    resync_plugins_incremental,
+    resync_skills_incremental,
 )
 from gitlab.helpers.skill_plugin_resync import (
     resync_plugins,
-    resync_plugins_incremental,
     resync_skills,
-    resync_skills_incremental,
 )
 from integration import (
     GitLabFilesResourceConfig,
