@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add Cloud Control exporter and resync dispatch for custom AWS resource kinds (ListResources / GetResource, regional/global scope)
