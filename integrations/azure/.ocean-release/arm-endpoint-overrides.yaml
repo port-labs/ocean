@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Optional ARM management base URL and Entra authority host overrides for load tests and private endpoints; production defaults to public Azure when unset
