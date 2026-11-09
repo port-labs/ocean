@@ -86,6 +86,28 @@ def ancestor_dirs(path: str) -> set[str]:
     return {"/".join(parts[:depth]) for depth in range(1, len(parts) + 1)}
 
 
+def _changed_folders(path: str, changed_paths: list[str]) -> set[str]:
+    """Folders matched by the folder selector *path* that contain a changed path.
+
+    A wildcard *path* is matched as a glob; a concrete *path* matches its direct
+    child folders, like the full folder listing.
+    """
+    prefix = path.rstrip("/")
+    is_wildcard = _is_wildcard_path(path)
+
+    def is_match(folder: str) -> bool:
+        if is_wildcard:
+            return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
+        return folder.rpartition("/")[0] == prefix
+
+    return {
+        folder
+        for changed_path in changed_paths
+        for folder in ancestor_dirs(changed_path)
+        if is_match(folder)
+    }
+
+
 def _literal_tree_prefix(path: str) -> str:
     """Return the fixed directory prefix before the first glob segment.
 
@@ -1234,20 +1256,7 @@ class GitLabClient:
                 yield folders_batch
             return
 
-        prefix = path.rstrip("/")
-        is_wildcard = _is_wildcard_path(path)
-
-        def is_match(folder: str) -> bool:
-            if is_wildcard:
-                return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
-            return folder.rpartition("/")[0] == prefix
-
-        changed_dirs = {
-            folder
-            for changed_path in changed.paths
-            for folder in ancestor_dirs(changed_path)
-            if is_match(folder)
-        }
+        changed_dirs = _changed_folders(path, changed.paths)
         if not changed_dirs:
             logger.info(f"No changed folders under '{path}' in {repository}")
             return
@@ -1255,14 +1264,26 @@ class GitLabClient:
         logger.info(
             f"Found {len(changed_dirs)} changed folders under '{path}' in {repository}"
         )
-        for parent in sorted({folder.rpartition("/")[0] for folder in changed_dirs}):
+        async for folders_batch in self._get_folders_by_path(
+            project, changed_dirs, effective_branch
+        ):
+            yield folders_batch
+
+    async def _get_folders_by_path(
+        self,
+        project: dict[str, Any],
+        folder_paths: set[str],
+        branch: str,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch the tree entries of *folder_paths*, listing each parent directory once."""
+        for parent in sorted({folder.rpartition("/")[0] for folder in folder_paths}):
             async for items_batch in self.get_repository_tree(
-                project, parent, effective_branch, recursive=False
+                project, parent, branch, recursive=False
             ):
                 folders_batch = [
-                    {"folder": item, "repo": project, "__branch": effective_branch}
+                    {"folder": item, "repo": project, "__branch": branch}
                     for item in items_batch
-                    if item["type"] == "tree" and item["path"] in changed_dirs
+                    if item["type"] == "tree" and item["path"] in folder_paths
                 ]
                 if folders_batch:
                     yield folders_batch
