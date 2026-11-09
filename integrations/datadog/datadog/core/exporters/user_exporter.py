@@ -53,7 +53,7 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
         url = f"{self.client.api_url}/api/v2/audit/events/search"
-        extra_body = {
+        body = {
             "filter": {
                 "query": CHANGED_USERS_AUDIT_QUERY,
                 "from": since.astimezone(timezone.utc).isoformat(),
@@ -62,26 +62,27 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
             "sort": "-timestamp",
         }
 
-        seen: set[str] = set()
-        async for events in self._paginate_by_search_cursor(url, extra_body=extra_body):
-            users: list[dict[str, Any]] = []
+        # A user can appear in many events; a dict dedupes and keeps the order
+        user_ids: dict[str, None] = {}
+        async for events in self._paginate_by_search_cursor(url, body):
             for event in events:
-                user_id = self._changed_user_id(event)
-                if not user_id or user_id in seen:
-                    continue
-                seen.add(user_id)
-                try:
-                    user = await self.get_resource(GetUserOptions(resource_id=user_id))
-                except HTTPStatusError:
-                    logger.warning(
-                        f"Skipping user '{user_id}' from audit events; Datadog user fetch failed"
-                    )
-                    continue
-                if user:
-                    users.append(user)
+                if user_id := self._changed_user_id(event):
+                    user_ids[user_id] = None
 
-            if users:
-                yield users
+        users: list[dict[str, Any]] = []
+        for user_id in user_ids:
+            try:
+                user = await self.get_resource(GetUserOptions(resource_id=user_id))
+            except HTTPStatusError:
+                logger.warning(
+                    f"Skipping user '{user_id}' from audit events; Datadog user fetch failed"
+                )
+                continue
+            if user:
+                users.append(user)
+
+        if users:
+            yield users
 
     @staticmethod
     def _changed_user_id(event: dict[str, Any]) -> str | None:

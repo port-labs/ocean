@@ -140,10 +140,10 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
     async def _paginate_by_search_cursor(
         self,
         url: str,
+        body: dict[str, Any],
         *,
         data_key: str = "data",
         page_size: int = MAX_PAGE_SIZE,
-        extra_body: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Cursor-based pagination for POST search endpoints. Sends the previous
         response's meta.page.after as page.cursor until empty or no next cursor."""
@@ -152,9 +152,8 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             page: dict[str, Any] = {"limit": page_size}
             if cursor:
                 page["cursor"] = cursor
-            body: dict[str, Any] = {**(extra_body or {}), "page": page}
             result = await self.client.send_api_request(
-                url, json_data=body, method="POST"
+                url, json_data={**body, "page": page}, method="POST"
             )
 
             items = result.get(data_key, [])
