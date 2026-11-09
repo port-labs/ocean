@@ -1115,19 +1115,6 @@ class GitLabClient:
             if processed_batch:
                 yield processed_batch
 
-    async def _search_changed_files_in_repository(
-        self,
-        repo: str,
-        query: SearchQuery,
-        since: datetime,
-        skip_parsing: bool = False,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        project = await self.get_project(repo)
-        async for batch in self._search_changed_files_in_project(
-            project, query, since, skip_parsing
-        ):
-            yield batch
-
     async def search_changed_files_in_projects(
         self,
         query: SearchQuery,
@@ -1145,26 +1132,32 @@ class GitLabClient:
             f"Starting search for files changed in '{query.path}' since {since.isoformat()}"
         )
 
-        if repositories:
-            tasks = [
-                self._search_changed_files_in_repository(
-                    repo, query, since, skip_parsing
-                )
-                for repo in repositories
-            ]
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            return
-
-        async for projects_batch in self.get_projects(params=params):
+        async for projects_batch in self._iter_projects(repositories, params):
+            searchable, skipped = self._partition_projects_with_tree_ref(projects_batch)
+            self._log_skipped_projects_without_default_branch(skipped)
             tasks = [
                 self._search_changed_files_in_project(
                     project, query, since, skip_parsing
                 )
-                for project in projects_batch
+                for project in searchable
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
+
+    async def _iter_projects(
+        self,
+        repositories: list[str] | None,
+        params: Optional[dict[str, Any]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Yield the projects to search: *repositories* when given, else every project matching *params*."""
+        if repositories:
+            projects = await asyncio.gather(
+                *(self.get_project(repo) for repo in repositories)
+            )
+            yield [project for project in projects if project]
+            return
+        async for projects_batch in self.get_projects(params=params):
+            yield projects_batch
 
     async def get_repository_tree(
         self,
