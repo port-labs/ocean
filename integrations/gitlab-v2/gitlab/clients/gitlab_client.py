@@ -18,6 +18,7 @@ from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import (
+    PATH_GLOB_FLAGS,
     ChangedPaths,
     build_search_query,
     parse_file_content,
@@ -36,7 +37,6 @@ class AwardEmoji(BaseModel):
 
 # Same batch size as a full resync, whose repository tree pages use the default page size.
 CHANGED_FILES_BATCH_SIZE = RestClient.DEFAULT_PAGE_SIZE
-CHANGED_PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
 GIT_NULL_SHA = "0" * 40
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
@@ -1073,7 +1073,7 @@ class GitLabClient:
         matching_paths = [
             path
             for path in changed.paths
-            if glob.globmatch(path, match_pattern, flags=CHANGED_PATH_GLOB_FLAGS)
+            if glob.globmatch(path, match_pattern, flags=PATH_GLOB_FLAGS)
         ]
         if not matching_paths:
             logger.info(f"No changed files matching '{query.path}' in {project_path}")
@@ -1199,9 +1199,7 @@ class GitLabClient:
                 if item["type"] == "tree"
                 and (
                     not is_wildcard
-                    or glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
+                    or glob.globmatch(item["path"], path, flags=PATH_GLOB_FLAGS)
                 )
             ]
             if folders_batch:
@@ -1241,7 +1239,7 @@ class GitLabClient:
 
         def is_match(folder: str) -> bool:
             if is_wildcard:
-                return glob.globmatch(folder, path, flags=CHANGED_PATH_GLOB_FLAGS)
+                return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
             return folder.rpartition("/")[0] == prefix
 
         changed_dirs = {
@@ -1715,7 +1713,7 @@ class GitLabClient:
                         glob.globmatch(
                             item["path"],
                             match_pattern,
-                            flags=glob.GLOBSTAR | glob.DOTGLOB,
+                            flags=PATH_GLOB_FLAGS,
                         )
                         for match_pattern in match_patterns
                     )

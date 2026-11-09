@@ -7,7 +7,13 @@ from enum import StrEnum
 from typing import Any, Optional, Union
 
 from loguru import logger
+from wcmatch import glob
 from yaml import YAMLError, safe_load
+
+# matches dotfiles Matching is case-sensitive, like git paths.
+PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
+# Same, ignoring case; used to discover files whose casing varies (e.g. SKILL.md).
+CASE_INSENSITIVE_PATH_GLOB_FLAGS = PATH_GLOB_FLAGS | glob.IGNORECASE
 
 # GitLab project/group access-token bots have system-generated usernames like
 # "project_<id>_bot_<hex>" or "group_<id>_bot_<hex>".  The members/all API
