@@ -102,10 +102,8 @@ async def ensure_git_mcp_credential(
         )
         if vault_match is None:
             logger.info(f"Creating git MCP vault '{vault_name}'")
-            raw_vault: Any = await client.beta.vaults.create(display_name=vault_name)
-        else:
-            raw_vault = vault_match
-        vault_id = cast(BetaManagedAgentsVault, raw_vault).id
+            vault_match = await client.beta.vaults.create(display_name=vault_name)
+        vault_id = cast(BetaManagedAgentsVault, vault_match).id
 
     credential_match = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.credentials.list(vault_id=vault_id)),
