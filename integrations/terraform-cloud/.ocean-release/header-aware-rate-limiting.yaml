@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Paced requests from HCP Terraform's rate limit headers instead of a fixed 25 requests per second
