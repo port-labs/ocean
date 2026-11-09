@@ -50,20 +50,28 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.models import WorkflowNodeRun
 
-from actions.utils import build_external_id
-from webhook_processors.session_webhook_processor import SessionWebhookProcessor
-from webhook_processors.trigger_agent_webhook_processor import (
+from claude_managed_agents.actions.utils import build_external_id
+from claude_managed_agents.webhook_processors.session_webhook_processor import (
+    SessionWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.trigger_agent_webhook_processor import (
     _INTERACTION_EVENT_TYPES,
     SESSION_COMPLETED_STATUS_LABEL,
     SESSION_FAILED_STATUS_LABEL,
     TriggerAgentWebhookProcessor,
 )
-from webhook_processors.agent_webhook_processor import AgentWebhookProcessor
-from webhook_processors.environment_webhook_processor import EnvironmentWebhookProcessor
-from webhook_processors.memory_store_webhook_processor import (
+from claude_managed_agents.webhook_processors.agent_webhook_processor import (
+    AgentWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.environment_webhook_processor import (
+    EnvironmentWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.memory_store_webhook_processor import (
     MemoryStoreWebhookProcessor,
 )
-from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
+from claude_managed_agents.webhook_processors.vault_webhook_processor import (
+    VaultWebhookProcessor,
+)
 from anthropic.types.beta import BetaManagedAgentsSessionUsageEvent
 from anthropic.types.beta.beta_managed_agents_session_usage import (
     BetaManagedAgentsSessionUsage,
@@ -148,7 +156,7 @@ async def test_session_upsert_event_fetches_resource() -> None:
         return_value=sdk_session(status="running", usage=None)
     )
     with patch(
-        "webhook_processors.session_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.session_webhook_processor.create_anthropic_client",
         return_value=client,
     ):
         results = await processor.handle_event(payload, None)
@@ -203,7 +211,7 @@ async def test_agent_upsert_event_fetches_resource() -> None:
     agent.to_dict.return_value = {"id": "a1", "name": "bot"}
     client.get_agent = AsyncMock(return_value=agent)
     with patch(
-        "webhook_processors.agent_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.agent_webhook_processor.create_anthropic_client",
         return_value=client,
     ):
         results = await processor.handle_event(payload, None)
@@ -232,7 +240,7 @@ async def test_environment_upsert_event_fetches_resource() -> None:
     client = MagicMock()
     client.get_environment = AsyncMock(return_value=environment)
     with patch(
-        "webhook_processors.environment_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.environment_webhook_processor.create_anthropic_client",
         return_value=client,
     ):
         results = await processor.handle_event(payload, None)
@@ -269,7 +277,7 @@ async def test_memory_store_upsert_event_fetches_resource() -> None:
     client = MagicMock()
     client.get_memory_store = AsyncMock(return_value=memory_store)
     with patch(
-        "webhook_processors.memory_store_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.memory_store_webhook_processor.create_anthropic_client",
         return_value=client,
     ):
         results = await processor.handle_event(payload, None)
@@ -434,7 +442,7 @@ def _patch_session_events(
     client.get_session_events = _gen
     _stub_session_usage_client(client)
     return patch(
-        "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
         return_value=client,
     )
 
@@ -489,7 +497,10 @@ async def test_trigger_reports_success_without_error_logs() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -541,7 +552,10 @@ async def test_trigger_reports_relative_usage_against_prior_session_usage() -> N
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
         _patch_session_events(
             anchor, [batch], prior_idle=prior_idle, prior_usage=prior_usage
         ),
@@ -572,8 +586,11 @@ async def test_trigger_reports_response_on_success() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(
             anchor,
             [batch],
@@ -613,8 +630,11 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(
             anchor,
             [batch],
@@ -655,8 +675,11 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -698,8 +721,11 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -730,8 +756,11 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [failed_batch]),
     ):
         await processor.handle_event(payload, None)
@@ -753,8 +782,11 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, []),
     ):
         await processor.handle_event(payload, None)
@@ -793,9 +825,12 @@ async def test_trigger_completes_run_when_error_inspection_fails() -> None:
     _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -824,7 +859,10 @@ async def test_trigger_skips_when_report_disabled() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
         _patch_session_events(anchor, []),
     ):
         await processor.handle_event(payload, None)
@@ -868,9 +906,12 @@ async def test_trigger_new_session_skips_prior_idle_lookup() -> None:
     _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -924,9 +965,12 @@ async def test_trigger_delayed_webhook_anchors_prior_run() -> None:
     _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -1003,10 +1047,13 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
     _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -1100,10 +1147,13 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
     _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -1142,7 +1192,10 @@ async def test_trigger_completion_includes_url_when_session_fetch_fails() -> Non
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
         _patch_session_events(anchor, [batch]) as create_client,
     ):
         client = create_client.return_value
