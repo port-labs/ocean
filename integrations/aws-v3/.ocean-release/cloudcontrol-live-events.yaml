@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added CloudTrail live events for custom kinds. Cloud Control API CreateResource, UpdateResource, and DeleteResource calls now sync the resource through Cloud Control GetResource. Types that already have a first-class kind are skipped.

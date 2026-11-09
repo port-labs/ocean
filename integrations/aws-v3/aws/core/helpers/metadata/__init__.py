@@ -7,6 +7,7 @@ from aws.core.helpers.metadata.types import (
     ExporterMetadata,
     LiveEventContext,
     LiveEventFactories,
+    NormalizedEvent,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "ExporterMetadata",
     "LiveEventContext",
     "LiveEventFactories",
+    "NormalizedEvent",
 ]

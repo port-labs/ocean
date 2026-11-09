@@ -3,6 +3,9 @@ from typing import Any
 
 from aws_integration.overrides import AWSCustomKindSelector, AWSResourceSelector
 from aws.core.exporters.cloudcontrol.resource.exporter import CloudControlExporter
+from aws.core.exporters.cloudcontrol.resource.live_events import (
+    build_cloud_control_live_events,
+)
 from aws.core.exporters.cloudcontrol.resource.models import (
     PaginatedCloudControlResourceRequest,
 )
@@ -23,6 +26,7 @@ class CloudControlExporterMetadata(ExporterMetadata):
         return cls(
             exporter=CloudControlExporter,
             paginated_request_model=PaginatedCloudControlResourceRequest,
+            live_events=build_cloud_control_live_events(type_name),
             type_name=type_name,
         )
 

@@ -2,9 +2,9 @@
 
 Maps CloudTrail ``eventName`` values to a normalized event that the single
 ``CloudTrailWebhookProcessor`` can route through ``kind_to_export_metadata``.
+Cloud Control API mutations on custom kinds fall through to
+``cloud_control_parser``.
 """
-
-from dataclasses import dataclass
 
 from loguru import logger
 
@@ -17,6 +17,11 @@ from aws.core.helpers.metadata.types import (
     CloudTrailEventAction,
     EventBridgeCloudTrailPayload,
     EventNameMapping,
+    NormalizedEvent,
+)
+from aws.webhook.cloud_control_parser import (
+    is_supported_cloud_control_event,
+    parse_cloud_control_event,
 )
 
 __all__ = [
@@ -29,16 +34,6 @@ __all__ = [
     "is_supported_cloudtrail_event",
     "parse_cloudtrail_event",
 ]
-
-
-@dataclass(frozen=True)
-class NormalizedEvent:
-    kind: str
-    identifier: str
-    account_id: str
-    region: str
-    action: CloudTrailEventAction
-    event_name: str
 
 
 def _get_detail(payload: EventBridgeCloudTrailPayload) -> CloudTrailDetail:
@@ -68,7 +63,9 @@ def is_supported_cloudtrail_event(payload: EventBridgeCloudTrailPayload) -> bool
             f"skipping live event (eventName={detail.get('eventName')})"
         )
         return False
-    return _resolve_event_mapping(detail) is not None
+    return _resolve_event_mapping(
+        detail
+    ) is not None or is_supported_cloud_control_event(detail)
 
 
 def parse_cloudtrail_event(
@@ -85,7 +82,7 @@ def parse_cloudtrail_event(
 
     mapping = _resolve_event_mapping(detail)
     if mapping is None:
-        return None
+        return parse_cloud_control_event(payload, detail)
 
     identifier = mapping.extract_identifier(detail)
     account_id = payload.get("account") or detail.get("recipientAccountId")

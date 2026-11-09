@@ -2,7 +2,7 @@
 
 All supported kinds share one processor. Per-kind behavior is delegated to
 ``cloudtrail_parser`` (event normalization) and ``kind_to_export_metadata``
-(fetch and delete payloads).
+(fetch and delete payloads). Custom kinds are fetched via Cloud Control.
 """
 
 from typing import Any, cast
@@ -23,6 +23,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from aws_integration.overrides import AWSResourceConfig, selector_include_actions
 from aws.auth.session_factory import get_session_for_account
+from aws.core.exporters.cloudcontrol.resource.metadata import (
+    CloudControlExporterMetadata,
+)
 from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.core.helpers.metadata.types import (
     ExporterMetadata,
@@ -32,6 +35,7 @@ from aws.core.helpers.metadata.types import (
 from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import (
     is_access_denied_exception,
+    is_cloud_control_type_unavailable_exception,
     is_resource_not_found_exception,
 )
 from aws.webhook.cloudtrail_parser import (
@@ -98,8 +102,11 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
     def _resolve_live_event_metadata(
         self, parsed: NormalizedEvent
     ) -> tuple[ExporterMetadata, LiveEventFactories] | None:
-        metadata = kind_to_export_metadata.get(ObjectKind(parsed.kind))
-        if metadata is None or metadata.live_events is None:
+        if parsed.kind in kind_to_export_metadata:
+            metadata = kind_to_export_metadata[ObjectKind(parsed.kind)]
+        else:
+            metadata = CloudControlExporterMetadata.for_type(parsed.kind)
+        if metadata.live_events is None:
             logger.warning(
                 f"No live event metadata for kind {parsed.kind}; skipping live event"
             )
@@ -172,6 +179,12 @@ class CloudTrailWebhookProcessor(AbstractWebhookProcessor):
         try:
             resource = await exporter.get_resource(options)
         except Exception as error:
+            if is_cloud_control_type_unavailable_exception(error):
+                logger.warning(
+                    f"Cloud Control cannot fetch {parsed.kind} {parsed.identifier} in "
+                    f"region {parsed.region} ({error}); skipping"
+                )
+                return _EMPTY_RESULTS
             if is_resource_not_found_exception(error):
                 logger.warning(
                     f"Could not fetch {parsed.kind} {parsed.identifier} after live "

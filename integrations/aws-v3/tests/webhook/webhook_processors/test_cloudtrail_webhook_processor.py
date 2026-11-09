@@ -1250,3 +1250,141 @@ async def test_handle_event_codebuild_project_delete_returns_deleted_result(
             },
         )
     ]
+
+
+def _cloud_control_event(
+    event_name: str,
+    type_name: str = "AWS::IAM::Role",
+    identifier: str = "my-role",
+) -> dict[str, Any]:
+    return {
+        "account": _DEFAULT_ACCOUNT_ID,
+        "region": _DEFAULT_REGION,
+        "detail": {
+            "eventName": event_name,
+            "eventSource": "cloudcontrolapi.amazonaws.com",
+            "awsRegion": _DEFAULT_REGION,
+            "recipientAccountId": _DEFAULT_ACCOUNT_ID,
+            "requestParameters": {"typeName": type_name, "identifier": identifier},
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds_returns_custom_kind(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    event = WebhookEvent(
+        trace_id="t", payload=_cloud_control_event("UpdateResource"), headers={}
+    )
+    assert await processor.get_matching_kinds(event) == ["AWS::IAM::Role"]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_custom_kind_delete_returns_deleted_result(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    result = await processor.handle_event(
+        _cloud_control_event("DeleteResource", identifier="role-to-delete"), None
+    )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result("AWS::IAM::Role", {"Identifier": "role-to-delete"})
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_custom_kind_update_fetches_via_cloud_control(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    fake_resource = {
+        "Type": "AWS::IAM::Role",
+        "Properties": {"Identifier": "my-role", "RoleName": "my-role"},
+    }
+    mock_exporter = MagicMock()
+    mock_exporter.get_resource = AsyncMock(return_value=fake_resource)
+    exporter_cls = MagicMock(return_value=mock_exporter)
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            "aws.core.exporters.cloudcontrol.resource.metadata.CloudControlExporter",
+            exporter_cls,
+        ),
+    ):
+        result = await processor.handle_event(
+            _cloud_control_event("UpdateResource"), None
+        )
+
+    exporter_cls.assert_called_once_with("session")
+    request = mock_exporter.get_resource.await_args.args[0]
+    assert request.type_name == "AWS::IAM::Role"
+    assert request.identifier == "my-role"
+    assert request.region == _DEFAULT_REGION
+    assert request.account_id == _DEFAULT_ACCOUNT_ID
+    assert result.updated_raw_results == [fake_resource]
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_handle_event_custom_kind_not_found_treated_as_deleted(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    class FakeNotFound(Exception):
+        response = {"Error": {"Code": "ResourceNotFoundException"}}
+
+    mock_exporter = MagicMock()
+    mock_exporter.get_resource = AsyncMock(side_effect=FakeNotFound())
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            "aws.core.exporters.cloudcontrol.resource.metadata.CloudControlExporter",
+            MagicMock(return_value=mock_exporter),
+        ),
+    ):
+        result = await processor.handle_event(
+            _cloud_control_event("UpdateResource"), None
+        )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == [
+        _expected_deleted_raw_result("AWS::IAM::Role", {"Identifier": "my-role"})
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handle_event_custom_kind_type_unavailable_is_skipped(
+    processor: CloudTrailWebhookProcessor,
+) -> None:
+    class FakeTypeNotFound(Exception):
+        response = {
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Type not found in this region",
+            }
+        }
+
+    mock_exporter = MagicMock()
+    mock_exporter.get_resource = AsyncMock(side_effect=FakeTypeNotFound())
+
+    with (
+        patch(
+            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+        ),
+        patch(
+            "aws.core.exporters.cloudcontrol.resource.metadata.CloudControlExporter",
+            MagicMock(return_value=mock_exporter),
+        ),
+    ):
+        result = await processor.handle_event(
+            _cloud_control_event("UpdateResource"), None
+        )
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
