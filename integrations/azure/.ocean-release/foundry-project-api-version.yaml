@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Make Foundry ARM project discovery API version configurable via selector — root apiVersion on the project kind, nested project.apiVersion on other Foundry kinds.

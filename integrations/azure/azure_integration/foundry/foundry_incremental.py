@@ -16,6 +16,11 @@ class FoundryClientSideCutoffStrategy(ClientSideCutoffStrategy):
             return False
         raw = item.get(self._stop_field)
         if not raw:
+            # Foundry payloads may use camelCase (createdAt / updatedAt).
+            parts = self._stop_field.split("_")
+            camel = parts[0] + "".join(part.title() for part in parts[1:])
+            raw = item.get(camel)
+        if not raw:
             return False
         item_time = parse_foundry_timestamp(raw)
         if item_time is None:

@@ -9,9 +9,6 @@ from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
-from azure_integration.foundry.core.exporters.conversations_exporter import (
-    _normalize_conversation,
-)
 from azure_integration.foundry.core.options import ListResponsesOptions
 from azure_integration.foundry.foundry_incremental import (
     CONVERSATION_INCREMENTAL,
@@ -38,9 +35,9 @@ class ResponsesExporter:
     async def get_paginated_resources(
         self, options: ListResponsesOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        project_endpoint = options["project_endpoint"]
-        project_id = options["project_id"]
-        since_days = options.get("since_days", 30)
+        project_endpoint = options.project_endpoint
+        project_id = options.project_id
+        since_days = options.since_days
         response_cursor = active_incremental_cursor()
         response_cutoff = effective_conversation_cutoff(
             response_cursor, since_days=since_days
@@ -80,13 +77,12 @@ class ResponsesExporter:
                     strategy=RESPONSE_INCREMENTAL,
                 ):
                     for source in response_page:
-                        response_row = normalize_foundry_response(source)
-                        if not response_row:
+                        if not source.get("id"):
                             continue
                         touched = True
                         responses_batch.append(
                             enrich_with_project(
-                                dict(response_row),
+                                dict(source),
                                 project_endpoint=project_endpoint,
                                 project_id=project_id,
                             )
@@ -159,7 +155,7 @@ async def _register_conversation_rollups(
     try:
         batch = [
             enrich_with_project(
-                _normalize_conversation(dict(row)),
+                dict(row),
                 project_endpoint=project_endpoint,
                 project_id=project_id,
             )

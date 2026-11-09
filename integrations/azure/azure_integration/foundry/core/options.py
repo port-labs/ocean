@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from typing import NotRequired, Required, TypedDict
+from pydantic import BaseModel, Field
 
 
-class ProjectIdentifier(TypedDict):
+class ProjectIdentifier(BaseModel):
     """Identifies a Foundry project for project-scoped exporters."""
 
-    project_endpoint: Required[str]
-    project_id: Required[str]
+    project_endpoint: str
+    project_id: str
 
 
 class ListAgentsOptions(ProjectIdentifier):
-    include_versions: NotRequired[bool]
+    include_versions: bool = False
 
 
 class ListModelDeploymentsOptions(ProjectIdentifier):
@@ -19,11 +19,11 @@ class ListModelDeploymentsOptions(ProjectIdentifier):
 
 
 class ListConversationsOptions(ProjectIdentifier):
-    since_days: NotRequired[int | None]
+    since_days: int | None = Field(default=30)
 
 
 class ListResponsesOptions(ProjectIdentifier):
-    since_days: NotRequired[int | None]
+    since_days: int | None = Field(default=30)
 
 
 class ListMemoryStoresOptions(ProjectIdentifier):

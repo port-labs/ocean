@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -12,7 +10,6 @@ from azure_integration.foundry.foundry_incremental import CONVERSATION_INCREMENT
 from azure_integration.foundry.helpers.utils import (
     effective_conversation_cutoff,
     enrich_with_project,
-    timestamp_to_iso,
 )
 
 
@@ -25,9 +22,9 @@ class ConversationsExporter:
     async def get_paginated_resources(
         self, options: ListConversationsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        project_endpoint = options["project_endpoint"]
-        project_id = options["project_id"]
-        since_days = options.get("since_days", 30)
+        project_endpoint = options.project_endpoint
+        project_id = options.project_id
+        since_days = options.since_days
         incremental_cursor = active_incremental_cursor()
         cutoff = effective_conversation_cutoff(
             incremental_cursor, since_days=since_days
@@ -45,7 +42,7 @@ class ConversationsExporter:
         ):
             batch = [
                 enrich_with_project(
-                    _normalize_conversation(item),
+                    dict(item),
                     project_endpoint=project_endpoint,
                     project_id=project_id,
                 )
@@ -53,30 +50,3 @@ class ConversationsExporter:
             ]
             if batch:
                 yield batch
-
-
-def _normalize_conversation(item: dict[str, Any]) -> dict[str, Any]:
-    normalized = dict(item)
-    conversation_id = item.get("id")
-    if conversation_id is not None:
-        normalized["id"] = conversation_id
-    created_iso = timestamp_to_iso(item.get("created_at") or item.get("createdAt"))
-    if created_iso:
-        normalized["created_at"] = created_iso
-    metadata = item.get("metadata")
-    if isinstance(metadata, dict):
-        normalized["metadata"] = metadata
-    normalized["prompt_tokens"] = int(item.get("prompt_tokens") or 0)
-    normalized["completion_tokens"] = int(item.get("completion_tokens") or 0)
-    normalized["total_tokens"] = int(item.get("total_tokens") or 0)
-    if item.get("tool_call_count") is not None:
-        normalized["tool_call_count"] = int(item["tool_call_count"])
-    agents = item.get("participant_agent_ids")
-    normalized["participant_agent_ids"] = (
-        list(agents) if isinstance(agents, list) else []
-    )
-    models = item.get("participant_model_deployment_ids")
-    normalized["participant_model_deployment_ids"] = (
-        list(models) if isinstance(models, list) else []
-    )
-    return normalized
