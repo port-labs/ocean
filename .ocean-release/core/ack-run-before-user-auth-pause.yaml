@@ -1,6 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: >-
-  Acknowledge a workflow node run before pausing it for user authentication when
-  the rate-limit check finds no stored user token, so Port does not offer the run
-  to another claim while it waits for the user.
