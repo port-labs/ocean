@@ -5,13 +5,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from actions.create_agent_executor import (
+from claude_managed_agents.actions.create_agent_executor import (
     CreateAgentExecutor,
 )
-from actions.trigger_agent_executor import (
+from claude_managed_agents.actions.trigger_agent_executor import (
     TriggerAgentExecutor,
 )
-from clients.anthropic_client import RateLimitInfo
+from claude_managed_agents.clients.anthropic_client import RateLimitInfo
 
 
 from tests.action_test_helpers import (
