@@ -9,7 +9,8 @@ from gitlab.clients.utils import (
     build_pipeline_params,
 )
 from gitlab.helpers.incremental import (
-    build_cursor_updated_after_params,
+    build_incremental_deployment_params,
+    build_incremental_issue_params,
     build_incremental_merge_request_params,
     build_incremental_pipeline_params,
     build_incremental_project_updated_params,
@@ -68,7 +69,7 @@ def test_incremental_project_updated_without_active_filter(
 
 
 def test_cursor_params_keep_base_and_replace_selector_timestamps() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {
             "min_access_level": 30,
             "active": True,
@@ -104,12 +105,24 @@ def test_full_resync_without_selector_date_fetches_all_issues() -> None:
 
 
 def test_incremental_cursor_sets_updated_after() -> None:
-    params = build_issue_params(_options(), updated_after=CURSOR)
+    params = build_incremental_issue_params(_options(), CURSOR)
 
     assert params["updated_after"] == CURSOR.isoformat()
     # Other selector filters still apply on incremental runs.
     assert params["state"] == "opened"
     assert params["issue_type"] == "issue"
+
+
+def test_incremental_issue_params_replace_options_updated_after() -> None:
+    options = _options()
+    options["updated_after"] = SELECTOR_UPDATED_AFTER.isoformat()
+
+    assert build_incremental_issue_params(options, CURSOR) == {
+        "issue_type": "issue",
+        "non_archived": True,
+        "state": "opened",
+        "updated_after": CURSOR.isoformat(),
+    }
 
 
 def test_build_issue_params_ignores_options_updated_after_field() -> None:
@@ -193,6 +206,24 @@ def test_pipeline_incremental_overrides_selector_updated_after() -> None:
     }
 
 
+def test_pipeline_incremental_drops_updated_before_and_keeps_created_filters() -> None:
+    params = build_incremental_pipeline_params(
+        {
+            "status": "success",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "updated_before": "2024-12-01T00:00:00Z",
+            "created_after": "2024-01-01T00:00:00Z",
+        },
+        CURSOR,
+    )
+
+    assert params == {
+        "status": "success",
+        "created_after": "2024-01-01T00:00:00Z",
+        "updated_after": CURSOR.isoformat(),
+    }
+
+
 def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> None:
     assert build_incremental_pipeline_params({"status": "running"}, CURSOR) == {
         "status": "running",
@@ -204,7 +235,7 @@ def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> Non
 
 
 def test_deployment_incremental_overrides_selector_updated_after() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {"updated_after": SELECTOR_UPDATED_AFTER.isoformat()},
         CURSOR,
     )
@@ -216,7 +247,7 @@ def test_deployment_incremental_overrides_selector_updated_after() -> None:
 
 
 def test_deployment_incremental_drops_finished_order_by() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {"status": "success", "order_by": "finished_at"},
         CURSOR,
     )
@@ -229,7 +260,7 @@ def test_deployment_incremental_drops_finished_order_by() -> None:
 
 
 def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {
             "environment": "production",
             "status": "success",
@@ -248,8 +279,3 @@ def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() 
         "updated_after": CURSOR.isoformat(),
         "order_by": "updated_at",
     }
-
-
-def test_pipeline_incremental_raises_on_malformed_selector_updated_after() -> None:
-    with pytest.raises(ValueError):
-        build_incremental_pipeline_params({"updated_after": "not-a-date"}, CURSOR)

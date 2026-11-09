@@ -27,7 +27,8 @@ from gitlab.helpers.utils import (
     enrich_resources_with_project,
 )
 from gitlab.helpers.incremental import (
-    build_cursor_updated_after_params,
+    build_incremental_deployment_params,
+    build_incremental_issue_params,
     build_incremental_merge_request_params,
     build_incremental_pipeline_params,
     build_incremental_project_updated_params,
@@ -225,7 +226,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if sync_cursor is None:
         params = build_issue_params(options, selector.updated_after_datetime)
     else:
-        params = build_issue_params(options, sync_cursor)
+        params = build_incremental_issue_params(options, sync_cursor)
 
     async for groups_batch in client.get_groups(
         params=build_group_params(
@@ -784,7 +785,7 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sync_cursor = active_incremental_cursor()
     selector_params = selector.generate_query_params() or None
     params = (
-        build_cursor_updated_after_params(selector_params, sync_cursor)
+        build_incremental_deployment_params(selector_params, sync_cursor)
         if sync_cursor is not None
         else selector_params
     )
