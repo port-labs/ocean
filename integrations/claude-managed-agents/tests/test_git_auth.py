@@ -119,16 +119,26 @@ def test_attach_git_mcp_settings_adds_server_and_toolset() -> None:
     assert is_agent_configured_with_git_mcp(result["mcp_servers"], spec)
 
 
-def test_attach_git_mcp_is_idempotent() -> None:
+def test_attach_git_mcp_replaces_stale_server_with_same_name() -> None:
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+
     spec = AgentMcpEnsureSpec(
         name=GITHUB_MCP_SERVER_NAME,
         url=DEFAULT_GITHUB_MCP_SERVER_URL.rstrip("/"),
     )
     agent = MagicMock()
-    agent.mcp_servers = []
-    agent.tools = []
-    once = attach_git_mcp_settings_to_agent_config(spec, agent)
-    agent.mcp_servers = once["mcp_servers"]
-    agent.tools = once["tools"]
-    twice = attach_git_mcp_settings_to_agent_config(spec, agent)
-    assert twice == {}
+    agent.mcp_servers = [
+        BetaManagedAgentsMCPServerURLDefinition(
+            type="url",
+            name=GITHUB_MCP_SERVER_NAME,
+            url="https://stale.example/mcp",
+        )
+    ]
+    agent.tools = [
+        MagicMock(type="mcp_toolset", mcp_server_name=GITHUB_MCP_SERVER_NAME)
+    ]
+    result = attach_git_mcp_settings_to_agent_config(spec, agent)
+    assert is_agent_configured_with_git_mcp(result["mcp_servers"], spec)
+    assert len(result["mcp_servers"]) == 1

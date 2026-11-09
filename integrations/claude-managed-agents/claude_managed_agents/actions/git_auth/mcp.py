@@ -59,15 +59,10 @@ def attach_git_mcp_settings_to_agent_config(
     agent: BetaManagedAgentsAgent,
 ) -> dict[str, Any]:
     """Build an update payload that attaches the provider MCP server + toolset."""
-    agent_servers = list(agent.mcp_servers or [])
-    agent_tools = list(agent.tools or [])
-    if is_agent_configured_with_git_mcp(agent_servers, spec):
-        return {}
-
-    mcp_servers = [s for s in agent_servers if s.name != spec.name]
+    mcp_servers = [s for s in (agent.mcp_servers or []) if s.name != spec.name]
     tools = [
         t
-        for t in agent_tools
+        for t in (agent.tools or [])
         if not (t.type == "mcp_toolset" and t.mcp_server_name == spec.name)
     ]
     mcp_servers.append(
