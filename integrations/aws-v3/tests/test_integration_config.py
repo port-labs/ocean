@@ -3,6 +3,7 @@ from pydantic.v1 import ValidationError
 
 from aws_integration.overrides import (
     AWSCustomKindResourceConfig,
+    AWSCustomKindSelector,
     AWSPortAppConfig,
     AWSS3BucketResourceConfig,
     AWSS3BucketSelector,
@@ -57,6 +58,13 @@ def test_aws_custom_kind_resource_config_parses_cloud_control_type() -> None:
     assert resource.kind == "AWS::IAM::Role"
     assert resource.selector.use_get_resource_api is True
     assert resource.selector.resource_scope == "global"
+
+
+def test_aws_custom_kind_selector_schema_omits_include_actions() -> None:
+    """Port UI builds custom-kind selectors from AWSCustomKindSelector.schema()."""
+    properties = AWSCustomKindSelector.schema()["properties"]
+    assert "includeActions" not in properties
+    assert "include_actions" not in properties
 
 
 def test_aws_custom_kind_rejects_invalid_type_string() -> None:

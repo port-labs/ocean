@@ -12,7 +12,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from aws_integration.overrides import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig, selector_include_actions
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.exporter_metadata import get_exporter_metadata
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
@@ -170,7 +170,9 @@ class ResyncAWSService:
         self.request_extras = request_extras or {}
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
-        self.include_actions = self.aws_resource_config.selector.include_actions
+        self.include_actions = selector_include_actions(
+            self.aws_resource_config.selector
+        )
         self.max_concurrent_accounts = (
             self.aws_resource_config.selector.max_concurrent_accounts
         )

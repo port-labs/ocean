@@ -444,6 +444,15 @@ class AWSCustomKindSelector(AWSRegionPolicySelector):
     )
 
 
+def selector_include_actions(selector: AWSRegionPolicySelector) -> List[str]:
+    """Optional exporter actions from port-app-config; Cloud Control custom kinds omit these."""
+    if isinstance(selector, AWSCustomKindSelector):
+        return []
+    if isinstance(selector, AWSResourceSelector):
+        return selector.include_actions
+    return []
+
+
 class AWSCustomKindResourceConfig(AWSResourceConfig):
     kind: str = Field(
         title="Custom AWS Resource Kind",
