@@ -284,9 +284,9 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             mount_token=inputs.gitAccessToken,
         )
         if port_mcp is not None:
-            port_mcp_vault_id = await self._ensure_port_mcp_vault_ready(port_mcp, agent)
+            vault_id = await self._ensure_port_mcp_vault_ready(port_mcp, agent)
             api_config = session_config_with_port_mcp(
-                api_config, port_mcp_vault_id, port_mcp.execution_identity
+                api_config, vault_id, port_mcp.execution_identity
             )
         session = await self.client.create_session(
             inputs.agentId,
