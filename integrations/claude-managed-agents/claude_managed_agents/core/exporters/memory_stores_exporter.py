@@ -1,0 +1,17 @@
+from loguru import logger
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from claude_managed_agents.core.exporters.abstract_exporter import (
+    AbstractAnthropicExporter,
+)
+
+
+class MemoryStoresExporter(AbstractAnthropicExporter):
+    async def get_paginated_resources(
+        self, *, include_archived: bool = False
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        async for batch in self.client.paginate(
+            self.client.beta.memory_stores.list(include_archived=include_archived)
+        ):
+            logger.debug(f"Fetched memory stores batch with {len(batch)} records")
+            yield [item.to_dict(mode="json", warnings=False) for item in batch]

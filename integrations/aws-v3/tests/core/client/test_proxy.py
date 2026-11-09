@@ -36,6 +36,20 @@ class TestAioBaseClientProxy:
         assert proxy.region == "us-west-2"
         assert proxy.service_name == "s3"
         assert proxy._base_client is None
+        assert proxy._config is AWS_CLIENT_CONFIG
+
+    def test_initialization_with_custom_config(
+        self, isolated_mock_session: AsyncMock
+    ) -> None:
+        custom_config = AioConfig(retries={"mode": "adaptive", "max_attempts": 100})
+        proxy = AioBaseClientProxy(
+            session=isolated_mock_session,
+            region="us-west-2",
+            service_name="cloudcontrol",
+            config=custom_config,
+        )
+        assert proxy._config is custom_config
+        assert proxy.service_name == "cloudcontrol"
 
     def test_client_property_raises_when_not_initialized(
         self, isolated_mock_session: AsyncMock
@@ -323,9 +337,10 @@ class TestAioBaseClientProxy:
             session=isolated_mock_session,
             region="us-east-1",
             service_name="ecs",
+            config=custom_config,
         )
 
-        await proxy.__aenter__(config=custom_config)
+        await proxy.__aenter__()
         try:
             isolated_mock_session.create_client.assert_called_once_with(
                 service_name="ecs",

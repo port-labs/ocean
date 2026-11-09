@@ -5,8 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from clients.exceptions import WebhookSigningSecretNotConfiguredError
-from clients.webhook_client import ClaudeWebhookClient, _WEBHOOK_EVENTS
+from claude_managed_agents.clients.exceptions import (
+    WebhookSigningSecretNotConfiguredError,
+)
+from claude_managed_agents.clients.webhook_client import (
+    ClaudeWebhookClient,
+    _WEBHOOK_EVENTS,
+)
 
 
 @pytest.fixture
@@ -33,7 +38,7 @@ def test_signing_secret_name_uses_install_modal_prefix() -> None:
         console_host="https://platform.claude.com",
         api_key="test-api-key",
     )
-    with patch("clients.webhook_client.ocean") as mock_ocean:
+    with patch("claude_managed_agents.clients.webhook_client.ocean") as mock_ocean:
         mock_ocean.config.integration.identifier = "claude-managed"
         mock_ocean.config.integration.type = "claude-managed-agents"
         assert (
@@ -207,7 +212,7 @@ async def test_upsert_webhook_persists_signing_secret_on_saas() -> None:
         patch.object(
             client, "_persist_signing_secret", new_callable=AsyncMock
         ) as persist,
-        patch("clients.webhook_client.ocean") as mock_ocean,
+        patch("claude_managed_agents.clients.webhook_client.ocean") as mock_ocean,
     ):
         mock_ocean.app.is_saas = MagicMock(return_value=True)
         await client.upsert_webhook("https://ocean.example")
@@ -239,7 +244,7 @@ async def test_upsert_webhook_skips_persist_when_not_saas() -> None:
         patch.object(
             client, "_persist_signing_secret", new_callable=AsyncMock
         ) as persist,
-        patch("clients.webhook_client.ocean") as mock_ocean,
+        patch("claude_managed_agents.clients.webhook_client.ocean") as mock_ocean,
     ):
         mock_ocean.app.is_saas = MagicMock(return_value=False)
         await client.upsert_webhook("https://ocean.example")
@@ -258,7 +263,7 @@ async def test_backfill_skips_when_org_secret_missing() -> None:
         webhook_signing_secret=None,
         verify_webhook_secrets=True,
     )
-    with patch("clients.webhook_client.ocean") as mock_ocean:
+    with patch("claude_managed_agents.clients.webhook_client.ocean") as mock_ocean:
         mock_ocean.app.is_saas = MagicMock(return_value=True)
         mock_ocean.config.integration.identifier = "claude-managed"
         mock_ocean.config.integration.type = "claude-managed-agents"
@@ -280,7 +285,7 @@ async def test_backfill_patches_spec_when_org_secret_exists() -> None:
         webhook_signing_secret=None,
         verify_webhook_secrets=True,
     )
-    with patch("clients.webhook_client.ocean") as mock_ocean:
+    with patch("claude_managed_agents.clients.webhook_client.ocean") as mock_ocean:
         mock_ocean.app.is_saas = MagicMock(return_value=True)
         mock_ocean.config.integration.identifier = "claude-managed"
         mock_ocean.config.integration.type = "claude-managed-agents"
@@ -332,7 +337,7 @@ async def test_upsert_webhook_backfills_spec_on_conflict_when_secret_missing() -
         patch.object(
             client, "_backfill_signing_secret_spec_if_needed", new_callable=AsyncMock
         ) as backfill,
-        patch("clients.webhook_client.ocean") as mock_ocean,
+        patch("claude_managed_agents.clients.webhook_client.ocean") as mock_ocean,
     ):
         mock_ocean.app.is_saas = MagicMock(return_value=True)
         await client.upsert_webhook("https://ocean.example")

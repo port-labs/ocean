@@ -20,8 +20,12 @@ def _mock_ocean_context() -> Generator[None, None, None]:
 
     with (
         patch("port_ocean.helpers.async_client.ocean", mock_ocean, create=True),
-        patch("clients.anthropic_client.ocean", mock_ocean, create=True),
-        patch("stream_manager._manager", mock_manager),
+        patch(
+            "claude_managed_agents.clients.anthropic_client.ocean",
+            mock_ocean,
+            create=True,
+        ),
+        patch("claude_managed_agents.stream_manager._manager", mock_manager),
     ):
         yield
 
@@ -34,13 +38,15 @@ def _port_mcp_test_context() -> Iterator[None]:
         client_secret="secret",
         base_url="https://api.getport.io",
     )
-    with patch("actions.port_mcp_utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean):
         yield
 
 
 @pytest.fixture(autouse=True)
 def _reset_trigger_agent_executor_caches() -> Iterator[None]:
-    from actions.trigger_agent_executor import TriggerAgentExecutor
+    from claude_managed_agents.actions.trigger_agent_executor import (
+        TriggerAgentExecutor,
+    )
 
     TriggerAgentExecutor._agent_cache._store.clear()
     TriggerAgentExecutor._port_mcp_cache._store.clear()
