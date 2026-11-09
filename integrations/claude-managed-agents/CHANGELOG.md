@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.17.0 (2026-11-09)
+
+
+### Features
+
+- Added gitAccessToken on trigger_agent so sessions can inject auth into github_repository mounts
+
+
+## 0.16.2 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.16.1 (2026-11-09)
+
+
+### Improvements
+
+- Moved files into subdirectory to avoid local development import conflicts with other integrations
+
+
 ## 0.16.0 (2026-11-08)
 
 

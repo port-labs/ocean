@@ -9,8 +9,8 @@ import httpx
 import pytest
 from anthropic import APIStatusError
 
-from actions.exceptions import InvalidActionParametersException
-from actions.trigger_agent_executor import (
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.trigger_agent_executor import (
     PORT_IDENTITY_ID_KEY,
     PortMcpWorkflowContext,
     SESSION_NOT_CONTINUABLE_STATUS_LABEL,
@@ -18,9 +18,9 @@ from actions.trigger_agent_executor import (
     TriggerAgentInputs,
     port_mcp_workflow_context,
 )
-from actions.prompt_images import PromptImages
-from actions.types import TriggerAgentSessionOutput
-from actions.port_mcp_utils import (
+from claude_managed_agents.actions.prompt_images import PromptImages
+from claude_managed_agents.actions.types import TriggerAgentSessionOutput
+from claude_managed_agents.actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
     PortMcpBinding,
 )
@@ -174,15 +174,15 @@ async def test_resolve_port_mcp_binding_ensures_on_miss_remints_on_hit() -> None
     run_2 = workflow_run_with_port_mcp(token="tok_2")
     with (
         patch(
-            "actions.trigger_agent_executor.get_or_create_mcp_vault",
+            "claude_managed_agents.actions.trigger_agent_executor.get_or_create_mcp_vault",
             AsyncMock(return_value=SimpleNamespace(id="vault_1")),
         ) as get_vault,
         patch(
-            "actions.trigger_agent_executor.ensure_port_mcp_credential",
+            "claude_managed_agents.actions.trigger_agent_executor.ensure_port_mcp_credential",
             AsyncMock(return_value=bindings[0]),
         ) as ensure,
         patch(
-            "actions.trigger_agent_executor.remint_port_mcp_credential",
+            "claude_managed_agents.actions.trigger_agent_executor.remint_port_mcp_credential",
             AsyncMock(),
         ) as remint,
     ):
@@ -206,7 +206,7 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
     from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
         BetaManagedAgentsMCPServerURLDefinition,
     )
-    from actions.port_mcp_utils import port_mcp_binding_cache_key
+    from claude_managed_agents.actions.port_mcp_utils import port_mcp_binding_cache_key
 
     port_url = "https://mcp.getport.io/v1"
     virtual_url = "https://mcp.getport.io/v1/virtual-server/payments"
@@ -241,15 +241,15 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
     run = workflow_run_with_port_mcp()
     with (
         patch(
-            "actions.trigger_agent_executor.get_or_create_mcp_vault",
+            "claude_managed_agents.actions.trigger_agent_executor.get_or_create_mcp_vault",
             AsyncMock(),
         ) as get_vault,
         patch(
-            "actions.trigger_agent_executor.ensure_port_mcp_credential",
+            "claude_managed_agents.actions.trigger_agent_executor.ensure_port_mcp_credential",
             AsyncMock(return_value=new_binding),
         ) as ensure,
         patch(
-            "actions.trigger_agent_executor.remint_port_mcp_credential",
+            "claude_managed_agents.actions.trigger_agent_executor.remint_port_mcp_credential",
             AsyncMock(),
         ) as remint,
     ):
@@ -272,7 +272,7 @@ async def test_resolve_port_mcp_skips_vault_fetch_when_any_url_cached() -> None:
 async def test_ensure_port_mcp_vault_ready_remints_each_cached_url_once() -> None:
     from port_ocean.utils.ttl_cache import TTLCache
 
-    from actions.port_mcp_utils import port_mcp_binding_cache_key
+    from claude_managed_agents.actions.port_mcp_utils import port_mcp_binding_cache_key
 
     port_url = "https://mcp.getport.io/v1"
     run = workflow_run_with_port_mcp()
@@ -290,7 +290,7 @@ async def test_ensure_port_mcp_vault_ready_remints_each_cached_url_once() -> Non
     )
 
     with patch(
-        "actions.trigger_agent_executor.remint_port_mcp_credential",
+        "claude_managed_agents.actions.trigger_agent_executor.remint_port_mcp_credential",
         AsyncMock(),
     ) as remint:
         vault_id = await executor._ensure_port_mcp_vault_ready(
@@ -315,11 +315,14 @@ async def test_trigger_agent_managed_port_mcp_attaches_vault_on_create() -> None
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(return_value="vault_port"),
         ) as resolve_binding,
     ):
@@ -362,11 +365,14 @@ async def test_trigger_agent_enable_port_mcp_wires_agent_without_existing_mcp() 
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(return_value="vault_port"),
         ),
     ):
@@ -402,11 +408,14 @@ async def test_trigger_agent_enable_port_mcp_false_skips_when_agent_has_no_port_
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(),
         ) as resolve_binding,
     ):
@@ -442,11 +451,14 @@ async def test_trigger_agent_enable_port_mcp_false_still_remints_existing_port_f
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(return_value="vault_port"),
         ) as resolve_binding,
     ):
@@ -484,11 +496,14 @@ async def test_trigger_agent_managed_port_mcp_skips_vault_without_execution_iden
     mock_ocean = build_mock_ocean()
     mock_ocean.port_client.update_run_started = AsyncMock()
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(),
         ) as resolve_binding,
     ):
@@ -528,9 +543,12 @@ async def test_trigger_agent_managed_port_mcp_fails_without_token() -> None:
     }
 
     with (
-        patch("actions.trigger_agent_executor.ocean", build_mock_ocean()),
         patch(
-            "actions.port_mcp_utils.get_run_access_token",
+            "claude_managed_agents.actions.trigger_agent_executor.ocean",
+            build_mock_ocean(),
+        ),
+        patch(
+            "claude_managed_agents.actions.port_mcp_utils.get_run_access_token",
             side_effect=ActionExecutionError(
                 "portAccessToken is required when executionIdentity is set"
             ),
@@ -569,11 +587,14 @@ async def test_trigger_agent_managed_port_mcp_continue_remints_and_checks_identi
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(return_value="vault_port"),
         ) as resolve_binding,
     ):
@@ -614,15 +635,18 @@ async def execute_continuing(
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
         patch(
-            "actions.trigger_agent_executor.load_prompt_images",
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch(
+            "claude_managed_agents.actions.trigger_agent_executor.load_prompt_images",
             AsyncMock(return_value=images),
         ),
         patch(
-            "actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
+            "claude_managed_agents.actions.trigger_agent_executor.TriggerAgentExecutor._ensure_port_mcp_vault_ready",
             AsyncMock(return_value="vault_port"),
         ),
     ):
@@ -753,8 +777,8 @@ async def test_trigger_agent_managed_port_mcp_rejects_cross_identity_continue() 
 
     mock_ocean = mock_ocean_with_client_secret()
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         patch("port_ocean.core.handlers.actions.utils.ocean", mock_ocean),
         pytest.raises(ActionExecutionError, match="owned by alice@example.com"),
     ):
@@ -785,9 +809,12 @@ async def test_trigger_agent_executor_starts_session() -> None:
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -836,10 +863,13 @@ async def test_trigger_agent_executor_passes_config_on_new_session() -> None:
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -898,9 +928,12 @@ async def test_trigger_agent_executor_ignores_session_create_fields_when_continu
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -946,9 +979,12 @@ async def test_trigger_agent_continues_idle_session() -> None:
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -975,7 +1011,9 @@ async def test_trigger_agent_rejects_non_idle_session() -> None:
         "enablePortMcp": False,
     }
 
-    with patch("actions.trigger_agent_executor.ocean", build_mock_ocean()):
+    with patch(
+        "claude_managed_agents.actions.trigger_agent_executor.ocean", build_mock_ocean()
+    ):
         with pytest.raises(
             ActionExecutionError, match="cannot be continued"
         ) as exc_info:
@@ -1021,7 +1059,9 @@ async def test_trigger_agent_rejects_requires_action_idle() -> None:
         "enablePortMcp": False,
     }
 
-    with patch("actions.trigger_agent_executor.ocean", build_mock_ocean()):
+    with patch(
+        "claude_managed_agents.actions.trigger_agent_executor.ocean", build_mock_ocean()
+    ):
         with pytest.raises(
             ActionExecutionError, match="waiting for user action"
         ) as exc_info:
@@ -1035,7 +1075,9 @@ async def test_trigger_agent_requires_environment_for_new_session() -> None:
     executor = build_executor(TriggerAgentExecutor, MagicMock())
     run = MagicMock()
     run.execution_properties = {"agentId": "agent_1", "prompt": "go"}
-    with patch("actions.trigger_agent_executor.ocean", build_mock_ocean()):
+    with patch(
+        "claude_managed_agents.actions.trigger_agent_executor.ocean", build_mock_ocean()
+    ):
         with pytest.raises(InvalidActionParametersException, match="environmentId"):
             await executor.execute(run)
 
@@ -1068,10 +1110,13 @@ async def test_trigger_agent_executor_injects_github_pat_into_session_config() -
     mock_ocean.port_client.update_run_started = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.utils.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -1115,9 +1160,12 @@ async def test_trigger_agent_executor_completes_run_synchronously_when_report_st
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -1150,9 +1198,12 @@ async def test_trigger_agent_executor_completes_run_synchronously_by_default() -
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.trigger_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -1186,3 +1237,50 @@ async def test_continue_allows_session_without_port_owner() -> None:
         "sess_1", workflow_run_with_port_mcp()
     )
     assert result is session
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_git_token_injects_mount() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=sdk_agent())
+    client_mock.create_session = AsyncMock(return_value=sdk_session())
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    client_mock.update_agent = AsyncMock()
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache(max_items=100, ttl_seconds=120)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "environmentId": "env_1",
+            "prompt": "push a branch",
+            "enablePortMcp": False,
+            "gitAccessToken": "ghp_test",
+            "config": {
+                "resources": [
+                    {"type": "github_repository", "url": "https://github.com/org/repo"}
+                ]
+            },
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+
+    with (
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+    ):
+        await executor.execute(run)
+
+    client_mock.update_agent.assert_not_called()
+    extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
+    assert extra["resources"][0]["authorization_token"] == "ghp_test"
+    assert "vault_ids" not in extra

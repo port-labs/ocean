@@ -42,5 +42,9 @@ async def fetch_single_pull_request(
             repo=repo_option,
             enrich_with_first_commit=resource_config.selector.enrich_with_first_commit,
             exclude_graphql_fields=resource_config.selector.exclude_graphql_fields,
+            include_required_checks_status=(
+                resource_config.selector.include_required_checks_status
+            ),
+            excluded_required_checks=resource_config.selector.excluded_required_checks,
         )
     )
