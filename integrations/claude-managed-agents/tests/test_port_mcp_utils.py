@@ -6,14 +6,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from claude_managed_agents.actions.mcp_vault_utils import (
+    agent_has_mcp_url,
+    is_vault_credential_url_matching,
+)
 from claude_managed_agents.actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
     PortMcpBinding,
-    _is_vault_credential_url_matching,
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_credential,
     get_or_create_mcp_vault,
-    _agent_has_mcp_url,
 )
 
 
@@ -62,9 +64,9 @@ def test_port_mcp_urls_keep_getport_and_port_hosts_distinct() -> None:
         "claude_managed_agents.actions.port_mcp_utils.ocean",
         SimpleNamespace(config=SimpleNamespace(port=SimpleNamespace(mcp_url=port))),
     ):
-        assert not _agent_has_mcp_url(port, servers)
-    assert _is_vault_credential_url_matching(credential, getport)
-    assert not _is_vault_credential_url_matching(credential, port)
+        assert not agent_has_mcp_url(port, servers)
+    assert is_vault_credential_url_matching(credential, getport)
+    assert not is_vault_credential_url_matching(credential, port)
 
 
 def test_apply_port_mcp_adds_server_and_toolset() -> None:
