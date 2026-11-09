@@ -1,6 +1,3 @@
-from azure_integration.foundry.discovery import (
-    parse_cognitive_services_account_arm_id,
-)
 from azure_integration.foundry.helpers.scope import (
     ArmDeploymentScope,
     account_name_from_project_endpoint,
@@ -16,18 +13,6 @@ def test_account_name_from_project_endpoint() -> None:
         "https://software-factory.services.ai.azure.com/api/projects/proj-default"
     )
     assert account_name_from_project_endpoint(endpoint) == "software-factory"
-
-
-def test_parse_cognitive_services_account_arm_id() -> None:
-    arm_id = (
-        "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
-        "Microsoft.CognitiveServices/accounts/software-factory"
-    )
-    assert parse_cognitive_services_account_arm_id(arm_id) == (
-        "sub-1",
-        "rg-1",
-        "software-factory",
-    )
 
 
 @pytest.mark.asyncio

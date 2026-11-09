@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from dataclasses import dataclass
 from collections.abc import AsyncIterator
@@ -12,6 +11,7 @@ from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 from loguru import logger
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.cache import cache_iterator_result
 
 from azure_integration.foundry.kinds import FOUNDRY_ARM_PROJECT_KIND
 from azure_integration.iterators import resource_extention_kind_iterator
@@ -24,14 +24,6 @@ _ARM_PROJECT_ID = re.compile(
     r"/projects/(?P<project>[^/]+)$",
     re.IGNORECASE,
 )
-_ARM_ACCOUNT_ID = re.compile(
-    r"^/subscriptions/(?P<sub>[^/]+)/resourceGroups/(?P<rg>[^/]+)"
-    r"/providers/Microsoft\.CognitiveServices/accounts/(?P<account>[^/]+)",
-    re.IGNORECASE,
-)
-
-_cache: list["FoundryProject"] | None = None
-_cache_lock = asyncio.Lock()
 
 
 @dataclass(frozen=True)
@@ -50,28 +42,6 @@ class FoundryProject:
     @property
     def account_base_url(self) -> str:
         return f"https://{self.account_endpoint_host}"
-
-
-def clear_foundry_project_cache() -> None:
-    global _cache
-    _cache = None
-
-
-def parse_cognitive_services_account_arm_id(
-    resource_id: str,
-) -> tuple[str, str, str] | None:
-    match = _ARM_ACCOUNT_ID.match(resource_id)
-    if not match:
-        return None
-    return match.group("sub"), match.group("rg"), match.group("account")
-
-
-def _data_plane_project_name(arm_project_name: str) -> str:
-    """ARM may return ``account/project``; Foundry URLs use the project segment only."""
-    segment = arm_project_name.strip().strip("/")
-    if "/" in segment:
-        return segment.rsplit("/", 1)[-1]
-    return segment
 
 
 def _endpoint_from_project_properties(project: dict[str, Any]) -> str | None:
@@ -98,22 +68,12 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
     project_id = str(project.get("id") or "")
     match = _ARM_PROJECT_ID.match(project_id)
     if match is None:
-        parsed = parse_cognitive_services_account_arm_id(project_id)
-        if parsed is None:
-            return None
-        subscription_id, resource_group, account_name = parsed
-        arm_project_name = str(project.get("name") or "").strip()
-    else:
-        subscription_id = match.group("sub")
-        resource_group = match.group("rg")
-        account_name = match.group("account")
-        arm_project_name = match.group("project")
-
-    project_name = _data_plane_project_name(
-        str(project.get("name") or arm_project_name)
-    )
-    if not account_name or not project_name:
         return None
+
+    subscription_id = match.group("sub")
+    resource_group = match.group("rg")
+    account_name = match.group("account")
+    project_name = match.group("project")
 
     account_arm_id = (
         f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}"
@@ -133,7 +93,7 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
         account_name=account_name,
         account_arm_id=account_arm_id,
         project_name=project_name,
-        project_arm_id=project_id or f"{account_arm_id}/projects/{arm_project_name}",
+        project_arm_id=project_id,
         endpoint=endpoint,
         account_endpoint_host=endpoint_host,
         location=str(location) if location else None,
@@ -162,37 +122,38 @@ async def _projects_for_subscription(
         raise
 
 
-async def discover_foundry_projects(
-    *, force_refresh: bool = False
-) -> list[FoundryProject]:
-    global _cache
-    async with _cache_lock:
-        if _cache is not None and not force_refresh:
-            return list(_cache)
+async def _discover_foundry_project_batches() -> AsyncIterator[list[FoundryProject]]:
+    discovered = 0
+    async with DefaultAzureCredential() as credential:
+        async with SubscriptionClient(credential=credential) as subscription_client:
+            async for subscriptions_batch in batch_resources_iterator(
+                subscription_client.subscriptions.list,
+            ):
+                if not subscriptions_batch:
+                    continue
+                tasks = [
+                    _projects_for_subscription(
+                        credential, subscription["subscription_id"]
+                    )
+                    for subscription in subscriptions_batch
+                ]
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    projects: list[FoundryProject] = []
+                    for raw in batch or []:
+                        found = foundry_project_from_arm(raw)
+                        if found is not None:
+                            projects.append(found)
+                    if projects:
+                        discovered += len(projects)
+                        yield projects
 
-        projects: list[FoundryProject] = []
-        async with DefaultAzureCredential() as credential:
-            async with SubscriptionClient(credential=credential) as subscription_client:
-                async for subscriptions_batch in batch_resources_iterator(
-                    subscription_client.subscriptions.list,
-                ):
-                    if not subscriptions_batch:
-                        continue
-                    tasks = [
-                        _projects_for_subscription(
-                            credential, subscription["subscription_id"]
-                        )
-                        for subscription in subscriptions_batch
-                    ]
-                    async for batch in stream_async_iterators_tasks(*tasks):
-                        for raw in batch or []:
-                            found = foundry_project_from_arm(raw)
-                            if found is not None:
-                                projects.append(found)
+    logger.info(f"Discovered {discovered} Foundry project(s)")
 
-        _cache = projects
-        logger.info(f"Discovered {len(projects)} Foundry project(s)")
-        return list(projects)
+
+@cache_iterator_result()
+async def discover_foundry_projects() -> AsyncIterator[list[FoundryProject]]:
+    async for batch in _discover_foundry_project_batches():
+        yield batch
 
 
 def foundry_project_to_raw(project: FoundryProject) -> dict[str, Any]:
@@ -213,7 +174,8 @@ def foundry_project_to_raw(project: FoundryProject) -> dict[str, Any]:
 
 async def resolve_project_by_endpoint(endpoint: str) -> FoundryProject:
     normalized = endpoint.rstrip("/")
-    for project in await discover_foundry_projects():
-        if project.endpoint == normalized:
-            return project
+    async for batch in discover_foundry_projects():
+        for project in batch:
+            if project.endpoint == normalized:
+                return project
     raise ValueError(f"No discovered Foundry project matches endpoint {normalized}")

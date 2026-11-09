@@ -7,6 +7,8 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.discovery import (
+    FoundryProject,
+    _discover_foundry_project_batches,
     discover_foundry_projects,
     foundry_project_to_raw,
 )
@@ -29,16 +31,18 @@ from azure_integration.foundry.kinds import (
 
 async def resync_foundry_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
-    projects = await discover_foundry_projects(force_refresh=True)
-    batch = [foundry_project_to_raw(project) for project in projects]
-    if batch:
-        yield batch
+    async for batch in _discover_foundry_project_batches():
+        raw_batch = [foundry_project_to_raw(project) for project in batch]
+        if raw_batch:
+            yield raw_batch
 
 
 async def _resync_across_projects(
     fetch_pages: Callable[[], ASYNC_GENERATOR_RESYNC_TYPE],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    projects = await discover_foundry_projects()
+    projects: list[FoundryProject] = []
+    async for batch in discover_foundry_projects():
+        projects.extend(batch)
     if not projects:
         logger.info("No Foundry projects discovered; skipping Foundry kind resync")
         return

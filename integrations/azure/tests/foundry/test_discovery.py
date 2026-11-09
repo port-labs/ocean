@@ -8,10 +8,8 @@ import pytest
 from azure.core.exceptions import HttpResponseError
 
 from azure_integration.foundry.discovery import (
-    _data_plane_project_name,
+    _discover_foundry_project_batches,
     _endpoint_from_project_properties,
-    clear_foundry_project_cache,
-    discover_foundry_projects,
     foundry_project_from_arm,
     foundry_project_to_raw,
 )
@@ -41,7 +39,6 @@ def _arm_project(
 
 @pytest.mark.asyncio
 async def test_discover_foundry_projects_across_subscriptions() -> None:
-    clear_foundry_project_cache()
     project = _arm_project()
 
     async def fake_subs(
@@ -88,7 +85,9 @@ async def test_discover_foundry_projects_across_subscriptions() -> None:
             fake_stream,
         ),
     ):
-        projects = await discover_foundry_projects(force_refresh=True)
+        projects: list = []
+        async for batch in _discover_foundry_project_batches():
+            projects.extend(batch)
 
     assert len(projects) == 1
     assert projects[0].project_name == "demo"
@@ -102,8 +101,6 @@ async def test_discover_foundry_projects_across_subscriptions() -> None:
 
 @pytest.mark.asyncio
 async def test_discover_skips_forbidden_subscriptions() -> None:
-    clear_foundry_project_cache()
-
     async def fake_subs(
         *_args: Any, **_kwargs: Any
     ) -> AsyncIterator[list[dict[str, Any]]]:
@@ -152,16 +149,11 @@ async def test_discover_skips_forbidden_subscriptions() -> None:
             fake_stream,
         ),
     ):
-        projects = await discover_foundry_projects(force_refresh=True)
+        projects: list = []
+        async for batch in _discover_foundry_project_batches():
+            projects.extend(batch)
 
     assert projects == []
-
-
-def test_data_plane_project_name_strips_account_prefix() -> None:
-    assert (
-        _data_plane_project_name("omby-project-resource/omby-project") == "omby-project"
-    )
-    assert _data_plane_project_name("demo") == "demo"
 
 
 def test_endpoint_from_project_properties_normalizes_cognitiveservices_host() -> None:

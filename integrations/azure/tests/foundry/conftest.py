@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
@@ -34,6 +34,8 @@ def mock_ocean_context() -> None:
         mock_ocean_app.config.integration.config = TEST_INTEGRATION_CONFIG
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
         mock_ocean_app.base_url = "https://example.com"
         mock_ocean_app.config.event_listener.should_process_webhooks = True
         initialize_port_ocean_context(mock_ocean_app)
