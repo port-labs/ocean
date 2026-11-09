@@ -52,7 +52,7 @@
   },
   {
     "identifier": "gcpIamPolicyBinding",
-    "description": "This blueprint represents a single resource-level GCP IAM allow-policy binding: one member granted one role on one resource. Grants set on a folder or organization are not included, and inherited access is not resolved.",
+    "description": "One resource-level GCP IAM allow-policy binding: one member granted one role on one resource. Folder- and organization-level grants are not included, and inherited access is not resolved.",
     "title": "GCP IAM Policy Binding",
     "icon": "GoogleCloud",
     "schema": {
