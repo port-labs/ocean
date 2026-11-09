@@ -40,7 +40,10 @@ async def test_update_agent_executor_updates_and_completes() -> None:
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -74,7 +77,10 @@ async def test_update_agent_executor_sets_agent_id_output_for_workflow_nodes() -
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -100,7 +106,10 @@ async def test_update_agent_executor_skips_output_for_classic_action_runs() -> N
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -152,7 +161,10 @@ async def test_update_agent_executor_raises_on_get_agent_failure() -> None:
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         with pytest.raises(ActionExecutionError, match="not found"):
             await executor.execute(update_agent_run())
@@ -174,7 +186,10 @@ async def test_update_agent_executor_raises_on_invalid_version() -> None:
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         with pytest.raises(ActionExecutionError, match="unexpected version"):
             await executor.execute(update_agent_run())
@@ -197,7 +212,10 @@ async def test_update_agent_executor_raises_on_update_failure() -> None:
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         with pytest.raises(ActionExecutionError, match="conflict"):
             await executor.execute(update_agent_run())
@@ -229,7 +247,10 @@ async def test_update_agent_executor_wires_port_mcp_when_flag_true() -> None:
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -275,7 +296,10 @@ async def test_update_agent_keeps_existing_tools_when_enabling_port_mcp() -> Non
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -304,7 +328,10 @@ async def test_update_agent_executor_maps_system_prompt_to_system_field() -> Non
     with (
         patch("claude_managed_agents.actions.update_agent_executor.ocean", mock_ocean),
         patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(update_agent_run(name=None, systemPrompt="be helpful"))
 

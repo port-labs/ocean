@@ -45,7 +45,8 @@ async def mock_event_context(*args: Any, **kwargs: Any) -> AsyncIterator[None]:
 
 def build_executor(executor_cls: type[T], client_mock: MagicMock) -> T:
     with patch(
-        "claude_managed_agents.actions.abstract_executor.create_anthropic_client", return_value=client_mock
+        "claude_managed_agents.actions.abstract_executor.create_anthropic_client",
+        return_value=client_mock,
     ):
         return executor_cls()
 

@@ -209,7 +209,10 @@ async def test_ensure_port_mcp_binding_creates_vault_and_credential() -> None:
 
     with (
         patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+        patch(
+            "claude_managed_agents.actions.port_mcp_utils.get_run_access_token",
+            return_value="tok_abc",
+        ),
     ):
         vault = await get_or_create_mcp_vault(client, "port-mcp-user@example.com")
         binding = await ensure_port_mcp_credential(
@@ -278,7 +281,10 @@ async def test_ensure_port_mcp_binding_updates_existing_credential() -> None:
 
     with (
         patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+        patch(
+            "claude_managed_agents.actions.port_mcp_utils.get_run_access_token",
+            return_value="tok_abc",
+        ),
     ):
         vault = await get_or_create_mcp_vault(client, "port-mcp-user@example.com")
         binding = await ensure_port_mcp_credential(
@@ -388,7 +394,10 @@ async def test_ensure_port_mcp_binding_creates_virtual_credentials() -> None:
 
     with (
         patch("claude_managed_agents.actions.port_mcp_utils.ocean", mock_ocean),
-        patch("claude_managed_agents.actions.port_mcp_utils.get_run_access_token", return_value="tok_abc"),
+        patch(
+            "claude_managed_agents.actions.port_mcp_utils.get_run_access_token",
+            return_value="tok_abc",
+        ),
     ):
         vault = await get_or_create_mcp_vault(client, "vault")
         bindings = [

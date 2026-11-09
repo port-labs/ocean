@@ -20,7 +20,11 @@ def _mock_ocean_context() -> Generator[None, None, None]:
 
     with (
         patch("port_ocean.helpers.async_client.ocean", mock_ocean, create=True),
-        patch("claude_managed_agents.clients.anthropic_client.ocean", mock_ocean, create=True),
+        patch(
+            "claude_managed_agents.clients.anthropic_client.ocean",
+            mock_ocean,
+            create=True,
+        ),
         patch("claude_managed_agents.stream_manager._manager", mock_manager),
     ):
         yield

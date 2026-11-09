@@ -433,7 +433,9 @@ async def test_on_request_sleeps_when_pool_exhausted(
     async def _fake_sleep(seconds: float) -> None:
         sleep_calls.append(seconds)
 
-    monkeypatch.setattr("claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep
+    )
 
     client._create_rate_limit_info = RateLimitInfo(
         limit=300, remaining=0, reset=datetime.now(timezone.utc) + timedelta(seconds=10)
@@ -457,7 +459,9 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
         nonlocal slept
         slept = True
 
-    monkeypatch.setattr("claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep
+    )
 
     client._read_rate_limit_info = RateLimitInfo(
         limit=1200, remaining=0, reset=datetime.now(timezone.utc) - timedelta(seconds=5)
