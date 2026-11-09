@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Fold Azure AI Foundry into the Azure integration with multi-subscription project auto-discovery, Foundry catalog kinds (projects, agents, model deployments, conversations, responses, memory stores), Port blueprints/mappings, incremental sync, and configurable ARM project apiVersion (root apiVersion on the project kind; nested project.apiVersion on other Foundry kinds). Enable Port-hosted (SaaS) installation; live events remain self-hosted via Event Grid / Terraform. ARM projects use Microsoft.CognitiveServices/accounts/projects; data-plane kinds use the foundry-* prefix. Cap conversation/response sinceDays at 30 to match Azure retention. Default tag mappings use `.tags // {}` so null Azure tags do not warn during transform.
