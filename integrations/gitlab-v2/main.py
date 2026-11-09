@@ -1,5 +1,6 @@
+from functools import partial
 from itertools import batched
-from typing import AsyncIterator, cast, Any
+from typing import cast, Any
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -681,16 +682,11 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             include_only_active_projects, sync_cursor
         )
 
-    def folders_stream(
-        path: str, repository: str, branch: str | None = None
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        if sync_cursor is not None:
-            return client.get_repository_folders_since(
-                path, repository, sync_cursor, branch
-            )
-        return client.get_repository_folders(
-            path=path, repository=repository, branch=branch
-        )
+    list_folders = (
+        partial(client.get_repository_folders_since, since=sync_cursor)
+        if sync_cursor is not None
+        else client.get_repository_folders
+    )
 
     for folder_selector in selector.folders:
         path = folder_selector.path
@@ -708,8 +704,8 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    async for folders_batch in folders_stream(
-                        path, project["path_with_namespace"]
+                    async for folders_batch in list_folders(
+                        path=path, repository=project["path_with_namespace"]
                     ):
                         if folders_batch:
                             if included_files:
@@ -735,7 +731,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                async for folders_batch in folders_stream(path, repo.name, repo.branch):
+                async for folders_batch in list_folders(
+                    path=path, repository=repo.name, branch=repo.branch
+                ):
                     if included_files and folders_batch:
                         from gitlab.enrichments.included_files import (
                             IncludedFilesEnricher,
