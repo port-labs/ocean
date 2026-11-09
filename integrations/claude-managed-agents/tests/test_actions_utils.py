@@ -124,3 +124,43 @@ async def test_normalize_session_config_skips_repos_with_existing_token() -> Non
         )
 
     assert api_config["resources"][0]["authorization_token"] == "already_set"
+
+
+@pytest.mark.asyncio
+async def test_normalize_session_config_prefers_resolved_mount_token() -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"github_authorization_token": "integration_pat"}
+
+    with patch("actions.utils.ocean", mock_ocean):
+        api_config = await normalize_session_config(
+            {
+                "resources": [
+                    {"type": "github_repository", "url": "https://github.com/org/repo"}
+                ]
+            },
+            mount_token="resolved_pat",
+        )
+
+    assert api_config["resources"][0]["authorization_token"] == "resolved_pat"
+
+
+@pytest.mark.asyncio
+async def test_normalize_session_config_keeps_resource_token_over_mount() -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"github_authorization_token": "integration_pat"}
+
+    with patch("actions.utils.ocean", mock_ocean):
+        api_config = await normalize_session_config(
+            {
+                "resources": [
+                    {
+                        "type": "github_repository",
+                        "url": "https://github.com/org/repo",
+                        "authorization_token": "resource_token",
+                    }
+                ]
+            },
+            mount_token="resolved_pat",
+        )
+
+    assert api_config["resources"][0]["authorization_token"] == "resource_token"

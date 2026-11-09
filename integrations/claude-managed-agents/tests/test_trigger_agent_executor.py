@@ -993,3 +993,223 @@ async def test_continue_allows_session_without_port_owner() -> None:
         "sess_1", workflow_run_with_port_mcp()
     )
     assert result is session
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_git_pat_injects_mount_and_vault() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+    from actions.git_auth.types import (
+        AgentMcpEnsureSpec,
+        GITHUB_MCP_SERVER_NAME,
+        McpCredentialSpec,
+        ResolvedGitAccess,
+    )
+
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=port_mcp_agent())
+    client_mock.create_session = AsyncMock(return_value=sdk_session())
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    client_mock.update_agent = AsyncMock(return_value=port_mcp_agent())
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache(max_items=100, ttl_seconds=120)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "environmentId": "env_1",
+            "prompt": "open a pr",
+            "enablePortMcp": False,
+            "gitProvider": "github",
+            "gitAuthMethod": "pat",
+            "gitAccessToken": "ghp_test",
+            "config": {
+                "resources": [
+                    {"type": "github_repository", "url": "https://github.com/org/repo"}
+                ]
+            },
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+    resolved = ResolvedGitAccess(
+        mount_token="ghp_test",
+        mcp=McpCredentialSpec(
+            mcp_server_url="https://api.githubcopilot.com/mcp",
+            token="ghp_test",
+        ),
+        agent_mcp=AgentMcpEnsureSpec(
+            name=GITHUB_MCP_SERVER_NAME,
+            url="https://api.githubcopilot.com/mcp",
+        ),
+    )
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "actions.trigger_agent_executor.resolve_git_auth",
+            MagicMock(return_value=resolved),
+        ),
+        patch(
+            "actions.trigger_agent_executor.ensure_git_mcp_credential",
+            AsyncMock(
+                return_value=PortMcpBinding(
+                    vault_id="vault_git", credential_id="cred_git"
+                )
+            ),
+        ) as ensure_git,
+    ):
+        await executor.execute(run)
+
+    ensure_git.assert_awaited_once()
+    extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
+    assert extra["resources"][0]["authorization_token"] == "ghp_test"
+    assert "vault_git" in extra["vault_ids"]
+    client_mock.update_agent.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_enable_git_mcp_false_skips_mcp() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+    from actions.git_auth.types import ResolvedGitAccess
+
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=sdk_agent())
+    client_mock.create_session = AsyncMock(return_value=sdk_session())
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    client_mock.update_agent = AsyncMock()
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache(max_items=100, ttl_seconds=120)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "environmentId": "env_1",
+            "prompt": "push a branch",
+            "enablePortMcp": False,
+            "enableGitMcp": False,
+            "gitProvider": "github",
+            "gitAuthMethod": "pat",
+            "gitAccessToken": "ghp_test",
+            "config": {
+                "resources": [
+                    {"type": "github_repository", "url": "https://github.com/org/repo"}
+                ]
+            },
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+    resolved = ResolvedGitAccess(
+        mount_token="ghp_test",
+        mcp=None,
+        agent_mcp=None,
+    )
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("actions.utils.ocean", mock_ocean),
+        patch(
+            "actions.trigger_agent_executor.resolve_git_auth",
+            MagicMock(return_value=resolved),
+        ),
+        patch(
+            "actions.trigger_agent_executor.ensure_git_mcp_credential",
+            AsyncMock(),
+        ) as ensure_git,
+    ):
+        await executor.execute(run)
+
+    ensure_git.assert_not_awaited()
+    client_mock.update_agent.assert_not_called()
+    extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
+    assert extra["resources"][0]["authorization_token"] == "ghp_test"
+    assert "vault_ids" not in extra
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_continue_remints_git_mcp() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+    from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
+        BetaManagedAgentsMCPServerURLDefinition,
+    )
+    from actions.git_auth.types import (
+        AgentMcpEnsureSpec,
+        GITHUB_MCP_SERVER_NAME,
+        McpCredentialSpec,
+        ResolvedGitAccess,
+    )
+
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(
+        return_value=sdk_agent(
+            mcp_servers=[
+                BetaManagedAgentsMCPServerURLDefinition(
+                    type="url",
+                    name=GITHUB_MCP_SERVER_NAME,
+                    url="https://api.githubcopilot.com/mcp",
+                )
+            ]
+        )
+    )
+    client_mock.get_session = AsyncMock(return_value=sdk_session())
+    client_mock.get_session_events = empty_session_events
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    client_mock.create_session = AsyncMock()
+    client_mock.update_agent = AsyncMock()
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache(max_items=100, ttl_seconds=120)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "sessionId": "sess_1",
+            "prompt": "continue",
+            "enablePortMcp": False,
+            "gitProvider": "github",
+            "gitAuthMethod": "pat",
+            "gitAccessToken": "ghp_new",
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+    resolved = ResolvedGitAccess(
+        mount_token="ghp_new",
+        mcp=McpCredentialSpec(
+            mcp_server_url="https://api.githubcopilot.com/mcp",
+            token="ghp_new",
+        ),
+        agent_mcp=AgentMcpEnsureSpec(
+            name=GITHUB_MCP_SERVER_NAME,
+            url="https://api.githubcopilot.com/mcp",
+        ),
+    )
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch(
+            "actions.trigger_agent_executor.resolve_git_auth",
+            MagicMock(return_value=resolved),
+        ),
+        patch(
+            "actions.trigger_agent_executor.ensure_git_mcp_credential",
+            AsyncMock(
+                return_value=PortMcpBinding(
+                    vault_id="vault_git", credential_id="cred_git"
+                )
+            ),
+        ) as ensure_git,
+    ):
+        await executor.execute(run)
+
+    ensure_git.assert_awaited_once()
+    client_mock.create_session.assert_not_called()
