@@ -13,7 +13,7 @@ from azure_integration.foundry.helpers.metadata import (
     merge_metadata,
     owner_from_metadata,
 )
-from azure_integration.foundry.helpers.project_scope import (
+from azure_integration.foundry.helpers.scope import (
     enrich_with_project,
     get_project_endpoint,
 )

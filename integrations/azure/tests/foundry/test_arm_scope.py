@@ -1,13 +1,13 @@
 from azure_integration.foundry.discovery import (
     parse_cognitive_services_account_arm_id,
 )
-from azure_integration.foundry.helpers.arm_scope import (
+from azure_integration.foundry.helpers.scope import (
     ArmDeploymentScope,
     account_name_from_project_endpoint,
     clear_arm_scope_cache,
     ensure_arm_deployment_scope,
 )
-import azure_integration.foundry.helpers.arm_scope as arm_scope_module
+import azure_integration.foundry.helpers.scope as scope_module
 import pytest
 
 
@@ -33,7 +33,7 @@ def test_parse_cognitive_services_account_arm_id() -> None:
 @pytest.mark.asyncio
 async def test_ensure_arm_deployment_scope_uses_cache() -> None:
     clear_arm_scope_cache()
-    arm_scope_module._scope_by_account["acct"] = ArmDeploymentScope(
+    scope_module._scope_by_account["acct"] = ArmDeploymentScope(
         subscription_id="sub-1",
         resource_group_name="rg-1",
         account_name="acct",

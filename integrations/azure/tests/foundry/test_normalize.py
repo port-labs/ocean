@@ -8,10 +8,8 @@ from azure_integration.foundry.core.exporters.conversations_exporter import (
 from azure_integration.foundry.core.exporters.model_deployments_exporter import (
     _normalize_deployment,
 )
-from azure_integration.foundry.helpers.conversation_catalog import (
+from azure_integration.foundry.helpers.responses_catalog import (
     conversation_row_from_response,
-)
-from azure_integration.foundry.helpers.usage_metrics import (
     count_tool_calls_in_response,
     merge_usage_into_row,
 )

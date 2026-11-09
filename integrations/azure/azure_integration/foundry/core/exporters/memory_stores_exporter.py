@@ -6,7 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.foundry_incremental import MEMORY_STORE_INCREMENTAL
-from azure_integration.foundry.helpers.project_scope import (
+from azure_integration.foundry.helpers.scope import (
     enrich_with_project,
     get_project_endpoint,
 )

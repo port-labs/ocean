@@ -18,7 +18,7 @@ from azure_integration.foundry.exporter_factory import (
     create_model_deployments_exporter,
     create_responses_exporter,
 )
-from azure_integration.foundry.helpers.project_scope import project_endpoint_context
+from azure_integration.foundry.helpers.scope import project_endpoint_context
 from azure_integration.foundry.kinds import (
     AgentResourceConfig,
     ConversationResourceConfig,

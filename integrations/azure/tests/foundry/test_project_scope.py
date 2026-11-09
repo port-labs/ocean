@@ -1,4 +1,4 @@
-from azure_integration.foundry.helpers.project_scope import (
+from azure_integration.foundry.helpers.scope import (
     enrich_with_project,
     get_project_endpoint,
     project_name_from_endpoint,

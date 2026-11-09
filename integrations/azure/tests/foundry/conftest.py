@@ -7,7 +7,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from azure_integration.foundry.helpers.project_scope import project_endpoint_context
+from azure_integration.foundry.helpers.scope import project_endpoint_context
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:

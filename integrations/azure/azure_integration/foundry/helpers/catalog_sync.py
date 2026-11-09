@@ -20,7 +20,7 @@ from azure_integration.foundry.core.exporters.memory_stores_exporter import (
 from azure_integration.foundry.core.exporters.model_deployments_exporter import (
     _normalize_deployment,
 )
-from azure_integration.foundry.helpers.project_scope import enrich_with_project
+from azure_integration.foundry.helpers.scope import enrich_with_project
 from azure_integration.foundry.helpers.responses_catalog import (
     normalize_foundry_response,
 )
