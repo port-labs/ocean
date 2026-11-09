@@ -2,7 +2,7 @@ from typing import Any, AsyncIterator
 from itertools import islice
 import asyncio
 from anyio import to_thread
-
+from confluent_kafka import ConsumerGroupTopicPartitions
 from confluent_kafka.admin import (  # type: ignore[attr-defined]
     RESOURCE_BROKER,
     RESOURCE_TOPIC,
@@ -196,6 +196,25 @@ class KafkaClient:
                 for member in group_info.members
             ]
 
+            offsets: dict[str, dict[str, int]] = {}
+            try:
+                offsets_futures = await to_thread.run_sync(
+                    self.kafka_admin_client.list_consumer_group_offsets,
+                    [ConsumerGroupTopicPartitions(group_id)],
+                )
+                if offsets_future := offsets_futures.get(group_id):
+                    offsets_result = await to_thread.run_sync(offsets_future.result)
+                    if offsets_result and offsets_result.topic_partitions:
+                        for tp in offsets_result.topic_partitions:
+                            if tp.offset is not None and tp.offset >= 0:
+                                offsets.setdefault(tp.topic, {})[str(tp.partition)] = (
+                                    tp.offset
+                                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to fetch committed offsets for consumer group {group_id}: {e}"
+                )
+
             return {
                 "group_id": group_id,
                 "state": group_info.state.name,
@@ -205,6 +224,7 @@ class KafkaClient:
                 "partition_assignor": group_info.partition_assignor,
                 "is_simple_consumer_group": group_info.is_simple_consumer_group,
                 "authorized_operations": group_info.authorized_operations,
+                "offsets": offsets,
             }
         except Exception as e:
             logger.error(f"Failed to describe consumer group {group_id}: {e}")
