@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.25.0 (2026-11-09)
+
+
+### Features
+
+- Add includeRequiredChecksStatus and excludedRequiredChecks to the pull-request kind (api graphql only). Open pull requests expose required_checks_status, required_checks_failing, required_checks_pending and required_checks_sha, computed from only the checks required by branch protection or rulesets.
+
+
+## 6.24.2 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
 ## 6.24.1 (2026-11-08)
 
 
