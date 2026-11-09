@@ -3,11 +3,10 @@ from __future__ import annotations
 import pytest
 
 from claude_managed_agents.actions.exceptions import InvalidActionParametersException
-from claude_managed_agents.actions.git_auth import resolve_git_auth
 from claude_managed_agents.actions.trigger_agent_executor import TriggerAgentInputs
 
 
-def test_trigger_agent_inputs_resolves_git_access_from_token() -> None:
+def test_trigger_agent_inputs_accepts_git_access_token() -> None:
     inputs = TriggerAgentInputs.model_validate(
         {
             "agentId": "a1",
@@ -16,11 +15,10 @@ def test_trigger_agent_inputs_resolves_git_access_from_token() -> None:
             "gitAccessToken": "ghp_x",
         }
     )
-    assert inputs.git_access is not None
-    assert inputs.git_access.mount_token == "ghp_x"
+    assert inputs.gitAccessToken == "ghp_x"
 
 
-def test_trigger_agent_inputs_ignores_git_fields_without_token() -> None:
+def test_trigger_agent_inputs_allows_git_fields_without_token() -> None:
     inputs = TriggerAgentInputs.model_validate(
         {
             "agentId": "a1",
@@ -30,7 +28,7 @@ def test_trigger_agent_inputs_ignores_git_fields_without_token() -> None:
             "gitAuthMethod": "bearerToken",
         }
     )
-    assert inputs.git_access is None
+    assert inputs.gitAccessToken is None
 
 
 @pytest.mark.parametrize(
@@ -54,8 +52,3 @@ def test_trigger_agent_inputs_rejects_invalid_git_auth(
                 **execution_properties,
             }
         )
-
-
-def test_resolve_git_auth() -> None:
-    resolved = resolve_git_auth("ghp_test")
-    assert resolved.mount_token == "ghp_test"

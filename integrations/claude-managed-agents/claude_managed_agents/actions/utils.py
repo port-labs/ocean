@@ -76,7 +76,7 @@ async def normalize_session_config(
 
     Injects GitHub authorization tokens into github_repository resources.
     MCP servers and vault credentials are declared in the workflow configuration
-    or attached by git-auth / Port MCP helpers.
+    or attached by Port MCP helpers.
     """
     working = dict(config)
     _inject_github_authorization_tokens(working, mount_token)

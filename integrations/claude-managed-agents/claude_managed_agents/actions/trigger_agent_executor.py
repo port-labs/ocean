@@ -21,16 +21,12 @@ from port_ocean.core.models import (
     WorkflowNodeRun,
 )
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from pydantic import Field, PrivateAttr, model_validator
+from pydantic import Field, model_validator
 from port_ocean.utils.ttl_cache import TTLCache
 from claude_managed_agents.actions.abstract_action_input import (
     AbstractAnthropicActionInput,
 )
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
-from claude_managed_agents.actions.git_auth import (
-    ResolvedGitAccess,
-    resolve_git_auth,
-)
 from claude_managed_agents.actions.port_mcp_utils import (
     PortMcpBinding,
     attach_port_mcp_settings_to_agent_config,
@@ -84,23 +80,12 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     gitProvider: Literal["github"] | None = None
     gitAuthMethod: Literal["bearerToken"] | None = None
     gitAccessToken: str | None = Field(default=None, min_length=1)
-    _git_access: ResolvedGitAccess | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def require_environment_for_new_session(self) -> Self:
         if not self.sessionId and not self.environmentId:
             raise ValueError("environmentId is required when starting a new session")
         return self
-
-    @model_validator(mode="after")
-    def validate_git_auth_inputs(self) -> Self:
-        if self.gitAccessToken:
-            self._git_access = resolve_git_auth(self.gitAccessToken)
-        return self
-
-    @property
-    def git_access(self) -> ResolvedGitAccess | None:
-        return self._git_access
 
 
 @dataclass(frozen=True)
@@ -295,11 +280,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         inputs: TriggerAgentInputs,
         port_mcp: PortMcpWorkflowContext | None,
         agent: BetaManagedAgentsAgent,
-        git_access: ResolvedGitAccess | None,
     ) -> BetaManagedAgentsSession:
         api_config = await normalize_session_config(
             inputs.config,
-            mount_token=git_access.mount_token if git_access else None,
+            mount_token=inputs.gitAccessToken,
         )
         if port_mcp is not None:
             port_mcp_vault_id = await self._ensure_port_mcp_vault_ready(port_mcp, agent)
@@ -375,7 +359,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
         )
         port_mcp = port_mcp_workflow_context(inputs, run, agent)
-        git_access = inputs.git_access
         if port_mcp is not None:
             agent = await self._ensure_agent_port_mcp_configured(agent, port_mcp)
 
@@ -384,9 +367,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             if port_mcp is not None:
                 await self._ensure_port_mcp_vault_ready(port_mcp, agent)
         else:
-            session = await self._create_new_trigger_session(
-                inputs, port_mcp, agent, git_access
-            )
+            session = await self._create_new_trigger_session(inputs, port_mcp, agent)
 
         user_message = await self._send_prompt(session.id, inputs.prompt, run)
         logger.info(
