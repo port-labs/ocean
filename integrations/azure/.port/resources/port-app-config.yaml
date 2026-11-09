@@ -217,15 +217,7 @@ resources:
           properties:
             createdAt: .created_at
             metadata: .metadata
-            promptTokens: (.prompt_tokens // 0)
-            completionTokens: (.completion_tokens // 0)
-            totalTokens: (.total_tokens // 0)
-            toolCallCount: (.tool_call_count // 0)
           relations:
-            agents: (.participant_agent_ids // [])
-            modelDeployments: >-
-              .__foundryProjectName as $project
-              | [(.participant_model_deployment_ids // [])[] | $project + "/" + .]
             foundryProject: .__foundryProjectId
   - kind: foundry-response
     selector:
@@ -245,10 +237,24 @@ resources:
             promptTokens: .usage.input_tokens
             completionTokens: .usage.output_tokens
             totalTokens: .usage.total_tokens
+            cachedTokens: >-
+              .usage.input_token_details.cached_tokens
+              // .usage.input_tokens_details.cached_tokens
+              // 0
+            reasoningTokens: >-
+              .usage.output_token_details.reasoning_tokens
+              // .usage.output_tokens_details.reasoning_tokens
+              // 0
+            toolCalls: >-
+              [.output[]?
+              | select(.type == "mcp_call"
+                or .type == "function_call"
+                or .type == "tool_call"
+                or .type == "code_interpreter_call"
+                or .type == "file_search_call"
+                or .type == "web_search_call")]
           relations:
             conversation: .conversation.id
-            modelDeployment: .__foundryProjectName + "/" + .model
-
   - kind: foundry-memory-store
     selector:
       query: 'true'

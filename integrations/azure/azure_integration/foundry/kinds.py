@@ -61,8 +61,9 @@ class AgentSelector(FoundrySelector):
         alias="includeVersions",
         title="Include versions",
         description=(
-            "Fetch full agent version history (additional API calls per agent). "
-            "Use with itemsToParse on .versions to map versions into a dedicated blueprint."
+            "Fetch full agent version history as __versions (additional API calls per "
+            "agent). Use with itemsToParse on .__versions; parent .id is the agent "
+            "identifier (e.g. identifier: .id + \"/\" + (.item.version | tostring))."
         ),
     )
 
@@ -97,7 +98,7 @@ class ConversationResourceConfig(ResourceConfig):
     kind: Literal["foundry-conversation"] = Field(
         title="Foundry conversation",
         description=(
-            "OpenAI conversation threads (metadata and rollups; not full message "
+            "OpenAI conversation threads (metadata only; not full message "
             "transcripts). Conversation state in Azure is short-lived (~30 days)."
         ),
     )
@@ -112,9 +113,9 @@ class ResponseSelector(FoundrySelector):
         alias="sinceDays",
         title="Since (days)",
         description=(
-            "How far back to scan conversations when listing responses (1–30). Azure "
-            "Foundry typically retains response/conversation data for about 30 days. "
-            "The response incremental cursor also limits how far back each thread is read."
+            "How far back to list project responses (1–30). Azure Foundry typically "
+            "retains response data for about 30 days. Combined with the incremental "
+            "cursor when stopping pagination."
         ),
     )
 
@@ -123,9 +124,9 @@ class ResponseResourceConfig(ResourceConfig):
     kind: Literal["foundry-response"] = Field(
         title="Foundry response",
         description=(
-            "Foundry Responses API runs (usage, tool calls) linked to conversations. "
-            "Underlying response objects in Azure are retained for a limited period "
-            "(~30 days), not indefinitely."
+            "Foundry Responses API runs listed project-wide (usage, status, optional "
+            "conversation relation). Response objects in Azure are retained for a "
+            "limited period (~30 days), not indefinitely."
         ),
     )
     selector: ResponseSelector = Field(default_factory=ResponseSelector)

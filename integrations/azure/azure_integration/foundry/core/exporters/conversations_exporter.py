@@ -14,7 +14,7 @@ from azure_integration.foundry.helpers.utils import (
 
 
 class ConversationsExporter:
-    """OpenAI-style conversation index (metadata; rollups refreshed by response sync)."""
+    """OpenAI-style conversation index (metadata only)."""
 
     def __init__(self, client: FoundryHttpClient) -> None:
         self.client = client
@@ -29,7 +29,8 @@ class ConversationsExporter:
         cutoff = effective_conversation_cutoff(
             incremental_cursor, since_days=since_days
         )
-        params = CONVERSATION_INCREMENTAL.merge_params({}, incremental_cursor)
+        # order=desc always (API sorts by created_at); cutoff may be sinceDays-only.
+        params = CONVERSATION_INCREMENTAL.merge_params({}, cutoff)
 
         async for page in paginate_with_strategy(
             self.client.send_cursor_paginated_request(
@@ -40,13 +41,11 @@ class ConversationsExporter:
             cursor=cutoff,
             strategy=CONVERSATION_INCREMENTAL,
         ):
-            batch = [
+            yield [
                 enrich_with_project(
-                    dict(item),
+                    item,
                     project_endpoint=project_endpoint,
                     project_id=project_id,
                 )
                 for item in page
             ]
-            if batch:
-                yield batch

@@ -22,6 +22,7 @@ class MemoryStoresExporter:
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         cursor = active_incremental_cursor()
+        # order=desc always; API sorts by created_at.
         params = MEMORY_STORE_INCREMENTAL.merge_params({}, cursor)
         headers = {"Foundry-Features": _MEMORY_STORES_FEATURE}
 
@@ -35,13 +36,11 @@ class MemoryStoresExporter:
             cursor=cursor,
             strategy=MEMORY_STORE_INCREMENTAL,
         ):
-            batch = [
+            yield [
                 enrich_with_project(
-                    dict(item),
+                    item,
                     project_endpoint=project_endpoint,
                     project_id=project_id,
                 )
                 for item in page
             ]
-            if batch:
-                yield batch

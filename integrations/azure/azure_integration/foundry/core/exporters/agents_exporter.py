@@ -22,10 +22,14 @@ class AgentsExporter:
         self, project_endpoint: str
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Bare agents list, cached for the current event (shared across agent resources)."""
+        # List agents supports order=asc|desc by created_at only.
+        params = AGENT_INCREMENTAL.merge_params(
+            {"limit": FoundryHttpClient.PAGE_SIZE}, None
+        )
         async for page in self.client.send_paginated_request(
             project_endpoint,
             "agents",
-            params={"limit": FoundryHttpClient.PAGE_SIZE},
+            params=params,
         ):
             yield page
 
@@ -44,49 +48,27 @@ class AgentsExporter:
         ):
             batch = [
                 enrich_with_project(
-                    dict(item),
+                    item,
                     project_endpoint=project_endpoint,
                     project_id=project_id,
                 )
                 for item in page
             ]
             if include_versions:
-                batch = await _attach_versions(self.client, project_endpoint, batch)
-            if batch:
-                yield batch
-
-
-def _version_with_identity(
-    item: dict[str, Any], agent_id: str
-) -> dict[str, Any]:
-    """Stable Port identifier for itemsToParse; leave the rest of the payload raw."""
-    version = item.get("version") or item.get("id")
-    version_str = str(version) if version is not None else ""
-    out = dict(item)
-    out["agent_id"] = agent_id
-    out["id"] = f"{agent_id}/{version_str}" if version_str else agent_id
-    return out
+                await _attach_versions(self.client, project_endpoint, batch)
+            yield batch
 
 
 async def _attach_versions(
     client: FoundryHttpClient,
     project_endpoint: str,
     agents: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    enriched: list[dict[str, Any]] = []
+) -> None:
+    """Attach full version history as ``__versions`` (keeps API ``versions.latest`` intact)."""
     for agent in agents:
-        agent_id = agent.get("id") or agent.get("name")
-        if not agent_id:
-            enriched.append(agent)
+        if not agent.get("id"):
             continue
-        agent_id_str = str(agent_id)
         versions_payload = await client.send_api_request(
-            client.build_url(project_endpoint, f"agents/{agent_id_str}/versions")
+            client.build_url(project_endpoint, f"agents/{agent["id"]}/versions")
         )
-        copy = dict(agent)
-        copy["versions"] = [
-            _version_with_identity(item, agent_id_str)
-            for item in client.items_from_payload(versions_payload)
-        ]
-        enriched.append(copy)
-    return enriched
+        agent["__versions"] = client.items_from_payload(versions_payload)

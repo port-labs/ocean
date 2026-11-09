@@ -320,7 +320,7 @@
   {
     "identifier": "foundry_conversation",
     "title": "Foundry Conversation",
-    "description": "Foundry conversation index (metadata and usage rollups). Azure retains live conversation/Responses state ~30 days; Port only syncs what Foundry still exposes.",
+    "description": "Foundry conversation index (metadata). Azure retains live conversation/Responses state ~30 days; Port only syncs what Foundry still exposes. Token usage lives on related foundry_response entities.",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -334,43 +334,11 @@
           "type": "object",
           "title": "Metadata",
           "description": "Optional conversation metadata from Foundry (may include agent hints)."
-        },
-        "promptTokens": {
-          "type": "number",
-          "title": "Prompt tokens",
-          "description": "Summed input tokens from related responses."
-        },
-        "completionTokens": {
-          "type": "number",
-          "title": "Completion tokens",
-          "description": "Summed output tokens from related responses."
-        },
-        "totalTokens": {
-          "type": "number",
-          "title": "Total tokens",
-          "description": "Summed total tokens from related responses."
-        },
-        "toolCallCount": {
-          "type": "number",
-          "title": "Tool calls",
-          "description": "Tool/MCP/function calls counted across related response outputs."
         }
       },
       "required": []
     },
     "relations": {
-      "agents": {
-        "title": "Agents",
-        "target": "foundry_agent",
-        "required": false,
-        "many": true
-      },
-      "modelDeployments": {
-        "title": "Model deployments",
-        "target": "foundry_model_deployment",
-        "required": false,
-        "many": true
-      },
       "foundryProject": {
         "title": "Foundry project",
         "target": "foundry_project",
@@ -407,20 +375,39 @@
         "totalTokens": {
           "type": "number",
           "title": "Total tokens"
+        },
+        "cachedTokens": {
+          "type": "number",
+          "title": "Cached tokens",
+          "description": "Prompt-cache read tokens (subset of input tokens)."
+        },
+        "reasoningTokens": {
+          "type": "number",
+          "title": "Reasoning tokens",
+          "description": "Hidden reasoning tokens (subset of output tokens)."
+        },
+        "toolCalls": {
+          "type": "array",
+          "title": "Tool calls",
+          "description": "Tool/MCP/function call items from the response output (excludes messages and mcp_list_tools).",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "required": []
+    },
+    "calculationProperties": {
+      "toolCallCount": {
+        "title": "Tool call count",
+        "type": "number",
+        "calculation": "(.properties.toolCalls // []) | length"
+      }
     },
     "relations": {
       "conversation": {
         "title": "Conversation",
         "target": "foundry_conversation",
-        "required": false,
-        "many": false
-      },
-      "modelDeployment": {
-        "title": "Model deployment",
-        "target": "foundry_model_deployment",
         "required": false,
         "many": false
       }
