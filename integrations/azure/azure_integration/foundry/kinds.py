@@ -52,13 +52,16 @@ class ModelDeploymentResourceConfig(ResourceConfig):
 
 class ConversationSelector(FoundrySelector):
     since_days: int = Field(
-        default=365,
+        default=30,
         ge=1,
+        le=30,
         alias="sinceDays",
         title="Since (days)",
         description=(
-            "Only list conversations created within this many days. "
-            "Stops pagination once older conversations appear (with incremental cursor)."
+            "How far back to list conversations when syncing (1–30). Azure Foundry "
+            "typically retains conversation/response state for about 30 days; values "
+            "above that do not recover older threads. Stops pagination once older "
+            "conversations appear (combined with the incremental cursor)."
         ),
     )
 
@@ -67,7 +70,8 @@ class ConversationResourceConfig(ResourceConfig):
     kind: Literal["foundry-conversation"] = Field(
         title="Foundry conversation",
         description=(
-            "OpenAI conversation threads (metadata; token and participant rollups from response sync)."
+            "OpenAI conversation threads (metadata and rollups; not full message "
+            "transcripts). Conversation state in Azure is short-lived (~30 days)."
         ),
     )
     selector: ConversationSelector = Field(default_factory=ConversationSelector)
@@ -75,13 +79,15 @@ class ConversationResourceConfig(ResourceConfig):
 
 class ResponseSelector(FoundrySelector):
     since_days: int = Field(
-        default=365,
+        default=30,
         ge=1,
+        le=30,
         alias="sinceDays",
         title="Since (days)",
         description=(
-            "Only scan conversations created within this many days when listing responses. "
-            "Response incremental cursor limits how far back each thread is read."
+            "How far back to scan conversations when listing responses (1–30). Azure "
+            "Foundry typically retains response/conversation data for about 30 days. "
+            "The response incremental cursor also limits how far back each thread is read."
         ),
     )
 
@@ -90,7 +96,9 @@ class ResponseResourceConfig(ResourceConfig):
     kind: Literal["foundry-response"] = Field(
         title="Foundry response",
         description=(
-            "Foundry Responses API runs (usage, tool calls) linked to conversations."
+            "Foundry Responses API runs (usage, tool calls) linked to conversations. "
+            "Underlying response objects in Azure are retained for a limited period "
+            "(~30 days), not indefinitely."
         ),
     )
     selector: ResponseSelector = Field(default_factory=ResponseSelector)

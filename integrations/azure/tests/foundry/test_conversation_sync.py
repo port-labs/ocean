@@ -7,15 +7,15 @@ from azure_integration.foundry.helpers.responses_catalog import (
 
 
 def test_effective_cutoff_uses_since_days_only() -> None:
-    before = datetime.now(UTC) - timedelta(days=366)
-    cutoff = effective_conversation_cutoff(None, since_days=365)
+    before = datetime.now(UTC) - timedelta(days=31)
+    cutoff = effective_conversation_cutoff(None, since_days=30)
     assert cutoff is not None
     assert cutoff > before
 
 
 def test_effective_cutoff_uses_max_of_incremental_and_since() -> None:
-    incremental = datetime(2026, 1, 1, tzinfo=UTC)
-    cutoff = effective_conversation_cutoff(incremental, since_days=365)
+    incremental = datetime.now(UTC) - timedelta(days=2)
+    cutoff = effective_conversation_cutoff(incremental, since_days=30)
     assert cutoff == incremental
 
 

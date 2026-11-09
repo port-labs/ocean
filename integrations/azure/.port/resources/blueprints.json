@@ -425,7 +425,7 @@
   {
     "identifier": "foundry_conversation",
     "title": "Foundry Conversation",
-    "description": "OpenAI conversation memory used with prompt and Responses agents (multi-turn chat history).",
+    "description": "Foundry conversation index synced into Port (metadata and usage rollups). Live conversation and Responses state in Azure is retained for about 30 days only; Port does not archive full chat transcripts beyond what Foundry still exposes during sync.",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -487,7 +487,7 @@
   {
     "identifier": "foundry_response",
     "title": "Foundry Response",
-    "description": "A single Foundry Responses API run (resp_*) with token usage metrics.",
+    "description": "A single Foundry Responses API run (resp_*) with token usage metrics. Response records in Azure are typically available for about 30 days; use sync soon after runs if you need them in the catalog.",
     "icon": "Azure",
     "schema": {
       "properties": {

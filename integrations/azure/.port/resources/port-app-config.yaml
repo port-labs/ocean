@@ -228,7 +228,7 @@ resources:
   - kind: foundry-conversation
     selector:
       query: 'true'
-      sinceDays: 365
+      sinceDays: 30
     port:
       entity:
         mappings:
@@ -249,7 +249,7 @@ resources:
   - kind: foundry-response
     selector:
       query: 'true'
-      sinceDays: 365
+      sinceDays: 30
     port:
       entity:
         mappings:

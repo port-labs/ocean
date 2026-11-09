@@ -27,7 +27,7 @@ class ConversationsExporter:
     async def get_paginated_resources(
         self,
         *,
-        since_days: int | None = 365,
+        since_days: int | None = 30,
         **_options: object,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         incremental_cursor = active_incremental_cursor()
