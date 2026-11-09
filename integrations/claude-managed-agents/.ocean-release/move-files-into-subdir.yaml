@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Moved files into subdirectory to avoid local development import conflicts with other integrations
