@@ -4,7 +4,6 @@ import functools
 from typing import Any, cast
 
 from anthropic.types.beta import BetaManagedAgentsAgent
-from anthropic.types.beta.beta_managed_agents_agent import Tool
 from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
     BetaManagedAgentsMCPServerURLDefinition,
 )
@@ -33,10 +32,6 @@ _GITHUB_TOOLSET: dict[str, Any] = {
 }
 
 
-def _is_vault_name_matching(vault: BetaManagedAgentsVault, name: str) -> bool:
-    return vault.display_name == name
-
-
 def _is_vault_credential_url_matching(
     credential: BetaManagedAgentsCredential, url: str
 ) -> bool:
@@ -46,10 +41,6 @@ def _is_vault_credential_url_matching(
     return normalize_mcp_server_url(auth.mcp_server_url) == normalize_mcp_server_url(
         url
     )
-
-
-def _is_github_mcp_toolset(tool: Tool, server_name: str) -> bool:
-    return tool.type == "mcp_toolset" and tool.mcp_server_name == server_name
 
 
 def is_agent_configured_with_git_mcp(
@@ -80,7 +71,11 @@ def attach_git_mcp_settings_to_agent_config(
         return proposed_config
 
     mcp_servers = [s for s in mcp_servers if s.name != spec.name]
-    tools = [t for t in agent_tools if not _is_github_mcp_toolset(t, spec.name)]
+    tools = [
+        t
+        for t in agent_tools
+        if not (t.type == "mcp_toolset" and t.mcp_server_name == spec.name)
+    ]
     mcp_servers.append(
         BetaManagedAgentsMCPServerURLDefinition(
             type="url", name=spec.name, url=spec.url
@@ -115,15 +110,14 @@ async def ensure_git_mcp_credential(
     if vault_id is None:
         vault_match = await find_first_match_in_generator(
             client.paginate(client.beta.vaults.list()),
-            functools.partial(_is_vault_name_matching, name=vault_name),
+            lambda vault: cast(BetaManagedAgentsVault, vault).display_name == vault_name,
         )
         if vault_match is None:
             logger.info(f"Creating git MCP vault '{vault_name}'")
             raw_vault: Any = await client.beta.vaults.create(display_name=vault_name)
         else:
             raw_vault = vault_match
-        vault = cast(BetaManagedAgentsVault, raw_vault)
-        vault_id = vault.id
+        vault_id = cast(BetaManagedAgentsVault, raw_vault).id
 
     credential_match = await find_first_match_in_generator(
         client.paginate(client.beta.vaults.credentials.list(vault_id=vault_id)),
