@@ -70,27 +70,13 @@ _UNRECOVERED_FIELD = object()
 
 
 class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
-    def __init__(self, client: GithubRestClient) -> None:
-        super().__init__(client)
-        self._warned_required_checks_unsupported = False
-
-    def _drop_required_checks_options(self, options: dict[str, Any]) -> None:
-        """Required checks status needs GraphQL: remove its options and say so once."""
-        include_required_checks, _ = pop_required_checks_options(options)
-        if include_required_checks and not self._warned_required_checks_unsupported:
-            self._warned_required_checks_unsupported = True
-            logger.warning(
-                "includeRequiredChecksStatus is only supported with api: graphql; "
-                "required_checks_* fields will not be set for pull requests fetched "
-                "with the rest api"
-            )
-
     async def get_resource[ExporterOptionsT: SinglePullRequestOptions](
         self,
         options: ExporterOptionsT,
     ) -> Optional[RAW_ITEM]:
         options_dict = dict(options)
-        self._drop_required_checks_options(options_dict)
+        # Required checks status needs GraphQL: the REST exporter has nothing to do with it.
+        pop_required_checks_options(options_dict)
         repo_name, organization, params = parse_github_options(options_dict)
         pr_number = params["pr_number"]
 
@@ -118,7 +104,13 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all pull requests in the organization's repositories with pagination."""
 
         options_dict = dict(options)
-        self._drop_required_checks_options(options_dict)
+        include_required_checks, _ = pop_required_checks_options(options_dict)
+        if include_required_checks:
+            logger.warning(
+                "includeRequiredChecksStatus is only supported with api: graphql; "
+                "required_checks_* fields will not be set for pull requests fetched "
+                "with the rest api"
+            )
         repo_name, organization, extras = parse_github_options(options_dict)
         states = extras["states"]
         max_results = extras["max_results"]
@@ -313,21 +305,16 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             logger.info(
                 f"[GraphQL] Fetching open PRs with graphql api from {organization}/{repo_name}"
             )
-            required_checks_enricher = (
-                GraphQLRequiredChecksEnricher(
-                    self.client, organization, repo_name, excluded_required_checks
-                )
-                if include_required_checks
-                else None
-            )
             async for batch in self._fetch_open_pull_requests(
                 organization,
                 repo,
                 pr_gql_options,
                 incremental_cursor,
             ):
-                if required_checks_enricher:
-                    await required_checks_enricher.enrich(batch)
+                if include_required_checks:
+                    await GraphQLRequiredChecksEnricher(
+                        self.client, organization, repo_name, excluded_required_checks
+                    ).enrich(batch)
                 yield batch
 
         if "closed" in states:

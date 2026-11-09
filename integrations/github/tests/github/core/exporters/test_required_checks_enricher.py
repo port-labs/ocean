@@ -673,29 +673,37 @@ class TestExportersRequiredChecks:
         assert result is not None
         assert "required_checks_status" not in result
 
-    async def test_rest_exporter_warns_once_when_required_checks_are_requested(
+    async def test_rest_exporter_warns_on_resync_when_required_checks_are_requested(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestPullRequestExporter(rest_client)
-        pull_request = {"id": 1, "number": 7, "state": "open"}
+
+        async def no_pull_requests(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield []
 
         with (
             patch.object(
-                rest_client, "send_api_request", AsyncMock(return_value=pull_request)
+                rest_client, "send_paginated_request", side_effect=no_pull_requests
             ),
             patch(
                 "github.core.exporters.pull_request_exporter.core.logger"
             ) as mock_logger,
         ):
-            for _ in range(2):
-                await exporter.get_resource(
-                    SinglePullRequestOptions(
-                        organization="test-org",
-                        repo_name="repo1",
-                        pr_number=7,
-                        include_required_checks_status=True,
+            async with event_context("test-event"):
+                _ = [
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListPullRequestOptions(
+                            organization="test-org",
+                            repo_name="repo1",
+                            states=["open"],
+                            max_results=None,
+                            include_required_checks_status=True,
+                        )
                     )
-                )
+                ]
 
         mock_logger.warning.assert_called_once()
         assert "only supported with api: graphql" in str(mock_logger.warning.call_args)
