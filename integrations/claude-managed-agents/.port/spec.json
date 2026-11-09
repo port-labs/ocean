@@ -147,6 +147,13 @@
           "required": false
         },
         {
+          "name": "virtualMcpServerIds",
+          "title": "Virtual MCP server IDs",
+          "type": "array",
+          "description": "Identifiers of `_virtual_mcp_server` entities to attach as `{MCP host}/v1/virtual-server/{id}`. Independent of Enable Port MCP.",
+          "required": false
+        },
+        {
           "name": "systemPrompt",
           "title": "System prompt",
           "type": "string",
@@ -200,8 +207,15 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, ensures the agent is connected to the Port MCP endpoint for the integration's Port region and attaches a managed vault credential for Actor or Service Account execution identities.",
+          "description": "When true, ensures the agent is connected to the Port MCP endpoint for the integration's Port region and attaches a managed vault credential for Actor or Service Account execution identities. Only adds/ensures Port MCP; does not replace or remove other MCP servers already on the agent.",
           "default": true,
+          "required": false
+        },
+        {
+          "name": "virtualMcpServerIds",
+          "title": "Virtual MCP server IDs",
+          "type": "array",
+          "description": "Identifiers of `_virtual_mcp_server` entities to ensure are attached and authenticated for this run. Only adds/ensures these servers; does not replace the agent's MCP list or remove existing Port/virtual MCP servers.",
           "required": false
         },
         {
@@ -353,6 +367,13 @@
           "title": "Enable Port MCP",
           "type": "boolean",
           "description": "When true, connects the agent to the Port MCP endpoint for the integration's Port region. trigger_agent attaches a managed credential for Actor or Service Account execution identities. Omit to leave the agent's MCP config unchanged.",
+          "required": false
+        },
+        {
+          "name": "virtualMcpServerIds",
+          "title": "Virtual MCP server IDs",
+          "type": "array",
+          "description": "Identifiers of `_virtual_mcp_server` entities to attach. Omit to leave the agent's virtual MCP config unchanged.",
           "required": false
         },
         {

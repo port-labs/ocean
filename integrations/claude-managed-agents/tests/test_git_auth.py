@@ -4,21 +4,21 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from actions.exceptions import InvalidActionParametersException
-from actions.git_auth import (
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.git_auth import (
     GitAuthRequest,
     resolve_git_auth,
 )
-from actions.git_auth.mcp import (
+from claude_managed_agents.actions.git_auth.mcp import (
     attach_git_mcp_settings_to_agent_config,
     is_agent_configured_with_git_mcp,
 )
-from actions.git_auth.types import (
+from claude_managed_agents.actions.git_auth.types import (
     AgentMcpEnsureSpec,
     DEFAULT_GITHUB_MCP_SERVER_URL,
     GITHUB_MCP_SERVER_NAME,
 )
-from actions.trigger_agent_executor import TriggerAgentInputs
+from claude_managed_agents.actions.trigger_agent_executor import TriggerAgentInputs
 
 
 def test_trigger_agent_inputs_builds_git_auth_from_token() -> None:
