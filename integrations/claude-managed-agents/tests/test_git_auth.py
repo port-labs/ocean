@@ -40,7 +40,7 @@ def test_trigger_agent_inputs_ignores_git_fields_without_token() -> None:
             "prompt": "go",
             "environmentId": "e1",
             "gitProvider": "github",
-            "gitAuthMethod": "pat",
+            "gitAuthMethod": "bearerToken",
             "gitMcpServerUrl": "https://example.com/mcp",
         }
     )

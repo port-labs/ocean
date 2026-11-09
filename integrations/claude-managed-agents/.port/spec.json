@@ -244,16 +244,16 @@
           "name": "gitAuthMethod",
           "title": "Git auth method",
           "type": "string",
-          "description": "How to authenticate with the git provider. Required when gitProvider is set. Currently only 'pat' (personal access token) is supported.",
+          "description": "How to authenticate with the git provider. Required when gitProvider is set. Currently only 'bearerToken' is supported.",
           "required": false,
-          "enum": ["pat"]
+          "enum": ["bearerToken"]
         },
         {
           "name": "gitAccessToken",
           "title": "Git access token",
           "type": "string",
           "sensitive": true,
-          "description": "GitHub personal access token (or fine-grained PAT) used when gitAuthMethod is 'pat'. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}. Injected into github_repository mounts that omit authorization_token, and into the GitHub MCP vault credential when enableGitMcp is true.",
+          "description": "GitHub personal access token (or fine-grained PAT) used when gitAuthMethod is 'bearerToken'. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}. Injected into github_repository mounts that omit authorization_token, and into the GitHub MCP vault credential when enableGitMcp is true.",
           "required": false
         },
         {

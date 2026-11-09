@@ -86,7 +86,7 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     virtualMcpServerIds: list[str] = Field(default_factory=list)
     reportSessionStatus: bool = False
     gitProvider: Literal["github"] | None = None
-    gitAuthMethod: Literal["pat"] | None = None
+    gitAuthMethod: Literal["bearerToken"] | None = None
     gitAccessToken: str | None = Field(default=None, min_length=1)
     enableGitMcp: bool = True
     gitMcpServerUrl: str | None = None

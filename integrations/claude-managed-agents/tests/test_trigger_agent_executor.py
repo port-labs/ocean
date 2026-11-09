@@ -1259,7 +1259,7 @@ async def test_trigger_agent_git_pat_injects_mount_and_vault() -> None:
             "prompt": "open a pr",
             "enablePortMcp": False,
             "gitProvider": "github",
-            "gitAuthMethod": "pat",
+            "gitAuthMethod": "bearerToken",
             "gitAccessToken": "ghp_test",
             "config": {
                 "resources": [
@@ -1324,7 +1324,7 @@ async def test_trigger_agent_enable_git_mcp_false_skips_mcp() -> None:
             "enablePortMcp": False,
             "enableGitMcp": False,
             "gitProvider": "github",
-            "gitAuthMethod": "pat",
+            "gitAuthMethod": "bearerToken",
             "gitAccessToken": "ghp_test",
             "config": {
                 "resources": [
@@ -1394,7 +1394,7 @@ async def test_trigger_agent_continue_remints_git_mcp() -> None:
             "prompt": "continue",
             "enablePortMcp": False,
             "gitProvider": "github",
-            "gitAuthMethod": "pat",
+            "gitAuthMethod": "bearerToken",
             "gitAccessToken": "ghp_new",
             "reportSessionStatus": True,
         }
