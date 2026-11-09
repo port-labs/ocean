@@ -5,12 +5,15 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from actions.registry import register_action_executors
-from clients.client_factory import create_webhook_client
+from claude_managed_agents.actions.registry import register_action_executors
+from claude_managed_agents.clients.client_factory import create_webhook_client
 from port_ocean.utils.signal import signal_handler
 
-from stream_manager import get_stream_manager, reattach_active_sessions
-from exporter_factory import (
+from claude_managed_agents.stream_manager import (
+    get_stream_manager,
+    reattach_active_sessions,
+)
+from claude_managed_agents.exporter_factory import (
     create_agents_exporter,
     create_environments_exporter,
     create_memory_stores_exporter,
@@ -18,7 +21,7 @@ from exporter_factory import (
     create_skills_exporter,
     create_vaults_exporter,
 )
-from integration import (
+from claude_managed_agents.integration import (
     AgentResourceConfig,
     EnvironmentResourceConfig,
     MemoryStoreResourceConfig,
@@ -26,7 +29,9 @@ from integration import (
     SessionResourceConfig,
     VaultResourceConfig,
 )
-from webhook_processors.registry import register_live_events_webhooks
+from claude_managed_agents.webhook_processors.registry import (
+    register_live_events_webhooks,
+)
 
 
 @ocean.on_resync(ObjectKind.AGENT)

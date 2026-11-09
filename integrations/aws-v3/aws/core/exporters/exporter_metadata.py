@@ -83,6 +83,11 @@ from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.live_events import MEMORYDB_USER_LIVE_EVENTS
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
 from aws.core.helpers.metadata.types import ExporterMetadata
+from aws.core.exporters.cloudcontrol.resource.metadata import (
+    CloudControlExporterMetadata,
+)
+from aws_integration.overrides import AWSCustomKindResourceConfig
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from aws.core.exporters.msk import MskClusterExporter, MskServerlessClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.msk.serverless_cluster.models import (
@@ -258,3 +263,13 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         live_events=SNS_TOPIC_LIVE_EVENTS,
     ),
 }
+
+
+def get_exporter_metadata(
+    kind: str, resource_config: ResourceConfig | None = None
+) -> ExporterMetadata | None:
+    if kind in kind_to_export_metadata:
+        return kind_to_export_metadata[ObjectKind(kind)]
+    if isinstance(resource_config, AWSCustomKindResourceConfig):
+        return CloudControlExporterMetadata.for_type(kind)
+    return None
