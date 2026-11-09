@@ -17,6 +17,13 @@ def enrich_with_project(
     enriched["__foundryProjectEndpoint"] = project_endpoint.rstrip("/")
     if project_id:
         enriched["__foundryProjectId"] = project_id
+        enriched["__foundryProjectName"] = project_id.rstrip("/").rsplit("/", 1)[-1]
+    _coerce_created_at(enriched)
+    versions = enriched.get("versions")
+    if isinstance(versions, dict) and isinstance(versions.get("latest"), dict):
+        latest = dict(versions["latest"])
+        _coerce_created_at(latest)
+        enriched["versions"] = {**versions, "latest": latest}
     return enriched
 
 
@@ -42,14 +49,18 @@ def parse_foundry_timestamp(value: object) -> datetime | None:
 
 
 def timestamp_to_iso(value: object) -> str | None:
+    """Normalize Foundry timestamps to RFC3339 UTC (`...Z`) for Port date-time."""
     parsed = parse_foundry_timestamp(value)
-    if parsed is not None:
-        return parsed.isoformat()
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-    if value is not None:
-        return str(value)
-    return None
+    if parsed is None:
+        return None
+    return parsed.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _coerce_created_at(item: dict[str, Any]) -> None:
+    iso = timestamp_to_iso(item.get("created_at") or item.get("createdAt"))
+    if iso is not None:
+        item["created_at"] = iso
+
 
 
 def effective_conversation_cutoff(

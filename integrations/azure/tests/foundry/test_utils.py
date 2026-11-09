@@ -13,8 +13,9 @@ def test_parse_foundry_timestamp_unix_string() -> None:
 
 
 def test_timestamp_to_iso_unix_string() -> None:
-    iso = timestamp_to_iso("1793724875")
-    assert iso == datetime.fromtimestamp(1793724875, tz=UTC).isoformat()
+    assert timestamp_to_iso("1793724875") == (
+        datetime.fromtimestamp(1793724875, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
 
 
 def test_parse_foundry_timestamp_iso_z() -> None:
@@ -24,7 +25,12 @@ def test_parse_foundry_timestamp_iso_z() -> None:
 
 def test_enrich_with_project_adds_identity_fields() -> None:
     enriched = enrich_with_project(
-        {"id": "agent-1", "name": "demo"},
+        {
+            "id": "agent-1",
+            "name": "demo",
+            "created_at": 1731170000,
+            "versions": {"latest": {"created_at": 1731170000}},
+        },
         project_endpoint="https://acct.services.ai.azure.com/api/projects/demo/",
         project_id=(
             "/subscriptions/sub/resourceGroups/rg/providers/"
@@ -41,3 +47,6 @@ def test_enrich_with_project_adds_identity_fields() -> None:
         "/subscriptions/sub/resourceGroups/rg/providers/"
         "Microsoft.CognitiveServices/accounts/acct/projects/demo"
     )
+    assert enriched["__foundryProjectName"] == "demo"
+    assert enriched["created_at"] == "2024-11-09T16:33:20Z"
+    assert enriched["versions"]["latest"]["created_at"] == "2024-11-09T16:33:20Z"

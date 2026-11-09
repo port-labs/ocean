@@ -178,9 +178,9 @@ resources:
             entraPrincipalId: .versions.latest.instance_identity.principal_id
             entraClientId: .versions.latest.instance_identity.client_id
             identityBlueprintId: .versions.latest.blueprint_reference.blueprint_id
-            createdAt: .versions.latest.created_at | todate
+            createdAt: .versions.latest.created_at
           relations:
-            modelDeployment: .__foundryProjectId + "/deployments/" + .versions.latest.definition.model
+            modelDeployment: .__foundryProjectName + "/" + .versions.latest.definition.model
             foundryProject: .__foundryProjectId
   - kind: foundry-model-deployment
     selector:
@@ -190,7 +190,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__foundryProjectId + "/deployments/" + .name
+          identifier: .__foundryProjectName + "/" + .name
           title: .name
           blueprint: '"foundry_model_deployment"'
           properties:
@@ -215,7 +215,7 @@ resources:
           title: .id
           blueprint: '"foundry_conversation"'
           properties:
-            createdAt: .created_at | todate
+            createdAt: .created_at
             metadata: .metadata
             promptTokens: (.prompt_tokens // 0)
             completionTokens: (.completion_tokens // 0)
@@ -224,8 +224,8 @@ resources:
           relations:
             agents: (.participant_agent_ids // [])
             modelDeployments: >-
-              .__foundryProjectId as $project
-              | [(.participant_model_deployment_ids // [])[] | $project + "/deployments/" + .]
+              .__foundryProjectName as $project
+              | [(.participant_model_deployment_ids // [])[] | $project + "/" + .]
             foundryProject: .__foundryProjectId
   - kind: foundry-response
     selector:
@@ -241,13 +241,14 @@ resources:
           blueprint: '"foundry_response"'
           properties:
             status: .status
-            createdAt: .created_at | todate
+            createdAt: .created_at
             promptTokens: .usage.input_tokens
             completionTokens: .usage.output_tokens
             totalTokens: .usage.total_tokens
           relations:
             conversation: .conversation.id
-            modelDeployment: .__foundryProjectId + "/deployments/" + .model
+            modelDeployment: .__foundryProjectName + "/" + .model
+
   - kind: foundry-memory-store
     selector:
       query: 'true'
@@ -262,7 +263,7 @@ resources:
           properties:
             name: .name
             description: .description
-            createdAt: .created_at | todate
+            createdAt: .created_at
             metadata: .metadata
           relations:
             foundryProject: .__foundryProjectId
