@@ -29,7 +29,6 @@ from claude_managed_agents.actions.abstract_action_input import (
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
 from claude_managed_agents.actions.git_auth import (
     AgentMcpEnsureSpec,
-    GitAuthRequest,
     ResolvedGitAccess,
     attach_git_mcp_settings_to_agent_config,
     ensure_git_mcp_credential,
@@ -91,7 +90,7 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     gitAccessToken: str | None = Field(default=None, min_length=1)
     enableGitMcp: bool = True
     gitMcpServerUrl: str | None = None
-    _git_auth: GitAuthRequest | None = PrivateAttr(default=None)
+    _git_access: ResolvedGitAccess | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def require_environment_for_new_session(self) -> Self:
@@ -102,16 +101,16 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     @model_validator(mode="after")
     def validate_git_auth_inputs(self) -> Self:
         if self.gitAccessToken:
-            self._git_auth = GitAuthRequest(
-                access_token=self.gitAccessToken,
+            self._git_access = resolve_git_auth(
+                self.gitAccessToken,
                 enable_git_mcp=self.enableGitMcp,
                 git_mcp_server_url=self.gitMcpServerUrl,
             )
         return self
 
     @property
-    def git_auth(self) -> GitAuthRequest | None:
-        return self._git_auth
+    def git_access(self) -> ResolvedGitAccess | None:
+        return self._git_access
 
 
 @dataclass(frozen=True)
@@ -437,9 +436,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
             inputs.agentId, lambda: self.client.get_agent(inputs.agentId)
         )
         port_mcp = port_mcp_workflow_context(inputs, run, agent)
-        git_access = (
-            resolve_git_auth(inputs.git_auth) if inputs.git_auth is not None else None
-        )
+        git_access = inputs.git_access
         if port_mcp is not None:
             agent = await self._ensure_agent_port_mcp_configured(agent, port_mcp)
         if git_access is not None and git_access.agent_mcp is not None:

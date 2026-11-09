@@ -1242,12 +1242,7 @@ async def test_continue_allows_session_without_port_owner() -> None:
 @pytest.mark.asyncio
 async def test_trigger_agent_git_pat_injects_mount_and_vault() -> None:
     from port_ocean.utils.ttl_cache import TTLCache
-    from claude_managed_agents.actions.git_auth.types import (
-        AgentMcpEnsureSpec,
-        GITHUB_MCP_SERVER_NAME,
-        McpCredentialSpec,
-        ResolvedGitAccess,
-    )
+    from claude_managed_agents.actions.git_auth.types import GITHUB_MCP_SERVER_NAME
 
     client_mock = MagicMock()
     client_mock.get_agent = AsyncMock(return_value=sdk_agent())
@@ -1276,17 +1271,6 @@ async def test_trigger_agent_git_pat_injects_mount_and_vault() -> None:
     )
     mock_ocean = build_mock_ocean()
     mock_ocean.port_client.update_run_started = AsyncMock()
-    resolved = ResolvedGitAccess(
-        mount_token="ghp_test",
-        mcp=McpCredentialSpec(
-            mcp_server_url="https://api.githubcopilot.com/mcp",
-            token="ghp_test",
-        ),
-        agent_mcp=AgentMcpEnsureSpec(
-            name=GITHUB_MCP_SERVER_NAME,
-            url="https://api.githubcopilot.com/mcp",
-        ),
-    )
 
     with (
         patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
@@ -1296,10 +1280,6 @@ async def test_trigger_agent_git_pat_injects_mount_and_vault() -> None:
             mock_event_context,
         ),
         patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
-        patch(
-            "claude_managed_agents.actions.trigger_agent_executor.resolve_git_auth",
-            MagicMock(return_value=resolved),
-        ),
         patch(
             "claude_managed_agents.actions.trigger_agent_executor.ensure_git_mcp_credential",
             AsyncMock(
@@ -1318,12 +1298,15 @@ async def test_trigger_agent_git_pat_injects_mount_and_vault() -> None:
     assert extra["resources"][0]["authorization_token"] == "ghp_test"
     assert "vault_git" in extra["vault_ids"]
     client_mock.update_agent.assert_awaited_once()
+    assert (
+        client_mock.update_agent.await_args.kwargs["payload"]["mcp_servers"][0].name
+        == GITHUB_MCP_SERVER_NAME
+    )
 
 
 @pytest.mark.asyncio
 async def test_trigger_agent_enable_git_mcp_false_skips_mcp() -> None:
     from port_ocean.utils.ttl_cache import TTLCache
-    from claude_managed_agents.actions.git_auth.types import ResolvedGitAccess
 
     client_mock = MagicMock()
     client_mock.get_agent = AsyncMock(return_value=sdk_agent())
@@ -1353,11 +1336,6 @@ async def test_trigger_agent_enable_git_mcp_false_skips_mcp() -> None:
     )
     mock_ocean = build_mock_ocean()
     mock_ocean.port_client.update_run_started = AsyncMock()
-    resolved = ResolvedGitAccess(
-        mount_token="ghp_test",
-        mcp=None,
-        agent_mcp=None,
-    )
 
     with (
         patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
@@ -1367,10 +1345,6 @@ async def test_trigger_agent_enable_git_mcp_false_skips_mcp() -> None:
             mock_event_context,
         ),
         patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
-        patch(
-            "claude_managed_agents.actions.trigger_agent_executor.resolve_git_auth",
-            MagicMock(return_value=resolved),
-        ),
         patch(
             "claude_managed_agents.actions.trigger_agent_executor.ensure_git_mcp_credential",
             AsyncMock(),
@@ -1391,12 +1365,7 @@ async def test_trigger_agent_continue_remints_git_mcp() -> None:
     from anthropic.types.beta.beta_managed_agents_mcp_server_url_definition import (
         BetaManagedAgentsMCPServerURLDefinition,
     )
-    from claude_managed_agents.actions.git_auth.types import (
-        AgentMcpEnsureSpec,
-        GITHUB_MCP_SERVER_NAME,
-        McpCredentialSpec,
-        ResolvedGitAccess,
-    )
+    from claude_managed_agents.actions.git_auth.types import GITHUB_MCP_SERVER_NAME
 
     client_mock = MagicMock()
     client_mock.get_agent = AsyncMock(
@@ -1432,17 +1401,6 @@ async def test_trigger_agent_continue_remints_git_mcp() -> None:
     )
     mock_ocean = build_mock_ocean()
     mock_ocean.port_client.update_run_started = AsyncMock()
-    resolved = ResolvedGitAccess(
-        mount_token="ghp_new",
-        mcp=McpCredentialSpec(
-            mcp_server_url="https://api.githubcopilot.com/mcp",
-            token="ghp_new",
-        ),
-        agent_mcp=AgentMcpEnsureSpec(
-            name=GITHUB_MCP_SERVER_NAME,
-            url="https://api.githubcopilot.com/mcp",
-        ),
-    )
 
     with (
         patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
@@ -1450,10 +1408,6 @@ async def test_trigger_agent_continue_remints_git_mcp() -> None:
         patch(
             "claude_managed_agents.actions.abstract_executor.event_context",
             mock_event_context,
-        ),
-        patch(
-            "claude_managed_agents.actions.trigger_agent_executor.resolve_git_auth",
-            MagicMock(return_value=resolved),
         ),
         patch(
             "claude_managed_agents.actions.trigger_agent_executor.ensure_git_mcp_credential",

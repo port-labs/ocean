@@ -5,10 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from claude_managed_agents.actions.exceptions import InvalidActionParametersException
-from claude_managed_agents.actions.git_auth import (
-    GitAuthRequest,
-    resolve_git_auth,
-)
+from claude_managed_agents.actions.git_auth import resolve_git_auth
 from claude_managed_agents.actions.git_auth.mcp import (
     attach_git_mcp_settings_to_agent_config,
     is_agent_configured_with_git_mcp,
@@ -21,7 +18,7 @@ from claude_managed_agents.actions.git_auth.types import (
 from claude_managed_agents.actions.trigger_agent_executor import TriggerAgentInputs
 
 
-def test_trigger_agent_inputs_builds_git_auth_from_token() -> None:
+def test_trigger_agent_inputs_resolves_git_access_from_token() -> None:
     inputs = TriggerAgentInputs.model_validate(
         {
             "agentId": "a1",
@@ -30,8 +27,10 @@ def test_trigger_agent_inputs_builds_git_auth_from_token() -> None:
             "gitAccessToken": "ghp_x",
         }
     )
-    assert inputs.git_auth is not None
-    assert inputs.git_auth.access_token == "ghp_x"
+    assert inputs.git_access is not None
+    assert inputs.git_access.mount_token == "ghp_x"
+    assert inputs.git_access.mcp is not None
+    assert inputs.git_access.agent_mcp is not None
 
 
 def test_trigger_agent_inputs_ignores_git_fields_without_token() -> None:
@@ -45,7 +44,7 @@ def test_trigger_agent_inputs_ignores_git_fields_without_token() -> None:
             "gitMcpServerUrl": "https://example.com/mcp",
         }
     )
-    assert inputs.git_auth is None
+    assert inputs.git_access is None
 
 
 @pytest.mark.parametrize(
@@ -72,12 +71,7 @@ def test_trigger_agent_inputs_rejects_invalid_git_auth(
 
 
 def test_resolve_git_auth_with_mcp() -> None:
-    resolved = resolve_git_auth(
-        GitAuthRequest(
-            access_token="ghp_test",
-            enable_git_mcp=True,
-        )
-    )
+    resolved = resolve_git_auth("ghp_test", enable_git_mcp=True)
     assert resolved.mount_token == "ghp_test"
     assert resolved.mcp is not None
     assert resolved.mcp.token == "ghp_test"
@@ -87,12 +81,7 @@ def test_resolve_git_auth_with_mcp() -> None:
 
 
 def test_resolve_git_auth_skips_mcp_when_disabled() -> None:
-    resolved = resolve_git_auth(
-        GitAuthRequest(
-            access_token="ghp_test",
-            enable_git_mcp=False,
-        )
-    )
+    resolved = resolve_git_auth("ghp_test", enable_git_mcp=False)
     assert resolved.mount_token == "ghp_test"
     assert resolved.mcp is None
     assert resolved.agent_mcp is None

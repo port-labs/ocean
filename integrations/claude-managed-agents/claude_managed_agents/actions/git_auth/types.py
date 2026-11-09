@@ -27,13 +27,6 @@ class ResolvedGitAccess:
     agent_mcp: AgentMcpEnsureSpec | None
 
 
-@dataclass(frozen=True)
-class GitAuthRequest:
-    access_token: str
-    enable_git_mcp: bool = True
-    git_mcp_server_url: str | None = None
-
-
 def normalize_mcp_server_url(url: str) -> str:
     return url.rstrip("/")
 

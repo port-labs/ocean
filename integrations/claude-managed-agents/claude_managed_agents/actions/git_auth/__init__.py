@@ -6,7 +6,6 @@ from claude_managed_agents.actions.git_auth.mcp import (
 )
 from claude_managed_agents.actions.git_auth.types import (
     AgentMcpEnsureSpec,
-    GitAuthRequest,
     ResolvedGitAccess,
 )
 from claude_managed_agents.actions.git_auth.utils import resolve_git_auth
