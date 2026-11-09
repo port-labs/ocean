@@ -327,9 +327,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
 
         vault_name = inputs.vaultName
         if vault_name is None and isinstance(run, WorkflowNodeRun):
-            identity = run.execution_identity
-            if identity is not None:
-                vault_name = identity.identifier
+            vault_name = run.execution_identity.identifier if run.execution_identity else None
         if vault_name is None:
             raise ActionExecutionError(
                 "A vault name is required to attach git MCP credentials. "
