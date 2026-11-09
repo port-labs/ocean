@@ -22,10 +22,6 @@ resources:
   - kind: iamPolicy
     selector:
       query: "true"
-      # One search per project covers every type listed here. Map each of them as a
-      # gcpCloudResource too, or the cloudResource relation below creates stub entities.
-      # Exception: cloudresourcemanager.googleapis.com/Project grants are project-level and
-      # carried by the project relation - .resource holds the project id, gcpProject the number.
       assetTypes:
         - iam.googleapis.com/ServiceAccount
     port:
