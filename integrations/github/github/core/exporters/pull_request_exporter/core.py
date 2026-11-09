@@ -35,7 +35,7 @@ from github.helpers.utils import (
     parse_github_options,
     pop_required_checks_options,
 )
-from github.core.exporters.pull_request_exporter.required_checks import (
+from github.core.exporters.pull_request_exporter.required_checks_enricher import (
     GraphQLRequiredChecksEnricher,
 )
 from github.core.exporters.pull_request_exporter.utils import (
