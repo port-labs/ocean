@@ -185,11 +185,6 @@
           "title": "Agent GUID",
           "description": "Stable Foundry identifier for the agent resource."
         },
-        "toolCount": {
-          "type": "number",
-          "title": "Tool count",
-          "description": "Number of tools on the active version definition."
-        },
         "description": {
           "type": "string",
           "title": "Description",
@@ -233,15 +228,16 @@
           "format": "date-time",
           "title": "Created at",
           "description": "When the active version was created."
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Updated at",
-          "description": "When the agent was last updated, if reported."
         }
       },
       "required": []
+    },
+    "calculationProperties": {
+      "toolCount": {
+        "title": "Tool count",
+        "type": "number",
+        "calculation": "(.properties.tools // []) | length"
+      }
     },
     "relations": {
       "modelDeployment": {

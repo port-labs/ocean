@@ -172,7 +172,6 @@ resources:
             version: .versions.latest.version
             versionStatus: .versions.latest.status
             agentGuid: .versions.latest.agent_guid
-            toolCount: ((.versions.latest.definition.tools // []) | length)
             tools: .versions.latest.definition.tools
             metadata: .versions.latest.metadata
             entraPrincipalId: .versions.latest.instance_identity.principal_id
