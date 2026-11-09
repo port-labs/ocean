@@ -7,6 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.58.3 (2026-11-09)
+
+
+### Bug Fixes
+
+- >-
+    Acknowledge a workflow node run before pausing it for user authentication when
+    the rate-limit check finds no stored user token, so Port does not offer the run
+    to another claim while it waits for the user.
+
+
 ## 0.58.2 (2026-11-08)
 
 
