@@ -39,4 +39,4 @@ resources:
             condition: .item.condition
           relations:
             project: .project
-            cloudResource: .resource
+            cloudResource: '.resource | sub("^//[^/]+/"; "")'
