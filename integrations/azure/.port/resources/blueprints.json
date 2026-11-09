@@ -259,93 +259,6 @@
     }
   },
   {
-    "identifier": "foundry_agent_version",
-    "title": "Foundry Agent Version",
-    "description": "A published version of a Foundry agent (inventory for Agent Control Plane).",
-    "icon": "Azure",
-    "schema": {
-      "properties": {
-        "agentId": {
-          "type": "string",
-          "title": "Agent",
-          "description": "Parent agent name."
-        },
-        "version": {
-          "type": "string",
-          "title": "Version",
-          "description": "Version number or identifier."
-        },
-        "kind": {
-          "type": "string",
-          "title": "Agent kind"
-        },
-        "model": {
-          "type": "string",
-          "title": "Model"
-        },
-        "instructions": {
-          "type": "string",
-          "title": "Instructions"
-        },
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "versionStatus": {
-          "type": "string",
-          "title": "Version status"
-        },
-        "isDraft": {
-          "type": "boolean",
-          "title": "Draft"
-        },
-        "metadata": {
-          "type": "object",
-          "title": "Metadata"
-        },
-        "tools": {
-          "type": "array",
-          "title": "Tools",
-          "description": "Tool definitions from this agent version definition (JSON objects).",
-          "items": {
-            "type": "object"
-          }
-        },
-        "toolCount": {
-          "type": "number",
-          "title": "Tool count"
-        },
-        "entraPrincipalId": {
-          "type": "string",
-          "title": "Entra principal ID"
-        },
-        "entraClientId": {
-          "type": "string",
-          "title": "Entra client ID"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created at"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Updated at"
-        }
-      },
-      "required": []
-    },
-    "relations": {
-      "agent": {
-        "title": "Agent",
-        "target": "foundry_agent",
-        "required": true,
-        "many": false
-      }
-    }
-  },
-  {
     "identifier": "foundry_model_deployment",
     "title": "Foundry Deployment",
     "description": "A model deployed for inference in the project (one catalog row per deployment name).",
@@ -407,7 +320,7 @@
   {
     "identifier": "foundry_conversation",
     "title": "Foundry Conversation",
-    "description": "Foundry conversation index synced into Port (metadata and usage rollups). Live conversation and Responses state in Azure is retained for about 30 days only; Port does not archive full chat transcripts beyond what Foundry still exposes during sync.",
+    "description": "Foundry conversation index (metadata and usage rollups). Azure retains live conversation/Responses state ~30 days; Port only syncs what Foundry still exposes.",
     "icon": "Azure",
     "schema": {
       "properties": {

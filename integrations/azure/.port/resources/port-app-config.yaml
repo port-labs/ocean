@@ -182,36 +182,6 @@ resources:
           relations:
             modelDeployment: .__foundryProjectId + "/deployments/" + .versions.latest.definition.model
             foundryProject: .__foundryProjectId
-  - kind: foundry-agent
-    selector:
-      query: 'true'
-      includeVersions: true
-      project:
-        apiVersion: '2025-06-01'
-    port:
-      itemsToParse: .versions
-      entity:
-        mappings:
-          identifier: .item.id
-          title: .item.id
-          blueprint: '"foundry_agent_version"'
-          properties:
-            agentId: .item.agent_id
-            version: .item.version
-            kind: .item.definition.kind
-            model: .item.definition.model
-            instructions: .item.definition.instructions
-            description: .item.description
-            versionStatus: .item.status
-            isDraft: .item.draft
-            metadata: .item.metadata
-            tools: .item.definition.tools
-            toolCount: ((.item.definition.tools // []) | length)
-            entraPrincipalId: .item.instance_identity.principal_id
-            entraClientId: .item.instance_identity.client_id
-            createdAt: .item.created_at | todate
-          relations:
-            agent: .item.agent_id
   - kind: foundry-model-deployment
     selector:
       query: 'true'
