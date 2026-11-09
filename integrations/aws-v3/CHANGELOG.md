@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.2.3 (2026-11-09)
+
+
+### Improvements
+
+- Add Cloud Control exporter and resync dispatch for custom AWS resource kinds (ListResources / GetResource, regional/global scope)
+
+
 ## 3.2.2 (2026-11-08)
 
 
