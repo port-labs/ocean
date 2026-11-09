@@ -15,6 +15,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from rate_limiter import shared_rate_limiter
 from retry_transport import TerraformRetryTransport
 
+
 HEALTH_ASSESSMENT_TRIGGER_SCOPE = "assessment"
 
 
