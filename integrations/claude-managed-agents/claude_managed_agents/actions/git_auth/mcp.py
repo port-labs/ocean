@@ -11,6 +11,12 @@ from anthropic.types.beta.beta_managed_agents_vault import BetaManagedAgentsVaul
 from anthropic.types.beta.vaults.beta_managed_agents_credential import (
     BetaManagedAgentsCredential,
 )
+from anthropic.types.beta.vaults.beta_managed_agents_static_bearer_create_params import (
+    BetaManagedAgentsStaticBearerCreateParams,
+)
+from anthropic.types.beta.vaults.beta_managed_agents_static_bearer_update_params import (
+    BetaManagedAgentsStaticBearerUpdateParams,
+)
 from loguru import logger
 from port_ocean.utils.async_iterators import find_first_match_in_generator
 
@@ -109,11 +115,11 @@ async def ensure_git_mcp_credential(
         logger.info(f"Creating git MCP credential '{mcp.display_name}'")
         raw_credential: Any = await client.beta.vaults.credentials.create(
             vault_id,
-            auth={
-                "type": "static_bearer",
-                "token": mcp.token,
-                "mcp_server_url": mcp.mcp_server_url,
-            },
+            auth=BetaManagedAgentsStaticBearerCreateParams(
+                type="static_bearer",
+                token=mcp.token,
+                mcp_server_url=mcp.mcp_server_url,
+            ),
             display_name=mcp.display_name,
         )
         credential = cast(BetaManagedAgentsCredential, raw_credential)
@@ -127,10 +133,10 @@ async def ensure_git_mcp_credential(
     await client.beta.vaults.credentials.update(
         credential.id,
         vault_id=vault_id,
-        auth={
-            "type": "static_bearer",
-            "token": mcp.token,
-        },
+        auth=BetaManagedAgentsStaticBearerUpdateParams(
+            type="static_bearer",
+            token=mcp.token,
+        ),
     )
     return PortMcpBinding(
         mcp_server_url=mcp.mcp_server_url,
