@@ -23,6 +23,7 @@ from port_ocean.core.integrations.mixins.utils import (
     build_lakehouse_data_entry,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
+    post_raw_kind_to_lakehouse,
     selector_hash_from_resource,
     start_kind_tracking,
     stop_kind_tracking,
@@ -32,8 +33,6 @@ from port_ocean.core.integrations.mixins.utils import (
 )
 from port_ocean.core.models import (
     Entity,
-    LakehouseDataEntry,
-    LakehouseDataEntryBatch,
     LakehouseDataEntryMetadata,
     LakehouseEventType,
     LakehouseOperation,
@@ -593,68 +592,52 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return passed_entities, errors
 
-    async def _post_raw_kind_to_lakehouse(
+    def _raw_kind_resource_mappings(
+        self, resources: list[ResourceConfig], kind: str
+    ) -> list[tuple[int, ResourceConfig]]:
+        return [
+            (index, resource)
+            for index, resource in enumerate(resources)
+            if resource.kind == kind
+        ]
+
+    async def _route_raw_kind_via_lakehouse_dsp(
         self,
         kind: str,
         results: list[dict[Any, Any]],
         operation: LakehouseOperation,
         resource_mappings: list[tuple[int, ResourceConfig]],
-        fatal: bool = False,
-    ) -> None:
-        """Post raw items for a kind to lakehouse as a live-event batch.
+    ) -> bool:
+        """Post to lakehouse when enabled. Returns True if Ocean-core apply should be skipped.
 
-        When ``fatal`` is False (Ocean-core still processes), failures are logged
-        and swallowed. When ``fatal`` is True (DSP mode), failures are re-raised
-        so callers do not ack and drop the only delivery path.
+        DSP Ocean-core skip is gated on lakehouse being enabled so callers never
+        drop both lakehouse and Ocean-core paths. Matches LiveEventsMixin.
         """
-        if not results or not resource_mappings:
-            return
+        lakehouse_enabled = await is_lakehouse_data_enabled()
+        dsp_enabled = await is_dsp_mode_enabled()
 
-        try:
+        if lakehouse_enabled:
             try:
                 event_id = event.id
             except EventContextNotFoundError:
                 event_id = str(uuid.uuid4())
-
-            extraction_timestamp = int(datetime.now().timestamp() * 1000)
-            data_entries: list[LakehouseDataEntry] = [
-                build_lakehouse_data_entry(
-                    items=results,
-                    metadata=LakehouseDataEntryMetadata(
-                        operation=operation,
-                        resource_index=resource_index,
-                        extraction_timestamp=extraction_timestamp,
-                        selector_hash=selector_hash_from_resource(resource_config),
-                    ),
-                    export_env_variables=resource_config.selector.export_env_variables,
-                )
-                for resource_index, resource_config in resource_mappings
-            ]
-
-            batch = LakehouseDataEntryBatch(
+            await post_raw_kind_to_lakehouse(
+                kind,
+                results,
+                operation,
+                resource_mappings,
                 event_id=event_id,
-                type=LakehouseEventType.LIVE_EVENT.value,
-                kind=kind,
-                event_type=LakehouseEventType.LIVE_EVENT,
-                resync_start_time=None,
-                extraction_timestamp=extraction_timestamp,
-                data=data_entries,
+                fatal=dsp_enabled,
             )
-            await ocean.port_client.post_integration_raw_data_batch(event_id, batch)
+
+        if dsp_enabled and lakehouse_enabled:
+            action = "upsert" if operation == LakehouseOperation.UPSERT else "delete"
             logger.info(
-                f"Posted {len(results)} raw items for kind '{kind}' to lakehouse "
-                f"({operation.value})",
-                event_id=event_id,
+                f"DSP mode active: skipping Ocean-core {action} for "
+                f"{operation.value} kind '{kind}' ({len(results)} raw items)"
             )
-        except Exception as e:
-            logger.warning(
-                f"Failed to send raw kind data to lakehouse: {e}",
-                kind=kind,
-                operation=operation.value,
-                fatal=fatal,
-            )
-            if fatal:
-                raise
+            return True
+        return False
 
     async def register_raw(
         self,
@@ -665,8 +648,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """Register raw entities of a specific kind.
 
         This method registers raw entities of a specific kind into Port.
-        When lakehouse is enabled, raw items are posted first. In DSP mode,
-        Ocean-core transform/load is skipped (DSP processes via lakehouse).
+        When lakehouse is enabled, raw items are posted first. In DSP mode with
+        lakehouse enabled, Ocean-core transform/load is skipped (DSP processes
+        via lakehouse), matching live events.
 
         Args:
             kind (str): The kind of raw entities being registered.
@@ -679,30 +663,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = [
-            (index, resource)
-            for index, resource in enumerate(config.resources)
-            if resource.kind == kind
-        ]
+        resource_mappings = self._raw_kind_resource_mappings(config.resources, kind)
 
         if not resource_mappings:
             return []
 
-        dsp_enabled = await is_dsp_mode_enabled()
-        if await is_lakehouse_data_enabled():
-            await self._post_raw_kind_to_lakehouse(
-                kind,
-                results,
-                LakehouseOperation.UPSERT,
-                resource_mappings,
-                fatal=dsp_enabled,
-            )
-
-        if dsp_enabled:
-            logger.info(
-                f"DSP mode active: skipping Ocean-core upsert for register_raw "
-                f"kind '{kind}' ({len(results)} raw items)"
-            )
+        if await self._route_raw_kind_via_lakehouse_dsp(
+            kind,
+            results,
+            LakehouseOperation.UPSERT,
+            resource_mappings,
+        ):
             return []
 
         mappings_only = [resource for _, resource in resource_mappings]
@@ -769,7 +740,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         This method unregisters raw entities of a specific kind from Port.
         When lakehouse is enabled, raw items are posted as DELETE first. In DSP
-        mode, Ocean-core delete is skipped (DSP processes via lakehouse).
+        mode with lakehouse enabled, Ocean-core delete is skipped (DSP processes
+        via lakehouse), matching live events.
 
         Args:
             kind (str): The kind of raw entities being unregistered.
@@ -782,30 +754,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         logger.info(f"Unregistering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = [
-            (index, resource)
-            for index, resource in enumerate(config.resources)
-            if resource.kind == kind
-        ]
+        resource_mappings = self._raw_kind_resource_mappings(config.resources, kind)
 
         if not resource_mappings:
             return []
 
-        dsp_enabled = await is_dsp_mode_enabled()
-        if await is_lakehouse_data_enabled():
-            await self._post_raw_kind_to_lakehouse(
-                kind,
-                results,
-                LakehouseOperation.DELETE,
-                resource_mappings,
-                fatal=dsp_enabled,
-            )
-
-        if dsp_enabled:
-            logger.info(
-                f"DSP mode active: skipping Ocean-core delete for unregister_raw "
-                f"kind '{kind}' ({len(results)} raw items)"
-            )
+        if await self._route_raw_kind_via_lakehouse_dsp(
+            kind,
+            results,
+            LakehouseOperation.DELETE,
+            resource_mappings,
+        ):
             return []
 
         mappings_only = [resource for _, resource in resource_mappings]

@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 
@@ -14,6 +15,7 @@ from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.integrations.mixins.lakehouse_buffer import LakehouseBuffer
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -32,6 +34,8 @@ from port_ocean.core.models import (
     IntegrationFeatureFlag,
     LakehouseDataEntry,
     LakehouseDataEntryMetadata,
+    LakehouseEventType,
+    LakehouseOperation,
     ProcessingMode,
 )
 
@@ -64,6 +68,56 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+async def post_raw_kind_to_lakehouse(
+    kind: str,
+    results: list[dict[Any, Any]],
+    operation: LakehouseOperation,
+    resource_mappings: list[tuple[int, ResourceConfig]],
+    *,
+    event_id: str,
+    fatal: bool = False,
+) -> None:
+    """Post raw items for a kind to lakehouse as a live-event batch via LakehouseBuffer.
+
+    Uses the same flush/fatal semantics as resync. When ``fatal`` is False,
+    buffer flush failures are logged and swallowed. When ``fatal`` is True
+    (DSP mode), failures propagate so callers do not drop the only delivery path.
+    """
+    if not results or not resource_mappings:
+        return
+
+    extraction_timestamp = int(time.time() * 1000)
+    # One-shot send: defer flush until all entries are added (explicit flush below).
+    buffer = LakehouseBuffer(
+        sync_id=event_id,
+        kind=kind,
+        resync_start_time=None,
+        event_type=LakehouseEventType.LIVE_EVENT,
+        fatal=fatal,
+        flush_interval_seconds=float("inf"),
+        max_buffer_count=max(len(resource_mappings), 1) + 1,
+    )
+    for resource_index, resource_config in resource_mappings:
+        await buffer.add(
+            build_lakehouse_data_entry(
+                items=results,
+                metadata=LakehouseDataEntryMetadata(
+                    operation=operation,
+                    resource_index=resource_index,
+                    extraction_timestamp=extraction_timestamp,
+                    selector_hash=selector_hash_from_resource(resource_config),
+                ),
+                export_env_variables=resource_config.selector.export_env_variables,
+            )
+        )
+    if await buffer.flush():
+        logger.info(
+            f"Posted {len(results)} raw items for kind '{kind}' to lakehouse "
+            f"({operation.value})",
+            event_id=event_id,
+        )
 
 
 def selector_query_from_resource(resource: ResourceConfig) -> str | None:
