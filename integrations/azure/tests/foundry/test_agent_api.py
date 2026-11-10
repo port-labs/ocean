@@ -1,4 +1,5 @@
 from azure_integration.foundry.helpers.agent_api import (
+    build_agent_responses_invoke,
     build_create_agent_body,
     build_update_agent_body,
 )
@@ -26,3 +27,15 @@ def test_build_update_agent_body_nested_definition() -> None:
         "model": "gpt-5",
         "instructions": "New text",
     }
+
+
+def test_build_agent_responses_invoke_uses_protocol_path() -> None:
+    path, params, body = build_agent_responses_invoke(
+        agent_id="Omby-agent",
+        user_input="hello",
+        conversation_id="conv_123",
+    )
+    assert path == "agents/Omby-agent/endpoint/protocols/openai/responses"
+    assert params == {}
+    assert body["input"] == "hello"
+    assert body["conversation"] == "conv_123"

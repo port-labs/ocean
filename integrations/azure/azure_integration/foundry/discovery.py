@@ -28,13 +28,21 @@ def _project_from_exported_row(row: dict[str, Any]) -> FoundryProject:
     )
 
 
+async def discover_foundry_projects() -> list[FoundryProject]:
+    """List Foundry projects across subscriptions (via the catalog project exporter)."""
+    projects: list[FoundryProject] = []
+    async for batch in ProjectExporter().get_paginated_resources():
+        for row in batch:
+            projects.append(_project_from_exported_row(row))
+    return projects
+
+
 async def resolve_project_by_endpoint(endpoint: str) -> FoundryProject:
     """Find a discovered Foundry project by its data-plane endpoint URL."""
     target = endpoint.rstrip("/")
-    async for batch in ProjectExporter().get_paginated_resources():
-        for row in batch:
-            if str(row.get("__foundryProjectEndpoint") or "").rstrip("/") == target:
-                return _project_from_exported_row(row)
+    for project in await discover_foundry_projects():
+        if project.endpoint.rstrip("/") == target:
+            return project
     raise ValueError(f"No discovered Foundry project matches endpoint {target}")
 
 

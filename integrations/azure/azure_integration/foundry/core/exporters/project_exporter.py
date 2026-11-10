@@ -41,6 +41,10 @@ class FoundryProject(BaseModel):
     resource_group_name: str = Field(serialization_alias="resourceGroupName")
     account_endpoint_host: str = Field(serialization_alias="accountEndpointHost")
 
+    @property
+    def account_base_url(self) -> str:
+        return f"https://{self.account_endpoint_host}"
+
 
 def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
     project_id = str(project.get("id") or "")

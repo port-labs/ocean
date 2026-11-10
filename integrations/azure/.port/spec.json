@@ -51,7 +51,7 @@
   "saas": {
     "enabled": true,
     "liveEvents": {
-      "enabled": false
+      "enabled": true
     },
     "incrementalSync": {
       "enabled": true
@@ -308,6 +308,87 @@
           "title": "Deployment name",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "invoke_agent",
+      "icon": "Azure",
+      "description": "Invoke a Foundry agent via the Responses API",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "input",
+          "title": "Input",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
+        },
+        {
+          "name": "conversationMetadata",
+          "title": "Conversation metadata",
+          "type": "jqObject",
+          "required": false,
+          "description": "Optional metadata to set on the conversation before invoke (for example subject, ticket id, or owner). Applied on create when conversationId is omitted, or patched onto an existing conversationId."
+        },
+        {
+          "name": "reportInvocationStatus",
+          "title": "Report invocation status",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "When true, keeps the run open until a terminal Foundry response.* webhook completes it (requires OCEAN__BASE_URL and a registered Foundry webhook). Falls back to SSE terminal completion when webhook signing secret is unavailable."
+        }
+      ]
+    },
+    {
+      "name": "invoke_model",
+      "icon": "Azure",
+      "description": "Invoke a model deployment via the project openai/v1/responses API",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "input",
+          "title": "Input",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
         }
       ]
     }
