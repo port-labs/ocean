@@ -1,20 +1,13 @@
-from typing import Literal, Any, Type, List, Optional
-from loguru import logger
+from typing import Literal, Any, List, Optional
 from pydantic.v1 import BaseModel, Field, validator
 
-from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
+from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.utils.signal import signal_handler
 
 from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
 from gitlab.helpers.skill_plugin import (
@@ -22,12 +15,7 @@ from gitlab.helpers.skill_plugin import (
     DEFAULT_SKILL_PATHS,
     PluginProvider,
 )
-from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
-from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
-
-FILE_PROPERTY_PREFIX = "file://"
-SEARCH_PROPERTY_PREFIX = "search://"
 
 ISO_8601_DATETIME_REGEX = (
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$"
@@ -858,60 +846,6 @@ class GitlabPortAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
-class GitManipulationHandler(JQEntityProcessor):
-    async def _search(
-        self, data: dict[str, Any], pattern: str, field: str | None = None
-    ) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX) :]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX) :]}"]'
-            )
-            entity_processor = FileEntityProcessor
-        elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
-            logger.warning(
-                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
-                f"Pattern: '{pattern}'. "
-                f"Use the 'searchQueries' selector instead. Example: "
-                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
-                f'Then map to .__searchQueries["<queryName>"]'
-            )
-            entity_processor = SearchEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-
-        return await entity_processor(self.context)._search(data, pattern, field)
-
-
-class GitlabHandlerMixin(HandlerMixin):
-    EntityProcessorClass = GitManipulationHandler
-
-
-class GitlabLiveEventsProcessorManager(LiveEventsProcessorManager, GitlabHandlerMixin):
-    pass
-
-
 class GitlabIntegration(BaseIntegration):
-    EntityProcessorClass = GitManipulationHandler
-
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitlabPortAppConfig
-
-    def __init__(self, context: PortOceanContext):
-        super().__init__(context)
-
-        # Replace default webhook manager with GitLab-specific one
-        self.context.app.webhook_manager = GitlabLiveEventsProcessorManager(
-            self.context.app.integration_router,
-            signal_handler,
-            self.context.config.max_event_processing_seconds,
-            self.context.config.max_wait_seconds_before_shutdown,
-        )
-        self.context.app.execution_manager._webhook_manager = (
-            self.context.app.webhook_manager
-        )
