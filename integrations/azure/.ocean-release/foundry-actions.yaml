@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add Azure AI Foundry management actions to the Azure integration (create/update/delete agent, deploy/delete model deployment) with optional immediate catalog sync after mutations. Invoke agent/model actions are intentionally deferred.

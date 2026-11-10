@@ -146,5 +146,170 @@
         }
       ]
     }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_agent",
+      "icon": "Azure",
+      "description": "Create a Foundry agent in the configured project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "model",
+          "title": "Model deployment",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "instructions",
+          "title": "Instructions",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "update_agent",
+      "icon": "Azure",
+      "description": "Update a Foundry agent",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model deployment",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "instructions",
+          "title": "Instructions",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "delete_agent",
+      "icon": "Azure",
+      "description": "Delete a Foundry agent",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "deploy_model_deployment",
+      "icon": "Azure",
+      "description": "Deploy a model in the configured Foundry project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "modelName",
+          "title": "Model name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "modelVersion",
+          "title": "Model version",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "modelPublisher",
+          "title": "Model publisher",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "skuName",
+          "title": "SKU name",
+          "type": "string",
+          "required": false,
+          "default": "GlobalStandard"
+        },
+        {
+          "name": "deploymentType",
+          "title": "Deployment type",
+          "type": "string",
+          "required": false,
+          "default": "ModelDeployment"
+        }
+      ]
+    },
+    {
+      "name": "delete_model_deployment",
+      "icon": "Azure",
+      "description": "Delete a model deployment from the configured Foundry project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
   ]
 }
