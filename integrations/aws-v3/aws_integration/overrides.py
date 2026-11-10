@@ -449,6 +449,10 @@ def selector_include_actions(selector: AWSRegionPolicySelector) -> List[str]:
 
 
 class AWSCustomKindResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudformation:ListResources",
+        "cloudformation:GetResource",
+    )
     kind: str = Field(
         title="Custom AWS Resource Kind",
         description="Map any resource type supported by the "

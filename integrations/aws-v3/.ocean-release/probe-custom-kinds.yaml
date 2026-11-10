@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Declare Cloud Control probe permissions (`cloudformation:ListResources`, `cloudformation:GetResource`) for custom kinds, so test connection can verify them once custom kinds are enabled

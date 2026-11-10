@@ -1,9 +1,18 @@
-from aws_integration.overrides import AWSPortAppConfig
-from aws.probe.permissions import AwsKindPermissionVerdict
+from aws_integration.overrides import AWSCustomKindResourceConfig, AWSPortAppConfig
+from aws.probe.permissions import CUSTOM_KIND_UNVERIFIED_NOTE, AwsKindPermissionVerdict
+from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
 from port_ocean.core.handlers.port_app_config.validators import (
     get_kind_probe_permissions,
 )
 from port_ocean.core.probe import PermissionCombination, ProbeCheckStatus
+
+
+def _custom_kind_verdict() -> AwsKindPermissionVerdict:
+    verdict = AwsKindPermissionVerdict()
+    verdict._kind_permissions = {
+        CUSTOM_KIND: AWSCustomKindResourceConfig.probe_permissions
+    }
+    return verdict
 
 
 def test_aws_kind_permission_verdict_loads_kind_probe_permissions() -> None:
@@ -64,3 +73,41 @@ def test_verdict_is_unknown_when_simulation_omits_an_action() -> None:
     # Assert
     assert status is ProbeCheckStatus.UNKNOWN
     assert "ec2:DescribeInstances" in message
+
+
+def test_custom_kind_verdict_succeeds_with_unverified_service_note() -> None:
+    # Arrange
+    verdict = _custom_kind_verdict()
+
+    # Act
+    status, message = verdict.verdict(
+        CUSTOM_KIND,
+        {
+            "cloudformation:ListResources": "allowed",
+            "cloudformation:GetResource": "allowed",
+        },
+    )
+
+    # Assert
+    assert status is ProbeCheckStatus.SUCCESS
+    assert "cloudformation:ListResources" in message
+    assert message.endswith(CUSTOM_KIND_UNVERIFIED_NOTE)
+
+
+def test_custom_kind_verdict_fails_without_cloud_control_access() -> None:
+    # Arrange
+    verdict = _custom_kind_verdict()
+
+    # Act
+    status, message = verdict.verdict(
+        CUSTOM_KIND,
+        {
+            "cloudformation:ListResources": "allowed",
+            "cloudformation:GetResource": "implicitDeny",
+        },
+    )
+
+    # Assert
+    assert status is ProbeCheckStatus.FAILURE
+    assert "cloudformation:GetResource" in message
+    assert CUSTOM_KIND_UNVERIFIED_NOTE not in message
