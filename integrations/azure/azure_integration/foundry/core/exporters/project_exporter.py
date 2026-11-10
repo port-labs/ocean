@@ -54,7 +54,8 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
     project_name = match.group("project")
     endpoint_host = f"{account_name}.services.ai.azure.com"
     location = project.get("location")
-    tags = project.get("tags") if isinstance(project.get("tags"), dict) else {}
+    raw_tags = project.get("tags")
+    tags: dict[str, Any] = raw_tags if isinstance(raw_tags, dict) else {}
     return FoundryProject(
         subscription_id=subscription_id,
         resource_group_name=resource_group,
@@ -99,9 +100,13 @@ class ProjectExporter:
                     async for batch in stream_independent_async_iterators(
                         *tasks, context="Foundry project exporter"
                     ):
-                        projects = [foundry_project_from_arm(raw) for raw in batch]
+                        projects = [
+                            project.model_dump()
+                            for raw in batch
+                            if (project := foundry_project_from_arm(raw)) is not None
+                        ]
                         if projects:
                             discovered += len(projects)
-                            yield [project.model_dump() for project in projects]
+                            yield projects
 
         logger.info(f"Exported {discovered} Foundry project(s)")

@@ -26,13 +26,7 @@
         },
         {
           "kind": "storageContainer"
-        }
-      ]
-    },
-    {
-      "type": "exporter",
-      "section": "AI Agents",
-      "resources": [
+        },
         {
           "kind": "Microsoft.CognitiveServices/accounts/projects"
         },
@@ -57,7 +51,7 @@
   "saas": {
     "enabled": true,
     "liveEvents": {
-      "enabled": true
+      "enabled": false
     },
     "incrementalSync": {
       "enabled": true
@@ -152,6 +146,5 @@
         }
       ]
     }
-  ],
-  "actionsProcessingEnabled": true
+  ]
 }

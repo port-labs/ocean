@@ -67,7 +67,7 @@ async def test_project_exporter_across_subscriptions() -> None:
         patch(f"{_MODULE}.batch_resources_iterator", fake_subs),
         patch(f"{_MODULE}.resource_extention_kind_iterator", fake_ext),
     ):
-        projects: list = []
+        projects: list[dict[str, Any]] = []
         async for batch in ProjectExporter().get_paginated_resources(
             api_version="2024-10-01"
         ):
@@ -118,7 +118,7 @@ async def test_project_exporter_yields_successes_then_raises_failed_subscription
         patch(f"{_MODULE}.batch_resources_iterator", fake_subs),
         patch(f"{_MODULE}.resource_extention_kind_iterator", fake_ext),
     ):
-        projects: list = []
+        projects: list[dict[str, Any]] = []
         with pytest.raises(ExceptionGroup) as exc_info:  # noqa: F821
             async for batch in ProjectExporter().get_paginated_resources():
                 projects.extend(batch)

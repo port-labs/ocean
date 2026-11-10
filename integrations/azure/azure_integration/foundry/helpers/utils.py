@@ -62,7 +62,6 @@ def _coerce_created_at(item: dict[str, Any]) -> None:
         item["created_at"] = iso
 
 
-
 def effective_conversation_cutoff(
     incremental_cursor: datetime | None,
     *,

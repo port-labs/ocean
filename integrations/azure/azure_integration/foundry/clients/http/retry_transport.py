@@ -29,8 +29,8 @@ class FoundryRetryTransport(RetryTransport):
         headers: Union[httpx.Headers, Mapping[str, str]],
         status_code: Optional[int] = None,
     ) -> float:
-        ignore_headers = (
-            status_code is not None and self._ignore_retry_after_headers(status_code)
+        ignore_headers = status_code is not None and self._ignore_retry_after_headers(
+            status_code
         )
         if self._retry_config.respect_retry_after_header and not ignore_headers:
             raw = (headers.get(RETRY_AFTER_MS_HEADER) or "").strip()

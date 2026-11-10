@@ -30,7 +30,6 @@ class FoundryProjectFilters(BaseModel):
 
 
 class FoundryProjectSelector(Selector):
-    query: str = Field(default="true")
     api_version: str = Field(
         default=DEFAULT_FOUNDRY_ARM_API_VERSION,
         alias="apiVersion",
@@ -40,7 +39,6 @@ class FoundryProjectSelector(Selector):
 
 
 class FoundrySelector(Selector):
-    query: str = Field(default="true")
     project: FoundryProjectFilters = Field(
         default_factory=FoundryProjectFilters,
         title="Project discovery",
@@ -50,9 +48,14 @@ class FoundrySelector(Selector):
 
 class FoundryProjectResourceConfig(ResourceConfig):
     kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
-        title="Foundry project (ARM)"
+        title="Foundry project (ARM)",
+        description="Azure AI Foundry project discovered via ARM Cognitive Services accounts/projects.",
     )
-    selector: FoundryProjectSelector = Field(default_factory=FoundryProjectSelector)
+    selector: FoundryProjectSelector = Field(
+        default_factory=FoundryProjectSelector,
+        title="Selector",
+        description="Selector for Foundry project resources.",
+    )
 
 
 class AgentSelector(FoundrySelector):
@@ -63,19 +66,33 @@ class AgentSelector(FoundrySelector):
         description=(
             "Fetch full agent version history as __versions (additional API calls per "
             "agent). Use with itemsToParse on .__versions; parent .id is the agent "
-            "identifier (e.g. identifier: .id + \"/\" + (.item.version | tostring))."
+            'identifier (e.g. identifier: .id + "/" + (.item.version | tostring)).'
         ),
     )
 
 
 class AgentResourceConfig(ResourceConfig):
-    kind: Literal["foundry-agent"] = Field(title="Foundry agent")
-    selector: AgentSelector = Field(default_factory=AgentSelector)
+    kind: Literal["foundry-agent"] = Field(
+        title="Foundry agent",
+        description="Microsoft Foundry agent from the project Agent Control Plane.",
+    )
+    selector: AgentSelector = Field(
+        default_factory=AgentSelector,
+        title="Selector",
+        description="Selector for Foundry agent resources.",
+    )
 
 
 class ModelDeploymentResourceConfig(ResourceConfig):
-    kind: Literal["foundry-model-deployment"] = Field(title="Foundry model deployment")
-    selector: FoundrySelector = Field(default_factory=FoundrySelector)
+    kind: Literal["foundry-model-deployment"] = Field(
+        title="Foundry model deployment",
+        description="Model deployment visible to a Foundry project (project data-plane).",
+    )
+    selector: FoundrySelector = Field(
+        default_factory=FoundrySelector,
+        title="Selector",
+        description="Selector for Foundry model deployment resources.",
+    )
 
 
 class ConversationSelector(FoundrySelector):
@@ -102,7 +119,11 @@ class ConversationResourceConfig(ResourceConfig):
             "transcripts). Conversation state in Azure is short-lived (~30 days)."
         ),
     )
-    selector: ConversationSelector = Field(default_factory=ConversationSelector)
+    selector: ConversationSelector = Field(
+        default_factory=ConversationSelector,
+        title="Selector",
+        description="Selector for Foundry conversation resources.",
+    )
 
 
 class ResponseSelector(FoundrySelector):
@@ -129,9 +150,20 @@ class ResponseResourceConfig(ResourceConfig):
             "limited period (~30 days), not indefinitely."
         ),
     )
-    selector: ResponseSelector = Field(default_factory=ResponseSelector)
+    selector: ResponseSelector = Field(
+        default_factory=ResponseSelector,
+        title="Selector",
+        description="Selector for Foundry response resources.",
+    )
 
 
 class MemoryStoreResourceConfig(ResourceConfig):
-    kind: Literal["foundry-memory-store"] = Field(title="Foundry memory store")
-    selector: FoundrySelector = Field(default_factory=FoundrySelector)
+    kind: Literal["foundry-memory-store"] = Field(
+        title="Foundry memory store",
+        description="Persistent memory store for Foundry agents in a project.",
+    )
+    selector: FoundrySelector = Field(
+        default_factory=FoundrySelector,
+        title="Selector",
+        description="Selector for Foundry memory store resources.",
+    )
