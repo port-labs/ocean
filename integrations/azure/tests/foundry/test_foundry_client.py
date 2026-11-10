@@ -36,9 +36,15 @@ def test_openai_routes_skip_api_version() -> None:
 
 
 def _client_with_response(status_code: int) -> FoundryHttpClient:
+<<<<<<< HEAD
     client = FoundryHttpClient(api_version="v1")
     client._authorization_headers = AsyncMock(  # type: ignore[method-assign]
         return_value={"Authorization": "Bearer x"}
+=======
+    client = FoundryHttpClient(
+        get_authorization_header=AsyncMock(return_value={"Authorization": "Bearer x"}),
+        api_version="v1",
+>>>>>>> 67915c0ec (Address Foundry catalog CR: simplify HTTP client and resync dispatch.)
     )
     response = MagicMock()
     response.status_code = status_code

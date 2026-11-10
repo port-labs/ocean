@@ -72,7 +72,7 @@ class AbstractFoundryExecutor(AbstractExecutor):
             return
 
         await self.register_entity(
-            ObjectKind.AGENT,
+            ObjectKind.FOUNDRY_AGENT,
             enrich_with_project(agent_payload, project_endpoint=project_endpoint),
             run,
         )

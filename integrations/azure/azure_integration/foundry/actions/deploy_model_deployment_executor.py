@@ -85,7 +85,7 @@ class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
             f"Deployed Foundry model deployment {inputs.deploymentName} for run {run.id}"
         )
         await self.register_entity(
-            ObjectKind.MODEL_DEPLOYMENT,
+            ObjectKind.FOUNDRY_MODEL_DEPLOYMENT,
             enrich_with_project(deployment, project_endpoint=inputs.projectEndpoint),
             run,
         )
