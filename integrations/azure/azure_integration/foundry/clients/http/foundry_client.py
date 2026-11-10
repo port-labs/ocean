@@ -186,6 +186,34 @@ class FoundryHttpClient:
             url = next_url
             request_params = {}
 
+    async def open_responses_stream(
+        self,
+        invoke_url: str,
+        body: dict[str, Any],
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        headers = await self._authenticator.get_authorization_header()
+        headers["Accept"] = "text/event-stream"
+        stream_body = {**body, "stream": True}
+        query_params = dict(params or {})
+        if not self.uses_openai_compatible_routes(invoke_url):
+            query_params.setdefault("api-version", self._api_version)
+        response = await self._http.request(
+            "POST",
+            invoke_url,
+            params=query_params or None,
+            json=stream_body,
+            headers=headers,
+        )
+        if response.is_error:
+            detail = response.text[:2000] if response.text else response.reason_phrase
+            raise FoundryApiError(
+                f"Foundry stream {response.status_code}: {detail}",
+                status_code=response.status_code,
+            )
+        return response
+
 
 def create_foundry_client() -> FoundryHttpClient:
     global _client

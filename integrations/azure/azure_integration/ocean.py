@@ -30,8 +30,18 @@ from azure_integration.webhook.webhook_processors.resource_event_processor impor
     AzureResourceEventProcessor,
 )
 from azure_integration.foundry.actions.registry import register_action_executors
-from azure_integration.foundry.clients.client_factory import clear_client_cache
+from azure_integration.foundry.clients.client_factory import (
+    clear_client_cache,
+    create_webhook_client_for_account,
+)
+from azure_integration.foundry.discovery import discover_foundry_projects
 from azure_integration.foundry.resync import FOUNDRY_RESYNC_HANDLERS
+from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
+    WEBHOOK_PATH,
+)
+from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
+    ConversationWebhookProcessor,
+)
 from port_ocean.utils.signal import signal_handler
 
 
@@ -232,5 +242,30 @@ async def on_start() -> None:
     register_action_executors()
     signal_handler.register(clear_client_cache)
 
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping Foundry webhook registration because webhooks are disabled"
+        )
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "Skipping Foundry webhook registration: set OCEAN__BASE_URL so Foundry "
+            "can deliver response.* events"
+        )
+        return
+
+    try:
+        projects = await discover_foundry_projects()
+    except Exception as error:
+        logger.warning(f"Foundry discovery failed at startup (continuing): {error}")
+        return
+
+    hosts = {project.account_base_url for project in projects}
+    for account_base in hosts:
+        await create_webhook_client_for_account(account_base).upsert_webhook(base_url)
+
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ConversationWebhookProcessor)
