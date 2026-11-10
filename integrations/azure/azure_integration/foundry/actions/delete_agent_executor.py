@@ -8,6 +8,7 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
 
@@ -38,11 +39,13 @@ class DeleteAgentExecutor(AbstractFoundryExecutor):
             ) from error
 
         logger.info(f"Deleted Foundry agent {inputs.agentId} for run {run.id}")
-        await self.unregister_by_identifier(
+        await self.unregister_entity(
             ObjectKind.AGENT,
-            inputs.agentId,
+            enrich_with_project(
+                {"id": inputs.agentId, "name": inputs.agentId},
+                project_endpoint=inputs.projectEndpoint,
+            ),
             run,
-            project_endpoint=inputs.projectEndpoint,
         )
         await ocean.port_client.report_run_completed(
             run,

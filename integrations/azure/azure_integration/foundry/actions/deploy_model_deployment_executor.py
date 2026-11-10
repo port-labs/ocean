@@ -10,6 +10,7 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import ArmDeploymentExecutor
+from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
 DEPLOYING_STATUS_LABEL = "Deploying model"
@@ -85,9 +86,8 @@ class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
         )
         await self.register_entity(
             ObjectKind.MODEL_DEPLOYMENT,
-            deployment,
+            enrich_with_project(deployment, project_endpoint=inputs.projectEndpoint),
             run,
-            project_endpoint=inputs.projectEndpoint,
         )
         await ocean.port_client.report_run_completed(
             run,

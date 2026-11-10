@@ -35,17 +35,11 @@ class AbstractFoundryExecutor(AbstractExecutor):
         return self.client.rate_limiter.seconds_until_rate_limit_reset()
 
     async def register_entity(
-        self,
-        kind: str,
-        raw: dict[str, Any],
-        run: IntegrationRun,
-        *,
-        project_endpoint: str,
+        self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
         """Best-effort catalog upsert; failures are logged and never fail the action."""
         try:
-            enriched = enrich_with_project(raw, project_endpoint=project_endpoint)
-            await ocean.register_raw(kind, [enriched])
+            await ocean.register_raw(kind, [raw])
         except Exception as error:
             message = f"Failed to upsert {kind} into the catalog (continuing): {error}"
             logger.warning(message)
@@ -53,21 +47,12 @@ class AbstractFoundryExecutor(AbstractExecutor):
                 run, message, level="WARNING", should_raise=False
             )
 
-    async def unregister_by_identifier(
-        self,
-        kind: str,
-        identifier: str,
-        run: IntegrationRun,
-        *,
-        project_endpoint: str,
+    async def unregister_entity(
+        self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
         """Best-effort catalog delete; failures are logged and never fail the action."""
         try:
-            stub = enrich_with_project(
-                {"id": identifier, "name": identifier},
-                project_endpoint=project_endpoint,
-            )
-            await ocean.unregister_raw(kind, [stub])
+            await ocean.unregister_raw(kind, [raw])
         except Exception as error:
             message = f"Failed to delete {kind} from the catalog (continuing): {error}"
             logger.warning(message)
@@ -87,7 +72,9 @@ class AbstractFoundryExecutor(AbstractExecutor):
             return
 
         await self.register_entity(
-            ObjectKind.AGENT, agent_payload, run, project_endpoint=project_endpoint
+            ObjectKind.AGENT,
+            enrich_with_project(agent_payload, project_endpoint=project_endpoint),
+            run,
         )
 
 
