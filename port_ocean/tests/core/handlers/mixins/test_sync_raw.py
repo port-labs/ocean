@@ -25,7 +25,7 @@ from port_ocean.core.handlers.entities_state_applier.port.applier import (
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, LakehouseEventType, LakehouseOperation
 from port_ocean.core.ocean_types import ETLPhase, RAW_RESULT
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
@@ -674,6 +674,259 @@ async def test_unregister_raw(
                 assert entity.identifier == result["identifier"]
                 assert entity.blueprint == result["blueprint"]
                 assert entity.properties == result["properties"]
+
+
+@pytest.mark.asyncio
+async def test_register_raw_lakehouse_and_dsp_on_posts_and_skips_upsert(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    mock_batch = AsyncMock()
+    upsert_mock = AsyncMock()
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        with (
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+                "get_port_app_config",
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                ),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.ocean",
+                mock_ocean,
+            ),
+            patch.object(
+                mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
+            ),
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "upsert",
+                upsert_mock,
+            ),
+        ):
+            event.port_app_config = (
+                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                    use_cache=False
+                )
+            )
+            expected_event_id = event.id
+            registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                kind, raw_entity, UserAgentType.exporter
+            )
+
+    assert registered == []
+    upsert_mock.assert_not_called()
+    mock_batch.assert_called_once()
+    sync_id, batch = mock_batch.call_args[0]
+    assert sync_id == expected_event_id
+    assert batch["kind"] == kind
+    assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
+    assert batch["data"][0]["metadata"]["operation"] == LakehouseOperation.UPSERT
+    assert batch["data"][0]["items"] == raw_entity
+
+
+@pytest.mark.asyncio
+async def test_register_raw_lakehouse_on_dsp_off_posts_and_upserts(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    mock_batch = AsyncMock()
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        with (
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+                "get_port_app_config",
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                ),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=False),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.ocean",
+                mock_ocean,
+            ),
+            patch.object(
+                mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
+            ),
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "upsert",
+                side_effect=lambda entities, user_agent_type: entities,
+            ),
+        ):
+            event.port_app_config = (
+                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                    use_cache=False
+                )
+            )
+            registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                kind, raw_entity, UserAgentType.exporter
+            )
+
+    assert len(registered) == 1
+    assert registered[0].identifier == "entity_1"
+    mock_batch.assert_called_once()
+    _, batch = mock_batch.call_args[0]
+    assert batch["data"][0]["metadata"]["operation"] == LakehouseOperation.UPSERT
+
+
+@pytest.mark.asyncio
+async def test_register_raw_lakehouse_off_skips_lakehouse_and_upserts(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    mock_batch = AsyncMock()
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        with (
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+                "get_port_app_config",
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                ),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+                AsyncMock(return_value=False),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=False),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.ocean",
+                mock_ocean,
+            ),
+            patch.object(
+                mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
+            ),
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "upsert",
+                side_effect=lambda entities, user_agent_type: entities,
+            ),
+        ):
+            event.port_app_config = (
+                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                    use_cache=False
+                )
+            )
+            registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                kind, raw_entity, UserAgentType.exporter
+            )
+
+    assert len(registered) == 1
+    mock_batch.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_unregister_raw_lakehouse_and_dsp_on_posts_delete_and_skips(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    monkeypatch: pytest.MonkeyPatch,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    mock_batch = AsyncMock()
+    delete_mock = AsyncMock()
+    monkeypatch.setattr(mock_context.app, "is_saas", lambda: False)
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        with (
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+                "get_port_app_config",
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                ),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.ocean",
+                mock_ocean,
+            ),
+            patch.object(
+                mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
+            ),
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "delete",
+                delete_mock,
+            ),
+        ):
+            event.port_app_config = (
+                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                    use_cache=False
+                )
+            )
+            unregistered = await mock_sync_raw_mixin_with_jq_processor.unregister_raw(
+                kind, raw_entity, UserAgentType.exporter
+            )
+
+    assert unregistered == []
+    delete_mock.assert_not_called()
+    mock_batch.assert_called_once()
+    _, batch = mock_batch.call_args[0]
+    assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
+    assert batch["data"][0]["metadata"]["operation"] == LakehouseOperation.DELETE
+    assert batch["data"][0]["items"] == raw_entity
 
 
 @pytest.mark.asyncio
