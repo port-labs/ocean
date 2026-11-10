@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -6,7 +7,6 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.base_client import HTTPBaseClient
-from gitlab.clients.rate_limiter.limiter import GitLabRateLimiter
 from gitlab.clients.rate_limiter.rate_limit_wrapper import GitLabRateLimitWrapper
 
 
@@ -328,6 +328,7 @@ def test_integration_token_uses_the_host_pool() -> None:
 
     assert isinstance(client._rate_limiter, GitLabRateLimitWrapper)
     assert client._rate_limiter.pool == "gitlab.example.com"
+    assert client._client._retry_config is not None
     assert client._client._retry_config.rate_limiter is client._rate_limiter
 
 
@@ -339,5 +340,12 @@ def test_user_token_stays_on_the_local_limiter() -> None:
         centralized_rate_limit=False,
     )
 
-    assert isinstance(client._rate_limiter, GitLabRateLimiter)
-    assert client._client._retry_config.rate_limiter is None
+    assert isinstance(client._rate_limiter, GitLabRateLimitWrapper)
+    assert client._rate_limiter._redis_enabled is False
+    assert client._client._retry_config is not None
+    assert client._client._retry_config.rate_limiter is client._rate_limiter
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        SimpleNamespace(centralized_rate_limiter=object()),
+    ):
+        assert client._rate_limiter._redis_admission_enabled() is False

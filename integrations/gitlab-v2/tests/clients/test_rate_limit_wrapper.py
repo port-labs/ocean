@@ -104,15 +104,52 @@ def test_local_action_pause_uses_remaining_threshold() -> None:
         limit=2000,
     )
 
-    assert wrapper._local_is_close_to_rate_limit() is True
-    assert wrapper._local_seconds_until_rate_limit_reset() >= 0
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        SimpleNamespace(centralized_rate_limiter=None),
+    ):
+        assert wrapper.is_close_to_rate_limit() is True
+        seconds = wrapper.seconds_until_rate_limit_reset()
+        assert isinstance(seconds, float)
+        assert seconds >= 0
 
-    wrapper._limiter.rate_limit_info = RateLimitInfo(
-        remaining=MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS,
-        reset_time=1_700_000_100,
-        limit=2000,
+        wrapper._limiter.rate_limit_info = RateLimitInfo(
+            remaining=MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS,
+            reset_time=1_700_000_100,
+            limit=2000,
+        )
+        assert wrapper.is_close_to_rate_limit() is False
+
+
+@pytest.mark.asyncio
+async def test_redis_disabled_wrapper_stays_local() -> None:
+    wrapper = GitLabRateLimitWrapper(
+        GitLabRateLimiter(GitLabRateLimiterConfig()),
+        pool="gitlab.example.com",
+        redis_enabled=False,
     )
-    assert wrapper._local_is_close_to_rate_limit() is False
+    with (
+        patch(
+            "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+            SimpleNamespace(centralized_rate_limiter=object()),
+        ),
+        patch(
+            "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",
+            new_callable=AsyncMock,
+        ) as await_limit,
+        patch(
+            "port_ocean.rate_limiting.rate_limit_wrapper.record_centralized_rate_limit",
+            new_callable=AsyncMock,
+        ) as record_limit,
+    ):
+        async with wrapper:
+            await wrapper.acquire()
+            await wrapper.record_rate_limit_response(_response(), context="projects")
+
+    await_limit.assert_not_awaited()
+    record_limit.assert_not_awaited()
+    assert wrapper.rate_limit_info is not None
+    assert wrapper.rate_limit_info.remaining == 1500
 
 
 @pytest.mark.asyncio

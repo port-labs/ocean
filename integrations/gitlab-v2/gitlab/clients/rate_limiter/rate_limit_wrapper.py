@@ -31,8 +31,14 @@ def centralized_rate_limit_pool(base_url: str) -> str:
 
 
 class GitLabRateLimitWrapper(RateLimitWrapper):
-    def __init__(self, limiter: GitLabRateLimiter, pool: str) -> None:
-        super().__init__(pool)
+    def __init__(
+        self,
+        limiter: GitLabRateLimiter,
+        pool: str,
+        *,
+        redis_enabled: bool = True,
+    ) -> None:
+        super().__init__(pool, redis_enabled=redis_enabled)
         self._limiter = limiter
 
     @property
@@ -120,12 +126,14 @@ class GitLabRateLimitWrapper(RateLimitWrapper):
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return response.status_code == HTTPStatus.TOO_MANY_REQUESTS
 
+    @property
     def _local_is_close_to_rate_limit(self) -> bool:
         info = self._limiter.rate_limit_info
         if not info:
             return False
         return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
 
+    @property
     def _local_seconds_until_rate_limit_reset(self) -> float:
         info = self._limiter.rate_limit_info
         if not info:
