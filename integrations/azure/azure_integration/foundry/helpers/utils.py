@@ -17,6 +17,26 @@ def agent_openai_protocol_path(agent_id: str, resource: str) -> str:
     return f"agents/{agent_id}/endpoint/protocols/openai/{resource}"
 
 
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge overlay into a shallow copy of base (dicts only).
+
+    Overlay values override base at each key; nested dicts merge recursively.
+    """
+    merged = dict(base)
+    for key, value in overlay.items():
+        existing = merged.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            merged[key] = deep_merge(existing, value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def project_name_from_endpoint(project_endpoint: str) -> str:
+    """Last path segment of a Foundry project data-plane URL (``.../api/projects/<name>``)."""
+    return project_endpoint.rstrip("/").rsplit("/", 1)[-1]
+
+
 def enrich_with_project(
     item: dict[str, Any],
     *,
@@ -29,6 +49,10 @@ def enrich_with_project(
     if project_id:
         enriched["__foundryProjectId"] = project_id
         enriched["__foundryProjectName"] = project_id.rstrip("/").rsplit("/", 1)[-1]
+    else:
+        # Mutations often only have the endpoint; deployment identifiers still need
+        # ``.__foundryProjectName + "/" + .name`` (e.g. omby-project/gpt-4o-mini).
+        enriched["__foundryProjectName"] = project_name_from_endpoint(project_endpoint)
     _coerce_created_at(enriched)
     versions = enriched.get("versions")
     if isinstance(versions, dict) and isinstance(versions.get("latest"), dict):

@@ -178,6 +178,13 @@
           "title": "Instructions",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced agent configuration deep-merged into the Foundry create payload (for example definition.tools, description, metadata, rai_config, or a non-prompt definition.kind). First-class fields (name, model, instructions) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
         }
       ]
     },
@@ -215,6 +222,13 @@
           "name": "instructions",
           "title": "Instructions",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced agent configuration deep-merged into the Foundry update payload (for example definition.tools, description, metadata). First-class fields (name, model, instructions) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
           "required": false
         }
       ]
@@ -288,6 +302,13 @@
           "type": "string",
           "required": false,
           "default": "ModelDeployment"
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced ARM deployment body deep-merged under sku/properties (for example sku.capacity, tags, properties.raiPolicyName). First-class fields (model name/version/publisher, sku name) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
         }
       ]
     },

@@ -9,7 +9,6 @@ from azure_integration.foundry.clients.http.foundry_client import (
     clear_foundry_client,
     create_foundry_client,
 )
-from azure_integration.foundry.helpers.scope import clear_arm_scope_cache
 
 _ARM_SCOPE = "https://management.azure.com/.default"
 
@@ -53,4 +52,3 @@ async def clear_client_cache() -> None:
         await _credential.close()
     _arm_client = None
     _credential = None
-    clear_arm_scope_cache()

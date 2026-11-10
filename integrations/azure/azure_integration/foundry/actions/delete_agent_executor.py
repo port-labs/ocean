@@ -15,21 +15,38 @@ class DeleteAgentInputs(AbstractFoundryActionInput):
     agentId: str = Field(min_length=1)
 
 
+DELETE_FAILED_STATUS_LABEL = "Deletion failed"
+AGENT_DELETED_STATUS_LABEL = "Agent deleted"
+
+
 class DeleteAgentExecutor(AbstractFoundryExecutor):
     ACTION_NAME = "delete_agent"
 
-    async def execute_foundry(self, run: IntegrationRun) -> None:
+    async def execute(self, run: IntegrationRun) -> None:
         inputs = DeleteAgentInputs.from_execution_properties(run.execution_properties)
         try:
             await self.client.send_api_request(
                 self.client.build_url(
-                    self.project_endpoint, f"agents/{inputs.agentId}"
+                    inputs.projectEndpoint, f"agents/{inputs.agentId}"
                 ),
                 method="DELETE",
             )
         except Exception as error:
-            raise ActionExecutionError(f"Failed to delete agent: {error}") from error
+            raise ActionExecutionError(
+                f"Failed to delete agent: {error}",
+                status_label=DELETE_FAILED_STATUS_LABEL,
+            ) from error
 
         logger.info(f"Deleted Foundry agent {inputs.agentId} for run {run.id}")
-        await self.unregister_by_identifier(ObjectKind.AGENT, inputs.agentId, run)
-        await ocean.port_client.report_run_completed(run, True)
+        await self.unregister_by_identifier(
+            ObjectKind.AGENT,
+            inputs.agentId,
+            run,
+            project_endpoint=inputs.projectEndpoint,
+        )
+        await ocean.port_client.report_run_completed(
+            run,
+            True,
+            f"Deleted agent {inputs.agentId}",
+            status_label=AGENT_DELETED_STATUS_LABEL,
+        )

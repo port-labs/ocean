@@ -57,12 +57,7 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
         },
     )
 
-    mock_project = MagicMock(project_arm_id="arm-project-id")
     with (
-        patch(
-            "azure_integration.foundry.actions.abstract_executor.resolve_project_by_endpoint",
-            AsyncMock(return_value=mock_project),
-        ),
         patch(
             "azure_integration.foundry.actions.deploy_model_deployment_executor.ocean"
         ) as mock_ocean,
@@ -81,7 +76,11 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
         await executor.execute(run)
 
     executor.arm_deployments.upsert_model_deployment.assert_awaited_once()
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, True)
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert mock_ocean.port_client.report_run_completed.await_args.args[:2] == (
+        run,
+        True,
+    )
 
 
 @pytest.mark.asyncio
@@ -98,12 +97,7 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
         },
     )
 
-    mock_project = MagicMock(project_arm_id="arm-project-id")
     with (
-        patch(
-            "azure_integration.foundry.actions.abstract_executor.resolve_project_by_endpoint",
-            AsyncMock(return_value=mock_project),
-        ),
         patch(
             "azure_integration.foundry.actions.delete_model_deployment_executor.ocean"
         ) as mock_ocean,
@@ -121,5 +115,12 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
 
         await executor.execute(run)
 
-    executor.arm_deployments.delete_deployment.assert_awaited_once_with("gpt-5")
-    mock_ocean.port_client.report_run_completed.assert_awaited_once_with(run, True)
+    executor.arm_deployments.delete_deployment.assert_awaited_once_with(
+        "https://acct.services.ai.azure.com/api/projects/demo",
+        "gpt-5",
+    )
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert mock_ocean.port_client.report_run_completed.await_args.args[:2] == (
+        run,
+        True,
+    )
