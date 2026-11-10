@@ -1,7 +1,7 @@
 """Read-only vault client for the ``port`` vault type (SaaS identity propagation).
 
 Exchanges the caller's identity JWT for a downstream access token via
-``POST /v1/identity-propagation/token``.  Caches the current task's exchange
+``POST /v1/oauth/identity/token``.  Caches the current task's exchange
 result so integrations that resolve the token twice in one run do not
 trigger a second exchange.
 
