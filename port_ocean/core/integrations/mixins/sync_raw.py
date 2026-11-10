@@ -102,9 +102,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else self.event_strategy.resync
         )
 
-        if not (
-            event_mapping.get(resource_config.kind) or event_mapping.get(None)
-        ):
+        if not (event_mapping.get(resource_config.kind) or event_mapping.get(None)):
             return unsupported_kind_response(
                 resource_config.kind,
                 cast(list[str], list(event_mapping.keys())),
@@ -455,7 +453,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 else:
                     async_generators.append(result)
 
-
             buffer: LakehouseBuffer | None = (
                 LakehouseBuffer(
                     sync_id=event.id,
@@ -602,11 +599,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         operation: LakehouseOperation,
         resource_mappings: list[tuple[int, ResourceConfig]],
+        fatal: bool = False,
     ) -> None:
         """Post raw items for a kind to lakehouse as a live-event batch.
 
-        Best-effort: failures are logged and do not raise, matching live-events
-        lakehouse send behavior.
+        When ``fatal`` is False (Ocean-core still processes), failures are logged
+        and swallowed. When ``fatal`` is True (DSP mode), failures are re-raised
+        so callers do not ack and drop the only delivery path.
         """
         if not results or not resource_mappings:
             return
@@ -649,10 +648,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         except Exception as e:
             logger.warning(
-                f"Failed to send raw kind data to lakehouse (best-effort): {e}",
+                f"Failed to send raw kind data to lakehouse: {e}",
                 kind=kind,
                 operation=operation.value,
+                fatal=fatal,
             )
+            if fatal:
+                raise
 
     async def register_raw(
         self,
@@ -686,15 +688,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
+        dsp_enabled = await is_dsp_mode_enabled()
         if await is_lakehouse_data_enabled():
             await self._post_raw_kind_to_lakehouse(
                 kind,
                 results,
                 LakehouseOperation.UPSERT,
                 resource_mappings,
+                fatal=dsp_enabled,
             )
 
-        if await is_dsp_mode_enabled():
+        if dsp_enabled:
             logger.info(
                 f"DSP mode active: skipping Ocean-core upsert for register_raw "
                 f"kind '{kind}' ({len(results)} raw items)"
@@ -787,15 +791,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
+        dsp_enabled = await is_dsp_mode_enabled()
         if await is_lakehouse_data_enabled():
             await self._post_raw_kind_to_lakehouse(
                 kind,
                 results,
                 LakehouseOperation.DELETE,
                 resource_mappings,
+                fatal=dsp_enabled,
             )
 
-        if await is_dsp_mode_enabled():
+        if dsp_enabled:
             logger.info(
                 f"DSP mode active: skipping Ocean-core delete for unregister_raw "
                 f"kind '{kind}' ({len(results)} raw items)"
@@ -1556,7 +1562,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                 return True
 
-            logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
+            logger.info(
+                f"Resync will use the following mappings: {json.loads(app_config.json())}"
+            )
 
             lifecycle_poll_task: asyncio.Task[None] | None = None
             if dsp_enabled:

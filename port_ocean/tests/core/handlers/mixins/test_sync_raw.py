@@ -722,10 +722,8 @@ async def test_register_raw_lakehouse_and_dsp_on_posts_and_skips_upsert(
                 upsert_mock,
             ),
         ):
-            event.port_app_config = (
-                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
-                    use_cache=False
-                )
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
             )
             expected_event_id = event.id
             registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
@@ -741,6 +739,64 @@ async def test_register_raw_lakehouse_and_dsp_on_posts_and_skips_upsert(
     assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
     assert batch["data"][0]["metadata"]["operation"] == LakehouseOperation.UPSERT
     assert batch["data"][0]["items"] == raw_entity
+
+
+@pytest.mark.asyncio
+async def test_register_raw_dsp_on_raises_when_lakehouse_post_fails(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    upsert_mock = AsyncMock()
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        with (
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+                "get_port_app_config",
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                ),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.ocean",
+                mock_ocean,
+            ),
+            patch.object(
+                mock_ocean.port_client,
+                "post_integration_raw_data_batch",
+                AsyncMock(side_effect=RuntimeError("lakehouse down")),
+            ),
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "upsert",
+                upsert_mock,
+            ),
+            pytest.raises(RuntimeError, match="lakehouse down"),
+        ):
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+            await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                kind, raw_entity, UserAgentType.exporter
+            )
+
+    upsert_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -788,10 +844,8 @@ async def test_register_raw_lakehouse_on_dsp_off_posts_and_upserts(
                 side_effect=lambda entities, user_agent_type: entities,
             ),
         ):
-            event.port_app_config = (
-                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
-                    use_cache=False
-                )
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
             )
             registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
                 kind, raw_entity, UserAgentType.exporter
@@ -849,10 +903,8 @@ async def test_register_raw_lakehouse_off_skips_lakehouse_and_upserts(
                 side_effect=lambda entities, user_agent_type: entities,
             ),
         ):
-            event.port_app_config = (
-                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
-                    use_cache=False
-                )
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
             )
             registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
                 kind, raw_entity, UserAgentType.exporter
@@ -911,10 +963,8 @@ async def test_unregister_raw_lakehouse_and_dsp_on_posts_delete_and_skips(
                 delete_mock,
             ),
         ):
-            event.port_app_config = (
-                await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
-                    use_cache=False
-                )
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
             )
             unregistered = await mock_sync_raw_mixin_with_jq_processor.unregister_raw(
                 kind, raw_entity, UserAgentType.exporter
