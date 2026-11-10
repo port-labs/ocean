@@ -52,9 +52,7 @@ class FoundryProjectResourceConfig(ResourceConfig):
         description="Azure AI Foundry project discovered via ARM Cognitive Services accounts/projects.",
     )
     selector: FoundryProjectSelector = Field(
-        default_factory=FoundryProjectSelector,
-        title="Selector",
-        description="Selector for Foundry project resources.",
+        default_factory=lambda: FoundryProjectSelector(query="true"),
     )
 
 
@@ -77,9 +75,7 @@ class AgentResourceConfig(ResourceConfig):
         description="Microsoft Foundry agent from the project Agent Control Plane.",
     )
     selector: AgentSelector = Field(
-        default_factory=AgentSelector,
-        title="Selector",
-        description="Selector for Foundry agent resources.",
+        default_factory=lambda: AgentSelector(query="true"),
     )
 
 
@@ -89,9 +85,7 @@ class ModelDeploymentResourceConfig(ResourceConfig):
         description="Model deployment visible to a Foundry project (project data-plane).",
     )
     selector: FoundrySelector = Field(
-        default_factory=FoundrySelector,
-        title="Selector",
-        description="Selector for Foundry model deployment resources.",
+        default_factory=lambda: FoundrySelector(query="true"),
     )
 
 
@@ -120,9 +114,7 @@ class ConversationResourceConfig(ResourceConfig):
         ),
     )
     selector: ConversationSelector = Field(
-        default_factory=ConversationSelector,
-        title="Selector",
-        description="Selector for Foundry conversation resources.",
+        default_factory=lambda: ConversationSelector(query="true"),
     )
 
 
@@ -151,9 +143,7 @@ class ResponseResourceConfig(ResourceConfig):
         ),
     )
     selector: ResponseSelector = Field(
-        default_factory=ResponseSelector,
-        title="Selector",
-        description="Selector for Foundry response resources.",
+        default_factory=lambda: ResponseSelector(query="true"),
     )
 
 
@@ -163,7 +153,5 @@ class MemoryStoreResourceConfig(ResourceConfig):
         description="Persistent memory store for Foundry agents in a project.",
     )
     selector: FoundrySelector = Field(
-        default_factory=FoundrySelector,
-        title="Selector",
-        description="Selector for Foundry memory store resources.",
+        default_factory=lambda: FoundrySelector(query="true"),
     )
