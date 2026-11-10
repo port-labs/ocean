@@ -36,13 +36,50 @@ from port_ocean.core.models import (
 )
 
 
+SENSITIVE_ENV_VAR_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?:^|_)(?:KEY|KEYS)(?:_|$)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(?:^|_)APIKEY(?:_|$)", re.IGNORECASE),
+    re.compile(r"SECRET", re.IGNORECASE),
+    re.compile(r"TOKEN", re.IGNORECASE),
+    re.compile(r"PASSW(?:OR)?D", re.IGNORECASE),
+    re.compile(r"CREDENTIAL", re.IGNORECASE),
+    re.compile(r"(?:^|_)PRIVATE(?:_|$)", re.IGNORECASE),
+    re.compile(r"^AWS_", re.IGNORECASE),
+    re.compile(r"(?:^|_)(?:AUTH|BEARER)(?:_|$)", re.IGNORECASE),
+)
+
+
+def is_sensitive_env_variable(name: str) -> bool:
+    """Check if an environment variable name matches sensitive or secret patterns."""
+    if not isinstance(name, str):
+        return False
+    return any(pattern.search(name) for pattern in SENSITIVE_ENV_VAR_PATTERNS)
+
+
 def collect_export_env_variables(
     variable_names: list[str],
 ) -> dict[str, str | None] | None:
-    """Collect values for explicitly requested environment variable names."""
+    """Collect values for explicitly requested environment variable names.
+
+    Environment variables matching sensitive or secret patterns are excluded
+    with a warning to prevent accidental credential exfiltration.
+    """
     if not variable_names:
         return None
-    return {name: os.environ.get(name) for name in variable_names}
+
+    collected: dict[str, str | None] = {}
+    for name in variable_names:
+        if is_sensitive_env_variable(name):
+            logger.warning(
+                f"Environment variable '{name}' matches sensitive secret patterns and will be omitted from export"
+            )
+            continue
+        collected[name] = os.environ.get(name)
+
+    return collected
 
 
 def build_lakehouse_data_entry(
