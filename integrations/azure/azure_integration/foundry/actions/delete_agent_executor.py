@@ -40,7 +40,7 @@ class DeleteAgentExecutor(AbstractFoundryExecutor):
 
         logger.info(f"Deleted Foundry agent {inputs.agentId} for run {run.id}")
         await self.unregister_entity(
-            ObjectKind.AGENT,
+            ObjectKind.FOUNDRY_AGENT,
             enrich_with_project(
                 {"id": inputs.agentId, "name": inputs.agentId},
                 project_endpoint=inputs.projectEndpoint,

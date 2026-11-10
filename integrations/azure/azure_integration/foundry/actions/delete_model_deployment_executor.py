@@ -46,7 +46,7 @@ class DeleteModelDeploymentExecutor(ArmDeploymentExecutor):
             f"Deleted Foundry deployment {inputs.deploymentName} for run {run.id}"
         )
         await self.unregister_entity(
-            ObjectKind.MODEL_DEPLOYMENT,
+            ObjectKind.FOUNDRY_MODEL_DEPLOYMENT,
             enrich_with_project(
                 {
                     "id": inputs.deploymentName,
