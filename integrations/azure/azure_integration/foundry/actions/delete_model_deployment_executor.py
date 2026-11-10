@@ -8,6 +8,7 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import ArmDeploymentExecutor
+from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
 
@@ -44,11 +45,16 @@ class DeleteModelDeploymentExecutor(ArmDeploymentExecutor):
         logger.info(
             f"Deleted Foundry deployment {inputs.deploymentName} for run {run.id}"
         )
-        await self.unregister_by_identifier(
+        await self.unregister_entity(
             ObjectKind.MODEL_DEPLOYMENT,
-            inputs.deploymentName,
+            enrich_with_project(
+                {
+                    "id": inputs.deploymentName,
+                    "name": inputs.deploymentName,
+                },
+                project_endpoint=inputs.projectEndpoint,
+            ),
             run,
-            project_endpoint=inputs.projectEndpoint,
         )
         await ocean.port_client.report_run_completed(
             run,
