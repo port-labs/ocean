@@ -1,3 +1,4 @@
+import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock
 
@@ -50,7 +51,7 @@ def client() -> PortExchangeVaultClient:
 
 def _ok(access_token: str = "gho_ok", expires_at: int | None = None) -> MagicMock:
     r = MagicMock(status_code=200)
-    body: dict = {"accessToken": access_token}
+    body: dict[str, str | int] = {"accessToken": access_token}
     if expires_at is not None:
         body["expiresAt"] = expires_at
     r.json.return_value = body
@@ -94,6 +95,72 @@ async def test_expired_cache_re_exchanges(
 
     assert r1 is not None and r1.access_token == "old"
     assert r2 is not None and r2.access_token == "new"
+    assert http.post.await_count == 2
+
+
+async def test_new_identity_token_clears_cache(
+    client: PortExchangeVaultClient, http: MagicMock
+) -> None:
+    http.post.side_effect = [_ok("first", VALID_UNTIL), _ok("second", VALID_UNTIL)]
+
+    r1 = await client.read("o", "a", "t")
+    client.set_identity_token("eyJ.other.token")
+    r2 = await client.read("o", "a", "t")
+
+    assert r1 is not None and r1.access_token == "first"
+    assert r2 is not None and r2.access_token == "second"
+    assert http.post.await_count == 2
+    cached = mod._cached_record.get()
+    assert cached is not None and cached.access_token == "second"
+
+
+async def test_same_identity_token_keeps_cache(
+    client: PortExchangeVaultClient, http: MagicMock
+) -> None:
+    http.post.return_value = _ok("gho_ex", VALID_UNTIL)
+    await client.read("o", "a", "t")
+    client.set_identity_token(IDENTITY_TOKEN)
+    await client.read("o", "a", "t")
+    assert http.post.await_count == 1
+
+
+async def test_concurrent_workers_isolate_identity_and_cache(
+    http: MagicMock,
+) -> None:
+    """Shared client + concurrent tasks must not race identity JWT or cache."""
+    started = asyncio.Event()
+    release = asyncio.Event()
+    call_tokens: list[str] = []
+
+    async def slow_post(*_args: object, **kwargs: object) -> MagicMock:
+        headers = kwargs["headers"]
+        assert isinstance(headers, dict)
+        token = str(headers["x-port-identity-token"])
+        call_tokens.append(token)
+        started.set()
+        await release.wait()
+        return _ok(f"tok-for-{token}", VALID_UNTIL)
+
+    http.post.side_effect = slow_post
+    shared = PortExchangeVaultClient()
+
+    async def worker(identity: str) -> str | None:
+        shared.set_identity_token(identity)
+        record = await shared.read("o", "a", "t")
+        return record.access_token if record else None
+
+    task_a = asyncio.create_task(worker("jwt-a"))
+    await started.wait()
+    started.clear()
+    task_b = asyncio.create_task(worker("jwt-b"))
+    await started.wait()
+    release.set()
+
+    result_a, result_b = await asyncio.gather(task_a, task_b)
+
+    assert result_a == "tok-for-jwt-a"
+    assert result_b == "tok-for-jwt-b"
+    assert set(call_tokens) == {"jwt-a", "jwt-b"}
     assert http.post.await_count == 2
 
 

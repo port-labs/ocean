@@ -1,10 +1,15 @@
 """Read-only vault client for the ``port`` vault type (SaaS identity propagation).
 
 Exchanges the caller's identity JWT for a downstream access token via
-``POST /v1/identity-propagation/token``.  Caches per identity token (which is
-unique per node run) so integrations that resolve the token twice in one run
-do not trigger a second exchange.
+``POST /v1/identity-propagation/token``.  Caches the current task's exchange
+result so integrations that resolve the token twice in one run do not
+trigger a second exchange.
+
+Identity token and cache live in ``ContextVar``s so the default 3 action
+workers can share one client without racing or retaining JWTs across runs.
 """
+
+from contextvars import ContextVar
 
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.identity_propagation import (
@@ -14,8 +19,15 @@ from port_ocean.exceptions.identity_propagation import (
 from port_ocean.identity_propagation.vault.base import TokenRecord, VaultClient
 from port_ocean.utils import http_async_client
 
-EXCHANGE_PATH = "/v1/identity-propagation/token"
+EXCHANGE_PATH = "/v1/oauth/identity/token"
 REAUTH_REQUIRED_RESULT = "reauth_required"
+
+_identity_token: ContextVar[str | None] = ContextVar(
+    "port_exchange_identity_token", default=None
+)
+_cached_record: ContextVar[TokenRecord | None] = ContextVar(
+    "port_exchange_cached_record", default=None
+)
 
 
 class PortExchangeVaultClient(VaultClient):
@@ -26,28 +38,26 @@ class PortExchangeVaultClient(VaultClient):
     owns the grants store.
     """
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._cache: dict[str, TokenRecord] = {}
-        self._identity_token: str | None = None
-
     def set_identity_token(self, token: str) -> None:
-        self._identity_token = token
+        if token != _identity_token.get():
+            _cached_record.set(None)
+        _identity_token.set(token)
 
     async def read(self, org_id: str, actor_id: str, target: str) -> TokenRecord | None:
-        if self._identity_token is None:
+        identity_token = _identity_token.get()
+        if identity_token is None:
             raise VaultError(
                 "PortExchangeVaultClient requires an identity token; "
                 "call set_identity_token before read"
             )
 
-        cached = self._cache.get(self._identity_token)
+        cached = _cached_record.get()
         if cached is not None and not cached.is_expired():
             return cached
 
-        record = await self._exchange(self._identity_token)
+        record = await self._exchange(identity_token)
         if record is not None:
-            self._cache[self._identity_token] = record
+            _cached_record.set(record)
         return record
 
     async def write(
