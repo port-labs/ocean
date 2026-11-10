@@ -96,12 +96,11 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
         )
         raise UserAuthRequiredError()
 
-    if record.is_expired():
-        if _is_port_vault():
-            # The port vault type is read-only; there is no local refresh path.
-            # A stale cached token means the grant expired server-side.
-            raise UserAuthRequiredError()
-
+    if record.is_expired() and not _is_port_vault():
+        # For the ``port`` vault, refresh is Port's job inside the exchange.
+        # PortExchangeVaultClient already re-exchanges when its per-run cache is
+        # stale; access-token TTL alone must not force the user through reauth
+        # (that signal is only ``reauth_required`` from the exchange).
         logger.debug(
             "Stored token expired, refreshing", actor=claims.sub, target=target
         )

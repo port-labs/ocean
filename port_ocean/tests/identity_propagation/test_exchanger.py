@@ -310,16 +310,16 @@ async def test_port_vault_type_skips_provider_and_uses_integration_type_as_targe
     verifier.verify.assert_awaited_once_with("identity.jwt.token", "github")
 
 
-async def test_port_vault_type_expired_token_raises_reauth_instead_of_refreshing(
+async def test_port_vault_type_expired_token_skips_local_refresh(
     monkeypatch: pytest.MonkeyPatch,
     mock_vault: MagicMock,
 ) -> None:
-    """For the ``port`` vault type, an expired cached token raises ``UserAuthRequiredError``
-    instead of attempting a local refresh (the port vault is read-only)."""
+    """For the ``port`` vault, access-token expiry must not force user reauth or
+    a local OAuth refresh — Port refreshes server-side on exchange."""
     from port_ocean.config.settings import VaultType
 
     mock_vault.read.return_value = TokenRecord(
-        access_token="gho_stale", refresh_token="ghr_old", expires_at=EXPIRED_AT
+        access_token="gho_from_exchange", expires_at=EXPIRED_AT
     )
 
     verifier = MagicMock()
@@ -336,5 +336,6 @@ async def test_port_vault_type_expired_token_raises_reauth_instead_of_refreshing
     monkeypatch.setattr(exchanger, "ocean", mock_ocean)
     exchanger._refresh_locks.clear()
 
-    with pytest.raises(UserAuthRequiredError):
-        await resolve_user_token(generate_identity_run())
+    token = await resolve_user_token(generate_identity_run())
+    assert token == "gho_from_exchange"
+    mock_vault.write.assert_not_called()
