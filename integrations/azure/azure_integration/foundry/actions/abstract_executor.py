@@ -1,7 +1,6 @@
 from typing import Any
 
 from loguru import logger
-from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -46,11 +45,7 @@ class AbstractFoundryExecutor(AbstractExecutor):
         """Best-effort catalog upsert; failures are logged and never fail the action."""
         try:
             enriched = enrich_with_project(raw, project_endpoint=project_endpoint)
-            await ocean.integration.port_app_config_handler.get_port_app_config(
-                use_cache=False
-            )
-            async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-                await ocean.register_raw(kind, [enriched])
+            await ocean.register_raw(kind, [enriched])
         except Exception as error:
             message = f"Failed to upsert {kind} into the catalog (continuing): {error}"
             logger.warning(message)
@@ -72,11 +67,7 @@ class AbstractFoundryExecutor(AbstractExecutor):
                 {"id": identifier, "name": identifier},
                 project_endpoint=project_endpoint,
             )
-            await ocean.integration.port_app_config_handler.get_port_app_config(
-                use_cache=False
-            )
-            async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-                await ocean.unregister_raw(kind, [stub])
+            await ocean.unregister_raw(kind, [stub])
         except Exception as error:
             message = f"Failed to delete {kind} from the catalog (continuing): {error}"
             logger.warning(message)

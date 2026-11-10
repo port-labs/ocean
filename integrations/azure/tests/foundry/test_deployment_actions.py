@@ -67,9 +67,6 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
     ):
         mock_ocean.port_client.post_run_log = AsyncMock()
         mock_ocean.port_client.report_run_completed = AsyncMock()
-        mock_ocean_base.integration.port_app_config_handler.get_port_app_config = (
-            AsyncMock()
-        )
         mock_ocean_base.register_raw = AsyncMock()
         mock_ocean_base.port_client.post_run_log = AsyncMock()
 
@@ -107,9 +104,6 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
     ):
         mock_ocean.port_client.post_run_log = AsyncMock()
         mock_ocean.port_client.report_run_completed = AsyncMock()
-        mock_ocean_base.integration.port_app_config_handler.get_port_app_config = (
-            AsyncMock()
-        )
         mock_ocean_base.unregister_raw = AsyncMock()
         mock_ocean_base.port_client.post_run_log = AsyncMock()
 
