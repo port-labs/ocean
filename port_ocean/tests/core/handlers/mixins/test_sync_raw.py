@@ -702,13 +702,13 @@ def _raw_kind_lakehouse_patches(
         )
         stack.enter_context(
             patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+                "port_ocean.core.integrations.mixins.utils.is_lakehouse_data_enabled",
                 AsyncMock(return_value=lakehouse_enabled),
             )
         )
         stack.enter_context(
             patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                "port_ocean.core.integrations.mixins.utils.is_dsp_mode_enabled",
                 AsyncMock(return_value=dsp_enabled),
             )
         )
@@ -720,7 +720,7 @@ def _raw_kind_lakehouse_patches(
         )
         stack.enter_context(
             patch(
-                "port_ocean.core.integrations.mixins.lakehouse_buffer.ocean",
+                "port_ocean.core.integrations.mixins.utils.ocean",
                 mock_ocean,
             )
         )
@@ -860,6 +860,47 @@ async def test_register_raw_lakehouse_on_dsp_off_posts_and_upserts(
     mock_batch.assert_called_once()
     _, batch = mock_batch.call_args[0]
     assert batch["data"][0]["metadata"]["operation"] == LakehouseOperation.UPSERT
+
+
+@pytest.mark.asyncio
+async def test_register_raw_lakehouse_on_dsp_off_continues_upsert_when_post_fails(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    """Non-fatal lakehouse failure must not block Ocean-core upsert."""
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    mock_batch = AsyncMock(side_effect=RuntimeError("lakehouse down"))
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        with (
+            _raw_kind_lakehouse_patches(
+                mock_sync_raw_mixin_with_jq_processor=mock_sync_raw_mixin_with_jq_processor,
+                mock_ocean=mock_ocean,
+                mock_resource_config=mock_resource_config,
+                lakehouse_enabled=True,
+                dsp_enabled=False,
+                mock_batch=mock_batch,
+            ),
+            patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "upsert",
+                side_effect=lambda entities, user_agent_type: entities,
+            ),
+        ):
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+            registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                kind, raw_entity, UserAgentType.exporter
+            )
+
+    assert len(registered) == 1
+    assert registered[0].identifier == "entity_1"
+    mock_batch.assert_called_once()
 
 
 @pytest.mark.asyncio

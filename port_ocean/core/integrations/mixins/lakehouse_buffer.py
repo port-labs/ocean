@@ -5,11 +5,7 @@ import uuid
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import (
-    LakehouseDataEntry,
-    LakehouseDataEntryBatch,
-    LakehouseEventType,
-)
+from port_ocean.core.models import LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseEventType
 from port_ocean.core.utils.json_compat import make_json_compatible
 
 _DEFAULT_MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
@@ -61,10 +57,9 @@ class LakehouseBuffer:
         self.event_type = event_type
         self._fatal = fatal
 
-    async def flush(self) -> bool:
-        """Flush buffered items. Returns True if sent (or empty), False if discarded."""
+    async def flush(self) -> None:
         if not self._buffer:
-            return True
+            return
         logger.debug(
             f"Flushing {len(self._buffer)} buffered batch items to lakehouse"
             f" (~{self._current_size_bytes / (1024 * 1024):.1f} MB)"
@@ -89,16 +84,11 @@ class LakehouseBuffer:
                 f"Failed to flush lakehouse buffer for kind '{self.kind}': {e}. "
                 f"Discarding {len(self._buffer)} buffered items."
             )
-            self._buffer = []
-            self._current_size_bytes = 0
-            self._last_flush_at = time.monotonic()
             if self._fatal:
                 raise
-            return False
         self._buffer = []
         self._current_size_bytes = 0
         self._last_flush_at = time.monotonic()
-        return True
 
     async def add(self, batch_items: LakehouseDataEntry) -> None:
         """Append items to the buffer, flushing if the interval or size cap is reached."""

@@ -1,6 +1,5 @@
 import asyncio
 import time
-import uuid
 from datetime import datetime, timedelta, timezone
 from graphlib import CycleError
 import inspect
@@ -23,7 +22,8 @@ from port_ocean.core.integrations.mixins.utils import (
     build_lakehouse_data_entry,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
-    post_raw_kind_to_lakehouse,
+    maybe_post_raw_and_skip_ocean_core,
+    raw_kind_resource_mappings,
     selector_hash_from_resource,
     start_kind_tracking,
     stop_kind_tracking,
@@ -53,7 +53,6 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from port_ocean.core.incremental.cursor_store import CursorStore
-from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.core import (
     OceanAbortException,
 )
@@ -592,53 +591,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return passed_entities, errors
 
-    def _raw_kind_resource_mappings(
-        self, resources: list[ResourceConfig], kind: str
-    ) -> list[tuple[int, ResourceConfig]]:
-        return [
-            (index, resource)
-            for index, resource in enumerate(resources)
-            if resource.kind == kind
-        ]
-
-    async def _route_raw_kind_via_lakehouse_dsp(
-        self,
-        kind: str,
-        results: list[dict[Any, Any]],
-        operation: LakehouseOperation,
-        resource_mappings: list[tuple[int, ResourceConfig]],
-    ) -> bool:
-        """Post to lakehouse when enabled. Returns True if Ocean-core apply should be skipped.
-
-        DSP Ocean-core skip is gated on lakehouse being enabled so callers never
-        drop both lakehouse and Ocean-core paths. Matches LiveEventsMixin.
-        """
-        lakehouse_enabled = await is_lakehouse_data_enabled()
-        dsp_enabled = await is_dsp_mode_enabled()
-
-        if lakehouse_enabled:
-            try:
-                event_id = event.id
-            except EventContextNotFoundError:
-                event_id = str(uuid.uuid4())
-            await post_raw_kind_to_lakehouse(
-                kind,
-                results,
-                operation,
-                resource_mappings,
-                event_id=event_id,
-                fatal=dsp_enabled,
-            )
-
-        if dsp_enabled and lakehouse_enabled:
-            action = "upsert" if operation == LakehouseOperation.UPSERT else "delete"
-            logger.info(
-                f"DSP mode active: skipping Ocean-core {action} for "
-                f"{operation.value} kind '{kind}' ({len(results)} raw items)"
-            )
-            return True
-        return False
-
     async def register_raw(
         self,
         kind: str,
@@ -663,12 +615,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = self._raw_kind_resource_mappings(config.resources, kind)
+        resource_mappings = raw_kind_resource_mappings(config.resources, kind)
 
         if not resource_mappings:
             return []
 
-        if await self._route_raw_kind_via_lakehouse_dsp(
+        if await maybe_post_raw_and_skip_ocean_core(
             kind,
             results,
             LakehouseOperation.UPSERT,
@@ -754,12 +706,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         logger.info(f"Unregistering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = self._raw_kind_resource_mappings(config.resources, kind)
+        resource_mappings = raw_kind_resource_mappings(config.resources, kind)
 
         if not resource_mappings:
             return []
 
-        if await self._route_raw_kind_via_lakehouse_dsp(
+        if await maybe_post_raw_and_skip_ocean_core(
             kind,
             results,
             LakehouseOperation.DELETE,
