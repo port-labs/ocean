@@ -6,7 +6,7 @@ expensive fields (``EXPENSIVE_PR_GRAPHQL_FIELD_TIERS``) until one succeeds, then
 backfills the dropped fields per-PR.
 
 These drive the real resync harness end-to-end (auth -> repo list -> PR
-pagination -> Port entities) and assert on what reaches Port. The failure is a
+pagination -> raw items handed to Port) and assert on the raw items extracted. The failure is a
 200 carrying unknown (non-ignored) errors — the "query too heavy" signal that
 recovers purely at the client level, with no transport backoff (a gateway 5xx
 would drag the harness through real retry sleeps; that path lives in the
@@ -14,7 +14,6 @@ client/transport unit tests).
 """
 
 import os
-from typing import Any
 
 import pytest
 
@@ -33,16 +32,12 @@ INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 @pytest.mark.asyncio
 class TestGraphQLFieldReduction:
-    """Field-tier reduction, observed through the PR entities that reach Port."""
+    """Field-tier reduction, observed through the raw PR items handed to Port."""
 
-    async def _resync(
-        self,
-        transport: InterceptTransport,
-        mapping: dict[str, Any] | None = None,
-    ) -> ResyncResult:
+    async def _resync(self, transport: InterceptTransport) -> ResyncResult:
         harness = IntegrationTestHarness(
             integration_path=INTEGRATION_PATH,
-            port_mapping_config=mapping or mapping_for_kind("pull-request-graphql"),
+            port_mapping_config=mapping_for_kind("pull-request-graphql"),
             third_party_transport=transport,
             config_overrides=integration_config(),
         )
@@ -53,12 +48,15 @@ class TestGraphQLFieldReduction:
             await harness.shutdown()
 
     @staticmethod
-    def _pr_identifiers(result: ResyncResult) -> set[str]:
+    def _pr_keys(result: ResyncResult) -> set[tuple[str, int]]:
         return {
-            e["identifier"]
-            for e in result.upserted_entities
-            if e["blueprint"] == "githubPullRequest"
+            (item["__repository"], item["number"])
+            for item in result.raw_items("pull-request")
         }
+
+    @staticmethod
+    def _expected_pr_keys() -> set[tuple[str, int]]:
+        return {(repo, 1) for repo in REPO_NAMES}
 
     async def test_recovers_when_relation_tier_stripped(self) -> None:
         """Relation fields make the query fail; stripping them recovers all PRs."""
@@ -73,7 +71,7 @@ class TestGraphQLFieldReduction:
         result = await self._resync(transport)
 
         assert result.errors == [], f"Resync had errors: {result.errors}"
-        assert len(self._pr_identifiers(result)) == len(REPO_NAMES)
+        assert self._pr_keys(result) == self._expected_pr_keys()
 
     async def test_escalates_until_commit_tier_stripped(self) -> None:
         """Only a query with both relation AND commit tiers stripped succeeds."""
@@ -88,15 +86,15 @@ class TestGraphQLFieldReduction:
 
         result = await self._resync(transport)
 
-        # PRs reaching Port means escalation dropped both tiers — a single-tier
+        # Raw PRs being extracted means escalation dropped both tiers — a single-tier
         # strip would still carry `commits` and keep failing.
         assert result.errors == [], f"Resync had errors: {result.errors}"
-        assert len(self._pr_identifiers(result)) == len(REPO_NAMES)
+        assert self._pr_keys(result) == self._expected_pr_keys()
 
-    async def test_backfills_dropped_field_into_entity(self) -> None:
-        """A field dropped by the winning fallback is refetched per-PR and mapped."""
+    async def test_backfills_dropped_field_into_raw_item(self) -> None:
+        """A field dropped by the winning fallback is refetched per-PR and merged."""
         # The list payload never carries `labels`; only the per-PR backfill can
-        # put it on the entity, so a mapped `label` proves the merge ran.
+        # put it on the raw item, so a `labels` value proves the merge ran.
         transport = (
             GithubMockTransportBuilder()
             .with_base()
@@ -105,20 +103,14 @@ class TestGraphQLFieldReduction:
             .respond_pr_details({"labels": {"nodes": [{"name": "bug"}]}})
             .build(strict=False)
         )
-        # Normalization flattens `labels.nodes` to `labels`, so the entity sees a list.
-        mapping = mapping_for_kind("pull-request-graphql")
-        mapping["resources"][0]["port"]["entity"]["mappings"]["properties"][
-            "label"
-        ] = ".labels[0].name"
 
-        result = await self._resync(transport, mapping)
+        result = await self._resync(transport)
 
         assert result.errors == [], f"Resync had errors: {result.errors}"
-        prs = [
-            e for e in result.upserted_entities if e["blueprint"] == "githubPullRequest"
-        ]
-        assert prs, "expected PR entities"
-        assert all(e["properties"].get("label") == "bug" for e in prs)
+        prs = result.raw_items("pull-request")
+        assert self._pr_keys(result) == self._expected_pr_keys()
+        # Normalization flattens `labels.nodes` to `labels`, so the item holds a list.
+        assert all(pr.get("labels") == [{"name": "bug"}] for pr in prs), prs
 
     async def test_all_queries_failing_surfaces_error(self) -> None:
         """When no fallback recovers, the resync surfaces the error."""

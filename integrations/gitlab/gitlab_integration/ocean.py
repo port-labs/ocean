@@ -179,7 +179,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for projects in service.get_all_projects():
             # resync small batches of projects, so data will appear asap to the user.
             # projects takes more time than other resources as it has extra enrichment performed for each entity
-            # such as languages, `file://` and `search://`
+            # such as languages
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(

@@ -19,11 +19,6 @@ def created_on(idx: int) -> str:
     return f"2024-01-1{idx} 10:0{idx}:00"
 
 
-def created_on_iso(idx: int) -> str:
-    """What the mapping's strptime/strftime transform should produce."""
-    return f"2024-01-1{idx}T10:0{idx}:00Z"
-
-
 def user_group_response(idx: int) -> dict[str, Any]:
     return {
         "sys_id": sys_id("group", idx),

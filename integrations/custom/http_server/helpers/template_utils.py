@@ -9,7 +9,7 @@ import re
 import asyncio
 from typing import Dict, Any
 
-from port_ocean.context.ocean import ocean
+from port_ocean.utils import jq
 from http_server.exceptions import (
     TemplateSyntaxError,
     TemplateEvaluationError,
@@ -104,9 +104,7 @@ async def evaluate_template(template: str, auth_response: Dict[str, Any]) -> str
     async def extract_value(jq_path: str) -> str:
         try:
             jq_expression = jq_path if jq_path.startswith(".") else f".{jq_path}"
-            value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                auth_response, jq_expression
-            )
+            value = jq.evaluate(auth_response, jq_expression)
             if value is None:
                 available_keys = (
                     list(auth_response.keys())

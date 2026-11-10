@@ -20,9 +20,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
-    JQEntityProcessorSync,
-)
+from port_ocean.utils import jq
 
 DEFAULT_CONCURRENCY_LIMIT = 10
 
@@ -58,7 +56,7 @@ def extract_and_enrich_batch(
 
     for item in batch:
         try:
-            extracted_data = JQEntityProcessorSync._search(item, data_path)
+            extracted_data = jq.evaluate(item, data_path)
 
             if isinstance(extracted_data, list):
                 for entity in extracted_data:

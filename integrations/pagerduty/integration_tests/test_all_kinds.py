@@ -1,11 +1,10 @@
 import os
-from typing import Any
 
 import pytest
 
 from port_ocean.integration_testing import IntegrationTestHarness, InterceptTransport
 
-from expectations import KIND_EXPECTATIONS
+from expectations import KIND_EXPECTATIONS, assert_raw_items
 from helpers import integration_config, mapping_for_kind
 from mocks.transport_builder import PagerdutyMockTransportBuilder
 
@@ -40,7 +39,6 @@ def _transport_for_kind(kind: str) -> InterceptTransport:
 @pytest.mark.parametrize("kind", list(KIND_EXPECTATIONS.keys()))
 @pytest.mark.asyncio
 async def test_kind_resync(kind: str) -> None:
-    expectation = KIND_EXPECTATIONS[kind]
     harness = IntegrationTestHarness(
         integration_path=INTEGRATION_PATH,
         port_mapping_config=mapping_for_kind(kind),
@@ -55,35 +53,7 @@ async def test_kind_resync(kind: str) -> None:
         await harness.shutdown()
 
     assert not result.errors, f"[{kind}] resync raised errors: {result.errors}"
-
-    by_blueprint: dict[str, list[dict[str, Any]]] = {}
-    for entity in result.upserted_entities:
-        by_blueprint.setdefault(entity["blueprint"], []).append(entity)
-    entities = by_blueprint.get(expectation.blueprint, [])
-
-    assert (
-        len(entities) == expectation.count
-    ), f"[{kind}] expected {expectation.count} entities, got {len(entities)}"
-
-    for expected in expectation.entities:
-        matching = [e for e in entities if e["identifier"] == expected.identifier]
-        assert (
-            len(matching) == 1
-        ), f"[{kind}] identifier {expected.identifier!r} not found in upserted entities"
-        entity = matching[0]
-        if expected.title is not None:
-            assert (
-                entity.get("title") == expected.title
-            ), f"[{kind}] title mismatch for {expected.identifier!r}"
-        for prop, value in expected.properties.items():
-            actual = entity.get("properties", {}).get(prop)
-            assert actual == value, (
-                f"[{kind}] property {prop!r} mismatch for {expected.identifier!r}: "
-                f"expected {value!r}, got {actual!r}"
-            )
-        for rel, rel_value in expected.relations.items():
-            actual_rel = entity.get("relations", {}).get(rel)
-            assert actual_rel == rel_value, (
-                f"[{kind}] relation {rel!r} mismatch for {expected.identifier!r}: "
-                f"expected {rel_value!r}, got {actual_rel!r}"
-            )
+    assert {batch.kind for batch in result.raw_batches} == {
+        kind
+    }, f"[{kind}] unexpected kinds handed off: {result.raw_batches}"
+    assert_raw_items(result.raw_items(kind), KIND_EXPECTATIONS[kind], kind)
