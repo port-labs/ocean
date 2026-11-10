@@ -3,7 +3,7 @@ import httpx
 from unittest.mock import MagicMock, patch
 from port_ocean.ocean import Ocean
 
-from port_ocean.clients.auth.oauth_client import OAuthClient
+from port_ocean.clients.auth.oauth_client import OAuthClient, _oauth_retry_config
 from port_ocean.config.settings import IntegrationConfiguration
 
 
@@ -49,6 +49,10 @@ def disabled_oauth_client() -> MockOAuthClient:
     return MockOAuthClient(is_oauth_enabled_value=False)
 
 
+def test_oauth_retry_config_includes_post() -> None:
+    assert "POST" in _oauth_retry_config().retryable_methods
+
+
 def test_oauth_client_initialization(mock_oauth_client: MockOAuthClient) -> None:
     assert isinstance(mock_oauth_client, OAuthClient)
     assert mock_oauth_client.is_oauth_enabled() is True
@@ -59,6 +63,30 @@ def test_oauth_client_disabled_initialization(
 ) -> None:
     assert isinstance(disabled_oauth_client, OAuthClient)
     assert disabled_oauth_client.is_oauth_enabled() is False
+
+
+@patch("port_ocean.clients.auth.oauth_client.register_retry_config_callback")
+@patch("port_ocean.clients.auth.oauth_client.register_on_retry_callback")
+def test_oauth_client_registers_retry_hooks_when_enabled(
+    mock_register_on_retry: MagicMock,
+    mock_register_retry_config: MagicMock,
+) -> None:
+    MockOAuthClient(is_oauth_enabled_value=True)
+
+    mock_register_on_retry.assert_called_once()
+    mock_register_retry_config.assert_called_once()
+
+
+@patch("port_ocean.clients.auth.oauth_client.register_retry_config_callback")
+@patch("port_ocean.clients.auth.oauth_client.register_on_retry_callback")
+def test_oauth_client_skips_retry_hooks_when_disabled(
+    mock_register_on_retry: MagicMock,
+    mock_register_retry_config: MagicMock,
+) -> None:
+    MockOAuthClient(is_oauth_enabled_value=False)
+
+    mock_register_on_retry.assert_not_called()
+    mock_register_retry_config.assert_not_called()
 
 
 def test_refresh_request_auth_creds(mock_oauth_client: MockOAuthClient) -> None:
