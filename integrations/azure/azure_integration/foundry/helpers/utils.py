@@ -2,8 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urljoin
 
 from port_ocean.utils.time import convert_str_to_utc_datetime
+
+
+def build_foundry_url(project_endpoint: str, path: str) -> str:
+    base = project_endpoint.rstrip("/") + "/"
+    return urljoin(base, path.lstrip("/"))
 
 
 def enrich_with_project(

@@ -10,7 +10,10 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.core.options import ListAgentsOptions
 from azure_integration.foundry.foundry_incremental import AGENT_INCREMENTAL
-from azure_integration.foundry.helpers.utils import enrich_with_project
+from azure_integration.foundry.helpers.utils import (
+    build_foundry_url,
+    enrich_with_project,
+)
 
 
 class AgentsExporter:
@@ -26,7 +29,7 @@ class AgentsExporter:
         params = AGENT_INCREMENTAL.merge_params(
             {"limit": FoundryHttpClient.PAGE_SIZE}, None
         )
-        async for page in self.client.send_paginated_request(
+        async for page in self.client.send_cursor_paginated_request(
             project_endpoint,
             "agents",
             params=params,
@@ -69,6 +72,6 @@ async def _attach_versions(
         if not agent.get("id"):
             continue
         versions_payload = await client.send_api_request(
-            client.build_url(project_endpoint, f"agents/{agent["id"]}/versions")
+            build_foundry_url(project_endpoint, f"agents/{agent["id"]}/versions")
         )
         agent["__versions"] = client.items_from_payload(versions_payload)

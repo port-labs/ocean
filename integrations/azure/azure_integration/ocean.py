@@ -45,6 +45,11 @@ def _resolve_resync_method_for_resource(
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in ResourceKindsWithSpecialHandling:
+        foundry_handler = FOUNDRY_RESYNC_HANDLERS.get(kind)
+        if foundry_handler is not None:
+            async for resources_batch in foundry_handler(kind):
+                yield resources_batch
+            return
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
     resource_selector = typing.cast(
@@ -58,7 +63,6 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 for _foundry_kind, _foundry_handler in FOUNDRY_RESYNC_HANDLERS.items():
-    ocean.on_resync(_foundry_kind)(_foundry_handler)
     ocean.on_incremental_resync(_foundry_kind)(_foundry_handler)
 
 

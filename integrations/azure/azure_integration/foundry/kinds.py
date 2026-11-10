@@ -13,11 +13,11 @@ DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
 
 class ObjectKind(StrEnum):
     FOUNDRY_PROJECT = FOUNDRY_ARM_PROJECT_KIND
-    AGENT = "foundry-agent"
-    MODEL_DEPLOYMENT = "foundry-model-deployment"
-    CONVERSATION = "foundry-conversation"
-    RESPONSE = "foundry-response"
-    MEMORY_STORE = "foundry-memory-store"
+    FOUNDRY_AGENT = "foundry-agent"
+    FOUNDRY_MODEL_DEPLOYMENT = "foundry-model-deployment"
+    FOUNDRY_CONVERSATION = "foundry-conversation"
+    FOUNDRY_RESPONSE = "foundry-response"
+    FOUNDRY_MEMORY_STORE = "foundry-memory-store"
 
 
 class FoundryProjectFilters(BaseModel):

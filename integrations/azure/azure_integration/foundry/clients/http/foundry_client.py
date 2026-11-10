@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Awaitable
-from typing import Any, Protocol
-from urllib.parse import urljoin
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from typing import Any
 
 import httpx
 from azure.identity.aio import DefaultAzureCredential
@@ -13,34 +12,27 @@ from azure_integration.foundry.clients.http.retry_transport import (
     FOUNDRY_RETRY_AFTER_HEADERS,
     FoundryRetryTransport,
 )
+from azure_integration.foundry.helpers.utils import build_foundry_url
 
 _FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 _DEFAULT_API_VERSION = "v1"
+# Cap error bodies so logs stay readable when Azure returns a large HTML/JSON payload.
+_ERROR_BODY_LIMIT = 500
 
 _credential: DefaultAzureCredential | None = None
 _client: FoundryHttpClient | None = None
 
 
-class _HeaderProvider(Protocol):
-    def get_authorization_header(self) -> Awaitable[dict[str, str]]: ...
-
-
 class FoundryApiError(Exception):
-    def __init__(self, message: str, *, status_code: int | None = None) -> None:
-        super().__init__(message)
-        self.status_code = status_code
+    pass
 
 
-class FoundryAuthenticator:
-    def __init__(self) -> None:
-        global _credential
-        if _credential is None:
-            _credential = DefaultAzureCredential()
-        self._credential = _credential
-
-    async def get_authorization_header(self) -> dict[str, str]:
-        token = await self._credential.get_token(_FOUNDRY_SCOPE)
-        return {"Authorization": f"Bearer {token.token}"}
+async def _authorization_headers() -> dict[str, str]:
+    global _credential
+    if _credential is None:
+        _credential = DefaultAzureCredential()
+    token = await _credential.get_token(_FOUNDRY_SCOPE)
+    return {"Authorization": f"Bearer {token.token}"}
 
 
 class FoundryHttpClient:
@@ -51,11 +43,11 @@ class FoundryHttpClient:
     def __init__(
         self,
         *,
-        authenticator: _HeaderProvider,
+        get_authorization_header: Callable[[], Awaitable[dict[str, str]]],
         api_version: str = _DEFAULT_API_VERSION,
         page_size: int = PAGE_SIZE,
     ) -> None:
-        self._authenticator = authenticator
+        self._get_authorization_header = get_authorization_header
         self._api_version = api_version
         self._page_size = page_size
         self._http = OceanAsyncClient(
@@ -66,10 +58,6 @@ class FoundryHttpClient:
 
     async def close(self) -> None:
         await self._http.aclose()
-
-    def build_url(self, project_endpoint: str, path: str) -> str:
-        base = project_endpoint.rstrip("/") + "/"
-        return urljoin(base, path.lstrip("/"))
 
     @staticmethod
     def uses_openai_compatible_routes(endpoint: str) -> bool:
@@ -89,7 +77,7 @@ class FoundryHttpClient:
         if not self.uses_openai_compatible_routes(endpoint):
             query_params.setdefault("api-version", self._api_version)
         headers = {
-            **await self._authenticator.get_authorization_header(),
+            **await self._get_authorization_header(),
             **(extra_headers or {}),
         }
         response = await self._http.request(
@@ -103,17 +91,16 @@ class FoundryHttpClient:
         if response.status_code == 404 and method.upper() in {"GET", "DELETE"}:
             return {}
         if response.is_error:
-            detail = response.text[:2000] if response.text else response.reason_phrase
-            raise FoundryApiError(
-                f"Foundry API {response.status_code}: {detail}",
-                status_code=response.status_code,
+            detail = (
+                response.text[:_ERROR_BODY_LIMIT]
+                if response.text
+                else response.reason_phrase
             )
+            raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
         if not response.content:
             return {}
         payload = response.json()
-        if isinstance(payload, list):
-            return payload
-        if isinstance(payload, dict):
+        if isinstance(payload, (list, dict)):
             return payload
         return {}
 
@@ -129,13 +116,11 @@ class FoundryHttpClient:
 
     @staticmethod
     def next_link(payload: dict[str, Any] | list[Any]) -> str | None:
+        # Deployments (and other project ARM-style lists) use camelCase nextLink.
         if not isinstance(payload, dict):
             return None
-        for key in ("next_link", "nextLink", "@odata.nextLink"):
-            link = payload.get(key)
-            if isinstance(link, str) and link:
-                return link
-        return None
+        link = payload.get("nextLink")
+        return link if isinstance(link, str) and link else None
 
     async def send_cursor_paginated_request(
         self,
@@ -148,7 +133,7 @@ class FoundryHttpClient:
         request_params = dict(params or {})
         request_params.setdefault("limit", self._page_size)
         while True:
-            url = self.build_url(project_endpoint, path)
+            url = build_foundry_url(project_endpoint, path)
             payload = await self.send_api_request(
                 url, params=request_params, extra_headers=extra_headers
             )
@@ -172,7 +157,7 @@ class FoundryHttpClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         request_params = dict(params or {})
         request_params.setdefault("limit", self._page_size)
-        url = self.build_url(project_endpoint, path)
+        url = build_foundry_url(project_endpoint, path)
         while url:
             payload = await self.send_api_request(
                 url, params=request_params, extra_headers=extra_headers
@@ -190,7 +175,7 @@ class FoundryHttpClient:
 def create_foundry_client() -> FoundryHttpClient:
     global _client
     if _client is None:
-        _client = FoundryHttpClient(authenticator=FoundryAuthenticator())
+        _client = FoundryHttpClient(get_authorization_header=_authorization_headers)
     return _client
 
 

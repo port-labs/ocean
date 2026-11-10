@@ -10,7 +10,6 @@ from azure_integration.foundry.core.exporters.agents_exporter import _attach_ver
 async def test_attach_versions_keeps_raw_version_payload() -> None:
     agent: dict[str, Any] = {"id": "Omby-agent", "name": "Omby-agent"}
     client = MagicMock()
-    client.build_url.return_value = "https://example/agents/Omby-agent/versions"
     client.send_api_request = AsyncMock(
         return_value={
             "data": [
@@ -26,6 +25,9 @@ async def test_attach_versions_keeps_raw_version_payload() -> None:
 
     await _attach_versions(client, "https://example", [agent])
 
+    client.send_api_request.assert_awaited_once_with(
+        "https://example/agents/Omby-agent/versions"
+    )
     assert agent["__versions"] == [
         {
             "version": "6",

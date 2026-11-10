@@ -166,9 +166,9 @@ FOUNDRY_RESYNC_HANDLERS: dict[
     str, Callable[[str], AsyncIterator[list[dict[str, Any]]]]
 ] = {
     ObjectKind.FOUNDRY_PROJECT: resync_foundry_projects,
-    ObjectKind.AGENT: resync_foundry_agents,
-    ObjectKind.MODEL_DEPLOYMENT: resync_foundry_model_deployments,
-    ObjectKind.CONVERSATION: resync_foundry_conversations,
-    ObjectKind.RESPONSE: resync_foundry_responses,
-    ObjectKind.MEMORY_STORE: resync_foundry_memory_stores,
+    ObjectKind.FOUNDRY_AGENT: resync_foundry_agents,
+    ObjectKind.FOUNDRY_MODEL_DEPLOYMENT: resync_foundry_model_deployments,
+    ObjectKind.FOUNDRY_CONVERSATION: resync_foundry_conversations,
+    ObjectKind.FOUNDRY_RESPONSE: resync_foundry_responses,
+    ObjectKind.FOUNDRY_MEMORY_STORE: resync_foundry_memory_stores,
 }
