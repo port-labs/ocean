@@ -39,7 +39,10 @@ def build_session_link(
     return f"{console_host}/workspaces/{workspace_id}/sessions/{session_id}"
 
 
-def _inject_github_authorization_tokens(config: dict[str, Any]) -> None:
+def _inject_github_authorization_tokens(
+    config: dict[str, Any],
+    mount_token: str | None,
+) -> None:
     resources = config.get("resources")
     if not isinstance(resources, list):
         return
@@ -53,6 +56,9 @@ def _inject_github_authorization_tokens(config: dict[str, Any]) -> None:
             continue
         if resource.get("authorization_token"):
             continue
+        if mount_token:
+            resource["authorization_token"] = mount_token
+            continue
         if not github_pat:
             raise ActionExecutionError(
                 "github_authorization_token must be configured on the integration "
@@ -61,14 +67,19 @@ def _inject_github_authorization_tokens(config: dict[str, Any]) -> None:
         resource["authorization_token"] = github_pat
 
 
-async def normalize_session_config(config: dict[str, Any]) -> dict[str, Any]:
+async def normalize_session_config(
+    config: dict[str, Any],
+    *,
+    mount_token: str | None = None,
+) -> dict[str, Any]:
     """Prepare session create config for the Anthropic API.
 
     Injects GitHub authorization tokens into github_repository resources.
-    MCP servers and vault credentials are declared in the workflow configuration.
+    MCP servers and vault credentials are declared in the workflow configuration
+    or attached by Port MCP helpers.
     """
     working = dict(config)
-    _inject_github_authorization_tokens(working)
+    _inject_github_authorization_tokens(working, mount_token)
     return working
 
 

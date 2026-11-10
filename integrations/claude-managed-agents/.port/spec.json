@@ -229,7 +229,15 @@
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
-          "description": "Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "description": "Optional session configuration passed through to the Anthropic API when starting a new session (for example title, metadata, vault_ids, resources). Ignored when continuing an existing session. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}. For git mounts, include github_repository resources; authorization tokens can come from gitAccessToken below.",
+          "required": false
+        },
+        {
+          "name": "gitAccessToken",
+          "title": "Git access token",
+          "type": "string",
+          "sensitive": true,
+          "description": "GitHub token injected into github_repository mounts that omit authorization_token. Prefer binding a Port secret, for example {{ .secrets.gh-pat }}.",
           "required": false
         },
         {

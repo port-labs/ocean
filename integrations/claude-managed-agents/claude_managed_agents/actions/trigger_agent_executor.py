@@ -77,6 +77,7 @@ class TriggerAgentInputs(AbstractAnthropicActionInput):
     enablePortMcp: bool = True
     virtualMcpServerIds: list[str] = Field(default_factory=list)
     reportSessionStatus: bool = False
+    gitAccessToken: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def require_environment_for_new_session(self) -> Self:
@@ -278,7 +279,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         port_mcp: PortMcpWorkflowContext | None,
         agent: BetaManagedAgentsAgent,
     ) -> BetaManagedAgentsSession:
-        api_config = await normalize_session_config(inputs.config)
+        api_config = await normalize_session_config(
+            inputs.config,
+            mount_token=inputs.gitAccessToken,
+        )
         if port_mcp is not None:
             vault_id = await self._ensure_port_mcp_vault_ready(port_mcp, agent)
             api_config = session_config_with_port_mcp(
