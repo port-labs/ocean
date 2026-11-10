@@ -477,6 +477,19 @@ class IntegrationConfiguration(BaseOceanSettings):
         return self
 
     @model_validator(mode="after")
+    def validate_port_vault_is_saas_only(self) -> Self:
+        if (
+            self.identity_propagation.vault.type == VaultType.port
+            and not self.runtime.is_saas_runtime
+        ):
+            raise ValueError(
+                "identity_propagation.vault.type=port is only supported on SaaS "
+                "runtime. Self-hosted installs must use aws_secrets_manager or "
+                "custom."
+            )
+        return self
+
+    @model_validator(mode="after")
     def validate_integration_config(self) -> Self:
         if not (config_model := self.integration_config_model):
             return self
