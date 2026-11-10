@@ -7,6 +7,27 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.58.3 (2026-11-09)
+
+
+### Bug Fixes
+
+- >-
+    Acknowledge a workflow node run before pausing it for user authentication when
+    the rate-limit check finds no stored user token, so Port does not offer the run
+    to another claim while it waits for the user.
+
+
+## 0.58.2 (2026-11-08)
+
+
+### Bug Fixes
+
+- >-
+    Scaffold new integrations with .port/spec.json instead of .port/spec.yaml,
+    matching every shipped integration and the registry's spec.json format.
+
+
 ## 0.58.1 (2026-11-05)
 
 

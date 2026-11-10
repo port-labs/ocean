@@ -12,8 +12,9 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from aws_integration.overrides import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig, selector_include_actions
 from aws.auth.session_factory import get_all_account_sessions
+from aws.core.exporters.exporter_metadata import get_exporter_metadata
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.auth.session_factory import AccountInfo
@@ -24,7 +25,6 @@ if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
 
 _MAX_CONCURRENT_REGIONS = 10
-_MAX_CONCURRENT_ACCOUNTS = 5
 
 
 def filter_regions_for_exporter(
@@ -170,10 +170,11 @@ class ResyncAWSService:
         self.request_extras = request_extras or {}
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
-        self.include_actions = self.aws_resource_config.selector.include_actions
+        self.include_actions = selector_include_actions(
+            self.aws_resource_config.selector
+        )
         self.max_concurrent_accounts = (
             self.aws_resource_config.selector.max_concurrent_accounts
-            or _MAX_CONCURRENT_ACCOUNTS
         )
 
     def _create_options_factory(self, account_id: str) -> Callable[[str], Any]:
@@ -283,3 +284,28 @@ class ResyncAWSService:
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
+
+
+async def resync_from_resource_config(
+    kind: str,
+    resource_config: AWSResourceConfig,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    metadata = get_exporter_metadata(kind, resource_config)
+    if metadata is None:
+        return
+
+    selector = resource_config.selector
+    regional = metadata.resolve_regional(selector)
+    logger.info(
+        f"Resyncing {kind} using "
+        f"{'regional' if regional else 'global'} scope strategy"
+    )
+
+    async for batch in ResyncAWSService(
+        kind=kind,
+        exporter_cls=metadata.exporter,
+        request_cls=metadata.paginated_request_model,
+        regional=regional,
+        request_extras=metadata.build_request_extras(selector),
+    ):
+        yield batch

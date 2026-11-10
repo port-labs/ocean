@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.9 (2026-11-09)
+
+
+### Improvements
+
+- Paced requests from HCP Terraform's rate limit headers instead of a fixed 25 requests per second
+
+
+## 0.5.8 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.5.7 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
 ## 0.5.6 (2026-11-05)
 
 
