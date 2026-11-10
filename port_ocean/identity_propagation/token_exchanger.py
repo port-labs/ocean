@@ -2,6 +2,7 @@ import asyncio
 
 from loguru import logger
 
+from port_ocean.config.settings import VaultType
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -14,6 +15,7 @@ from port_ocean.exceptions.identity_propagation import (
 )
 from port_ocean.identity_propagation.oauth_broker.providers import require_provider
 from port_ocean.identity_propagation.vault.base import TokenRecord, VaultClient
+from port_ocean.identity_propagation.vault.port_exchange import PortExchangeVaultClient
 from port_ocean.identity_propagation.verifier import IdentityClaims
 
 # Serializes refresh per stored secret.  Two runs for the same user and target
@@ -29,6 +31,10 @@ from port_ocean.identity_propagation.verifier import IdentityClaims
 _refresh_locks: dict[str, asyncio.Lock] = {}
 
 
+def _is_port_vault() -> bool:
+    return ocean.config.identity_propagation.vault.type == VaultType.port
+
+
 def _require_vault() -> VaultClient:
     vault = ocean.app.vault_client
     if vault is None:
@@ -36,6 +42,17 @@ def _require_vault() -> VaultClient:
             "Vault client is not configured. Set ocean.app.vault_client during integration startup."
         )
     return vault
+
+
+def _resolve_target() -> str:
+    """Return the integration type, used as the JWT ``aud`` claim."""
+    if _is_port_vault():
+        return ocean.config.integration.type
+
+    try:
+        return require_provider().target
+    except OAuthProviderNotConfiguredError as e:
+        raise ActionExecutionError(str(e)) from e
 
 
 async def resolve_user_token(run: IntegrationRun) -> str | None:
@@ -48,15 +65,7 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
             "Run requires identity propagation but it is not enabled on this integration"
         )
 
-    try:
-        provider = require_provider()
-    except OAuthProviderNotConfiguredError as e:
-        raise ActionExecutionError(str(e)) from e
-
-    # This process's own identity, not `run.integration_config.integrationProvider` - Ocean
-    # always verifies/stores as itself rather than trusting a caller-supplied field. One
-    # process hosts exactly one integration, so there's nothing to look up.
-    target = provider.target
+    target = _resolve_target()
 
     logger.debug(
         "Resolving user token for identity-propagated run",
@@ -75,6 +84,8 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
         )
 
     vault = _require_vault()
+    if isinstance(vault, PortExchangeVaultClient):
+        vault.set_identity_token(run.identity_token)
     record = await _read(vault, claims, target)
     if record is None:
         logger.info(
@@ -86,6 +97,11 @@ async def resolve_user_token(run: IntegrationRun) -> str | None:
         raise UserAuthRequiredError()
 
     if record.is_expired():
+        if _is_port_vault():
+            # The port vault type is read-only; there is no local refresh path.
+            # A stale cached token means the grant expired server-side.
+            raise UserAuthRequiredError()
+
         logger.debug(
             "Stored token expired, refreshing", actor=claims.sub, target=target
         )

@@ -68,6 +68,7 @@ class IdentityPropagationOAuthSettings(BaseOceanModel):
 class VaultType(str, Enum):
     aws_secrets_manager = "aws_secrets_manager"
     custom = "custom"
+    port = "port"
 
 
 class VaultSettings(BaseOceanModel):

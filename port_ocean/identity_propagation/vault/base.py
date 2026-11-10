@@ -66,4 +66,12 @@ def build_vault_client(settings: "VaultSettings") -> "VaultClient | None":
             aws_access_key_id=aws_settings.aws_access_key_id,
             aws_secret_access_key=aws_settings.aws_secret_access_key,
         )
+
+    if settings.type == VaultType.port:
+        from port_ocean.identity_propagation.vault.port_exchange import (
+            PortExchangeVaultClient,
+        )
+
+        return PortExchangeVaultClient()
+
     return None  # custom: caller sets ocean.app.vault_client
