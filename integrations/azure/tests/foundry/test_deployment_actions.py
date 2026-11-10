@@ -62,7 +62,7 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
             "azure_integration.foundry.actions.deploy_model_deployment_executor.ocean"
         ) as mock_ocean,
         patch(
-            "azure_integration.foundry.helpers.catalog_sync.ocean"
+            "azure_integration.foundry.actions.abstract_executor.ocean"
         ) as mock_ocean_base,
     ):
         mock_ocean.port_client.post_run_log = AsyncMock()
@@ -102,7 +102,7 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
             "azure_integration.foundry.actions.delete_model_deployment_executor.ocean"
         ) as mock_ocean,
         patch(
-            "azure_integration.foundry.helpers.catalog_sync.ocean"
+            "azure_integration.foundry.actions.abstract_executor.ocean"
         ) as mock_ocean_base,
     ):
         mock_ocean.port_client.post_run_log = AsyncMock()

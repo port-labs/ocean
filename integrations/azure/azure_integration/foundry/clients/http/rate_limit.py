@@ -6,13 +6,17 @@ from datetime import datetime, timezone
 
 import httpx
 
-# New action runs back off once remaining quota is below this fraction of the limit.
+# Back off when remaining quota drops below this fraction of the limit.
 _HEADROOM = 0.1
-# ARM reports remaining counts without a limit. Below this, treat the pool as low.
-_ARM_REMAINING_FLOOR = 20
-_ARM_RESET_SECONDS = 10.0
 
-_POOLS = (
+# ARM only reports remaining counts (no limit). Treat the pool as low below this.
+_ARM_REMAINING_FLOOR = 20
+
+# Fallback wait when a reset/retry header is missing or unparseable.
+_DEFAULT_RESET_SECONDS = 10.0
+
+# Foundry (OpenAI-style) request/token pools.
+_FOUNDRY_POOLS = (
     (
         "x-ratelimit-limit-requests",
         "x-ratelimit-remaining-requests",
@@ -43,8 +47,8 @@ class _Quota:
         return self.remaining / self.limit < _HEADROOM
 
 
-def _seconds_from_header(raw: str | None) -> float | None:
-    """Seconds, ``Ns`` / ``Nms``, or an ISO timestamp. ``None`` when absent or unparseable."""
+def _parse_duration_seconds(raw: str | None) -> float | None:
+    """Parse a duration header: plain seconds, ``Ns`` / ``Nms``, or ISO timestamp."""
     if not raw or not raw.strip():
         return None
     value = raw.strip()
@@ -62,16 +66,16 @@ def _seconds_from_header(raw: str | None) -> float | None:
         return None
 
 
-def _quota(
-    headers: httpx.Headers, limit: str, remaining: str, reset: str
+def _foundry_quota(
+    headers: httpx.Headers, limit_key: str, remaining_key: str, reset_key: str
 ) -> _Quota | None:
-    limit_raw = headers.get(limit)
-    remaining_raw = headers.get(remaining)
+    limit_raw = headers.get(limit_key)
+    remaining_raw = headers.get(remaining_key)
     if limit_raw is None or remaining_raw is None:
         return None
     try:
-        parsed_reset = _seconds_from_header(headers.get(reset))
-        reset_seconds = _ARM_RESET_SECONDS if parsed_reset is None else parsed_reset
+        parsed_reset = _parse_duration_seconds(headers.get(reset_key))
+        reset_seconds = _DEFAULT_RESET_SECONDS if parsed_reset is None else parsed_reset
         return _Quota(
             limit=int(limit_raw),
             remaining=int(remaining_raw),
@@ -81,7 +85,7 @@ def _quota(
         return None
 
 
-def _arm_remaining(headers: httpx.Headers) -> int | None:
+def _min_arm_remaining(headers: httpx.Headers) -> int | None:
     values = [
         int(value)
         for key, value in headers.items()
@@ -98,55 +102,62 @@ def _retry_after_seconds(headers: httpx.Headers) -> float:
         except ValueError:
             pass
     for header in ("Retry-After", "x-ratelimit-reset-requests"):
-        seconds = _seconds_from_header(headers.get(header))
+        seconds = _parse_duration_seconds(headers.get(header))
         if seconds is not None:
             return seconds
-    return _ARM_RESET_SECONDS
+    return _DEFAULT_RESET_SECONDS
 
 
 class FoundryRateLimiter:
-    """Snapshot of Foundry and ARM rate-limit headers for action backoff."""
+    """Tracks Foundry and ARM rate-limit headers so actions can defer new runs."""
 
     def __init__(self) -> None:
-        self._quotas: list[_Quota] = []
-        self._blocked_until: float = 0.0
-        self._arm_until: float = 0.0
+        self._foundry_quotas: list[_Quota] = []
+        self._hard_block_until: float = 0.0
+        self._arm_block_until: float = 0.0
 
     def observe(self, response: httpx.Response) -> None:
         if response.status_code == 429:
-            self._blocked_until = time.time() + _retry_after_seconds(response.headers)
+            self._hard_block_until = time.time() + _retry_after_seconds(
+                response.headers
+            )
             return
 
-        self._blocked_until = 0.0
-        quotas = [
-            quota
-            for limit, remaining, reset in _POOLS
-            if (quota := _quota(response.headers, limit, remaining, reset)) is not None
-        ]
-        if quotas:
-            self._quotas = quotas
-
-        arm_remaining = _arm_remaining(response.headers)
-        if arm_remaining is None:
-            return
-        self._arm_until = (
-            time.time() + _ARM_RESET_SECONDS
-            if arm_remaining < _ARM_REMAINING_FLOOR
-            else 0.0
-        )
-
-    def _waits(self) -> list[float]:
-        now = time.time()
-        waits = [self._blocked_until - now] if now < self._blocked_until else []
-        if now < self._arm_until:
-            waits.append(self._arm_until - now)
-        waits.extend(
-            quota.seconds_until_reset for quota in self._quotas if quota.is_low
-        )
-        return waits
+        self._hard_block_until = 0.0
+        self._update_foundry_quotas(response.headers)
+        self._update_arm_block(response.headers)
 
     def is_close_to_rate_limit(self) -> bool:
-        return bool(self._waits())
+        return self.seconds_until_rate_limit_reset() > 0
 
     def seconds_until_rate_limit_reset(self) -> float:
-        return max(self._waits(), default=0.0)
+        now = time.time()
+        waits: list[float] = []
+        if now < self._hard_block_until:
+            waits.append(self._hard_block_until - now)
+        if now < self._arm_block_until:
+            waits.append(self._arm_block_until - now)
+        waits.extend(
+            quota.seconds_until_reset for quota in self._foundry_quotas if quota.is_low
+        )
+        return max(waits, default=0.0)
+
+    def _update_foundry_quotas(self, headers: httpx.Headers) -> None:
+        quotas = [
+            quota
+            for limit_key, remaining_key, reset_key in _FOUNDRY_POOLS
+            if (quota := _foundry_quota(headers, limit_key, remaining_key, reset_key))
+            is not None
+        ]
+        if quotas:
+            self._foundry_quotas = quotas
+
+    def _update_arm_block(self, headers: httpx.Headers) -> None:
+        remaining = _min_arm_remaining(headers)
+        if remaining is None:
+            return
+        self._arm_block_until = (
+            time.time() + _DEFAULT_RESET_SECONDS
+            if remaining < _ARM_REMAINING_FLOOR
+            else 0.0
+        )

@@ -1,24 +1,22 @@
 from typing import Any
 
 from loguru import logger
+from port_ocean.context.event import EventType, event_context
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.models import IntegrationRun
 
+from azure_integration.foundry.clients.arm_deployments_client import (
+    ArmDeploymentsClient,
+)
 from azure_integration.foundry.clients.client_factory import (
     create_arm_deployments_client,
     create_foundry_client,
 )
-from azure_integration.foundry.clients.arm_deployments_client import (
-    ArmDeploymentsClient,
-)
-from azure_integration.foundry.helpers.catalog_sync import (
-    catalog_delete_stub,
-    register_catalog_rows,
-    unregister_catalog_rows,
-)
+from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
 
@@ -45,12 +43,20 @@ class AbstractFoundryExecutor(AbstractExecutor):
         *,
         project_endpoint: str,
     ) -> None:
-        await register_catalog_rows(
-            kind,
-            [raw],
-            run,
-            project_endpoint=project_endpoint,
-        )
+        """Best-effort catalog upsert; failures are logged and never fail the action."""
+        try:
+            enriched = enrich_with_project(raw, project_endpoint=project_endpoint)
+            await ocean.integration.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+            async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
+                await ocean.register_raw(kind, [enriched])
+        except Exception as error:
+            message = f"Failed to upsert {kind} into the catalog (continuing): {error}"
+            logger.warning(message)
+            await ocean.port_client.post_run_log(
+                run, message, level="WARNING", should_raise=False
+            )
 
     async def unregister_by_identifier(
         self,
@@ -60,12 +66,23 @@ class AbstractFoundryExecutor(AbstractExecutor):
         *,
         project_endpoint: str,
     ) -> None:
-        await unregister_catalog_rows(
-            kind,
-            [catalog_delete_stub(kind, identifier)],
-            run,
-            project_endpoint=project_endpoint,
-        )
+        """Best-effort catalog delete; failures are logged and never fail the action."""
+        try:
+            stub = enrich_with_project(
+                {"id": identifier, "name": identifier},
+                project_endpoint=project_endpoint,
+            )
+            await ocean.integration.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+            async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
+                await ocean.unregister_raw(kind, [stub])
+        except Exception as error:
+            message = f"Failed to delete {kind} from the catalog (continuing): {error}"
+            logger.warning(message)
+            await ocean.port_client.post_run_log(
+                run, message, level="WARNING", should_raise=False
+            )
 
     async def sync_agent_catalog(
         self, agent_id: str, run: IntegrationRun, *, project_endpoint: str
