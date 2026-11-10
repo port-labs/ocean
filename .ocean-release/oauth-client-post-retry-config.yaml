@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: OAuthClient registers retry config that includes POST when OAuth is enabled so 401 responses trigger token refresh and retry without per-integration changes.
