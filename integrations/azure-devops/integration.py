@@ -3,26 +3,19 @@ from datetime import datetime
 
 from pydantic.v1 import Field, BaseModel
 
-from azure_devops.gitops.file_entity_processor import GitManipulationHandler
 from azure_devops.client.user_sources import (
     EntitlementsUserSource,
     GraphUserSource,
     UserSource,
 )
 from azure_devops.misc import AzureDevopsFolderResourceConfig, Kind
-from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.relative_time import days_ago
 from azure_devops.helpers.datetime_selectors import (
     ISO_8601_SELECTOR_REGEX,
@@ -889,28 +882,6 @@ class GitPortAppConfig(PortAppConfig):
     )  # type: ignore[assignment]
 
 
-class AzureDevopsHandlerMixin(HandlerMixin):
-    EntityProcessorClass = GitManipulationHandler
-
-
-class AzureDevopsLiveEventsProcessorManager(
-    LiveEventsProcessorManager, AzureDevopsHandlerMixin
-):
-    pass
-
-
-class AzureDevopsIntegration(BaseIntegration, AzureDevopsHandlerMixin):
-    def __init__(self, context: PortOceanContext):
-        super().__init__(context)
-        # Replace the Ocean's webhook manager with our custom one
-        processor_manager = AzureDevopsLiveEventsProcessorManager(
-            self.context.app.integration_router,
-            signal_handler,
-            self.context.config.max_event_processing_seconds,
-            self.context.config.max_wait_seconds_before_shutdown,
-        )
-        self.context.app.webhook_manager = processor_manager
-        self.context.app.execution_manager._webhook_manager = processor_manager
-
+class AzureDevopsIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitPortAppConfig
