@@ -1,3 +1,6 @@
+"""Support for the deprecated `file://` and `search://` mapping values, which are replaced by
+the `includedFiles` and `searchQueries` selectors."""
+
 import json
 from dataclasses import dataclass, field
 from typing import Any

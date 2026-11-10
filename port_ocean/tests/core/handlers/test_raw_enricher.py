@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -156,3 +156,25 @@ async def test_mapping_ref_enricher_raises_for_unsupported_ref_type() -> None:
 
     with pytest.raises(NotImplementedError, match="file://"):
         await enricher.enrich(_resource(readme="file://README.md"), [{"path": "a"}])
+
+
+@pytest.mark.asyncio
+async def test_mapping_ref_enricher_logs_deprecation_for_each_ref() -> None:
+    enricher = RecordingEnricher()
+    resource = _resource(readme="file://README.md", found="search://name=found")
+
+    with patch("port_ocean.core.handlers.raw_enricher.logger") as mock_logger:
+        await enricher.enrich(resource, [{"path": "a"}, {"path": "b"}])
+
+    warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
+    assert len(warnings) == 2
+    assert "file://README.md" in warnings[0] and "includedFiles" in warnings[0]
+    assert "search://name=found" in warnings[1] and "searchQueries" in warnings[1]
+
+
+@pytest.mark.asyncio
+async def test_mapping_ref_enricher_without_refs_logs_no_deprecation() -> None:
+    with patch("port_ocean.core.handlers.raw_enricher.logger") as mock_logger:
+        await RecordingEnricher().enrich(_resource(plain=".name"), [{"path": "a"}])
+
+    mock_logger.warning.assert_not_called()

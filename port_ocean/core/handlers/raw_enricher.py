@@ -15,6 +15,25 @@ if TYPE_CHECKING:
     from port_ocean.context.ocean import PortOceanContext
 
 
+def _warn_deprecated_refs(files: set[str], searches: set[str]) -> None:
+    for path in sorted(files):
+        logger.warning(
+            f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+            f"Pattern: 'file://{path}'. "
+            f"Use the 'includedFiles' selector instead. Example: "
+            f"selector.includedFiles: ['{path}'] "
+            f'and mapping: .__includedFiles["{path}"]'
+        )
+    for query in sorted(searches):
+        logger.warning(
+            f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
+            f"Pattern: 'search://{query}'. "
+            f"Use the 'searchQueries' selector instead. Example: "
+            f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
+            f'Then map to .__searchQueries["<queryName>"]'
+        )
+
+
 class BaseRawEnricher:
     """Attaches data that a resource's mapping needs to each raw item before it is sent to the
     data-source-processor, which evaluates mappings with plain jq and cannot fetch anything.
@@ -30,10 +49,12 @@ class BaseRawEnricher:
 
 
 class MappingRefRawEnricher(BaseRawEnricher):
-    """Resolves `file://` and `search://` mapping values per raw item.
+    """Keeps the deprecated `file://` and `search://` mapping values working.
 
-    Results are stored under `__includedFiles[path]` and `__search[query]`, which is what the
-    mapping sent to the data-source-processor reads after `rewrite_mapping_refs`.
+    Each value is resolved per raw item and stored under `__includedFiles[path]` /
+    `__search[query]`, which is what the mapping sent to the data-source-processor reads after
+    `rewrite_mapping_refs`. Every use logs a deprecation warning pointing to the
+    `includedFiles` / `searchQueries` selectors that replace them.
     """
 
     async def resolve_file_ref(self, item: RAW_ITEM, path: str) -> Any:
@@ -52,6 +73,7 @@ class MappingRefRawEnricher(BaseRawEnricher):
         refs = collect_mapping_refs(resource.port.entity.mappings.dict())
         if not refs:
             return items
+        _warn_deprecated_refs(refs.files, refs.searches)
         logger.info(
             "Resolving mapping references for raw items",
             kind=resource.kind,

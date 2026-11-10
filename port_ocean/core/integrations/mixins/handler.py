@@ -27,7 +27,8 @@ class HandlerMixin:
         AppConfigHandlerClass (Type[BasePortAppConfig]): The class representing the PortAppConfig Handler.
         EntitiesStateApplierClass (Type[BaseEntitiesStateApplier]): The class representing the EntitiesStateApplier.
         RawEnricherClass (Type[BaseRawEnricher]): The class that attaches data a mapping needs
-            (e.g. `file://` contents) to raw items before they are sent to the data-source-processor.
+            to raw items before they are sent to the data-source-processor (e.g. the contents
+            behind the deprecated `file://` / `search://` mapping values).
     """
 
     EntityProcessorClass: Type[BaseEntityProcessor] = JQEntityProcessor

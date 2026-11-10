@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Added `RawEnricherClass` / `MappingRefRawEnricher` so integrations can resolve `file://` and `search://` mapping values onto raw items (`__includedFiles` / `__search`) before they are sent to the data-source-processor; the resync mapping sent to the data-source-processor reads them.
+changelog: Added `RawEnricherClass` / `MappingRefRawEnricher` so integrations keep the deprecated `file://` and `search://` mapping values working with the data-source-processor. The values are resolved onto raw items (`__includedFiles` / `__search`), which the resync mapping sent to the data-source-processor reads, and every use logs a deprecation warning pointing to the `includedFiles` / `searchQueries` selectors.
