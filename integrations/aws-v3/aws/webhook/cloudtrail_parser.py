@@ -4,8 +4,6 @@ Maps CloudTrail ``eventName`` values to a normalized event that the single
 ``CloudTrailWebhookProcessor`` can route through ``kind_to_export_metadata``.
 """
 
-from dataclasses import dataclass
-
 from loguru import logger
 
 from aws.core.helpers.metadata.cloudtrail_event_mappings import (
@@ -17,6 +15,7 @@ from aws.core.helpers.metadata.types import (
     CloudTrailEventAction,
     EventBridgeCloudTrailPayload,
     EventNameMapping,
+    NormalizedEvent,
 )
 
 __all__ = [
@@ -29,16 +28,6 @@ __all__ = [
     "is_supported_cloudtrail_event",
     "parse_cloudtrail_event",
 ]
-
-
-@dataclass(frozen=True)
-class NormalizedEvent:
-    kind: str
-    identifier: str
-    account_id: str
-    region: str
-    action: CloudTrailEventAction
-    event_name: str
 
 
 def _get_detail(payload: EventBridgeCloudTrailPayload) -> CloudTrailDetail:
