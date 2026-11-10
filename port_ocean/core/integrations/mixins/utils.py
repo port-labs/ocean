@@ -74,13 +74,16 @@ def build_lakehouse_data_entry(
     return entry
 
 
+_LIVE_EVENT_BATCH_EVENT_ID_UNSET = object()
+
+
 async def post_live_event_batch_to_lakehouse(
     *,
     sync_id: str,
     kind: str,
     data_entries: list[LakehouseDataEntry],
     resync_start_time: datetime | None = None,
-    event_id: str | None = None,
+    event_id: str | None | object = _LIVE_EVENT_BATCH_EVENT_ID_UNSET,
     fatal: bool = False,
 ) -> bool:
     """Post a LIVE_EVENT lakehouse batch. Shared by live events and raw APIs.
@@ -88,11 +91,19 @@ async def post_live_event_batch_to_lakehouse(
     Returns True if sent (or nothing to send), False if a non-fatal failure was
     swallowed. When ``fatal`` is True (DSP raw APIs), failures propagate so
     callers do not drop the only delivery path.
+
+    ``event_id`` is written onto the batch as-is when provided (including
+    ``None``, matching prior live-events behavior). When omitted, a UUID is
+    generated for the batch (raw one-shot posts).
     """
     if not data_entries:
         return True
 
-    batch_event_id = event_id if event_id is not None else str(uuid.uuid4())
+    batch_event_id: str | None
+    if event_id is _LIVE_EVENT_BATCH_EVENT_ID_UNSET:
+        batch_event_id = str(uuid.uuid4())
+    else:
+        batch_event_id = event_id  # type: ignore[assignment]
     batch = LakehouseDataEntryBatch(
         event_id=batch_event_id,
         type=LakehouseEventType.LIVE_EVENT.value,
@@ -170,7 +181,7 @@ def raw_kind_resource_mappings(
     ]
 
 
-async def maybe_post_raw_and_skip_ocean_core(
+async def post_raw_to_lakehouse_and_should_skip_ocean_core(
     kind: str,
     results: list[dict[Any, Any]],
     operation: LakehouseOperation,

@@ -22,7 +22,7 @@ from port_ocean.core.integrations.mixins.utils import (
     build_lakehouse_data_entry,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
-    maybe_post_raw_and_skip_ocean_core,
+    post_raw_to_lakehouse_and_should_skip_ocean_core,
     raw_kind_resource_mappings,
     selector_hash_from_resource,
     start_kind_tracking,
@@ -620,7 +620,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        if await maybe_post_raw_and_skip_ocean_core(
+        if await post_raw_to_lakehouse_and_should_skip_ocean_core(
             kind,
             results,
             LakehouseOperation.UPSERT,
@@ -711,7 +711,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        if await maybe_post_raw_and_skip_ocean_core(
+        if await post_raw_to_lakehouse_and_should_skip_ocean_core(
             kind,
             results,
             LakehouseOperation.DELETE,
