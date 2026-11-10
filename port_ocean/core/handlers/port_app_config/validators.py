@@ -11,7 +11,6 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
-    ProbePermissions,
     ResourceConfig,
     Selector,
 )
@@ -44,7 +43,7 @@ def get_port_app_config_kinds(config_class: Type[PortAppConfig]) -> list[str]:
             _get_resource_config_models(config_class),
             config_class.allow_custom_kinds,
         )
-        if kind != CUSTOM_KIND or getattr(model, "probe_permissions", None)
+        if kind != CUSTOM_KIND or model.probe_permissions
     )
 
 
@@ -73,10 +72,10 @@ def get_kind_probe_permissions(
 
 
 def _resolve_probe_permissions_for_model(
-    model: type,
+    model: type[ResourceConfig],
     permission_key: str | None,
 ) -> tuple[str, ...] | None:
-    permissions: ProbePermissions | None = getattr(model, "probe_permissions", None)
+    permissions = model.probe_permissions
     if permissions is None:
         return None
     if isinstance(permissions, tuple):
