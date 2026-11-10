@@ -29,7 +29,8 @@ from azure_integration.utils import (
 from azure_integration.webhook.webhook_processors.resource_event_processor import (
     AzureResourceEventProcessor,
 )
-from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
+from azure_integration.foundry.actions.registry import register_action_executors
+from azure_integration.foundry.clients.client_factory import clear_client_cache
 from azure_integration.foundry.resync import FOUNDRY_RESYNC_HANDLERS
 from port_ocean.utils.signal import signal_handler
 
@@ -228,7 +229,8 @@ async def on_start() -> None:
             "Integration wasn't provided with override configuration for initializing client, proceeding with default"
         )
 
-    signal_handler.register(clear_foundry_client)
+    register_action_executors()
+    signal_handler.register(clear_client_cache)
 
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
