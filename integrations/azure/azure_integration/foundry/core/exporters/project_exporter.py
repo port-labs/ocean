@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import AsyncIterator
 from typing import Any
 
 from azure.identity.aio import DefaultAzureCredential
@@ -71,12 +72,11 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
 
 
 class ProjectExporter:
-    @cache_iterator_result()
-    async def get_paginated_resources(
+    async def _projects(
         self,
         *,
-        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        api_version: str,
+    ) -> AsyncIterator[list[FoundryProject]]:
         discovered = 0
         async with DefaultAzureCredential() as credential:
             async with SubscriptionClient(credential=credential) as subscription_client:
@@ -98,7 +98,7 @@ class ProjectExporter:
                         *tasks, context="Foundry project exporter"
                     ):
                         projects = [
-                            project.model_dump()
+                            project
                             for raw in batch
                             if (project := foundry_project_from_arm(raw)) is not None
                         ]
@@ -107,3 +107,29 @@ class ProjectExporter:
                             yield projects
 
         logger.info(f"Exported {discovered} Foundry project(s)")
+
+    @cache_iterator_result()
+    async def get_paginated_resources(
+        self,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        async for projects in self._projects(api_version=api_version):
+            yield [project.model_dump() for project in projects]
+
+    async def find_by_endpoint(
+        self,
+        endpoint: str,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> FoundryProject:
+        """ARM deploy/delete needs subscription, resource group, and account.
+
+        The data-plane URL only carries the account host and project name.
+        """
+        target = endpoint.rstrip("/")
+        async for projects in self._projects(api_version=api_version):
+            for project in projects:
+                if project.endpoint.rstrip("/") == target:
+                    return project
+        raise ValueError(f"No discovered Foundry project matches endpoint {target}")

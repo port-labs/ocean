@@ -8,6 +8,7 @@ from azure.identity.aio import DefaultAzureCredential
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
+from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 from azure_integration.foundry.clients.http.retry_transport import (
     FOUNDRY_RETRY_AFTER_HEADERS,
     FoundryRetryTransport,
@@ -39,12 +40,17 @@ class FoundryHttpClient:
     ) -> None:
         self._api_version = api_version
         self._page_size = page_size
+        self.rate_limiter = FoundryRateLimiter()
         self._credential: DefaultAzureCredential | None = None
         self._http = OceanAsyncClient(
             FoundryRetryTransport,
             retry_config=RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS),
             timeout=httpx.Timeout(60.0),
+            event_hooks={"response": [self._on_response]},
         )
+
+    async def _on_response(self, response: httpx.Response) -> None:
+        self.rate_limiter.observe(response)
 
     async def _authorization_headers(self) -> dict[str, str]:
         if self._credential is None:

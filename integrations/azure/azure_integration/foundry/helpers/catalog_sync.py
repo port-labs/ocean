@@ -7,10 +7,6 @@ from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from azure_integration.foundry.helpers.scope import (
-    get_project_arm_id,
-    get_project_endpoint,
-)
 from azure_integration.foundry.helpers.utils import enrich_with_project
 
 
@@ -19,27 +15,25 @@ def catalog_delete_stub(kind: str, identifier: str) -> dict[str, Any]:
     return {"id": identifier, "name": identifier}
 
 
-def _enrich_for_catalog(raw: dict[str, Any]) -> dict[str, Any]:
-    try:
-        endpoint = get_project_endpoint()
-    except ValueError:
-        return dict(raw)
-    return enrich_with_project(
-        raw,
-        project_endpoint=endpoint,
-        project_id=get_project_arm_id(),
-    )
-
-
 async def register_catalog_rows(
     kind: str,
     raws: list[dict[str, Any]],
     run: IntegrationRun | None = None,
+    *,
+    project_endpoint: str,
+    project_arm_id: str | None = None,
 ) -> bool:
     if not raws:
         return False
     try:
-        batch = [_enrich_for_catalog(raw) for raw in raws]
+        batch = [
+            enrich_with_project(
+                raw,
+                project_endpoint=project_endpoint,
+                project_id=project_arm_id,
+            )
+            for raw in raws
+        ]
         await ocean.integration.port_app_config_handler.get_port_app_config(
             use_cache=False
         )
@@ -63,11 +57,21 @@ async def unregister_catalog_rows(
     kind: str,
     raws: list[dict[str, Any]],
     run: IntegrationRun | None = None,
+    *,
+    project_endpoint: str,
+    project_arm_id: str | None = None,
 ) -> None:
     if not raws:
         return
     try:
-        batch = [_enrich_for_catalog(raw) for raw in raws]
+        batch = [
+            enrich_with_project(
+                raw,
+                project_endpoint=project_endpoint,
+                project_id=project_arm_id,
+            )
+            for raw in raws
+        ]
         await ocean.integration.port_app_config_handler.get_port_app_config(
             use_cache=False
         )
