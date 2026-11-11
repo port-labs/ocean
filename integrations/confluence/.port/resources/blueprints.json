@@ -1,0 +1,206 @@
+[
+  {
+    "identifier": "confluenceSpace",
+    "title": "Confluence Space",
+    "icon": "Confluence",
+    "schema": {
+      "properties": {
+        "key": {
+          "type": "string",
+          "title": "Key"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "global",
+            "collaboration",
+            "knowledge_base",
+            "personal",
+            "system",
+            "onboarding",
+            "xflow_sample_space"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["current", "archived", "trashed"],
+          "enumColors": {
+            "current": "green",
+            "archived": "yellow",
+            "trashed": "red"
+          }
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "format": "markdown"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "homepageId": {
+          "type": "string",
+          "title": "Homepage ID"
+        },
+        "authorId": {
+          "type": "string",
+          "title": "Author Account ID"
+        },
+        "spaceOwnerId": {
+          "type": "string",
+          "title": "Owner Account ID"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "author": {
+        "title": "Author",
+        "target": "confluenceUser",
+        "required": false,
+        "many": false
+      },
+      "owner": {
+        "title": "Owner",
+        "target": "confluenceUser",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "confluencePage",
+    "title": "Confluence Page",
+    "icon": "Confluence",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["current", "draft", "archived", "historical", "trashed", "deleted"],
+          "enumColors": {
+            "current": "green",
+            "draft": "blue",
+            "archived": "yellow",
+            "historical": "lightGray",
+            "trashed": "red",
+            "deleted": "red"
+          }
+        },
+        "subtype": {
+          "type": "string",
+          "title": "Subtype"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "version": {
+          "type": "number",
+          "title": "Version"
+        },
+        "parentType": {
+          "type": "string",
+          "title": "Parent Type",
+          "enum": ["page", "whiteboard", "database", "embed", "folder"]
+        },
+        "position": {
+          "type": "number",
+          "title": "Position"
+        },
+        "content": {
+          "type": "string",
+          "title": "Content",
+          "format": "markdown"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "space": {
+        "title": "Space",
+        "target": "confluenceSpace",
+        "required": false,
+        "many": false
+      },
+      "parent": {
+        "title": "Parent Page",
+        "target": "confluencePage",
+        "required": false,
+        "many": false
+      },
+      "author": {
+        "title": "Author",
+        "target": "confluenceUser",
+        "required": false,
+        "many": false
+      },
+      "owner": {
+        "title": "Owner",
+        "target": "confluenceUser",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "confluenceUser",
+    "title": "Confluence User",
+    "icon": "Confluence",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email"
+        },
+        "accountType": {
+          "type": "string",
+          "title": "Account Type"
+        },
+        "publicName": {
+          "type": "string",
+          "title": "Public Name"
+        },
+        "timeZone": {
+          "type": "string",
+          "title": "Time Zone"
+        },
+        "isExternalCollaborator": {
+          "type": "boolean",
+          "title": "External Collaborator"
+        },
+        "isGuest": {
+          "type": "boolean",
+          "title": "Guest"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  }
+]

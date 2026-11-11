@@ -1,0 +1,11 @@
+{
+  "accountId": "557058:example-author",
+  "accountType": "atlassian",
+  "displayName": "Ada Lovelace",
+  "publicName": "Ada Lovelace",
+  "email": "ada@example.com",
+  "timeZone": "Europe/London",
+  "isExternalCollaborator": false,
+  "isGuest": false,
+  "webUrl": "https://example.atlassian.net/wiki/people/557058:example-author"
+}

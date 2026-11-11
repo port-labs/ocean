@@ -1,0 +1,22 @@
+[
+  {
+    "id": "123456",
+    "key": "DOCS",
+    "name": "Tech Docs",
+    "type": "knowledge_base",
+    "status": "current",
+    "authorId": "557058:example-author",
+    "spaceOwnerId": "557058:example-owner",
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "homepageId": "987654",
+    "description": {
+      "plain": {
+        "representation": "plain",
+        "value": "Engineering documentation"
+      }
+    },
+    "_links": {
+      "webui": "/spaces/DOCS"
+    }
+  }
+]
