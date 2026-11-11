@@ -18,7 +18,6 @@ from github.core.exporters.skill_exporter.utils import (
     build_skill_raw_item,
 )
 from github.core.options import ListSkillSearchOptions
-from github.helpers.repository_change import RepositoryChange
 from github.helpers.utils import GithubClientType
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -29,27 +28,6 @@ class SkillExporter(RestFileExporter):
     async def get_paginated_resources[ExporterOptionsT: ListSkillSearchOptions](  # type: ignore[override]
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for skills in self._export_skills(
-            options, super().get_paginated_resources(options["repositories"])
-        ):
-            yield skills
-
-    async def get_paginated_resources_changed_since(  # type: ignore[override]
-        self, options: ListSkillSearchOptions, change: RepositoryChange
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for skills in self._export_skills(
-            options,
-            super().get_paginated_resources_changed_since(
-                options["repositories"], change
-            ),
-        ):
-            yield skills
-
-    async def _export_skills(
-        self,
-        options: ListSkillSearchOptions,
-        file_batches: ASYNC_GENERATOR_RESYNC_TYPE,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repositories = options["repositories"]
         path_globs = list(
             dict.fromkeys(
@@ -59,7 +37,7 @@ class SkillExporter(RestFileExporter):
             )
         )
 
-        async for file_batch in file_batches:
+        async for file_batch in super().get_paginated_resources(repositories):
             valid_files = []
             for file_obj in file_batch:
                 if isinstance(file_obj.get("content"), str):

@@ -7,7 +7,6 @@ from enum import StrEnum
 import json
 from pathlib import Path
 import re
-from functools import partial
 from typing import (
     Any,
     DefaultDict,
@@ -31,7 +30,7 @@ from github.core.options import (
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import GithubClientType, matches_glob_pattern
-from github.helpers.repo_selectors import RepositorySelector, SelectRepos
+from github.helpers.repo_selectors import RepositorySelector
 from github.helpers.repository_change import RepositoryChange
 
 if TYPE_CHECKING:
@@ -179,24 +178,11 @@ class FilePatternMappingBuilder:
         self.repo_exporter = repo_exporter
 
     async def build(
-        self, files: List["GithubFilePattern"]
-    ) -> List[ListFileSearchOptions]:
-        """Map every selected repo to its file patterns."""
-        return await self._build(files, self.repo_selector.select_repos)
-
-    async def build_changed_since(
-        self, files: List["GithubFilePattern"], change: RepositoryChange
-    ) -> List[ListFileSearchOptions]:
-        """Map only the selected repos changed since ``change``."""
-        return await self._build(
-            files, partial(self.repo_selector.select_repos_changed_since, change=change)
-        )
-
-    async def _build(
         self,
         files: List["GithubFilePattern"],
-        select_repos: SelectRepos,
+        changed_since: Optional[RepositoryChange] = None,
     ) -> List[ListFileSearchOptions]:
+        """Map each selected repo to its file patterns, optionally only repos changed since ``changed_since``."""
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
@@ -207,8 +193,12 @@ class FilePatternMappingBuilder:
             ):
                 for org in batch:
                     org_login = org["login"]
-                    async for repo_name, branch, _ in select_repos(
-                        file_sel, self.repo_exporter, org_login, org["type"]
+                    async for repo_name, branch, _ in self.repo_selector.select_repos(
+                        file_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org["type"],
+                        changed_since,
                     ):
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
@@ -224,6 +214,7 @@ class FilePatternMappingBuilder:
                 organization=org,
                 repo_name=repo,
                 files=items,
+                changed_since=changed_since,
             )
             for (org, repo), items in repo_map.items()
         ]

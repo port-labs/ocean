@@ -139,7 +139,7 @@ class TestPushedSinceFiltering:
         strategy = RepositorySelector("repository")
         [
             _
-            async for _ in strategy.select_repos_changed_since(
+            async for _ in strategy.select_repos(
                 selector,
                 repo_exporter,
                 "test-org",
@@ -165,7 +165,7 @@ class TestPushedSinceFiltering:
         ]
 
         called_options = repo_exporter.get_paginated_resources.call_args.args[0]
-        assert "changed_since" not in called_options
+        assert called_options["changed_since"] is None
 
     async def test_exact_selector_skips_repos_not_pushed_since(self) -> None:
         pushed_since = datetime(2026, 10, 1, tzinfo=timezone.utc)
@@ -194,7 +194,7 @@ class TestPushedSinceFiltering:
             strategy = RepositorySelector("repository")
             results = [
                 result[0]
-                async for result in strategy.select_repos_changed_since(
+                async for result in strategy.select_repos(
                     selector,
                     repo_exporter,
                     "test-org",

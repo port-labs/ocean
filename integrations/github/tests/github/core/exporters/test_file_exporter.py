@@ -1,5 +1,3 @@
-from functools import partial
-
 from github.helpers.repository_change import RepositoryChange, RepositoryChangeField
 import binascii
 from datetime import datetime, timezone
@@ -412,7 +410,7 @@ class TestRestFileExporter:
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "repo1", file_patterns, exporter._match_files_in_tree
+                "repo1", file_patterns
             )
 
             # Both files should be in GraphQL files since they're both small
@@ -472,7 +470,7 @@ class TestRestFileExporter:
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "repo1", file_patterns, exporter._match_files_in_tree
+                "repo1", file_patterns
             )
 
             # Files under or at threshold should use GraphQL
@@ -511,7 +509,7 @@ class TestRestFileExporter:
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "repo1", file_patterns, exporter._match_files_in_tree
+                "repo1", file_patterns
             )
 
             assert len(graphql_files) == 0
@@ -849,7 +847,6 @@ class TestRestFileExporterRepoNotFound:
                         branch="main",
                     )
                 ],
-                exporter._match_files_in_tree,
             )
 
         assert graphql_files == []
@@ -901,7 +898,7 @@ class TestRestFileExporterRepoNotFound:
             ),
         ):
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "mixed-repo", patterns, exporter._match_files_in_tree
+                "mixed-repo", patterns
             )
 
         # First pattern was 404'd — no files. Second pattern matched test.txt.
@@ -1726,7 +1723,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                partial(exporter._match_changed_files, changed_since=PUSHED_CHANGE),
+                PUSHED_CHANGE,
             )
 
         tree_mock.assert_awaited_once()
@@ -1760,7 +1757,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                partial(exporter._match_changed_files, changed_since=PUSHED_CHANGE),
+                PUSHED_CHANGE,
             )
 
         tree_mock.assert_not_awaited()
@@ -1792,13 +1789,13 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                partial(exporter._match_changed_files, changed_since=PUSHED_CHANGE),
+                PUSHED_CHANGE,
             )
 
         tree_mock.assert_awaited_once()
         assert [f["file_path"] for f in graphql_files] == ["test.txt"]
 
-    async def test_get_paginated_resources_uses_full_tree_match(
+    async def test_get_paginated_resources_without_changed_since(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
@@ -1813,30 +1810,27 @@ class TestRestFileExporterIncremental:
             ):
                 pass
 
-        collect_mock.assert_awaited_once_with(
-            "repo1", [], exporter._match_files_in_tree
-        )
+        collect_mock.assert_awaited_once_with("repo1", [], None)
 
-    async def test_get_paginated_resources_changed_since_uses_incremental_match(
+    async def test_get_paginated_resources_forwards_repo_changed_since(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
         collect_mock = AsyncMock(return_value=([], []))
         with patch.object(exporter, "collect_matched_files", collect_mock):
-            async for _ in exporter.get_paginated_resources_changed_since(
+            async for _ in exporter.get_paginated_resources(
                 [
                     ListFileSearchOptions(
-                        organization="test-org", repo_name="repo1", files=[]
+                        organization="test-org",
+                        repo_name="repo1",
+                        files=[],
+                        changed_since=PUSHED_CHANGE,
                     )
-                ],
-                PUSHED_CHANGE,
+                ]
             ):
                 pass
 
-        assert collect_mock.await_args is not None
-        match_files = collect_mock.await_args.args[2]
-        assert match_files.func == exporter._match_changed_files
-        assert match_files.keywords == {"changed_since": PUSHED_CHANGE}
+        collect_mock.assert_awaited_once_with("repo1", [], PUSHED_CHANGE)
 
     async def test_builder_changed_since_lists_only_changed_repos(self) -> None:
         repo_exporter = MagicMock()
@@ -1860,13 +1854,14 @@ class TestRestFileExporterIncremental:
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, "all")
         async with event_context("test_event") as event:
             event.port_app_config = MagicMock(include_authenticated_user=False)
-            result = await builder.build_changed_since(
+            result = await builder.build(
                 [GithubFilePattern(organization="test-org", path="**/port.yml")],
-                PUSHED_CHANGE,
+                changed_since=PUSHED_CHANGE,
             )
 
         assert captured_options[0]["changed_since"] == PUSHED_CHANGE
         assert result[0]["repo_name"] == "repo1"
+        assert result[0]["changed_since"] == PUSHED_CHANGE
 
 
 @pytest.mark.asyncio

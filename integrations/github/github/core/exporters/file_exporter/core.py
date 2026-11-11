@@ -1,10 +1,7 @@
 from datetime import datetime, timezone
-from functools import partial
 from typing import (
     Any,
     AsyncGenerator,
-    Awaitable,
-    Callable,
     Dict,
     List,
     Optional,
@@ -49,10 +46,8 @@ from github.core.exporters.file_exporter.file_processor import (
     FileResponseValidator,
 )
 
+
 # (organization, repo_name, branch, pattern) -> matched tree entries
-MatchFiles = Callable[[str, str, str, str], Awaitable[List[Dict[str, Any]]]]
-
-
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     _IGNORED_ERRORS = [
         IgnoredError(status=404, message="Resource not found at endpoint"),
@@ -106,21 +101,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Every file matching the patterns, with content."""
-        async for batch in self._export(options, self._match_files_in_tree):
-            yield batch
+        """Files matching the patterns, with content.
 
-    async def get_paginated_resources_changed_since(
-        self, options: List[ListFileSearchOptions], change: RepositoryChange
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Only the matching files changed since ``change``, with content."""
-        match = partial(self._match_changed_files, changed_since=change)
-        async for batch in self._export(options, match):
-            yield batch
-
-    async def _export(
-        self, options: List[ListFileSearchOptions], match: MatchFiles
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        A repository's ``changed_since`` limits it to files changed since then.
+        """
         graphql_files = []
         rest_files = []
         fetch_errors = []
@@ -129,13 +113,16 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             data = dict(repo_options)
             repo_name = cast(str, data["repo_name"])
             files = cast(List[FileSearchOptions], data["files"])
+            changed_since = cast(Optional[RepositoryChange], data.get("changed_since"))
 
             logger.debug(
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
             try:
-                gql, rest = await self.collect_matched_files(repo_name, files, match)
+                gql, rest = await self.collect_matched_files(
+                    repo_name, files, changed_since
+                )
                 graphql_files.extend(gql)
                 rest_files.extend(rest)
             except GitHubTreeFetchError as e:
@@ -163,13 +150,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         repo_name: str,
         file_patterns: List[FileSearchOptions],
-        match_files: MatchFiles,
+        changed_since: Optional[RepositoryChange] = None,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """Resolve file patterns to fetch lists, partitioned by GraphQL vs REST.
-
-        ``match_files`` is ``_match_files_in_tree`` or ``_match_changed_files``; both
-        return the same shape so downstream fetch routing stays identical.
-        """
+        """Resolve file patterns to fetch lists, partitioned by GraphQL vs REST."""
         graphql_files = []
         rest_files = []
 
@@ -193,7 +176,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
 
-            matched = await match_files(organization, repo_name, branch, pattern)
+            matched = await self._match_files(
+                organization, repo_name, branch, pattern, changed_since
+            )
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
@@ -223,53 +208,38 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return graphql_files, rest_files
 
-    async def _match_files_in_tree(
+    async def _match_files(
         self,
         organization: str,
         repo_name: str,
         branch: str,
         pattern: str,
+        changed_since: Optional[RepositoryChange] = None,
     ) -> List[Dict[str, Any]]:
-        """Scan the recursive git tree and filter by glob pattern."""
-        tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
-        return filter_github_tree_entries_by_pattern(tree, pattern)
+        """Tree entries matching ``pattern``, limited to paths changed since ``changed_since``.
 
-    async def _match_changed_files(
-        self,
-        organization: str,
-        repo_name: str,
-        branch: str,
-        pattern: str,
-        changed_since: RepositoryChange,
-    ) -> List[Dict[str, Any]]:
-        """Files changed since ``changed_since`` that match ``pattern``.
-
-        1. Ask the compare API for paths changed since ``changed_since``.
-        2. If the diff is untrusted (None), fall back to a full tree scan.
-        3. If no changed path matches the glob, skip the tree fetch entirely.
-        4. Otherwise scan the tree, then keep only entries in the changed set
-           (tree still needed for fetch_method / sha metadata).
+        Changed paths unknown (no ``changed_since``, or a compare that can't be
+        trusted) means every matching file in the tree. When no changed path
+        matches the pattern, the tree isn't fetched at all.
         """
-        changed_paths = await self.get_changed_paths_since(
-            organization, repo_name, branch, changed_since
-        )
-        if changed_paths is None:
-            # The compare can't be trusted, so match against the whole tree.
-            return await self._match_files_in_tree(
-                organization, repo_name, branch, pattern
+        changed_paths = (
+            await self.get_changed_paths_since(
+                organization, repo_name, branch, changed_since
             )
-
-        # No changed path matches this pattern, so no tree fetch is needed.
-        if not any(
+            if changed_since is not None
+            else None
+        )
+        if changed_paths is not None and not any(
             match_file_path_against_glob_pattern(path, pattern)
             for path in changed_paths
         ):
             return []
 
-        # The tree is needed for fetch_method and sha, then filtered to changed paths.
-        matched = await self._match_files_in_tree(
-            organization, repo_name, branch, pattern
-        )
+        # The tree gives each file's fetch_method and sha.
+        tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
+        matched = filter_github_tree_entries_by_pattern(tree, pattern)
+        if changed_paths is None:
+            return matched
         return [m for m in matched if m["path"] in changed_paths]
 
     async def process_rest_api_files(

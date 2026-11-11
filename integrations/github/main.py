@@ -1,4 +1,3 @@
-from functools import partial
 import asyncio
 from typing import Any, Callable, cast
 
@@ -1294,11 +1293,9 @@ async def resync_folders(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    change = RepositoryChange.pushed(sync_cursor)
-    if change is None:
-        repo_path_map = await pattern_builder.build(folders)
-    else:
-        repo_path_map = await pattern_builder.build_changed_since(folders, change)
+    repo_path_map = await pattern_builder.build(
+        folders, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
     async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1346,17 +1343,11 @@ async def resync_files(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    change = RepositoryChange.pushed(sync_cursor)
-    if change is None:
-        repo_path_map = await pattern_builder.build(files)
-        file_stream = file_exporter.get_paginated_resources(repo_path_map)
-    else:
-        repo_path_map = await pattern_builder.build_changed_since(files, change)
-        file_stream = file_exporter.get_paginated_resources_changed_since(
-            repo_path_map, change
-        )
+    repo_path_map = await pattern_builder.build(
+        files, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
-    async for file_results in file_stream:
+    async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
             file_results = await included_files_enricher.enrich_batch(file_results)
         yield file_results
@@ -1402,26 +1393,15 @@ async def resync_skills(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    change = RepositoryChange.pushed(sync_cursor)
-    if change is None:
-        repo_path_map = await pattern_builder.build(file_patterns)
-        skill_stream = skill_exporter.get_paginated_resources(
-            ListSkillSearchOptions(
-                repositories=repo_path_map,
-                include_skill_folder=selector.include_skill_folder,
-            )
+    repo_path_map = await pattern_builder.build(
+        file_patterns, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
+    async for skills in skill_exporter.get_paginated_resources(
+        ListSkillSearchOptions(
+            repositories=repo_path_map,
+            include_skill_folder=selector.include_skill_folder,
         )
-    else:
-        repo_path_map = await pattern_builder.build_changed_since(file_patterns, change)
-        skill_stream = skill_exporter.get_paginated_resources_changed_since(
-            ListSkillSearchOptions(
-                repositories=repo_path_map,
-                include_skill_folder=selector.include_skill_folder,
-            ),
-            change,
-        )
-
-    async for skills in skill_stream:
+    ):
         yield skills
 
 
@@ -1451,11 +1431,7 @@ async def resync_plugins(
     )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_selector = RepositorySelector(app_config.repository_type)
-    change = RepositoryChange.pushed(sync_cursor)
-    if change is None:
-        select_repos = repo_selector.select_repos
-    else:
-        select_repos = partial(repo_selector.select_repos_changed_since, change=change)
+    changed_since = RepositoryChange.pushed(sync_cursor)
 
     for path in paths:
         async for orgs in org_exporter.get_paginated_resources(
@@ -1464,8 +1440,8 @@ async def resync_plugins(
             for org in orgs:
                 org_login = org["login"]
                 repositories: list[PluginRepositoryOptions] = []
-                async for _repo_name, branch, repo_obj in select_repos(
-                    path, repo_exporter, org_login, org["type"]
+                async for _repo_name, branch, repo_obj in repo_selector.select_repos(
+                    path, repo_exporter, org_login, org["type"], changed_since
                 ):
                     repositories.append(
                         PluginRepositoryOptions(
@@ -1521,17 +1497,11 @@ async def resync_mcp(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    change = RepositoryChange.pushed(sync_cursor)
-    if change is None:
-        repo_path_map = await pattern_builder.build(file_patterns)
-        mcp_stream = mcp_exporter.get_paginated_resources(repo_path_map)
-    else:
-        repo_path_map = await pattern_builder.build_changed_since(file_patterns, change)
-        mcp_stream = mcp_exporter.get_paginated_resources_changed_since(
-            repo_path_map, change
-        )
+    repo_path_map = await pattern_builder.build(
+        file_patterns, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
-    async for servers in mcp_stream:
+    async for servers in mcp_exporter.get_paginated_resources(repo_path_map):
         yield servers
 
 

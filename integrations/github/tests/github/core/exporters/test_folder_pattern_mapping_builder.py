@@ -171,7 +171,7 @@ async def test_resync_folders_skips_inaccessible_organizations(
                 ]
 
     assert batches == [[{"id": "1"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_folder])
+    pattern_builder.build.assert_awaited_once_with([allowed_folder], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -215,7 +215,7 @@ async def test_resync_files_skips_inaccessible_organizations(
                 batches = [batch async for batch in github_main.resync_files("file")]
 
     assert batches == [[{"path": "a.yml"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_file])
+    pattern_builder.build.assert_awaited_once_with([allowed_file], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -365,8 +365,9 @@ async def test_folder_pattern_mapping_builder_lists_repos_per_selector() -> None
     ]
     async with event_context("test_event") as event:
         event.port_app_config = GithubPortAppConfig(repository_type="all", resources=[])
-        result = await builder.build_changed_since(
-            selectors, RepositoryChange(pushed_since, RepositoryChangeField.PUSHED)
+        result = await builder.build(
+            selectors,
+            changed_since=RepositoryChange(pushed_since, RepositoryChangeField.PUSHED),
         )
 
     assert len(list_calls) == 2
@@ -383,7 +384,7 @@ async def test_resync_folders_passes_incremental_cursor(github_main: Any) -> Non
     folder = MagicMock(organization="allowed", included_files=[])
     folder_exporter = MagicMock()
     folder_exporter.get_paginated_resources.return_value = _aiter_one([])
-    pattern_builder = MagicMock(build_changed_since=AsyncMock(return_value=[]))
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
 
     with (
         patch.object(github_main, "create_github_client", return_value=MagicMock()),
@@ -412,8 +413,8 @@ async def test_resync_folders_passes_incremental_cursor(github_main: Any) -> Non
             ):
                 [batch async for batch in github_main.resync_folders("folder")]
 
-    pattern_builder.build_changed_since.assert_awaited_once_with(
-        [folder], RepositoryChange.pushed(cursor)
+    pattern_builder.build.assert_awaited_once_with(
+        [folder], changed_since=RepositoryChange.pushed(cursor)
     )
 
 
@@ -434,13 +435,7 @@ async def test_resync_skills_passes_cursor_to_builder(
     )
     skill_exporter = MagicMock()
     skill_exporter.get_paginated_resources.return_value = _aiter_one([{"skill": {}}])
-    skill_exporter.get_paginated_resources_changed_since.return_value = _aiter_one(
-        [{"skill": {}}]
-    )
-    pattern_builder = MagicMock(
-        build=AsyncMock(return_value=[]),
-        build_changed_since=AsyncMock(return_value=[]),
-    )
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
 
     with (
         patch.object(github_main, "create_github_client", return_value=MagicMock()),
@@ -473,25 +468,13 @@ async def test_resync_skills_passes_cursor_to_builder(
                     batches = [b async for b in github_main.resync_skills("skill")]
 
     assert batches == [[{"skill": {}}]]
-    build, unused = (
-        (pattern_builder.build, pattern_builder.build_changed_since)
-        if cursor is None
-        else (pattern_builder.build_changed_since, pattern_builder.build)
-    )
+    build = pattern_builder.build
     build.assert_awaited_once()
-    unused.assert_not_awaited()
     assert build.await_args is not None
-    assert build.await_args.args[1:] == (
-        () if cursor is None else (RepositoryChange.pushed(cursor),)
-    )
+    assert build.await_args.kwargs == {"changed_since": RepositoryChange.pushed(cursor)}
     file_patterns = build.await_args.args[0]
     assert [p.path for p in file_patterns] == [".claude/skills/**/SKILL.md"]
-    skill_call = (
-        skill_exporter.get_paginated_resources
-        if cursor is None
-        else skill_exporter.get_paginated_resources_changed_since
-    )
-    skill_options = skill_call.call_args.args[0]
+    skill_options = skill_exporter.get_paginated_resources.call_args.args[0]
     assert skill_options["include_skill_folder"] is False
     assert skill_options["repositories"] == []
 
@@ -588,13 +571,7 @@ async def test_resync_mcp_passes_cursor_to_builder(
     )
     mcp_exporter = MagicMock()
     mcp_exporter.get_paginated_resources.return_value = _aiter_one([{"server": {}}])
-    mcp_exporter.get_paginated_resources_changed_since.return_value = _aiter_one(
-        [{"server": {}}]
-    )
-    pattern_builder = MagicMock(
-        build=AsyncMock(return_value=[]),
-        build_changed_since=AsyncMock(return_value=[]),
-    )
+    pattern_builder = MagicMock(build=AsyncMock(return_value=[]))
 
     with (
         patch.object(github_main, "create_github_client", return_value=MagicMock()),
@@ -624,17 +601,10 @@ async def test_resync_mcp_passes_cursor_to_builder(
                     batches = [b async for b in github_main.resync_mcp("mcp")]
 
     assert batches == [[{"server": {}}]]
-    build, unused = (
-        (pattern_builder.build, pattern_builder.build_changed_since)
-        if cursor is None
-        else (pattern_builder.build_changed_since, pattern_builder.build)
-    )
+    build = pattern_builder.build
     build.assert_awaited_once()
-    unused.assert_not_awaited()
     assert build.await_args is not None
-    assert build.await_args.args[1:] == (
-        () if cursor is None else (RepositoryChange.pushed(cursor),)
-    )
+    assert build.await_args.kwargs == {"changed_since": RepositoryChange.pushed(cursor)}
     file_patterns = build.await_args.args[0]
     assert [p.path for p in file_patterns] == [".mcp.json"]
 

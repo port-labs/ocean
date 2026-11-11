@@ -8,7 +8,6 @@ from github.core.exporters.mcp_exporter.utils import (
     iter_mcp_servers,
 )
 from github.core.options import ListFileSearchOptions
-from github.helpers.repository_change import RepositoryChange
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
@@ -18,24 +17,8 @@ class McpExporter(RestFileExporter):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for servers in self._export_servers(
-            super().get_paginated_resources(options)
-        ):
-            yield servers
-
-    async def get_paginated_resources_changed_since(
-        self, options: List[ListFileSearchOptions], change: RepositoryChange
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for servers in self._export_servers(
-            super().get_paginated_resources_changed_since(options, change)
-        ):
-            yield servers
-
-    async def _export_servers(
-        self, file_batches: ASYNC_GENERATOR_RESYNC_TYPE
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Turn each batch of MCP config files into one raw item per server."""
-        async for file_batch in file_batches:
+        """One raw item per MCP server in the matching config files."""
+        async for file_batch in super().get_paginated_resources(options):
             servers: list[dict[str, Any]] = []
             for file_obj in file_batch:
                 content = file_obj.get("content")

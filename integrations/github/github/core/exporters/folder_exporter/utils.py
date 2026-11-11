@@ -1,6 +1,5 @@
 from collections import defaultdict
-from functools import partial
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
@@ -8,7 +7,7 @@ from github.core.options import (
     ListOrganizationOptions,
     ListFolderOptions,
 )
-from github.helpers.repo_selectors import RepositorySelector, SelectRepos
+from github.helpers.repo_selectors import RepositorySelector
 from github.helpers.repository_change import RepositoryChange
 from integration import FolderSelector
 
@@ -24,24 +23,12 @@ class FolderPatternMappingBuilder:
         self.repo_selector = RepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
-    async def build(self, folders: List[FolderSelector]) -> List[ListFolderOptions]:
-        """Map every selected repo to its folder patterns."""
-        return await self._build(folders, self.repo_selector.select_repos)
-
-    async def build_changed_since(
-        self, folders: List[FolderSelector], change: RepositoryChange
-    ) -> List[ListFolderOptions]:
-        """Map only the selected repos changed since ``change``."""
-        return await self._build(
-            folders,
-            partial(self.repo_selector.select_repos_changed_since, change=change),
-        )
-
-    async def _build(
+    async def build(
         self,
         folders: List[FolderSelector],
-        select_repos: SelectRepos,
+        changed_since: Optional[RepositoryChange] = None,
     ) -> List[ListFolderOptions]:
+        """Map each selected repo to its folder patterns, optionally only repos changed since ``changed_since``."""
         repo_map: Dict[Tuple[str, str], List[FolderSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
@@ -56,8 +43,12 @@ class FolderPatternMappingBuilder:
                         repo_name,
                         branch,
                         repo_obj,
-                    ) in select_repos(
-                        folder_sel, self.repo_exporter, org_login, org["type"]
+                    ) in self.repo_selector.select_repos(
+                        folder_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org["type"],
+                        changed_since,
                     ):
                         key = (org_login, repo_name)
                         repo_map[key].append(

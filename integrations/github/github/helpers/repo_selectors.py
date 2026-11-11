@@ -1,7 +1,6 @@
 from typing import (
     Any,
     AsyncIterator,
-    Callable,
     Dict,
     List,
     Optional,
@@ -41,8 +40,7 @@ class RepositorySelector:
       to ``repo_search``/``search_params``, which are never consulted here.
     - No explicit repos: list every repository of ``repo_type`` in the org.
 
-    ``select_repos`` returns every selected repo; ``select_repos_changed_since``
-    only those changed since ``change``.
+    ``changed_since`` (optional) keeps only repositories changed since then.
     """
 
     def __init__(self, repo_type: str):
@@ -54,34 +52,18 @@ class RepositorySelector:
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
         org_type: str,
+        changed_since: Optional[RepositoryChange] = None,
     ) -> RepoSelection:
-        """Every repository the selector resolves to."""
+        """Repositories the selector resolves to, optionally only those changed since ``changed_since``."""
         if selector.repos:
             async for repo in self._explicit_repos(selector, repo_exporter, org_login):
-                yield repo
-            return
-        options = self._list_options(selector, org_login, org_type)
-        async for repo in self._list_repos(repo_exporter, org_login, options):
-            yield repo
-
-    async def select_repos_changed_since(
-        self,
-        selector: RepoListSelector,
-        repo_exporter: AbstractGithubExporter[Any],
-        org_login: str,
-        org_type: str,
-        change: RepositoryChange,
-    ) -> RepoSelection:
-        """Only the repositories the selector resolves to that changed since ``change``."""
-        if selector.repos:
-            async for repo in self._explicit_repos(selector, repo_exporter, org_login):
-                if change.matches(repo[2].get(change.field.value)):
+                if _changed_since(repo[2], changed_since):
                     yield repo
                 else:
                     logger.debug(f"Skipping unchanged repository {repo[0]}")
             return
         options = self._list_options(selector, org_login, org_type)
-        options["changed_since"] = change
+        options["changed_since"] = changed_since
         async for repo in self._list_repos(repo_exporter, org_login, options):
             yield repo
 
@@ -122,7 +104,10 @@ class RepositorySelector:
             yield repo_sel.name, repo_sel.branch or repo_obj["default_branch"], repo_obj
 
 
-# A bound ``select_repos`` / ``select_repos_changed_since`` (change already applied).
-SelectRepos = Callable[
-    [RepoListSelector, AbstractGithubExporter[Any], str, str], RepoSelection
-]
+def _changed_since(
+    repo: Dict[str, Any], changed_since: Optional[RepositoryChange]
+) -> bool:
+    """Whether ``repo`` passes the optional ``changed_since`` filter (always, without one)."""
+    if changed_since is None:
+        return True
+    return changed_since.matches(repo.get(changed_since.field.value))
