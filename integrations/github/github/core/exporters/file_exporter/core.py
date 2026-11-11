@@ -145,25 +145,19 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
-            if batch := self._transform_batch(result, options):
-                yield batch
+            if result:
+                yield result
 
         logger.info(f"Processing {len(rest_files)} REST API files")
         async for result in self.process_rest_api_files(rest_files):
-            if batch := self._transform_batch(result, options):
-                yield batch
+            if result:
+                yield result
 
         if fetch_errors:
             raise OceanAbortException(
                 f"File fetch failed with {len(fetch_errors)} error(s): "
                 f"Kind will be marked as synced with issues, entities preserved."
             ) from fetch_errors[0]
-
-    def _transform_batch(
-        self, files: List[Dict[str, Any]], options: List[ListFileSearchOptions]
-    ) -> List[Dict[str, Any]]:
-        """Turn a batch of fetched files into the raw items to emit (identity here)."""
-        return files
 
     async def collect_matched_files(
         self,
