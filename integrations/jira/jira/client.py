@@ -131,9 +131,6 @@ class JiraClient(OAuthClient):
         )
         self.client = OceanAsyncClient(
             JiraRetryTransport,
-            transport_kwargs={
-                "rate_limit_notifier": self._rate_limiter.on_response,
-            },
             retry_config=RetryConfig(rate_limiter=self._rate_limiter),
             timeout=Timeout(30),
         )
@@ -258,15 +255,11 @@ class JiraClient(OAuthClient):
                     extensions=extensions or None,
                 )
                 response.raise_for_status()
-                await self._rate_limiter.record_rate_limit_response(
-                    response, context=url
-                )
                 if not response.content:
                     return None
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
-            await self._rate_limiter.record_rate_limit_response(response, context=url)
             is_rate_limit = self._rate_limiter.is_rate_limit_response(response)
             logger.bind(
                 status_code=response.status_code,

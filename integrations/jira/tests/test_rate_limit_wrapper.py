@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -119,8 +120,8 @@ async def test_centralized_acquire_waits_on_the_site_pool() -> None:
     wrapper = _wrapper()
     with (
         patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
+            "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+            SimpleNamespace(centralized_rate_limiter=object()),
         ),
         patch(
             "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",
@@ -131,6 +132,21 @@ async def test_centralized_acquire_waits_on_the_site_pool() -> None:
             await wrapper.acquire()
 
     await_limit.assert_awaited_once_with("example.atlassian.net")
+
+
+@pytest.mark.asyncio
+async def test_local_mode_feeds_the_jira_limiter() -> None:
+    wrapper = _wrapper()
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        SimpleNamespace(centralized_rate_limiter=None),
+    ):
+        await wrapper.record_rate_limit_response(
+            _response(remaining="1"), context="/issue"
+        )
+
+        assert wrapper.is_close_to_rate_limit() is True
+        assert wrapper.seconds_until_rate_limit_reset() >= 0
 
 
 def test_explicit_reset_is_absolute() -> None:

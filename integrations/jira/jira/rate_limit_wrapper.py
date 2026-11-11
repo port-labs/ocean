@@ -7,7 +7,6 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from loguru import logger
 
 from jira.rate_limiter import (
     DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
@@ -33,9 +32,6 @@ class JiraRateLimitWrapper(RateLimitWrapper):
 
     def is_rate_limit_response(self, response: httpx.Response) -> bool:
         return self._limiter.is_rate_limit_response(response)
-
-    async def on_response(self, response: httpx.Response) -> None:
-        await self._limiter.on_response(response)
 
     async def _local_acquire(self) -> None:
         await self._limiter.__aenter__()
@@ -115,38 +111,23 @@ class JiraRateLimitWrapper(RateLimitWrapper):
                     reset_at = blocked_until
                     self._known_reset_at = reset_at
 
-        state = CentralizedRateLimitState(
+        return CentralizedRateLimitState(
             remaining=remaining,
             limit=limit,
             reset_at=reset_at,
             blocked_until=blocked_until,
         )
-        ratio = round(remaining / limit, 3) if limit else None
-        reset_in_seconds = round(reset_at - now, 3)
-        logger.info(
-            "Jira centralized rate limit state "
-            f"pool={self.pool} context={context} remaining={remaining} "
-            f"limit={limit} ratio={ratio} reset_at={reset_at} "
-            f"reset_in_seconds={reset_in_seconds} blocked_until={blocked_until}",
-            pool=self.pool,
-            context=context,
-            remaining=remaining,
-            limit=limit,
-            ratio=ratio,
-            reset_at=reset_at,
-            reset_in_seconds=reset_in_seconds,
-            blocked_until=blocked_until,
-        )
-        return state
 
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return response.status_code == RATE_LIMIT_STATUS_CODE
 
+    @property
     def _local_is_close_to_rate_limit(self) -> bool:
         info = self._limiter._rate_limit_info
         if info is None:
             return False
         return info.remaining <= self._limiter._minimum_limit_remaining
 
+    @property
     def _local_seconds_until_rate_limit_reset(self) -> float:
         return self._limiter.seconds_until_reset
