@@ -57,7 +57,7 @@ class RepositorySelector:
         """Repositories the selector resolves to, optionally only those changed since ``changed_since``."""
         if selector.repos:
             async for repo in self._explicit_repos(selector, repo_exporter, org_login):
-                if _changed_since(repo[2], changed_since):
+                if changed_since is None or changed_since.matches(repo[2]):
                     yield repo
                 else:
                     logger.debug(f"Skipping unchanged repository {repo[0]}")
@@ -102,12 +102,3 @@ class RepositorySelector:
                 logger.warning(f"Repository {repo_sel.name} not found in {org_login}")
                 continue
             yield repo_sel.name, repo_sel.branch or repo_obj["default_branch"], repo_obj
-
-
-def _changed_since(
-    repo: Dict[str, Any], changed_since: Optional[RepositoryChange]
-) -> bool:
-    """Whether ``repo`` passes the optional ``changed_since`` filter (always, without one)."""
-    if changed_since is None:
-        return True
-    return changed_since.matches(repo.get(changed_since.field.value))

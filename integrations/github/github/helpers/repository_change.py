@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from github.helpers.utils import parse_timestamp
 
@@ -31,10 +32,11 @@ class RepositoryChange:
     def pushed(cls, since: datetime | None) -> RepositoryChange | None:
         return cls(since, RepositoryChangeField.PUSHED) if since else None
 
-    def matches(self, changed_at: str | None) -> bool:
-        """Whether ``changed_at`` (the repo's ``field`` value) is at or after ``since``.
+    def matches(self, repo: dict[str, Any]) -> bool:
+        """Whether the repo's ``field`` timestamp is at or after ``since``.
 
         A missing or unparseable timestamp counts as changed.
         """
+        changed_at = repo.get(self.field.value)
         parsed = parse_timestamp(changed_at) if changed_at else None
         return parsed is None or parsed >= self.since
