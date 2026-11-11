@@ -69,7 +69,6 @@ class AgentsExporter(FoundryExporter):
                 await self._attach_versions(project_endpoint, batch)
             yield batch
 
-<<<<<<< HEAD
     async def _attach_versions(
         self,
         project_endpoint: str,
@@ -82,19 +81,3 @@ class AgentsExporter(FoundryExporter):
                 build_foundry_url(project_endpoint, f"agents/{agent_id}/versions")
             )
             agent["__versions"] = self.client.items_from_payload(versions_payload)
-=======
-
-async def _attach_versions(
-    client: FoundryHttpClient,
-    project_endpoint: str,
-    agents: list[dict[str, Any]],
-) -> None:
-    """Attach full version history as ``__versions`` (keeps API ``versions.latest`` intact)."""
-    for agent in agents:
-        if not agent.get("id"):
-            continue
-        versions_payload = await client.send_api_request(
-            build_foundry_url(project_endpoint, f"agents/{agent["id"]}/versions")
-        )
-        agent["__versions"] = client.items_from_payload(versions_payload)
->>>>>>> 67915c0ec (Address Foundry catalog CR: simplify HTTP client and resync dispatch.)
