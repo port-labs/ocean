@@ -467,18 +467,18 @@ class TestGithubGraphQLClient:
                 ):
                     pass
 
-    def test_is_query_too_expensive_keys_on_gateway_status(self) -> None:
+    def testis_query_too_expensive_keys_on_gateway_status(self) -> None:
         # Gateway timeouts signal an over-budget query and trigger the fallback.
         for status in (502, 504, 499):
-            assert GithubGraphQLClient._is_query_too_expensive(_gateway_error(status))
+            assert GithubGraphQLClient.is_query_too_expensive(_gateway_error(status))
         # A plain 500 is a generic server error, not an over-budget signal, so it
         # gets page-size backoff but never the field-stripping query fallback.
-        assert not GithubGraphQLClient._is_query_too_expensive(_gateway_error(500))
+        assert not GithubGraphQLClient.is_query_too_expensive(_gateway_error(500))
         for status in (400, 403, 404):
-            assert not GithubGraphQLClient._is_query_too_expensive(
+            assert not GithubGraphQLClient.is_query_too_expensive(
                 _gateway_error(status)
             )
-        assert not GithubGraphQLClient._is_query_too_expensive(GraphQLErrorGroup([]))
+        assert not GithubGraphQLClient.is_query_too_expensive(GraphQLErrorGroup([]))
 
     @pytest.mark.asyncio
     async def test_handle_graphql_errors_detects_rate_limit_response(
