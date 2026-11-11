@@ -27,7 +27,7 @@ class RestDependabotAlertExporter(BaseSecurityAlertExporter):
         return "dependabot/alerts"
 
     @property
-    def incremental_strategy(self) -> ClientSideCutoffStrategy:
+    def updated_since_strategy(self) -> ClientSideCutoffStrategy:
         return DEPENDABOT_INCREMENTAL
 
     def prepare_request_params(self, params: dict[str, Any]) -> None:

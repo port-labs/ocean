@@ -138,7 +138,7 @@ async def test_get_paginated_resources_with_filters(
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_resources_with_incremental_cursor(
+async def test_get_paginated_resources_with_created_filter_and_no_cap(
     rest_client: GithubRestClient,
 ) -> None:
     cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
@@ -148,7 +148,6 @@ async def test_get_paginated_resources_with_incremental_cursor(
         "max_runs": None,
         "workflow_id": 159038,
         "created": f">={cursor.strftime('%Y-%m-%dT%H:%M:%SZ')}",
-        "incremental_active": True,
     }
     exporter = RestWorkflowRunExporter(rest_client)
 

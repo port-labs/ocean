@@ -181,13 +181,13 @@ class FilePatternMappingBuilder:
     async def build(
         self, files: List["GithubFilePattern"]
     ) -> List[ListFileSearchOptions]:
-        """Full resync: map every selected repo to its file patterns."""
+        """Map every selected repo to its file patterns."""
         return await self._build(files, self.repo_selector.select_repos)
 
     async def build_changed_since(
         self, files: List["GithubFilePattern"], change: RepositoryChange
     ) -> List[ListFileSearchOptions]:
-        """Incremental resync: map only repos changed since ``change``."""
+        """Map only the selected repos changed since ``change``."""
         return await self._build(
             files, partial(self.repo_selector.select_repos_changed_since, change=change)
         )

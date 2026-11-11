@@ -179,7 +179,7 @@ class TestRestDeploymentExporter:
         assert by_id[2]["__firstCommit"]["__sha"] == "deploy_old"
         assert by_id[2]["__commitCount"] == 1
 
-    async def test_enrich_first_commit_respects_incremental_cursor(
+    async def test_enrich_first_commit_respects_created_since(
         self, rest_client: GithubRestClient
     ) -> None:
         cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)

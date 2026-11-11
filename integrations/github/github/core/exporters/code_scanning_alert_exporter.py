@@ -27,7 +27,7 @@ class RestCodeScanningAlertExporter(BaseSecurityAlertExporter):
         return "code-scanning/alerts"
 
     @property
-    def incremental_strategy(self) -> ClientSideCutoffStrategy:
+    def updated_since_strategy(self) -> ClientSideCutoffStrategy:
         return CODE_SCANNING_INCREMENTAL
 
     async def get_resource[ExporterOptionsT: SingleCodeScanningAlertOptions](

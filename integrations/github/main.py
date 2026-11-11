@@ -561,7 +561,6 @@ async def resync_workflow_runs(
                                         max_runs=None if sync_cursor else 100,
                                         status=status,
                                         created=created_filter,
-                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -576,7 +575,6 @@ async def resync_workflow_runs(
                                         workflow_id=workflow["id"],
                                         max_runs=None if sync_cursor else 100,
                                         created=created_filter,
-                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -633,7 +631,7 @@ async def resync_pull_requests(
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
-                                incremental_cursor=sync_cursor,
+                                updated_since=sync_cursor,
                                 updated_after=(
                                     resolve_effective_datetime(
                                         sync_cursor, config.selector.updated_after
@@ -795,7 +793,6 @@ async def resync_tags(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
-    # Tags carry no timestamps, but pushing a tag updates the repository's pushed_at.
     sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():

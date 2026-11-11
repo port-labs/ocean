@@ -58,7 +58,6 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, organization, params = parse_github_options(dict(options))
         workflow_id = params.pop("workflow_id")
         max_runs = params.pop("max_runs")
-        incremental_active = bool(params.pop("incremental_active", False))
         request_params = build_workflow_run_params(cast(ListWorkflowRunOptions, params))
 
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{workflow_id}/runs"
@@ -82,11 +81,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             yield batch
 
             fetched_batch = fetched_batch + len(workflow_runs)
-            if (
-                not incremental_active
-                and max_runs is not None
-                and fetched_batch >= max_runs
-            ):
+            if max_runs is not None and fetched_batch >= max_runs:
                 logger.info(
                     f"Reached maximum limit of {max_runs} workflow runs"
                     f"for workflow {workflow_id} in {repo_name} from {organization}"

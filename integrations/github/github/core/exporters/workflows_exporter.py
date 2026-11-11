@@ -54,7 +54,4 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
                 for workflow in workflow_batch["workflows"]
             ]
             if batch:
-                logger.info(
-                    f"Incremental sync filtered {len(workflow_batch['workflows'])} workflows to {len(batch)} for {repo_name} from {organization}"
-                )
                 yield batch

@@ -44,7 +44,7 @@ REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     query_params={"sort": "pushed", "direction": "desc"},
 )
 
-# List endpoints can sort by either field and stop at the cursor.
+# List endpoints can sort by either field and stop at ``since``.
 LIST_CHANGE_STRATEGIES: dict[RepositoryChangeField, ClientSideCutoffStrategy] = {
     RepositoryChangeField.UPDATED: REPOSITORY_INCREMENTAL,
     RepositoryChangeField.PUSHED: REPOSITORY_PUSHED_INCREMENTAL,
@@ -188,16 +188,16 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         strategy = (
             LIST_CHANGE_STRATEGIES[changed_since.field] if changed_since else None
         )
-        cursor = changed_since.since if changed_since else None
+        since = changed_since.since if changed_since else None
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
-            strategy.merge_params(params, cursor) if strategy else params,
+            strategy.merge_params(params, since) if strategy else params,
         )
 
         async for repos in paginate_with_strategy(
             self.client.send_paginated_request(url, final_params),
-            cursor=cursor,
+            cursor=since,
             strategy=strategy,
         ):
             logger.info(
@@ -232,19 +232,19 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
-        raw_q, strategy, cursor = self._apply_incremental_search_filter(
+        raw_q, strategy, since = self._apply_changed_since_search_filter(
             raw_q, changed_since
         )
 
         query_params = {
             "q": f"org:{organization} {raw_q}",
-            **(strategy.merge_params(params, cursor) if strategy else params),
+            **(strategy.merge_params(params, since) if strategy else params),
         }
         url = f"{self.client.base_url}/search/repositories"
 
         async for repos in paginate_with_strategy(
             self._search_result_items(url, query_params),
-            cursor=cursor,
+            cursor=since,
             strategy=strategy,
         ):
             logger.info(
@@ -252,10 +252,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             )
             yield repos
 
-    def _apply_incremental_search_filter(
+    def _apply_changed_since_search_filter(
         self, raw_q: str, changed_since: Optional[RepositoryChange]
     ) -> tuple[str, Optional[ClientSideCutoffStrategy], Optional[datetime]]:
-        """Narrow a repository search to changes since the cursor.
+        """Narrow a repository search to changes since ``changed_since``.
 
         Search can sort by updated_at, so that field stops pagination
         client-side. It cannot sort by pushed_at, so that field is a

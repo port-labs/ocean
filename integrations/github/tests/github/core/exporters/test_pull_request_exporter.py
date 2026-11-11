@@ -117,7 +117,7 @@ class TestPullRequestExporter:
                 f"{rest_client.base_url}/repos/test-org/repo1/pulls/101"
             )
 
-    async def test_get_paginated_open_prs_with_incremental_cursor(
+    async def test_get_paginated_open_prs_with_updated_since(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestPullRequestExporter(rest_client)
@@ -153,7 +153,7 @@ class TestPullRequestExporter:
                     repo_name="repo1",
                     states=["open"],
                     max_results=10,
-                    incremental_cursor=cursor,
+                    updated_since=cursor,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)

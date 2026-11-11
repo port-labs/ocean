@@ -576,7 +576,7 @@ class TestRestRepositoryExporter:
                     "archived-repo",
                 ]
 
-    async def test_search_strategy_applies_incremental_cursor(
+    async def test_search_strategy_applies_changed_since(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)

@@ -25,13 +25,13 @@ class FolderPatternMappingBuilder:
         self.repo_exporter = repo_exporter
 
     async def build(self, folders: List[FolderSelector]) -> List[ListFolderOptions]:
-        """Full resync: map every selected repo to its folder patterns."""
+        """Map every selected repo to its folder patterns."""
         return await self._build(folders, self.repo_selector.select_repos)
 
     async def build_changed_since(
         self, folders: List[FolderSelector], change: RepositoryChange
     ) -> List[ListFolderOptions]:
-        """Incremental resync: map only repos changed since ``change``."""
+        """Map only the selected repos changed since ``change``."""
         return await self._build(
             folders,
             partial(self.repo_selector.select_repos_changed_since, change=change),

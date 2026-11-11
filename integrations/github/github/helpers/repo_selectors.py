@@ -41,7 +41,8 @@ class RepositorySelector:
       to ``repo_search``/``search_params``, which are never consulted here.
     - No explicit repos: list every repository of ``repo_type`` in the org.
 
-    ``select_repos`` serves full resync, ``select_repos_changed_since`` incremental.
+    ``select_repos`` returns every selected repo; ``select_repos_changed_since``
+    only those changed since ``change``.
     """
 
     def __init__(self, repo_type: str):
@@ -54,7 +55,7 @@ class RepositorySelector:
         org_login: str,
         org_type: str,
     ) -> RepoSelection:
-        """Full resync: every repository the selector resolves to."""
+        """Every repository the selector resolves to."""
         if selector.repos:
             async for repo in self._explicit_repos(selector, repo_exporter, org_login):
                 yield repo
@@ -71,7 +72,7 @@ class RepositorySelector:
         org_type: str,
         change: RepositoryChange,
     ) -> RepoSelection:
-        """Incremental resync: only repositories changed since ``change``."""
+        """Only the repositories the selector resolves to that changed since ``change``."""
         if selector.repos:
             async for repo in self._explicit_repos(selector, repo_exporter, org_login):
                 if change.matches(repo[2].get(change.field.value)):

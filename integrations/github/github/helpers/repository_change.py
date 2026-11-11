@@ -18,7 +18,7 @@ class RepositoryChangeField(StrEnum):
 
 @dataclass(frozen=True)
 class RepositoryChange:
-    """Incremental repository filter: repositories whose ``field`` is at or after ``since``."""
+    """Repository filter: repositories whose ``field`` is at or after ``since``."""
 
     since: datetime
     field: RepositoryChangeField
@@ -32,7 +32,7 @@ class RepositoryChange:
         return cls(since, RepositoryChangeField.PUSHED) if since else None
 
     def matches(self, changed_at: str | None) -> bool:
-        """Whether ``changed_at`` (the repo's ``field`` value) is at or after the cursor.
+        """Whether ``changed_at`` (the repo's ``field`` value) is at or after ``since``.
 
         A missing or unparseable timestamp counts as changed.
         """
