@@ -630,7 +630,7 @@ async def resync_pull_requests(
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
-                                updated_since=sync_cursor,
+                                incremental_cursor=sync_cursor,
                                 updated_after=(
                                     resolve_effective_datetime(
                                         sync_cursor, config.selector.updated_after

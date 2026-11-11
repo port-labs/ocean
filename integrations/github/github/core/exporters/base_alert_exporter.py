@@ -49,19 +49,21 @@ class BaseSecurityAlertExporter(AbstractGithubExporter[GithubRestClient], ABC):
         repo_name, organization, params = parse_github_options(
             cast(dict[str, Any], options)
         )
-        updated_since = params.pop("updated_since", None)
+        incremental_cursor = params.pop("updated_since", None)
         allowed_repos, exclude_archived = pop_org_alert_filters(params)
 
         self.prepare_request_params(params)
 
-        request_params = self.updated_since_strategy.merge_params(params, updated_since)
+        request_params = self.updated_since_strategy.merge_params(
+            params, incremental_cursor
+        )
         endpoint = security_alerts_list_url(
             self.client.base_url, organization, self.resource_path, repo_name
         )
 
         async for alerts in paginate_with_strategy(
             self.client.send_paginated_request(endpoint, request_params),
-            cursor=updated_since,
+            cursor=incremental_cursor,
             strategy=self.updated_since_strategy,
         ):
             scope = (

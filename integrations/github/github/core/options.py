@@ -58,7 +58,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
 
     states: Required[list[str]]
     max_results: Required[Optional[int]]
-    updated_since: NotRequired[Optional[datetime]]
+    incremental_cursor: NotRequired[Optional[datetime]]
     updated_after: NotRequired[Optional[datetime]]
     closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]

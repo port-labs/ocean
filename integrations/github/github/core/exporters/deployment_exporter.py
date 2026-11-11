@@ -53,15 +53,15 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name, organization, params = parse_github_options(dict(options))
         repo = cast(str, repo_name)
-        created_since = params.pop("created_since", None)
+        incremental_cursor = params.pop("created_since", None)
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo}/deployments"
-        request_params = DEPLOYMENT_INCREMENTAL.merge_params(params, created_since)
+        request_params = DEPLOYMENT_INCREMENTAL.merge_params(params, incremental_cursor)
 
         if not enrich_first_commit:
             async for deployments in paginate_with_strategy(
                 self.client.send_paginated_request(endpoint, request_params),
-                cursor=created_since,
+                cursor=incremental_cursor,
                 strategy=DEPLOYMENT_INCREMENTAL,
             ):
                 logger.info(
@@ -70,8 +70,8 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
                 yield self._enrich_deployments(deployments, repo, organization)
             return
 
-        # Pair on the raw page so a predecessor older than ``created_since`` can
-        # still supply its SHA; only enrich deployments created since then.
+        # Pair on the raw page so a predecessor past the cursor can still
+        # supply its SHA; only enrich deployments within the cursor window.
         pending: dict[Any, dict[str, Any]] = {}
         async for deployments in self.client.send_paginated_request(
             endpoint, request_params
@@ -80,20 +80,22 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
             in_window = [
                 (deployment, predecessor)
                 for deployment, predecessor in pairs
-                if not DEPLOYMENT_INCREMENTAL.should_stop(deployment, created_since)
+                if not DEPLOYMENT_INCREMENTAL.should_stop(
+                    deployment, incremental_cursor
+                )
             ]
             enriched = await self._enrich_first_commits(organization, repo, in_window)
             if enriched:
                 yield self._enrich_deployments(enriched, repo, organization)
             if DEPLOYMENT_INCREMENTAL.should_break_pagination(
-                deployments, created_since
+                deployments, incremental_cursor
             ):
                 break
 
         in_window = [
             (deployment, None)
             for deployment in pending.values()
-            if not DEPLOYMENT_INCREMENTAL.should_stop(deployment, created_since)
+            if not DEPLOYMENT_INCREMENTAL.should_stop(deployment, incremental_cursor)
         ]
         if in_window:
             enriched = await self._enrich_first_commits(organization, repo, in_window)

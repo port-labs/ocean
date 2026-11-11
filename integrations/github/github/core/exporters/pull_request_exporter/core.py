@@ -114,7 +114,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, organization, extras = parse_github_options(options_dict)
         states = extras["states"]
         max_results = extras["max_results"]
-        updated_since = extras.pop("updated_since", None)
+        incremental_cursor = extras.pop("incremental_cursor", None)
         updated_after = extras.get("updated_after")
         closed_after = extras.get("closed_after")
 
@@ -127,7 +127,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 f"[Rest] Fetching open PRs with rest api from {organization}/{repo_name}"
             )
             async for open_batch in self._fetch_open_pull_requests(
-                organization, cast(str, repo_name), updated_since
+                organization, cast(str, repo_name), incremental_cursor
             ):
                 yield open_batch
 
@@ -153,16 +153,16 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         organization: str,
         repo_name: str,
-        updated_since: Optional[datetime] = None,
+        incremental_cursor: Optional[datetime] = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         endpoint = self._build_pull_request_paginated_endpoint(organization, repo_name)
         request_params = OPEN_PULL_REQUEST_INCREMENTAL_REST.merge_params(
-            {"state": "open"}, updated_since
+            {"state": "open"}, incremental_cursor
         )
 
         async for pull_requests in paginate_with_strategy(
             self.client.send_paginated_request(endpoint, request_params),
-            cursor=updated_since,
+            cursor=incremental_cursor,
             strategy=OPEN_PULL_REQUEST_INCREMENTAL_REST,
         ):
             logger.info(
@@ -294,7 +294,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         _, organization, extras = parse_github_options(options_dict)
         states = extras["states"]
         max_results = extras["max_results"]
-        updated_since = extras.pop("updated_since", None)
+        incremental_cursor = extras.pop("incremental_cursor", None)
         updated_after = extras.get("updated_after")
         closed_after = extras.get("closed_after")
         repo = extras["repo"]
@@ -309,7 +309,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 organization,
                 repo,
                 pr_gql_options,
-                updated_since,
+                incremental_cursor,
             ):
                 if include_required_checks:
                     await GraphQLRequiredChecksEnricher(
@@ -474,11 +474,13 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         organization: str,
         repo: dict[str, Any],
         pr_gql_options: PullRequestGraphQLOptions,
-        updated_since: Optional[datetime] = None,
+        incremental_cursor: Optional[datetime] = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name = repo["name"]
         order_by_field = (
-            GRAPHQL_ORDER_BY_UPDATED_AT if updated_since is not None else "CREATED_AT"
+            GRAPHQL_ORDER_BY_UPDATED_AT
+            if incremental_cursor is not None
+            else "CREATED_AT"
         )
         variables = {
             "organization": organization,
@@ -513,7 +515,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 fallbacks=fallbacks,
                 regenerate_query=regenerate_open_pr_query,
             ),
-            cursor=updated_since,
+            cursor=incremental_cursor,
             strategy=OPEN_PULL_REQUEST_INCREMENTAL_GRAPHQL,
         ):
             if not pr_nodes:
