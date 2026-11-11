@@ -1,7 +1,7 @@
 from gitlab.clients.rate_limiter.limiter import GitLabRateLimiter
 from gitlab.clients.rate_limiter.rate_limit_wrapper import (
     GitLabRateLimitWrapper,
-    centralized_rate_limit_pool,
+    get_rate_limit_pool_name,
 )
 from gitlab.clients.rate_limiter.utils import (
     GitLabRateLimiterConfig,
@@ -15,5 +15,5 @@ __all__ = [
     "GitLabRateLimitWrapper",
     "RateLimitInfo",
     "RateLimiterRequiredHeaders",
-    "centralized_rate_limit_pool",
+    "get_rate_limit_pool_name",
 ]

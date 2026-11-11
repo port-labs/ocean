@@ -7,6 +7,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
+from loguru import logger
 
 from gitlab.clients.rate_limiter.limiter import GitLabRateLimiter
 from gitlab.clients.rate_limiter.utils import (
@@ -19,7 +20,7 @@ from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS = 20
 
 
-def centralized_rate_limit_pool(base_url: str) -> str:
+def get_rate_limit_pool_name(base_url: str) -> str:
     """Redis pool for the integration token on this GitLab host.
 
     Identity-propagated user tokens stay on the local limiter. They do not
@@ -72,24 +73,35 @@ class GitLabRateLimitWrapper(RateLimitWrapper):
         try:
             return float(raw)
         except (TypeError, ValueError):
+            logger.warning(
+                f"Ignoring malformed GitLab retry-after header: {raw!r}",
+                pool=self.pool,
+            )
             return None
 
-    def _info_from_response(self, response: httpx.Response) -> Optional[RateLimitInfo]:
+    def _info_from_response(
+        self, response: httpx.Response, context: str
+    ) -> Optional[RateLimitInfo]:
         try:
             headers = RateLimiterRequiredHeaders(**dict(response.headers))
-        except (TypeError, ValueError):
+            return self._limiter._parse_rate_limit_headers(headers)
+        except (TypeError, ValueError) as error:
+            logger.warning(
+                f"Ignoring malformed GitLab rate limit headers on {context}",
+                pool=self.pool,
+                error=str(error),
+            )
             return None
-        return self._limiter._parse_rate_limit_headers(headers)
 
     def _parse_centralized_state(
         self, response: httpx.Response, context: str
     ) -> Optional[CentralizedRateLimitState]:
-        info = self._info_from_response(response)
+        info = self._info_from_response(response, context)
         if info is None:
             return None
 
         blocked_until: float | None = None
-        if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+        if self._centralized_is_rate_limited(response):
             delay = self._retry_after_seconds(response.headers)
             if delay is not None and delay >= 0:
                 blocked_until = time.time() + delay

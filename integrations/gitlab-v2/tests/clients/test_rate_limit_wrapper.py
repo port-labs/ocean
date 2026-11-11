@@ -9,7 +9,7 @@ from gitlab.clients.rate_limiter.limiter import GitLabRateLimiter
 from gitlab.clients.rate_limiter.rate_limit_wrapper import (
     MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS,
     GitLabRateLimitWrapper,
-    centralized_rate_limit_pool,
+    get_rate_limit_pool_name,
 )
 from gitlab.clients.rate_limiter.utils import GitLabRateLimiterConfig, RateLimitInfo
 
@@ -41,23 +41,21 @@ def _response(
 
 def test_pool_is_the_gitlab_host() -> None:
     assert (
-        centralized_rate_limit_pool("https://gitlab.example.com")
-        == "gitlab.example.com"
+        get_rate_limit_pool_name("https://gitlab.example.com") == "gitlab.example.com"
     )
     assert (
-        centralized_rate_limit_pool("https://gitlab.example.com/")
-        == "gitlab.example.com"
+        get_rate_limit_pool_name("https://gitlab.example.com/") == "gitlab.example.com"
     )
     assert (
-        centralized_rate_limit_pool("https://GitLab.Example.com/api/v4")
+        get_rate_limit_pool_name("https://GitLab.Example.com/api/v4")
         == "gitlab.example.com"
     )
 
 
 def test_pool_differs_across_hosts() -> None:
-    assert centralized_rate_limit_pool(
+    assert get_rate_limit_pool_name(
         "https://gitlab.example.com"
-    ) != centralized_rate_limit_pool("https://gitlab.internal")
+    ) != get_rate_limit_pool_name("https://gitlab.internal")
 
 
 def test_parse_publishes_vendor_headers() -> None:
@@ -79,6 +77,29 @@ def test_missing_headers_are_not_published() -> None:
     response = httpx.Response(200, headers={"x-request-id": "abc"})
 
     assert wrapper._parse_centralized_state(response, context="projects") is None
+
+
+def test_malformed_headers_are_not_published() -> None:
+    wrapper = _wrapper()
+
+    assert (
+        wrapper._parse_centralized_state(
+            _response(remaining="not-a-number"), context="projects"
+        )
+        is None
+    )
+
+
+def test_malformed_retry_after_does_not_block() -> None:
+    wrapper = _wrapper()
+    response = _response(
+        HTTPStatus.TOO_MANY_REQUESTS, remaining="0", retry_after="soon"
+    )
+
+    state = wrapper._parse_centralized_state(response, context="projects")
+
+    assert state is not None
+    assert state.blocked_until is None
 
 
 def test_429_sets_blocked_until_from_retry_after() -> None:

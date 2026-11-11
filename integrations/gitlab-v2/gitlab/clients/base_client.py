@@ -11,7 +11,7 @@ from gitlab.clients.rate_limiter import (
     GitLabRateLimiter,
     GitLabRateLimiterConfig,
     GitLabRateLimitWrapper,
-    centralized_rate_limit_pool,
+    get_rate_limit_pool_name,
 )
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 1800
@@ -29,7 +29,7 @@ class HTTPBaseClient:
         self.token = token
         self._rate_limiter = GitLabRateLimitWrapper(
             GitLabRateLimiter(GitLabRateLimiterConfig()),
-            pool=centralized_rate_limit_pool(base_url),
+            pool=get_rate_limit_pool_name(base_url),
             redis_enabled=centralized_rate_limit,
         )
         self._client = OceanAsyncClient(
