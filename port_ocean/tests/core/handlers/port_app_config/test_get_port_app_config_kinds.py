@@ -45,6 +45,24 @@ def test_get_port_app_config_kinds_skips_custom_kind_slot() -> None:
     assert CUSTOM_KIND not in get_port_app_config_kinds(Config)
 
 
+def test_get_port_app_config_kinds_includes_custom_kind_slot_with_probe_permissions() -> (
+    None
+):
+    class IncidentConfig(ResourceConfig):
+        kind: Literal["incident"] = Field(title="Incident", description="Incident.")
+
+    class CustomResourceConfig(ResourceConfig):
+        probe_permissions: ClassVar[tuple[str, ...]] = ("custom:list",)
+
+        kind: str = Field(title="Custom", description="Custom kind.")
+
+    class Config(PortAppConfig):
+        allow_custom_kinds: ClassVar[bool] = True
+        resources: list[IncidentConfig | CustomResourceConfig] = resources_field()  # type: ignore[assignment]
+
+    assert get_port_app_config_kinds(Config) == [CUSTOM_KIND, "incident"]
+
+
 def test_get_kind_probe_permissions_returns_tuple_permissions() -> None:
     class ProjectConfig(ResourceConfig):
         probe_permissions: ClassVar[tuple[str, ...]] = ("BROWSE_PROJECTS",)
@@ -98,3 +116,24 @@ def test_get_kind_probe_permissions_skips_kinds_without_metadata() -> None:
         resources: list[RepositoryConfig | UnmappedConfig] = resources_field()  # type: ignore[assignment]
 
     assert get_kind_probe_permissions(Config) == {"repository": ("repo",)}
+
+
+def test_get_kind_probe_permissions_keys_custom_kind_slot_by_custom_kind() -> None:
+    class RepositoryConfig(ResourceConfig):
+        probe_permissions: ClassVar[tuple[str, ...]] = ("repo",)
+
+        kind: Literal["repository"] = Field(title="Repository", description="Repo.")
+
+    class CustomResourceConfig(ResourceConfig):
+        probe_permissions: ClassVar[tuple[str, ...]] = ("custom:list",)
+
+        kind: str = Field(title="Custom", description="Custom kind.")
+
+    class Config(PortAppConfig):
+        allow_custom_kinds: ClassVar[bool] = True
+        resources: list[RepositoryConfig | CustomResourceConfig] = resources_field()  # type: ignore[assignment]
+
+    assert get_kind_probe_permissions(Config) == {
+        "repository": ("repo",),
+        CUSTOM_KIND: ("custom:list",),
+    }
