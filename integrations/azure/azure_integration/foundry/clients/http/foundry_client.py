@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
@@ -15,24 +15,15 @@ from azure_integration.foundry.clients.http.retry_transport import (
 from azure_integration.foundry.helpers.utils import build_foundry_url
 
 _FOUNDRY_SCOPE = "https://ai.azure.com/.default"
-_DEFAULT_API_VERSION = "v1"
+DEFAULT_FOUNDRY_API_VERSION = "v1"
 # Cap error bodies so logs stay readable when Azure returns a large HTML/JSON payload.
 _ERROR_BODY_LIMIT = 500
 
-_credential: DefaultAzureCredential | None = None
 _client: FoundryHttpClient | None = None
 
 
 class FoundryApiError(Exception):
     pass
-
-
-async def _authorization_headers() -> dict[str, str]:
-    global _credential
-    if _credential is None:
-        _credential = DefaultAzureCredential()
-    token = await _credential.get_token(_FOUNDRY_SCOPE)
-    return {"Authorization": f"Bearer {token.token}"}
 
 
 class FoundryHttpClient:
@@ -43,21 +34,29 @@ class FoundryHttpClient:
     def __init__(
         self,
         *,
-        get_authorization_header: Callable[[], Awaitable[dict[str, str]]],
-        api_version: str = _DEFAULT_API_VERSION,
+        api_version: str = DEFAULT_FOUNDRY_API_VERSION,
         page_size: int = PAGE_SIZE,
     ) -> None:
-        self._get_authorization_header = get_authorization_header
         self._api_version = api_version
         self._page_size = page_size
+        self._credential: DefaultAzureCredential | None = None
         self._http = OceanAsyncClient(
             FoundryRetryTransport,
             retry_config=RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS),
             timeout=httpx.Timeout(60.0),
         )
 
+    async def _authorization_headers(self) -> dict[str, str]:
+        if self._credential is None:
+            self._credential = DefaultAzureCredential()
+        token = await self._credential.get_token(_FOUNDRY_SCOPE)
+        return {"Authorization": f"Bearer {token.token}"}
+
     async def close(self) -> None:
         await self._http.aclose()
+        if self._credential is not None:
+            await self._credential.close()
+            self._credential = None
 
     @staticmethod
     def uses_openai_compatible_routes(endpoint: str) -> bool:
@@ -77,7 +76,7 @@ class FoundryHttpClient:
         if not self.uses_openai_compatible_routes(endpoint):
             query_params.setdefault("api-version", self._api_version)
         headers = {
-            **await self._get_authorization_header(),
+            **await self._authorization_headers(),
             **(extra_headers or {}),
         }
         response = await self._http.request(
@@ -132,8 +131,8 @@ class FoundryHttpClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         request_params = dict(params or {})
         request_params.setdefault("limit", self._page_size)
+        url = build_foundry_url(project_endpoint, path)
         while True:
-            url = build_foundry_url(project_endpoint, path)
             payload = await self.send_api_request(
                 url, params=request_params, extra_headers=extra_headers
             )
@@ -172,18 +171,17 @@ class FoundryHttpClient:
             request_params = {}
 
 
-def create_foundry_client() -> FoundryHttpClient:
+def create_foundry_client(
+    api_version: str = DEFAULT_FOUNDRY_API_VERSION,
+) -> FoundryHttpClient:
     global _client
     if _client is None:
-        _client = FoundryHttpClient(get_authorization_header=_authorization_headers)
+        _client = FoundryHttpClient(api_version=api_version)
     return _client
 
 
 async def clear_foundry_client() -> None:
-    global _client, _credential
+    global _client
     if _client is not None:
         await _client.close()
-    if _credential is not None:
-        await _credential.close()
     _client = None
-    _credential = None

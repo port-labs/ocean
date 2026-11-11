@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from azure_integration.foundry.core.exporters.agents_exporter import _attach_versions
+from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_attach_versions_keeps_raw_version_payload() -> None:
     )
     client.items_from_payload.side_effect = lambda payload: payload["data"]
 
-    await _attach_versions(client, "https://example", [agent])
+    await AgentsExporter(client)._attach_versions("https://example", [agent])
 
     client.send_api_request.assert_awaited_once_with(
         "https://example/agents/Omby-agent/versions"

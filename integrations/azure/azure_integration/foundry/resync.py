@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Callable, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -34,7 +34,6 @@ from azure_integration.foundry.kinds import (
     FoundryProjectResourceConfig,
     MemoryStoreResourceConfig,
     ModelDeploymentResourceConfig,
-    ObjectKind,
     ResponseResourceConfig,
 )
 
@@ -52,7 +51,7 @@ async def resync_foundry_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(AgentResourceConfig, event.resource_config).selector
-    exporter = AgentsExporter(create_foundry_client())
+    exporter = AgentsExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
@@ -75,7 +74,7 @@ async def resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_foundry_model_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(ModelDeploymentResourceConfig, event.resource_config).selector
-    exporter = ModelDeploymentsExporter(create_foundry_client())
+    exporter = ModelDeploymentsExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
@@ -97,7 +96,7 @@ async def resync_foundry_model_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_
 async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(ConversationResourceConfig, event.resource_config).selector
-    exporter = ConversationsExporter(create_foundry_client())
+    exporter = ConversationsExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
@@ -120,7 +119,7 @@ async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 async def resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(ResponseResourceConfig, event.resource_config).selector
-    exporter = ResponsesExporter(create_foundry_client())
+    exporter = ResponsesExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
@@ -143,7 +142,7 @@ async def resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_foundry_memory_stores(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(MemoryStoreResourceConfig, event.resource_config).selector
-    exporter = MemoryStoresExporter(create_foundry_client())
+    exporter = MemoryStoresExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
@@ -160,15 +159,3 @@ async def resync_foundry_memory_stores(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
                 )
             ):
                 yield page
-
-
-FOUNDRY_RESYNC_HANDLERS: dict[
-    str, Callable[[str], AsyncIterator[list[dict[str, Any]]]]
-] = {
-    ObjectKind.FOUNDRY_PROJECT: resync_foundry_projects,
-    ObjectKind.FOUNDRY_AGENT: resync_foundry_agents,
-    ObjectKind.FOUNDRY_MODEL_DEPLOYMENT: resync_foundry_model_deployments,
-    ObjectKind.FOUNDRY_CONVERSATION: resync_foundry_conversations,
-    ObjectKind.FOUNDRY_RESPONSE: resync_foundry_responses,
-    ObjectKind.FOUNDRY_MEMORY_STORE: resync_foundry_memory_stores,
-}

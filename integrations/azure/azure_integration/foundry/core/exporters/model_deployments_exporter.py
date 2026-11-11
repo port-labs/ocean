@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListModelDeploymentsOptions
 from azure_integration.foundry.helpers.utils import enrich_with_project
 
 
-class ModelDeploymentsExporter:
-    def __init__(self, client: FoundryHttpClient) -> None:
-        self.client = client
-
+class ModelDeploymentsExporter(FoundryExporter):
     async def get_paginated_resources(
         self, options: ListModelDeploymentsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

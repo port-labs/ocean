@@ -30,7 +30,15 @@ from azure_integration.webhook.webhook_processors.resource_event_processor impor
     AzureResourceEventProcessor,
 )
 from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
-from azure_integration.foundry.resync import FOUNDRY_RESYNC_HANDLERS
+from azure_integration.foundry.kinds import ObjectKind
+from azure_integration.foundry.resync import (
+    resync_foundry_agents,
+    resync_foundry_conversations,
+    resync_foundry_memory_stores,
+    resync_foundry_model_deployments,
+    resync_foundry_projects,
+    resync_foundry_responses,
+)
 from port_ocean.utils.signal import signal_handler
 
 
@@ -45,11 +53,6 @@ def _resolve_resync_method_for_resource(
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in ResourceKindsWithSpecialHandling:
-        foundry_handler = FOUNDRY_RESYNC_HANDLERS.get(kind)
-        if foundry_handler is not None:
-            async for resources_batch in foundry_handler(kind):
-                yield resources_batch
-            return
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
     resource_selector = typing.cast(
@@ -62,7 +65,16 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield resources_batch
 
 
-for _foundry_kind, _foundry_handler in FOUNDRY_RESYNC_HANDLERS.items():
+_FOUNDRY_RESYNC_HANDLERS = (
+    (ObjectKind.FOUNDRY_PROJECT, resync_foundry_projects),
+    (ObjectKind.FOUNDRY_AGENT, resync_foundry_agents),
+    (ObjectKind.FOUNDRY_MODEL_DEPLOYMENT, resync_foundry_model_deployments),
+    (ObjectKind.FOUNDRY_CONVERSATION, resync_foundry_conversations),
+    (ObjectKind.FOUNDRY_RESPONSE, resync_foundry_responses),
+    (ObjectKind.FOUNDRY_MEMORY_STORE, resync_foundry_memory_stores),
+)
+for _foundry_kind, _foundry_handler in _FOUNDRY_RESYNC_HANDLERS:
+    ocean.on_resync(_foundry_kind)(_foundry_handler)
     ocean.on_incremental_resync(_foundry_kind)(_foundry_handler)
 
 

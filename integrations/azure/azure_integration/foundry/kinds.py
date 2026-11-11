@@ -39,6 +39,15 @@ class FoundryProjectSelector(Selector):
 
 
 class FoundrySelector(Selector):
+    api_version: str = Field(
+        default="v1",
+        alias="apiVersion",
+        title="Foundry API Version",
+        description=(
+            "Data-plane API version for Foundry project APIs (agents, deployments, "
+            "conversations, responses, memory stores)."
+        ),
+    )
     project: FoundryProjectFilters = Field(
         default_factory=FoundryProjectFilters,
         title="Project discovery",

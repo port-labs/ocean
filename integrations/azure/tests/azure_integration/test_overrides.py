@@ -204,6 +204,7 @@ def test_foundry_project_selector_api_version_defaults() -> None:
     assert isinstance(project, FoundryProjectResourceConfig)
     assert project.selector.api_version == DEFAULT_FOUNDRY_ARM_API_VERSION
     assert isinstance(agent, AgentResourceConfig)
+    assert agent.selector.api_version == "v1"
     assert agent.selector.project.api_version == "2024-10-01"
 
 

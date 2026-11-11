@@ -48,14 +48,9 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
     if match is None:
         return None
 
-    subscription_id = match.group("sub")
-    resource_group = match.group("rg")
-    account_name = match.group("account")
-    project_name = match.group("project")
-    endpoint_host = f"{account_name}.services.ai.azure.com"
-    location = project.get("location")
-    raw_tags = project.get("tags")
-    tags: dict[str, Any] = raw_tags if isinstance(raw_tags, dict) else {}
+    subscription_id, resource_group, account_name, project_name = match.group(
+        "sub", "rg", "account", "project"
+    )
     return FoundryProject(
         subscription_id=subscription_id,
         resource_group_name=resource_group,
@@ -66,10 +61,12 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
         ),
         project_name=project_name,
         project_arm_id=project_id,
-        endpoint=f"https://{endpoint_host}/api/projects/{project_name}",
-        account_endpoint_host=endpoint_host,
-        location=str(location) if location else None,
-        tags=tags,
+        endpoint=(
+            f"https://{account_name}.services.ai.azure.com/api/projects/{project_name}"
+        ),
+        account_endpoint_host=f"{account_name}.services.ai.azure.com",
+        location=str(project["location"]) if project.get("location") else None,
+        tags=project["tags"] if isinstance(project.get("tags"), dict) else {},
     )
 
 

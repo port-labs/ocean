@@ -4,7 +4,7 @@ from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListMemoryStoresOptions
 from azure_integration.foundry.foundry_incremental import MEMORY_STORE_INCREMENTAL
 from azure_integration.foundry.helpers.utils import enrich_with_project
@@ -12,10 +12,7 @@ from azure_integration.foundry.helpers.utils import enrich_with_project
 _MEMORY_STORES_FEATURE = "MemoryStores=V1Preview"
 
 
-class MemoryStoresExporter:
-    def __init__(self, client: FoundryHttpClient) -> None:
-        self.client = client
-
+class MemoryStoresExporter(FoundryExporter):
     async def get_paginated_resources(
         self, options: ListMemoryStoresOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

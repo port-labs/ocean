@@ -4,7 +4,7 @@ from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListConversationsOptions
 from azure_integration.foundry.foundry_incremental import CONVERSATION_INCREMENTAL
 from azure_integration.foundry.helpers.utils import (
@@ -13,11 +13,8 @@ from azure_integration.foundry.helpers.utils import (
 )
 
 
-class ConversationsExporter:
+class ConversationsExporter(FoundryExporter):
     """OpenAI-style conversation index (metadata only)."""
-
-    def __init__(self, client: FoundryHttpClient) -> None:
-        self.client = client
 
     async def get_paginated_resources(
         self, options: ListConversationsOptions
@@ -25,6 +22,7 @@ class ConversationsExporter:
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         since_days = options.since_days
+        # When incremental sync is off, cursor is None and since_days alone bounds the window.
         incremental_cursor = active_incremental_cursor()
         cutoff = effective_conversation_cutoff(
             incremental_cursor, since_days=since_days
