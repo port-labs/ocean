@@ -726,6 +726,152 @@ class TestRetryConfigIntegration:
         assert HTTPStatus.FORBIDDEN in transport._retry_config.retry_status_codes
 
 
+class TestAuthRefreshPostRetry:
+    """POST requests retry only on 401 when an auth refresh callback is registered."""
+
+    def setup_method(self) -> None:
+        retry_module._RETRY_CONFIG_CALLBACK = None
+        retry_module._ON_RETRY_CALLBACK = None
+
+    def teardown_method(self) -> None:
+        retry_module._ON_RETRY_CALLBACK = None
+
+    @staticmethod
+    def _register_refresh_callback() -> Mock:
+        def refresh(request: httpx.Request) -> httpx.Request:
+            request.headers["Authorization"] = "Bearer refreshed"
+            return request
+
+        callback = Mock(side_effect=refresh)
+        register_on_retry_callback(callback)
+        return callback
+
+    @staticmethod
+    def _transport(responses: list[Any]) -> tuple[RetryTransport, list[httpx.Request]]:
+        sent: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            sent.append(request)
+            outcome = responses.pop(0)
+            if isinstance(outcome, Exception):
+                raise outcome
+            return httpx.Response(outcome, request=request)
+
+        transport = RetryTransport(
+            wrapped_transport=httpx.MockTransport(handler),
+            retry_config=RetryConfig(
+                max_attempts=3, base_delay=0, apply_sync_tier_jitter=False
+            ),
+        )
+        return transport, sent
+
+    @pytest.mark.asyncio
+    async def test_post_retries_on_401_with_refreshed_auth(self) -> None:
+        callback = self._register_refresh_callback()
+        transport, sent = self._transport([401, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 200
+        assert len(sent) == 2
+        assert sent[1].headers["Authorization"] == "Bearer refreshed"
+        callback.assert_called_once()
+
+    def test_sync_post_retries_on_401(self) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([401, 200])
+
+        with httpx.Client(transport=transport) as client:
+            response = client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 200
+        assert len(sent) == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "status_code",
+        [
+            HTTPStatus.TOO_MANY_REQUESTS,
+            HTTPStatus.BAD_GATEWAY,
+            HTTPStatus.SERVICE_UNAVAILABLE,
+        ],
+    )
+    async def test_post_does_not_retry_on_other_retryable_statuses(
+        self, status_code: int
+    ) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([status_code, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == status_code
+        assert len(sent) == 1
+
+    @pytest.mark.asyncio
+    async def test_post_does_not_retry_on_timeout(self) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([httpx.ReadTimeout("timeout"), 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(httpx.ReadTimeout):
+                await client.post("https://api.example.com/items", json={})
+
+        assert len(sent) == 1
+
+    @pytest.mark.asyncio
+    async def test_post_not_retried_without_refresh_callback(self) -> None:
+        transport, sent = self._transport([401, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 401
+        assert len(sent) == 1
+
+    @pytest.mark.asyncio
+    async def test_post_in_retryable_methods_keeps_full_retry_behavior(self) -> None:
+        self._register_refresh_callback()
+        sent: list[httpx.Request] = []
+        responses = [HTTPStatus.BAD_GATEWAY, 200]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            sent.append(request)
+            return httpx.Response(responses.pop(0), request=request)
+
+        transport = RetryTransport(
+            wrapped_transport=httpx.MockTransport(handler),
+            retry_config=RetryConfig(
+                max_attempts=3,
+                base_delay=0,
+                apply_sync_tier_jitter=False,
+                retryable_methods=["GET", "POST"],
+            ),
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 200
+        assert len(sent) == 2
+
+    @pytest.mark.asyncio
+    async def test_skip_retry_extension_disables_post_auth_retry(self) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([401, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post(
+                "https://api.example.com/items",
+                json={},
+                extensions={SKIP_RETRY_EXTENSION_KEY: True},
+            )
+
+        assert response.status_code == 401
+        assert len(sent) == 1
+
+
 class TestResponseSizeLogging:
     """Tests for response size logging functionality."""
 
