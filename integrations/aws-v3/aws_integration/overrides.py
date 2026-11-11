@@ -453,6 +453,10 @@ class AWSCustomKindResourceConfig(AWSResourceConfig):
         "cloudformation:ListResources",
         "cloudformation:GetResource",
     )
+    probe_description: ClassVar[str] = (
+        "Test connection verifies Cloud Control access only. Service permissions "
+        "required by each configured Cloud Control type are not verified."
+    )
     kind: str = Field(
         title="Custom Kind (Cloud Control)",
         description="Map any resource type supported by the "

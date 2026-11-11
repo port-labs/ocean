@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add a test connection probe description to the Cloud Control custom kind explaining that per-type service permissions are not verified
