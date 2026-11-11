@@ -1,5 +1,5 @@
 from aws_integration.overrides import AWSCustomKindResourceConfig, AWSPortAppConfig
-from aws.probe.permissions import CUSTOM_KIND_UNVERIFIED_NOTE, AwsKindPermissionVerdict
+from aws.probe.permissions import AwsKindPermissionVerdict
 from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
 from port_ocean.core.handlers.port_app_config.validators import (
     get_kind_probe_permissions,
@@ -75,7 +75,7 @@ def test_verdict_is_unknown_when_simulation_omits_an_action() -> None:
     assert "ec2:DescribeInstances" in message
 
 
-def test_custom_kind_verdict_succeeds_with_unverified_service_note() -> None:
+def test_custom_kind_verdict_succeeds_without_cloud_control_caveat_in_message() -> None:
     # Arrange
     verdict = _custom_kind_verdict()
 
@@ -91,7 +91,7 @@ def test_custom_kind_verdict_succeeds_with_unverified_service_note() -> None:
     # Assert
     assert status is ProbeCheckStatus.SUCCESS
     assert "cloudformation:ListResources" in message
-    assert message.endswith(CUSTOM_KIND_UNVERIFIED_NOTE)
+    assert "not verified" not in message
 
 
 def test_custom_kind_verdict_fails_without_cloud_control_access() -> None:
@@ -110,4 +110,3 @@ def test_custom_kind_verdict_fails_without_cloud_control_access() -> None:
     # Assert
     assert status is ProbeCheckStatus.FAILURE
     assert "cloudformation:GetResource" in message
-    assert CUSTOM_KIND_UNVERIFIED_NOTE not in message
