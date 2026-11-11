@@ -57,4 +57,5 @@ SupportedServices = Literal[
     "sesv2",
     "dynamodb",
     "sns",
+    "cloudcontrol",
 ]

@@ -75,3 +75,24 @@ def test_factory_rejects_invalid_url() -> None:
     # Act + Assert
     with pytest.raises(ValidationError):
         model_cls(host="/")
+
+
+def test_factory_preserves_undeclared_extra_keys() -> None:
+    # Arrange
+    model_cls = default_config_factory(
+        [{"name": "apiKey", "type": "string", "required": True}]
+    )
+
+    # Act
+    config: Any = model_cls(
+        api_key="secret",
+        linear_host="http://127.0.0.1:9999/graphql",
+    )
+
+    # Assert
+    assert config.api_key == "secret"
+    assert config.linear_host == "http://127.0.0.1:9999/graphql"
+    assert "linear_host" in config.model_extra
+    assert config.model_dump(mode="json")["linear_host"] == (
+        "http://127.0.0.1:9999/graphql"
+    )

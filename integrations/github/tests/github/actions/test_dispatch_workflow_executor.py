@@ -1,5 +1,6 @@
 """Tests for DispatchWorkflowExecutor."""
 
+from datetime import datetime, timezone
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -11,6 +12,7 @@ from github.actions.dispatch_workflow_executor import (
     DispatchWorkflowExecutor,
     DISPATCH_FAILED_STATUS_LABEL,
     DISPATCHING_STATUS_LABEL,
+    MAX_WORKFLOW_RUN_FETCH_ATTEMPTS,
     WORKFLOW_RUNNING_STATUS_LABEL,
 )
 from github.clients.http.rest_client import GithubRestClient
@@ -55,7 +57,11 @@ def patched_ocean() -> Generator[MagicMock, None, None]:
     mock_client = MagicMock()
     mock_client.update_run_started = AsyncMock()
     mock_client.post_run_log = AsyncMock()
-    with patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean:
+    mock_client.report_run_completed = AsyncMock()
+    with (
+        patch("github.actions.dispatch_workflow_executor.ocean") as mock_ocean,
+        patch("github.actions.utils.ocean", mock_ocean),
+    ):
         mock_ocean.port_client = mock_client
         mock_ocean.integration_config = {
             **ocean.integration_config,
@@ -99,9 +105,8 @@ class TestDispatchWorkflowExecutor:
         self, mock_rest_client: MagicMock
     ) -> None:
         run = make_run({"org": "port-labs"})
-        mock_rest_client.get_rate_limit_status.return_value = MagicMock(
-            remaining=19, seconds_until_reset=42
-        )
+        mock_rest_client.rate_limiter.is_close_to_rate_limit.return_value = True
+        mock_rest_client.rate_limiter.seconds_until_rate_limit_reset.return_value = 42
 
         with patch(
             "github.actions.abstract_github_executor.create_github_client_for_org",
@@ -250,8 +255,221 @@ class TestDispatchWorkflowExecutor:
         with (
             patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
         ):
-            with pytest.raises(ActionExecutionError, match="Workflow run ID not found"):
+            with pytest.raises(
+                ActionExecutionError, match="Workflow run ID not found"
+            ) as exc_info:
                 await executor.execute(run)
+
+        assert exc_info.value.status_label == DISPATCH_FAILED_STATUS_LABEL
+
+    @pytest.mark.asyncio
+    async def test_retries_run_fetch_until_run_is_readable(
+        self,
+        executor: DispatchWorkflowExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run({"org": "port-labs", "repo": "ocean", "workflow": "deploy.yml"})
+
+        dispatch_response = MagicMock()
+        dispatch_response.json.return_value = {"workflow_run_id": 12345}
+        mock_rest_client.make_request.return_value = dispatch_response
+
+        # GET /actions/runs/{id} 404s (swallowed to None) until the run is readable.
+        get_resource_mock = AsyncMock(side_effect=[None, None, WORKFLOW_RUN])
+        sleep_mock = AsyncMock()
+
+        with (
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
+            patch(
+                "github.actions.dispatch_workflow_executor.asyncio.sleep", sleep_mock
+            ),
+        ):
+            mock_exporter_cls.return_value.get_resource = get_resource_mock
+            await executor.execute(run)
+
+        mock_exporter_cls.assert_called_once_with(mock_rest_client)
+        assert get_resource_mock.await_count == 3
+        assert sleep_mock.await_args_list == [call(1), call(2)]
+        mock_rest_client.make_request.assert_awaited_once()
+        mock_port_client.update_run_started.assert_awaited_once_with(
+            run,
+            WORKFLOW_RUN["html_url"],
+            "gh_1_99_12345",
+            extra_output={"workflowRunId": 12345},
+            status_label=WORKFLOW_RUNNING_STATUS_LABEL,
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_fetch_gives_up_after_bounded_backoff(
+        self,
+        executor: DispatchWorkflowExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run({"org": "port-labs", "repo": "ocean", "workflow": "deploy.yml"})
+
+        dispatch_response = MagicMock()
+        dispatch_response.json.return_value = {"workflow_run_id": 12345}
+        mock_rest_client.make_request.return_value = dispatch_response
+
+        get_resource_mock = AsyncMock(return_value=None)
+        sleep_mock = AsyncMock()
+
+        with (
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
+            patch(
+                "github.actions.dispatch_workflow_executor.asyncio.sleep", sleep_mock
+            ),
+        ):
+            mock_exporter_cls.return_value.get_resource = get_resource_mock
+            with pytest.raises(
+                ActionExecutionError,
+                match="Workflow run 12345 not found in port-labs/ocean",
+            ) as exc_info:
+                await executor.execute(run)
+
+        assert exc_info.value.status_label == "Tracking failed"
+        assert get_resource_mock.await_count == MAX_WORKFLOW_RUN_FETCH_ATTEMPTS
+        assert sleep_mock.await_args_list == [call(d) for d in (1, 2, 4, 8, 10, 10, 10)]
+        # The workflow must be dispatched exactly once, never re-dispatched.
+        mock_rest_client.make_request.assert_awaited_once()
+        mock_port_client.update_run_started.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "conclusion,expected_success,expected_label",
+        [
+            ("success", True, "Workflow succeeded"),
+            ("failure", False, "Workflow failed"),
+        ],
+    )
+    async def test_reports_conclusion_when_fetched_run_already_completed(
+        self,
+        executor: DispatchWorkflowExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+        conclusion: str,
+        expected_success: bool,
+        expected_label: str,
+    ) -> None:
+        """A run that finished before externalRunId was set misses its webhook."""
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "workflow": "deploy.yml",
+                "reportWorkflowStatus": True,
+            }
+        )
+
+        dispatch_response = MagicMock()
+        dispatch_response.json.return_value = {"workflow_run_id": 12345}
+        mock_rest_client.make_request.return_value = dispatch_response
+        completed_run = {
+            **WORKFLOW_RUN,
+            "status": "completed",
+            "conclusion": conclusion,
+        }
+
+        call_order = MagicMock()
+        call_order.attach_mock(mock_port_client.update_run_started, "started")
+        call_order.attach_mock(mock_port_client.report_run_completed, "completed")
+
+        with (
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
+        ):
+            mock_exporter_cls.return_value.get_resource = AsyncMock(
+                return_value=completed_run
+            )
+            await executor.execute(run)
+
+        assert [c[0] for c in call_order.mock_calls] == ["started", "completed"]
+        mock_port_client.report_run_completed.assert_awaited_once_with(
+            run,
+            expected_success,
+            f"Workflow completed: {conclusion}",
+            status_label=expected_label,
+        )
+
+    @pytest.mark.asyncio
+    async def test_does_not_report_conclusion_when_report_workflow_status_disabled(
+        self,
+        executor: DispatchWorkflowExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "workflow": "deploy.yml",
+                "reportWorkflowStatus": False,
+            }
+        )
+
+        dispatch_response = MagicMock()
+        dispatch_response.json.return_value = {"workflow_run_id": 12345}
+        mock_rest_client.make_request.return_value = dispatch_response
+        completed_run = {**WORKFLOW_RUN, "status": "completed", "conclusion": "success"}
+
+        with (
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
+        ):
+            mock_exporter_cls.return_value.get_resource = AsyncMock(
+                return_value=completed_run
+            )
+            await executor.execute(run)
+
+        mock_port_client.update_run_started.assert_awaited_once()
+        mock_port_client.report_run_completed.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_does_not_report_conclusion_while_run_in_progress(
+        self,
+        executor: DispatchWorkflowExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "workflow": "deploy.yml",
+                "reportWorkflowStatus": True,
+            }
+        )
+
+        dispatch_response = MagicMock()
+        dispatch_response.json.return_value = {"workflow_run_id": 12345}
+        mock_rest_client.make_request.return_value = dispatch_response
+        in_progress_run = {**WORKFLOW_RUN, "status": "in_progress", "conclusion": None}
+
+        with (
+            patch.object(executor, "_get_default_ref", AsyncMock(return_value="main")),
+            patch(
+                "github.actions.dispatch_workflow_executor.RestWorkflowRunExporter",
+            ) as mock_exporter_cls,
+        ):
+            mock_exporter_cls.return_value.get_resource = AsyncMock(
+                return_value=in_progress_run
+            )
+            await executor.execute(run)
+
+        mock_port_client.update_run_started.assert_awaited_once()
+        mock_port_client.report_run_completed.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_github_http_error_raises(
@@ -432,6 +650,10 @@ class TestLegacyDispatchWorkflowExecutor:
         mock_rest_client.send_api_request.assert_awaited_once()
         poll_params = mock_rest_client.send_api_request.await_args.kwargs["params"]
         assert poll_params["actor"] == "port-bot[bot]"
+        created = poll_params["created"]
+        assert created.startswith(">=")
+        assert created.endswith("Z")
+        assert "." not in created
         mock_port_client.update_run_started.assert_awaited_once_with(
             run,
             WORKFLOW_RUN["html_url"],
@@ -479,3 +701,22 @@ class TestLegacyDispatchWorkflowExecutor:
                 match="unable to track it's progress",
             ):
                 await executor.execute(run)
+
+
+class TestLegacyDispatchCreatedFilter:
+    def test_drops_subsecond_precision(self) -> None:
+        now = datetime(2026, 10, 21, 14, 39, 36, 502590, tzinfo=timezone.utc)
+
+        assert (
+            DispatchWorkflowExecutor._legacy_dispatch_created_filter(now)
+            == "2026-10-21T14:39:36Z"
+        )
+
+    def test_same_second_github_created_at_still_matches(self) -> None:
+        now = datetime(2026, 10, 22, 4, 32, 1, 502590, tzinfo=timezone.utc)
+        github_created_at = "2026-10-22T04:32:01Z"
+
+        assert (
+            DispatchWorkflowExecutor._legacy_dispatch_created_filter(now)
+            <= github_created_at
+        )

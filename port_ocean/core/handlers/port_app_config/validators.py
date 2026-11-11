@@ -11,7 +11,6 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
-    ProbePermissions,
     ResourceConfig,
     Selector,
 )
@@ -33,14 +32,18 @@ def validate_and_get_config_schema(
 
 
 def get_port_app_config_kinds(config_class: Type[PortAppConfig]) -> list[str]:
-    """Return literal resource kind values declared on a PortAppConfig class."""
+    """Return resource kind values declared on a PortAppConfig class.
+
+    The custom kind slot is included as ``CUSTOM_KIND`` only when its model
+    declares ``probe_permissions``, so it can be probed as a single check.
+    """
     return sorted(
         kind
-        for _, kind in _iter_resource_kinds(
+        for model, kind in _iter_resource_kinds(
             _get_resource_config_models(config_class),
             config_class.allow_custom_kinds,
         )
-        if kind != CUSTOM_KIND
+        if kind != CUSTOM_KIND or model.probe_permissions
     )
 
 
@@ -54,15 +57,13 @@ def get_kind_probe_permissions(
     Resource configs may declare ``probe_permissions`` as either a single tuple
     (one permission namespace) or a dict keyed by auth mode / namespace.
     When a dict is used, *permission_key* selects the active namespace.
+    The custom kind slot's permissions are keyed by ``CUSTOM_KIND``.
     """
     kind_permissions: dict[str, tuple[str, ...]] = {}
     for model, kind_value in _iter_resource_kinds(
         _get_resource_config_models(config_class),
         config_class.allow_custom_kinds,
     ):
-        if kind_value == CUSTOM_KIND:
-            continue
-
         permissions = _resolve_probe_permissions_for_model(model, permission_key)
         if permissions:
             kind_permissions[kind_value] = permissions
@@ -71,10 +72,10 @@ def get_kind_probe_permissions(
 
 
 def _resolve_probe_permissions_for_model(
-    model: type,
+    model: type[ResourceConfig],
     permission_key: str | None,
 ) -> tuple[str, ...] | None:
-    permissions: ProbePermissions | None = getattr(model, "probe_permissions", None)
+    permissions = model.probe_permissions
     if permissions is None:
         return None
     if isinstance(permissions, tuple):
@@ -321,7 +322,7 @@ def _resolve_kind_value(
     """Normalise a model's ``kind`` annotation.
 
     * ``Literal["x"]`` → ``"x"``
-    * ``str`` (when allowed) → ``"__custom__"``
+    * ``str`` or a constrained ``str`` subclass (when allowed) → ``"__custom__"``
     * otherwise → raises ``ValueError``
     """
     kind_type = kind_field.outer_type_
@@ -335,7 +336,7 @@ def _resolve_kind_value(
             )
         return str(values[0])
 
-    if kind_type is str:
+    if isinstance(kind_type, type) and issubclass(kind_type, str):
         if not allow_custom_kinds:
             raise ValueError(
                 f"{model_name}: custom kinds are not allowed when "

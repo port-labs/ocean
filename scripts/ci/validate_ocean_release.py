@@ -8,7 +8,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 CI_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS_DIR))
 sys.path.insert(0, str(CI_DIR))
 
 from ocean_release.git_context import GitContext  # noqa: E402

@@ -93,13 +93,35 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
         self,
         url: str,
         *,
-        data_key: str | None = "data",
+        data_key: str = "data",
         offset_param: str = "offset",
         size_param: str = "limit",
         page_size: int = MAX_PAGE_SIZE,
         extra_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Offset-based pagination. Increments offset by page_size until empty."""
+        async for result in self._paginate_responses_by_offset(
+            url,
+            data_key=data_key,
+            offset_param=offset_param,
+            size_param=size_param,
+            page_size=page_size,
+            extra_params=extra_params,
+        ):
+            yield result[data_key]
+
+    async def _paginate_responses_by_offset(
+        self,
+        url: str,
+        *,
+        data_key: str = "data",
+        offset_param: str = "offset",
+        size_param: str = "limit",
+        page_size: int = MAX_PAGE_SIZE,
+        extra_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Offset-based pagination yielding each whole response, for endpoints whose
+        data is incomplete without its sibling keys (e.g. JSON:API `included`)."""
         offset = 0
         while True:
             params: dict[str, Any] = {
@@ -109,11 +131,10 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             }
             result = await self.client.send_api_request(url, params=params)
 
-            items = result if data_key is None else result.get(data_key, [])
-            if not items:
+            if not result.get(data_key, []):
                 break
 
-            yield items
+            yield result
             offset += page_size
 
 

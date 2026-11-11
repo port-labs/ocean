@@ -292,9 +292,15 @@ class AzureDevopsClient(HTTPBaseClient):
         auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
         excluded_tags: Optional[list[str]] = None,
+        *,
+        centralized_rate_limit: bool = True,
     ) -> None:
         organization_url = organization_url.rstrip("/")
-        super().__init__(auth_provider)
+        super().__init__(
+            auth_provider,
+            organization_url,
+            centralized_rate_limit=centralized_rate_limit,
+        )
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
@@ -2479,10 +2485,10 @@ class AzureDevopsClient(HTTPBaseClient):
         return run
 
     def is_close_to_rate_limit(self) -> bool:
-        return self._rate_limiter.is_close_to_limit
+        return self._rate_limiter.is_close_to_rate_limit()
 
     def seconds_until_rate_limit_reset(self) -> float:
-        return self._rate_limiter.seconds_until_reset
+        return self._rate_limiter.seconds_until_rate_limit_reset()
 
     async def get_pipeline_stage(
         self, project: dict[str, Any], pipeline_id: str, run_id: str, stage_id: str

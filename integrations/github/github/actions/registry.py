@@ -22,6 +22,7 @@ from github.actions.external_custom_properties.update_repo_external_custom_prope
 from github.actions.create_pr_comment_executor import CreatePrCommentExecutor
 from github.actions.edit_pr_comment_executor import EditPrCommentExecutor
 from github.actions.delete_pr_comment_executor import DeletePrCommentExecutor
+from github.actions.refresh_pull_requests_executor import RefreshPullRequestsExecutor
 
 
 def register_actions_executors() -> None:
@@ -41,3 +42,4 @@ def register_actions_executors() -> None:
     ocean.register_action_executor(CreatePrCommentExecutor())
     ocean.register_action_executor(EditPrCommentExecutor())
     ocean.register_action_executor(DeletePrCommentExecutor())
+    ocean.register_action_executor(RefreshPullRequestsExecutor())

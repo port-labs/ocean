@@ -98,6 +98,18 @@ jobs:
           git config --local user.name "GitHub Action"
           ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
 
+      - name: Verify integrations pin Ocean version
+        id: verify
+        continue-on-error: true
+        run: python3 scripts/ci/validate_ocean_dependency.py --base HEAD
+
+      - name: Retry apply for outdated integrations
+        if: steps.verify.outcome == 'failure'
+        run: |
+          echo "Validation failed after first bump (possible PyPI race); retrying once"
+          ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
+          python3 scripts/ci/validate_ocean_dependency.py --base HEAD
+
       - name: Open pull request
         id: open_pr
         uses: peter-evans/create-pull-request@v8

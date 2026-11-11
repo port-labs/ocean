@@ -232,5 +232,142 @@
         "many": true
       }
     }
+  },
+  {
+    "identifier": "datadogCatalogEntity",
+    "description": "This blueprint represents an entity of any kind in the Datadog Software Catalog",
+    "title": "Datadog Catalog Entity",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "kind": {
+          "type": "string",
+          "title": "Kind",
+          "description": "The entity kind, e.g. service, datastore, queue, api, system"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "Namespace",
+          "description": "The namespace the entity name is unique within"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "owner": {
+          "type": "string",
+          "title": "Owner",
+          "description": "Handle of the team that owns the entity"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "tier": {
+          "type": "string",
+          "title": "Tier",
+          "description": "How important the entity is to the business"
+        },
+        "lifecycle": {
+          "type": "string",
+          "title": "Lifecycle",
+          "description": "The entity's lifecycle state, e.g. production, experimental"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "emailContacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Email Contacts",
+          "description": "Contacts declared on the entity with type email"
+        },
+        "additionalOwners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Additional Owners",
+          "description": "Names of the additional owner teams declared on the entity"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "url"
+          },
+          "title": "Links",
+          "description": "Links to external resources and repositories"
+        },
+        "ingestionSource": {
+          "type": "string",
+          "title": "Ingestion Source",
+          "description": "How the entity reached the catalog, e.g. api for a declared entity"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "dependsOn": {
+        "target": "datadogCatalogEntity",
+        "title": "Depends On",
+        "description": "Entities this entity declares a dependency on",
+        "many": true,
+        "required": false
+      },
+      "componentOf": {
+        "target": "datadogCatalogEntity",
+        "title": "Component Of",
+        "description": "Entities this entity is a component of",
+        "many": true,
+        "required": false
+      },
+      "components": {
+        "target": "datadogCatalogEntity",
+        "title": "Components",
+        "description": "Entities a system declares in spec.components. Empty when membership is declared the other way round, as componentOf on each child",
+        "many": true,
+        "required": false
+      },
+      "implementedBy": {
+        "target": "datadogCatalogEntity",
+        "title": "Implemented By",
+        "description": "Entities that implement this entity",
+        "many": true,
+        "required": false
+      },
+      "team": {
+        "target": "datadogTeam",
+        "title": "Team",
+        "many": false,
+        "required": false
+      }
+    }
   }
 ]

@@ -14,8 +14,12 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 
-from clients.anthropic_client import AnthropicClient, RateLimitInfo
-from clients.exceptions import UnexpectedApiResponseError
+from claude_managed_agents.clients.anthropic_client import (
+    AnthropicClient,
+    RateLimitInfo,
+)
+from claude_managed_agents.clients.exceptions import UnexpectedApiResponseError
+from tests.action_test_helpers import image_block
 
 
 class _Model:
@@ -265,6 +269,40 @@ async def test_senduser_message_event_shape(client: AnthropicClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_user_message_sends_the_extra_content_after_the_text(
+    client: AnthropicClient,
+) -> None:
+    inner: Any = client._client
+    sent_event = BetaManagedAgentsUserMessageEvent(
+        id="evt_1",
+        type="user.message",
+        content=[BetaManagedAgentsTextBlock(type="text", text="look")],
+    )
+    inner.beta.sessions.events.send = AsyncMock(
+        return_value=MagicMock(data=[sent_event])
+    )
+    image = image_block()
+
+    await client.send_user_message(
+        "sess_1", "look", [{"type": "text", "text": "Image 1:"}, image]
+    )
+
+    inner.beta.sessions.events.send.assert_awaited_once_with(
+        "sess_1",
+        events=[
+            {
+                "type": "user.message",
+                "content": [
+                    {"type": "text", "text": "look"},
+                    {"type": "text", "text": "Image 1:"},
+                    image,
+                ],
+            }
+        ],
+    )
+
+
+@pytest.mark.asyncio
 async def test_send_user_message_raises_when_no_event_returned(
     client: AnthropicClient,
 ) -> None:
@@ -395,7 +433,9 @@ async def test_on_request_sleeps_when_pool_exhausted(
     async def _fake_sleep(seconds: float) -> None:
         sleep_calls.append(seconds)
 
-    monkeypatch.setattr("clients.anthropic_client.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep
+    )
 
     client._create_rate_limit_info = RateLimitInfo(
         limit=300, remaining=0, reset=datetime.now(timezone.utc) + timedelta(seconds=10)
@@ -419,7 +459,9 @@ async def test_on_request_does_not_sleep_once_reset_has_passed(
         nonlocal slept
         slept = True
 
-    monkeypatch.setattr("clients.anthropic_client.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "claude_managed_agents.clients.anthropic_client.asyncio.sleep", _fake_sleep
+    )
 
     client._read_rate_limit_info = RateLimitInfo(
         limit=1200, remaining=0, reset=datetime.now(timezone.utc) - timedelta(seconds=5)

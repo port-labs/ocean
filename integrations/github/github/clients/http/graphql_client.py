@@ -80,6 +80,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             self._graphql_client = self.authenticator._make_client(
                 extra_retryable_methods=frozenset({"POST"}),
                 extra_retryable_status=frozenset({HTTPStatus.FORBIDDEN}),
+                rate_limiter=self._rate_limiter,
             )
         return self._graphql_client
 
@@ -245,7 +246,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         return {"query": query, "variables": variables}
 
     @staticmethod
-    def _is_query_too_expensive(exc: BaseException) -> bool:
+    def is_query_too_expensive(exc: BaseException) -> bool:
         """True for a gateway timeout left over once the transport gives up.
 
         GitHub surfaces a query that blows the 10s GraphQL execution budget as a
@@ -273,7 +274,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         """
         if isinstance(exc, GraphQLErrorGroup):
             return not (is_primary and page_size > MIN_GRAPHQL_PAGE_SIZE)
-        return self._is_query_too_expensive(exc)
+        return self.is_query_too_expensive(exc)
 
     async def send_paginated_request(
         self,

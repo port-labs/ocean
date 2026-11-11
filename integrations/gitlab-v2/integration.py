@@ -52,6 +52,9 @@ class SearchQuery(BaseModel):
     )
 
 
+_INCREMENTAL_SYNC_SELECTOR_NOTE = " Ignored during incremental sync."
+
+
 class PipelineQueryParams(BaseModel):
     """Gitlab API query params that filters returned pipelines"""
 
@@ -132,7 +135,10 @@ class PipelineQueryParams(BaseModel):
     updated_after: str | None = Field(
         default=None,
         title="Updated After",
-        description="Return only pipelines updated after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        description=(
+            "Return only pipelines updated after this timestamp. Expected in ISO 8601 "
+            "format (e.g. 2019-03-15T08:00:00Z)." + _INCREMENTAL_SYNC_SELECTOR_NOTE
+        ),
         regex=ISO_8601_DATETIME_REGEX,
     )
     updated_before: str | None = Field(
@@ -514,6 +520,8 @@ class GitlabMergeRequestSelector(GroupSelector):
         description=(
             "Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)."
             " Note: large values may cause rate limiting."
+            " Applies to closed/merged on full resync; opened has no time filter on full resync."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
         ),
         default=90,
     )
@@ -619,17 +627,20 @@ class IssueSelector(GroupSelector):
         default=None,
         alias="updatedAfter",
         title="Updated After (Days)",
-        description="Filter issues updated within the last N days (e.g. 30 to fetch issues updated in the last 30 days). Note: large values may cause rate limiting.\n\nSee <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#issues-configuration-options'>issues configuration options</a> for more details.",
+        description=(
+            "Filter issues updated within the last N days (e.g. 30 to fetch issues "
+            "updated in the last 30 days). Note: large values may cause rate limiting."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
+            + "\n\nSee <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#issues-configuration-options'>issues configuration options</a> for more details."
+        ),
     )
 
     @property
-    def updated_after_datetime(self) -> str:
-        """Convert the created_after days to a timezone-aware datetime object in ISO 8601 format"""
-        if not self.updated_after:
-            return datetime.now(timezone.utc).isoformat()
-        return (
-            datetime.now(timezone.utc) - timedelta(days=self.updated_after)
-        ).isoformat()
+    def updated_after_datetime(self) -> Optional[datetime]:
+        """Selector window as a UTC datetime, or None when ``updatedAfter`` is unset."""
+        if self.updated_after is None:
+            return None
+        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
 
 
 class GitlabIssueResourceConfig(ResourceConfig):
@@ -719,6 +730,7 @@ class GitlabDeploymentQueryParams(BaseModel):
             "(ISO 8601 with timezone, e.g. 2024-01-15T10:00:00Z). "
             "This controls which deployments are synced into Port — deployments outside "
             "this window will be removed from Port during reconciliation."
+            + _INCREMENTAL_SYNC_SELECTOR_NOTE
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
@@ -776,6 +788,8 @@ class GitlabDeploymentQueryParams(BaseModel):
         params = self.dict(exclude_unset=True, exclude_none=True)
         if "finished_after" in params or "finished_before" in params:
             params["order_by"] = "finished_at"
+        elif "updated_after" in params or "updated_before" in params:
+            params["order_by"] = "updated_at"
         return params
 
 

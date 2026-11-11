@@ -18,6 +18,7 @@ from integration import ObjectKind
 from datadog.webhook.webhook_client import DatadogWebhookClient
 from datadog.webhook.registry import register_live_events_webhooks
 from datadog.core.exporters import (
+    CatalogEntityExporter,
     TeamExporter,
     UserExporter,
     HostExporter,
@@ -38,7 +39,9 @@ from datadog.core.exporters.service_metric_exporter import ListServiceMetricOpti
 from datadog.core.exporters.service_dependency_exporter import (
     ListServiceDependencyOptions,
 )
+from datadog.core.exporters.catalog_entity_exporter import ListCatalogEntityOptions
 from datadog.overrides import (
+    CatalogEntityResourceConfig,
     RoleResourceConfig,
     TeamResourceConfig,
     MonitorResourceConfig,
@@ -160,6 +163,18 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         context="Service exporter",
     ):
         yield services
+
+
+@ocean.on_resync(ObjectKind.CATALOG_ENTITY)
+async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListCatalogEntityOptions.from_resource_config(
+        cast(CatalogEntityResourceConfig, event.resource_config)
+    )
+    async for entities in _resync_across_orgs(
+        lambda client: CatalogEntityExporter(client).get_paginated_resources(options),
+        context="Catalog entity exporter",
+    ):
+        yield entities
 
 
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)

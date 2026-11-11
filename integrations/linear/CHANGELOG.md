@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.39 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.59.0
+
+
+## 0.12.38 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.4
+
+
+## 0.12.37 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.12.36 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
+## 0.12.35 (2026-11-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.1
+
+
+## 0.12.34 (2026-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.0
+
+
+## 0.12.33 (2026-11-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.57.0
+
+
+## 0.12.32 (2026-11-02)
+
+
+### Improvements
+
+- Allow overriding the Linear GraphQL host via OCEAN__INTEGRATION__CONFIG__LINEAR_HOST without exposing it in the Port UI
+
+
+## 0.12.31 (2026-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.5
+
+
+## 0.12.30 (2026-11-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.4
+
+
+## 0.12.29 (2026-10-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.56.3
+
+
 ## 0.12.28 (2026-10-26)
 
 

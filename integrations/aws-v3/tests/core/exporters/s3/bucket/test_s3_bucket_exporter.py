@@ -394,3 +394,62 @@ class TestS3BucketExporter:
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")
         mock_proxy_class.return_value.__aenter__.assert_called_once()
         mock_proxy_class.return_value.__aexit__.assert_called_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("scope_to_region", "expected_kwargs"),
+        [
+            (False, {}),
+            (True, {"BucketRegion": "eu-west-1"}),
+        ],
+    )
+    @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
+    async def test_get_paginated_resources_bucket_region_scoping(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: S3BucketExporter,
+        scope_to_region: bool,
+        expected_kwargs: dict[str, str],
+    ) -> None:
+        """BucketRegion is only sent to ListBuckets when scope_to_region is set."""
+        mock_proxy = AsyncMock()
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        received_kwargs: list[dict[str, str]] = []
+
+        async def mock_paginate(
+            **kwargs: str,
+        ) -> AsyncGenerator[list[dict[str, str]], None]:
+            received_kwargs.append(kwargs)
+            yield [{"Name": "bucket1"}]
+
+        paginator = MagicMock()
+        paginator.paginate = mock_paginate
+        mock_proxy.get_paginator = MagicMock(return_value=paginator)
+
+        mock_inspector = AsyncMock()
+        mock_inspector.inspect.return_value = [
+            Bucket(Properties=BucketProperties(BucketName="bucket1")).model_dump(
+                exclude_none=True
+            )
+        ]
+        mock_inspector_class.return_value = mock_inspector
+
+        options = PaginatedBucketRequest(
+            region="eu-west-1",
+            account_id="123456789012",
+            include=[],
+            scope_to_region=scope_to_region,
+        )
+
+        results = [page async for page in exporter.get_paginated_resources(options)]
+
+        assert len(results) == 1
+        assert received_kwargs == [expected_kwargs]
+        mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "s3")
+
+    def test_paginated_request_scope_to_region_defaults_to_false(self) -> None:
+        options = PaginatedBucketRequest(region="us-east-1", account_id="123456789012")
+        assert options.scope_to_region is False

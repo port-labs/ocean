@@ -35,6 +35,9 @@ class AbstractGithubExecutor(AbstractExecutor):
         return GithubRestClient(
             github_host=str(ocean.integration_config["github_host"]),
             authenticator=PersonalTokenAuthenticator(user_token, organization),
+            # The user's quota is not the installation quota. Stay on the local
+            # limiter so this token does not write the integration's Redis pool.
+            centralized_rate_limit=False,
         )
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
@@ -46,16 +49,10 @@ class AbstractGithubExecutor(AbstractExecutor):
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         client = await self._get_rest_client(run)
-        info = client.get_rate_limit_status()
-        if not info:
-            return False
-        return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
+        return client.rate_limiter.is_close_to_rate_limit()
 
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun
     ) -> float:
         client = await self._get_rest_client(run)
-        info = client.get_rate_limit_status()
-        if not info:
-            return 0.0
-        return info.seconds_until_reset
+        return client.rate_limiter.seconds_until_rate_limit_reset()

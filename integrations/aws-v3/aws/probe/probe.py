@@ -16,7 +16,7 @@ from aws.core.helpers.utils import get_allowed_regions
 from aws.probe.identity import get_policy_source_arn
 from aws.probe.permissions import AwsKindPermissionVerdict
 from aws.probe.simulator import SimulateOutcome, simulate_principal_policy
-from integration import AWSResourceSelector
+from aws_integration.overrides import AWSResourceSelector
 from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
 
 _MAX_CONCURRENT_ACCOUNTS = 5

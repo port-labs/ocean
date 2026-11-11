@@ -39,7 +39,7 @@ class ObjectKind(StrEnum):
     SQS_QUEUE = "AWS::SQS::Queue"  # Example
 ```
 
-**File:** `integration.py`
+**File:** `aws_integration/overrides.py`
 
 Create a new `AWSResourceConfig` subclass named `AWS<Resource>ResourceConfig`. Its `kind` field must be a `Literal` matching the exact `ObjectKind` string value added above:
 
@@ -55,9 +55,11 @@ class AWSSQSQueueResourceConfig(AWSResourceConfig):
 Also declare `probe_permissions` as the IAM action(s) used by the exporter's list/describe paginator
 so Test Connection can simulate those actions.
 
-**File:** `integration.py`
+**Same file:** `aws_integration/overrides.py`
 
 Append the new subclass to the `Union` in `AWSPortAppConfig.resources` so Ocean can validate `port-app-config.yml` entries for this kind.
+
+(`integration.py` only wires `AWSIntegration` and sets `CONFIG_CLASS = AWSPortAppConfig`; do not add resource config models there.)
 
 ```python
 class AWSPortAppConfig(PortAppConfig):
@@ -351,10 +353,11 @@ __all__ = [
 
 **File:** `main.py`
 
-Add the import and resync handler:
+Add the import and resync handler (`AWSResourceConfig` lives in `aws_integration/overrides.py`):
 
 ```python
 # Add import
+from aws_integration.overrides import AWSResourceConfig
 from aws.core.exporters.{service} import YourResourceExporter
 from aws.core.exporters.{service}.{resource}.models import PaginatedYourResourceRequest
 

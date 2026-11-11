@@ -113,6 +113,16 @@ def parse_github_options(
     return repo_name, organization, params
 
 
+def pop_required_checks_options(options: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Take the required checks options out of pull request exporter options.
+
+    Returns ``(include_required_checks_status, excluded_required_checks)``.
+    """
+    include = bool(options.pop("include_required_checks_status", False))
+    excluded = list(options.pop("excluded_required_checks", None) or [])
+    return include, excluded
+
+
 async def fetch_commit_diff(
     client: "AbstractGithubClient",
     organization: str,

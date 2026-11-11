@@ -250,6 +250,10 @@
                     "type": "number",
                     "title": "Cache read input tokens"
                 },
+                "costUsd": {
+                    "type": "number",
+                    "title": "Cost (USD)"
+                },
                 "activeSeconds": {
                     "type": "number",
                     "title": "Active seconds"

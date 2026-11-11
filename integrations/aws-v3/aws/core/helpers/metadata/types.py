@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, TypedDict
 
+from aws_integration.overrides import AWSResourceSelector
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_models import ResourceRequestModel
 
@@ -70,3 +71,12 @@ class ExporterMetadata:
     paginated_request_model: type[ResourceRequestModel]
     regional: bool = True
     live_events: LiveEventFactories | None = None
+
+    def resolve_regional(self, selector: AWSResourceSelector) -> bool:
+        return self.regional
+
+    def build_request_extras(
+        self, selector: AWSResourceSelector
+    ) -> dict[str, Any] | None:
+        """Extra kwargs passed to every paginated request built for this kind."""
+        return None

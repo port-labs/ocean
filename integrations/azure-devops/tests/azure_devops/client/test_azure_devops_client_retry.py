@@ -1,5 +1,5 @@
 import json
-from typing import Callable, List, cast
+from typing import Callable, List
 from unittest.mock import MagicMock
 
 import httpx
@@ -36,9 +36,27 @@ def _make_client_with_mock_transport(
     client = AzureDevopsClient(
         MOCK_ORG_URL, PatAuthProvider("fake_pat"), "fake_username"
     )
-    retry_transport = cast(RetryTransport, client._client._transport)
-    retry_transport._wrapped_transport = httpx.MockTransport(handler)
+    mock_transport = httpx.MockTransport(handler)
+    _install_mock_transport(client._client._transport, mock_transport)
+    for mounted in client._client._mounts.values():
+        _install_mock_transport(mounted, mock_transport)
     return client
+
+
+def _install_mock_transport(
+    transport: httpx.AsyncBaseTransport | None,
+    mock_transport: httpx.MockTransport,
+) -> None:
+    """Point the retry transport at the mock, including a proxy mount.
+
+    httpx sends through a mounted proxy transport when one is configured, so
+    replacing only the default pool still lets the request leave the process.
+    """
+    if transport is None:
+        return
+    inner = getattr(transport, "_wrapped", transport)
+    if isinstance(inner, RetryTransport):
+        inner._wrapped_transport = mock_transport
 
 
 @pytest.fixture(autouse=True)
