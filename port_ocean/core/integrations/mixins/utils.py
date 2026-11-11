@@ -74,7 +74,11 @@ def build_lakehouse_data_entry(
     return entry
 
 
-_LIVE_EVENT_BATCH_EVENT_ID_UNSET = object()
+class _UnsetBatchEventId:
+    """Sentinel: omit ``event_id`` so the batch gets a generated UUID."""
+
+
+_UNSET_BATCH_EVENT_ID = _UnsetBatchEventId()
 
 
 async def post_live_event_batch_to_lakehouse(
@@ -83,7 +87,7 @@ async def post_live_event_batch_to_lakehouse(
     kind: str,
     data_entries: list[LakehouseDataEntry],
     resync_start_time: datetime | None = None,
-    event_id: str | None | object = _LIVE_EVENT_BATCH_EVENT_ID_UNSET,
+    event_id: str | None | _UnsetBatchEventId = _UNSET_BATCH_EVENT_ID,
     fatal: bool = False,
 ) -> bool:
     """Post a LIVE_EVENT lakehouse batch. Shared by live events and raw APIs.
@@ -100,10 +104,10 @@ async def post_live_event_batch_to_lakehouse(
         return True
 
     batch_event_id: str | None
-    if event_id is _LIVE_EVENT_BATCH_EVENT_ID_UNSET:
+    if isinstance(event_id, _UnsetBatchEventId):
         batch_event_id = str(uuid.uuid4())
     else:
-        batch_event_id = event_id  # type: ignore[assignment]
+        batch_event_id = event_id
     batch = LakehouseDataEntryBatch(
         event_id=batch_event_id,
         type=LakehouseEventType.LIVE_EVENT.value,
