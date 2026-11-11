@@ -106,15 +106,15 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Full resync: every file matching the patterns, with content."""
-        async for batch in self._export(options, self._match_files_full):
+        """Every file matching the patterns, with content."""
+        async for batch in self._export(options, self._match_files_in_tree):
             yield batch
 
     async def get_paginated_resources_changed_since(
         self, options: List[ListFileSearchOptions], change: RepositoryChange
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Incremental resync: only matching files changed since ``change``, with content."""
-        match = partial(self._match_files_incremental, changed_since=change)
+        """Only the matching files changed since ``change``, with content."""
+        match = partial(self._match_changed_files, changed_since=change)
         async for batch in self._export(options, match):
             yield batch
 
@@ -173,7 +173,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """Resolve file patterns to fetch lists, partitioned by GraphQL vs REST.
 
-        ``match_files`` is ``_match_files_full`` or ``_match_files_incremental``; both
+        ``match_files`` is ``_match_files_in_tree`` or ``_match_changed_files``; both
         return the same shape so downstream fetch routing stays identical.
         """
         graphql_files = []
@@ -229,18 +229,18 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return graphql_files, rest_files
 
-    async def _match_files_full(
+    async def _match_files_in_tree(
         self,
         organization: str,
         repo_name: str,
         branch: str,
         pattern: str,
     ) -> List[Dict[str, Any]]:
-        """Full resync: scan the recursive git tree and filter by glob pattern."""
+        """Scan the recursive git tree and filter by glob pattern."""
         tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
         return filter_github_tree_entries_by_pattern(tree, pattern)
 
-    async def _match_files_incremental(
+    async def _match_changed_files(
         self,
         organization: str,
         repo_name: str,
@@ -248,7 +248,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         pattern: str,
         changed_since: RepositoryChange,
     ) -> List[Dict[str, Any]]:
-        """Incremental resync: only files changed since the cursor that match ``pattern``.
+        """Files changed since ``changed_since`` that match ``pattern``.
 
         1. Ask the compare API for paths changed since ``changed_since``.
         2. If the diff is untrusted (None), fall back to a full tree scan.
@@ -260,20 +260,22 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             organization, repo_name, branch, changed_since
         )
         if changed_paths is None:
-            # Compare could not be trusted, so this incremental sync falls back to a full sync.
-            return await self._match_files_full(
+            # The compare can't be trusted, so match against the whole tree.
+            return await self._match_files_in_tree(
                 organization, repo_name, branch, pattern
             )
 
-        # Incremental sync: nothing changed matches this pattern, so no tree fetch is needed.
+        # No changed path matches this pattern, so no tree fetch is needed.
         if not any(
             match_file_path_against_glob_pattern(path, pattern)
             for path in changed_paths
         ):
             return []
 
-        # Incremental sync: the tree is needed for fetch_method and sha, then filtered to changed paths.
-        matched = await self._match_files_full(organization, repo_name, branch, pattern)
+        # The tree is needed for fetch_method and sha, then filtered to changed paths.
+        matched = await self._match_files_in_tree(
+            organization, repo_name, branch, pattern
+        )
         return [m for m in matched if m["path"] in changed_paths]
 
     async def process_rest_api_files(
@@ -514,10 +516,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         branch: str,
         changed_since: RepositoryChange,
     ) -> Optional[set[str]]:
-        """Paths of files added or modified on ``branch`` since the cursor.
+        """Paths of files added or modified on ``branch`` since ``changed_since``.
 
         Cached per (repo, branch, field, since): the field is part of the key, so an
-        ``updated_at`` cursor and a ``pushed_at`` cursor never share a result.
+        ``updated_at`` change and a ``pushed_at`` change never share a result.
 
         Returns None when the diff cannot be trusted (no base commit, identical /
         rewritten history, truncated compare), so the caller falls back to a full

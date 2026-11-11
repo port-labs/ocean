@@ -412,7 +412,7 @@ class TestRestFileExporter:
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "repo1", file_patterns, exporter._match_files_full
+                "repo1", file_patterns, exporter._match_files_in_tree
             )
 
             # Both files should be in GraphQL files since they're both small
@@ -472,7 +472,7 @@ class TestRestFileExporter:
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "repo1", file_patterns, exporter._match_files_full
+                "repo1", file_patterns, exporter._match_files_in_tree
             )
 
             # Files under or at threshold should use GraphQL
@@ -511,7 +511,7 @@ class TestRestFileExporter:
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "repo1", file_patterns, exporter._match_files_full
+                "repo1", file_patterns, exporter._match_files_in_tree
             )
 
             assert len(graphql_files) == 0
@@ -849,7 +849,7 @@ class TestRestFileExporterRepoNotFound:
                         branch="main",
                     )
                 ],
-                exporter._match_files_full,
+                exporter._match_files_in_tree,
             )
 
         assert graphql_files == []
@@ -901,7 +901,7 @@ class TestRestFileExporterRepoNotFound:
             ),
         ):
             graphql_files, rest_files = await exporter.collect_matched_files(
-                "mixed-repo", patterns, exporter._match_files_full
+                "mixed-repo", patterns, exporter._match_files_in_tree
             )
 
         # First pattern was 404'd — no files. Second pattern matched test.txt.
@@ -1726,7 +1726,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                partial(exporter._match_files_incremental, changed_since=PUSHED_CHANGE),
+                partial(exporter._match_changed_files, changed_since=PUSHED_CHANGE),
             )
 
         tree_mock.assert_awaited_once()
@@ -1760,7 +1760,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                partial(exporter._match_files_incremental, changed_since=PUSHED_CHANGE),
+                partial(exporter._match_changed_files, changed_since=PUSHED_CHANGE),
             )
 
         tree_mock.assert_not_awaited()
@@ -1792,7 +1792,7 @@ class TestRestFileExporterIncremental:
                         branch="main",
                     )
                 ],
-                partial(exporter._match_files_incremental, changed_since=PUSHED_CHANGE),
+                partial(exporter._match_changed_files, changed_since=PUSHED_CHANGE),
             )
 
         tree_mock.assert_awaited_once()
@@ -1813,7 +1813,9 @@ class TestRestFileExporterIncremental:
             ):
                 pass
 
-        collect_mock.assert_awaited_once_with("repo1", [], exporter._match_files_full)
+        collect_mock.assert_awaited_once_with(
+            "repo1", [], exporter._match_files_in_tree
+        )
 
     async def test_get_paginated_resources_changed_since_uses_incremental_match(
         self, rest_client: GithubRestClient
@@ -1833,7 +1835,7 @@ class TestRestFileExporterIncremental:
 
         assert collect_mock.await_args is not None
         match_files = collect_mock.await_args.args[2]
-        assert match_files.func == exporter._match_files_incremental
+        assert match_files.func == exporter._match_changed_files
         assert match_files.keywords == {"changed_since": PUSHED_CHANGE}
 
     async def test_builder_changed_since_lists_only_changed_repos(self) -> None:
