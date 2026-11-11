@@ -17,7 +17,7 @@ from gitlab.clients.rate_limiter.utils import GitLabRateLimiterConfig, RateLimit
 def _wrapper() -> GitLabRateLimitWrapper:
     return GitLabRateLimitWrapper(
         GitLabRateLimiter(GitLabRateLimiterConfig()),
-        pool="gitlab.example.com-abc",
+        pool="gitlab.example.com",
     )
 
 
@@ -168,4 +168,4 @@ async def test_centralized_acquire_waits_on_the_pool() -> None:
         async with wrapper:
             await wrapper.acquire()
 
-    await_limit.assert_awaited_once_with("gitlab.example.com-abc")
+    await_limit.assert_awaited_once_with("gitlab.example.com")

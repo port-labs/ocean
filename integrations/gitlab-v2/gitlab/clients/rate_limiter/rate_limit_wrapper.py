@@ -7,7 +7,6 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from loguru import logger
 
 from gitlab.clients.rate_limiter.limiter import GitLabRateLimiter
 from gitlab.clients.rate_limiter.utils import (
@@ -95,33 +94,12 @@ class GitLabRateLimitWrapper(RateLimitWrapper):
             if delay is not None and delay >= 0:
                 blocked_until = time.time() + delay
 
-        state = CentralizedRateLimitState(
+        return CentralizedRateLimitState(
             remaining=info.remaining,
             limit=info.limit,
             reset_at=float(info.reset_time),
             blocked_until=blocked_until,
         )
-        ratio = (
-            round(info.remaining / info.limit, 3)
-            if info.limit and info.remaining is not None
-            else None
-        )
-        reset_in_seconds = round(info.reset_time - time.time(), 3)
-        logger.info(
-            "GitLab centralized rate limit state "
-            f"pool={self.pool} context={context} remaining={info.remaining} "
-            f"limit={info.limit} ratio={ratio} reset_at={info.reset_time} "
-            f"reset_in_seconds={reset_in_seconds} blocked_until={blocked_until}",
-            pool=self.pool,
-            context=context,
-            remaining=info.remaining,
-            limit=info.limit,
-            ratio=ratio,
-            reset_at=info.reset_time,
-            reset_in_seconds=reset_in_seconds,
-            blocked_until=blocked_until,
-        )
-        return state
 
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
         return response.status_code == HTTPStatus.TOO_MANY_REQUESTS
