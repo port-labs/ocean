@@ -52,6 +52,18 @@ resources:
             error_rate: .apmSummary.errorRate
             response_time_avg: .apmSummary.responseTimeAverage
             instance_count: .apmSummary.instanceCount
+  - kind: newRelicServiceDependency
+    selector:
+      query: 'true'
+      entityQueryFilter: "type in ('SERVICE','APPLICATION')"
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicServiceDependency"'
+          identifier: .guid
+          title: .name
+          relations:
+            dependencies: .calls
   - kind: newRelicAlert
     selector:
       query: 'true'

@@ -50,19 +50,75 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from port_ocean.core.models import WorkflowNodeRun
 
-from actions.utils import build_external_id
-from webhook_processors.session_webhook_processor import SessionWebhookProcessor
-from webhook_processors.trigger_agent_webhook_processor import (
+from claude_managed_agents.actions.utils import build_external_id
+from claude_managed_agents.webhook_processors.session_webhook_processor import (
+    SessionWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.trigger_agent_webhook_processor import (
     _INTERACTION_EVENT_TYPES,
     SESSION_COMPLETED_STATUS_LABEL,
     SESSION_FAILED_STATUS_LABEL,
     TriggerAgentWebhookProcessor,
 )
-from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
+from claude_managed_agents.webhook_processors.agent_webhook_processor import (
+    AgentWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.environment_webhook_processor import (
+    EnvironmentWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.memory_store_webhook_processor import (
+    MemoryStoreWebhookProcessor,
+)
+from claude_managed_agents.webhook_processors.vault_webhook_processor import (
+    VaultWebhookProcessor,
+)
+from anthropic.types.beta import BetaManagedAgentsSessionUsageEvent
+from anthropic.types.beta.beta_managed_agents_session_usage import (
+    BetaManagedAgentsSessionUsage,
+)
+from anthropic.types.beta.sessions.beta_managed_agents_session_usage_snapshot import (
+    BetaManagedAgentsSessionUsageSnapshot,
+)
 
 
 def _event(data: dict[str, Any]) -> WebhookEvent:
     return WebhookEvent(trace_id="trace", payload={"data": data}, headers={})
+
+
+_SESSION_USAGE = BetaManagedAgentsSessionUsage.model_validate(
+    {
+        "input_tokens": 5000,
+        "output_tokens": 3200,
+        "list_cost": {"amount": "187", "currency": "USD"},
+    }
+)
+_SESSION_URL = "https://platform.claude.com/workspaces/ws_1/sessions/s1"
+_STANDARD_COMPLETION = {
+    "url": _SESSION_URL,
+    "inputTokens": 5000,
+    "outputTokens": 3200,
+    "costUsd": 1.87,
+}
+
+
+def sdk_session(
+    *,
+    session_id: str = "s1",
+    status: str = "idle",
+    usage: BetaManagedAgentsSessionUsage | None = _SESSION_USAGE,
+) -> MagicMock:
+    session = MagicMock()
+    session.id = session_id
+    session.status = status
+    session.usage = usage
+    session.to_dict = MagicMock(return_value={"id": session_id, "status": status})
+    return session
+
+
+def _stub_session_usage_client(client: MagicMock) -> None:
+    client.get_session = AsyncMock(return_value=sdk_session())
+    client.get_console_host = MagicMock(return_value="https://platform.claude.com")
+    client.get_workspace_id = MagicMock(return_value=None)
 
 
 # --- session ---
@@ -96,9 +152,11 @@ async def test_session_upsert_event_fetches_resource() -> None:
     payload = {"data": {"type": "session.running", "id": "s1"}}
     processor = SessionWebhookProcessor(_event(payload["data"]))
     client = MagicMock()
-    client.get_session = AsyncMock(return_value={"id": "s1", "status": "running"})
+    client.get_session = AsyncMock(
+        return_value=sdk_session(status="running", usage=None)
+    )
     with patch(
-        "webhook_processors.session_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.session_webhook_processor.create_anthropic_client",
         return_value=client,
     ):
         results = await processor.handle_event(payload, None)
@@ -123,6 +181,109 @@ async def test_vault_delete_event_returns_delete() -> None:
     processor = VaultWebhookProcessor(_event(payload["data"]))
     results = await processor.handle_event(payload, None)
     assert results.deleted_raw_results == [{"id": "v1"}]
+
+
+# --- agent ---
+
+
+@pytest.mark.asyncio
+async def test_agent_should_process_and_kinds() -> None:
+    processor = AgentWebhookProcessor(_event({"type": "agent.updated", "id": "a1"}))
+    assert await processor.should_process_event(processor.event) is True
+    assert await processor.get_matching_kinds(processor.event) == ["agent"]
+
+
+@pytest.mark.asyncio
+async def test_agent_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "agent.deleted", "id": "a1"}}
+    processor = AgentWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "a1"}]
+    assert results.updated_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_agent_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "agent.created", "id": "a1"}}
+    processor = AgentWebhookProcessor(_event(payload["data"]))
+    client = MagicMock()
+    agent = MagicMock()
+    agent.to_dict.return_value = {"id": "a1", "name": "bot"}
+    client.get_agent = AsyncMock(return_value=agent)
+    with patch(
+        "claude_managed_agents.webhook_processors.agent_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "a1", "name": "bot"}]
+    client.get_agent.assert_awaited_once_with("a1")
+    agent.to_dict.assert_called_once_with(mode="json", warnings=False)
+
+
+# --- environment ---
+
+
+@pytest.mark.asyncio
+async def test_environment_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "environment.deleted", "id": "e1"}}
+    processor = EnvironmentWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "e1"}]
+
+
+@pytest.mark.asyncio
+async def test_environment_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "environment.updated", "id": "e1"}}
+    processor = EnvironmentWebhookProcessor(_event(payload["data"]))
+    environment = MagicMock()
+    environment.to_dict.return_value = {"id": "e1", "name": "env"}
+    client = MagicMock()
+    client.get_environment = AsyncMock(return_value=environment)
+    with patch(
+        "claude_managed_agents.webhook_processors.environment_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "e1", "name": "env"}]
+    client.get_environment.assert_awaited_once_with("e1")
+
+
+# --- memory store ---
+
+
+@pytest.mark.asyncio
+async def test_memory_store_should_process_and_kinds() -> None:
+    processor = MemoryStoreWebhookProcessor(
+        _event({"type": "memory_store.created", "id": "ms1"})
+    )
+    assert await processor.should_process_event(processor.event) is True
+    assert await processor.get_matching_kinds(processor.event) == ["memory-store"]
+
+
+@pytest.mark.asyncio
+async def test_memory_store_delete_event_returns_delete() -> None:
+    payload = {"data": {"type": "memory_store.deleted", "id": "ms1"}}
+    processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    results = await processor.handle_event(payload, None)
+    assert results.deleted_raw_results == [{"id": "ms1"}]
+
+
+@pytest.mark.asyncio
+async def test_memory_store_upsert_event_fetches_resource() -> None:
+    payload = {"data": {"type": "memory_store.archived", "id": "ms1"}}
+    processor = MemoryStoreWebhookProcessor(_event(payload["data"]))
+    memory_store = MagicMock()
+    memory_store.to_dict.return_value = {"id": "ms1", "name": "mem"}
+    client = MagicMock()
+    client.get_memory_store = AsyncMock(return_value=memory_store)
+    with patch(
+        "claude_managed_agents.webhook_processors.memory_store_webhook_processor.create_anthropic_client",
+        return_value=client,
+    ):
+        results = await processor.handle_event(payload, None)
+    assert results.updated_raw_results == [{"id": "ms1", "name": "mem"}]
+    client.get_memory_store.assert_awaited_once_with("ms1")
+    memory_store.to_dict.assert_called_once_with(mode="json", warnings=False)
 
 
 # --- trigger agent (action) ---
@@ -211,11 +372,34 @@ def _tool_use(name: str) -> BetaManagedAgentsAgentToolUseEvent:
     )
 
 
+def _session_usage_event(
+    *,
+    processed_at: datetime,
+    usage: BetaManagedAgentsSessionUsage,
+    event_id: str = "usage_1",
+) -> BetaManagedAgentsSessionUsageEvent:
+    return BetaManagedAgentsSessionUsageEvent(
+        id=event_id,
+        type="session.usage",
+        processed_at=processed_at,
+        usage=BetaManagedAgentsSessionUsageSnapshot(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            list_cost=usage.list_cost,
+            active_seconds=usage.active_seconds,
+            cache_creation=usage.cache_creation,
+            cache_read_input_tokens=usage.cache_read_input_tokens,
+            server_tool_use=usage.server_tool_use,
+        ),
+    )
+
+
 def _patch_session_events(
     anchor: BetaManagedAgentsUserMessageEvent,
     interaction_batches: list[list[BetaManagedAgentsSessionEvent]],
     *,
     prior_idle: BetaManagedAgentsSessionStatusIdleEvent | None = None,
+    prior_usage: BetaManagedAgentsSessionUsageEvent | None = None,
     agent_message_batches: list[list[BetaManagedAgentsSessionEvent]] | None = None,
 ) -> Any:
     """Mock ``get_session_events`` for the anchor, prior-idle, and combined
@@ -237,6 +421,10 @@ def _patch_session_events(
             if prior_idle is not None:
                 yield [prior_idle]
             return
+        if kwargs.get("types") == ["session.usage"] and kwargs.get("order") == "desc":
+            if prior_usage is not None and kwargs.get("created_at_lt") is not None:
+                yield [prior_usage]
+            return
         if kwargs.get("types") == _INTERACTION_EVENT_TYPES:
             if prior_idle is not None:
                 if kwargs.get("created_at_gt") == prior_idle.processed_at:
@@ -252,8 +440,9 @@ def _patch_session_events(
 
     client = MagicMock()
     client.get_session_events = _gen
+    _stub_session_usage_client(client)
     return patch(
-        "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+        "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
         return_value=client,
     )
 
@@ -308,7 +497,10 @@ async def test_trigger_reports_success_without_error_logs() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -323,6 +515,57 @@ async def test_trigger_reports_success_without_error_logs() -> None:
         mock_ocean.port_client.report_run_completed.call_args.kwargs["status_label"]
         == SESSION_COMPLETED_STATUS_LABEL
     )
+
+
+@pytest.mark.asyncio
+async def test_trigger_reports_relative_usage_against_prior_session_usage() -> None:
+    """Continued sessions subtract the last session.usage before this turn."""
+    anchor = _user_message("continue")
+    payload = _webhook_payload()
+    processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
+
+    run = _wf_node_run(session_id="s1")
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.post_run_logs = AsyncMock()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    prior_idle = BetaManagedAgentsSessionStatusIdleEvent(
+        id="idle_1",
+        type="session.status_idle",
+        processed_at=datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+        stop_reason=BetaManagedAgentsSessionEndTurn(type="end_turn"),
+    )
+    prior_usage = _session_usage_event(
+        processed_at=datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
+        usage=BetaManagedAgentsSessionUsage.model_validate(
+            {
+                "input_tokens": 2000,
+                "output_tokens": 1000,
+                "list_cost": {"amount": "50", "currency": "USD"},
+            }
+        ),
+    )
+    batch: list[BetaManagedAgentsSessionEvent] = [
+        _idle(BetaManagedAgentsSessionEndTurn(type="end_turn")),
+    ]
+
+    with (
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        _patch_session_events(
+            anchor, [batch], prior_idle=prior_idle, prior_usage=prior_usage
+        ),
+    ):
+        await processor.handle_event(payload, None)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert run.output["inputTokens"] == 3000
+    assert run.output["outputTokens"] == 2200
+    assert run.output["costUsd"] == 1.37
 
 
 @pytest.mark.asyncio
@@ -343,7 +586,11 @@ async def test_trigger_reports_response_on_success() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(
             anchor,
             [batch],
@@ -359,6 +606,7 @@ async def test_trigger_reports_response_on_success() -> None:
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
         "response": "All done.",
+        **_STANDARD_COMPLETION,
     }
 
 
@@ -382,7 +630,11 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(
             anchor,
             [batch],
@@ -392,7 +644,7 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
         await processor.handle_event(payload, None)
 
     logs = mock_ocean.port_client.post_run_logs.call_args.args[1]
-    assert [log.level for log in logs] == ["ERROR"]
+    assert [log.level for log in logs] == ["ERROR", "INFO"]
     mock_ocean.port_client.report_run_completed.assert_awaited_once_with(
         run, True, status_label=SESSION_COMPLETED_STATUS_LABEL
     )
@@ -400,6 +652,7 @@ async def test_trigger_reports_success_when_session_error_has_end_turn() -> None
         "sessionId": "s1",
         "userMessageEventId": _ANCHOR_ID,
         "response": "Recovered.",
+        **_STANDARD_COMPLETION,
     }
 
 
@@ -422,7 +675,11 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -441,6 +698,7 @@ async def test_trigger_reports_failure_when_transcript_has_error() -> None:
         "userMessageEventId": _ANCHOR_ID,
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
+        **_STANDARD_COMPLETION,
     }
 
 
@@ -463,7 +721,11 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [batch]),
     ):
         await processor.handle_event(payload, None)
@@ -494,7 +756,11 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     ]
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, [failed_batch]),
     ):
         await processor.handle_event(payload, None)
@@ -516,7 +782,11 @@ async def test_trigger_reports_success_when_transient_error_recovered() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
         _patch_session_events(anchor, []),
     ):
         await processor.handle_event(payload, None)
@@ -552,11 +822,15 @@ async def test_trigger_completes_run_when_error_inspection_fails() -> None:
         raise RuntimeError("api down")
 
     client.get_session_events = _failing_events
+    _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -565,6 +839,11 @@ async def test_trigger_completes_run_when_error_inspection_fails() -> None:
     mock_ocean.port_client.post_run_logs.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        **_STANDARD_COMPLETION,
+    }
 
 
 @pytest.mark.asyncio
@@ -580,7 +859,10 @@ async def test_trigger_skips_when_report_disabled() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
         _patch_session_events(anchor, []),
     ):
         await processor.handle_event(payload, None)
@@ -621,11 +903,15 @@ async def test_trigger_new_session_skips_prior_idle_lookup() -> None:
 
     client = MagicMock()
     client.get_session_events = _gen
+    _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -676,11 +962,15 @@ async def test_trigger_delayed_webhook_anchors_prior_run() -> None:
 
     client = MagicMock()
     client.get_session_events = _gen
+    _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -754,11 +1044,16 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
 
     client = MagicMock()
     client.get_session_events = _gen
+    _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -778,6 +1073,7 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
         "userMessageEventId": _ANCHOR_ID,
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
+        **_STANDARD_COMPLETION,
     }
 
 
@@ -848,11 +1144,16 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
 
     client = MagicMock()
     client.get_session_events = _gen
+    _stub_session_usage_client(client)
 
     with (
-        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
         patch(
-            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
             return_value=client,
         ),
     ):
@@ -869,6 +1170,42 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
         "userMessageEventId": _ANCHOR_ID,
         "error": "Session error (billing_error): Your credit balance is too low "
         "to access the Anthropic API.",
+        **_STANDARD_COMPLETION,
+    }
+
+
+@pytest.mark.asyncio
+async def test_trigger_completion_includes_url_when_session_fetch_fails() -> None:
+    anchor = _user_message("do the thing")
+    payload = _webhook_payload()
+    processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
+
+    run = _wf_node_run()
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.post_run_logs = AsyncMock()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    batch: list[BetaManagedAgentsSessionEvent] = [
+        _idle(BetaManagedAgentsSessionEndTurn(type="end_turn")),
+    ]
+
+    with (
+        patch(
+            "claude_managed_agents.webhook_processors.trigger_agent_webhook_processor.ocean",
+            mock_ocean,
+        ),
+        _patch_session_events(anchor, [batch]) as create_client,
+    ):
+        client = create_client.return_value
+        client.get_session = AsyncMock(side_effect=RuntimeError("api down"))
+        await processor.handle_event(payload, None)
+
+    assert run.output == {
+        "sessionId": "s1",
+        "userMessageEventId": _ANCHOR_ID,
+        "url": _SESSION_URL,
     }
 
 

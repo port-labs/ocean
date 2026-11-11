@@ -1,0 +1,22 @@
+{
+  "id": "disc_1",
+  "threadId": "th_1",
+  "title": "Check the refund",
+  "status": "OPEN",
+  "agentStatus": "IDLE",
+  "visibility": "WORKSPACE",
+  "isUnread": true,
+  "createdAt": {"iso8601": "2026-01-01T00:00:00Z"},
+  "updatedAt": {"iso8601": "2026-01-02T00:00:00Z"},
+  "lastActivityAt": {"iso8601": "2026-01-02T00:00:00Z"},
+  "resolvedAt": null,
+  "channelDetails": {
+    "__typename": "ThreadDiscussionSlackChannelDetails",
+    "slackChannelName": "support",
+    "slackMessageLink": "slack://channel?team=T1&id=C1&message=1"
+  },
+  "createdBy": {
+    "__typename": "UserActor",
+    "userId": "u_1"
+  }
+}

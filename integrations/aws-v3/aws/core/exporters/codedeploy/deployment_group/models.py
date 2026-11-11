@@ -31,7 +31,7 @@ class DeploymentGroupProperties(BaseAWSPropertiesModel):
     ec2TagFilters: list[dict[str, Any]] = Field(
         default_factory=list, alias="Ec2TagFilters"
     )
-    ec2TagSet: list[dict[str, Any]] | None = Field(default=None, alias="Ec2TagSet")
+    ec2TagSet: dict[str, Any] | None = Field(default=None, alias="Ec2TagSet")
     ecsServices: list[dict[str, Any]] = Field(default_factory=list, alias="EcsServices")
     lastAttemptedDeployment: dict[str, Any] | None = Field(
         default=None, alias="LastAttemptedDeployment"
@@ -45,7 +45,7 @@ class DeploymentGroupProperties(BaseAWSPropertiesModel):
     onPremisesInstanceTagFilters: list[dict[str, Any]] = Field(
         default_factory=list, alias="OnPremisesInstanceTagFilters"
     )
-    onPremisesTagSet: list[dict[str, Any]] | None = Field(
+    onPremisesTagSet: dict[str, Any] | None = Field(
         default=None, alias="OnPremisesTagSet"
     )
     outdatedInstancesStrategy: str | None = Field(

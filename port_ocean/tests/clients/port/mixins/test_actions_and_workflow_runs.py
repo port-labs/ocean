@@ -87,6 +87,38 @@ def test_workflow_node_run_parses_claim_and_lookup_shapes(raw: dict[str, Any]) -
     assert run.action_type == "dispatch_workflow"
 
 
+def test_workflow_node_run_parses_port_mcp_claim_fields() -> None:
+    run = WorkflowNodeRun.parse_obj(
+        {
+            "identifier": "wfnr_port_mcp",
+            "nodeUid": "node-port-mcp",
+            "status": WorkflowNodeRunStatus.IN_PROGRESS,
+            "portAccessToken": "aes256gcm.ciphertext",
+            "executionIdentity": {
+                "type": "actor",
+                "identifier": "user@example.com",
+            },
+            "encryptedProperties": ["api_token"],
+            "config": {
+                "type": "INTEGRATION_ACTION",
+                "installationId": "claude",
+                "integrationProvider": "claude-managed-agents",
+                "integrationInvocationType": "trigger_agent",
+                "integrationActionExecutionProperties": {
+                    "api_token": "aes.ciphertext",
+                    "repo": "ocean",
+                },
+            },
+        }
+    )
+    assert run.port_access_token == "aes256gcm.ciphertext"
+    assert run.execution_identity is not None
+    assert run.execution_identity.type == "actor"
+    assert run.execution_identity.identifier == "user@example.com"
+    assert run.encrypted_properties == ["api_token"]
+    assert run.execution_properties["api_token"] == "aes.ciphertext"
+
+
 @pytest.fixture
 def actions_client() -> ActionsAndWorkflowRunsClientMixin:
     return ActionsAndWorkflowRunsClientMixin(auth=MagicMock(), client=MagicMock())
@@ -203,7 +235,7 @@ class TestWorkflowNodeRunOutputPreservation:
             should_raise=False,
         )
 
-    async def test_report_run_completed_failure_preserves_output(
+    async def test_report_run_completed_failure_adds_error_to_output(
         self, actions_client: ActionsAndWorkflowRunsClientMixin
     ) -> None:
         run = make_run()
@@ -217,6 +249,33 @@ class TestWorkflowNodeRunOutputPreservation:
             await actions_client.report_run_completed(
                 run, success=False, message="pipeline failed"
             )
+
+        mock_patch.assert_awaited_once_with(
+            run.id,
+            {
+                "status": WorkflowNodeRunStatus.COMPLETED,
+                "result": WorkflowNodeRunResult.FAILED,
+                "output": {
+                    "workflowRunUrl": "https://gitlab.example/pipelines/99",
+                    "error": {"message": "pipeline failed"},
+                },
+            },
+            should_raise=False,
+        )
+        assert run.output == {
+            "workflowRunUrl": "https://gitlab.example/pipelines/99",
+            "error": {"message": "pipeline failed"},
+        }
+
+    async def test_report_run_completed_failure_without_message_preserves_output(
+        self, actions_client: ActionsAndWorkflowRunsClientMixin
+    ) -> None:
+        run = make_run()
+        run.output = {"workflowRunUrl": "https://gitlab.example/pipelines/99"}
+        with patch.object(
+            actions_client, "patch_wf_node_run", AsyncMock()
+        ) as mock_patch:
+            await actions_client.report_run_completed(run, success=False)
 
         mock_patch.assert_awaited_once_with(
             run.id,

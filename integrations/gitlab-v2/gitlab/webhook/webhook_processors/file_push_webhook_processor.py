@@ -12,7 +12,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import ObjectKind
 from loguru import logger
-from typing import cast
+from typing import Any, cast
+import asyncio
 import fnmatch
 from integration import GitLabFilesResourceConfig
 
@@ -45,6 +46,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         search_path = selector.files.path
         repos = selector.files.repos
         included_files = selector.included_files or []
+        should_fetch_old_content = bool(resource_config.port.items_to_parse)
 
         # If repos is provided and doesn't include the event's repo, skip processing
         if repos and repo_path not in repos:
@@ -53,11 +55,10 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        changed_files, removed_files = await resolve_push_path_changes(
+        changed_files, removed_files, modified_files = await resolve_push_path_changes(
             self._gitlab_webhook_client, repo_path, payload
         )
 
-        # Process changed and deleted files
         matching_files = sorted(
             [
                 path
@@ -66,13 +67,14 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             ]
         )
 
-        updated_results = []
-        deleted_results = []
-
         if not matching_files:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        old_content_paths = set(removed_files)
+        if should_fetch_old_content:
+            old_content_paths |= modified_files
 
         changed_file_batch = [
             {"project_id": str(project_id), "path": file_path, "ref": payload["after"]}
@@ -82,36 +84,17 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         removed_file_batch = [
             {"project_id": str(project_id), "path": file_path, "ref": payload["before"]}
             for file_path in matching_files
-            if file_path in removed_files
+            if file_path in old_content_paths
         ]
 
-        if changed_file_batch:
-            processed_changed_batch = (
-                await self._gitlab_webhook_client._process_file_batch(
-                    changed_file_batch,
-                    context=f"project:{project_id}",
-                    skip_parsing=selector.files.skip_parsing,
-                )
-            )
-            updated_results = (
-                await self._gitlab_webhook_client._enrich_files_with_repos(
-                    processed_changed_batch
-                )
-            )
-
-        if removed_file_batch:
-            processed_removed_batch = (
-                await self._gitlab_webhook_client._process_file_batch(
-                    removed_file_batch,
-                    context=f"project:{project_id}",
-                    skip_parsing=selector.files.skip_parsing,
-                )
-            )
-            deleted_results = (
-                await self._gitlab_webhook_client._enrich_files_with_repos(
-                    processed_removed_batch
-                )
-            )
+        updated_results, deleted_results = await asyncio.gather(
+            self._fetch_enriched_files(
+                changed_file_batch, project_id, selector.files.skip_parsing
+            ),
+            self._fetch_enriched_files(
+                removed_file_batch, project_id, selector.files.skip_parsing
+            ),
+        )
 
         # Enrich updated file results with included files if configured
         if included_files and updated_results:
@@ -131,4 +114,21 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
         return WebhookEventRawResults(
             updated_raw_results=updated_results, deleted_raw_results=deleted_results
+        )
+
+    async def _fetch_enriched_files(
+        self,
+        file_batch: list[dict[str, Any]],
+        project_id: int | str,
+        skip_parsing: bool,
+    ) -> list[dict[str, Any]]:
+        if not file_batch:
+            return []
+        processed_batch = await self._gitlab_webhook_client._process_file_batch(
+            file_batch,
+            context=f"project:{project_id}",
+            skip_parsing=skip_parsing,
+        )
+        return await self._gitlab_webhook_client._enrich_files_with_repos(
+            processed_batch
         )

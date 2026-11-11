@@ -737,3 +737,67 @@ class TestRestTeamExporterExternalGroup:
             f"{rest_client.base_url}/orgs/test-org/teams/team-alpha/external-groups",
             ignored_errors=RestTeamExporter._EXTERNAL_GROUP_IGNORED_ERRORS,
         )
+
+
+GROUP_MAPPING = {
+    "group_id": "111a1a11-aaa1-1aaa-11a1-a1a1a1a1a1aa",
+    "group_name": "saml-azuread-test",
+    "group_description": "A group of Developers working on AzureAD SAML SSO",
+}
+
+
+@pytest.mark.asyncio
+class TestRestTeamExporterGroupMappings:
+    async def test_enrich_teams_with_group_mappings(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"},
+            {"slug": "team-beta", "__organization": "test-org"},
+        ]
+
+        async def mock_send_api_request(url: str, **kwargs: Any) -> dict[str, Any]:
+            if "team-alpha" in url:
+                return {"groups": [GROUP_MAPPING, GROUP_MAPPING]}
+            return {"groups": []}
+
+        with patch.object(
+            rest_client, "send_api_request", side_effect=mock_send_api_request
+        ):
+            result = await exporter.enrich_teams_with_group_mappings(teams, "test-org")
+
+        assert result[0]["__group_mappings"] == [GROUP_MAPPING, GROUP_MAPPING]
+        assert result[1]["__group_mappings"] == []
+
+    async def test_enrich_teams_with_group_mappings_handles_team_sync_disabled(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"}
+        ]
+
+        with patch.object(rest_client, "send_api_request", return_value={}):
+            result = await exporter.enrich_teams_with_group_mappings(teams, "test-org")
+
+        assert result[0]["__group_mappings"] == []
+
+    async def test_enrich_teams_with_group_mappings_calls_correct_url(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"}
+        ]
+
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            return_value={"groups": [GROUP_MAPPING]},
+        ) as mock_request:
+            await exporter.enrich_teams_with_group_mappings(teams, "test-org")
+
+        mock_request.assert_called_once_with(
+            f"{rest_client.base_url}/orgs/test-org/teams/team-alpha/team-sync/group-mappings"
+        )

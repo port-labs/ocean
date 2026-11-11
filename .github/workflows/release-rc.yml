@@ -13,7 +13,7 @@ on:
         type: boolean
         default: false
       integration_filter:
-        description: 'Build specific integration(s) only (comma-separated, e.g., "aws,github"). Leave empty for all.'
+        description: 'Build specific integration(s) only (comma-separated, e.g., "aws,github-ocean"). Leave empty for all.'
         required: false
         type: string
         default: ''

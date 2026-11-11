@@ -27,7 +27,10 @@ from mocks.payloads import (
     deployment_status_response,
     environment_list_response,
     issue_response,
+    org_code_scanning_alerts_response,
+    org_dependabot_alerts_response,
     org_response,
+    org_secret_scanning_alerts_response,
     release_response,
     repo_response,
     secret_scanning_alert_response,
@@ -181,10 +184,20 @@ class GithubMockTransportBuilder:
         return self
 
     def with_dependabot_alert_routes(self) -> "GithubMockTransportBuilder":
+        self._transport.add_route(
+            "GET",
+            f"/orgs/{ORG_LOGIN}/dependabot/alerts",
+            {"status_code": 200, "json": org_dependabot_alerts_response()},
+        )
         self._add_per_repo_route("dependabot/alerts", dependabot_alert_response)
         return self
 
     def with_code_scanning_alert_routes(self) -> "GithubMockTransportBuilder":
+        self._transport.add_route(
+            "GET",
+            f"/orgs/{ORG_LOGIN}/code-scanning/alerts",
+            {"status_code": 200, "json": org_code_scanning_alerts_response()},
+        )
         self._add_per_repo_route(
             "code-scanning/alerts",
             code_scanning_alert_response,
@@ -192,6 +205,11 @@ class GithubMockTransportBuilder:
         return self
 
     def with_secret_scanning_alert_routes(self) -> "GithubMockTransportBuilder":
+        self._transport.add_route(
+            "GET",
+            f"/orgs/{ORG_LOGIN}/secret-scanning/alerts",
+            {"status_code": 200, "json": org_secret_scanning_alerts_response()},
+        )
         self._add_per_repo_route(
             "secret-scanning/alerts",
             secret_scanning_alert_response,

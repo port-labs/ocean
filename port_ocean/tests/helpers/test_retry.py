@@ -13,6 +13,8 @@ from port_ocean.helpers.retry import (
     register_on_retry_callback,
 )
 import port_ocean.helpers.retry as retry_module
+import port_ocean.helpers.sync_tier as sync_tier_module
+from port_ocean.context.event import EventType
 
 
 class TestRetryConfig:
@@ -40,6 +42,26 @@ class TestRetryConfig:
         )
         assert config.retry_after_headers == ["Retry-After", "x-ratelimit-reset"]
         assert config.ignore_retry_after_status_codes == frozenset()
+        assert config.rate_limiter is None
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_on_send_attempt(self) -> None:
+        limiter = AsyncMock()
+        limiter.acquire = AsyncMock(return_value=True)
+        limiter.record_rate_limit_response = AsyncMock()
+        config = RetryConfig(rate_limiter=limiter)
+        transport = RetryTransport(wrapped_transport=Mock())
+        transport._retry_config = config
+        request = httpx.Request("GET", "https://example.com")
+        response = httpx.Response(200, request=request)
+
+        async def send(_request: httpx.Request) -> httpx.Response:
+            return response
+
+        result = await transport._retry_operation_async(request, send)
+        assert result is response
+        limiter.acquire.assert_awaited_once()
+        limiter.record_rate_limit_response.assert_awaited_once_with(response)
 
     def test_custom_configuration(self) -> None:
         """Test RetryConfig with custom parameters."""
@@ -460,6 +482,7 @@ class TestRetryTransport:
             respect_retry_after_header=True,
             retry_after_headers=["Retry-After"],
             ignore_retry_after_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            apply_sync_tier_jitter=False,  # not under test here; avoid depending on ocean.config
         )
         transport = RetryTransport(
             wrapped_transport=mock_transport, retry_config=config
@@ -703,6 +726,152 @@ class TestRetryConfigIntegration:
         assert HTTPStatus.FORBIDDEN in transport._retry_config.retry_status_codes
 
 
+class TestAuthRefreshPostRetry:
+    """POST requests retry only on 401 when an auth refresh callback is registered."""
+
+    def setup_method(self) -> None:
+        retry_module._RETRY_CONFIG_CALLBACK = None
+        retry_module._ON_RETRY_CALLBACK = None
+
+    def teardown_method(self) -> None:
+        retry_module._ON_RETRY_CALLBACK = None
+
+    @staticmethod
+    def _register_refresh_callback() -> Mock:
+        def refresh(request: httpx.Request) -> httpx.Request:
+            request.headers["Authorization"] = "Bearer refreshed"
+            return request
+
+        callback = Mock(side_effect=refresh)
+        register_on_retry_callback(callback)
+        return callback
+
+    @staticmethod
+    def _transport(responses: list[Any]) -> tuple[RetryTransport, list[httpx.Request]]:
+        sent: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            sent.append(request)
+            outcome = responses.pop(0)
+            if isinstance(outcome, Exception):
+                raise outcome
+            return httpx.Response(outcome, request=request)
+
+        transport = RetryTransport(
+            wrapped_transport=httpx.MockTransport(handler),
+            retry_config=RetryConfig(
+                max_attempts=3, base_delay=0, apply_sync_tier_jitter=False
+            ),
+        )
+        return transport, sent
+
+    @pytest.mark.asyncio
+    async def test_post_retries_on_401_with_refreshed_auth(self) -> None:
+        callback = self._register_refresh_callback()
+        transport, sent = self._transport([401, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 200
+        assert len(sent) == 2
+        assert sent[1].headers["Authorization"] == "Bearer refreshed"
+        callback.assert_called_once()
+
+    def test_sync_post_retries_on_401(self) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([401, 200])
+
+        with httpx.Client(transport=transport) as client:
+            response = client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 200
+        assert len(sent) == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "status_code",
+        [
+            HTTPStatus.TOO_MANY_REQUESTS,
+            HTTPStatus.BAD_GATEWAY,
+            HTTPStatus.SERVICE_UNAVAILABLE,
+        ],
+    )
+    async def test_post_does_not_retry_on_other_retryable_statuses(
+        self, status_code: int
+    ) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([status_code, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == status_code
+        assert len(sent) == 1
+
+    @pytest.mark.asyncio
+    async def test_post_does_not_retry_on_timeout(self) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([httpx.ReadTimeout("timeout"), 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(httpx.ReadTimeout):
+                await client.post("https://api.example.com/items", json={})
+
+        assert len(sent) == 1
+
+    @pytest.mark.asyncio
+    async def test_post_not_retried_without_refresh_callback(self) -> None:
+        transport, sent = self._transport([401, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 401
+        assert len(sent) == 1
+
+    @pytest.mark.asyncio
+    async def test_post_in_retryable_methods_keeps_full_retry_behavior(self) -> None:
+        self._register_refresh_callback()
+        sent: list[httpx.Request] = []
+        responses = [HTTPStatus.BAD_GATEWAY, 200]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            sent.append(request)
+            return httpx.Response(responses.pop(0), request=request)
+
+        transport = RetryTransport(
+            wrapped_transport=httpx.MockTransport(handler),
+            retry_config=RetryConfig(
+                max_attempts=3,
+                base_delay=0,
+                apply_sync_tier_jitter=False,
+                retryable_methods=["GET", "POST"],
+            ),
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post("https://api.example.com/items", json={})
+
+        assert response.status_code == 200
+        assert len(sent) == 2
+
+    @pytest.mark.asyncio
+    async def test_skip_retry_extension_disables_post_auth_retry(self) -> None:
+        self._register_refresh_callback()
+        transport, sent = self._transport([401, 200])
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post(
+                "https://api.example.com/items",
+                json={},
+                extensions={SKIP_RETRY_EXTENSION_KEY: True},
+            )
+
+        assert response.status_code == 401
+        assert len(sent) == 1
+
+
 class TestResponseSizeLogging:
     """Tests for response size logging functionality."""
 
@@ -763,7 +932,7 @@ class TestResponseSizeLogging:
 
         assert transport._get_content_length(mock_response) == 2048
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.sync_tier.ocean")
     def test_get_content_length_no_header(self, mock_ocean: Mock) -> None:
         """Test _get_content_length returns 0 when no content-length header and streaming enabled."""
         mock_ocean.config.streaming.enabled = True
@@ -812,7 +981,7 @@ class TestResponseSizeLogging:
             "Response for GET https://api.example.com/data - Size: 1024 bytes"
         )
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.sync_tier.ocean")
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_without_content_length(
         self, mock_cast: Mock, mock_ocean: Mock
@@ -869,7 +1038,7 @@ class TestResponseSizeLoggingIntegration:
         retry_module._RETRY_CONFIG_CALLBACK = None
         retry_module._ON_RETRY_CALLBACK = None
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.sync_tier.ocean")
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_preserves_json_consumption(
         self, mock_cast: Mock, mock_ocean: Mock
@@ -929,7 +1098,7 @@ class TestResponseSizeLoggingIntegration:
         # Verify that read was NOT called since we had Content-Length
         mock_response.read.assert_not_called()
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.sync_tier.ocean")
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_preserves_text_consumption(
         self, mock_cast: Mock, mock_ocean: Mock
@@ -982,7 +1151,7 @@ class TestGetContentLength:
         result = transport._get_content_length(mock_response)
         assert result == 4096
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.retry.ocean")  # streaming flag is read here
     def test_get_content_length_from_read_when_no_header(
         self, mock_ocean: Mock
     ) -> None:
@@ -1000,7 +1169,7 @@ class TestGetContentLength:
         assert result == 18  # len("test response body")
         mock_response.read.assert_called_once()
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.sync_tier.ocean")
     def test_get_content_length_from_num_bytes_downloaded(
         self, mock_ocean: Mock
     ) -> None:
@@ -1017,7 +1186,7 @@ class TestGetContentLength:
         result = transport._get_content_length(mock_response)
         assert result == 8192
 
-    @patch("port_ocean.helpers.retry.ocean")
+    @patch("port_ocean.helpers.sync_tier.ocean")
     def test_get_content_length_returns_zero_when_nothing_available(
         self, mock_ocean: Mock
     ) -> None:
@@ -1162,9 +1331,129 @@ class TestMonitorIntegrationInRetry:
         mock_response.headers = {}  # No Content-Length
         mock_response.num_bytes_downloaded = 0
 
-        with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
             mock_ocean.config.streaming.enabled = True
             transport._log_response_size(mock_request, mock_response)
 
         # Should not call monitor when content length is 0
         mock_get_monitor.assert_not_called()
+
+
+class TestSyncTierJitter:
+    """Background sync work (full/partial resync, incremental) should back off harder
+    than user-facing work (actions, live-events/webhooks) when both share rate-limit
+    pressure on the same token.
+
+    RetryConfig.sync_tier_multiplier is a plain float, fixed once at construction --
+    auto-derived from settings under the assumption that one pod runs one mode (a separate
+    pod per incremental sync, full/partial resync, actions, and live-events).
+    """
+
+    def _listener(
+        self,
+        should_resync: bool = False,
+        should_process_webhooks: bool = False,
+        should_run_actions: bool = False,
+    ) -> SimpleNamespace:
+        return SimpleNamespace(
+            should_resync=should_resync,
+            should_process_webhooks=should_process_webhooks,
+            should_run_actions=should_run_actions,
+        )
+
+    def _transport(self, **config_kwargs: Any) -> RetryTransport:
+        config_kwargs.setdefault("base_delay", 1.0)
+        config_kwargs.setdefault("jitter_ratio", 0.0)
+        config_kwargs.setdefault("max_backoff_wait", 60.0)
+        config = RetryConfig(**config_kwargs)
+        return RetryTransport(wrapped_transport=Mock(), retry_config=config)
+
+    def test_sync_tier_multiplier_defaults_to_1_when_undetectable(self) -> None:
+        """When settings aren't available (e.g. ocean.config not accessible), auto-
+        detection can't determine a mode, so the multiplier is 1.0 and jitter is a
+        no-op -- same as pre-feature behavior. Explicitly simulated rather than relying
+        on ocean.config being untouched, since it's global, mutable, process-wide state
+        that other tests running earlier in the same process may have already set."""
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            del mock_ocean.config  # any access now raises AttributeError
+            transport = self._transport()
+            assert transport._retry_config.sync_tier_multiplier == 1.0
+            assert transport._calculate_sleep(1, {}) == 1.0
+
+    def test_apply_sync_tier_jitter_false_forces_multiplier_to_1(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            transport = self._transport(apply_sync_tier_jitter=False)
+            assert transport._retry_config.sync_tier_multiplier == 1.0
+            assert transport._calculate_sleep(1, {}) == 1.0
+
+    def test_resync_pod_scales_exponential_backoff(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            transport = self._transport()
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.25)
+
+    def test_incremental_pod_scales_exponential_backoff(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = True
+            transport = self._transport()
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.10)
+
+    def test_webhooks_pod_does_not_stretch_backoff(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(
+                should_process_webhooks=True
+            )
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            transport = self._transport()
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.00)
+
+    def test_actions_pod_does_not_stretch_backoff(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_run_actions=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            transport = self._transport()
+            assert transport._calculate_sleep(1, {}) == pytest.approx(1.00)
+
+    def test_tier_jitter_also_scales_retry_after_header_path(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            transport = self._transport()
+            assert transport._calculate_sleep(
+                1, {"Retry-After": "10"}
+            ) == pytest.approx(12.5)
+
+    def test_scaled_sleep_is_still_clamped_to_max_backoff_wait(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            transport = self._transport(base_delay=50.0, max_backoff_wait=55.0)
+            # 50.0 * 1.25 == 62.5, should be clamped to max_backoff_wait
+            assert transport._calculate_sleep(1, {}) == 55.0
+
+    def test_high_priority_tiers_use_smallest_multiplier(self) -> None:
+        assert sync_tier_module.DEFAULT_SYNC_TIER_MULTIPLIERS[
+            EventType.HTTP_REQUEST
+        ] == pytest.approx(1.00)
+        assert sync_tier_module.DEFAULT_SYNC_TIER_MULTIPLIERS[
+            EventType.ACTION_RUN
+        ] == pytest.approx(1.00)
+
+    def test_retry_config_stores_derived_multiplier(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_resync=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            config = RetryConfig(max_backoff_wait=2070.0)
+            assert config.sync_tier_multiplier == pytest.approx(1.25)
+            assert config.max_backoff_wait == 2070.0
+
+    def test_retry_config_action_run_uses_high_tier_multiplier(self) -> None:
+        with patch("port_ocean.helpers.sync_tier.ocean") as mock_ocean:
+            mock_ocean.config.event_listener = self._listener(should_run_actions=True)
+            mock_ocean.config.integration.incremental_sync_enabled = False
+            config = RetryConfig(max_backoff_wait=2070.0)
+            assert config.sync_tier_multiplier == pytest.approx(1.00)

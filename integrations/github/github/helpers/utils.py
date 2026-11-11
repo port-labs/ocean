@@ -23,9 +23,11 @@ from port_ocean.utils.cache import cache_coroutine_result
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+    from github.core.exporters.repository_exporter import RestRepositoryExporter
+    from github.core.options import ListRepositoryOptions
 
 
-BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
+BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE | glob.EXTGLOB
 
 
 class GithubClientType(StrEnum):
@@ -109,6 +111,16 @@ def parse_github_options(
     organization = params.pop("organization")
     repo_name = params.pop("repo_name", None)
     return repo_name, organization, params
+
+
+def pop_required_checks_options(options: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Take the required checks options out of pull request exporter options.
+
+    Returns ``(include_required_checks_status, excluded_required_checks)``.
+    """
+    include = bool(options.pop("include_required_checks_status", False))
+    excluded = list(options.pop("excluded_required_checks", None) or [])
+    return include, excluded
 
 
 async def fetch_commit_diff(
@@ -474,3 +486,33 @@ async def tag_batch_with_org(
 ) -> AsyncGenerator[Tuple[str, List[Dict[str, Any]]], None]:
     async for batch in iterator:
         yield (organization, batch)
+
+
+async def resolve_org_filtered_repos(
+    repository_exporter: "RestRepositoryExporter",
+    repo_options: "ListRepositoryOptions",
+) -> list[str] | None:
+    """
+    Resolve repository allowlist for org-level resource streams.
+
+    Builds an allowlist when ``repoSearch`` and/or a non-``all`` ``repositoryType``
+    is configured, so org-level alert syncs match webhook visibility filtering.
+    ``exclude_archived`` alone does not require an allowlist (handled on each alert).
+
+    Args:
+        repository_exporter: Exporter used to list repositories
+        repo_options: Repository list options (type/search/exclude filters)
+
+    Returns:
+        None if no allowlist filter; empty list if nothing matched; otherwise
+        allowed repo names
+    """
+    search_params = repo_options.get("search_params")
+    repo_type = repo_options.get("type", "all")
+    if search_params is None and repo_type == "all":
+        return None
+    names: list[str] = []
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        for repo in repositories:
+            names.append(repo["name"])
+    return names

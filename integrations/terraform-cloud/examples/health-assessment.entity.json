@@ -1,0 +1,21 @@
+{
+  "identifier": "asmtres-66efb162c1f1",
+  "title": "assessment-results-asmtres-66efb162c1f1",
+  "blueprint": "terraformCloudHealthAssessment",
+  "properties": {
+    "createdAt": "2026-02-13T11:40:28.530Z",
+    "succeeded": true,
+    "allChecksSucceeded": true,
+    "drifted": false,
+    "checksErrored": 0,
+    "checksFailed": 0,
+    "checksPassed": 0,
+    "checksUnknown": 0,
+    "resourcesDrifted": 0,
+    "resourcesUndrifted": 4,
+    "errorMessage": null
+  },
+  "relations": {
+    "workspace": "ws-71ac4fae"
+  }
+}

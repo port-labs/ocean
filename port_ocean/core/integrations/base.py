@@ -130,10 +130,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                 raise
 
             final_context = returned or context
-            if final_context.status in (
-                ProbeStatus.FAILED,
-                ProbeStatus.INTERNAL_FAILURE,
-            ):
+            if final_context.status == ProbeStatus.INTERNAL_FAILURE:
                 raise ProbeFailedError(final_context.message or "Probe failed")
             await final_context.finalize()
             return final_context

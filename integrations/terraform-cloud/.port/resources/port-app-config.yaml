@@ -43,7 +43,6 @@ resources:
           title: .attributes.name
           blueprint: '"terraformCloudWorkspace"'
           properties:
-            organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
             updatedAt: .attributes."updated-at"
             terraformVersion: .attributes."terraform-version"
@@ -51,8 +50,9 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
-            tags: .__tags
+            tags: .__tags | map(.attributes.name)
           relations:
+            organization: .relationships.organization.data.id
             currentStateVersion: .relationships."current-state-version".data.id
             project: .relationships.project.data.id
   - kind: state-version
@@ -73,7 +73,10 @@ resources:
             hostedStateDownloadUrl: .attributes."hosted-state-download-url"
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
             vcsCommitUrl: .attributes."vcs-commit-url"
-            outputData: .__output
+            outputData: .__output | map(.attributes.name)
+          relations:
+            workspace: .relationships.workspace.data.id
+            run: .relationships.run.data.id
   - kind: run
     selector:
       query: "true"
@@ -95,3 +98,97 @@ resources:
             source: .attributes.source
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
+  - kind: health-assessment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .type + "-" + .id
+          blueprint: '"terraformCloudHealthAssessment"'
+          properties:
+            createdAt: .attributes."created-at"
+            succeeded: .attributes.succeeded
+            allChecksSucceeded: .attributes."all-checks-succeeded"
+            drifted: .attributes.drifted
+            checksErrored: .attributes."checks-errored"
+            checksFailed: .attributes."checks-failed"
+            checksPassed: .attributes."checks-passed"
+            checksUnknown: .attributes."checks-unknown"
+            resourcesDrifted: .attributes."resources-drifted"
+            resourcesUndrifted: .attributes."resources-undrifted"
+            errorMessage: .attributes."error-message"
+          relations:
+            workspace: .relationships.workspace.data.id
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformCloudTeam"'
+          properties:
+            visibility: .attributes.visibility
+            usersCount: .attributes."users-count"
+            description: .attributes.description
+            ssoTeamId: .attributes."sso-team-id"
+            organizationAccess: .attributes."organization-access"
+          relations:
+            organization: .relationships.organization.data.id
+  - kind: organization-membership
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.email
+          blueprint: '"terraformCloudOrganizationMembership"'
+          properties:
+            email: .attributes.email
+            status: .attributes.status
+            createdAt: .attributes."created-at"
+            userId: .relationships.user.data.id
+          relations:
+            organization: .relationships.organization.data.id
+            teams: '[.relationships.teams.data[].id]'
+  - kind: team-workspace-access
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '"\(.relationships.team.data.id) → \(.relationships.workspace.data.id)"'
+          blueprint: '"terraformCloudTeamWorkspaceAccess"'
+          properties:
+            access: .attributes.access
+            runs: .attributes.runs
+            variables: .attributes.variables
+            stateVersions: .attributes."state-versions"
+            sentinelMocks: .attributes."sentinel-mocks"
+            workspaceLocking: .attributes."workspace-locking"
+            runTasks: .attributes."run-tasks"
+            policyOverrides: .attributes."policy-overrides"
+          relations:
+            team: .relationships.team.data.id
+            workspace: .relationships.workspace.data.id
+  - kind: team-project-access
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '"\(.relationships.team.data.id) → \(.relationships.project.data.id)"'
+          blueprint: '"terraformCloudTeamProjectAccess"'
+          properties:
+            access: .attributes.access
+            projectAccess: .attributes."project-access"
+            workspaceAccess: .attributes."workspace-access"
+          relations:
+            team: .relationships.team.data.id
+            project: .relationships.project.data.id

@@ -172,6 +172,20 @@ class TestRestFolderExporter:
                 "",
                 [],
             ),
+            (
+                [
+                    {"path": "apps/service-a", "type": "tree"},
+                    {"path": "monitoring/foo", "type": "tree"},
+                    {"path": "tools/bar", "type": "tree"},
+                    {"path": "src/lib", "type": "tree"},
+                    {"path": "kafka-ui/baz", "type": "tree"},
+                ],
+                "!(monitoring|tools|.scripts|.github|SPRINGBOOT_TEMPLATE|rabbit-ingress|arc-runners|anthos-service-mesh|keeper|kafka|kafka-ui|kafka-operator|rabbitmq)/*",
+                [
+                    {"path": "apps/service-a", "type": "tree"},
+                    {"path": "src/lib", "type": "tree"},
+                ],
+            ),
         ],
     )
     def test_filter_folder_contents(

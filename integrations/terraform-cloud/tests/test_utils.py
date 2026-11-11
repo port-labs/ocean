@@ -1,7 +1,16 @@
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
-from utils import init_terraform_client
+import pytest
+
+from utils import init_terraform_client, should_fetch_health_assessment
+
+
+@pytest.fixture(autouse=True)
+def reset_client_cache() -> Generator[None, None, None]:
+    init_terraform_client.cache_clear()
+    yield
+    init_terraform_client.cache_clear()
 
 
 class TestInitTerraformClient:
@@ -41,22 +50,55 @@ class TestInitTerraformClient:
 
     @patch("utils.ocean")
     @patch("utils.TerraformClient")
-    def test_init_terraform_client_with_different_hosts(
+    def test_init_terraform_client_is_cached(
         self, mock_terraform_client_class: Any, mock_ocean: Any
     ) -> None:
-        configs = [
-            {
-                "terraform_cloud_host": "https://terraform.example.com",
-                "terraform_cloud_token": "token1",
-            },
-            {
-                "terraform_cloud_host": "https://app.terraform.io",
-                "terraform_cloud_token": "token2",
-            },
-        ]
+        mock_ocean.integration_config = {
+            "terraform_cloud_host": "https://app.terraform.io",
+            "terraform_cloud_token": "test-token",
+        }
 
-        for config in configs:
-            mock_ocean.integration_config = config
-            init_terraform_client()
+        first = init_terraform_client()
+        second = init_terraform_client()
 
-        assert mock_terraform_client_class.call_count == len(configs)
+        assert first is second
+        assert mock_terraform_client_class.call_count == 1
+
+
+def _workspace(
+    assessments_enabled: bool, relationships: dict[str, Any]
+) -> dict[str, Any]:
+    return {
+        "id": "ws-123",
+        "attributes": {"assessments-enabled": assessments_enabled},
+        "relationships": relationships,
+    }
+
+
+class TestShouldFetchHealthAssessment:
+    def test_skips_workspace_with_assessments_disabled(self) -> None:
+        workspace = _workspace(False, {"current-assessment-result": {"data": None}})
+
+        assert should_fetch_health_assessment(workspace) is False
+
+    def test_skips_workspace_that_has_never_been_assessed(self) -> None:
+        workspace = _workspace(True, {"current-assessment-result": {"data": None}})
+
+        assert should_fetch_health_assessment(workspace) is False
+
+    def test_fetches_workspace_with_an_assessment_result(self) -> None:
+        workspace = _workspace(
+            True,
+            {
+                "current-assessment-result": {
+                    "data": {"id": "asmtres-1", "type": "assessment-results"}
+                }
+            },
+        )
+
+        assert should_fetch_health_assessment(workspace) is True
+
+    def test_fetches_when_the_relationship_is_absent(self) -> None:
+        workspace = _workspace(True, {"organization": {"data": {"id": "org-1"}}})
+
+        assert should_fetch_health_assessment(workspace) is True

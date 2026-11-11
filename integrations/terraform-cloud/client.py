@@ -1,15 +1,19 @@
 import asyncio
 from enum import StrEnum
 from urllib.parse import urlparse
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, AsyncIterator, Optional
 
 import httpx
-from aiolimiter import AsyncLimiter
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.cache import cache_iterator_result
-from port_ocean.utils import http_async_client
+
+from rate_limiter import shared_rate_limiter
+from retry_transport import TerraformRetryTransport
 
 HEALTH_ASSESSMENT_TRIGGER_SCOPE = "assessment"
 
@@ -47,8 +51,8 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-NUMBER_OF_REQUESTS = 25
-NUMBER_OF_SECONDS = 1
+MAX_CONCURRENT_TEAM_ACCESS_FETCHES = 10
+INACCESSIBLE_STATUS_CODES = (403, 404)
 
 
 class TerraformClient:
@@ -59,10 +63,12 @@ class TerraformClient:
             "Content-Type": "application/vnd.api+json",
         }
         self.api_url = f"{self.terraform_base_url}/api/v2"
-        self.client = http_async_client
-        self.client.headers.update(self.base_headers)
-
-        self.rate_limiter = AsyncLimiter(NUMBER_OF_REQUESTS, NUMBER_OF_SECONDS)
+        self.client = OceanAsyncClient(
+            transport_class=TerraformRetryTransport,
+            transport_kwargs={"rate_limiter": shared_rate_limiter()},
+            timeout=ocean.config.client_timeout,
+            headers=self.base_headers,
+        )
 
     async def send_api_request(
         self,
@@ -79,39 +85,30 @@ class TerraformClient:
         )
 
         try:
-            async with self.rate_limiter:
-                logger.debug(
-                    f"Requesting {method} {url} with params: {query_params} and body: {json_data}"
-                )
+            logger.debug(f"Requesting {method} {url} with params: {query_params}")
 
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=query_params,
-                    json=json_data,
-                    follow_redirects=follow_redirects,
-                )
+            response = await self.client.request(
+                method=method,
+                url=url,
+                params=query_params,
+                json=json_data,
+                follow_redirects=follow_redirects,
+            )
 
-                response.raise_for_status()
-                logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
-                return response.json()
+            response.raise_for_status()
+            logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
+            return response.json()
 
         except Exception as e:
             logger.error(
-                "Request failed",
-                error=str(e),
-                url=url,
-                method=method,
-                params=query_params,
-                body=json_data,
+                f"Request {method} {url} with params {query_params} failed: {e}"
             )
             raise
 
     async def get_paginated_resources(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = params or {}
-        params.update({"page[size]": PAGE_SIZE})
+        params = {**(params or {}), "page[size]": PAGE_SIZE}
         next_url = endpoint
 
         while next_url:
@@ -139,6 +136,136 @@ class TerraformClient:
             next_url = next_url.replace(self.api_url + "/", "")
             params = None
 
+    async def get_paginated_organization_resources(
+        self,
+        resource_path: str,
+        params: Optional[dict[str, Any]] = None,
+        skip_inaccessible_organizations: bool = False,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Starting to fetch {resource_path} across all organizations")
+        async for organizations in self.get_paginated_organizations():
+            for organization in organizations:
+                organization_id = organization["id"]
+                logger.info(
+                    f"Fetching {resource_path} for organization ID: {organization_id}"
+                )
+                endpoint = f"organizations/{organization_id}/{resource_path}"
+                try:
+                    async for resources in self.get_paginated_resources(
+                        endpoint, params
+                    ):
+                        if not resources:
+                            logger.debug(
+                                f"No {resource_path} for organization ID: {organization_id}"
+                            )
+                            continue
+                        logger.info(
+                            f"Retrieved {len(resources)} {resource_path} for organization ID: {organization_id}"
+                        )
+                        yield resources
+                except httpx.HTTPStatusError as e:
+                    if (
+                        not skip_inaccessible_organizations
+                        or e.response.status_code not in INACCESSIBLE_STATUS_CODES
+                    ):
+                        raise
+                    logger.warning(
+                        f"Skipping {resource_path} for organization ID {organization_id}: "
+                        f"token is missing permissions ({e.response.status_code})"
+                    )
+
+    @cache_iterator_result()
+    async def get_paginated_projects(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.get_paginated_organization_resources("projects"):
+            yield projects
+
+    async def get_paginated_teams(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for teams in self.get_paginated_organization_resources(
+            "teams", params, skip_inaccessible_organizations=True
+        ):
+            yield teams
+
+    async def get_paginated_organization_memberships(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for memberships in self.get_paginated_organization_resources(
+            "organization-memberships", params, skip_inaccessible_organizations=True
+        ):
+            yield memberships
+
+    async def get_team_access_for_single_resource(
+        self,
+        endpoint: str,
+        filter_key: str,
+        resource_id: str,
+        semaphore: asyncio.BoundedSemaphore,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async with semaphore:
+            try:
+                async for access_records in self.get_paginated_resources(
+                    endpoint, {filter_key: resource_id}
+                ):
+                    if not access_records:
+                        logger.debug(f"No {endpoint} access on {resource_id}")
+                        continue
+                    logger.info(
+                        f"Retrieved {len(access_records)} {endpoint} access records for {resource_id}"
+                    )
+                    yield access_records
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code not in INACCESSIBLE_STATUS_CODES:
+                    raise
+                logger.warning(
+                    f"Skipping {endpoint} access for {resource_id}: "
+                    f"token is missing permissions ({e.response.status_code})"
+                )
+
+    async def get_paginated_team_access(
+        self,
+        endpoint: str,
+        filter_key: str,
+        resources: AsyncIterator[list[dict[str, Any]]],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAM_ACCESS_FETCHES)
+        total_access_records = 0
+        async for batch in resources:
+            access_tasks = [
+                self.get_team_access_for_single_resource(
+                    endpoint, filter_key, resource["id"], semaphore
+                )
+                for resource in batch
+            ]
+            async for access_records in stream_async_iterators_tasks(*access_tasks):
+                total_access_records += len(access_records)
+                yield access_records
+        logger.info(f"Total {endpoint} access records: {total_access_records}")
+
+    async def get_paginated_team_workspace_access(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Starting to fetch team workspace access across all workspaces")
+        async for access_records in self.get_paginated_team_access(
+            "team-workspaces",
+            "filter[workspace][id]",
+            self.get_paginated_workspaces(),
+        ):
+            yield access_records
+
+    async def get_paginated_team_project_access(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Starting to fetch team project access across all projects")
+        async for access_records in self.get_paginated_team_access(
+            "team-projects",
+            "filter[project][id]",
+            self.get_paginated_projects(),
+        ):
+            yield access_records
+
     async def get_paginated_organizations(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -154,9 +281,7 @@ class TerraformClient:
             yield organizations
 
         event.attributes[CacheKeys.ORGANIZATIONS] = all_organizations
-        logger.info(
-            f"Total workspaces retrieved across all organizations: {len(all_organizations)}"
-        )
+        logger.info(f"Total organizations retrieved: {len(all_organizations)}")
 
     async def get_single_workspace(self, workspace_id: str) -> dict[str, Any]:
         logger.info(f"Fetching workspace with ID: {workspace_id}")
@@ -172,63 +297,30 @@ class TerraformClient:
         self, workspace_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching tags for workspace ID: {workspace_id}")
-        endpoint = f"/workspaces/{workspace_id}/relationships/tags"
+        endpoint = f"workspaces/{workspace_id}/relationships/tags"
         async for tags in self.get_paginated_resources(endpoint):
             yield tags
 
-    async def get_state_version_output(self, state_version_id: str) -> dict[str, Any]:
+    async def get_state_version_output(
+        self, state_version_id: str
+    ) -> list[dict[str, Any]]:
         logger.info(f"Fetching state version output for ID: {state_version_id}")
         outputs = await self.send_api_request(
             endpoint=f"state-versions/{state_version_id}/outputs"
         )
-        return outputs.get("data", {})
+        return outputs["data"]
 
+    @cache_iterator_result()
     async def get_paginated_workspaces(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cache_key = "terraform-cloud-workspace"
-        if cache := event.attributes.get(cache_key):
-            logger.info("Retrieving workspaces data from cache")
-            yield cache
-            return
-
-        all_workspaces = []
-        logger.info("Starting to fetch workspaces across all organizations")
-        async for organizations in self.get_paginated_organizations():
-            for organization in organizations:
-                organization_id = organization["id"]
-                logger.info(
-                    f"Fetching workspaces for organization ID: {organization_id}"
-                )
-                endpoint = f"organizations/{organization_id}/workspaces"
-                async for workspaces in self.get_paginated_resources(endpoint):
-                    num_workspaces = len(workspaces)
-                    logger.info(
-                        f"Retrieved {num_workspaces} workspaces for organization ID: {organization_id}"
-                    )
-                    all_workspaces.extend(workspaces)
-                    yield workspaces
-
-        event.attributes[cache_key] = all_workspaces
+        total_workspaces = 0
+        async for workspaces in self.get_paginated_organization_resources("workspaces"):
+            total_workspaces += len(workspaces)
+            yield workspaces
         logger.info(
-            f"Total workspaces retrieved across all organizations: {len(all_workspaces)}"
+            f"Total workspaces retrieved across all organizations: {total_workspaces}"
         )
-
-    async def get_paginated_projects(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Starting to fetch projects across all organizations")
-        async for organizations in self.get_paginated_organizations():
-            for organization in organizations:
-                organization_id = organization["id"]
-                logger.info(f"Fetching projects for organization ID: {organization_id}")
-                endpoint = f"/organizations/{organization_id}/projects"
-                async for projects in self.get_paginated_resources(endpoint):
-                    num_projects = len(projects)
-                    logger.info(
-                        f"Retrieved {num_projects} projects for organization ID: {organization_id}"
-                    )
-                    yield projects
 
     async def get_paginated_runs_for_workspace(
         self, workspace_id: str
@@ -349,11 +441,17 @@ class TerraformClient:
     async def get_current_health_assessment_for_workspace(
         self,
         workspace_id: str,
-    ) -> dict[str, Any]:
-        assessment = await self.send_api_request(
-            f"workspaces/{workspace_id}/current-assessment-result"
-        )
-        return assessment.get("data", {})
+    ) -> dict[str, Any] | None:
+        try:
+            assessment = await self.send_api_request(
+                f"workspaces/{workspace_id}/current-assessment-result"
+            )
+            return assessment.get("data")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Workspace {workspace_id} has no assessment result yet")
+                return None
+            raise
 
     async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
         assessment = await self.send_api_request(f"assessment-results/{assessment_id}")

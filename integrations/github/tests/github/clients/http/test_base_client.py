@@ -1,9 +1,11 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, cast
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.rest_client import GithubRestClient
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 
@@ -20,6 +22,10 @@ class ConcreteGithubClient(AbstractGithubClient):
             api_type="rest",
             max_concurrent=10,
         )
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        return self.authenticator.client
 
     async def send_paginated_request(
         self,
@@ -152,10 +158,11 @@ class TestAbstractGithubClient:
             response = await client.send_api_request("orgs/forbidden-org/repos")
             assert response == {}
 
-    async def test_send_api_request_401_error_ignored(
+    async def test_send_api_request_401_error_raised(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
-        # Test 401 Unauthorized error handling - should be ignored by default
+        # 401 means broken credentials, never a missing/forbidden resource — it must
+        # fail the sync instead of being swallowed into an empty response.
         client = ConcreteGithubClient(
             organization="test-org",
             github_host="https://api.github.com",
@@ -174,9 +181,8 @@ class TestAbstractGithubClient:
             "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
-            # Should return empty dict for 401 (ignored error)
-            response = await client.send_api_request("orgs/unauthorized-org/repos")
-            assert response == {}
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.send_api_request("orgs/unauthorized-org/repos")
 
     async def test_send_api_request_500_error_raised(
         self, authenticator: AbstractGitHubAuthenticator
@@ -415,14 +421,15 @@ class TestAbstractGithubClient:
 
 
 class TestAbstractGithubClientClientProperty:
-    def test_client_property_delegates_to_authenticator_client(
+    def test_rest_client_owns_its_http_client(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
         with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
             mock_ocean.config.client_timeout = 60
-            base_client = ConcreteGithubClient(
-                organization="test-org",
+            rest_client = GithubRestClient(
                 github_host="https://api.github.com",
                 authenticator=authenticator,
             )
-            assert base_client.client is authenticator.client
+            assert rest_client.client is not authenticator.client
+            transport = cast(GitHubRetryTransport, rest_client.client._transport)
+            assert transport._retry_config.rate_limiter is rest_client.rate_limiter

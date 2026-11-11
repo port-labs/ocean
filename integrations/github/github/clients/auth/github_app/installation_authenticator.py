@@ -22,6 +22,8 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
         self.installation_id = installation_id
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
+        # Probe sets this so test-connection fails fast on rate limits.
+        self.skip_retry: bool = False
 
     @property
     def rate_limit_scope(self) -> str:
@@ -45,7 +47,8 @@ class GitHubAppInstallationAuthenticator(AbstractGitHubAuthenticator):
 
             self.cached_installation_token = (
                 await self.app_auth.fetch_installation_access_token(
-                    self.installation_id
+                    self.installation_id,
+                    skip_retry=self.skip_retry,
                 )
             )
             return self.cached_installation_token

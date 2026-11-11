@@ -104,3 +104,15 @@ async def test_lifecycleHooks_callsCorrectly(
 
     await processor.cancel()
     assert processor.cancel_called
+
+
+def test_get_live_event_log_identifiers_defaults_to_none(
+    webhook_event: WebhookEvent,
+) -> None:
+    processor = ConcreteWebhookProcessor(webhook_event)
+    assert (
+        processor.get_live_event_log_identifiers(
+            webhook_event.payload, webhook_event.headers
+        )
+        is None
+    )

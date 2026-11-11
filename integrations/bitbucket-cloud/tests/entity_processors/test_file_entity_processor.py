@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from unittest.mock import patch, AsyncMock
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
@@ -64,8 +65,7 @@ async def test_file_entity_processor_search_error_handling() -> None:
     pattern = "file://config.json"
 
     mock_client = AsyncMock()
-    # Simulate an exception when trying to get file content
-    mock_client.get_repository_files.side_effect = Exception("Test exception")
+    mock_client.get_repository_files.side_effect = httpx.ConnectError("boom")
 
     with patch(
         "bitbucket_cloud.entity_processors.file_entity_processor.init_client",
@@ -74,6 +74,26 @@ async def test_file_entity_processor_search_error_handling() -> None:
         processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
         result = await processor._search(data, pattern)
         assert result is None
+
+
+@pytest.mark.asyncio
+async def test_file_entity_processor_lets_an_unexpected_error_through() -> None:
+    """Only a request failure resolves to null; a bug is not swallowed."""
+    data = {
+        "repo": {"name": "test-repo", "mainbranch": {"name": "main"}},
+        "folder": {"path": "configs", "commit": {"hash": "hash123"}},
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get_repository_files.side_effect = KeyError("mainbranch")
+
+    with patch(
+        "bitbucket_cloud.entity_processors.file_entity_processor.init_client",
+        return_value=mock_client,
+    ):
+        processor = FileEntityProcessor(context=MOCK_PORT_OCEAN_CONTEXT)
+        with pytest.raises(KeyError):
+            await processor._search(data, "file://config.json")
 
 
 @pytest.mark.asyncio

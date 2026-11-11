@@ -158,7 +158,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.base_pull_request_webhook_processor.RestPullRequestExporter",
+            "github.core.exporters.pull_request_exporter.fetch.RestPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_webhook_processor.handle_event(
@@ -178,6 +178,8 @@ class TestPullRequestWebhookProcessor:
                         repo=None,
                         enrich_with_first_commit=False,
                         exclude_graphql_fields=[],
+                        include_required_checks_status=False,
+                        excluded_required_checks=[],
                     )
                 )
             elif expected_delete:
@@ -215,7 +217,7 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.return_value = updated_pr_data
 
         with patch(
-            "github.webhook.webhook_processors.base_pull_request_webhook_processor.GraphQLPullRequestExporter",
+            "github.core.exporters.pull_request_exporter.fetch.GraphQLPullRequestExporter",
             return_value=mock_exporter,
         ):
             result = await pull_request_webhook_processor.handle_event(
@@ -227,3 +229,34 @@ class TestPullRequestWebhookProcessor:
         mock_exporter.get_resource.assert_called_once()
         called_opts = mock_exporter.get_resource.call_args.args[0]
         assert called_opts["exclude_graphql_fields"] == ["additions", "changedFiles"]
+
+    async def test_handle_event_treats_graphql_merged_as_closed(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+    ) -> None:
+        resource_config.selector.api = "graphql"
+        resource_config.selector.states = ["closed"]
+
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "closed"}
+        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
+        payload = {
+            "action": "closed",
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+        fetched_pr = {**pr_data, "state": "merged", "additional_data": "from_api"}
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = fetched_pr
+
+        with patch(
+            "github.core.exporters.pull_request_exporter.fetch.GraphQLPullRequestExporter",
+            return_value=mock_exporter,
+        ):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert result.updated_raw_results == [fetched_pr]
+        assert result.deleted_raw_results == []

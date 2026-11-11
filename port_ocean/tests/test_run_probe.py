@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from port_ocean.core.models import EventListenerType
 from port_ocean.core.probe import (
     ProbeConfig,
     ProbeContext,
@@ -58,8 +59,14 @@ def test_run_probe_delegates_to_integration_with_probe_config(
 
     # Assert
     mock_init_signal_handler.assert_called_once()
-    mock_setup_logger.assert_called_once_with("DEBUG", enable_http_handler=True)
-    mock_load_ocean_app.assert_called_once_with("/integration")
+    mock_setup_logger.assert_called_once_with("DEBUG", enable_http_handler=False)
+    mock_load_ocean_app.assert_called_once()
+    assert mock_load_ocean_app.call_args.args == ("/integration",)
+    config_override = mock_load_ocean_app.call_args.kwargs["config_override"]
+    assert config_override["event_listener"] == {
+        "type": EventListenerType.ONCE,
+        "should_resync": False,
+    }
     mock_asyncio_run.assert_called_once()
     assert captured["probe_id"] == "probe-123"
     assert captured["config"] == ProbeConfig(

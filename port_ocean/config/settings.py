@@ -1,8 +1,7 @@
+import os
 from enum import Enum
 from typing import Any, Literal, Optional, Self, Type
 from urllib.parse import urlparse
-
-import os
 
 from loguru import logger
 from pydantic import (
@@ -40,6 +39,7 @@ from port_ocean.utils.misc import (
     get_spec_file,
 )
 from port_ocean.utils.time import parse_interval_to_minutes
+from port_ocean.consumers.redis_connection_settings import RedisConnectionSettings
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 ALLOWED_INCREMENTAL_SYNC_INTERVALS = (15, 30, 60)
@@ -131,9 +131,26 @@ class PortSettings(BaseOceanModel):
     # Left unset, identity propagation falls back to guessing it from base_url (api. -> app.),
     # which breaks if the app domain doesn't follow that exact convention.
     app_url: NoTrailingSlashUrl | None = None
+    mcp_url: NoTrailingSlashUrl | None = None
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     blueprint_cache_ttl_seconds: float = 120.0
+
+    @model_validator(mode="after")
+    def _derive_mcp_url(self) -> Self:
+        if self.mcp_url is not None:
+            return self
+        parsed = urlparse(str(self.base_url))
+        if not parsed.hostname:
+            raise ValueError(
+                "Cannot derive mcp_url from base_url "
+                f"{self.base_url!r}: missing hostname. "
+                "Set mcp_url explicitly."
+            )
+        hostname = f"mcp.{parsed.hostname.removeprefix('api.')}"
+        netloc = f"{hostname}:{parsed.port}" if parsed.port else hostname
+        self.mcp_url = f"{parsed.scheme or 'https'}://{netloc}/v1".rstrip("/")
+        return self
 
 
 class IntegrationSettings(BaseOceanModel):
@@ -238,25 +255,7 @@ class ActionsProcessorSettings(BaseOceanModel):
     )
 
 
-class LiveEventsRedisSettings(BaseOceanModel):
-    model_config = ConfigDict(extra="allow")
-
-    url: str = Field(default="redis://localhost:6379")
-    username: str | None = None
-    password: str | None = sensitive_field(default=None)
-    enable_tls: bool = False
-    ca: str | None = Field(
-        default=None,
-        description="Base64-encoded PEM CA certificate bundle for TLS verification.",
-    )
-    cert: str | None = Field(
-        default=None,
-        description="Base64-encoded PEM client certificate for mutual TLS.",
-    )
-    private_key: str | None = sensitive_field(
-        default=None,
-        description="Base64-encoded PEM private key for mutual TLS.",
-    )
+class LiveEventsRedisSettings(RedisConnectionSettings):
     block_ms: int = Field(default=1000, ge=1)
     read_count: int = Field(
         default=10,
@@ -337,30 +336,6 @@ class LiveEventsRedisSettings(BaseOceanModel):
             "after a connection error."
         ),
     )
-    connection_startup_max_retries: int = Field(
-        default=5,
-        ge=0,
-        description=(
-            "Maximum number of connection retries when establishing the "
-            "initial Redis client at startup."
-        ),
-    )
-    connection_startup_initial_backoff_seconds: float = Field(
-        default=1.0,
-        gt=0,
-        description=(
-            "Initial delay in seconds before the first Redis startup "
-            "connection retry."
-        ),
-    )
-    connection_startup_exponential_base: float = Field(
-        default=2.0,
-        gt=0,
-        description=(
-            "Exponential base used to calculate Redis startup connection "
-            "retry delays."
-        ),
-    )
 
     @property
     def stuck_timeout_ms(self) -> int:
@@ -370,37 +345,13 @@ class LiveEventsRedisSettings(BaseOceanModel):
     def consumer_cleanup_idle_ms(self) -> int:
         return self.stream_maintenance_consumer_cleanup_idle_seconds * 1000
 
-    @model_validator(mode="after")
-    def validate_tls_settings(self) -> Self:
-        scheme = urlparse(self.url).scheme.lower()
-        uses_tls_scheme = scheme == "rediss"
-
-        if self.enable_tls and not uses_tls_scheme:
-            raise ValueError(
-                "enable_tls is True but the Redis URL does not use the rediss:// "
-                "scheme. Use a rediss:// URL or set enable_tls to False."
-            )
-        if not self.enable_tls and uses_tls_scheme:
-            raise ValueError(
-                "The Redis URL uses rediss:// but enable_tls is False. "
-                "Set enable_tls to True or use a redis:// URL."
-            )
-
-        has_cert = bool(self.cert)
-        has_private_key = bool(self.private_key)
-        if has_cert != has_private_key:
-            raise ValueError(
-                "Redis mutual TLS requires both cert and private_key to be set."
-            )
-
-        return self
-
 
 class LiveEventsSettings(BaseOceanModel):
     model_config = ConfigDict(extra="allow")
 
     type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
     is_redis_stream_consumer_enabled: bool = False
+    payload_logging_enabled: bool = False
 
 
 class RedisLiveEventsSettings(LiveEventsSettings):
@@ -409,6 +360,19 @@ class RedisLiveEventsSettings(LiveEventsSettings):
 
 
 LiveEventsSettingsType = RedisLiveEventsSettings
+
+
+class CentralizedRateLimiterSettings(BaseOceanModel):
+    """Cross-pod third-party API rate limit coordination via Redis.
+
+    Startup always connects. A failed connection leaves the limiter unset, and
+    each integration keeps its local limiter. Configure the connection with
+    ``OCEAN__CENTRALIZED_RATE_LIMITER__REDIS__*``.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    redis: RedisConnectionSettings = Field(default_factory=RedisConnectionSettings)
 
 
 class IntegrationConfiguration(BaseOceanSettings):
@@ -470,6 +434,9 @@ class IntegrationConfiguration(BaseOceanSettings):
         default_factory=ActionsProcessorSettings
     )
     live_events: LiveEventsSettingsType = Field(default_factory=RedisLiveEventsSettings)
+    centralized_rate_limiter: CentralizedRateLimiterSettings = Field(
+        default_factory=CentralizedRateLimiterSettings
+    )
     ssl: SslSettings = Field(default_factory=SslSettings)
     identity_propagation: IdentityPropagationSettings = Field(
         default_factory=IdentityPropagationSettings

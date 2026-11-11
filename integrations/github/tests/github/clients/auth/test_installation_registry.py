@@ -41,8 +41,25 @@ async def test_list_installations_refreshes_after_ttl() -> None:
     ) as mock_fetch:
         authenticators = await installation_registry.list_installations_authenticators()
 
-    mock_fetch.assert_called_once()
+    mock_fetch.assert_awaited_once_with(skip_retry=False)
     assert [auth.organization for auth in authenticators] == ["org-b"]
+
+
+@pytest.mark.asyncio
+async def test_list_installations_sets_skip_retry_on_authenticators() -> None:
+    auth = _mock_authenticator("org-a")
+    auth.skip_retry = False
+    installation_registry._authenticators_by_org["org-a"] = auth
+    installation_registry._discovered_at = time.monotonic()
+
+    authenticators = await installation_registry.list_installations_authenticators(
+        skip_retry=True
+    )
+
+    assert authenticators[0].skip_retry is True
+
+    authenticators = await installation_registry.list_installations_authenticators()
+    assert authenticators[0].skip_retry is False
 
 
 @pytest.mark.asyncio
@@ -51,7 +68,9 @@ async def test_get_installation_authenticator_is_case_insensitive(
 ) -> None:
     monkeypatch.delitem(ocean.integration_config, "github_organization")
 
-    async def iter_installations() -> AsyncGenerator[list[dict[str, object]], None]:
+    async def iter_installations(
+        *, skip_retry: bool = False
+    ) -> AsyncGenerator[list[dict[str, object]], None]:
         yield [{"id": 1, "account": {"login": "myorg"}}]
 
     app_auth = MagicMock()

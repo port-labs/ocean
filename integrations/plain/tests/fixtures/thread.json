@@ -1,0 +1,22 @@
+{
+  "id": "th_1",
+  "ref": "T-100",
+  "externalId": null,
+  "title": "Login help",
+  "description": "Cannot sign in",
+  "status": "TODO",
+  "priority": 3,
+  "customer": {"id": "c_1"},
+  "tenant": {"id": "te_1"},
+  "tier": {"id": "ti_1", "name": "Enterprise"},
+  "assignedTo": {"__typename": "User", "id": "us_1"},
+  "labels": [
+    {"id": "lb_1", "labelType": {"id": "lt_1", "name": "Billing"}}
+  ],
+  "threadFields": [
+    {"id": "tf_1", "key": "plan", "type": "STRING", "stringValue": "pro", "booleanValue": null, "numberValue": null},
+    {"id": "tf_2", "key": "product_area", "type": "ENUM", "stringValue": "Users, teams & permissions", "booleanValue": null, "numberValue": null}
+  ],
+  "createdAt": {"iso8601": "2026-01-01T00:00:00Z"},
+  "updatedAt": {"iso8601": "2026-01-02T00:00:00Z"}
+}

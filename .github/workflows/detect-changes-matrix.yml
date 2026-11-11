@@ -58,7 +58,7 @@ jobs:
               - '!scripts/*'
               - '!./*.md'
               - '!.github/**'
-              - '!docs/**'
+              - '!.vscode/**'
             core_ci_files:
               - '.github/workflows/core-test.yml'
               - '.github/workflows/integration-tests.yml'

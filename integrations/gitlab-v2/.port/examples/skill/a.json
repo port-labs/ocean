@@ -9,7 +9,17 @@
     },
     "path": "skills/hello-skill",
     "skillMdPath": "skills/hello-skill/SKILL.md",
-    "root": "skills"
+    "root": "skills",
+    "files": [
+      {
+        "path": "references/greetings.md",
+        "content": "# Greetings\n\n- Hello\n- Hi there\n"
+      },
+      {
+        "path": "scripts/greet.py",
+        "content": "print(\"Hello!\")\n"
+      }
+    ]
   },
   "repo": {
     "id": 1,

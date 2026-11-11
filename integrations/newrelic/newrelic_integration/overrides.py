@@ -102,6 +102,24 @@ class NewRelicAlertConditionResourceConfig(ResourceConfig):
     )
 
 
+class NewRelicServiceDependencyResourceConfig(ResourceConfig):
+    kind: Literal["newRelicServiceDependency"] = Field(
+        title="NewRelic Service Dependency",
+        description=(
+            "New Relic service dependency resource kind. "
+            "One entity per service, with the services it calls."
+        ),
+    )
+    selector: NewRelicSelector = Field(
+        title="Selector",
+        description=(
+            "Selector for the New Relic service dependency resource. "
+            "entityQueryFilter chooses which services are included, "
+            "same syntax as other New Relic entity kinds."
+        ),
+    )
+
+
 class NewRelicPortAppConfig(PortAppConfig):
     allow_custom_kinds: ClassVar[bool] = True
 
@@ -109,9 +127,10 @@ class NewRelicPortAppConfig(PortAppConfig):
         NewRelicAlertResourceConfig
         | NewRelicServiceLevelResourceConfig
         | NewRelicAlertConditionResourceConfig
+        | NewRelicServiceDependencyResourceConfig
         | NewRelicCustomResourceConfig
     ] = Field(
         title="Resources",
-        description="List of NewRelic resources to sync into Port (alerts, service levels, alert conditions, and other NewRelic entities).",
+        description="List of NewRelic resources to sync into Port (alerts, service levels, alert conditions, service dependencies, and other NewRelic entities).",
         default_factory=list,
     )  # type: ignore[assignment]

@@ -6,12 +6,17 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 
 
 class LinearClient:
-    def __init__(self, linear_api_key: str) -> None:
+    def __init__(
+        self,
+        linear_api_key: str,
+        linear_host: str | None = None,
+    ) -> None:
         self._linear_api_key = linear_api_key
+        self._linear_host = linear_host or LINEAR_GRAPHQL_URL
         self._http_client = OceanAsyncClient(timeout=ocean.config.client_timeout)
         self.graphql = GraphqlClient(
             self._http_client,
-            LINEAR_GRAPHQL_URL,
+            self._linear_host,
             auth_headers={"Authorization": self._linear_api_key},
         )
 
@@ -20,4 +25,7 @@ class LinearClient:
 
     @classmethod
     def create_from_ocean_configuration(cls) -> "LinearClient":
-        return cls(ocean.integration_config["linear_api_key"])
+        return cls(
+            ocean.integration_config["linear_api_key"],
+            ocean.integration_config.get("linear_host"),
+        )

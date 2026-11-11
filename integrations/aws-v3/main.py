@@ -1,12 +1,13 @@
 from typing import cast
 
-from aws.core.exporters.exporter_metadata import kind_to_export_metadata
+from aws.probe import AwsPermissionProbe
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 
-from integration import AWSResourceConfig
+from aws_integration.overrides import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.organizations.account.exporter import (
@@ -17,7 +18,7 @@ from aws.core.helpers.utils import is_access_denied_exception
 from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
-from resync import ResyncAWSService
+from resync import resync_from_resource_config
 from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
@@ -36,6 +37,15 @@ async def initialize_aws_sessions() -> None:
 async def cleanup_aws_sessions() -> None:
     """Clear AWS sessions from memory after resync completes."""
     await clear_aws_account_sessions()
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing AWS permissions for {len(context.available_kinds)} resource kinds"
+    )
+    await AwsPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_resync(ObjectKind.AccountInfo)
@@ -94,14 +104,7 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 
 @ocean.on_resync()
 async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind not in kind_to_export_metadata:
-        return
-
-    metadata = kind_to_export_metadata[ObjectKind(kind)]
-    async for batch in ResyncAWSService(
-        kind=kind,
-        exporter_cls=metadata.exporter,
-        request_cls=metadata.paginated_request_model,
-        regional=metadata.regional,
+    async for batch in resync_from_resource_config(
+        kind, cast(AWSResourceConfig, event.resource_config)
     ):
         yield batch

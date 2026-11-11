@@ -120,8 +120,19 @@
       "cwd": "${workspaceFolder}/integrations/gcp",
       "envFile": "${workspaceFolder}/integrations/gcp/.env",
       "justMyCode": false,
+      "name": "Probe GCP integration",
+      "program": "${workspaceFolder}/integrations/gcp/debug_probe.py",
+      "python": "${workspaceFolder}/integrations/gcp/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/gcp",
+      "envFile": "${workspaceFolder}/integrations/gcp/.env",
+      "justMyCode": false,
       "name": "Run GCP integration",
-      "program": "${workspaceFolder}/integrations/gcp/debug.py",
+      "program": "${workspaceFolder}/integrations/gcp/debug_resync.py",
       "python": "${workspaceFolder}/integrations/gcp/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
@@ -134,6 +145,17 @@
       "name": "Run AWS integration",
       "program": "${workspaceFolder}/integrations/aws/debug.py",
       "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure",
+      "envFile": "${workspaceFolder}/integrations/azure/.env",
+      "justMyCode": false,
+      "name": "Run Azure integration",
+      "program": "${workspaceFolder}/integrations/azure/debug.py",
+      "python": "${workspaceFolder}/integrations/azure/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
@@ -165,7 +187,18 @@
       "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
       "justMyCode": false,
       "name": "Run AWS-v3 integration",
-      "program": "${workspaceFolder}/integrations/aws-v3/debug.py",
+      "program": "${workspaceFolder}/integrations/aws-v3/debug_resync.py",
+      "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aws-v3",
+      "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
+      "justMyCode": false,
+      "name": "Probe AWS-v3 integration",
+      "program": "${workspaceFolder}/integrations/aws-v3/debug_probe.py",
       "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
@@ -223,9 +256,7 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": [
-        "new"
-      ]
+      "args": ["new"]
     },
     {
       "console": "integratedTerminal",
@@ -488,6 +519,28 @@
       "name": "Generic HTTP - Custom Auth",
       "program": "${workspaceFolder}/integrations/custom/debug.py",
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/claude-managed-agents",
+      "envFile": "${workspaceFolder}/integrations/claude-managed-agents/.env",
+      "justMyCode": true,
+      "name": "Run claude-managed-agents integration",
+      "program": "${workspaceFolder}/integrations/claude-managed-agents/debug.py",
+      "python": "${workspaceFolder}/integrations/claude-managed-agents/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/cursor-cloud-agents",
+      "envFile": "${workspaceFolder}/integrations/cursor-cloud-agents/.env",
+      "justMyCode": true,
+      "name": "Run cursor-cloud-agents integration",
+      "program": "${workspaceFolder}/integrations/cursor-cloud-agents/debug.py",
+      "python": "${workspaceFolder}/integrations/cursor-cloud-agents/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }

@@ -1,0 +1,26 @@
+{
+  "description": "{{cookiecutter.integration_name}} integration for Port Ocean",
+  "icon": "Cookiecutter",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Under Development",
+      "resources": [
+        {
+          "kind": "{{ cookiecutter.integration_slug }}-example-kind"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "my{{ cookiecutter.integration_slug}}Token",
+      "type": "string",
+      "sensitive": true
+    },
+    {
+      "name": "someApplicationUrl",
+      "type": "url"
+    }
+  ]
+}

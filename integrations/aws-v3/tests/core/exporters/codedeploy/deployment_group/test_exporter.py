@@ -277,6 +277,91 @@ async def test_get_paginated_resources_empty(
 
 @pytest.mark.asyncio
 @patch(f"{patch_prefix}.AioBaseClientProxy")
+async def test_get_paginated_resources_builds_entity_with_ec2_and_on_premises_tag_sets(
+    mock_proxy_class: MagicMock,
+    exporter: CodeDeployDeploymentGroupExporter,
+    paginated_deployment_group_options: PaginatedCodeDeployDeploymentGroupRequest,
+) -> None:
+    """Regression test for the CodeDeploy deployment group resync bug.
+
+    AWS's BatchGetDeploymentGroups API returns `ec2TagSet`/`onPremisesTagSet` as
+    objects wrapping a `*TagSetList` key, not as bare lists. This previously made
+    `ResourceBuilder.build()` raise a Pydantic `list_type` error, so the whole
+    kind resynced 0 entities. Only the AWS client boundary is mocked here;
+    `ResourceInspector`, `ResourceBuilder`, and the real `CodeDeployDeploymentGroup`
+    model all run for real, proving the exporter's public contract succeeds
+    end-to-end for the payload shape that used to crash it.
+    """
+    # Arrange
+    mock_proxy = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+    class MockAppPaginator:
+        async def paginate(self) -> AsyncGenerator[list[str], None]:
+            yield ["MyApp"]
+
+    class MockGroupPaginator:
+        async def paginate(
+            self, applicationName: str
+        ) -> AsyncGenerator[list[str], None]:
+            yield ["MyGroup"]
+
+    def get_paginator(operation_name: str, *args: Any) -> Any:
+        return (
+            MockAppPaginator()
+            if operation_name == "list_applications"
+            else MockGroupPaginator()
+        )
+
+    mock_proxy.get_paginator = MagicMock(side_effect=get_paginator)
+    mock_proxy.client.batch_get_deployment_groups = AsyncMock(
+        return_value={
+            "deploymentGroupsInfo": [
+                {
+                    "applicationName": "MyApp",
+                    "deploymentGroupId": "d87f1777-7de0-47e2-8f89-f193c382ee6d",
+                    "deploymentGroupName": "MyGroup",
+                    "ec2TagSet": {
+                        "ec2TagSetList": [
+                            [
+                                {
+                                    "Key": "Environment",
+                                    "Value": "prod",
+                                    "Type": "KEY_AND_VALUE",
+                                }
+                            ]
+                        ]
+                    },
+                    "onPremisesTagSet": {"onPremisesTagSetList": []},
+                }
+            ]
+        }
+    )
+
+    # Act
+    collected: list[list[dict[str, Any]]] = []
+    async for page in exporter.get_paginated_resources(
+        paginated_deployment_group_options
+    ):
+        collected.append(page)
+
+    # Assert
+    assert len(collected) == 1
+    resources = collected[0]
+    assert len(resources) == 1
+
+    properties = resources[0]["Properties"]
+    assert properties["DeploymentGroupId"] == "d87f1777-7de0-47e2-8f89-f193c382ee6d"
+    assert properties["Ec2TagSet"] == {
+        "ec2TagSetList": [
+            [{"Key": "Environment", "Value": "prod", "Type": "KEY_AND_VALUE"}]
+        ]
+    }
+    assert properties["OnPremisesTagSet"] == {"onPremisesTagSetList": []}
+
+
+@pytest.mark.asyncio
+@patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_paginated_apps_empty(
     mock_inspector_class: MagicMock,

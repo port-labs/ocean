@@ -1,5 +1,8 @@
+from typing import cast
+
 from loguru import logger
 
+from integration import LabelResourceConfig
 from linear.actions.registry import register_actions_executors
 from linear.client import LinearClient
 from linear.core.exporters import (
@@ -14,7 +17,9 @@ from linear.core.exporters import (
     TeamMembersExporter,
     UserExporter,
 )
+from linear.core.exporters.label_exporter import LabelListOptions
 from linear.webhook.webhook_client import LinearWebhookClient
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from linear.utils import ObjectKind
@@ -50,8 +55,11 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.LABEL)
 async def on_resync_labels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient.create_from_ocean_configuration()
+    options = LabelListOptions.from_resource_config(
+        cast(LabelResourceConfig, event.resource_config)
+    )
 
-    async for labels in LabelExporter(client).get_paginated_resources():
+    async for labels in LabelExporter(client).get_paginated_resources(options):
         logger.info(f"Received label batch with {len(labels)} labels")
         yield labels
 

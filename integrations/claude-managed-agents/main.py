@@ -5,8 +5,15 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from actions.registry import register_action_executors
-from exporter_factory import (
+from claude_managed_agents.actions.registry import register_action_executors
+from claude_managed_agents.clients.client_factory import create_webhook_client
+from port_ocean.utils.signal import signal_handler
+
+from claude_managed_agents.stream_manager import (
+    get_stream_manager,
+    reattach_active_sessions,
+)
+from claude_managed_agents.exporter_factory import (
     create_agents_exporter,
     create_environments_exporter,
     create_memory_stores_exporter,
@@ -14,7 +21,7 @@ from exporter_factory import (
     create_skills_exporter,
     create_vaults_exporter,
 )
-from integration import (
+from claude_managed_agents.integration import (
     AgentResourceConfig,
     EnvironmentResourceConfig,
     MemoryStoreResourceConfig,
@@ -22,7 +29,9 @@ from integration import (
     SessionResourceConfig,
     VaultResourceConfig,
 )
-from webhook_processors.registry import register_live_events_webhooks
+from claude_managed_agents.webhook_processors.registry import (
+    register_live_events_webhooks,
+)
 
 
 @ocean.on_resync(ObjectKind.AGENT)
@@ -90,10 +99,30 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    # Anthropic webhooks are configured in the Claude Console (there is no
-    # create-subscription API), so there is nothing to register on the Anthropic
-    # side here - the integration only verifies incoming webhook signatures.
     logger.info("Starting claude-managed-agents integration")
+
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping Claude webhook creation because the event listener "
+            "does not process webhooks"
+        )
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "Skipping Claude webhook creation because no base URL is configured. "
+            "Set OCEAN__BASE_URL to enable live events."
+        )
+        return
+
+    await create_webhook_client().upsert_webhook(base_url)
+
+    if ocean.app.config.event_listener.should_run_actions:
+        manager = get_stream_manager()
+        await manager.start()
+        signal_handler.register(manager.stop)
+        await reattach_active_sessions(manager)
 
 
 register_live_events_webhooks()

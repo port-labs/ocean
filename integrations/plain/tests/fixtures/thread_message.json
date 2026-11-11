@@ -1,0 +1,11 @@
+{
+  "id": "tl_1",
+  "threadId": "th_1",
+  "timestamp": {"iso8601": "2026-01-01T00:00:00Z"},
+  "llmText": "Hello from the customer",
+  "actor": {
+    "__typename": "CustomerActor",
+    "customer": {"id": "c_1"}
+  },
+  "entry": {"__typename": "ChatEntry"}
+}

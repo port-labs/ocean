@@ -136,7 +136,7 @@ class TestRestCodeScanningAlertExporter:
             assert alert == expected_alert
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts/42",
+                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts/42"
             )
 
     async def test_get_paginated_resources(
@@ -231,7 +231,7 @@ class TestRestCodeScanningAlertExporter:
             assert alert["dismissed_reason"] == "used_in_tests"
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts/43",
+                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts/43"
             )
 
     async def test_handle_request_with_advanced_security_disabled_error(
