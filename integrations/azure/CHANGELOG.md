@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-11-11)
+
+
+### Features
+
+- Add Azure AI Foundry catalog sync to the Azure integration. Auto-discover Foundry projects across subscriptions via Microsoft.CognitiveServices/accounts/projects, and sync project data-plane kinds (foundry-agent, foundry-model-deployment, foundry-conversation, foundry-response, foundry-memory-store) with incremental sync, Foundry-aware 429 retries (retry-after-ms), configurable ARM project apiVersion, and conversation/response sinceDays capped at 30 to match Azure retention. Enable Port-hosted (SaaS) install with incremental sync; live events remain self-hosted via Event Grid / Terraform. Default tag mappings use `.tags // {}` so null Azure tags do not warn during transform.
+
+
 ## 0.1.475 (2026-11-09)
 
 
