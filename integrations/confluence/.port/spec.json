@@ -1,0 +1,50 @@
+{
+  "title": "Confluence",
+  "description": "Sync Confluence Cloud spaces, pages, and users into Port",
+  "icon": "Confluence",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Documentation",
+      "resources": [
+        {
+          "kind": "space"
+        },
+        {
+          "kind": "page"
+        },
+        {
+          "kind": "user"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "confluenceHostUrl",
+      "required": true,
+      "type": "url",
+      "description": "Confluence Cloud site URL, for example https://example.atlassian.net"
+    },
+    {
+      "name": "confluenceUserEmail",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "Email of the Atlassian account used to read Confluence. The account must be able to view the spaces, pages, and users you want in Port."
+    },
+    {
+      "name": "confluenceApiToken",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "API token for that Atlassian account. Create one at https://id.atlassian.com/manage-profile/security/api-tokens"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    }
+  }
+}
