@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import (
     Any,
     AsyncGenerator,
@@ -13,7 +13,12 @@ import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
 from github.helpers.repository_change import RepositoryChange
-from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
+from github.helpers.utils import (
+    GithubClientType,
+    IgnoredError,
+    get_repository_metadata,
+    parse_timestamp,
+)
 from github.helpers.exceptions import GitHubTreeFetchError
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.core.ocean_types import (
@@ -33,6 +38,7 @@ from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
     GITHUB_COMPARE_FILE_CAP,
     COMPARE_BASE_IS_ANCESTOR_STATUSES,
+    GIT_NULL_SHA,
     build_batch_file_query,
     decode_content,
     extract_file_index,
@@ -458,11 +464,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         Cached per (repo, branch, field, since): the field is part of the key, so an
         ``updated_at`` change and a ``pushed_at`` change never share a result.
 
-        Returns None when the diff cannot be trusted (no base commit, identical /
-        rewritten history, truncated compare), so the caller falls back to a full
-        tree scan.
+        Diffs the branch tip from just before ``changed_since`` against the current
+        tip. Returns None when that can't be trusted (tip unknown, rewritten
+        history, truncated compare), so the caller falls back to a full tree scan.
         """
-        base_sha = await self._resolve_compare_base_sha(
+        base_sha = await self._branch_tip_before(
             organization, repo_name, branch, changed_since.since
         )
         if base_sha is None:
@@ -475,30 +481,39 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             return None
         return {file["filename"] for file in files}
 
-    async def _resolve_compare_base_sha(
-        self, organization: str, repo_name: str, branch: str, until: datetime
+    async def _branch_tip_before(
+        self, organization: str, repo_name: str, branch: str, before: datetime
     ) -> Optional[str]:
-        """Newest commit on ``branch`` with committer date at or before ``until``.
+        """SHA ``branch`` pointed to just before ``before``, from its push activity.
 
-        Filters by *committer date* among reachable commits, so this is not the
-        historical branch tip at ``until``. No such commit means there is nothing
-        safe to diff, so the caller scans the full tree.
+        Uses *push* time, not commit dates: a commit created before ``before`` but
+        pushed after it is not mistaken for the tip, so its files are still diffed.
+        Activity is listed newest first; the first entry pushed before ``before``
+        set the tip in effect then, and later pages are never requested.
 
-        GitHub lists commits newest first, so only the first item of the first
-        page is needed; the remaining pages are never requested.
+        None when the activity doesn't reach back to ``before`` (new branch,
+        unavailable history) or the branch didn't exist then, so the caller scans
+        the full tree.
         """
-        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
-        params = {
-            "sha": branch,
-            "until": until.astimezone(timezone.utc).isoformat(),
-        }
-        async for commits in self.client.send_paginated_request(
+        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/activity"
+        params = {"ref": branch, "direction": "desc"}
+        async for activities in self.client.send_paginated_request(
             resource, params=params, ignored_errors=self._IGNORED_ERRORS
         ):
-            return commits[0]["sha"]
+            for activity in activities:
+                pushed_at = parse_timestamp(activity.get("timestamp") or "")
+                if pushed_at is None or pushed_at >= before:
+                    continue
+                tip = activity.get("after")
+                if not tip or tip == GIT_NULL_SHA:
+                    logger.info(
+                        f"{repo_name}@{branch} did not exist before {before.isoformat()}; using full tree"
+                    )
+                    return None
+                return tip
 
         logger.info(
-            f"No base commit for {repo_name}@{branch} before {until.isoformat()}; using full tree"
+            f"No push activity for {repo_name}@{branch} before {before.isoformat()}; using full tree"
         )
         return None
 

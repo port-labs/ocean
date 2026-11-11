@@ -1567,7 +1567,16 @@ CHANGED_SINCE = datetime(2026, 10, 1, tzinfo=timezone.utc)
 PUSHED_CHANGE = RepositoryChange(CHANGED_SINCE, RepositoryChangeField.PUSHED)
 
 
-def mock_commit_pages(*pages: List[Dict[str, Any]]) -> MagicMock:
+PUSHED_BEFORE = "2026-09-30T23:00:00Z"
+PUSHED_AFTER = "2026-10-01T01:00:00Z"
+
+
+def push(after: str, timestamp: str = PUSHED_BEFORE) -> Dict[str, Any]:
+    """One branch activity entry, as listed by ``GET /repos/{o}/{r}/activity``."""
+    return {"activity_type": "push", "after": after, "timestamp": timestamp}
+
+
+def mock_activity_pages(*pages: List[Dict[str, Any]]) -> MagicMock:
     """``send_paginated_request`` stand-in yielding each page; records its calls."""
 
     async def _pages(*_: Any, **__: Any) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -1593,9 +1602,9 @@ class TestRestFileExporterChangedSince:
                 {"filename": "c/port.yml", "status": "removed", "sha": "s3"},
             ],
         }
-        commits_mock = mock_commit_pages([{"sha": "base-sha"}, {"sha": "older"}])
+        activity_mock = mock_activity_pages([push("base-sha"), push("older")])
         with (
-            patch.object(rest_client, "send_paginated_request", commits_mock),
+            patch.object(rest_client, "send_paginated_request", activity_mock),
             patch.object(
                 rest_client,
                 "send_api_request",
@@ -1610,33 +1619,86 @@ class TestRestFileExporterChangedSince:
             )
 
         assert changed == {"a/port.yml", "b/port.yml", "c/port.yml"}
-        commits_mock.assert_called_once()
-        base_call = commits_mock.call_args
-        assert base_call.args[0].endswith("/repos/test-org/inc-repo-changed/commits")
-        assert base_call.kwargs["params"]["sha"] == "main"
+        activity_mock.assert_called_once()
+        activity_call = activity_mock.call_args
+        assert activity_call.args[0].endswith(
+            "/repos/test-org/inc-repo-changed/activity"
+        )
+        assert activity_call.kwargs["params"] == {"ref": "main", "direction": "desc"}
         (compare_call,) = mock_request.await_args_list
         assert compare_call.args[0].endswith(
             "/repos/test-org/inc-repo-changed/compare/base-sha...main"
         )
 
-    async def test_get_changed_paths_since_no_base_commit_falls_back(
-        self, rest_client: GithubRestClient
+    @pytest.mark.parametrize(
+        "pages",
+        [
+            [],
+            [[push("new-tip", PUSHED_AFTER)]],
+            [[push("0" * 40)]],
+        ],
+        ids=["no-activity", "only-pushes-after", "branch-missing-before"],
+    )
+    async def test_get_changed_paths_since_unknown_tip_falls_back(
+        self, rest_client: GithubRestClient, pages: List[List[Dict[str, Any]]]
     ) -> None:
         exporter = RestFileExporter(rest_client)
         compare_mock = AsyncMock()
         with (
-            patch.object(rest_client, "send_paginated_request", mock_commit_pages()),
+            patch.object(
+                rest_client, "send_paginated_request", mock_activity_pages(*pages)
+            ),
             patch.object(rest_client, "send_api_request", compare_mock),
         ):
             changed = await exporter.get_changed_paths_since(
                 "test-org",
-                "inc-repo-no-base",
+                f"inc-repo-unknown-tip-{len(pages)}-{pages[0][0]['after'] if pages else ''}",
                 "main",
                 RepositoryChange.pushed(CHANGED_SINCE),
             )
 
         assert changed is None
         compare_mock.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "pages",
+        [
+            [[push("late-commit", PUSHED_AFTER), push("tip-before")]],
+            [[push("late-commit", PUSHED_AFTER)], [push("tip-before")]],
+        ],
+        ids=["same-page", "next-page"],
+    )
+    async def test_get_changed_paths_since_diffs_commits_pushed_after_since(
+        self, rest_client: GithubRestClient, pages: List[List[Dict[str, Any]]]
+    ) -> None:
+        """A commit dated before ``since`` but pushed after it is still diffed.
+
+        The base is the tip pushed before ``since`` (``tip-before``), not the
+        newest commit dated before it (``late-commit``), so the compare covers it.
+        """
+        exporter = RestFileExporter(rest_client)
+        compare_mock = AsyncMock(
+            return_value={
+                "status": "ahead",
+                "files": [{"filename": "port.yml", "status": "modified"}],
+            }
+        )
+        with (
+            patch.object(
+                rest_client, "send_paginated_request", mock_activity_pages(*pages)
+            ),
+            patch.object(rest_client, "send_api_request", compare_mock),
+        ):
+            changed = await exporter.get_changed_paths_since(
+                "test-org",
+                f"inc-repo-late-push-{len(pages)}",
+                "main",
+                RepositoryChange.pushed(CHANGED_SINCE),
+            )
+
+        assert changed == {"port.yml"}
+        assert compare_mock.await_args is not None
+        assert compare_mock.await_args.args[0].endswith("/compare/tip-before...main")
 
     @pytest.mark.parametrize(
         "compare_response",
@@ -1661,7 +1723,7 @@ class TestRestFileExporterChangedSince:
             patch.object(
                 rest_client,
                 "send_paginated_request",
-                mock_commit_pages([{"sha": "base-sha"}]),
+                mock_activity_pages([push("base-sha")]),
             ),
             patch.object(
                 rest_client,
@@ -1687,7 +1749,7 @@ class TestRestFileExporterChangedSince:
             patch.object(
                 rest_client,
                 "send_paginated_request",
-                mock_commit_pages([{"sha": "base-sha"}]),
+                mock_activity_pages([push("base-sha")]),
             ),
             patch.object(
                 rest_client,
@@ -1899,10 +1961,10 @@ async def test_get_changed_paths_since_cache_is_keyed_by_field(
         {"status": "ahead", "files": [{"filename": "a.yml", "status": "modified"}]},
         {"status": "ahead", "files": [{"filename": "b.yml", "status": "modified"}]},
     ]
-    commits_mock = mock_commit_pages([{"sha": "base-sha"}])
+    activity_mock = mock_activity_pages([push("base-sha")])
     with (
         patch.object(ocean.app, "cache_provider", InMemoryCacheProvider()),
-        patch.object(rest_client, "send_paginated_request", commits_mock),
+        patch.object(rest_client, "send_paginated_request", activity_mock),
         patch.object(
             rest_client, "send_api_request", AsyncMock(side_effect=responses)
         ) as mock_request,
@@ -1922,7 +1984,7 @@ async def test_get_changed_paths_since_cache_is_keyed_by_field(
     assert first == {"a.yml"}
     assert cached == {"a.yml"}
     assert other_field == {"b.yml"}
-    assert commits_mock.call_count == 2
+    assert activity_mock.call_count == 2
     assert mock_request.await_count == 2
 
 

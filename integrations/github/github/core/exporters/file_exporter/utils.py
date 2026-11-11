@@ -43,6 +43,8 @@ GRAPHQL_MAX_FILE_SIZE = 100_000
 FIELD_NAME_PATTERN = re.compile(r"^file_(\d+)$")
 GITHUB_COMPARE_FILE_CAP = 300
 COMPARE_BASE_IS_ANCESTOR_STATUSES = ("ahead", "identical")
+# "before"/"after" SHA of a ref that doesn't exist on that side of a push.
+GIT_NULL_SHA = "0" * 40
 
 
 class FileObject(TypedDict):
