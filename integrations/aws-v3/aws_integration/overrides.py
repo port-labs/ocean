@@ -454,7 +454,7 @@ class AWSCustomKindResourceConfig(AWSResourceConfig):
         "cloudformation:GetResource",
     )
     kind: str = Field(
-        title="Custom AWS Resource Kind",
+        title="Custom Kind (Cloud Control)",
         description="Map any resource type supported by the "
         "<a target='_blank' href='https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/supported-resources.html'>"
         "AWS Cloud Control API</a> by setting kind to the CloudFormation type name "
