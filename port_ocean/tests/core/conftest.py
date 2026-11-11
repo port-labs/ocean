@@ -10,12 +10,6 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 from port_ocean.context.event import EventContext
 from port_ocean.context.ocean import PortOceanContext, ocean
-from port_ocean.core.handlers.entities_state_applier.port.applier import (
-    HttpEntitiesStateApplier,
-)
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
-)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
@@ -126,8 +120,6 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config = MagicMock()
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
-        ocean_mock.config.process_in_queue_max_workers = 4
-        ocean_mock.config.process_in_queue_timeout = 10
         ocean_mock.config.allow_environment_variables_jq_access = True
         ocean_mock.config.delete_entities_max_batch_size = 50
         ocean_mock.port_client = mock_port_client
@@ -148,9 +140,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
 def mock_context(mock_ocean: Ocean) -> PortOceanContext:
     context = PortOceanContext(mock_ocean)
     ocean._app = context.app
-    # Set up integration.entity_processor for multiprocess _calculate_entity access
     mock_ocean.integration = MagicMock()
-    mock_ocean.integration.entity_processor = JQEntityProcessor(context)
     return context
 
 
@@ -192,11 +182,6 @@ def mock_port_app_config_handler(mock_port_app_config: PortAppConfig) -> MagicMo
 
 
 @pytest.fixture
-def mock_entity_processor(mock_context: PortOceanContext) -> JQEntityProcessor:
-    return JQEntityProcessor(mock_context)
-
-
-@pytest.fixture
 def mock_resource_config() -> ResourceConfig:
     resource = ResourceConfig(
         kind="service",
@@ -214,13 +199,6 @@ def mock_resource_config() -> ResourceConfig:
         ),
     )
     return resource
-
-
-@pytest.fixture
-def mock_entities_state_applier(
-    mock_context: PortOceanContext,
-) -> HttpEntitiesStateApplier:
-    return HttpEntitiesStateApplier(mock_context)
 
 
 @asynccontextmanager

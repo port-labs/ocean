@@ -44,15 +44,9 @@ def _warn_legacy_prometheus_multiproc_dir(is_self_hosted: bool) -> None:
 
 class MetricPhase:
     EXTRACT = "extract"
-    TRANSFORM = "transform"
     LOAD = "load"
     RESYNC = "resync"
     DELETE = "delete"
-
-    class TransformResult:
-        TRANSFORMED = "transformed"
-        FILTERED_OUT = "filtered_out"
-        FAILED = "failed"
 
     class LoadResult:
         LOADED = "loaded"
@@ -363,22 +357,6 @@ class Metrics:
 
             self.set_metric(
                 MetricType.OBJECT_COUNT_NAME,
-                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.TRANSFORMED],
-                0,
-            )
-            self.set_metric(
-                MetricType.OBJECT_COUNT_NAME,
-                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.FILTERED_OUT],
-                0,
-            )
-            self.set_metric(
-                MetricType.OBJECT_COUNT_NAME,
-                [kind, MetricPhase.TRANSFORM, MetricPhase.TransformResult.FAILED],
-                0,
-            )
-
-            self.set_metric(
-                MetricType.OBJECT_COUNT_NAME,
                 [kind, MetricPhase.LOAD, MetricPhase.LoadResult.LOADED],
                 0,
             )
@@ -420,30 +398,6 @@ class Metrics:
             self.registry
         ).decode()
 
-    async def report_sync_metrics(
-        self,
-        metric_name: Optional[str] = None,
-        kinds: Optional[list[str]] = None,
-        blueprints: Optional[list[Optional[str]]] = None,
-        dsp_enabled: bool = False,
-    ) -> None:
-        if dsp_enabled or kinds is None:
-            return None
-
-        metrics = []
-
-        if blueprints is None:
-            blueprints = [None] * len(kinds)
-
-        for kind, blueprint in zip(kinds, blueprints):
-            metric = self.generate_metrics(metric_name, kind, blueprint)
-            metrics.extend(metric)
-
-        try:
-            await self.port_client.post_integration_sync_metrics(metrics)
-        except Exception as e:
-            logger.error(f"Error posting metrics: {e}", metrics=metrics)
-
     async def report_metrics_heartbeat(self) -> None:
         event_id = self.event_id.strip()
         if not event_id:
@@ -452,24 +406,6 @@ class Metrics:
             await self.port_client.post_integration_metrics_heartbeat(event_id)
         except Exception as e:
             logger.error(f"Error sending metrics heartbeat: {e}", event_id=event_id)
-
-    async def report_kind_sync_metrics(
-        self,
-        metric_name: Optional[str] = None,
-        kind: Optional[str] = None,
-        blueprint: Optional[str] = None,
-        dsp_enabled: bool = False,
-    ) -> None:
-        if dsp_enabled:
-            return None
-        metrics = self.generate_metrics(metric_name, kind, blueprint)
-        if not metrics:
-            return None
-        try:
-            for metric in metrics:
-                await self.port_client.put_integration_sync_metrics(metric)
-        except Exception as e:
-            logger.error(f"Error putting metrics: {e}", metrics=metrics)
 
     def generate_metrics(
         self,

@@ -7,7 +7,11 @@ from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.initialization import InitializationFactory
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.core.models import CreatePortResourcesOrigin, IntegrationFeatureFlag
+from port_ocean.core.models import (
+    CreatePortResourcesOrigin,
+    IntegrationFeatureFlag,
+    ProcessingMode,
+)
 from port_ocean.utils.misc import run_async_in_new_event_loop
 from port_ocean.version import __integration_version__
 
@@ -62,14 +66,14 @@ async def _verify_integration_configuration(
         != integration_config.actions_processor.enabled
         or integration.get("incrementalSyncEnabled")
         != integration_config.integration.incremental_sync_enabled
-        or integration.get("processingMode") != integration_config.processing_mode
+        or integration.get("processingMode") != ProcessingMode.dsp
     ):
         await ocean.port_client.patch_integration(
             _type=integration_config.integration.type,
             changelog_destination=changelog_destination,
             actions_processing_enabled=integration_config.actions_processor.enabled,
             incremental_sync_enabled=integration_config.integration.incremental_sync_enabled,
-            processing_mode=integration_config.processing_mode,
+            processing_mode=ProcessingMode.dsp,
         )
 
 

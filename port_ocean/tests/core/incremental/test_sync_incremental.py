@@ -60,12 +60,10 @@ def mock_port_client() -> MagicMock:
 @pytest.fixture
 def mock_mixin(mock_port_client: MagicMock) -> SyncRawMixin:
     mixin = SyncRawMixin()
-    mixin._entity_processor = MagicMock()
-    mixin._entities_state_applier = MagicMock()
     port_app_config_handler = MagicMock()
     port_app_config_handler.get_port_app_config = AsyncMock()
     mixin._port_app_config_handler = port_app_config_handler
-    mixin.process_resource = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
+    mixin.process_resource = AsyncMock(return_value=(0, []))  # type: ignore[method-assign]
     return mixin
 
 
@@ -99,8 +97,7 @@ def _configure_ocean_for_incremental(
     mock_ocean.config.integration.identifier = "test-integration"
     mock_ocean.config.integration.type = "fake-integration"
     mock_ocean.metrics.clear_sync_context = MagicMock()
-    if lifecycle_client is not None:
-        mock_ocean.app.lifecycle_client = lifecycle_client
+    mock_ocean.app.lifecycle_client = lifecycle_client or _make_lifecycle_client()
     return mock_ocean
 
 
@@ -139,8 +136,7 @@ def _configure_ocean_with_real_metrics(
     mock_ocean.config.integration.type = integration_type
     mock_ocean.metrics = metrics
     mock_ocean.metrics.clear_sync_context = MagicMock()
-    if lifecycle_client is not None:
-        mock_ocean.app.lifecycle_client = lifecycle_client
+    mock_ocean.app.lifecycle_client = lifecycle_client or _make_lifecycle_client()
     return metrics
 
 
@@ -216,11 +212,9 @@ class TestSyncIncrementalCursorScope:
         register_incremental_handler(mock_mixin, kind="issue")
         captured: dict[str, datetime | None] = {"cursor": None}
 
-        async def capture_cursor(
-            resource: Any, index: int, user_agent_type: Any
-        ) -> tuple[list[Any], list[Any]]:
+        async def capture_cursor(resource: Any, index: int) -> tuple[int, list[Any]]:
             captured["cursor"] = active_incremental_cursor()
-            return [], []
+            return 0, []
 
         mock_mixin.process_resource.side_effect = capture_cursor  # type: ignore[attr-defined]
 
@@ -286,10 +280,6 @@ class TestSyncIncrementalDspLifecycle:
 
         with (
             patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
-            patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-                AsyncMock(return_value=True),
-            ),
         ):
             _configure_ocean_for_incremental(
                 mock_ocean, mock_port_client, lifecycle_client
@@ -319,10 +309,6 @@ class TestSyncIncrementalDspLifecycle:
 
         with (
             patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
-            patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-                AsyncMock(return_value=True),
-            ),
         ):
             _configure_ocean_for_incremental(
                 mock_ocean, mock_port_client, lifecycle_client
@@ -349,10 +335,6 @@ class TestSyncIncrementalDspLifecycle:
 
         with (
             patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
-            patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-                AsyncMock(return_value=True),
-            ),
         ):
             _configure_ocean_for_incremental(
                 mock_ocean, mock_port_client, lifecycle_client
@@ -365,29 +347,6 @@ class TestSyncIncrementalDspLifecycle:
         lifecycle_client.notify_resync_finished.assert_not_awaited()
         mock_ocean.metrics.clear_sync_context.assert_called()
 
-    async def test_skips_lifecycle_when_dsp_disabled(
-        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
-    ) -> None:
-        configure_app_config(mock_mixin, ["issue"])
-        register_incremental_handler(mock_mixin, kind="issue")
-        lifecycle_client = _make_lifecycle_client()
-
-        with (
-            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
-            patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-                AsyncMock(return_value=False),
-            ),
-        ):
-            _configure_ocean_for_incremental(
-                mock_ocean, mock_port_client, lifecycle_client
-            )
-            await mock_mixin.sync_incremental(interval_seconds=900)
-
-        mock_ocean.metrics.clear_sync_context.assert_called()
-        lifecycle_client.notify_resync_started.assert_not_awaited()
-        lifecycle_client.notify_resync_finished.assert_not_awaited()
-
     async def test_clears_sync_context_after_successful_run(
         self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
     ) -> None:
@@ -396,10 +355,6 @@ class TestSyncIncrementalDspLifecycle:
 
         with (
             patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
-            patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-                AsyncMock(return_value=False),
-            ),
         ):
             _configure_ocean_for_incremental(mock_ocean, mock_port_client)
             await mock_mixin.sync_incremental(interval_seconds=900)
@@ -435,10 +390,6 @@ class TestSyncIncrementalMetrics:
 
         with (
             patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
-            patch(
-                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-                AsyncMock(return_value=True),
-            ),
             pytest.raises(asyncio.CancelledError),
         ):
             metrics = _configure_ocean_with_real_metrics(

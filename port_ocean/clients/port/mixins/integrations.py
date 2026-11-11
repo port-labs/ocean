@@ -338,23 +338,6 @@ class IntegrationClientMixin:
         handle_port_status_code(response)
         return response.json()["integration"]
 
-    async def post_integration_sync_metrics(
-        self, metrics: list[dict[str, Any]]
-    ) -> None:
-        logger.debug("starting POST metrics request", metrics=metrics)
-        metrics_attributes = await self.get_metrics_attributes()
-        headers = await self.auth.headers()
-        url = metrics_attributes["ingestUrl"] + "/syncMetrics"
-        response = await self.client.post(
-            url,
-            headers=headers,
-            json={
-                "syncKindsMetrics": metrics,
-            },
-        )
-        handle_port_status_code(response, should_log=False)
-        logger.debug("Finished POST metrics request")
-
     async def post_integration_metrics_heartbeat(self, event_id: str) -> None:
         logger.debug("starting PUT metrics heartbeat request", event_id=event_id)
         metrics_attributes = await self.get_metrics_attributes()
@@ -367,26 +350,6 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response, should_log=False)
         logger.debug("Finished PUT metrics heartbeat request")
-
-    async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
-        logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
-        metrics_attributes = await self.get_metrics_attributes()
-        event_id = quote_plus(kind_metrics["eventId"])
-        kind_identifier = quote_plus(kind_metrics["kindIdentifier"])
-        url = (
-            metrics_attributes["ingestUrl"]
-            + f"/syncMetrics/resync/{event_id}/kind/{kind_identifier}"
-        )
-        headers = await self.auth.headers()
-        response = await self.client.put(
-            url,
-            headers=headers,
-            json={
-                "syncKindMetrics": kind_metrics,
-            },
-        )
-        handle_port_status_code(response, should_log=False)
-        logger.debug("Finished PUT metrics request")
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
@@ -416,6 +379,26 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response, should_log=should_log)
         logger.debug(f"Examples for kind {kind} successfully ingested")
+
+    async def calculate_mapping(
+        self, resource: dict[str, Any], example: dict[str, Any]
+    ) -> list[Any]:
+        """Evaluate a resource mapping against one raw item in the data-source-processor.
+
+        Returns the mapped entities, validated against their blueprints; an entry that failed
+        validation is the validation error message instead of an entity.
+        """
+        response = await self.client.post(
+            f"{self.auth.api_url}/integration/mapping-calculation",
+            headers=await self.auth.headers(),
+            json={
+                "integrationType": self.auth.integration_type,
+                "examples": {resource["kind"]: make_json_compatible(example)},
+                "mapping": {"resources": [resource]},
+            },
+        )
+        handle_port_status_code(response, should_raise=True)
+        return response.json().get("result", [])
 
     async def _delete_current_integration(self) -> httpx.Response:
         logger.info(f"Deleting integration with id: {self.integration_identifier}")

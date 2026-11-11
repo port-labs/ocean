@@ -79,7 +79,7 @@ def mock_integration_config() -> IntegrationConfiguration:
     config.actions_processor = MagicMock()
     config.actions_processor.enabled = False
     config.integration.incremental_sync_enabled = False
-    config.processing_mode = ProcessingMode.ocean_core
+    config.processing_mode = ProcessingMode.dsp
     return config
 
 
@@ -423,7 +423,7 @@ async def test_empty_setup_integration_exists(
         "actionsProcessingEnabled": False,
         "incrementalSyncEnabled": False,
         "changelogDestination": {},
-        "processingMode": ProcessingMode.ocean_core,
+        "processingMode": ProcessingMode.dsp,
     }
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
@@ -899,7 +899,7 @@ async def test_verify_patches_incremental_sync_enabled_when_diverged(
         "actionsProcessingEnabled": False,
         "incrementalSyncEnabled": False,
         "changelogDestination": {},
-        "processingMode": ProcessingMode.ocean_core,
+        "processingMode": ProcessingMode.dsp,
     }
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)

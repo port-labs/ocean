@@ -47,6 +47,10 @@ class IntegrationSubProcessFailedException(BaseOceanException):
     pass
 
 
+class DSPProcessingUnavailableException(BaseOceanException):
+    pass
+
+
 class ModeNotSupportedException(BaseOceanException):
     def __init__(self, integration_name: str, mode: str):
         super().__init__(f"{integration_name} does not support {mode} mode")
