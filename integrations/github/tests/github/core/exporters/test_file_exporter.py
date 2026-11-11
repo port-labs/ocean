@@ -1563,12 +1563,22 @@ class TestFileProcessorMultiDocumentYaml:
         assert result["content"] == ["item1", "item2"]
 
 
-INCREMENTAL_SINCE = datetime(2026, 10, 1, tzinfo=timezone.utc)
-PUSHED_CHANGE = RepositoryChange(INCREMENTAL_SINCE, RepositoryChangeField.PUSHED)
+CHANGED_SINCE = datetime(2026, 10, 1, tzinfo=timezone.utc)
+PUSHED_CHANGE = RepositoryChange(CHANGED_SINCE, RepositoryChangeField.PUSHED)
+
+
+def mock_commit_pages(*pages: List[Dict[str, Any]]) -> MagicMock:
+    """``send_paginated_request`` stand-in yielding each page; records its calls."""
+
+    async def _pages(*_: Any, **__: Any) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        for page in pages:
+            yield page
+
+    return MagicMock(side_effect=_pages)
 
 
 @pytest.mark.asyncio
-class TestRestFileExporterIncremental:
+class TestRestFileExporterChangedSince:
     """Repo names are unique per test because cached methods key on args only."""
 
     async def test_get_changed_paths_since_returns_all_changed_filenames(
@@ -1583,24 +1593,28 @@ class TestRestFileExporterIncremental:
                 {"filename": "c/port.yml", "status": "removed", "sha": "s3"},
             ],
         }
-        with patch.object(
-            rest_client,
-            "send_api_request",
-            AsyncMock(side_effect=[[{"sha": "base-sha"}], compare_response]),
-        ) as mock_request:
+        commits_mock = mock_commit_pages([{"sha": "base-sha"}, {"sha": "older"}])
+        with (
+            patch.object(rest_client, "send_paginated_request", commits_mock),
+            patch.object(
+                rest_client,
+                "send_api_request",
+                AsyncMock(return_value=compare_response),
+            ) as mock_request,
+        ):
             changed = await exporter.get_changed_paths_since(
                 "test-org",
                 "inc-repo-changed",
                 "main",
-                RepositoryChange.pushed(INCREMENTAL_SINCE),
+                RepositoryChange.pushed(CHANGED_SINCE),
             )
 
         assert changed == {"a/port.yml", "b/port.yml", "c/port.yml"}
-        assert mock_request.await_count == 2
-        base_call, compare_call = mock_request.await_args_list
+        commits_mock.assert_called_once()
+        base_call = commits_mock.call_args
         assert base_call.args[0].endswith("/repos/test-org/inc-repo-changed/commits")
         assert base_call.kwargs["params"]["sha"] == "main"
-        assert base_call.kwargs["params"]["per_page"] == 1
+        (compare_call,) = mock_request.await_args_list
         assert compare_call.args[0].endswith(
             "/repos/test-org/inc-repo-changed/compare/base-sha...main"
         )
@@ -1609,18 +1623,20 @@ class TestRestFileExporterIncremental:
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
-        with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=[])
-        ) as mock_request:
+        compare_mock = AsyncMock()
+        with (
+            patch.object(rest_client, "send_paginated_request", mock_commit_pages()),
+            patch.object(rest_client, "send_api_request", compare_mock),
+        ):
             changed = await exporter.get_changed_paths_since(
                 "test-org",
                 "inc-repo-no-base",
                 "main",
-                RepositoryChange.pushed(INCREMENTAL_SINCE),
+                RepositoryChange.pushed(CHANGED_SINCE),
             )
 
         assert changed is None
-        mock_request.assert_awaited_once()
+        compare_mock.assert_not_awaited()
 
     @pytest.mark.parametrize(
         "compare_response",
@@ -1641,16 +1657,23 @@ class TestRestFileExporterIncremental:
     ) -> None:
         exporter = RestFileExporter(rest_client)
         repo_name = f"inc-repo-untrusted-{compare_response.get('status')}-{len(compare_response['files'])}"
-        with patch.object(
-            rest_client,
-            "send_api_request",
-            AsyncMock(side_effect=[[{"sha": "base-sha"}], compare_response]),
+        with (
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                mock_commit_pages([{"sha": "base-sha"}]),
+            ),
+            patch.object(
+                rest_client,
+                "send_api_request",
+                AsyncMock(return_value=compare_response),
+            ),
         ):
             changed = await exporter.get_changed_paths_since(
                 "test-org",
                 repo_name,
                 "main",
-                RepositoryChange.pushed(INCREMENTAL_SINCE),
+                RepositoryChange.pushed(CHANGED_SINCE),
             )
 
         assert changed is None
@@ -1660,26 +1683,28 @@ class TestRestFileExporterIncremental:
     ) -> None:
         """A push to another branch leaves this branch identical: nothing to fetch."""
         exporter = RestFileExporter(rest_client)
-        with patch.object(
-            rest_client,
-            "send_api_request",
-            AsyncMock(
-                side_effect=[
-                    [{"sha": "base-sha"}],
-                    {"status": "identical", "files": []},
-                ]
+        with (
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                mock_commit_pages([{"sha": "base-sha"}]),
+            ),
+            patch.object(
+                rest_client,
+                "send_api_request",
+                AsyncMock(return_value={"status": "identical", "files": []}),
             ),
         ):
             changed = await exporter.get_changed_paths_since(
                 "test-org",
                 "inc-repo-identical",
                 "main",
-                RepositoryChange.pushed(INCREMENTAL_SINCE),
+                RepositoryChange.pushed(CHANGED_SINCE),
             )
 
         assert changed == set()
 
-    async def test_collect_matched_files_incremental_uses_tree_for_changed_matches(
+    async def test_collect_matched_files_changed_since_uses_tree_for_changed_matches(
         self, rest_client: GithubRestClient
     ) -> None:
         """Changed matches are routed by tree size, exactly like a full scan."""
@@ -1730,7 +1755,7 @@ class TestRestFileExporterIncremental:
         assert [f["file_path"] for f in graphql_files] == ["small.txt"]
         assert [f["file_path"] for f in rest_files] == ["medium.txt"]
 
-    async def test_collect_matched_files_incremental_skips_tree_without_matches(
+    async def test_collect_matched_files_changed_since_skips_tree_without_matches(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
@@ -1764,7 +1789,7 @@ class TestRestFileExporterIncremental:
         assert graphql_files == []
         assert rest_files == []
 
-    async def test_collect_matched_files_incremental_falls_back_to_tree(
+    async def test_collect_matched_files_changed_since_falls_back_to_tree(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
@@ -1868,22 +1893,22 @@ class TestRestFileExporterIncremental:
 async def test_get_changed_paths_since_cache_is_keyed_by_field(
     rest_client: GithubRestClient,
 ) -> None:
-    """Same repo and cursor time but a different field must not reuse the cached diff."""
+    """Same repo and since time but a different field must not reuse the cached diff."""
     exporter = RestFileExporter(rest_client)
     responses = [
-        [{"sha": "base-sha"}],
         {"status": "ahead", "files": [{"filename": "a.yml", "status": "modified"}]},
-        [{"sha": "base-sha"}],
         {"status": "ahead", "files": [{"filename": "b.yml", "status": "modified"}]},
     ]
+    commits_mock = mock_commit_pages([{"sha": "base-sha"}])
     with (
         patch.object(ocean.app, "cache_provider", InMemoryCacheProvider()),
+        patch.object(rest_client, "send_paginated_request", commits_mock),
         patch.object(
             rest_client, "send_api_request", AsyncMock(side_effect=responses)
         ) as mock_request,
     ):
-        pushed = RepositoryChange.pushed(INCREMENTAL_SINCE)
-        updated = RepositoryChange.updated(INCREMENTAL_SINCE)
+        pushed = RepositoryChange.pushed(CHANGED_SINCE)
+        updated = RepositoryChange.updated(CHANGED_SINCE)
         first = await exporter.get_changed_paths_since(
             "test-org", "inc-repo-keyed", "main", pushed
         )
@@ -1897,7 +1922,8 @@ async def test_get_changed_paths_since_cache_is_keyed_by_field(
     assert first == {"a.yml"}
     assert cached == {"a.yml"}
     assert other_field == {"b.yml"}
-    assert mock_request.await_count == 4
+    assert commits_mock.call_count == 2
+    assert mock_request.await_count == 2
 
 
 @pytest.mark.asyncio

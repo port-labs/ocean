@@ -31,6 +31,13 @@ class RepoListSelector(Protocol):
 RepoSelection = AsyncIterator[Tuple[str, str, Dict[str, Any]]]
 
 
+def _changed_since_matches(
+    changed_since: Optional[RepositoryChange], repo: Dict[str, Any]
+) -> bool:
+    """True when there is no ``changed_since`` filter or ``repo`` changed since then."""
+    return changed_since is None or changed_since.matches(repo)
+
+
 class RepositorySelector:
     """Resolve the repositories a selector points at, as (repo_name, branch, repo_obj).
 
@@ -57,7 +64,7 @@ class RepositorySelector:
         """Repositories the selector resolves to, optionally only those changed since ``changed_since``."""
         if selector.repos:
             async for repo in self._explicit_repos(selector, repo_exporter, org_login):
-                if changed_since is None or changed_since.matches(repo[2]):
+                if _changed_since_matches(changed_since, repo[2]):
                     yield repo
                 else:
                     logger.debug(f"Skipping unchanged repository {repo[0]}")

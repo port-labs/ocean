@@ -445,33 +445,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return batch_files
 
-    async def list_commits_until(
-        self,
-        organization: str,
-        repo_name: str,
-        branch: str,
-        until: datetime,
-        per_page: int = 30,
-    ) -> List[Dict[str, Any]]:
-        """Commits reachable from ``branch`` with committer date at or before ``until``.
-
-        Filters by *committer date* among reachable commits, not the historical
-        branch tip at ``until``. Callers that build on the result must treat the
-        outcome as untrusted when history was pushed or merged out of order.
-        """
-        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
-        params = {
-            "sha": branch,
-            "until": until.astimezone(timezone.utc).isoformat(),
-            "per_page": per_page,
-        }
-        commits = await self.client.send_api_request(
-            resource,
-            params=params,
-            ignored_errors=self._IGNORED_ERRORS,
-        )
-        return cast(List[Dict[str, Any]], commits or [])
-
     @cache_coroutine_result()
     async def get_changed_paths_since(
         self,
@@ -507,18 +480,27 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> Optional[str]:
         """Newest commit on ``branch`` with committer date at or before ``until``.
 
-        This is not the historical branch tip at ``until``. No such commit means
-        there is nothing safe to diff, so the caller scans the full tree.
+        Filters by *committer date* among reachable commits, so this is not the
+        historical branch tip at ``until``. No such commit means there is nothing
+        safe to diff, so the caller scans the full tree.
+
+        GitHub lists commits newest first, so only the first item of the first
+        page is needed; the remaining pages are never requested.
         """
-        commits = await self.list_commits_until(
-            organization, repo_name, branch, until, per_page=1
+        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/commits"
+        params = {
+            "sha": branch,
+            "until": until.astimezone(timezone.utc).isoformat(),
+        }
+        async for commits in self.client.send_paginated_request(
+            resource, params=params, ignored_errors=self._IGNORED_ERRORS
+        ):
+            return commits[0]["sha"]
+
+        logger.info(
+            f"No base commit for {repo_name}@{branch} before {until.isoformat()}; using full tree"
         )
-        if not commits:
-            logger.info(
-                f"No base commit for {repo_name}@{branch} before {until.isoformat()}; using full tree"
-            )
-            return None
-        return commits[0]["sha"]
+        return None
 
     async def _files_from_trusted_compare(
         self, organization: str, repo_name: str, base_sha: str, branch: str

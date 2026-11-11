@@ -4,20 +4,20 @@ import pytest
 
 from github.helpers.repository_change import RepositoryChange, RepositoryChangeField
 
-CURSOR = datetime(2026, 10, 1, tzinfo=timezone.utc)
+SINCE = datetime(2026, 10, 1, tzinfo=timezone.utc)
 
 
-def test_constructors_return_none_without_cursor() -> None:
+def test_constructors_return_none_without_since() -> None:
     assert RepositoryChange.updated(None) is None
     assert RepositoryChange.pushed(None) is None
 
 
 def test_constructors_set_field() -> None:
-    assert RepositoryChange.updated(CURSOR) == RepositoryChange(
-        CURSOR, RepositoryChangeField.UPDATED
+    assert RepositoryChange.updated(SINCE) == RepositoryChange(
+        SINCE, RepositoryChangeField.UPDATED
     )
-    assert RepositoryChange.pushed(CURSOR) == RepositoryChange(
-        CURSOR, RepositoryChangeField.PUSHED
+    assert RepositoryChange.pushed(SINCE) == RepositoryChange(
+        SINCE, RepositoryChangeField.PUSHED
     )
 
 
@@ -26,34 +26,34 @@ def test_constructors_set_field() -> None:
     [
         # pushed_at drives content kinds, regardless of updated_at.
         (
-            RepositoryChange.pushed(CURSOR),
+            RepositoryChange.pushed(SINCE),
             {"pushed_at": "2026-10-02T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"},
             True,
         ),
         (
-            RepositoryChange.pushed(CURSOR),
+            RepositoryChange.pushed(SINCE),
             {"pushed_at": "2026-09-01T00:00:00Z", "updated_at": "2026-10-05T00:00:00Z"},
             False,
         ),
         # updated_at drives the repository kind, regardless of pushed_at.
         (
-            RepositoryChange.updated(CURSOR),
+            RepositoryChange.updated(SINCE),
             {"pushed_at": "2026-10-02T00:00:00Z", "updated_at": "2026-09-01T00:00:00Z"},
             False,
         ),
         (
-            RepositoryChange.updated(CURSOR),
+            RepositoryChange.updated(SINCE),
             {"updated_at": "2026-10-01T00:00:00Z"},
             True,
         ),
         # Unknown timestamp is treated as changed so nothing is silently skipped.
-        (RepositoryChange.pushed(CURSOR), {}, True),
+        (RepositoryChange.pushed(SINCE), {}, True),
     ],
     ids=[
         "pushed-after",
         "pushed-before",
         "updated-before",
-        "updated-at-cursor",
+        "updated-at-since",
         "missing-timestamp",
     ],
 )

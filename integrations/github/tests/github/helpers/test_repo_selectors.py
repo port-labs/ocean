@@ -151,7 +151,7 @@ class TestPushedSinceFiltering:
         called_options = repo_exporter.get_paginated_resources.call_args.args[0]
         assert called_options["changed_since"] == RepositoryChange.pushed(pushed_since)
 
-    async def test_all_selector_omits_pushed_since_on_full_resync(self) -> None:
+    async def test_all_selector_omits_changed_since_without_filter(self) -> None:
         selector = RepositorySourceModel.parse_obj({})
         repo_exporter = MagicMock()
         repo_exporter.get_paginated_resources = _make_paginated_resources_mock([[]])
