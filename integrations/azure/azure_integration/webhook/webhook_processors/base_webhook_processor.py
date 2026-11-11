@@ -2,16 +2,13 @@ from abc import abstractmethod
 from dataclasses import dataclass
 
 from azure_integration.overrides import (
-    AzureCustomKindResourceConfig,
-    AzureCloudResourceConfig,
-    AzureResourceGroupResourceConfig,
-    AzureSubscriptionResourceConfig,
     AzurePortAppConfig,
 )
 from azure_integration.utils import (
     get_resource_configs_with_resource_kind,
 )
 from port_ocean.context.event import event as port_event
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -38,12 +35,7 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
 
     def _get_matching_resource_configs(
         self, resource_type: str
-    ) -> list[
-        AzureResourceGroupResourceConfig
-        | AzureSubscriptionResourceConfig
-        | AzureCloudResourceConfig
-        | AzureCustomKindResourceConfig
-    ]:
+    ) -> list[ResourceConfig]:
         return get_resource_configs_with_resource_kind(
             resource_kind=resource_type,
             resource_configs=cast(

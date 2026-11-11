@@ -1,0 +1,17 @@
+{
+  "identifier": "ou-4cXmcpnKmKifHe4U",
+  "title": "jane.doe@example.com",
+  "blueprint": "terraformCloudOrganizationMembership",
+  "properties": {
+    "email": "jane.doe@example.com",
+    "status": "active",
+    "createdAt": "2026-03-18T09:27:14.458Z",
+    "userId": "user-3vrswiZfU32oE296"
+  },
+  "relations": {
+    "organization": "Ocean-Test",
+    "teams": [
+      "team-aVV5S82NesrvqUje"
+    ]
+  }
+}

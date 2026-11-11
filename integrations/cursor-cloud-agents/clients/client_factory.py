@@ -17,5 +17,6 @@ def create_cursor_agents_client() -> CursorAgentsClient:
         api_host=integration_config["cursor_api_host"],
         api_key=integration_config["cursor_api_key"],
         console_host=integration_config["cursor_console_host"],
+        request_timeout_seconds=ocean.config.client_timeout,
     )
     return _cursor_agents_client

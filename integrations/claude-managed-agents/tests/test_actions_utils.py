@@ -3,9 +3,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from anthropic.types.beta_monetary_amount import BetaMonetaryAmount
 
-from actions.types import list_cost_to_usd
-from actions.utils import (
+from claude_managed_agents.actions.types import list_cost_to_usd
+from claude_managed_agents.actions.utils import (
     build_external_id,
     build_session_link,
     normalize_session_config,
@@ -39,12 +40,33 @@ def test_build_session_link_uses_configured_console_host() -> None:
 
 
 def test_list_cost_to_usd() -> None:
-    assert list_cost_to_usd({"amount": "187", "currency": "USD"}) == 1.87
-    assert list_cost_to_usd({"amount": "50", "currency": "USD"}) == 0.5
-    assert list_cost_to_usd({"amount": "0", "currency": "USD"}) == 0.0
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate({"amount": "187", "currency": "USD"})
+        )
+        == 1.87
+    )
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate({"amount": "50", "currency": "USD"})
+        )
+        == 0.5
+    )
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate({"amount": "0", "currency": "USD"})
+        )
+        == 0.0
+    )
+    assert (
+        list_cost_to_usd(
+            BetaMonetaryAmount.model_validate(
+                {"amount": "not-a-number", "currency": "USD"}
+            )
+        )
+        is None
+    )
     assert list_cost_to_usd(None) is None
-    assert list_cost_to_usd({"amount": "not-a-number"}) is None
-    assert list_cost_to_usd({}) is None
 
 
 @pytest.mark.asyncio
@@ -52,7 +74,7 @@ async def test_normalize_session_config_injects_github_pat() -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {"github_authorization_token": "ghp_test"}
 
-    with patch("actions.utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
         api_config = await normalize_session_config(
             {
                 "resources": [
@@ -69,7 +91,7 @@ async def test_normalize_session_config_requires_github_pat() -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {}
 
-    with patch("actions.utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
         with pytest.raises(ActionExecutionError, match="github_authorization_token"):
             await normalize_session_config(
                 {
@@ -88,7 +110,7 @@ async def test_normalize_session_config_skips_repos_with_existing_token() -> Non
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {}
 
-    with patch("actions.utils.ocean", mock_ocean):
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
         api_config = await normalize_session_config(
             {
                 "resources": [
@@ -102,3 +124,43 @@ async def test_normalize_session_config_skips_repos_with_existing_token() -> Non
         )
 
     assert api_config["resources"][0]["authorization_token"] == "already_set"
+
+
+@pytest.mark.asyncio
+async def test_normalize_session_config_prefers_resolved_mount_token() -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"github_authorization_token": "integration_pat"}
+
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
+        api_config = await normalize_session_config(
+            {
+                "resources": [
+                    {"type": "github_repository", "url": "https://github.com/org/repo"}
+                ]
+            },
+            mount_token="resolved_pat",
+        )
+
+    assert api_config["resources"][0]["authorization_token"] == "resolved_pat"
+
+
+@pytest.mark.asyncio
+async def test_normalize_session_config_keeps_resource_token_over_mount() -> None:
+    mock_ocean = MagicMock()
+    mock_ocean.integration_config = {"github_authorization_token": "integration_pat"}
+
+    with patch("claude_managed_agents.actions.utils.ocean", mock_ocean):
+        api_config = await normalize_session_config(
+            {
+                "resources": [
+                    {
+                        "type": "github_repository",
+                        "url": "https://github.com/org/repo",
+                        "authorization_token": "resource_token",
+                    }
+                ]
+            },
+            mount_token="resolved_pat",
+        )
+
+    assert api_config["resources"][0]["authorization_token"] == "resource_token"

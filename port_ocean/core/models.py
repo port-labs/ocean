@@ -143,6 +143,7 @@ class IntegrationFeatureFlag(StrEnum):
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
     LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
     LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED = "LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED"
+    AWS_V3_CUSTOM_KINDS_ENABLED = "AWS_V3_CUSTOM_KINDS_ENABLED"
 
 
 class ProcessingMode(StrEnum):
@@ -302,6 +303,9 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
     port_access_token: str | None = Field(default=None, alias="portAccessToken")
     execution_identity: ResolvedExecutionIdentity | None = Field(
         default=None, alias="executionIdentity"
+    )
+    encrypted_properties: list[str] | None = Field(
+        default=None, alias="encryptedProperties"
     )
 
     @root_validator(skip_on_failure=True)

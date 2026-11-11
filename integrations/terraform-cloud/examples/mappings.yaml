@@ -24,3 +24,74 @@ resources:
             errorMessage: .attributes."error-message"
           relations:
             workspace: .relationships.workspace.data.id
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformCloudTeam"'
+          properties:
+            visibility: .attributes.visibility
+            usersCount: .attributes."users-count"
+            description: .attributes.description
+            ssoTeamId: .attributes."sso-team-id"
+            organizationAccess: .attributes."organization-access"
+          relations:
+            organization: .relationships.organization.data.id
+  - kind: organization-membership
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.email
+          blueprint: '"terraformCloudOrganizationMembership"'
+          properties:
+            email: .attributes.email
+            status: .attributes.status
+            createdAt: .attributes."created-at"
+            userId: .relationships.user.data.id
+          relations:
+            organization: .relationships.organization.data.id
+            teams: '[.relationships.teams.data[].id]'
+  - kind: team-workspace-access
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '"\(.relationships.team.data.id) → \(.relationships.workspace.data.id)"'
+          blueprint: '"terraformCloudTeamWorkspaceAccess"'
+          properties:
+            access: .attributes.access
+            runs: .attributes.runs
+            variables: .attributes.variables
+            stateVersions: .attributes."state-versions"
+            sentinelMocks: .attributes."sentinel-mocks"
+            workspaceLocking: .attributes."workspace-locking"
+            runTasks: .attributes."run-tasks"
+            policyOverrides: .attributes."policy-overrides"
+          relations:
+            team: .relationships.team.data.id
+            workspace: .relationships.workspace.data.id
+  - kind: team-project-access
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '"\(.relationships.team.data.id) → \(.relationships.project.data.id)"'
+          blueprint: '"terraformCloudTeamProjectAccess"'
+          properties:
+            access: .attributes.access
+            projectAccess: .attributes."project-access"
+            workspaceAccess: .attributes."workspace-access"
+          relations:
+            team: .relationships.team.data.id
+            project: .relationships.project.data.id

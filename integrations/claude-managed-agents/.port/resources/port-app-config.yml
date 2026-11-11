@@ -96,6 +96,7 @@ resources:
             inputTokens: .usage.input_tokens
             outputTokens: .usage.output_tokens
             cacheReadInputTokens: .usage.cache_read_input_tokens
+            costUsd: (.usage.list_cost.amount | tonumber) / 100
             activeSeconds: .stats.active_seconds
             durationSeconds: .stats.duration_seconds
             agentVersion: .agent.version

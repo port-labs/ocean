@@ -207,7 +207,10 @@ def test_deployment_query_params_generate_query_params_includes_updated_after() 
     params = GitlabDeploymentQueryParams(
         updated_after="2024-01-15T10:00:00Z"
     ).generate_query_params()
-    assert params == {"updated_after": "2024-01-15T10:00:00Z"}
+    assert params == {
+        "updated_after": "2024-01-15T10:00:00Z",
+        "order_by": "updated_at",
+    }
 
 
 def test_deployment_query_params_generate_query_params_includes_updated_before() -> (
@@ -216,7 +219,10 @@ def test_deployment_query_params_generate_query_params_includes_updated_before()
     params = GitlabDeploymentQueryParams(
         updated_before="2024-06-01T00:00:00Z"
     ).generate_query_params()
-    assert params == {"updated_before": "2024-06-01T00:00:00Z"}
+    assert params == {
+        "updated_before": "2024-06-01T00:00:00Z",
+        "order_by": "updated_at",
+    }
 
 
 def test_deployment_query_params_updated_after_rejects_missing_timezone() -> None:

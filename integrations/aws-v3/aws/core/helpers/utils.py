@@ -1,3 +1,4 @@
+import json
 from typing import Any, Callable, Awaitable, TypeVar, cast
 from aiobotocore.session import AioSession
 from aws.auth.region_resolver import RegionResolver
@@ -6,6 +7,26 @@ import asyncio
 from botocore.exceptions import ClientError
 
 T = TypeVar("T")
+
+
+def parse_json_object_dict(raw: Any) -> dict[str, Any]:
+    """Parse JSON (or pass through a dict) into a ``dict[str, Any]``.
+
+    Invalid, missing, or non-object payloads yield an empty dict so callers
+    can tolerate per-item parse failures without failing a batch.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, str) or not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Failed to parse JSON object, using empty dict")
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return parsed
 
 
 def require_aws_resource(
@@ -28,6 +49,21 @@ def require_aws_resource(
     )
 
 
+def _general_service_exception_message_contains(
+    exception: Exception, patterns: tuple[str, ...]
+) -> bool:
+    response = getattr(exception, "response", None)
+    if not isinstance(response, dict):
+        return False
+
+    error = response.get("Error", {})
+    if error.get("Code") != "GeneralServiceException":
+        return False
+
+    message = error.get("Message", "").lower()
+    return any(pattern in message for pattern in patterns)
+
+
 def is_access_denied_exception(e: Exception) -> bool:
     access_denied_error_codes = [
         "AccessDenied",
@@ -37,8 +73,18 @@ def is_access_denied_exception(e: Exception) -> bool:
     response = getattr(e, "response", None)
     if isinstance(response, dict):
         error_code = response.get("Error", {}).get("Code")
-        return error_code in access_denied_error_codes
-    return False
+        if error_code in access_denied_error_codes:
+            return True
+    return _general_service_exception_message_contains(
+        e,
+        (
+            "access denied",
+            "accessdenied",
+            "unauthorized",
+            "forbidden",
+            "permission denied",
+        ),
+    )
 
 
 def is_resource_not_found_exception(e: Exception) -> bool:
@@ -69,7 +115,46 @@ def is_resource_not_found_exception(e: Exception) -> bool:
     response = getattr(e, "response", None)
     if isinstance(response, dict):
         error_code = response.get("Error", {}).get("Code")
-        return error_code in resource_not_found_error_codes
+        if error_code in resource_not_found_error_codes:
+            return True
+    return _general_service_exception_message_contains(
+        e,
+        (
+            "not found",
+            "notfound",
+            "does not exist",
+            "resourcenotfound",
+        ),
+    )
+
+
+def is_cloud_control_type_unavailable_exception(e: Exception) -> bool:
+    """Return True when Cloud Control cannot handle the requested type in this region.
+
+    Covers types that are not registered, not available, or do not support the
+    requested Cloud Control action (typically ListResources / GetResource).
+    """
+    unavailable_error_codes = [
+        "TypeNotFoundException",
+        "CFNRegistryException",
+        "UnsupportedActionException",
+        "ResourceNotExistsError",
+    ]
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code")
+        if error_code in unavailable_error_codes:
+            return True
+        if error_code == "GeneralServiceException":
+            error_message = response.get("Error", {}).get("Message", "").lower()
+            return any(
+                pattern in error_message
+                for pattern in (
+                    "type not found",
+                    "is not registered",
+                    "resource type is not available in this region",
+                )
+            )
     return False
 
 

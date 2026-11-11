@@ -8,12 +8,12 @@ from port_ocean.helpers.retry import RetryConfig, RetryTransport
 
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
-    AzureDevOpsRateLimiter,
     LIMIT_HEADER,
     LIMIT_REMAINING_HEADER,
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.client.rate_limit_wrapper import AzureDevOpsRateLimitWrapper
 
 
 class AzureDevOpsRetryTransport(RetryTransport):
@@ -37,7 +37,7 @@ class AzureDevOpsRetryTransport(RetryTransport):
         retry_status_codes: Optional[typing.Iterable[int]] = None,
         retry_config: Optional[RetryConfig] = None,
         logger: Optional[Any] = None,
-        rate_limiter: Optional[AzureDevOpsRateLimiter] = None,
+        rate_limiter: Optional[AzureDevOpsRateLimitWrapper] = None,
         auth_header_refresher: Optional[
             Callable[[], Coroutine[Any, Any, dict[str, str]]]
         ] = None,
@@ -66,12 +66,7 @@ class AzureDevOpsRetryTransport(RetryTransport):
         if self._rate_limiter is None:
             return
 
-        await self._rate_limiter.update_from_headers(response.headers)
-        if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-            await self._rate_limiter.signal_throttle(
-                ADO_RATE_LIMIT_WINDOW_SECONDS,
-                reason="HTTP 429",
-            )
+        await self._rate_limiter.notify_transport_rate_limit_retry(response)
 
     async def before_retry_async(
         self,
@@ -125,7 +120,7 @@ class AzureDevOpsRetryTransport(RetryTransport):
         status_code: Optional[int] = None,
     ) -> float:
         if status_code in {HTTPStatus.TOO_MANY_REQUESTS, None}:
-            return ADO_RATE_LIMIT_WINDOW_SECONDS
+            return self._apply_sync_tier_jitter(float(ADO_RATE_LIMIT_WINDOW_SECONDS))
         return super()._calculate_sleep(attempts_made, headers, status_code)
 
     def _log_before_retry(
@@ -142,6 +137,7 @@ class AzureDevOpsRetryTransport(RetryTransport):
             if retry_attempt is not None and max_retry_attempts is not None
             else ""
         )
+        multiplier = self._retry_config.sync_tier_multiplier
 
         if response and response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
             logger.bind(
@@ -154,8 +150,13 @@ class AzureDevOpsRetryTransport(RetryTransport):
                 method=request.method,
                 url=str(request.url),
                 sleep_time=sleep_time,
+                sync_tier_multiplier=multiplier,
+                rate_limit_window_seconds=ADO_RATE_LIMIT_WINDOW_SECONDS,
             ).warning(
-                f"Azure DevOps rate limit hit, retrying {request.method} {request.url} in {sleep_time}s{retry_context}"
+                f"Azure DevOps rate limit hit, retrying {request.method} {request.url} "
+                f"in {sleep_time}s "
+                f"(window={ADO_RATE_LIMIT_WINDOW_SECONDS}s "
+                f"sync_tier_multiplier={multiplier}){retry_context}"
             )
         elif response is None and error is not None:
             logger.bind(
@@ -165,7 +166,12 @@ class AzureDevOpsRetryTransport(RetryTransport):
                 method=request.method,
                 url=str(request.url),
                 sleep_time=sleep_time,
+                sync_tier_multiplier=multiplier,
+                rate_limit_window_seconds=ADO_RATE_LIMIT_WINDOW_SECONDS,
             ).warning(
-                f"Azure DevOps transport error hit, retrying {request.method} {request.url} in {sleep_time}s{retry_context}"
+                f"Azure DevOps transport error hit, retrying {request.method} {request.url} "
+                f"in {sleep_time}s "
+                f"(window={ADO_RATE_LIMIT_WINDOW_SECONDS}s "
+                f"sync_tier_multiplier={multiplier}){retry_context}"
             )
         super()._log_before_retry(request, sleep_time, response, error)

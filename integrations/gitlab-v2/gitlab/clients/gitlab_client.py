@@ -10,6 +10,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from port_ocean.utils.cache import cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
@@ -256,6 +257,10 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
 
+        The ``GET /projects`` listing is cached (GitHub-style parent cache).
+        Languages, search queries, and included files are applied after the
+        cache so kinds that only need the project list still reuse it.
+
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
             max_concurrent: Maximum number of concurrent requests
@@ -263,14 +268,7 @@ class GitLabClient:
             search_queries: Optional list of search queries to execute for each project
             included_files: List of file paths to fetch and attach to each project
         """
-        request_params = {**self.DEFAULT_PARAMS}
-        if params:
-            request_params.update(params)
-
-        async for projects_batch in self.rest.get_paginated_resource(
-            "projects", params=request_params
-        ):
-            logger.info(f"Received batch with {len(projects_batch)} projects")
+        async for projects_batch in self._fetch_projects(params=params):
             enriched_batch = projects_batch
 
             if include_languages:
@@ -301,15 +299,32 @@ class GitLabClient:
                 )
                 enriched_batch = await enricher.enrich_batch(enriched_batch)
 
+            if enriched_batch:
+                yield enriched_batch
+
+    @cache_iterator_result()
+    async def _fetch_projects(
+        self,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Cached ``GET /projects`` pages (no per-kind enrichment)."""
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
+        async for projects_batch in self.rest.get_paginated_resource(
+            "projects", params=request_params
+        ):
+            logger.info(f"Received batch with {len(projects_batch)} projects")
             # Exclude projects that are pending deletion — their `project_destroy`
             # webhook only fires after the grace period (7 days on paid GitLab.com
             # tiers), so they would otherwise linger in Port until then.
             active_batch = [
-                p for p in enriched_batch if not p.get("marked_for_deletion_at")
+                p for p in projects_batch if not p.get("marked_for_deletion_at")
             ]
-            if len(active_batch) < len(enriched_batch):
+            if len(active_batch) < len(projects_batch):
                 logger.info(
-                    f"Filtered out {len(enriched_batch) - len(active_batch)} project(s) pending deletion"
+                    f"Filtered out {len(projects_batch) - len(active_batch)} project(s) pending deletion"
                 )
 
             if active_batch:
@@ -321,9 +336,21 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
+        The ``GET /groups`` listing is cached so kinds that fan out from groups
+        (issues, merge-requests, folders, …) reuse one pagination.
+
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
         """
+        async for groups_batch in self._fetch_groups(params=params):
+            yield groups_batch
+
+    @cache_iterator_result()
+    async def _fetch_groups(
+        self,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Cached ``GET /groups`` pages."""
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)

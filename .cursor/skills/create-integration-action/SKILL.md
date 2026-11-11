@@ -35,8 +35,7 @@ Add an action executor to an existing Ocean integration. To build a whole new in
 Everything Port-facing goes through `ocean.port_client`. The action methods are mixed in from
 `port_ocean/clients/port/mixins/actions_and_workflow_runs.py` — a short file, and the source of
 truth for their current signatures. Read it before writing `execute`; the framework docstrings
-and `docs/framework-guides/docs/framework/features/actions.md` predate it and still describe an
-older API.
+predate it and still describe an older API.
 
 | Method                                  | What it is for                                             |
 | --------------------------------------- | ---------------------------------------------------------- |
@@ -236,6 +235,12 @@ Input `name` values are camelCase and are the keys read from `run.execution_prop
 ]
 ```
 
+Mark inputs that may carry org secrets (for example an API token or `Authorization`
+header value) with `"sensitive": true`. Port only allows `{{ .secrets.* }}` on those
+inputs for claimable workflow `INTEGRATION_ACTION` nodes, and may deliver the whole leaf
+as an AES-GCM ciphertext on claim. Ocean decrypts listed `encryptedProperties` before
+your executor runs, so `run.execution_properties` is already plaintext.
+
 For a webhook action, include a boolean opt-in input like `reportPipelineStatus` (default
 `true`). The webhook processor honors it, letting a user trigger work without Port waiting on
 its outcome. Also confirm `saas.liveEvents.enabled` is `true`.
@@ -244,7 +249,8 @@ Input `type` values across the existing action specs are `string`, `boolean`, `a
 `jqObject` for key-value maps. Compare a few specs (`github`, `azure-devops`,
 `cursor-cloud-agents`) to pick descriptions in house style — `jqObject` descriptions
 conventionally tell the user they can reference trigger data with
-`{{ .trigger.by.user.email }}`.
+`{{ .trigger.by.user.email }}` and org secrets with `{{ .secrets["secret-name"] }}` on
+`sensitive` inputs.
 
 ### Step 5: Write the executor
 
@@ -522,5 +528,3 @@ and this skill trails it.
 - Simplest sync example: `integrations/github/github/actions/external_custom_properties/update_repo_external_custom_properties_executor.py`
 - Richest example (polling, partition key, dual tracking modes):
   `integrations/github/github/actions/dispatch_workflow_executor.py`
-- Framework docs: `docs/framework-guides/docs/framework/features/actions.md` — predates the
-  current client facade, so treat the source as authoritative where they disagree

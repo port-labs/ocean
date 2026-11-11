@@ -1,0 +1,121 @@
+name: Sync dev specs (PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "integrations/**/.port/spec.json"
+
+# Separate workflow — do not add as a required status check.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-dev-specs:
+    name: Merge spec changes into dev-specs
+    runs-on: ubuntu-latest
+    # Optional: does not block other workflows or merge
+    continue-on-error: true
+    # Bot push only works for same-repo PRs
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+
+      - name: Ensure dev-specs base is available
+        id: branch
+        run: |
+          set -euo pipefail
+          BRANCH=dev-specs
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            git fetch origin "${BRANCH}"
+            echo "Fetched origin/${BRANCH}"
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            # Do not push an empty main-based branch yet — the first remote push
+            # should already include this PR's merged specs, so a full upload
+            # cannot race ahead and overwrite them with main's copies.
+            echo "origin/${BRANCH} missing — will create from origin/main on first push"
+            git fetch origin main
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Merge changed specs into dev-specs
+        id: merge
+        env:
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BRANCH_EXISTS: ${{ steps.branch.outputs.exists }}
+        run: |
+          set -euo pipefail
+          BRANCH=dev-specs
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Ensure PR head is reachable for git show / merge-base
+          git fetch --no-tags origin "${PR_SHA}"
+
+          if [ "${BRANCH_EXISTS}" = "true" ]; then
+            git checkout -B "${BRANCH}" "origin/${BRANCH}"
+          else
+            git checkout -B "${BRANCH}" "origin/main"
+          fi
+
+          chmod +x scripts/ci/merge_pr_specs_into_dev_specs.sh
+          scripts/ci/merge_pr_specs_into_dev_specs.sh "${PR_SHA}" "${BASE_SHA}"
+
+          if git diff --cached --quiet; then
+            if [ "${BRANCH_EXISTS}" = "true" ]; then
+              echo "No changes to commit (already up to date on ${BRANCH})."
+              exit 0
+            fi
+            # First create with no staged diff still needs a remote branch so
+            # upload-dev-specs can seed the bucket from main.
+            echo "No PR spec deltas; pushing ${BRANCH} from main to create the branch."
+          else
+            git commit -m "dev-specs: merge spec changes from PR #${PR_NUMBER}"
+          fi
+
+          # Handle concurrent PR jobs racing to push dev-specs
+          for attempt in 1 2 3 4 5; do
+            if git push -u origin "HEAD:${BRANCH}"; then
+              echo "Pushed to ${BRANCH}."
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}), rebasing and retrying..."
+            git fetch origin "${BRANCH}"
+            git pull --rebase origin "${BRANCH}"
+          done
+
+          echo "::error::Failed to push to ${BRANCH} after retries."
+          exit 1
+
+      - name: Comment on conflict
+        if: failure() && steps.merge.outcome == 'failure'
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '### dev-specs sync failed',
+              '',
+              "This PR's `spec.json` changes could not be merged into `dev-specs` (likely a conflict with another open PR).",
+              '',
+              'Dev S3 will not reflect these spec changes until this is resolved.',
+              'This check is **optional** and does not block merge.',
+            ].join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

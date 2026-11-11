@@ -663,6 +663,57 @@ class TestExecutionManager:
         )
 
     @pytest.mark.asyncio
+    async def test_poll_action_runs_fails_when_encrypted_properties_cannot_decrypt(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        execution_manager._high_watermark = 10
+        execution_manager._poll_check_interval_seconds = 0
+        run = generate_mock_wf_node_run(
+            integrationActionExecutionProperties={"api_token": "ciphertext"},
+        )
+        run.encrypted_properties = ["api_token"]
+        claim_count = 0
+
+        async def claim_runs_once(
+            limit: int,
+            visibility_timeout_ms: int,
+            exclude_action_identifiers: list[str] | None = None,
+            exclude_wf_nodes_uid: list[str] | None = None,
+        ) -> list[ActionRun | WorkflowNodeRun]:
+            nonlocal claim_count
+            claim_count += 1
+            if claim_count == 1:
+                return [run]
+            return []
+
+        mock_port_client.claim_pending_runs.side_effect = claim_runs_once
+
+        with patch(
+            "port_ocean.core.handlers.actions.execution_manager.decrypt_encrypted_execution_properties",
+            side_effect=ActionExecutionError(
+                'Failed to decrypt execution property "api_token"'
+                " (org clientSecret mismatch?)"
+            ),
+        ):
+            polling_task: asyncio.Task[None] = asyncio.create_task(
+                execution_manager._poll_action_runs()
+            )
+            await asyncio.sleep(0.1)
+            await execution_manager._gracefully_cancel_task(polling_task)
+
+        assert await execution_manager._get_queues_size() == 0
+        mock_port_client.acknowledge_run.assert_called_once_with(run)
+        mock_port_client.report_run_completed.assert_called_once_with(
+            run,
+            success=False,
+            message='Failed to decrypt execution property "api_token" (org clientSecret mismatch?)',
+            should_raise=False,
+            status_label="Decrypt failed",
+        )
+
+    @pytest.mark.asyncio
     async def test_shutdown_should_cancel_polling_and_waits_for_workers(
         self,
         execution_manager: ExecutionManager,
@@ -930,13 +981,16 @@ class TestExecutionManager:
         mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_execute_run_pauses_before_ack_when_rate_limit_check_requires_auth(
+    async def test_execute_run_acks_before_pausing_when_rate_limit_check_requires_auth(
         self,
         execution_manager: ExecutionManager,
         mock_port_client: MagicMock,
     ) -> None:
         run = generate_mock_wf_node_run()
         executor = execution_manager._actions_executors["test_action"]
+        calls = MagicMock()
+        calls.attach_mock(mock_port_client.acknowledge_run, "acknowledge_run")
+        calls.attach_mock(mock_port_client.patch_run, "patch_run")
 
         with patch.object(
             executor,
@@ -945,10 +999,30 @@ class TestExecutionManager:
         ):
             await execution_manager._execute_run(run)
 
+        assert [c[0] for c in calls.mock_calls] == ["acknowledge_run", "patch_run"]
         mock_port_client.patch_run.assert_called_once_with(
             run, {"reauthRequired": True}, should_raise=False
         )
-        mock_port_client.acknowledge_run.assert_not_called()
+        mock_port_client.report_run_completed.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_run_skips_pause_when_another_worker_acked_the_run(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = generate_mock_wf_node_run()
+        executor = execution_manager._actions_executors["test_action"]
+        mock_port_client.acknowledge_run.side_effect = RunAlreadyAcknowledgedError()
+
+        with patch.object(
+            executor,
+            "is_close_to_rate_limit",
+            side_effect=UserAuthRequiredError(),
+        ):
+            await execution_manager._execute_run(run)
+
+        mock_port_client.patch_run.assert_not_called()
         mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio

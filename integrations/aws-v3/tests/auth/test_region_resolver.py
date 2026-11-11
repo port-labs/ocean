@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiobotocore.session import AioSession
 
 from aws.auth.region_resolver import RegionResolver
-from integration import AWSResourceSelector, RegionPolicy
+from aws_integration.overrides import AWSResourceSelector, RegionPolicy
 
 
 class TestRegionResolver:

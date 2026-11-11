@@ -63,7 +63,7 @@ Integration Development Guidelines
    - Use type hints consistently
 
 8. Backward Compatibility
-   - Maintain existing spec.yaml structure
+   - Maintain existing spec.json structure
    - Preserve response schemas
    - Document breaking changes
    - Version integration changes appropriately

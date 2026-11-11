@@ -619,6 +619,29 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "This option will be ignored if the api selector is set to rest."
         ),
     )
+    include_required_checks_status: bool = Field(
+        title="Include Required Checks Status",
+        alias="includeRequiredChecksStatus",
+        default=False,
+        description=(
+            "Adds the status of the checks GitHub requires for merging to open pull requests: "
+            "required_checks_status (success, failure, pending, no_required_checks or unknown), "
+            "required_checks_failing and required_checks_pending (check names), and "
+            "required_checks_sha (the head commit the status was computed for). "
+            "Costs one extra GraphQL query per 5 open pull requests. "
+            "Requires the graphql api; it is ignored when the api selector is rest."
+        ),
+    )
+    excluded_required_checks: list[str] = Field(
+        title="Excluded Required Checks",
+        alias="excludedRequiredChecks",
+        default_factory=list,
+        description=(
+            "Required check names (glob patterns, e.g. 'aviator/*') to leave out of "
+            "required_checks_status, for checks that should not block it, such as a merge "
+            "queue check that stays pending. Only used with includeRequiredChecksStatus."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:
