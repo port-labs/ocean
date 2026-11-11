@@ -14,7 +14,6 @@ from port_ocean.clients.dsp.lifecycle_http import (
     _lifecycle_http_client as _dsp_lifecycle_http_client,
 )
 from port_ocean.clients.port.utils import _http_client as _port_http_client
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -24,7 +23,6 @@ from port_ocean.core.ocean_types import (
     RESYNC_RESULT,
 )
 from port_ocean.core.utils.utils import validate_result
-from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.exceptions.core import (
     RawObjectValidationException,
     OceanAbortException,
@@ -72,6 +70,31 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+def build_live_event_entry(
+    items: list[Any],
+    operation: LakehouseOperation,
+    resource_index: int,
+    resource: ResourceConfig,
+    *,
+    extraction_timestamp: int | None = None,
+) -> LakehouseDataEntry:
+    """Build a lakehouse entry for a live-event UPSERT/DELETE payload."""
+    return build_lakehouse_data_entry(
+        items=items,
+        metadata=LakehouseDataEntryMetadata(
+            operation=operation,
+            resource_index=resource_index,
+            extraction_timestamp=(
+                extraction_timestamp
+                if extraction_timestamp is not None
+                else int(time.time() * 1000)
+            ),
+            selector_hash=selector_hash_from_resource(resource),
+        ),
+        export_env_variables=resource.selector.export_env_variables,
+    )
 
 
 class _UnsetBatchEventId:
@@ -150,15 +173,12 @@ async def post_raw_kind_to_lakehouse(
 
     extraction_timestamp = int(time.time() * 1000)
     data_entries = [
-        build_lakehouse_data_entry(
-            items=results,
-            metadata=LakehouseDataEntryMetadata(
-                operation=operation,
-                resource_index=resource_index,
-                extraction_timestamp=extraction_timestamp,
-                selector_hash=selector_hash_from_resource(resource_config),
-            ),
-            export_env_variables=resource_config.selector.export_env_variables,
+        build_live_event_entry(
+            results,
+            operation,
+            resource_index,
+            resource_config,
+            extraction_timestamp=extraction_timestamp,
         )
         for resource_index, resource_config in resource_mappings
     ]
@@ -193,24 +213,25 @@ async def post_raw_to_lakehouse_and_should_skip_ocean_core(
 ) -> bool:
     """Post raw items to lakehouse when enabled. Returns True to skip Ocean-core.
 
-    DSP Ocean-core skip is gated on lakehouse being enabled so callers never
-    drop both lakehouse and Ocean-core paths. Matches live-event delivery via
-    lakehouse, with a stricter skip gate than LiveEventsMixin.
+    Posts with a dedicated ``sync_id`` (never the ambient event/resync id) so
+    LIVE_EVENT batches are not attributed to an in-flight resync.
+
+    ``is_dsp_mode_enabled()`` already requires lakehouse config +
+    ``LAKEHOUSE_ELIGIBLE``. The extra ``lakehouse_enabled`` check is defensive
+    against disagreeing flag reads (cache expiry / fetch errors between calls).
+    Unlike live events, raw posts are ``fatal`` when DSP is on so a failed
+    lakehouse write cannot skip Ocean-core and drop data.
     """
     lakehouse_enabled = await is_lakehouse_data_enabled()
     dsp_enabled = await is_dsp_mode_enabled()
 
     if lakehouse_enabled:
-        try:
-            event_id = event.id
-        except EventContextNotFoundError:
-            event_id = str(uuid.uuid4())
         await post_raw_kind_to_lakehouse(
             kind,
             results,
             operation,
             resource_mappings,
-            event_id=event_id,
+            event_id=str(uuid.uuid4()),
             fatal=dsp_enabled,
         )
 

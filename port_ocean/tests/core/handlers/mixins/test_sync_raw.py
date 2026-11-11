@@ -764,7 +764,7 @@ async def test_register_raw_lakehouse_and_dsp_on_posts_and_skips_upsert(
             event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
-            expected_event_id = event.id
+            ambient_event_id = event.id
             registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
                 kind, raw_entity, UserAgentType.exporter
             )
@@ -773,7 +773,9 @@ async def test_register_raw_lakehouse_and_dsp_on_posts_and_skips_upsert(
     upsert_mock.assert_not_called()
     mock_batch.assert_called_once()
     sync_id, batch = mock_batch.call_args[0]
-    assert sync_id == expected_event_id
+    # Raw posts use a dedicated sync_id, not the ambient event/resync id.
+    assert isinstance(sync_id, str) and sync_id
+    assert sync_id != ambient_event_id
     assert batch["kind"] == kind
     assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
     assert batch["data"][0]["metadata"]["operation"] == LakehouseOperation.UPSERT
@@ -940,6 +942,57 @@ async def test_register_raw_lakehouse_off_skips_lakehouse_and_upserts(
 
     assert len(registered) == 1
     mock_batch.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_register_raw_lakehouse_posts_without_event_context(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    """Raw lakehouse posts must work with no ambient event context."""
+    kind = "service"
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    mock_batch = AsyncMock()
+
+    with (
+        _raw_kind_lakehouse_patches(
+            mock_sync_raw_mixin_with_jq_processor=mock_sync_raw_mixin_with_jq_processor,
+            mock_ocean=mock_ocean,
+            mock_resource_config=mock_resource_config,
+            lakehouse_enabled=True,
+            dsp_enabled=True,
+            mock_batch=mock_batch,
+        ),
+        patch.object(
+            mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+            "upsert",
+            AsyncMock(),
+        ),
+    ):
+        # Seed port app config without opening an event_context.
+        mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config = (  # type: ignore[method-assign]
+            AsyncMock(
+                return_value=PortAppConfig(
+                    enable_merge_entity=True,
+                    delete_dependent_entities=True,
+                    create_missing_related_entities=False,
+                    resources=[mock_resource_config],
+                )
+            )
+        )
+        registered = await mock_sync_raw_mixin_with_jq_processor.register_raw(
+            kind, raw_entity, UserAgentType.exporter
+        )
+
+    assert registered == []
+    mock_batch.assert_called_once()
+    sync_id, batch = mock_batch.call_args[0]
+    assert isinstance(sync_id, str) and sync_id
+    assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
+    assert batch["data"][0]["items"] == raw_entity
 
 
 @pytest.mark.asyncio
