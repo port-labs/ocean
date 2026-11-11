@@ -1,10 +1,14 @@
 import asyncio
+from datetime import datetime, timezone
 from itertools import batched
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
+
+from httpx import HTTPStatusError
+from loguru import logger
 
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
@@ -15,8 +19,16 @@ from datadog.core.exporters.base_exporter import (
     PaginatedExporter,
     SingleResourceExporter,
 )
+from datadog.utils import parse_restriction_policy_asset
 
 SLO_ENRICHMENT_BATCH_SIZE = 10
+
+CHANGED_SLOS_AUDIT_QUERY = "@evt.name:SLO @asset.type:slo @action:(created OR modified)"
+
+CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY = (
+    '@evt.name:"Access Management" @asset.type:restriction_policy '
+    "@action:(modified OR deleted)"
+)
 
 
 class ListSloOptions(ListOptions["SLOResourceConfig"]):
@@ -76,6 +88,68 @@ class SloExporter(
                     ]
                 )
                 yield enriched_slos
+
+    async def get_changed_slos(
+        self, options: ListSloOptions, since: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get SLOs created or modified since ``since``, found through audit events.
+        With restriction policies on, SLOs whose restriction policy changed are included.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        slo_ids: dict[str, None] = {}
+        async for event in self._search_audit_events(CHANGED_SLOS_AUDIT_QUERY, since):
+            if slo_id := self._asset_id(event):
+                slo_ids[slo_id] = None
+
+        if options.include_restriction_policy:
+            async for event in self._search_audit_events(
+                CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY, since
+            ):
+                asset = parse_restriction_policy_asset(self._asset_id(event) or "")
+                if asset and asset.type == "slo":
+                    slo_ids[asset.id] = None
+
+        slos: list[dict[str, Any]] = []
+        for slo_id in slo_ids:
+            try:
+                slo = await self.get_resource(
+                    GetSloOptions(
+                        resource_id=slo_id,
+                        include_restriction_policy=options.include_restriction_policy,
+                    )
+                )
+            except HTTPStatusError:
+                logger.warning(
+                    f"Skipping SLO '{slo_id}' from audit events; Datadog SLO fetch failed"
+                )
+                continue
+            if slo:
+                slos.append(slo)
+
+        if slos:
+            yield slos
+
+    async def _search_audit_events(
+        self, query: str, since: datetime
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        url = f"{self.client.api_url}/api/v2/audit/events/search"
+        body = {
+            "filter": {
+                "query": query,
+                "from": since.astimezone(timezone.utc).isoformat(),
+                "to": "now",
+            },
+            "sort": "-timestamp",
+        }
+        async for events in self._paginate_by_search_cursor(url, body):
+            for event in events:
+                yield event
+
+    @staticmethod
+    def _asset_id(event: dict[str, Any]) -> str | None:
+        return (
+            event.get("attributes", {}).get("attributes", {}).get("asset", {}).get("id")
+        )
 
     async def get_resource(self, options: GetSloOptions) -> dict[str, Any] | None:
         """Get a single SLO by ID.

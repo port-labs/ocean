@@ -139,13 +139,19 @@ async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield monitors
 
 
+@ocean.on_incremental_resync(ObjectKind.SLO)
 @ocean.on_resync(ObjectKind.SLO)
 async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListSloOptions.from_resource_config(
         cast(SLOResourceConfig, event.resource_config)
     )
+    sync_cursor = active_incremental_cursor()
     async for slos in _resync_across_orgs(
-        lambda client: SloExporter(client).get_paginated_resources(options),
+        lambda client: (
+            SloExporter(client).get_paginated_resources(options)
+            if sync_cursor is None
+            else SloExporter(client).get_changed_slos(options, since=sync_cursor)
+        ),
         context="SLO exporter",
     ):
         yield slos
