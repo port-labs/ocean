@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.2.7 (2026-11-11)
+
+
+### Improvements
+
+- Declare Cloud Control probe permissions (`cloudformation:ListResources`, `cloudformation:GetResource`) for custom kinds, so test connection can verify them once custom kinds are enabled
+
+
 ## 3.2.6 (2026-11-11)
 
 
