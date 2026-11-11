@@ -74,7 +74,7 @@ class RepositorySelector:
         """Incremental resync: only repositories changed since ``change``."""
         if selector.repos:
             async for repo in self._explicit_repos(selector, repo_exporter, org_login):
-                if change.matches(repo[2]):
+                if change.matches(repo[2].get(change.field.value)):
                     yield repo
                 else:
                     logger.debug(f"Skipping unchanged repository {repo[0]}")

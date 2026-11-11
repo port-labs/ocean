@@ -60,4 +60,4 @@ def test_constructors_set_field() -> None:
 def test_matches(
     change: RepositoryChange, repo: dict[str, str], expected: bool
 ) -> None:
-    assert change.matches(repo) is expected
+    assert change.matches(repo.get(change.field.value)) is expected
