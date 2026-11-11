@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.59.0 (2026-11-11)
+
+
+### Features
+
+- Include the custom kind slot in probe kinds and permissions when its resource config declares `probe_permissions`, and treat constrained `str` kind fields (e.g. `Field(regex=...)`) as the custom kind slot (#456453)
+
+
 ## 0.58.4 (2026-11-11)
 
 
