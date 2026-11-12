@@ -1,14 +1,12 @@
 from types import SimpleNamespace
 from collections.abc import Callable
-from typing import Any, Generator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from google.api_core.exceptions import PermissionDenied
+from google.api_core.exceptions import PermissionDenied, RetryError
 from google.auth.exceptions import DefaultCredentialsError
 
-import port_ocean.context.ocean as ocean_module
-from port_ocean.context.ocean import PortOceanContext, initialize_port_ocean_context
 from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
 from port_ocean.core.probe import (
     ProbeCheck,
@@ -22,28 +20,6 @@ TOPIC = "pubsub.googleapis.com/Topic"
 FOLDER = "cloudresourcemanager.googleapis.com/Folder"
 ORGANIZATION = "cloudresourcemanager.googleapis.com/Organization"
 CLOUD_FUNCTION = "gcpCloudFunction"
-
-
-@pytest.fixture(autouse=True)
-def mock_ocean_context() -> Generator[None, None, None]:
-    """gcp_core modules read ocean.integration_config at import time."""
-    mock_app = MagicMock()
-    mock_app.config.integration.config = {"search_all_resources_per_minute_quota": 100}
-    mock_app.cache_provider = AsyncMock()
-    mock_app.cache_provider.get.return_value = None
-    initialize_port_ocean_context(mock_app)
-
-    yield
-
-    ocean_module._port_ocean = PortOceanContext(None)
-
-
-@pytest.fixture
-def probe_context() -> ProbeContext:
-    context = ProbeContext()
-    context.reporter = MagicMock()
-    context.reporter.report = AsyncMock()
-    return context
 
 
 async def run_probe(context: ProbeContext) -> None:
@@ -309,3 +285,29 @@ async def test_probe_checks_the_custom_kind_slot(
 
     check = checks_by_kind(probe_context)[CUSTOM_KIND]
     assert check.status is ProbeCheckStatus.SUCCESS
+
+
+@pytest.mark.asyncio
+async def test_probe_reports_an_unexpected_level_error_as_an_external_failure(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    # a RetryError from paginated_query is neither GoogleAPICallError nor GoogleAuthError
+    probe_context.available_kinds = [PROJECT, FOLDER]
+    projects = make_client(
+        "search_projects", "projects", [], search_error=RetryError("gave up", None)
+    )
+    folders = make_client(
+        "search_folders", "folders", [], search_error=RuntimeError("boom")
+    )
+    install_client("ProjectsAsyncClient", projects)
+    install_client("FoldersAsyncClient", folders)
+
+    await run_probe(probe_context)
+
+    assert probe_context.status is ProbeStatus.FAILED
+    message = str(probe_context.message)
+    assert "Failed to verify GCP permissions" in message
+    # both lanes are named, not just the first
+    assert "RetryError" in message
+    assert "RuntimeError" in message

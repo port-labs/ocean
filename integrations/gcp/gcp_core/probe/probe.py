@@ -102,12 +102,20 @@ class GcpPermissionProbe:
             await clients.close()
 
         errors = [result for result in results if isinstance(result, BaseException)]
-        for error in errors:
-            if isinstance(error, GoogleAuthError):
-                await self.context.fail(f"Failed to verify GCP authentication: {error}")
-                return
+        auth_errors = [error for error in errors if isinstance(error, GoogleAuthError)]
+        if auth_errors:
+            await self.context.fail(
+                f"Failed to verify GCP authentication: {auth_errors[0]}"
+            )
+            return
         if errors:
-            raise errors[0]
+            # Every error, not just the first: a lane that raised is a lane with no
+            # verdict, same reason iterate_per_available_project defers and reports all.
+            await self.context.fail(
+                "Failed to verify GCP permissions: "
+                + "; ".join(f"{type(error).__name__}: {error}" for error in errors)
+            )
+            return
 
         for kind, check in checks.items():
             if check.status is ProbeCheckStatus.PENDING:
