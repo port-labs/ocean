@@ -7,7 +7,7 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
-from actions.utils import ensure_port_managed_session, installation_id
+from actions.utils import ensure_port_managed_session
 from clients.models import SessionResponse
 from core.tracking.tags import parse_external_id, strip_tracking_tags
 from integration import ObjectKind
@@ -85,7 +85,8 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
             )
         try:
             await self.sessions.replace_tags(
-                session.session_id, strip_tracking_tags(tags, installation_id())
+                session.session_id,
+                strip_tracking_tags(tags, ocean.config.integration.identifier),
             )
         except httpx.HTTPError as error:
             logger.warning(

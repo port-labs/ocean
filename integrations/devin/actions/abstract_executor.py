@@ -7,7 +7,7 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.models import IntegrationRun
 
 from clients.client_factory import create_devin_client
-from core.catalog import upsert_raw_from_action
+from core.catalog import upsert_raw_best_effort
 from core.sessions import DevinSessions
 
 
@@ -35,4 +35,4 @@ class AbstractDevinExecutor(AbstractExecutor):
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
         """Best-effort upsert of a raw object into the catalog."""
-        await upsert_raw_from_action(kind, raw, run)
+        await upsert_raw_best_effort(kind, raw, run)
