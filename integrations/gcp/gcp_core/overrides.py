@@ -21,7 +21,6 @@ class GCPCloudResourceSelector(Selector):
 class GCPCloudResourceConfig(ResourceConfig):
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "cloudasset.assets.searchAllResources",
-        "serviceusage.services.use",
     )
     kind: Literal["cloudResource"] = Field(
         title="GCP Cloud Resource",
