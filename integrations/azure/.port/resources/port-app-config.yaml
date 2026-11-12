@@ -10,7 +10,7 @@ resources:
           title: .display_name
           blueprint: '"azureSubscription"'
           properties:
-            tags: .tags
+            tags: .tags // {}
   - kind: Microsoft.Resources/resourceGroups
     selector:
       query: 'true'
@@ -26,7 +26,7 @@ resources:
           properties:
             location: .location
             provisioningState: .properties.provisioningState + .properties.provisioning_state
-            tags: .tags
+            tags: .tags // {}
           relations:
             subscription: >-
               .id | split("/") | .[1] |= ascii_downcase |.[2] |= ascii_downcase
@@ -46,7 +46,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -66,7 +66,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -86,7 +86,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -106,7 +106,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
@@ -126,7 +126,7 @@ resources:
           properties:
             location: .location
             type: .type
-            tags: .tags
+            tags: .tags // {}
           relations:
             resource_group: >-
               .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase

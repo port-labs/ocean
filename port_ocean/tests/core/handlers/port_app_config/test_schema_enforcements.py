@@ -1,9 +1,10 @@
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import pytest
 from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import (
+    CUSTOM_KIND,
     PortAppConfig,
     ResourceConfig,
     Selector,
@@ -180,3 +181,14 @@ def test_multiple_custom_kind_slots_raise_during_schema_validation() -> None:
 
     with pytest.raises(TypeError, match="Multiple custom kind"):
         validate_and_get_config_schema(Config)
+
+
+def test_regex_constrained_custom_kind_is_treated_as_custom_kind_slot() -> None:
+    class CustomKind(ResourceConfig):
+        kind: str = Field(title="Custom", description="Custom.", regex=r"^[A-Z][a-z]+$")
+
+    class Config(PortAppConfig):
+        allow_custom_kinds: ClassVar[bool] = True
+        resources: list[CustomKind] = _resources()  # type: ignore[assignment]
+
+    assert CUSTOM_KIND in validate_and_get_config_schema(Config)["kinds"]

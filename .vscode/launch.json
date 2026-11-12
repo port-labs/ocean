@@ -150,6 +150,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure",
+      "envFile": "${workspaceFolder}/integrations/azure/.env",
+      "justMyCode": false,
+      "name": "Run Azure integration",
+      "program": "${workspaceFolder}/integrations/azure/debug.py",
+      "python": "${workspaceFolder}/integrations/azure/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/datadog",
       "envFile": "${workspaceFolder}/integrations/datadog/.env",
       "justMyCode": false,
