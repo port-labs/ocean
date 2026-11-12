@@ -106,6 +106,7 @@ class Selector(BaseModel):
 
 class ResourceConfig(BaseModel):
     probe_permissions: ClassVar[ProbePermissions | None] = None
+    probe_description: ClassVar[str | None] = None
 
     kind: str = Field(
         title="Kind",
