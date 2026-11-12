@@ -9,7 +9,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
-from actions.exceptions import DevinApiError, InvalidActionParametersException
+from actions.exceptions import DevinApiError
 from actions.utils import (
     ensure_no_reserved_tags,
     installation_id,
@@ -54,10 +54,7 @@ class CreateSessionExecutor(AbstractDevinExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateSessionInputs.from_execution_properties(run.execution_properties)
-        config_tags = (inputs.config or {}).get("tags") or []
-        if not isinstance(config_tags, list):
-            raise InvalidActionParametersException("config.tags must be an array")
-        user_tags = [*inputs.tags, *config_tags]
+        user_tags = list(inputs.tags)
         ensure_no_reserved_tags(user_tags)
 
         await ocean.port_client.post_run_log(

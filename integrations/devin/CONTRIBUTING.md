@@ -51,4 +51,4 @@ Each tick (`sessionTrackingIntervalSeconds`, default 30):
 - `terminate_session` fails any run still waiting on the session itself; the tracker would otherwise read the `exit` status as a successful turn.
 - A run that is not found right after its session was created is retried for 5 minutes (it may not have its external ID yet) before the tags are released.
 - Devin's rate limits aren't exposed via headers. Backoff on `429`/`5xx` is handled by Ocean's retryable HTTP extension.
-- Unverified against the live API (see `HANDOVER.md`): tag filter semantics for `port:` tags, timestamp units (seconds vs milliseconds are both handled), and how array query params are serialized (repeated keys).
+- Timestamp fields from Devin may be seconds or milliseconds; both are normalized when comparing to `port:sent-at` tags. List query params are sent as repeated keys (for example `tags=a&tags=b`).

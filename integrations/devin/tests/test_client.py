@@ -50,6 +50,14 @@ async def test_requests_are_org_scoped_with_bearer_auth_and_retryable(
     assert kwargs["extensions"] == {"retryable": True}
 
 
+async def test_post_requests_are_not_retried(
+    client: DevinClient, request_mock: AsyncMock
+) -> None:
+    await client.send_api_request("POST", "/sessions", json_body={"prompt": "hi"})
+
+    assert _last_kwargs(request_mock)["extensions"] == {"retryable": False}
+
+
 async def test_absolute_paths_skip_the_org_prefix(
     client: DevinClient, request_mock: AsyncMock
 ) -> None:
