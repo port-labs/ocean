@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.59.0 (2026-11-11)
+
+
+### Features
+
+- Include the custom kind slot in probe kinds and permissions when its resource config declares `probe_permissions`, and treat constrained `str` kind fields (e.g. `Field(regex=...)`) as the custom kind slot (#456453)
+
+
+## 0.58.4 (2026-11-11)
+
+
+### Bug Fixes
+
+- When OAuth is enabled, POST requests are now retried on 401 with refreshed credentials for every integration, including those with a custom retry config. POST is still not retried on other errors.
+
+
 ## 0.58.3 (2026-11-09)
 
 

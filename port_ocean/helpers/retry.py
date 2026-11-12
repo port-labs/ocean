@@ -438,6 +438,17 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         return (
             request.method in self._retry_config.retryable_methods
             or request.extensions.get("retryable", False)
+            or self._is_auth_refresh_only(request)
+        )
+
+    def _is_auth_refresh_only(self, request: httpx.Request) -> bool:
+        """POST requests are not idempotent, so when an auth refresh callback is
+        registered they are retried only on 401, never on other errors."""
+        return (
+            _ON_RETRY_CALLBACK is not None
+            and request.method == "POST"
+            and request.method not in self._retry_config.retryable_methods
+            and not request.extensions.get("retryable", False)
         )
 
     def _should_retry(self, response: httpx.Response) -> bool:
@@ -695,6 +706,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+        auth_refresh_only = self._is_auth_refresh_only(request)
         while True:
             if attempts_made > 0:
                 response_headers = response.headers if response else {}
@@ -727,8 +739,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if rate_limiter is not None:
                     await rate_limiter.record_rate_limit_response(response)
                 await self.after_retry_async(request, response, attempts_made + 1)
-                if remaining_attempts < 1 or not (
-                    await self._should_retry_async(response)
+                if (
+                    remaining_attempts < 1
+                    or (
+                        auth_refresh_only
+                        and response.status_code != HTTPStatus.UNAUTHORIZED
+                    )
+                    or not (await self._should_retry_async(response))
                 ):
                     if self._should_prefetch_body_for_retry(request, response):
                         try:
@@ -741,22 +758,22 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 await response.aclose()
             except httpx.ConnectTimeout as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             except httpx.ReadTimeout as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             except httpx.TimeoutException as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             except httpx.HTTPError as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             if _ON_RETRY_CALLBACK:
@@ -777,6 +794,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+        auth_refresh_only = self._is_auth_refresh_only(request)
 
         while True:
             if attempts_made > 0:
@@ -805,7 +823,14 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = send_method(request)
                 response.request = request
                 self._after_retry(request, response, attempts_made + 1)
-                if remaining_attempts < 1 or not self._should_retry(response):
+                if (
+                    remaining_attempts < 1
+                    or (
+                        auth_refresh_only
+                        and response.status_code != HTTPStatus.UNAUTHORIZED
+                    )
+                    or not self._should_retry(response)
+                ):
                     if self._should_prefetch_body_for_retry(request, response):
                         try:
                             response.read()
@@ -817,17 +842,17 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response.close()
             except httpx.ConnectTimeout as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             except httpx.TimeoutException as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             except httpx.HTTPError as e:
                 error = e
-                if remaining_attempts < 1:
+                if auth_refresh_only or remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
             if _ON_RETRY_CALLBACK:
