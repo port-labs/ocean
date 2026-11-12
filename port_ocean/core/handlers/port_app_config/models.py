@@ -106,11 +106,13 @@ class Selector(BaseModel):
 
 class ResourceConfig(BaseModel):
     probe_permissions: ClassVar[ProbePermissions | None] = None
-    probe_description: ClassVar[str | None] = None
 
     kind: str = Field(
         title="Kind",
-        description="key is a specifier for the object you wish to map from the tool's API.",
+        description=(
+            "key is a specifier for the object you wish to map from the tool's API. "
+            "Optional Field kwarg featureFlag gates the kind in Port UI/schema until the org has that flag."
+        ),
     )
     enable_delete: bool = Field(
         alias="enableDelete",

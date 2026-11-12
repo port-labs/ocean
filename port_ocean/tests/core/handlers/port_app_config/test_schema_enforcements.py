@@ -1,10 +1,9 @@
-from typing import Any, ClassVar, Literal
+from typing import Any, Literal
 
 import pytest
 from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import (
-    CUSTOM_KIND,
     PortAppConfig,
     ResourceConfig,
     Selector,
@@ -183,12 +182,31 @@ def test_multiple_custom_kind_slots_raise_during_schema_validation() -> None:
         validate_and_get_config_schema(Config)
 
 
-def test_regex_constrained_custom_kind_is_treated_as_custom_kind_slot() -> None:
-    class CustomKind(ResourceConfig):
-        kind: str = Field(title="Custom", description="Custom.", regex=r"^[A-Z][a-z]+$")
+def test_kind_feature_flag_metadata_flows_to_json_and_ui_schemas() -> None:
+    """Beta kinds declare featureFlag on the kind Field; integ-service filters by it."""
+
+    class GaKind(ResourceConfig):
+        kind: Literal["ga"] = Field(title="GA", description="Generally available.")
+
+    class BetaKind(ResourceConfig):
+        kind: Literal["beta"] = Field(
+            title="Beta",
+            description="Gated kind.",
+            featureFlag="BETA_KIND_EXAMPLE_ENABLED",
+        )
 
     class Config(PortAppConfig):
-        allow_custom_kinds: ClassVar[bool] = True
-        resources: list[CustomKind] = _resources()  # type: ignore[assignment]
+        resources: list[GaKind | BetaKind] = _resources()  # type: ignore[assignment]
 
-    assert CUSTOM_KIND in validate_and_get_config_schema(Config)["kinds"]
+    ui = validate_and_get_config_schema(Config)
+    assert "featureFlag" not in ui["kinds"]["ga"]
+    assert ui["kinds"]["beta"]["featureFlag"] == "BETA_KIND_EXAMPLE_ENABLED"
+
+    json_schema = Config.schema()
+    assert (
+        "featureFlag" not in json_schema["definitions"]["GaKind"]["properties"]["kind"]
+    )
+    assert (
+        json_schema["definitions"]["BetaKind"]["properties"]["kind"]["featureFlag"]
+        == "BETA_KIND_EXAMPLE_ENABLED"
+    )
