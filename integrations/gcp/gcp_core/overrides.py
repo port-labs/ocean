@@ -19,6 +19,10 @@ class GCPCloudResourceSelector(Selector):
 
 
 class GCPCloudResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = (
+        "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
+        "Cloud Asset API is enabled on each container is not verified."
+    )
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "cloudasset.assets.searchAllResources",
     )
@@ -110,6 +114,10 @@ class GCPFolderResourceConfig(ResourceConfig):
 
 
 class GCPResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = (
+        "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
+        "Cloud Asset API is enabled on each container is not verified."
+    )
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "cloudasset.assets.searchAllResources",
     )

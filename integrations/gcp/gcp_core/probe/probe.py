@@ -1,7 +1,7 @@
 import asyncio
 from asyncio import BoundedSemaphore
 from dataclasses import dataclass
-from typing import Any, Callable, cast
+from typing import Any, Callable
 
 from google.api_core.exceptions import GoogleAPICallError
 from google.auth.exceptions import GoogleAuthError
@@ -31,9 +31,11 @@ class _ContainerLevel:
     response_field: str
 
 
-# testIamPermissions rejects the whole request with INVALID_ARGUMENT when a
-# permission does not apply to the resource, so each level may only be asked
-# about the permissions of the kinds that live at that level.
+# testIamPermissions validates against the resource type and rejects the whole request
+# with INVALID_ARGUMENT when a permission does not apply, so each level may only be asked
+# about the permissions of the kinds that live at that level. Permissions from different
+# services are fine as long as they are all scoped to that level.
+# https://cloud.google.com/resource-manager/reference/rest/v3/projects/testIamPermissions
 _LEVELS = (
     _ContainerLevel(
         label="project",
@@ -77,8 +79,15 @@ def _summarize(messages: list[str]) -> str:
 class GcpPermissionProbe:
     """Reports, per kind, whether the credentials hold the IAM permissions to sync it.
 
+    Checks are unscoped on purpose - one per kind, not one per kind x container.
+    Scoping them the way aws-v3 does would multiply: an org with 500 projects and the
+    5 project-level kinds is 2,500 checks re-serialized on every update_progress, where
+    aws-v3's accounts x regions stays far lower. Per-container detail goes into the
+    check message instead, capped at _MAX_LISTED_CONTAINERS.
+
     IAM grants are verified, not whether the backing API is enabled on the container -
-    a granted cloudasset permission still fails with SERVICE_DISABLED at resync.
+    a granted cloudasset permission still fails with SERVICE_DISABLED at resync. That
+    caveat reaches the UI through probe_description on the cloudasset-backed kinds.
     """
 
     def __init__(self, context: ProbeContext) -> None:
@@ -128,12 +137,11 @@ class GcpPermissionProbe:
         level: _ContainerLevel,
         checks: dict[str, ProbeCheck],
     ) -> None:
-        level_checks = [
-            checks[kind]
-            for kind in level.kinds
-            if kind in checks and self.permission_verdict.kind_permissions.get(kind)
-        ]
+        level_checks = [checks[kind] for kind in level.kinds if kind in checks]
         if not level_checks:
+            logger.debug(
+                f"No {level.label}-level kinds are being probed, skipping {level.label} discovery"
+            )
             return
 
         permissions = sorted(
@@ -180,10 +188,11 @@ class GcpPermissionProbe:
             level.search_method,
             {},
             lambda response: [
-                container.name for container in getattr(response, level.response_field)
+                {"name": container.name}
+                for container in getattr(response, level.response_field)
             ],
         ):
-            containers.extend(cast(list[str], page))
+            containers.extend(container["name"] for container in page)
         return containers
 
     async def _test_container(

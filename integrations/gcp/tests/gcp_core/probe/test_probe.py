@@ -55,18 +55,6 @@ def make_client(
     return client
 
 
-@pytest.fixture
-def install_client(monkeypatch: pytest.MonkeyPatch) -> Callable[[str, MagicMock], None]:
-    """Pre-populate a singleton slot, as tests/gcp_core/search does."""
-
-    def install(client_name: str, client: MagicMock) -> None:
-        import gcp_core.clients as clients
-
-        monkeypatch.setitem(clients._instances, client_name, client)
-
-    return install
-
-
 def checks_by_kind(context: ProbeContext) -> dict[str, ProbeCheck]:
     return {check.kind: check for check in context.checks}
 
@@ -311,3 +299,39 @@ async def test_probe_reports_an_unexpected_level_error_as_an_external_failure(
     # both lanes are named, not just the first
     assert "RetryError" in message
     assert "RuntimeError" in message
+
+
+@pytest.mark.asyncio
+async def test_each_level_requests_only_its_own_kinds_permissions(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [PROJECT, TOPIC, FOLDER, ORGANIZATION]
+    clients = {
+        "ProjectsAsyncClient": make_client(
+            "search_projects", "projects", ["projects/sandbox"]
+        ),
+        "FoldersAsyncClient": make_client("search_folders", "folders", ["folders/1"]),
+        "OrganizationsAsyncClient": make_client(
+            "search_organizations", "organizations", ["organizations/2"]
+        ),
+    }
+    for name, client in clients.items():
+        install_client(name, client)
+
+    await run_probe(probe_context)
+
+    requested = {
+        name: client.test_iam_permissions.await_args.kwargs["request"]["permissions"]
+        for name, client in clients.items()
+    }
+    # a cross-level permission in any request is rejected by GCP with INVALID_ARGUMENT,
+    # taking that whole level down with it
+    assert requested["ProjectsAsyncClient"] == [
+        "pubsub.topics.list",
+        "resourcemanager.projects.get",
+    ]
+    assert requested["FoldersAsyncClient"] == ["resourcemanager.folders.get"]
+    assert requested["OrganizationsAsyncClient"] == [
+        "resourcemanager.organizations.get"
+    ]
