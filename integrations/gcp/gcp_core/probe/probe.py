@@ -78,7 +78,7 @@ def _summarize(messages: list[str]) -> str:
 class GcpPermissionProbe:
     """Reports, per kind, whether the credentials hold the IAM permissions to sync it.
 
-    shortcut: IAM grants are verified, not whether the backing API is enabled on the
+    IAM grants are verified, not whether the backing API is enabled on the
     container - a granted cloudasset permission still fails with SERVICE_DISABLED at
     resync. Upgrade when the extra serviceusage call is worth it.
     """
