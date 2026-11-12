@@ -16,6 +16,7 @@ _JIRA_LIVE_EVENT_PAYLOAD_PATHS = (
     "user.accountId",
     "version.id",
     "worklog.id",
+    "comment.id",
 )
 
 
