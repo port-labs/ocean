@@ -13,23 +13,17 @@ async def upsert_raw(kind: str, raw: dict[str, Any]) -> None:
         await ocean.register_raw(kind, [raw])
 
 
-async def upsert_raw_from_background(kind: str, raw: dict[str, Any]) -> None:
-    """Best-effort catalog upsert from a background task with no event context."""
-    try:
-        await upsert_raw(kind, raw)
-    except Exception as error:
-        logger.warning(f"Failed to upsert {kind} into the catalog: {error}")
-
-
-async def upsert_raw_from_action(
-    kind: str, raw: dict[str, Any], run: IntegrationRun
+async def upsert_raw_best_effort(
+    kind: str, raw: dict[str, Any], run: IntegrationRun | None = None
 ) -> None:
-    """Best-effort catalog upsert from an action run; failures are surfaced on the run."""
+    """Best-effort catalog upsert; optional run receives a warning log on failure."""
     try:
         await upsert_raw(kind, raw)
     except Exception as error:
         message = f"Failed to upsert {kind} into the catalog (continuing): {error}"
         logger.warning(message)
+        if run is None:
+            return
         try:
             await ocean.port_client.post_run_log(run, message, level="WARNING")
         except Exception as log_error:

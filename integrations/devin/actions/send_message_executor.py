@@ -13,7 +13,6 @@ from actions.exceptions import DevinApiError, SessionBusyError
 from actions.utils import (
     ensure_port_managed_session,
     ensure_session_accepts_message,
-    installation_id,
     merge_config,
     resolve_user_id,
 )
@@ -89,7 +88,7 @@ class SendMessageExecutor(AbstractDevinExecutor):
             )
 
         message_as_user_id = await resolve_user_id(
-            self.sessions, inputs.messageAsUserEmail, run
+            self.sessions, inputs.messageAsUserEmail
         )
         external_id = build_external_id(run.id)
         sent_at = int(time.time())
@@ -97,7 +96,10 @@ class SendMessageExecutor(AbstractDevinExecutor):
         if inputs.reportCompletion:
             try:
                 await self.sessions.append_tags(
-                    session_id, tracking_tags(installation_id(), external_id, sent_at)
+                    session_id,
+                    tracking_tags(
+                        ocean.config.integration.identifier, external_id, sent_at
+                    ),
                 )
             except httpx.HTTPError as error:
                 raise DevinApiError.from_http_error(
@@ -149,7 +151,8 @@ class SendMessageExecutor(AbstractDevinExecutor):
         try:
             tags = (await self.sessions.get(session_id)).tags
             await self.sessions.replace_tags(
-                session_id, strip_tracking_tags(tags, installation_id())
+                session_id,
+                strip_tracking_tags(tags, ocean.config.integration.identifier),
             )
         except httpx.HTTPError as error:
             logger.warning(
