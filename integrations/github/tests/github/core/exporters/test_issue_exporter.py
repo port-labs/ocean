@@ -121,7 +121,7 @@ class TestIssueExporter:
                 {"state": "closed"},
             )
 
-    async def test_get_paginated_resources_with_incremental_cursor(
+    async def test_get_paginated_resources_with_updated_since(
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestIssueExporter(rest_client)

@@ -138,9 +138,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             async for closed_batch in self._fetch_closed_pull_requests(
                 organization,
                 cast(str, repo_name),
-                None if incremental_cursor is not None else max_results,
+                max_results,
                 updated_after,
-                None if incremental_cursor is not None else closed_after,
+                closed_after,
             ):
                 yield closed_batch
 
@@ -324,9 +324,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             async for batch in self._fetch_closed_pull_requests(
                 organization,
                 repo,
-                None if incremental_cursor is not None else max_results,
+                max_results,
                 updated_after,
-                None if incremental_cursor is not None else closed_after,
+                closed_after,
                 pr_gql_options,
             ):
                 yield batch

@@ -89,7 +89,7 @@ class TestRestReleaseExporter:
                     {},
                 )
 
-    async def test_get_paginated_resources_with_incremental_cursor_stops_at_old_items(
+    async def test_get_paginated_resources_with_created_since_stops_at_old_items(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)

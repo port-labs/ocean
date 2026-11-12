@@ -1,9 +1,24 @@
-from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
+from datetime import datetime
+from typing import (
+    Any,
+    AsyncGenerator,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    cast,
+)
 from urllib.parse import quote
 import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
-from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
+from github.helpers.repository_change import RepositoryChange
+from github.helpers.utils import (
+    GithubClientType,
+    IgnoredError,
+    get_repository_metadata,
+    parse_timestamp,
+)
 from github.helpers.exceptions import GitHubTreeFetchError
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.core.ocean_types import (
@@ -21,12 +36,16 @@ from collections import defaultdict
 
 from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
+    GITHUB_COMPARE_FILE_CAP,
+    COMPARE_BASE_IS_ANCESTOR_STATUSES,
+    GIT_NULL_SHA,
     build_batch_file_query,
     decode_content,
     extract_file_index,
     extract_file_paths_and_metadata,
     filter_github_tree_entries_by_pattern,
     get_graphql_file_metadata,
+    match_file_path_against_glob_pattern,
 )
 from github.core.exporters.file_exporter.file_processor import (
     FileProcessor,
@@ -34,6 +53,7 @@ from github.core.exporters.file_exporter.file_processor import (
 )
 
 
+# (organization, repo_name, branch, pattern) -> matched tree entries
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     _IGNORED_ERRORS = [
         IgnoredError(status=404, message="Resource not found at endpoint"),
@@ -87,8 +107,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Search for files across repositories and fetch their content."""
+        """Files matching the patterns, with content.
 
+        A repository's ``changed_since`` limits it to files changed since then.
+        """
         graphql_files = []
         rest_files = []
         fetch_errors = []
@@ -97,13 +119,16 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             data = dict(repo_options)
             repo_name = cast(str, data["repo_name"])
             files = cast(List[FileSearchOptions], data["files"])
+            changed_since = cast(Optional[RepositoryChange], data.get("changed_since"))
 
             logger.debug(
                 f"Processing repository {repo_name} with {len(files)} file patterns"
             )
 
             try:
-                gql, rest = await self.collect_matched_files(repo_name, files)
+                gql, rest = await self.collect_matched_files(
+                    repo_name, files, changed_since
+                )
                 graphql_files.extend(gql)
                 rest_files.extend(rest)
             except GitHubTreeFetchError as e:
@@ -113,11 +138,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.info(f"Processing {len(graphql_files)} GraphQL files")
         async for result in self.process_graphql_files(graphql_files):
-            yield result
+            if result:
+                yield result
 
         logger.info(f"Processing {len(rest_files)} REST API files")
         async for result in self.process_rest_api_files(rest_files):
-            yield result
+            if result:
+                yield result
 
         if fetch_errors:
             raise OceanAbortException(
@@ -126,8 +153,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             ) from fetch_errors[0]
 
     async def collect_matched_files(
-        self, repo_name: str, file_patterns: List[FileSearchOptions]
+        self,
+        repo_name: str,
+        file_patterns: List[FileSearchOptions],
+        changed_since: Optional[RepositoryChange] = None,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Resolve file patterns to fetch lists, partitioned by GraphQL vs REST."""
         graphql_files = []
         rest_files = []
 
@@ -150,9 +181,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
 
-            matched = filter_github_tree_entries_by_pattern(tree, pattern)
+            matched = await self._match_files(
+                organization, repo_name, branch, pattern, changed_since
+            )
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
@@ -181,6 +213,40 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     rest_files.append(file_info)
 
         return graphql_files, rest_files
+
+    async def _match_files(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+        changed_since: Optional[RepositoryChange] = None,
+    ) -> List[Dict[str, Any]]:
+        """Tree entries matching ``pattern``, limited to paths changed since ``changed_since``.
+
+        Changed paths unknown (no ``changed_since``, or a compare that can't be
+        trusted) means every matching file in the tree. When no changed path
+        matches the pattern, the tree isn't fetched at all.
+        """
+        changed_paths = (
+            await self.get_changed_paths_since(
+                organization, repo_name, branch, changed_since
+            )
+            if changed_since is not None
+            else None
+        )
+        if changed_paths is not None and not any(
+            match_file_path_against_glob_pattern(path, pattern)
+            for path in changed_paths
+        ):
+            return []
+
+        # The tree gives each file's fetch_method and sha.
+        tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
+        matched = filter_github_tree_entries_by_pattern(tree, pattern)
+        if changed_paths is None:
+            return matched
+        return [m for m in matched if m["path"] in changed_paths]
 
     async def process_rest_api_files(
         self, files: List[Dict[str, Any]]
@@ -384,6 +450,95 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             batch_files.append(dict(file_obj))
 
         return batch_files
+
+    @cache_coroutine_result()
+    async def get_changed_paths_since(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        changed_since: RepositoryChange,
+    ) -> Optional[set[str]]:
+        """Paths of files added or modified on ``branch`` since ``changed_since``.
+
+        Cached per (repo, branch, field, since): the field is part of the key, so an
+        ``updated_at`` change and a ``pushed_at`` change never share a result.
+
+        Diffs the branch tip from just before ``changed_since`` against the current
+        tip. Returns None when that can't be trusted (tip unknown, rewritten
+        history, truncated compare), so the caller falls back to a full tree scan.
+        """
+        base_sha = await self._branch_tip_before(
+            organization, repo_name, branch, changed_since.since
+        )
+        if base_sha is None:
+            return None
+
+        files = await self._files_from_trusted_compare(
+            organization, repo_name, base_sha, branch
+        )
+        if files is None:
+            return None
+        return {file["filename"] for file in files}
+
+    async def _branch_tip_before(
+        self, organization: str, repo_name: str, branch: str, before: datetime
+    ) -> Optional[str]:
+        """SHA ``branch`` pointed to just before ``before``, from its push activity.
+
+        Uses *push* time, not commit dates: a commit created before ``before`` but
+        pushed after it is not mistaken for the tip, so its files are still diffed.
+        Activity is listed newest first; the first entry pushed before ``before``
+        set the tip in effect then, and later pages are never requested.
+
+        None when the activity doesn't reach back to ``before`` (new branch,
+        unavailable history) or the branch didn't exist then, so the caller scans
+        the full tree.
+        """
+        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/activity"
+        params = {"ref": branch, "direction": "desc"}
+        async for activities in self.client.send_paginated_request(
+            resource, params=params, ignored_errors=self._IGNORED_ERRORS
+        ):
+            for activity in activities:
+                pushed_at = parse_timestamp(activity.get("timestamp") or "")
+                if pushed_at is None or pushed_at >= before:
+                    continue
+                tip = activity.get("after")
+                if not tip or tip == GIT_NULL_SHA:
+                    logger.info(
+                        f"{repo_name}@{branch} did not exist before {before.isoformat()}; using full tree"
+                    )
+                    return None
+                return tip
+
+        logger.info(
+            f"No push activity for {repo_name}@{branch} before {before.isoformat()}; using full tree"
+        )
+        return None
+
+    async def _files_from_trusted_compare(
+        self, organization: str, repo_name: str, base_sha: str, branch: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Files changed between ``base_sha`` and ``branch`` when the compare is complete.
+
+        ``ahead`` and ``identical`` mean ``base_sha`` is an ancestor of the tip.
+        GitHub caps the file list at 300 and does not mark it truncated, so a
+        full list is treated as incomplete and the caller scans the full tree.
+        """
+        diff = await self.fetch_commit_diff(organization, repo_name, base_sha, branch)
+        files = diff.get("files", [])
+        if diff.get("status") not in COMPARE_BASE_IS_ANCESTOR_STATUSES:
+            logger.info(
+                f"Untrusted compare status '{diff.get('status')}' for {repo_name}@{branch}; using full tree"
+            )
+            return None
+        if len(files) >= GITHUB_COMPARE_FILE_CAP:
+            logger.info(
+                f"Compare for {repo_name}@{branch} may be truncated ({len(files)} files); using full tree"
+            )
+            return None
+        return files
 
     async def fetch_commit_diff(
         self, organization: str, repo_name: str, before_sha: str, after_sha: str

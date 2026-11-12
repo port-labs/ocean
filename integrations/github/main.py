@@ -18,6 +18,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from github.helpers.incremental import resolve_effective_datetime
+from github.helpers.repository_change import RepositoryChange
 from github.helpers.utils import resolve_org_filtered_repos
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -138,9 +139,7 @@ from github.core.exporters.plugin_exporter import (
 from github.core.exporters.mcp_exporter import (
     McpExporter,
 )
-from github.helpers.repo_selectors import (
-    CompositeRepositorySelector,
-)
+from github.helpers.repo_selectors import RepositorySelector
 from github.core.options import (
     ListOrganizationOptions,
     ListPluginOptions,
@@ -306,8 +305,10 @@ async def resync_repositories(
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                     exclude_archived=repo_config.selector.exclude_archived,
-                    updated_since=resolve_effective_datetime(
-                        sync_cursor, repo_config.selector.updated_since_datetime
+                    changed_since=RepositoryChange.updated(
+                        resolve_effective_datetime(
+                            sync_cursor, repo_config.selector.updated_since_datetime
+                        )
                     ),
                 )
             )
@@ -481,7 +482,7 @@ async def resync_workflows(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
-                pushed_since=sync_cursor,
+                changed_since=RepositoryChange.pushed(sync_cursor),
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -559,7 +560,6 @@ async def resync_workflow_runs(
                                         max_runs=None if sync_cursor else 100,
                                         status=status,
                                         created=created_filter,
-                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -574,7 +574,6 @@ async def resync_workflow_runs(
                                         workflow_id=workflow["id"],
                                         max_runs=None if sync_cursor else 100,
                                         created=created_filter,
-                                        incremental_active=sync_cursor is not None,
                                     )
                                 )
                                 for workflow in workflows
@@ -780,12 +779,13 @@ async def resync_releases(
                     yield releases
 
 
+@ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 @_resync_per_authenticator
 async def resync_tags(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all tags in the organization's repositories."""
+    """Resync tags; incremental runs only list tags of repos pushed since the cursor."""
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -794,6 +794,7 @@ async def resync_tags(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -804,6 +805,7 @@ async def resync_tags(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
+                changed_since=RepositoryChange.pushed(sync_cursor),
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -823,12 +825,13 @@ async def resync_tags(
                     yield tags
 
 
+@ocean.on_incremental_resync(ObjectKind.BRANCH)
 @ocean.on_resync(ObjectKind.BRANCH)
 @_resync_per_authenticator
 async def resync_branches(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all branches in the organization's repositories."""
+    """Resync branches; incremental runs only cover repos pushed since the cursor."""
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client(authenticator)
@@ -838,6 +841,7 @@ async def resync_branches(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     selector = cast(GithubBranchConfig, event.resource_config).selector
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -848,6 +852,7 @@ async def resync_branches(
                 type=port_app_config.repository_type,
                 search_params=selector.repo_search,
                 exclude_archived=selector.exclude_archived,
+                changed_since=RepositoryChange.pushed(sync_cursor),
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1241,13 +1246,14 @@ async def resync_code_scanning_alerts(
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 @_resync_per_authenticator
 async def resync_folders(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all folders in specified repositories."""
-    logger.info(f"Starting resync for kind: {kind}")
+    """Resync folders; incremental runs only scan repos pushed since the cursor."""
+    sync_cursor = active_incremental_cursor()
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     folders = [
@@ -1287,7 +1293,9 @@ async def resync_folders(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(folders)
+    repo_path_map = await pattern_builder.build(
+        folders, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
     async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1295,13 +1303,14 @@ async def resync_folders(
         yield folder_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync files based on configuration using the file exporter."""
-    logger.info(f"Starting resync for kind: {kind}")
+    """Resync files; incremental runs only fetch files changed in repos pushed since the cursor."""
+    sync_cursor = active_incremental_cursor()
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     files = [
@@ -1334,7 +1343,9 @@ async def resync_files(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(files)
+    repo_path_map = await pattern_builder.build(
+        files, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1342,12 +1353,14 @@ async def resync_files(
         yield file_results
 
 
+@ocean.on_incremental_resync(ObjectKind.SKILL)
 @ocean.on_resync(ObjectKind.SKILL)
 @_resync_per_authenticator
 async def resync_skills(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Agent Skills (SKILL.md) using glob path discovery."""
+    """Resync Agent Skills (SKILL.md); incremental runs only fetch changed skills in pushed repos."""
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubSkillResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1380,8 +1393,9 @@ async def resync_skills(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(file_patterns)
-
+    repo_path_map = await pattern_builder.build(
+        file_patterns, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
     async for skills in skill_exporter.get_paginated_resources(
         ListSkillSearchOptions(
             repositories=repo_path_map,
@@ -1391,12 +1405,14 @@ async def resync_skills(
         yield skills
 
 
+@ocean.on_incremental_resync(ObjectKind.PLUGIN)
 @ocean.on_resync(ObjectKind.PLUGIN)
 @_resync_per_authenticator
 async def resync_plugins(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync agent plugin packages detected via provider manifests."""
+    """Resync agent plugin packages; incremental runs only scan repos pushed since the cursor."""
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubPluginResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1414,7 +1430,8 @@ async def resync_plugins(
         rest_client, selector.providers, max_depth=selector.max_depth
     )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
-    repo_selector = CompositeRepositorySelector(app_config.repository_type)
+    repo_selector = RepositorySelector(app_config.repository_type)
+    changed_since = RepositoryChange.pushed(sync_cursor)
 
     for path in paths:
         async for orgs in org_exporter.get_paginated_resources(
@@ -1424,7 +1441,7 @@ async def resync_plugins(
                 org_login = org["login"]
                 repositories: list[PluginRepositoryOptions] = []
                 async for _repo_name, branch, repo_obj in repo_selector.select_repos(
-                    path, repo_exporter, org_login, org["type"]
+                    path, repo_exporter, org_login, org["type"], changed_since
                 ):
                     repositories.append(
                         PluginRepositoryOptions(
@@ -1442,12 +1459,14 @@ async def resync_plugins(
                     yield plugins
 
 
+@ocean.on_incremental_resync(ObjectKind.MCP)
 @ocean.on_resync(ObjectKind.MCP)
 @_resync_per_authenticator
 async def resync_mcp(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync MCP servers (mcp.json/.mcp.json) using glob path discovery."""
+    """Resync MCP servers (mcp.json/.mcp.json); incremental runs only fetch changed configs in pushed repos."""
+    sync_cursor = active_incremental_cursor()
     config = cast(GithubMcpResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1478,7 +1497,9 @@ async def resync_mcp(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(file_patterns)
+    repo_path_map = await pattern_builder.build(
+        file_patterns, changed_since=RepositoryChange.pushed(sync_cursor)
+    )
 
     async for servers in mcp_exporter.get_paginated_resources(repo_path_map):
         yield servers

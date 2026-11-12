@@ -70,7 +70,9 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         branch: str,
     ) -> list[dict[str, Any]]:
         folders = self._filter_folder_contents(tree, path)
-        logger.info(f"fetched {len(folders)} folders from {repo['name']}")
+        logger.info(
+            f"fetched {len(folders)} folders from {repo['name']}@{branch} with pattern '{path}' from {organization}"
+        )
         if folders:
             formatted = self._enrich_folder_with_repository(
                 organization, folders, repo=repo, branch=branch

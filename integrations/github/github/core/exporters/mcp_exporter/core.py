@@ -17,6 +17,7 @@ class McpExporter(RestFileExporter):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """One raw item per MCP server in the matching config files."""
         async for file_batch in super().get_paginated_resources(options):
             servers: list[dict[str, Any]] = []
             for file_obj in file_batch:

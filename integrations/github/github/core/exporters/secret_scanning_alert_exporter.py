@@ -27,7 +27,7 @@ class RestSecretScanningAlertExporter(BaseSecurityAlertExporter):
         return "secret-scanning/alerts"
 
     @property
-    def incremental_strategy(self) -> ClientSideCutoffStrategy:
+    def updated_since_strategy(self) -> ClientSideCutoffStrategy:
         return SECRET_SCANNING_INCREMENTAL
 
     def prepare_request_params(self, params: dict[str, Any]) -> None:

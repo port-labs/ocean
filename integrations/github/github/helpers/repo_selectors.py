@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import (
     Any,
     AsyncIterator,
@@ -15,6 +14,7 @@ from loguru import logger
 
 from github.core.options import ListRepositoryOptions
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.repository_change import RepositoryChange
 from github.helpers.utils import get_repository_metadata
 
 if TYPE_CHECKING:
@@ -28,27 +28,27 @@ class RepoListSelector(Protocol):
     exclude_archived: bool
 
 
-class RepositorySelectorStrategy(ABC):
-    """Strategy interface for resolving repositories for a selector.
+RepoSelection = AsyncIterator[Tuple[str, str, Dict[str, Any]]]
 
-    Implementations yield tuples of (repo_name, branch, repo_obj) for an
-    organization login and a given selector configuration.
+
+def _changed_since_matches(
+    changed_since: Optional[RepositoryChange], repo: Dict[str, Any]
+) -> bool:
+    """True when there is no ``changed_since`` filter or ``repo`` changed since then."""
+    return changed_since is None or changed_since.matches(repo)
+
+
+class RepositorySelector:
+    """Resolve the repositories a selector points at, as (repo_name, branch, repo_obj).
+
+    - Explicit ``repos`` on the selector: fetch each one's metadata; the branch
+      falls back to the default branch. Explicit repos are always included
+      regardless of ``exclude_archived`` - the same precedent already applies
+      to ``repo_search``/``search_params``, which are never consulted here.
+    - No explicit repos: list every repository of ``repo_type`` in the org.
+
+    ``changed_since`` (optional) keeps only repositories changed since then.
     """
-
-    @abstractmethod
-    def select_repos(
-        self,
-        selector: RepoListSelector,
-        repo_exporter: AbstractGithubExporter[Any],
-        org_login: str,
-        org_type: str,
-    ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
-        """Yield (repo_name, branch, repo_obj)"""
-        ...
-
-
-class AllRepositorySelector(RepositorySelectorStrategy):
-    """Select all repositories of the provided repo_type within an organization."""
 
     def __init__(self, repo_type: str):
         self.repo_type = repo_type
@@ -59,86 +59,53 @@ class AllRepositorySelector(RepositorySelectorStrategy):
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
         org_type: str,
-    ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
-        logger.info(
-            f"Fetching all '{self.repo_type}' repositories from '{org_login}' of type '{org_type}'."
-        )
-        options = ListRepositoryOptions(
+        changed_since: Optional[RepositoryChange] = None,
+    ) -> RepoSelection:
+        """Repositories the selector resolves to, optionally only those changed since ``changed_since``."""
+        if selector.repos:
+            async for repo in self._explicit_repos(selector, repo_exporter, org_login):
+                if _changed_since_matches(changed_since, repo[2]):
+                    yield repo
+                else:
+                    logger.debug(f"Skipping unchanged repository {repo[0]}")
+            return
+        options = self._list_options(selector, org_login, org_type)
+        options["changed_since"] = changed_since
+        async for repo in self._list_repos(repo_exporter, org_login, options):
+            yield repo
+
+    def _list_options(
+        self, selector: RepoListSelector, org_login: str, org_type: str
+    ) -> ListRepositoryOptions:
+        return ListRepositoryOptions(
             organization=org_login,
             organization_type=org_type,
             type=self.repo_type,
             exclude_archived=selector.exclude_archived,
         )
+
+    async def _list_repos(
+        self,
+        repo_exporter: AbstractGithubExporter[Any],
+        org_login: str,
+        options: ListRepositoryOptions,
+    ) -> RepoSelection:
+        logger.info(f"Fetching all '{self.repo_type}' repositories from '{org_login}'.")
         async for batch in repo_exporter.get_paginated_resources(options):
             for repo in batch:
-                name = repo["name"]
-                default_branch = repo["default_branch"]
-                logger.debug(
-                    f"Fetched repo '{name}' with default branch '{default_branch}'"
-                )
-                yield name, default_branch, repo
+                yield repo["name"], repo["default_branch"], repo
 
-
-class ExactRepositorySelector(RepositorySelectorStrategy):
-    """Select only explicitly listed repositories (non-glob entries).
-
-    For each explicit repository, repository metadata is fetched to determine a
-    branch fallback when the selector omits a branch.
-
-    Note: explicitly listed repos are always included regardless of
-    `exclude_archived` on the selector - the same precedent already applies to
-    `repo_search`/`search_params`, which are likewise never consulted here.
-    """
-
-    async def select_repos(
+    async def _explicit_repos(
         self,
         selector: RepoListSelector,
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
-        org_type: str,
-    ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
-        if not selector.repos:
-            return
-
-        for repo_sel in selector.repos:
+    ) -> RepoSelection:
+        for repo_sel in selector.repos or []:
             repo_obj = await get_repository_metadata(
                 repo_exporter.client, org_login, repo_sel.name
             )
             if not repo_obj:
                 logger.warning(f"Repository {repo_sel.name} not found in {org_login}")
                 continue
-
-            branch = repo_sel.branch or repo_obj["default_branch"]
-            yield repo_sel.name, branch, repo_obj
-
-
-class CompositeRepositorySelector(RepositorySelectorStrategy):
-    """Composite that orchestrates repository selection strategies.
-
-    When the selector has no explicit repos, it uses the implicit (all) strategy.
-    Otherwise, it combines exact and glob strategies.
-    """
-
-    def __init__(self, repo_type: str):
-        self.implicit_strategies: List[RepositorySelectorStrategy] = [
-            AllRepositorySelector(repo_type)
-        ]
-        self.explicit_strategies: List[RepositorySelectorStrategy] = [
-            ExactRepositorySelector()
-        ]
-
-    async def select_repos(
-        self,
-        selector: RepoListSelector,
-        repo_exporter: AbstractGithubExporter[Any],
-        org_login: str,
-        org_type: str,
-    ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
-        active_strategies = (
-            self.explicit_strategies if selector.repos else self.implicit_strategies
-        )
-        for strategy in active_strategies:
-            async for result in strategy.select_repos(
-                selector, repo_exporter, org_login, org_type
-            ):
-                yield result
+            yield repo_sel.name, repo_sel.branch or repo_obj["default_branch"], repo_obj
