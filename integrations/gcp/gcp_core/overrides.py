@@ -110,6 +110,9 @@ class GCPFolderResourceConfig(ResourceConfig):
 
 
 class GCPResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllResources",
+    )
     kind: str = Field(
         title="Custom Kind",
         description="Use this to map GCP resources supported by the <a target='_blank' href='https://docs.cloud.google.com/asset-inventory/docs/asset-types'>GCP Asset Inventory API</a> by setting the kind name to the full resource type.\n\nExample: compute.googleapis.com/Instance",
@@ -133,6 +136,9 @@ class GCPCloudFunctionSelector(Selector):
 
 
 class GCPCloudFunctionResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = (
+        "Test connection does not verify access to the configured function URL."
+    )
     kind: Literal["gcpCloudFunction"] = Field(
         title="GCP Cloud Function",
         description="GCP cloud-function sync protocol resource kind.",

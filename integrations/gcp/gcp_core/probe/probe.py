@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import BoundedSemaphore
 from dataclasses import dataclass
 from typing import Any, Callable, cast
 
@@ -6,18 +7,15 @@ from google.api_core.exceptions import GoogleAPICallError
 from google.auth.exceptions import GoogleAuthError
 from loguru import logger
 
-from gcp_core.clients import (
-    get_folders_client,
-    get_organizations_client,
-    get_projects_client,
-)
+import gcp_core.clients as clients
+from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
 from gcp_core.helpers.retry.async_retry import async_retry
 from gcp_core.probe.permissions import GcpKindPermissionVerdict
 from gcp_core.search.paginated_query import DEFAULT_REQUEST_TIMEOUT, paginated_query
 from gcp_core.utils import AssetTypesWithSpecialHandling
+from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
 from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
 
-_MAX_CONCURRENT_CHECKS = 10
 _MAX_LISTED_CONTAINERS = 5
 
 # (container, granted permissions, error) - exactly one of the last two is set.
@@ -40,26 +38,27 @@ _LEVELS = (
     _ContainerLevel(
         label="project",
         kinds=(
-            AssetTypesWithSpecialHandling.PROJECT,
-            AssetTypesWithSpecialHandling.TOPIC,
-            AssetTypesWithSpecialHandling.SUBSCRIPTION,
-            AssetTypesWithSpecialHandling.CLOUD_RESOURCE,
+            AssetTypesWithSpecialHandling.PROJECT.value,
+            AssetTypesWithSpecialHandling.TOPIC.value,
+            AssetTypesWithSpecialHandling.SUBSCRIPTION.value,
+            AssetTypesWithSpecialHandling.CLOUD_RESOURCE.value,
+            CUSTOM_KIND,
         ),
-        get_client=get_projects_client,
+        get_client=clients.get_projects_client,
         search_method="search_projects",
         response_field="projects",
     ),
     _ContainerLevel(
         label="folder",
-        kinds=(AssetTypesWithSpecialHandling.FOLDER,),
-        get_client=get_folders_client,
+        kinds=(AssetTypesWithSpecialHandling.FOLDER.value,),
+        get_client=clients.get_folders_client,
         search_method="search_folders",
         response_field="folders",
     ),
     _ContainerLevel(
         label="organization",
-        kinds=(AssetTypesWithSpecialHandling.ORGANIZATION,),
-        get_client=get_organizations_client,
+        kinds=(AssetTypesWithSpecialHandling.ORGANIZATION.value,),
+        get_client=clients.get_organizations_client,
         search_method="search_organizations",
         response_field="organizations",
     ),
@@ -78,15 +77,14 @@ def _summarize(messages: list[str]) -> str:
 class GcpPermissionProbe:
     """Reports, per kind, whether the credentials hold the IAM permissions to sync it.
 
-    IAM grants are verified, not whether the backing API is enabled on the
-    container - a granted cloudasset permission still fails with SERVICE_DISABLED at
-    resync. Upgrade when the extra serviceusage call is worth it.
+    IAM grants are verified, not whether the backing API is enabled on the container -
+    a granted cloudasset permission still fails with SERVICE_DISABLED at resync.
     """
 
     def __init__(self, context: ProbeContext) -> None:
         self.context = context
         self.permission_verdict = GcpKindPermissionVerdict()
-        self._semaphore = asyncio.Semaphore(_MAX_CONCURRENT_CHECKS)
+        self._semaphore = BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
     async def run(self) -> None:
         checks = {
@@ -94,10 +92,22 @@ class GcpPermissionProbe:
         }
 
         try:
-            await asyncio.gather(*(self._run_level(level, checks) for level in _LEVELS))
-        except GoogleAuthError as error:
-            await self.context.fail(f"Failed to verify GCP authentication: {error}")
-            return
+            # gather does not cancel siblings, so a raising level must not leave the
+            # others reporting into an already failed probe.
+            results = await asyncio.gather(
+                *(self._run_level(level, checks) for level in _LEVELS),
+                return_exceptions=True,
+            )
+        finally:
+            await clients.close()
+
+        errors = [result for result in results if isinstance(result, BaseException)]
+        for error in errors:
+            if isinstance(error, GoogleAuthError):
+                await self.context.fail(f"Failed to verify GCP authentication: {error}")
+                return
+        if errors:
+            raise errors[0]
 
         for kind, check in checks.items():
             if check.status is ProbeCheckStatus.PENDING:
@@ -110,20 +120,21 @@ class GcpPermissionProbe:
         level: _ContainerLevel,
         checks: dict[str, ProbeCheck],
     ) -> None:
-        # Enum members hash by name, not value, so normalize before lookup.
-        level_kinds = {str(kind) for kind in level.kinds}
-        level_checks = [check for check in checks.values() if check.kind in level_kinds]
+        level_checks = [
+            checks[kind]
+            for kind in level.kinds
+            if kind in checks and self.permission_verdict.kind_permissions.get(kind)
+        ]
+        if not level_checks:
+            return
+
         permissions = sorted(
             {
                 permission
                 for check in level_checks
-                for permission in self.permission_verdict.kind_permissions.get(
-                    check.kind, ()
-                )
+                for permission in self.permission_verdict.kind_permissions[check.kind]
             }
         )
-        if not permissions:
-            return
 
         try:
             containers = await self._discover(level)

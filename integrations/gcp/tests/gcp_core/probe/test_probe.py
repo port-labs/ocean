@@ -1,17 +1,26 @@
 from types import SimpleNamespace
+from collections.abc import Callable
 from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from google.api_core.exceptions import PermissionDenied
+from google.auth.exceptions import DefaultCredentialsError
 
 import port_ocean.context.ocean as ocean_module
 from port_ocean.context.ocean import PortOceanContext, initialize_port_ocean_context
-from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
+from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
+from port_ocean.core.probe import (
+    ProbeCheck,
+    ProbeCheckStatus,
+    ProbeContext,
+    ProbeStatus,
+)
 
 PROJECT = "cloudresourcemanager.googleapis.com/Project"
 TOPIC = "pubsub.googleapis.com/Topic"
 FOLDER = "cloudresourcemanager.googleapis.com/Folder"
+ORGANIZATION = "cloudresourcemanager.googleapis.com/Organization"
 CLOUD_FUNCTION = "gcpCloudFunction"
 
 
@@ -70,19 +79,16 @@ def make_client(
     return client
 
 
-def install_client(client_name: str, client: MagicMock) -> None:
-    """Pre-populate the singleton slot the shared getters read from."""
-    import gcp_core.clients as clients
+@pytest.fixture
+def install_client(monkeypatch: pytest.MonkeyPatch) -> Callable[[str, MagicMock], None]:
+    """Pre-populate a singleton slot, as tests/gcp_core/search does."""
 
-    clients._instances[client_name] = client
+    def install(client_name: str, client: MagicMock) -> None:
+        import gcp_core.clients as clients
 
+        monkeypatch.setitem(clients._instances, client_name, client)
 
-@pytest.fixture(autouse=True)
-def clear_clients() -> Generator[None, None, None]:
-    import gcp_core.clients as clients
-
-    yield
-    clients._instances.clear()
+    return install
 
 
 def checks_by_kind(context: ProbeContext) -> dict[str, ProbeCheck]:
@@ -92,12 +98,13 @@ def checks_by_kind(context: ProbeContext) -> dict[str, ProbeCheck]:
 @pytest.mark.asyncio
 async def test_probe_succeeds_when_project_permissions_are_granted(
     probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
 ) -> None:
     probe_context.available_kinds = [PROJECT, TOPIC]
     client = make_client(
         "search_projects",
         "projects",
-        ["projects/sendbox"],
+        ["projects/sandbox"],
         granted=["resourcemanager.projects.get", "pubsub.topics.list"],
     )
 
@@ -111,7 +118,7 @@ async def test_probe_succeeds_when_project_permissions_are_granted(
     # One call per container, asking for every kind's permissions at that level.
     client.test_iam_permissions.assert_awaited_once()
     request: dict[str, Any] = client.test_iam_permissions.await_args.kwargs["request"]
-    assert request["resource"] == "projects/sendbox"
+    assert request["resource"] == "projects/sandbox"
     assert request["permissions"] == [
         "pubsub.topics.list",
         "resourcemanager.projects.get",
@@ -121,12 +128,13 @@ async def test_probe_succeeds_when_project_permissions_are_granted(
 @pytest.mark.asyncio
 async def test_probe_fails_only_the_kind_whose_permission_is_missing(
     probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
 ) -> None:
     probe_context.available_kinds = [PROJECT, TOPIC]
     client = make_client(
         "search_projects",
         "projects",
-        ["projects/sendbox"],
+        ["projects/sandbox"],
         granted=["resourcemanager.projects.get"],
     )
 
@@ -137,13 +145,14 @@ async def test_probe_fails_only_the_kind_whose_permission_is_missing(
     checks = checks_by_kind(probe_context)
     assert checks[PROJECT].status is ProbeCheckStatus.SUCCESS
     assert checks[TOPIC].status is ProbeCheckStatus.FAILURE
-    assert "projects/sendbox" in str(checks[TOPIC].message)
+    assert "projects/sandbox" in str(checks[TOPIC].message)
     assert "pubsub.topics.list" in str(checks[TOPIC].message)
 
 
 @pytest.mark.asyncio
 async def test_probe_reports_unknown_when_no_folder_is_discovered(
     probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
 ) -> None:
     probe_context.available_kinds = [FOLDER]
     client = make_client("search_folders", "folders", [])
@@ -161,6 +170,7 @@ async def test_probe_reports_unknown_when_no_folder_is_discovered(
 @pytest.mark.asyncio
 async def test_probe_fails_the_kind_when_discovery_is_denied(
     probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
 ) -> None:
     probe_context.available_kinds = [FOLDER]
     client = make_client(
@@ -183,10 +193,119 @@ async def test_probe_fails_the_kind_when_discovery_is_denied(
 async def test_probe_reports_unknown_for_a_kind_without_permission_mapping(
     probe_context: ProbeContext,
 ) -> None:
+    from gcp_core.overrides import GCPCloudFunctionResourceConfig
+
     probe_context.available_kinds = [CLOUD_FUNCTION]
 
     await run_probe(probe_context)
 
     check = checks_by_kind(probe_context)[CLOUD_FUNCTION]
     assert check.status is ProbeCheckStatus.UNKNOWN
-    assert "function URL" in str(check.message)
+    assert "No permission mapping is defined" in str(check.message)
+    # the user-facing caveat is declared as probe_description, surfaced in the kinds schema
+    assert GCPCloudFunctionResourceConfig.probe_description
+
+
+@pytest.mark.asyncio
+async def test_probe_fails_the_whole_probe_on_an_auth_error(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [PROJECT]
+    client = make_client(
+        "search_projects",
+        "projects",
+        [],
+        search_error=DefaultCredentialsError("no ADC"),
+    )
+    install_client("ProjectsAsyncClient", client)
+
+    await run_probe(probe_context)
+
+    assert probe_context.status is ProbeStatus.FAILED
+    assert probe_context.message is not None
+    assert "Failed to verify GCP authentication" in probe_context.message
+
+
+@pytest.mark.asyncio
+async def test_probe_reports_unknown_when_a_container_check_errors(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [PROJECT]
+    client = make_client("search_projects", "projects", ["projects/sandbox"])
+    client.test_iam_permissions = AsyncMock(
+        side_effect=PermissionDenied("cannot test permissions")
+    )
+    install_client("ProjectsAsyncClient", client)
+
+    await run_probe(probe_context)
+
+    check = checks_by_kind(probe_context)[PROJECT]
+    assert check.status is ProbeCheckStatus.UNKNOWN
+    assert "Could not verify access" in str(check.message)
+
+
+@pytest.mark.asyncio
+async def test_probe_truncates_the_container_list_past_five(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [PROJECT]
+    client = make_client(
+        "search_projects",
+        "projects",
+        [f"projects/p{index}" for index in range(8)],
+        granted=[],
+    )
+    install_client("ProjectsAsyncClient", client)
+
+    await run_probe(probe_context)
+
+    check = checks_by_kind(probe_context)[PROJECT]
+    assert check.status is ProbeCheckStatus.FAILURE
+    assert str(check.message).count("projects/p") == 5
+    assert "(and 3 more)" in str(check.message)
+
+
+@pytest.mark.asyncio
+async def test_probe_checks_the_organization_level(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [ORGANIZATION]
+    client = make_client(
+        "search_organizations",
+        "organizations",
+        ["organizations/123"],
+        granted=["resourcemanager.organizations.get"],
+    )
+    install_client("OrganizationsAsyncClient", client)
+
+    await run_probe(probe_context)
+
+    check = checks_by_kind(probe_context)[ORGANIZATION]
+    assert check.status is ProbeCheckStatus.SUCCESS
+    request = client.test_iam_permissions.await_args.kwargs["request"]
+    assert request["resource"] == "organizations/123"
+    assert request["permissions"] == ["resourcemanager.organizations.get"]
+
+
+@pytest.mark.asyncio
+async def test_probe_checks_the_custom_kind_slot(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [CUSTOM_KIND]
+    client = make_client(
+        "search_projects",
+        "projects",
+        ["projects/sandbox"],
+        granted=["cloudasset.assets.searchAllResources"],
+    )
+    install_client("ProjectsAsyncClient", client)
+
+    await run_probe(probe_context)
+
+    check = checks_by_kind(probe_context)[CUSTOM_KIND]
+    assert check.status is ProbeCheckStatus.SUCCESS
