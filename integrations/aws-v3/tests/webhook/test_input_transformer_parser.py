@@ -40,7 +40,12 @@ def test_is_input_transformer_event_false_when_detail_present() -> None:
 
 
 def test_is_input_transformer_event_false_when_required_fields_missing() -> None:
-    assert is_input_transformer_event(cast(InputTransformerPayload, {"resource_type": "AWS::IAM::Role"})) is False
+    assert (
+        is_input_transformer_event(
+            cast(InputTransformerPayload, {"resource_type": "AWS::IAM::Role"})
+        )
+        is False
+    )
 
 
 def test_parse_input_transformer_event_returns_upsert() -> None:
