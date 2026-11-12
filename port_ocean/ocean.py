@@ -33,6 +33,7 @@ from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.health import create_health_router, set_ready
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
+from port_ocean.config.settings import VaultType
 from port_ocean.identity_propagation.oauth_broker.router import register_oauth_broker
 from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 from port_ocean.identity_propagation.vault.base import VaultClient, build_vault_client
@@ -147,6 +148,9 @@ class Ocean:
                 raise ValueError(
                     "Identity propagation enabled but no vault client configured."
                 )
+            self._is_port_vault = (
+                self.config.identity_propagation.vault.type == VaultType.port
+            )
 
         self.centralized_rate_limiter: CentralizedRateLimiter | None = None
 
@@ -360,7 +364,12 @@ class Ocean:
                 "Execution agent is not enabled, or actions processing is disabled in this event listener, skipping execution agent setup"
             )
 
-        if self.config.identity_propagation.enabled:
+        if self.config.identity_propagation.enabled and not getattr(
+            self, "_is_port_vault", False
+        ):
+            # The port vault type delegates token storage and exchange to
+            # Port's identity-propagation service; the local OAuth broker is not needed and
+            # oauthBrokerUrl must not be registered.
             if self.base_url and self._is_public_url(self.base_url):
                 broker_url = f"{self.base_url}/v1/oauth-broker/authorize"
                 await self.port_client.patch_integration(oauth_broker_url=broker_url)
@@ -381,7 +390,9 @@ class Ocean:
         self.fast_api_app.include_router(
             create_health_router(), prefix=f"{self.route_prefix}/health"
         )
-        if self.config.identity_propagation.enabled:
+        if self.config.identity_propagation.enabled and not getattr(
+            self, "_is_port_vault", False
+        ):
             register_oauth_broker()
 
         @asynccontextmanager

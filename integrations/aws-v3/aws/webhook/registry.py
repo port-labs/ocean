@@ -5,10 +5,13 @@ from aws.webhook.consts import CLOUDTRAIL_WEBHOOK_PATH
 from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
     CloudTrailWebhookProcessor,
 )
+from aws.webhook.webhook_processors.input_transformer_webhook_processor import (
+    InputTransformerWebhookProcessor,
+)
 
 
 def register_cloudtrail_live_events() -> None:
-    """Register the CloudTrail live-events processor when this instance is configured for LE."""
+    """Register the live-events processors when this instance is configured for LE."""
     if not ocean.integration_config.get("live_events_api_key"):
         logger.info(
             "Skipping CloudTrail live events — live_events_api_key is not configured"
@@ -16,3 +19,6 @@ def register_cloudtrail_live_events() -> None:
         return
 
     ocean.add_webhook_processor(CLOUDTRAIL_WEBHOOK_PATH, CloudTrailWebhookProcessor)
+    ocean.add_webhook_processor(
+        CLOUDTRAIL_WEBHOOK_PATH, InputTransformerWebhookProcessor
+    )

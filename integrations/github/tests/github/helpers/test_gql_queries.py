@@ -22,6 +22,14 @@ class TestGeneratePullRequestDetailsGql:
         query = generate_pull_request_details_gql(PullRequestGraphQLOptions())
         assert "fullDatabaseId" in query
 
+    def test_reviews_fetch_the_latest_with_commit_and_submitted_at(self) -> None:
+        query = generate_pull_request_details_gql(PullRequestGraphQLOptions())
+        # `first: N` would return the oldest N reviews and hide recent ones on busy PRs.
+        assert "reviews (last: 10)" in query
+        assert "reviews (first:" not in query
+        assert "submittedAt" in query
+        assert "commit {" in query
+
     def test_can_omit_required_fields_for_single_field_fetch(self) -> None:
         # A backfill query for just `additions` selects that field and nothing else.
         options = PullRequestGraphQLOptions()
