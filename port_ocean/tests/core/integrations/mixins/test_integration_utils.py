@@ -20,6 +20,7 @@ from port_ocean.core.models import IntegrationFeatureFlag, ProcessingMode
 from port_ocean.core.integrations.mixins.utils import (
     build_lakehouse_data_entry,
     collect_export_env_variables,
+    is_sensitive_env_variable,
     extract_jq_deletion_path_revised,
     handle_items_to_parse,
     is_dsp_mode_enabled,
@@ -51,6 +52,84 @@ class TestCollectExportEnvVariables:
             "FOO": "bar",
             "MISSING": None,
         }
+
+    def test_filters_sensitive_secret_variables_with_warning(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "aws-secret-123")
+        monkeypatch.setenv("MY_API_KEY", "api-key-456")
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_abc")
+        monkeypatch.setenv("DB_PASSWORD", "supersecret")
+        monkeypatch.setenv("PORT_CLIENT_SECRET", "port-secret")
+        monkeypatch.setenv("SAFE_ENV_VAR", "safe_val")
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.warning"
+        ) as mock_warning:
+            result = collect_export_env_variables(
+                [
+                    "SAFE_ENV_VAR",
+                    "AWS_SECRET_ACCESS_KEY",
+                    "MY_API_KEY",
+                    "GITHUB_TOKEN",
+                    "DB_PASSWORD",
+                    "PORT_CLIENT_SECRET",
+                ]
+            )
+
+        assert result == {"SAFE_ENV_VAR": "safe_val"}
+        assert mock_warning.call_count == 5
+        warning_calls = [call.args[0] for call in mock_warning.call_args_list]
+        for sensitive_var in [
+            "AWS_SECRET_ACCESS_KEY",
+            "MY_API_KEY",
+            "GITHUB_TOKEN",
+            "DB_PASSWORD",
+            "PORT_CLIENT_SECRET",
+        ]:
+            assert any(sensitive_var in msg for msg in warning_calls)
+
+    @pytest.mark.parametrize(
+        "var_name,expected_sensitive",
+        [
+            ("AWS_SECRET_ACCESS_KEY", True),
+            ("MY_API_KEY", True),
+            ("GITHUB_TOKEN", True),
+            ("DB_PASSWORD", True),
+            ("PORT_CLIENT_SECRET", True),
+            ("JWT_SECRET", True),
+            ("SLACK_TOKEN", True),
+            ("POSTGRES_PASSWD", True),
+            ("APP_CREDENTIAL", True),
+            ("PRIVATE_KEY", True),
+            ("BEARER_TOKEN", True),
+            ("APIKEY", True),
+            ("aws_secret_key", True),
+            ("SAFE_CONFIG_NAME", False),
+            ("NODE_ENV", False),
+            ("PORT", False),
+            ("PORT_APP_CONFIG", False),
+            ("KEYBOARD", False),
+            ("MONKEY", False),
+        ],
+    )
+    def test_is_sensitive_env_variable(
+        self, var_name: str, expected_sensitive: bool
+    ) -> None:
+        assert is_sensitive_env_variable(var_name) is expected_sensitive
+
+    def test_collects_empty_dict_when_all_variables_are_sensitive(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "aws-secret")
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.logger.warning"
+        ) as mock_warning:
+            result = collect_export_env_variables(["AWS_SECRET_ACCESS_KEY"])
+
+        assert result == {}
+        mock_warning.assert_called_once()
 
 
 class TestBuildLakehouseDataEntry:
