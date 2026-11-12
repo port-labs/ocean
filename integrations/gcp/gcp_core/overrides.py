@@ -29,6 +29,32 @@ class GCPCloudResourceConfig(ResourceConfig):
     )
 
 
+class GCPIamPolicySelector(Selector):
+    asset_types: list[str] = Field(
+        alias="assetTypes",
+        min_items=1,
+        title="Asset Types",
+        description="GCP asset types whose IAM allow-policy bindings to fetch, e.g. iam.googleapis.com/ServiceAccount. Required on purpose: the API treats it as optional and searches every asset type when it is omitted, which fans out one entity per member grant across the whole project.",
+    )
+    policy_query: str | None = Field(
+        default=None,
+        alias="policyQuery",
+        title="Policy Query",
+        description="Server-side IAM policy filter, e.g. memberTypes:serviceAccount. See https://cloud.google.com/asset-inventory/docs/searching-iam-policies",
+    )
+
+
+class GCPIamPolicyResourceConfig(ResourceConfig):
+    kind: Literal["iamPolicy"] = Field(
+        title="GCP IAM Policy",
+        description="GCP IAM allow-policy bindings kind.",
+    )
+    selector: GCPIamPolicySelector = Field(
+        title="IAM Policy Selector",
+        description="Selector for the GCP IAM allow-policy bindings.",
+    )
+
+
 class GCPResourceSelector(Selector):
     preserve_api_response_case_style: bool | None = Field(
         default=None,
@@ -144,6 +170,7 @@ class GCPPortAppConfig(PortAppConfig):
         | GCPOrganizationResourceConfig
         | GCPFolderResourceConfig
         | GCPCloudFunctionResourceConfig
+        | GCPIamPolicyResourceConfig
         | GCPResourceConfig
     ] = Field(
         title="Resources",

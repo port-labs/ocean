@@ -419,3 +419,135 @@ async def test_search_all_resources_in_project_reraises_unexpected_error(
             project, "bigquery.googleapis.com/Table", semaphore
         ):
             pass
+
+
+@pytest.mark.asyncio
+async def test_search_all_iam_policies_per_project_request_and_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `asset_types` is a repeated request field, so every mapped type goes out in one search
+    rather than one search per type. The request carries only `scope` and `asset_types` when
+    no `policyQuery` is set (no `read_mask`, which belongs to searchAllResources), and the yielded item is the raw
+    IamPolicySearchResult: `policy` left intact for the mapping's `itemsToParse` to expand,
+    and no `__project` enrichment since the payload already carries `project`.
+    """
+    from gcp_core.search import resource_searches
+
+    policy_result = {
+        "resource": "//iam.googleapis.com/projects/p/serviceAccounts/a@p.iam.gserviceaccount.com",
+        "asset_type": "iam.googleapis.com/ServiceAccount",
+        "project": "projects/385573848890",
+        "policy": {"bindings": [{"role": "roles/viewer", "members": ["user:a@b.com"]}]},
+    }
+    captured: dict[str, Any] = {}
+
+    monkeypatch.setattr(
+        resource_searches, "parse_protobuf_messages", lambda results: results
+    )
+
+    async def fake_paginated_query(
+        client: Any,
+        method: str,
+        request: dict[str, Any],
+        parse_fn: Any,
+        rate_limiter: Any = None,
+        timeout: Any = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        captured["method"] = method
+        captured["request"] = request
+        response = MagicMock()
+        response.results = [policy_result]
+        yield parse_fn(response)
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    results: list[Any] = []
+    async for batch in resource_searches.search_all_iam_policies_per_project(
+        {"name": "projects/123"},
+        ["iam.googleapis.com/ServiceAccount", "storage.googleapis.com/Bucket"],
+        BoundedSemaphore(1),
+    ):
+        results.extend(batch)
+
+    assert captured["method"] == "search_all_iam_policies"
+    assert captured["request"] == {
+        "scope": "projects/123",
+        "asset_types": [
+            "iam.googleapis.com/ServiceAccount",
+            "storage.googleapis.com/Bucket",
+        ],
+    }
+    assert results == [policy_result]
+    assert "__project" not in results[0]
+    assert results[0]["policy"]["bindings"]
+
+
+@pytest.mark.asyncio
+async def test_search_all_iam_policies_per_project_passes_policy_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`policyQuery` is forwarded as the request's `query`."""
+    from gcp_core.search import resource_searches
+
+    captured: dict[str, Any] = {}
+
+    monkeypatch.setattr(
+        resource_searches, "parse_protobuf_messages", lambda results: results
+    )
+
+    async def fake_paginated_query(
+        client: Any,
+        method: str,
+        request: dict[str, Any],
+        parse_fn: Any,
+        rate_limiter: Any = None,
+        timeout: Any = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        captured["request"] = request
+        response = MagicMock()
+        response.results = []
+        yield parse_fn(response)
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    async for _ in resource_searches.search_all_iam_policies_per_project(
+        {"name": "projects/123"},
+        ["iam.googleapis.com/ServiceAccount"],
+        BoundedSemaphore(1),
+        policy_query="memberTypes:serviceAccount",
+    ):
+        pass
+
+    assert captured["request"]["query"] == "memberTypes:serviceAccount"
+
+
+@pytest.mark.asyncio
+async def test_search_all_iam_policies_per_project_propagates_permission_denied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `PermissionDenied` must propagate, unlike on `search_all_resources_in_project` which
+    swallows it. Grant entities drive deletion in Port: an empty yield with an empty error
+    list makes Ocean reconcile away every grant it holds for the project and still report
+    the resync successful. Propagating makes `_resync_reconciliation` skip the delete phase.
+    """
+    from google.api_core.exceptions import PermissionDenied
+
+    from gcp_core.search import resource_searches
+
+    async def fake_paginated_query(
+        *args: Any, **kwargs: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise PermissionDenied("missing cloudasset.assets.searchAllIamPolicies")
+        yield  # pragma: no cover - unreachable, keeps this an async generator
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    with pytest.raises(PermissionDenied):
+        async for _ in resource_searches.search_all_iam_policies_per_project(
+            {"name": "projects/123"},
+            ["iam.googleapis.com/ServiceAccount"],
+            BoundedSemaphore(1),
+        ):
+            pass
