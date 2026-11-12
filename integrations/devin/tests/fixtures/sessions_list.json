@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "body": {
+    "items": [],
+    "end_cursor": null,
+    "has_next_page": false,
+    "total": null
+  }
+}
