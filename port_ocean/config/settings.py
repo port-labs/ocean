@@ -68,6 +68,7 @@ class IdentityPropagationOAuthSettings(BaseOceanModel):
 class VaultType(str, Enum):
     aws_secrets_manager = "aws_secrets_manager"
     custom = "custom"
+    port = "port"
 
 
 class VaultSettings(BaseOceanModel):
@@ -473,6 +474,20 @@ class IntegrationConfiguration(BaseOceanSettings):
     def set_disable_ip_outbound_blocker_default(self) -> Self:
         if self.disable_ip_outbound_blocker is None:
             self.disable_ip_outbound_blocker = not self.runtime.is_saas_runtime
+        return self
+
+    @model_validator(mode="after")
+    def validate_port_vault_is_saas_only(self) -> Self:
+        if (
+            self.identity_propagation.vault.type == VaultType.port
+            and not self.runtime.is_saas_runtime
+        ):
+            raise ValueError(
+                "identity_propagation.vault.type=port is only supported on SaaS "
+                "runtime. Self-hosted installs must use aws_secrets_manager. "
+                "See https://docs.port.io/context-lake/ingestion/ingest-data-into-port/"
+                "native-integrations/ocean-framework/identity-propagation/#configuration"
+            )
         return self
 
     @model_validator(mode="after")
