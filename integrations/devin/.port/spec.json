@@ -139,7 +139,7 @@
           "name": "createAsUserEmail",
           "title": "Create as user (email)",
           "type": "string",
-          "description": "Optional email of a Devin organization member to create the session on behalf of, for example {{ .trigger.by.user.email }}. When no member matches, the session is created as the service user and a warning is logged.",
+          "description": "Optional email of a Devin organization member to create the session on behalf of. In workflows, set this from the trigger user, for example {{ .trigger.by.user.email }}. When set, the email must match an org member or the action fails.",
           "required": false
         },
         {
@@ -154,7 +154,7 @@
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
-          "description": "Optional advanced configuration shallow-merged onto the Devin create-session request body, for example {\"devin_mode\": \"fast\", \"bypass_approval\": true, \"session_secrets\": [...], \"attachment_urls\": [...]}. Typed inputs above take precedence. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "description": "Optional advanced configuration merged onto the Devin create-session request body. Only devin_mode and attachment_urls are allowed; typed inputs above take precedence.",
           "required": false
         }
       ]
@@ -182,7 +182,7 @@
           "name": "messageAsUserEmail",
           "title": "Send as user (email)",
           "type": "string",
-          "description": "Optional email of a Devin organization member to send the message on behalf of, for example {{ .trigger.by.user.email }}.",
+          "description": "Optional email of a Devin organization member to send the message on behalf of. In workflows, set this from the trigger user, for example {{ .trigger.by.user.email }}. When set, the email must match an org member or the action fails.",
           "required": false
         },
         {
@@ -197,7 +197,7 @@
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
-          "description": "Optional advanced configuration shallow-merged onto the Devin send-message request body, for example {\"attachment_urls\": [...]}. Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "description": "Optional advanced configuration merged onto the Devin send-message request body. Only devin_mode and attachment_urls are allowed.",
           "required": false
         }
       ]

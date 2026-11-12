@@ -27,7 +27,6 @@ from port_ocean.core.models import (
 INSTALLATION_ID = "devin-test"
 
 OCEAN_MODULES = (
-    "actions.abstract_executor.ocean",
     "actions.utils.ocean",
     "actions.create_session_executor.ocean",
     "actions.send_message_executor.ocean",
@@ -302,13 +301,12 @@ def patched_ocean(port: FakePort) -> Iterator[MagicMock]:
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     patches = [patch(module, mock_ocean) for module in OCEAN_MODULES]
-    for module in ("core.catalog", "actions.abstract_executor"):
-        patches.append(
-            patch(
-                f"{module}.event_context",
-                MagicMock(side_effect=_noop_event_context),
-            )
+    patches.append(
+        patch(
+            "core.catalog.event_context",
+            MagicMock(side_effect=_noop_event_context),
         )
+    )
     for p in patches:
         p.start()
     try:

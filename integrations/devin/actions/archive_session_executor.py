@@ -6,6 +6,7 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
+from actions.utils import ensure_port_managed_session
 from integration import ObjectKind
 
 ARCHIVING_STATUS_LABEL = "Archiving session"
@@ -37,6 +38,8 @@ class ArchiveSessionExecutor(AbstractDevinExecutor):
             should_raise=False,
         )
         try:
+            current = await self.sessions.get(session_id)
+            ensure_port_managed_session(current)
             session = await self.sessions.archive(session_id)
         except httpx.HTTPError as error:
             raise DevinApiError.from_http_error(

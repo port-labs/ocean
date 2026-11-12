@@ -110,22 +110,31 @@ class TestCreateSession:
             "create_session",
             {
                 "prompt": "typed",
-                "config": {"prompt": "raw", "title": "From config", "tags": ["x"]},
+                "config": {"devin_mode": "fast", "attachment_urls": ["https://x/a"]},
             },
         )
 
         await build(CreateSessionExecutor, devin).execute(run)
 
         assert devin.last_create_body["prompt"] == "typed"
-        assert devin.last_create_body["title"] == "From config"
-        assert "x" in devin.last_create_body["tags"]
+        assert devin.last_create_body["devin_mode"] == "fast"
+        assert devin.last_create_body["attachment_urls"] == ["https://x/a"]
+
+    async def test_disallowed_config_keys_are_rejected(
+        self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
+    ) -> None:
+        run = make_node_run(
+            RUN_ID,
+            "create_session",
+            {"prompt": "x", "config": {"bypass_approval": True}},
+        )
+
+        with pytest.raises(InvalidActionParametersException, match="bypass_approval"):
+            await build(CreateSessionExecutor, devin).execute(run)
 
     @pytest.mark.parametrize(
         "properties",
-        [
-            {"prompt": "x", "tags": ["port:managed"]},
-            {"prompt": "x", "config": {"tags": ["port:pending:other"]}},
-        ],
+        [{"prompt": "x", "tags": ["port:managed"]}],
     )
     async def test_reserved_tags_are_rejected(
         self,
@@ -162,7 +171,7 @@ class TestCreateSession:
 
         assert devin.last_create_body["create_as_user_id"] == "user-1"
 
-    async def test_unknown_user_falls_back_to_service_user(
+    async def test_unknown_user_fails_the_run(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
     ) -> None:
         run = make_node_run(
@@ -171,10 +180,9 @@ class TestCreateSession:
             {"prompt": "x", "createAsUserEmail": "ghost@acme.io"},
         )
 
-        await build(CreateSessionExecutor, devin).execute(run)
-
-        assert "create_as_user_id" not in devin.last_create_body
-        assert any("ghost@acme.io" in log for log in port.logs[RUN_ID])
+        with pytest.raises(InvalidActionParametersException, match="ghost@acme.io"):
+            await build(CreateSessionExecutor, devin).execute(run)
+        assert devin.sessions == {}
 
     async def test_create_failure_raises_devin_error(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
@@ -270,7 +278,9 @@ class TestSendMessage:
     async def test_working_session_is_busy(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
     ) -> None:
-        devin.add_session("devin-1", status="running", status_detail="working")
+        devin.add_session(
+            "devin-1", status="running", status_detail="working", tags=[MANAGED_TAG]
+        )
         run = make_node_run(
             RUN_ID, "send_message", {"sessionId": "devin-1", "message": "hi"}
         )
@@ -314,6 +324,29 @@ class TestSendMessage:
         with pytest.raises(DevinApiError):
             await build(SendMessageExecutor, devin).execute(run)
 
+    async def test_unmanaged_session_is_rejected(
+        self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
+    ) -> None:
+        devin.add_session("devin-1", tags=[])
+        run = make_node_run(
+            RUN_ID, "send_message", {"sessionId": "devin-1", "message": "hi"}
+        )
+
+        with pytest.raises(InvalidActionParametersException, match="port:managed"):
+            await build(SendMessageExecutor, devin).execute(run)
+
+    async def test_ended_session_is_rejected(
+        self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
+    ) -> None:
+        devin.add_session("devin-1", status="exit", status_detail=None)
+        devin.sessions["devin-1"]["tags"] = [MANAGED_TAG]
+        run = make_node_run(
+            RUN_ID, "send_message", {"sessionId": "devin-1", "message": "hi"}
+        )
+
+        with pytest.raises(InvalidActionParametersException, match="ended"):
+            await build(SendMessageExecutor, devin).execute(run)
+
 
 class TestTerminateSession:
     async def test_waiting_run_is_failed_and_untracked(
@@ -352,7 +385,11 @@ class TestTerminateSession:
         port.track(waiting, waiting_external_id)
         port.in_progress[waiting.id] = False
         devin.add_session(
-            "devin-1", tags=tracking_tags(INSTALLATION_ID, waiting_external_id, 1)
+            "devin-1",
+            tags=[
+                MANAGED_TAG,
+                *tracking_tags(INSTALLATION_ID, waiting_external_id, 1),
+            ],
         )
         run = make_node_run(RUN_ID, "terminate_session", {"sessionId": "devin-1"})
 
@@ -378,7 +415,7 @@ class TestArchiveSession:
     async def test_archives_and_completes(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
     ) -> None:
-        devin.add_session("devin-1")
+        devin.add_session("devin-1", tags=[MANAGED_TAG])
         run = make_node_run(RUN_ID, "archive_session", {"sessionId": "devin-1"})
 
         await build(ArchiveSessionExecutor, devin).execute(run)

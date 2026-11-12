@@ -30,6 +30,7 @@ from core.tracking.run_output import (
     completion_output,
     completion_summary,
     iso_from_epoch,
+    started_output,
 )
 from core.tracking.tags import (
     parse_external_id,
@@ -108,6 +109,8 @@ class SessionTracker:
             try:
                 async for page in self._sessions.list_by_tag(self._pending_tag):
                     for session in page:
+                        if self._pending_tag not in session.tags:
+                            continue
                         if external_id := parse_external_id(session.tags):
                             seen.add(external_id)
                         await self._process_safely(session)
@@ -188,7 +191,7 @@ class SessionTracker:
     ) -> None:
         """Post this turn's new messages; never blocks completion handling."""
         try:
-            messages, turn.cursor = await self._sessions.list_messages_after(
+            messages, next_cursor = await self._sessions.list_messages_after(
                 session.session_id, turn.cursor
             )
         except httpx.HTTPError as error:
@@ -208,13 +211,8 @@ class SessionTracker:
             key=lambda message: message.created_at,
         )
         if not new_messages:
+            turn.cursor = next_cursor
             return
-        for message in new_messages:
-            turn.posted_event_ids.add(message.event_id)
-            if message.source == DEVIN_SOURCE:
-                turn.devin_replied = True
-                turn.last_devin_message = message.message
-                turn.last_devin_message_at = to_epoch_seconds(message.created_at)
 
         try:
             await ocean.port_client.post_run_logs(
@@ -225,6 +223,15 @@ class SessionTracker:
                 f"Failed to post Devin messages to run {run.id} "
                 f"(session {session.session_id}): {error}"
             )
+            return
+
+        turn.cursor = next_cursor
+        for message in new_messages:
+            turn.posted_event_ids.add(message.event_id)
+            if message.source == DEVIN_SOURCE:
+                turn.devin_replied = True
+                turn.last_devin_message = message.message
+                turn.last_devin_message_at = to_epoch_seconds(message.created_at)
 
     async def _complete(
         self,
@@ -276,9 +283,7 @@ class SessionTracker:
                 f"{iso_from_epoch(sent_at)}); the session was left running",
                 TIMED_OUT_STATUS_LABEL,
                 {
-                    "sessionId": session.session_id,
-                    "url": session.url,
-                    "startedAt": iso_from_epoch(sent_at),
+                    **started_output(session, sent_at),
                     "endedAt": iso_from_epoch(ended_at),
                     "durationSeconds": ended_at - sent_at,
                 },
