@@ -90,41 +90,19 @@ webhook. Add `live_events` on the kind's `ExporterMetadata` and CloudTrail `even
 `aws/core/helpers/metadata/cloudtrail_event_mappings.py` (see existing kinds under
 `aws/core/exporters/*/live_events.py`).
 
-**Cloud Control custom kinds** (`AWSCustomKindResourceConfig`) have no CloudTrail mapping. Live events
-use a customer EventBridge rule **input transformer** that posts a flat JSON body (no top-level
-`detail`) to the same webhook path as CloudTrail. Required fields:
+**Cloud Control custom kinds** (`AWSCustomKindResourceConfig`) are not wired into the built-in
+CloudTrail live-events rule. Customers add their own EventBridge rules (one per custom kind) that
+forward relevant Management events to the same integration webhook. Because CloudTrail-shaped events
+carry a `detail` envelope, those rules typically use an **input transformer** to send a flat JSON body
+the integration recognizes: `resource_type`, `identifier`, `accountId`, `awsRegion`, and optionally
+`eventName`. The `resource_type` must match the CloudFormation type name configured in Port; the
+`identifier` must be the Cloud Control primary identifier for that resource.
 
-| Field | Description |
-| --- | --- |
-| `resource_type` | CloudFormation type name, must match the kind in port-app-config (e.g. `AWS::IAM::Role`) |
-| `identifier` | Cloud Control resource identifier |
-| `accountId` | AWS account ID |
-| `awsRegion` | Region where the resource lives |
-| `eventName` | Optional; used for logging only |
-
-Example input template (adjust paths to your rule's event shape):
-
-```json
-{
-  "resource_type": "<type from event>",
-  "identifier": "<identifier from event>",
-  "accountId": "<$.account>",
-  "awsRegion": "<$.region>",
-  "eventName": "<$.detail.eventName>"
-}
-```
-
-Customers deploy
-[`live-events-custom-kind.yaml`](https://port-cloudformation-templates.s3.eu-west-1.amazonaws.com/stable/ocean/aws-v3/live-events-custom-kind.yaml)
-from the `port` repo (`s3/port-cloudformation-templates/ocean/aws-v3/`) once per custom kind, in each
-account and region where the live-events region stack runs. Pass that stack's `ApiDestinationArn`
-output as a parameter; the template adds an EventBridge rule (with input transformer) that forwards
-matching CloudTrail management events to the existing Port API Destination.
-
-The integration upserts by calling Cloud Control **GetResource** after each event. **Deletes** are
-inferred when GetResource returns not-found (there is no explicit delete action on this path).
-`InputTransformerWebhookProcessor` only accepts payloads that pass
-`aws/webhook/input_transformer_parser.py` validation (all required fields present, no `detail` key).
+The `port` repo ships a CloudFormation template for this pattern (`live-events-custom-kind.yaml` under
+`s3/port-cloudformation-templates/ocean/aws-v3/`). On each event,
+`InputTransformerWebhookProcessor` resolves the kind via `cloud_control_live_events`, fetches the
+resource with Cloud Control **GetResource**, and upserts into Port. If GetResource returns not-found,
+the entity is treated as deleted.
 
 Until `AWSCustomKindResourceConfig` is added to the `AWSPortAppConfig.resources` union, custom kinds
 are not configurable via the UI; live-event handling is still implemented for when that union is
