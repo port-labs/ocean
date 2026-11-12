@@ -49,6 +49,16 @@ class EventNameMapping:
 
 
 @dataclass(frozen=True)
+class NormalizedEvent:
+    kind: str
+    identifier: str
+    account_id: str
+    region: str
+    action: CloudTrailEventAction
+    event_name: str
+
+
+@dataclass(frozen=True)
 class LiveEventContext:
     identifier: str
     account_id: str
