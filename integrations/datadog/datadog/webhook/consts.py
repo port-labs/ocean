@@ -25,6 +25,10 @@ class AuditTrailAssetType(StrEnum):
     ORGANIZATION = "organization"
 
 
+# Access Management user events under this path are role-membership changes
+ROLES_API_PATH_PREFIX = "/api/v2/roles"
+
+
 SERVICE_RELATED_EVENTS = frozenset(
     [
         "service_check",

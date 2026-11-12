@@ -1,11 +1,19 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from httpx import HTTPStatusError
+from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import (
     GetOptions,
     PaginatedExporter,
     SingleResourceExporter,
+)
+from datadog.incremental import (
+    CHANGED_USERS_AUDIT_QUERY,
+    audit_events_search_body,
+    changed_user_id,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +38,36 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         url = f"{self.client.api_url}/api/v2/users"
         async for batch in self._paginate_by_page_param(url):
             yield batch
+
+    async def get_changed_users(
+        self, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get users created or modified since ``incremental_cursor``, found through audit events.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        url = f"{self.client.api_url}/api/v2/audit/events/search"
+        body = audit_events_search_body(CHANGED_USERS_AUDIT_QUERY, incremental_cursor)
+
+        user_ids: dict[str, None] = {}
+        async for events in self._paginate_by_search_cursor(url, body):
+            for event in events:
+                if user_id := changed_user_id(event):
+                    user_ids[user_id] = None
+
+        users: list[dict[str, Any]] = []
+        for user_id in user_ids:
+            try:
+                user = await self.get_resource(GetUserOptions(resource_id=user_id))
+            except HTTPStatusError:
+                logger.warning(
+                    f"Skipping user '{user_id}' from audit events; Datadog user fetch failed"
+                )
+                continue
+            if user:
+                users.append(user)
+
+        if users:
+            yield users
 
     async def get_resource(self, options: GetUserOptions) -> dict[str, Any] | None:
         """Get a single user by ID.
