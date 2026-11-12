@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fetch the latest 10 pull request reviews instead of the oldest 10 in the GraphQL pull request query, and return `submittedAt` and the reviewed commit (`commit.oid`) on each review.
