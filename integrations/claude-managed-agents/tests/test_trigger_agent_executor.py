@@ -1237,3 +1237,50 @@ async def test_continue_allows_session_without_port_owner() -> None:
         "sess_1", workflow_run_with_port_mcp()
     )
     assert result is session
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_git_token_injects_mount() -> None:
+    from port_ocean.utils.ttl_cache import TTLCache
+
+    client_mock = MagicMock()
+    client_mock.get_agent = AsyncMock(return_value=sdk_agent())
+    client_mock.create_session = AsyncMock(return_value=sdk_session())
+    client_mock.send_user_message = AsyncMock(return_value=user_message_event())
+    client_mock.update_agent = AsyncMock()
+    executor = build_executor(TriggerAgentExecutor, client_mock)
+    executor._agent_cache = TTLCache(max_items=100, ttl_seconds=120)
+
+    run = workflow_run_with_port_mcp(
+        execution_properties={
+            "agentId": "agent_1",
+            "environmentId": "env_1",
+            "prompt": "push a branch",
+            "enablePortMcp": False,
+            "gitAccessToken": "ghp_test",
+            "config": {
+                "resources": [
+                    {"type": "github_repository", "url": "https://github.com/org/repo"}
+                ]
+            },
+            "reportSessionStatus": True,
+        }
+    )
+    mock_ocean = build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+
+    with (
+        patch("claude_managed_agents.actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
+        patch("claude_managed_agents.actions.utils.ocean", mock_ocean),
+    ):
+        await executor.execute(run)
+
+    client_mock.update_agent.assert_not_called()
+    extra = client_mock.create_session.await_args.kwargs.get("extra") or {}
+    assert extra["resources"][0]["authorization_token"] == "ghp_test"
+    assert "vault_ids" not in extra
