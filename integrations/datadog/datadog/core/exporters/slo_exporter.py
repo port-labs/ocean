@@ -1,8 +1,8 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime
 from itertools import batched
 
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
@@ -128,22 +128,6 @@ class SloExporter(
 
         if slos:
             yield slos
-
-    async def _search_audit_events(
-        self, query: str, since: datetime
-    ) -> AsyncGenerator[dict[str, Any], None]:
-        url = f"{self.client.api_url}/api/v2/audit/events/search"
-        body = {
-            "filter": {
-                "query": query,
-                "from": since.astimezone(timezone.utc).isoformat(),
-                "to": "now",
-            },
-            "sort": "-timestamp",
-        }
-        async for events in self._paginate_by_search_cursor(url, body):
-            for event in events:
-                yield event
 
     @staticmethod
     def _asset_id(event: dict[str, Any]) -> str | None:

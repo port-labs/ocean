@@ -118,10 +118,14 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users
 
 
+@ocean.on_incremental_resync(ObjectKind.HOST)
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sync_cursor = active_incremental_cursor()
     async for hosts in _resync_across_orgs(
-        lambda client: HostExporter(client).get_paginated_resources(),
+        lambda client: HostExporter(client).get_paginated_resources(
+            incremental_cursor=sync_cursor
+        ),
         context="Host exporter",
     ):
         yield hosts

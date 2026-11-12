@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
@@ -164,6 +165,27 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             cursor = result.get("meta", {}).get("page", {}).get("after")
             if not cursor:
                 break
+
+    async def _search_audit_events(
+        self, query: str, since: datetime, *, page_size: int = MAX_PAGE_SIZE
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Audit events matching ``query`` from ``since`` until now, newest first.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        url = f"{self.client.api_url}/api/v2/audit/events/search"
+        body = {
+            "filter": {
+                "query": query,
+                "from": since.astimezone(timezone.utc).isoformat(),
+                "to": "now",
+            },
+            "sort": "-timestamp",
+        }
+        async for events in self._paginate_by_search_cursor(
+            url, body, page_size=page_size
+        ):
+            for event in events:
+                yield event
 
 
 class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
