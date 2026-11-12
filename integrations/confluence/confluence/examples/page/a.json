@@ -1,0 +1,28 @@
+[
+  {
+    "id": "987654",
+    "status": "current",
+    "title": "Getting Started",
+    "spaceId": "123456",
+    "parentId": null,
+    "parentType": null,
+    "position": null,
+    "authorId": "557058:example-author",
+    "ownerId": "557058:example-owner",
+    "lastOwnerId": null,
+    "subtype": "page",
+    "createdAt": "2024-01-15T10:35:00.000Z",
+    "version": {
+      "createdAt": "2024-02-01T08:00:00.000Z",
+      "message": "Initial draft",
+      "number": 3,
+      "minorEdit": false,
+      "authorId": "557058:example-author"
+    },
+    "_links": {
+      "webui": "/spaces/DOCS/pages/987654/Getting+Started",
+      "editui": "/pages/resumedraft.action?draftId=987654",
+      "tinyui": "/x/ABCDEF"
+    }
+  }
+]

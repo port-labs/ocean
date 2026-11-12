@@ -1,0 +1,72 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: space
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"confluenceSpace"'
+          properties:
+            key: .key
+            type: .type
+            status: .status
+            description: .description.plain.value // ""
+            createdAt: .createdAt
+            homepageId: .homepageId
+            authorId: .authorId
+            spaceOwnerId: .spaceOwnerId
+            url: .__webUrl
+          relations:
+            author: .authorId
+            owner: .spaceOwnerId
+
+  - kind: page
+    selector:
+      query: 'true'
+      includeArchived: false
+      includeBody: true
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"confluencePage"'
+          properties:
+            status: .status
+            subtype: .subtype
+            createdAt: .createdAt
+            updatedAt: .version.createdAt
+            version: .version.number
+            parentType: .parentType
+            position: .position
+            content: .body.markdown.value // ""
+            folderPath: .__folderPath
+            filePath: .__filePath
+            url: .__webUrl
+          relations:
+            space: .spaceId
+            parent: if .parentType == "page" and .parentId != null then .parentId else null end
+            author: .authorId
+            owner: .ownerId
+
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .accountId
+          title: .displayName // .publicName // .accountId
+          blueprint: '"confluenceUser"'
+          properties:
+            email: .email
+            accountType: .accountType
+            publicName: .publicName
+            timeZone: .timeZone
+            isExternalCollaborator: .isExternalCollaborator
+            isGuest: .isGuest
+            url: .__webUrl
