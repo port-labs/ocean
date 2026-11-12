@@ -22,6 +22,8 @@ from port_ocean.utils import http_async_client
 EXCHANGE_PATH = "/v1/oauth/identity/token"
 REAUTH_REQUIRED_RESULT = "reauth_required"
 
+# Module-level so one shared client is safe across action workers (per-task
+# ContextVar isolation; not instance attrs).
 _identity_token: ContextVar[str | None] = ContextVar(
     "port_exchange_identity_token", default=None
 )
@@ -63,6 +65,7 @@ class PortExchangeVaultClient(VaultClient):
     async def write(
         self, org_id: str, actor_id: str, target: str, record: TokenRecord
     ) -> None:
+        """No-op - Port owns the grants store; Ocean cannot persist tokens."""
         pass
 
     async def _exchange(self, identity_token: str) -> TokenRecord | None:

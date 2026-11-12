@@ -484,8 +484,7 @@ class IntegrationConfiguration(BaseOceanSettings):
         ):
             raise ValueError(
                 "identity_propagation.vault.type=port is only supported on SaaS "
-                "runtime. Self-hosted installs must use aws_secrets_manager or "
-                "custom."
+                "runtime. Self-hosted installs must use aws_secrets_manager."
             )
         return self
 
