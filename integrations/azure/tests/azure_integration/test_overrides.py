@@ -2,7 +2,9 @@ import pytest
 from azure_integration.foundry.kinds import (
     AgentResourceConfig,
     DEFAULT_FOUNDRY_ARM_API_VERSION,
+    FOUNDRY_FEATURE_FLAG,
     FoundryProjectResourceConfig,
+    ObjectKind,
 )
 from azure_integration.overrides import (
     AzurePortAppConfig,
@@ -10,6 +12,9 @@ from azure_integration.overrides import (
     AzureSubscriptionResourceConfig,
     AzureCloudResourceConfig,
     AzureCustomKindResourceConfig,
+)
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
 )
 
 SUBSCRIPTION_PORT_MAPPING = {
@@ -177,6 +182,13 @@ def test_azure_custom_kind_virtual_machine_parses_correctly() -> None:
 
 def test_azure_port_app_config_allow_custom_kinds_is_enabled() -> None:
     assert AzurePortAppConfig.allow_custom_kinds is True
+
+
+def test_foundry_kinds_require_feature_flag_in_ui_schema() -> None:
+    ui = validate_and_get_config_schema(AzurePortAppConfig)
+    for kind in ObjectKind:
+        assert ui["kinds"][kind.value]["featureFlag"] == FOUNDRY_FEATURE_FLAG
+    assert "featureFlag" not in ui["kinds"]["subscription"]
 
 
 def test_foundry_project_selector_api_version_defaults() -> None:
