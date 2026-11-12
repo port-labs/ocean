@@ -6,6 +6,8 @@ how custom kinds (with no CloudTrail event mapping) receive live events.
 
 from typing import TypedDict
 
+from loguru import logger
+
 from aws.core.helpers.metadata.types import CloudTrailEventAction, NormalizedEvent
 
 
@@ -38,6 +40,7 @@ def parse_input_transformer_event(
     region = payload.get("awsRegion")
 
     if not kind or not identifier or not account_id or not region:
+        logger.warning("Input transformer payload missing required fields; skipping")
         return None
 
     return NormalizedEvent(
