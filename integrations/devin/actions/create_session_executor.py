@@ -10,12 +10,7 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
-from actions.utils import (
-    ensure_no_reserved_tags,
-    installation_id,
-    merge_config,
-    resolve_user_id,
-)
+from actions.utils import ensure_no_reserved_tags, merge_config, resolve_user_id
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags
 from integration import ObjectKind
@@ -65,13 +60,15 @@ class CreateSessionExecutor(AbstractDevinExecutor):
         )
 
         create_as_user_id = await resolve_user_id(
-            self.sessions, inputs.createAsUserEmail, run
+            self.sessions, inputs.createAsUserEmail
         )
         external_id = build_external_id(run.id)
         sent_at = int(time.time())
         tags = [MANAGED_TAG, *dict.fromkeys(user_tags)]
         if inputs.reportCompletion:
-            tags.extend(tracking_tags(installation_id(), external_id, sent_at))
+            tags.extend(
+                tracking_tags(ocean.config.integration.identifier, external_id, sent_at)
+            )
 
         body = merge_config(
             inputs.config,

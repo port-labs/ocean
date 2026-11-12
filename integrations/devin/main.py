@@ -6,7 +6,10 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.signal import signal_handler
 
-from actions.registry import register_action_executors
+from actions.archive_session_executor import ArchiveSessionExecutor
+from actions.create_session_executor import CreateSessionExecutor
+from actions.send_message_executor import SendMessageExecutor
+from actions.terminate_session_executor import TerminateSessionExecutor
 from core.tracking.session_tracker import create_session_tracker
 from exporter_factory import (
     create_knowledge_notes_exporter,
@@ -76,4 +79,7 @@ async def on_start() -> None:
     await tracker.start()
 
 
-register_action_executors()
+ocean.register_action_executor(CreateSessionExecutor())
+ocean.register_action_executor(SendMessageExecutor())
+ocean.register_action_executor(TerminateSessionExecutor())
+ocean.register_action_executor(ArchiveSessionExecutor())

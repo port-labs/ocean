@@ -24,7 +24,7 @@ from port_ocean.utils.repeat import repeat_every
 
 from clients.client_factory import create_devin_client
 from clients.models import SessionMessage, SessionResponse
-from core.catalog import upsert_raw_from_background
+from core.catalog import upsert_raw_best_effort
 from core.sessions import DevinSessions
 from core.tracking.run_output import (
     completion_output,
@@ -267,7 +267,7 @@ class SessionTracker:
             run, success, completion_summary(output), state.label, output
         )
         await self._release(session, external_id)
-        await upsert_raw_from_background(ObjectKind.SESSION, session.raw())
+        await upsert_raw_best_effort(ObjectKind.SESSION, session.raw())
 
     async def _time_out(
         self, session: SessionResponse, external_id: str, sent_at: int

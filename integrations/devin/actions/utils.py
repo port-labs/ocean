@@ -1,7 +1,6 @@
 from typing import Any
 
 import httpx
-from port_ocean.context.ocean import ocean
 
 from actions.exceptions import DevinApiError, InvalidActionParametersException
 from clients.models import SessionResponse
@@ -9,10 +8,6 @@ from core.sessions import DevinSessions
 from core.tracking.tags import MANAGED_TAG, reserved_tags
 
 ALLOWED_CONFIG_KEYS = frozenset({"devin_mode", "attachment_urls"})
-
-
-def installation_id() -> str:
-    return ocean.config.integration.identifier
 
 
 def merge_config(
@@ -64,11 +59,8 @@ def ensure_session_accepts_message(
         )
 
 
-async def resolve_user_id(
-    sessions: DevinSessions, email: str | None, run: object
-) -> str | None:
+async def resolve_user_id(sessions: DevinSessions, email: str | None) -> str | None:
     """Resolve a Devin org member by email. Unset email means the service user."""
-    del run
     if not email:
         return None
     try:
