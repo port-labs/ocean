@@ -20,8 +20,9 @@ class DevinClient:
     pass `absolute_path=True` for the few endpoints that live elsewhere (the
     v3beta1 member lookup). Auth is a service-user Bearer key (`cog_...`).
 
-    Devin does not document rate-limit headers, so `429`/`5xx` backoff is left
-    to Ocean's `extensions={"retryable": True}` RetryTransport.
+    Devin does not document rate-limit headers, so `429`/`5xx` backoff on idempotent
+    reads is left to Ocean's RetryTransport. `POST` is not retried so a slow create
+    or send cannot duplicate sessions or messages.
     """
 
     def __init__(
@@ -66,7 +67,7 @@ class DevinClient:
             params=_drop_none(params),
             json=json_body,
             timeout=self._request_timeout_seconds,
-            extensions={"retryable": True},
+            extensions={"retryable": method != "POST"},
         )
         try:
             response.raise_for_status()

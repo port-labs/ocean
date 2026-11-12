@@ -1,0 +1,95 @@
+{
+  "identifier": "devin-create-then-message",
+  "title": "Devin: create session then send message",
+  "icon": "Devin",
+  "description": "Self-service run: create a Devin session, wait for the first turn to finish, then send a follow-up message. Needs Ocean installation devin-local-yair.",
+  "category": "Devin E2E",
+  "allowAnyoneToViewRuns": true,
+  "nodes": [
+    {
+      "identifier": "manual_trigger",
+      "title": "Run manually",
+      "icon": "Bolt",
+      "description": "Submit the form to start",
+      "config": {
+        "type": "SELF_SERVE_TRIGGER",
+        "published": true,
+        "actionCardButtonText": "Run",
+        "executeActionButtonText": "Start",
+        "userInputs": {
+          "properties": {
+            "prompt": {
+              "title": "Initial prompt",
+              "description": "Task for Devin on the new session",
+              "type": "string",
+              "format": "multi-line"
+            },
+            "follow_up_message": {
+              "title": "Follow-up message",
+              "description": "Sent after the first Devin turn completes",
+              "type": "string",
+              "format": "multi-line"
+            }
+          },
+          "required": ["prompt", "follow_up_message"],
+          "order": ["prompt", "follow_up_message"]
+        },
+        "permissions": { "roles": ["Admin", "Member"] },
+        "contexts": [{ "on": "SELF_SERVICE_HUB", "visible": true }]
+      },
+      "variables": {},
+      "verbose": false
+    },
+    {
+      "identifier": "create_devin_session",
+      "title": "Create Devin session",
+      "icon": "Devin",
+      "config": {
+        "type": "INTEGRATION_ACTION",
+        "integrationProvider": "devin",
+        "integrationInvocationType": "create_session",
+        "deferIntegrationInstallation": true,
+        "integrationActionExecutionProperties": {
+          "prompt": "{{ .outputs.manual_trigger.prompt }}",
+          "reportCompletion": true,
+          "createAsUserEmail": "{{ .workflowRun.trigger.by.email }}"
+        },
+        "onFailure": "terminate"
+      },
+      "variables": {},
+      "verbose": false
+    },
+    {
+      "identifier": "send_devin_message",
+      "title": "Send Devin message",
+      "icon": "Devin",
+      "config": {
+        "type": "INTEGRATION_ACTION",
+        "integrationProvider": "devin",
+        "integrationInvocationType": "send_message",
+        "deferIntegrationInstallation": true,
+        "integrationActionExecutionProperties": {
+          "sessionId": "{{ .outputs.create_devin_session.sessionId }}",
+          "message": "{{ .outputs.manual_trigger.follow_up_message }}",
+          "reportCompletion": true,
+          "messageAsUserEmail": "{{ .workflowRun.trigger.by.email }}"
+        },
+        "onFailure": "terminate"
+      },
+      "variables": {},
+      "verbose": false
+    }
+  ],
+  "connections": [
+    {
+      "description": "Trigger to create",
+      "sourceIdentifier": "manual_trigger",
+      "targetIdentifier": "create_devin_session"
+    },
+    {
+      "description": "Create to send",
+      "sourceIdentifier": "create_devin_session",
+      "targetIdentifier": "send_devin_message"
+    }
+  ]
+}

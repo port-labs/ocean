@@ -1,9 +1,4 @@
-"""Locks shapes captured from the live Devin org during the P0 spike.
-
-Session creation was rejected with `billing_restricted` / `out_of_quota`, so
-these fixtures cover the calls that succeeded: empty session pages, a playbook
-timestamp, the member lookup, and the create error body.
-"""
+"""Locks Devin API response shapes recorded from fixture JSON under tests/fixtures/."""
 
 import json
 from collections.abc import Iterator

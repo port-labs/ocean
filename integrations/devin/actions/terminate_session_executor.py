@@ -7,7 +7,7 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
-from actions.utils import installation_id
+from actions.utils import ensure_port_managed_session, installation_id
 from clients.models import SessionResponse
 from core.tracking.tags import parse_external_id, strip_tracking_tags
 from integration import ObjectKind
@@ -49,7 +49,9 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
         )
 
         try:
-            tags = (await self.sessions.get(session_id)).tags
+            current = await self.sessions.get(session_id)
+            ensure_port_managed_session(current)
+            tags = current.tags
             session = await self.sessions.terminate(session_id, inputs.archive)
         except httpx.HTTPError as error:
             raise DevinApiError.from_http_error(

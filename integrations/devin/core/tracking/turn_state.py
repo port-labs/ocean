@@ -1,9 +1,4 @@
-"""Maps a Devin session's `status`/`status_detail` to the outcome of a Port run.
-
-Everything here is an assumption about Devin's status transitions, kept in one
-place so the spike against a real org only has to change this file and its
-test matrix.
-"""
+"""Maps a Devin session's `status`/`status_detail` to the outcome of a Port run."""
 
 from dataclasses import dataclass
 from enum import StrEnum

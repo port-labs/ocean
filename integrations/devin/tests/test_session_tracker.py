@@ -388,8 +388,13 @@ class TestSessionLogs:
         finish_turn(devin, at=SENT_AT + 10, session_id="devin-1")
         finish_turn(devin, at=SENT_AT + 10, session_id="devin-2")
         port.fail_post_logs = True
+        tracker = make_tracker(devin, clock)
 
-        await make_tracker(devin, clock).tick()
+        await tracker.tick()
+        assert "wfnr_1" not in port.completions
+
+        port.fail_post_logs = False
+        await tracker.tick()
 
         assert port.completions["wfnr_1"][0].success is True
         assert port.completions["wfnr_2"][0].success is True

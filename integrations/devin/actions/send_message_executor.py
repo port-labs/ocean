@@ -10,7 +10,13 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError, SessionBusyError
-from actions.utils import installation_id, merge_config, resolve_user_id
+from actions.utils import (
+    ensure_port_managed_session,
+    ensure_session_accepts_message,
+    installation_id,
+    merge_config,
+    resolve_user_id,
+)
 from core.tracking.run_output import started_output
 from core.tracking.tags import (
     build_external_id,
@@ -64,6 +70,11 @@ class SendMessageExecutor(AbstractDevinExecutor):
             raise DevinApiError.from_http_error(
                 error, f"Failed to read Devin session {session_id}"
             ) from error
+
+        ensure_port_managed_session(session)
+        ensure_session_accepts_message(
+            session.status, session.status_detail, session_id
+        )
 
         if has_pending_tag(session.tags):
             raise SessionBusyError(

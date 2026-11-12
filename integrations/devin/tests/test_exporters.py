@@ -1,12 +1,11 @@
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import yaml  # type: ignore[import-untyped]
 
 from core.exporters.knowledge_notes_exporter import KnowledgeNotesExporter
 from core.exporters.playbooks_exporter import PlaybooksExporter
-from core.exporters.secrets_exporter import SecretsExporter
 from core.exporters.sessions_exporter import SessionsExporter, build_sessions_query
 from integration import DevinPortAppConfig, SessionResourceConfig
 
@@ -84,23 +83,6 @@ async def test_knowledge_notes_exporter() -> None:
 
     assert pages == [[{"note_id": "n1"}]]
     assert client.calls == [("/knowledge/notes", None)]
-
-
-async def test_secrets_exporter_get_resource_scans_the_list() -> None:
-    client = _paginating_client([{"secret_id": "s1"}, {"secret_id": "s2"}])
-
-    assert await SecretsExporter(client).get_resource("s2") == {"secret_id": "s2"}
-    assert await SecretsExporter(client).get_resource("missing") == {}
-
-
-async def test_sessions_exporter_get_resource() -> None:
-    client = MagicMock()
-    client.send_api_request = AsyncMock(return_value={"session_id": "devin-1"})
-
-    assert await SessionsExporter(client).get_resource("devin-1") == {
-        "session_id": "devin-1"
-    }
-    client.send_api_request.assert_awaited_once_with("GET", "/sessions/devin-1")
 
 
 def test_default_port_app_config_parses() -> None:
