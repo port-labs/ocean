@@ -9,8 +9,7 @@ from yaml.parser import ParserError
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 
-from .file_entity_processor import FILE_PROPERTY_PREFIX
-
+FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
 
 
