@@ -143,17 +143,19 @@ Fill in this table, commit it here, and paste it into both PR descriptions:
 
 | Item | Result (confirmed / differs) | Finding | Fix commit |
 |------|------------------------------|---------|------------|
-| S1 | | | |
-| S2 | | | |
-| S3 | | | |
-| S4 | | | |
-| S5 | | | |
-| S6 | | | |
-| S7 | | | |
-| S8 | | | |
-| S9 | | | |
-| S10 | | | |
-| E1–E11 | pass / fail each | | |
+| S1 | blocked | `POST /sessions` returns 403 `error_code=billing_restricted`, detail `out_of_quota`, before tags are echoed. Tag acceptance is unverified. | none |
+| S2 | partial | `GET /sessions?tags=` returns 200 with `items: []`, `end_cursor: null`, `has_next_page: false`, `total: null`. AND vs OR is unverified: the org has zero sessions, so a no-op filter looks the same. | none |
+| S3 | partial | No session to compare. The one playbook's `created_at` / `updated_at` are epoch seconds (`1792504698`). `to_epoch_seconds` already keeps that value. | none |
+| S4 | blocked | Cannot create a session, so status sequences, terminate, idle suspend, and `max_acu_limit: 1` were not observed. Docs list the same status / status_detail enums the classifier already handles. | none |
+| S5 | blocked | Needs a live session and a follow-up message. | none |
+| S6 | blocked | Message pagination was not called. Empty list envelopes (sessions, knowledge, secrets) do use `end_cursor: null` and `has_next_page: false`, which matches `list_messages_after`. | none |
+| S7 | confirmed | `GET /v3beta1/organizations/{org}/members/users` and `?email=` return 200. Items include `user_id`. | none |
+| S8 | blocked | Create never got past org quota, and only one key is available, so a missing `ImpersonateOrgSessions` 403 was not tested. | none |
+| S9 | blocked | No session to append or replace tags on. | none |
+| S10 | blocked | No session to terminate or archive. | none |
+| E1–E11 | blocked | Devin org quota blocks every scenario that creates a session. Preview `https://api-pr-21000.cde-01.port.io` and the frontend both return `404 page not found`. Port#21000 is still open, draft, with the `preview` label; the last successful "Create PR Preview Environment" run is 2026-10-20. | none |
+
+Spike date: 2026-11-12. Redacted fixtures are under `tests/fixtures/`. Re-run `poetry run python scripts/p0_spike.py` after the org has ACU quota and the preview env is up (remove and re-add the `preview` label on Port#21000).
 
 Also commit the redacted fixtures under `tests/fixtures/`, and use them in at least one client and one tracker test.
 
