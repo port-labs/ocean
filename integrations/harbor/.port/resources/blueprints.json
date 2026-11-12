@@ -1,0 +1,220 @@
+[
+  {
+    "identifier": "harborProject",
+    "title": "Harbor Project",
+    "icon": "Harbor",
+    "description": "A Harbor project",
+    "schema": {
+      "properties": {
+        "ownerName": {
+          "type": "string",
+          "title": "Owner Name",
+          "description": "The name of the project owner"
+        },
+        "public": {
+          "type": "boolean",
+          "title": "Public",
+          "description": "Whether the project is publicly accessible"
+        },
+        "repoCount": {
+          "type": "number",
+          "title": "Repository Count",
+          "description": "Number of repositories in this project"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the project was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At",
+          "description": "When the project was last updated"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "harborUser",
+    "title": "Harbor User",
+    "icon": "User",
+    "description": "A Harbor user account",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "User email address"
+        },
+        "realname": {
+          "type": "string",
+          "title": "Real Name",
+          "description": "User's real name"
+        },
+        "hasAdminRole": {
+          "type": "boolean",
+          "title": "Has Admin Role",
+          "description": "Whether the user has admin privileges"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the user account was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At",
+          "description": "When the user account was last updated"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "harborRepository",
+    "title": "Harbor Repository",
+    "icon": "Repository",
+    "description": "A Harbor container repository",
+    "schema": {
+      "properties": {
+        "artifactCount": {
+          "type": "number",
+          "title": "Artifact Count",
+          "description": "Number of artifacts in this repository"
+        },
+        "pullCount": {
+          "type": "number",
+          "title": "Pull Count",
+          "description": "Total number of pulls"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the repository was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At",
+          "description": "When the repository was last updated"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Repository description"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "project": {
+        "target": "harborProject",
+        "many": false,
+        "required": false,
+        "title": "Project"
+      }
+    }
+  },
+  {
+    "identifier": "harborArtifact",
+    "title": "Harbor Artifact",
+    "icon": "Docker",
+    "description": "A Harbor container image artifact",
+    "schema": {
+      "properties": {
+        "digest": {
+          "type": "string",
+          "title": "Digest",
+          "description": "Artifact digest (SHA256)"
+        },
+        "size": {
+          "type": "number",
+          "title": "Size",
+          "description": "Artifact size in bytes"
+        },
+        "pushTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Push Time",
+          "description": "When the artifact was pushed"
+        },
+        "pullTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Pull Time",
+          "description": "When the artifact was last pulled"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "List of tags for this artifact",
+          "items": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "title": "Labels",
+          "description": "List of labels attached to this artifact",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scanStatus": {
+          "type": "string",
+          "title": "Scan Status",
+          "description": "Vulnerability scan status",
+          "enum": ["Success", "Error", "Pending", "Running", "Stopped"]
+        },
+        "scanSeverity": {
+          "type": "string",
+          "title": "Scan Severity",
+          "description": "Highest vulnerability severity found",
+          "enum": ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
+        },
+        "vulnerabilityCritical": {
+          "type": "number",
+          "title": "Critical Vulnerabilities",
+          "description": "Number of critical severity vulnerabilities"
+        },
+        "vulnerabilityHigh": {
+          "type": "number",
+          "title": "High Vulnerabilities",
+          "description": "Number of high severity vulnerabilities"
+        },
+        "vulnerabilityMedium": {
+          "type": "number",
+          "title": "Medium Vulnerabilities",
+          "description": "Number of medium severity vulnerabilities"
+        },
+        "vulnerabilityLow": {
+          "type": "number",
+          "title": "Low Vulnerabilities",
+          "description": "Number of low severity vulnerabilities"
+        },
+        "vulnerabilityTotal": {
+          "type": "number",
+          "title": "Total Vulnerabilities",
+          "description": "Total number of vulnerabilities found"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "repository": {
+        "target": "harborRepository",
+        "many": false,
+        "required": false,
+        "title": "Repository"
+      }
+    }
+  }
+]
