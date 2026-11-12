@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.3.0 (2026-11-12)
+
+
+### Features
+
+- Support live events from customer EventBridge rules that use an input transformer to send the resource type and identifier, enabling live events for custom Cloud Control kinds
+
+
+## 3.2.10 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
+## 3.2.9 (2026-11-12)
+
+
+### Improvements
+
+- Add a test connection probe description to the Cloud Control custom kind explaining that per-type service permissions are not verified
+
+
+## 3.2.8 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.60.0
+
+
 ## 3.2.7 (2026-11-11)
 
 

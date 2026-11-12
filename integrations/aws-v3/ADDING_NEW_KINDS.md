@@ -55,6 +55,10 @@ class AWSSQSQueueResourceConfig(AWSResourceConfig):
 Also declare `probe_permissions` as the IAM action(s) used by the exporter's list/describe paginator
 so Test Connection can simulate those actions.
 
+Optionally declare `probe_description` when users need context about what Test Connection checks for
+this kind (for example, a caveat about permissions it cannot verify). Port shows it as a tooltip on the
+kind row in the Test Connection results. Keep it to one or two sentences.
+
 **Same file:** `aws_integration/overrides.py`
 
 Append the new subclass to the `Union` in `AWSPortAppConfig.resources` so Ocean can validate `port-app-config.yml` entries for this kind.
@@ -77,6 +81,15 @@ class AWSPortAppConfig(PortAppConfig):
 ```
 
 **Why:** This defines the resource type that Ocean will recognize and trigger resync events for.
+
+### Live events
+
+First-class kinds (listed in `ObjectKind` and `kind_to_export_metadata`) receive **CloudTrail** live
+events via EventBridge when the customer's rule forwards Management events to the integration
+webhook. Add `live_events` on the kind's `ExporterMetadata` and CloudTrail `eventName` mappings in
+`aws/core/helpers/metadata/cloudtrail_event_mappings.py` (see existing kinds under
+`aws/core/exporters/*/live_events.py`).
+
 
 ### Step 2: Create the Resource Models
 

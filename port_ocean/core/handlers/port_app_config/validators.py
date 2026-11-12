@@ -288,9 +288,25 @@ def _build_kinds_mapping(
                 selector_field.outer_type_, model
             )
 
+        probe_description = _get_probe_description(model)
+        if probe_description:
+            kind_entry["probeDescription"] = probe_description
+
         kinds[kind_value] = kind_entry
 
     return kinds
+
+
+def _get_probe_description(model: type[ResourceConfig]) -> str | None:
+    probe_description = model.probe_description
+    if probe_description is None:
+        return None
+    if not isinstance(probe_description, str):
+        raise TypeError(
+            f"{model.__name__}.probe_description must be a str, "
+            f"got {type(probe_description).__name__}"
+        )
+    return probe_description.strip() or None
 
 
 def _is_json_safe(value: Any) -> bool:
