@@ -252,6 +252,44 @@ async def test_post_integration_raw_data_extraction_timestamp(
         assert metadata["resourceIndex"] == 0
 
 
+async def test_post_integration_raw_data_includes_extract_duration_ms(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test that post_integration_raw_data_batch includes extractDurationMs when set."""
+    raw_data = [{"name": "test"}]
+    sync_id = "sync-duration-test"
+    kind = "service"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        event = make_single_entry_lakehouse_batch(raw_data, kind=kind, index=0)
+        event["extract_duration_ms"] = 1500
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+        body = lakehouse_integration_client.client.post.call_args[1]["json"]
+        assert body["extractDurationMs"] == 1500
+
+
+async def test_post_integration_raw_data_includes_zero_extract_duration_ms(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test that extractDurationMs is sent even when zero."""
+    raw_data = [{"name": "test"}]
+    sync_id = "sync-zero-duration-test"
+    kind = "service"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        event = make_single_entry_lakehouse_batch(raw_data, kind=kind, index=0)
+        event["extract_duration_ms"] = 0
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+        body = lakehouse_integration_client.client.post.call_args[1]["json"]
+        assert body["extractDurationMs"] == 0
+
+
 async def test_post_integration_raw_data_with_live_event_type(
     lakehouse_integration_client: IntegrationClientMixin,
 ) -> None:
