@@ -146,5 +146,191 @@
         }
       ]
     }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "create_agent",
+      "icon": "Azure",
+      "description": "Create a Foundry agent in the configured project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "model",
+          "title": "Model deployment",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "instructions",
+          "title": "Instructions",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced agent configuration deep-merged into the Foundry create payload (for example definition.tools, description, metadata, rai_config, or a non-prompt definition.kind). First-class fields (name, model, instructions) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "update_agent",
+      "icon": "Azure",
+      "description": "Update a Foundry agent",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "title": "Name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model deployment",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "instructions",
+          "title": "Instructions",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced agent configuration deep-merged into the Foundry update payload (for example definition.tools, description, metadata). First-class fields (name, model, instructions) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "delete_agent",
+      "icon": "Azure",
+      "description": "Delete a Foundry agent",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "deploy_model_deployment",
+      "icon": "Azure",
+      "description": "Deploy a model in the configured Foundry project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "modelName",
+          "title": "Model name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "modelVersion",
+          "title": "Model version",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "modelPublisher",
+          "title": "Model publisher",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "skuName",
+          "title": "SKU name",
+          "type": "string",
+          "required": false,
+          "default": "GlobalStandard"
+        },
+        {
+          "name": "deploymentType",
+          "title": "Deployment type",
+          "type": "string",
+          "required": false,
+          "default": "ModelDeployment"
+        },
+        {
+          "name": "config",
+          "title": "Additional configuration",
+          "type": "jqObject",
+          "description": "Optional advanced ARM deployment body deep-merged under sku/properties (for example sku.capacity, tags, properties.raiPolicyName). First-class fields (model name/version/publisher, sku name) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "delete_model_deployment",
+      "icon": "Azure",
+      "description": "Delete a model deployment from the configured Foundry project",
+      "inputs": [
+        {
+          "name": "projectEndpoint",
+          "title": "Foundry project endpoint",
+          "type": "string",
+          "required": true,
+          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
   ]
 }

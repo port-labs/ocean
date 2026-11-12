@@ -12,6 +12,18 @@ def build_foundry_url(project_endpoint: str, path: str) -> str:
     return urljoin(base, path.lstrip("/"))
 
 
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge overlay into a shallow copy of base (dicts only)."""
+    merged = dict(base)
+    for key, value in overlay.items():
+        existing = merged.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            merged[key] = deep_merge(existing, value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def enrich_with_project(
     item: dict[str, Any],
     *,

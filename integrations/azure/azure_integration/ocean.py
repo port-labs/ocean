@@ -29,8 +29,17 @@ from azure_integration.utils import (
 from azure_integration.webhook.webhook_processors.resource_event_processor import (
     AzureResourceEventProcessor,
 )
-from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
-import azure_integration.foundry.resync  # noqa: F401
+from azure_integration.foundry.actions.registry import register_action_executors
+from azure_integration.foundry.clients.client_factory import clear_client_cache
+from azure_integration.foundry.kinds import ObjectKind
+from azure_integration.foundry.resync import (
+    resync_foundry_agents,
+    resync_foundry_conversations,
+    resync_foundry_memory_stores,
+    resync_foundry_model_deployments,
+    resync_foundry_projects,
+    resync_foundry_responses,
+)
 from port_ocean.utils.signal import signal_handler
 
 
@@ -55,6 +64,19 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind, resource_selector.api_version
     ):
         yield resources_batch
+
+
+_FOUNDRY_RESYNC_HANDLERS = (
+    (ObjectKind.FOUNDRY_PROJECT, resync_foundry_projects),
+    (ObjectKind.FOUNDRY_AGENT, resync_foundry_agents),
+    (ObjectKind.FOUNDRY_MODEL_DEPLOYMENT, resync_foundry_model_deployments),
+    (ObjectKind.FOUNDRY_CONVERSATION, resync_foundry_conversations),
+    (ObjectKind.FOUNDRY_RESPONSE, resync_foundry_responses),
+    (ObjectKind.FOUNDRY_MEMORY_STORE, resync_foundry_memory_stores),
+)
+for _foundry_kind, _foundry_handler in _FOUNDRY_RESYNC_HANDLERS:
+    ocean.on_resync(_foundry_kind)(_foundry_handler)
+    ocean.on_incremental_resync(_foundry_kind)(_foundry_handler)
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUPS)
@@ -223,7 +245,8 @@ async def on_start() -> None:
             "Integration wasn't provided with override configuration for initializing client, proceeding with default"
         )
 
-    signal_handler.register(clear_foundry_client)
+    register_action_executors()
+    signal_handler.register(clear_client_cache)
 
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
