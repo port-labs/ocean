@@ -19,6 +19,8 @@ from aws.webhook.webhook_processors.cloudtrail_webhook_processor import (
 )
 
 MODULE = "aws.webhook.webhook_processors.cloudtrail_webhook_processor"
+BASE_MODULE = "aws.webhook.webhook_processors.live_events_webhook_processor"
+METADATA_MODULE = "aws.core.exporters.exporter_metadata"
 
 _DEFAULT_ACCOUNT_ID = "111122223333"
 _DEFAULT_REGION = "us-east-1"
@@ -373,7 +375,7 @@ async def test_authenticate_succeeds_with_matching_api_key(
 ) -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {"live_events_api_key": "secret"}
-    with patch(f"{MODULE}.ocean", mock_ocean):
+    with patch(f"{BASE_MODULE}.ocean", mock_ocean):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "secret"}
         )
@@ -386,7 +388,7 @@ async def test_authenticate_fails_with_wrong_api_key(
 ) -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {"live_events_api_key": "secret"}
-    with patch(f"{MODULE}.ocean", mock_ocean):
+    with patch(f"{BASE_MODULE}.ocean", mock_ocean):
         result = await processor.authenticate({}, {LIVE_EVENTS_API_KEY_HEADER: "wrong"})
     assert result is False
 
@@ -397,7 +399,7 @@ async def test_authenticate_fails_when_not_configured(
 ) -> None:
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {}
-    with patch(f"{MODULE}.ocean", mock_ocean):
+    with patch(f"{BASE_MODULE}.ocean", mock_ocean):
         result = await processor.authenticate(
             {}, {LIVE_EVENTS_API_KEY_HEADER: "anything"}
         )
@@ -494,10 +496,11 @@ async def test_handle_event_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.S3_BUCKET: fixture.metadata},
         ),
     ):
@@ -515,7 +518,9 @@ async def test_handle_event_create_fetches_and_returns_resource(
 async def test_handle_event_create_skips_when_no_session_found(
     processor: CloudTrailWebhookProcessor,
 ) -> None:
-    with patch(f"{MODULE}.get_session_for_account", new=AsyncMock(return_value=None)):
+    with patch(
+        f"{BASE_MODULE}.get_session_for_account", new=AsyncMock(return_value=None)
+    ):
         result = await processor.handle_event(_create_event(), None)
 
     assert result.updated_raw_results == []
@@ -564,10 +569,11 @@ async def test_handle_event_lambda_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.LAMBDA_FUNCTION: fixture.metadata},
         ),
     ):
@@ -623,10 +629,11 @@ async def test_handle_event_dynamodb_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.DYNAMODB_TABLE: fixture.metadata},
         ),
     ):
@@ -682,10 +689,11 @@ async def test_handle_event_rds_db_instance_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.RDS_DB_INSTANCE: fixture.metadata},
         ),
     ):
@@ -718,10 +726,11 @@ async def test_handle_event_rds_db_instance_create_treats_not_found_as_deleted(
 
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.RDS_DB_INSTANCE: fixture.metadata},
         ),
     ):
@@ -786,10 +795,11 @@ async def test_handle_event_ecr_repository_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.ECR_REPOSITORY: fixture.metadata},
         ),
     ):
@@ -845,10 +855,11 @@ async def test_handle_event_ecs_cluster_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.ECS_CLUSTER: fixture.metadata},
         ),
     ):
@@ -908,10 +919,11 @@ async def test_handle_event_ecs_service_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.ECS_SERVICE: fixture.metadata},
         ),
     ):
@@ -948,10 +960,11 @@ async def test_handle_event_ecs_service_create_treats_not_found_as_deleted(
 
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.ECS_SERVICE: fixture.metadata},
         ),
     ):
@@ -1019,10 +1032,11 @@ async def test_handle_event_ecs_task_definition_register_fetches_and_returns_res
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.ECS_TASK_DEFINITION: fixture.metadata},
         ),
     ):
@@ -1058,10 +1072,11 @@ async def test_handle_event_ecs_task_definition_register_treats_not_found_as_del
 
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.ECS_TASK_DEFINITION: fixture.metadata},
         ),
     ):
@@ -1127,10 +1142,11 @@ async def test_handle_event_eks_cluster_create_fetches_and_returns_resource(
     fixture = _live_event_metadata()
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.EKS_CLUSTER: fixture.metadata},
         ),
     ):
@@ -1155,10 +1171,11 @@ async def test_handle_event_create_skips_access_denied(
 
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.S3_BUCKET: fixture.metadata},
         ),
     ):
@@ -1190,10 +1207,11 @@ async def test_handle_event_create_treats_not_found_as_deleted(
 
     with (
         patch(
-            f"{MODULE}.get_session_for_account", new=AsyncMock(return_value="session")
+            f"{BASE_MODULE}.get_session_for_account",
+            new=AsyncMock(return_value="session"),
         ),
         patch(
-            f"{MODULE}.kind_to_export_metadata",
+            f"{METADATA_MODULE}.kind_to_export_metadata",
             {ObjectKind.S3_BUCKET: fixture.metadata},
         ),
     ):

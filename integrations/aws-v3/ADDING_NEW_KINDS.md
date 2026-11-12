@@ -82,6 +82,15 @@ class AWSPortAppConfig(PortAppConfig):
 
 **Why:** This defines the resource type that Ocean will recognize and trigger resync events for.
 
+### Live events
+
+First-class kinds (listed in `ObjectKind` and `kind_to_export_metadata`) receive **CloudTrail** live
+events via EventBridge when the customer's rule forwards Management events to the integration
+webhook. Add `live_events` on the kind's `ExporterMetadata` and CloudTrail `eventName` mappings in
+`aws/core/helpers/metadata/cloudtrail_event_mappings.py` (see existing kinds under
+`aws/core/exporters/*/live_events.py`).
+
+
 ### Step 2: Create the Resource Models
 
 **File:** `aws/core/exporters/{service}/{resource}/models.py`
