@@ -9,7 +9,7 @@ from pydantic import Field
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
-from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.actions.abstract_executor import FoundryAgentExecutor
 from azure_integration.foundry.helpers.agent_api import build_create_agent_body
 
 CREATING_STATUS_LABEL = "Creating agent"
@@ -24,7 +24,7 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-class CreateAgentExecutor(AbstractFoundryExecutor):
+class CreateAgentExecutor(FoundryAgentExecutor):
     ACTION_NAME = "create_agent"
 
     async def execute(self, run: IntegrationRun) -> None:

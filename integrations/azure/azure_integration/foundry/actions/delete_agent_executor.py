@@ -7,7 +7,7 @@ from pydantic import Field
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
-from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.actions.abstract_executor import FoundryAgentExecutor
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
@@ -20,7 +20,7 @@ DELETE_FAILED_STATUS_LABEL = "Deletion failed"
 AGENT_DELETED_STATUS_LABEL = "Agent deleted"
 
 
-class DeleteAgentExecutor(AbstractFoundryExecutor):
+class DeleteAgentExecutor(FoundryAgentExecutor):
     ACTION_NAME = "delete_agent"
 
     async def execute(self, run: IntegrationRun) -> None:

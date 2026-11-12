@@ -3,7 +3,10 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from azure_integration.foundry.actions.abstract_executor import ArmDeploymentExecutor
+from azure_integration.foundry.actions.abstract_executor import (
+    ArmDeploymentExecutor,
+    FoundryAgentExecutor,
+)
 from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 
 
@@ -71,6 +74,20 @@ def test_arm_remaining_floor() -> None:
     )
     assert limiter.is_close_to_rate_limit() is True
     assert limiter.seconds_until_rate_limit_reset() > 0
+
+
+@pytest.mark.asyncio
+async def test_agent_executor_skips_shared_rate_limit_deferral() -> None:
+    class _Stub(FoundryAgentExecutor):
+        async def execute(self, run):  # type: ignore[no-untyped-def]
+            return None
+
+    executor = _Stub()
+    executor.client = MagicMock()
+    executor.client.rate_limiter.is_close_to_rate_limit.return_value = True
+    run = MagicMock()
+    assert await executor.is_close_to_rate_limit(run) is False
+    assert await executor.get_remaining_seconds_until_rate_limit(run) == 0.0
 
 
 @pytest.mark.asyncio

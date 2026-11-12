@@ -9,7 +9,7 @@ from pydantic import Field
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
-from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.actions.abstract_executor import FoundryAgentExecutor
 from azure_integration.foundry.helpers.agent_api import build_update_agent_body
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -25,7 +25,7 @@ class UpdateAgentInputs(AbstractFoundryActionInput):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-class UpdateAgentExecutor(AbstractFoundryExecutor):
+class UpdateAgentExecutor(FoundryAgentExecutor):
     ACTION_NAME = "update_agent"
 
     async def execute(self, run: IntegrationRun) -> None:
