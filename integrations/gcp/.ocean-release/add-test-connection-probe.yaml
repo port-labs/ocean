@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added a Test Connection probe that reports, per kind, whether the configured credentials hold the IAM permissions needed to sync it, using testIamPermissions on every discovered project, folder and organization
