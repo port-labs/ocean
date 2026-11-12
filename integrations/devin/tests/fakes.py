@@ -27,7 +27,6 @@ from port_ocean.core.models import (
 INSTALLATION_ID = "devin-test"
 
 OCEAN_MODULES = (
-    "actions.utils.ocean",
     "actions.create_session_executor.ocean",
     "actions.send_message_executor.ocean",
     "actions.terminate_session_executor.ocean",
