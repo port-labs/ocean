@@ -10,6 +10,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.handlers.port_app_config.validators import (
     get_kind_probe_permissions,
     get_port_app_config_kinds,
+    validate_and_get_config_schema,
 )
 from port_ocean.tests.core.handlers.port_app_config.test_helpers import resources_field
 
@@ -137,3 +138,42 @@ def test_get_kind_probe_permissions_keys_custom_kind_slot_by_custom_kind() -> No
         "repository": ("repo",),
         CUSTOM_KIND: ("custom:list",),
     }
+
+
+def test_kinds_schema_includes_probe_description() -> None:
+    class IncidentConfig(ResourceConfig):
+        probe_description: ClassVar[str] = "  Checks incident read access.  "
+
+        kind: Literal["incident"] = Field(title="Incident", description="Incident.")
+
+    class CustomResourceConfig(ResourceConfig):
+        probe_description: ClassVar[str] = "Checks the custom kind API."
+
+        kind: str = Field(title="Custom", description="Custom kind.")
+
+    class Config(PortAppConfig):
+        allow_custom_kinds: ClassVar[bool] = True
+        resources: list[IncidentConfig | CustomResourceConfig] = resources_field()  # type: ignore[assignment]
+
+    kinds = validate_and_get_config_schema(Config)["kinds"]
+
+    assert kinds["incident"]["probeDescription"] == "Checks incident read access."
+    assert kinds[CUSTOM_KIND]["probeDescription"] == "Checks the custom kind API."
+
+
+def test_kinds_schema_omits_empty_probe_description() -> None:
+    class RepositoryConfig(ResourceConfig):
+        kind: Literal["repository"] = Field(title="Repository", description="Repo.")
+
+    class TeamConfig(ResourceConfig):
+        probe_description: ClassVar[str] = "   "
+
+        kind: Literal["team"] = Field(title="Team", description="Team.")
+
+    class Config(PortAppConfig):
+        resources: list[RepositoryConfig | TeamConfig] = resources_field()  # type: ignore[assignment]
+
+    kinds = validate_and_get_config_schema(Config)["kinds"]
+
+    assert "probeDescription" not in kinds["repository"]
+    assert "probeDescription" not in kinds["team"]
