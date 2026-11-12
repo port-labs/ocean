@@ -1,0 +1,150 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: organization
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sonatypeOrganization"'
+          properties:
+            parentOrganizationId: .parentOrganizationId
+          relations:
+            parentOrganization: .parentOrganizationId
+
+  - kind: application
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sonatypeApplication"'
+          properties:
+            publicId: .publicId
+            contactUserName: .contactUserName
+            tags: '[.applicationTags[]?.tagId] + [.categories[]?.name] | map(select(. != null))'
+          relations:
+            organization: .organizationId
+
+  # Maps onto sonatypeApplication (same identifier as the application) to set
+  # the githubRepository relation from IQ Source Control Management config.
+  - kind: sourceControl
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .__identifier
+          title: .__title
+          blueprint: '"sonatypeApplication"'
+          properties:
+            repositoryUrl: .repositoryUrl
+            scmProvider: .provider
+            scmBaseBranch: .baseBranch
+          relations:
+            githubRepository: .__githubRepository
+
+  - kind: report
+    selector:
+      query: "true"
+      # Optionally restrict to specific stages, e.g. ["release"]. Empty = all.
+      stages: []
+    port:
+      entity:
+        mappings:
+          identifier: .__identifier
+          title: .__title
+          blueprint: '"sonatypeReport"'
+          properties:
+            stage: .__stage
+            evaluationDate: .evaluationDate
+            criticalCount: .__criticalCount
+            severeCount: .__severeCount
+            moderateCount: .__moderateCount
+            lowCount: .__lowCount
+            componentsWithViolations: .__componentsWithViolations
+            totalComponents: .__totalComponents
+            reportUrl: .__url
+            reportPdfUrl: .__pdfUrl
+          relations:
+            application: .__applicationId
+
+  - kind: policyViolation
+    selector:
+      query: "true"
+      stages: []
+    port:
+      entity:
+        mappings:
+          identifier: .__identifier
+          title: .__title
+          blueprint: '"sonatypePolicyViolation"'
+          properties:
+            policyName: .policyName
+            threatLevel: .policyThreatLevel
+            severity: .__severity
+            threatCategory: .policyThreatCategory
+            component: .__componentDisplayName
+            packageUrl: .__packageUrl
+            stage: .__stage
+            waived: .waived
+            grandfathered: .grandfathered
+            reportUrl: .__url
+          relations:
+            application: .__applicationId
+            report: .__reportIdentifier
+
+  - kind: component
+    selector:
+      query: "true"
+      stages: []
+      # Set to true to fetch Sonatype's recommended fix version per vulnerable
+      # component (adds one API call per vulnerable component).
+      includeRemediation: false
+    port:
+      entity:
+        mappings:
+          identifier: .__identifier
+          title: .__title
+          blueprint: '"sonatypeComponent"'
+          properties:
+            displayName: .__displayName
+            packageUrl: .__packageUrl
+            format: .__format
+            version: .__version
+            matchState: .__matchState
+            directDependency: .__directDependency
+            licenses: .__licenses
+            maxCvssScore: .__maxCvssScore
+            securityIssueCount: .__securityIssueCount
+            recommendedVersion: .recommendedVersion
+            recommendedRemediationType: .recommendedRemediationType
+            recommendedNonFailingVersion: .recommendedNonFailingVersion
+            reportUrl: .__url
+          relations:
+            application: .__applicationId
+            report: .__reportIdentifier
+            vulnerabilities: .__cveReferences
+
+  - kind: vulnerability
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .__identifier
+          title: .__title
+          blueprint: '"sonatypeVulnerability"'
+          properties:
+            reference: .reference
+            source: .source
+            cvssScore: .cvssScore
+            severity: .severity
+            threatCategory: .threatCategory
+            status: .status
+            url: .url
