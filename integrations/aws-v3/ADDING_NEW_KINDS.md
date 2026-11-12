@@ -82,6 +82,47 @@ class AWSPortAppConfig(PortAppConfig):
 
 **Why:** This defines the resource type that Ocean will recognize and trigger resync events for.
 
+### Live events
+
+First-class kinds (listed in `ObjectKind` and `kind_to_export_metadata`) receive **CloudTrail** live
+events via EventBridge when the customer's rule forwards Management events to the integration
+webhook. Add `live_events` on the kind's `ExporterMetadata` and CloudTrail `eventName` mappings in
+`aws/core/helpers/metadata/cloudtrail_event_mappings.py` (see existing kinds under
+`aws/core/exporters/*/live_events.py`).
+
+**Cloud Control custom kinds** (`AWSCustomKindResourceConfig`) have no CloudTrail mapping. Live events
+use a customer EventBridge rule **input transformer** that posts a flat JSON body (no top-level
+`detail`) to the same webhook path as CloudTrail. Required fields:
+
+| Field | Description |
+| --- | --- |
+| `resource_type` | CloudFormation type name, must match the kind in port-app-config (e.g. `AWS::IAM::Role`) |
+| `identifier` | Cloud Control resource identifier |
+| `accountId` | AWS account ID |
+| `awsRegion` | Region where the resource lives |
+| `eventName` | Optional; used for logging only |
+
+Example input template (adjust paths to your rule's event shape):
+
+```json
+{
+  "resource_type": "<type from event>",
+  "identifier": "<identifier from event>",
+  "accountId": "<$.account>",
+  "awsRegion": "<$.region>",
+  "eventName": "<$.detail.eventName>"
+}
+```
+
+The integration upserts by calling Cloud Control **GetResource** after each event. **Deletes** are
+inferred when GetResource returns not-found (there is no explicit delete action on this path).
+`InputTransformerWebhookProcessor` only accepts payloads that pass
+`aws/webhook/input_transformer_parser.py` validation (all required fields present, no `detail` key).
+
+Until `AWSCustomKindResourceConfig` is added to the `AWSPortAppConfig.resources` union, custom kinds
+are not configurable via the UI; live-event handling is still implemented for when that union is
+extended.
+
 ### Step 2: Create the Resource Models
 
 **File:** `aws/core/exporters/{service}/{resource}/models.py`

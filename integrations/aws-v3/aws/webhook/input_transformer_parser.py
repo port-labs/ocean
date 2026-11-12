@@ -18,7 +18,10 @@ class InputTransformerPayload(TypedDict, total=False):
 
 
 def is_input_transformer_event(payload: InputTransformerPayload) -> bool:
-    return "resource_type" in payload and "detail" not in payload
+    """True for EventBridge payloads shaped by an input transformer, not raw CloudTrail."""
+    if "detail" in payload:
+        return False
+    return parse_input_transformer_event(payload) is not None
 
 
 def parse_input_transformer_event(
