@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Convert single-quoted JQ strings that close before punctuation so mappings such as (.name + '/') compile
