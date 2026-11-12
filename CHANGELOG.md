@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.61.0 (2026-11-12)
+
+
+### Features
+
+- Add `port` vault type for SaaS identity propagation, exchanging identity JWTs for downstream tokens
+
+
 ## 0.60.0 (2026-11-12)
 
 
