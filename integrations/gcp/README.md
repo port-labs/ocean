@@ -11,7 +11,7 @@ An integration used to import gcp resources into Port.
 - cloudasset.assets.exportResource
 - cloudasset.assets.listCloudAssetFeeds
 - cloudasset.assets.listResource
-- cloudasset.assets.searchAllIamPolicies (only when the `iamPolicy` kind is mapped, and then on every project in scope: a project the service account cannot read IAM policies on fails the resync, and Ocean skips the delete phase for every kind until the permission is granted. The `Cloud Asset Viewer` role (`roles/cloudasset.viewer`) already includes it; the Terraform install's `OceanIntegrationRole` does not, so add it to `ocean_integration_service_account_permissions`)
+- cloudasset.assets.searchAllIamPolicies (only when the `iamPolicy` kind is mapped, and then on every project in scope: a project the service account cannot read IAM policies on fails the resync, and Ocean skips the delete phase for every kind until the permission is granted. The `Cloud Asset Viewer` role (`roles/cloudasset.viewer`) already includes it; on the Terraform install, make sure it is listed in `ocean_integration_service_account_permissions`)
 - cloudasset.assets.searchAllResources
 - cloudasset.feeds.create
 - cloudasset.feeds.list
