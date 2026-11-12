@@ -1,9 +1,11 @@
 import asyncio
+from datetime import datetime
 from typing import Callable, cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
@@ -139,6 +141,21 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for slos in _resync_across_orgs(
         lambda client: SloExporter(client).get_paginated_resources(options),
+        context="SLO exporter",
+    ):
+        yield slos
+
+
+@ocean.on_incremental_resync(ObjectKind.SLO)
+async def on_incremental_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListSloOptions.from_resource_config(
+        cast(SLOResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for slos in _resync_across_orgs(
+        lambda client: SloExporter(client).get_changed_slos(
+            options, incremental_cursor=cursor
+        ),
         context="SLO exporter",
     ):
         yield slos
