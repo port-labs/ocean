@@ -78,6 +78,22 @@ class AbstractFoundryExecutor(AbstractExecutor):
         )
 
 
+class FoundryAgentExecutor(AbstractFoundryExecutor):
+    """Agent CRUD uses the shared Foundry client; skip sync-driven deferral.
+
+    Resync shares one client-level rate limiter. User-initiated agent actions
+    should run immediately and rely on per-request retries instead.
+    """
+
+    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
+        return False
+
+    async def get_remaining_seconds_until_rate_limit(
+        self, run: IntegrationRun
+    ) -> float:
+        return 0.0
+
+
 class ArmDeploymentExecutor(AbstractFoundryExecutor):
     """Deploy and delete model deployments go through Azure Resource Manager."""
 
