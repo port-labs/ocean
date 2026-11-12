@@ -31,11 +31,6 @@ class _ContainerLevel:
     response_field: str
 
 
-# testIamPermissions validates against the resource type and rejects the whole request
-# with INVALID_ARGUMENT when a permission does not apply, so each level may only be asked
-# about the permissions of the kinds that live at that level. Permissions from different
-# services are fine as long as they are all scoped to that level.
-# https://cloud.google.com/resource-manager/reference/rest/v3/projects/testIamPermissions
 _LEVELS = (
     _ContainerLevel(
         label="project",
@@ -101,8 +96,6 @@ class GcpPermissionProbe:
         }
 
         try:
-            # gather does not cancel siblings, so a raising level must not leave the
-            # others reporting into an already failed probe.
             results = await asyncio.gather(
                 *(self._run_level(level, checks) for level in _LEVELS),
                 return_exceptions=True,
@@ -118,8 +111,6 @@ class GcpPermissionProbe:
             )
             return
         if errors:
-            # Every error, not just the first: a lane that raised is a lane with no
-            # verdict, same reason iterate_per_available_project defers and reports all.
             await self.context.fail(
                 "Failed to verify GCP permissions: "
                 + "; ".join(f"{type(error).__name__}: {error}" for error in errors)
