@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Support live events from customer EventBridge rules that use an input transformer to send the resource type and identifier, enabling live events for custom Cloud Control kinds
