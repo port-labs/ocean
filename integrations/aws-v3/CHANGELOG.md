@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.2.9 (2026-11-12)
+
+
+### Improvements
+
+- Add a test connection probe description to the Cloud Control custom kind explaining that per-type service permissions are not verified
+
+
 ## 3.2.8 (2026-11-12)
 
 
