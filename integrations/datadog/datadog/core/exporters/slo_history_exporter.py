@@ -12,6 +12,7 @@ from port_ocean.utils.queue_utils import process_in_queue
 
 from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
 from datadog.core.exporters.slo_exporter import ListSloOptions, SloExporter
+from datadog.incremental import windows_ending_after
 from datadog.utils import (
     generate_time_windows_from_interval_days,
     get_start_of_the_day_in_seconds_x_day_back,
@@ -78,6 +79,44 @@ class SloHistoryExporter(PaginatedExporter[ListSloHistoryOptions]):
                     from_ts,
                     to_ts,
                     concurrency=concurrency,
+                )
+                yield [history for history in histories if history]
+
+    async def get_latest_histories(
+        self, options: ListSloHistoryOptions, incremental_cursor: datetime.datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get SLO histories of the time windows that end after ``incremental_cursor``,
+        for all SLOs: the current window, plus any window that closed since
+        ``incremental_cursor``, so it gets its final values.
+        """
+        start_timestamp = (
+            get_start_of_the_day_in_seconds_x_day_back(options.period_of_time_in_days)
+            if options.period_of_time_in_days
+            else get_start_of_the_month_in_seconds_x_months_back(
+                options.period_of_time_in_months
+            )
+        )
+        windows = windows_ending_after(
+            generate_time_windows_from_interval_days(
+                options.timeframe, start_timestamp
+            ),
+            incremental_cursor,
+        )
+        logger.info(
+            f"Fetching SLO histories for {len(windows)} time windows "
+            f"ending after {incremental_cursor.isoformat()}"
+        )
+
+        slo_exporter = SloExporter(self.client)
+        async for slos in slo_exporter.get_paginated_resources(ListSloOptions()):
+            for from_ts, to_ts in windows:
+                histories = await process_in_queue(
+                    [slo["id"] for slo in slos],
+                    self._get_slo_history,
+                    options.timeframe,
+                    from_ts,
+                    to_ts,
+                    concurrency=options.concurrency,
                 )
                 yield [history for history in histories if history]
 
