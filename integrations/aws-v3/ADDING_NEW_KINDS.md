@@ -104,9 +104,6 @@ The `port` repo ships a CloudFormation template for this pattern (`live-events-c
 resource with Cloud Control **GetResource**, and upserts into Port. If GetResource returns not-found,
 the entity is treated as deleted.
 
-Until `AWSCustomKindResourceConfig` is added to the `AWSPortAppConfig.resources` union, custom kinds
-are not configurable via the UI; live-event handling is still implemented for when that union is
-extended.
 
 ### Step 2: Create the Resource Models
 
