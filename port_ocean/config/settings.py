@@ -484,7 +484,9 @@ class IntegrationConfiguration(BaseOceanSettings):
         ):
             raise ValueError(
                 "identity_propagation.vault.type=port is only supported on SaaS "
-                "runtime. Self-hosted installs must use aws_secrets_manager."
+                "runtime. Self-hosted installs must use aws_secrets_manager. "
+                "See https://docs.port.io/context-lake/ingestion/ingest-data-into-port/"
+                "native-integrations/ocean-framework/identity-propagation/#configuration"
             )
         return self
 
