@@ -90,20 +90,6 @@ webhook. Add `live_events` on the kind's `ExporterMetadata` and CloudTrail `even
 `aws/core/helpers/metadata/cloudtrail_event_mappings.py` (see existing kinds under
 `aws/core/exporters/*/live_events.py`).
 
-**Cloud Control custom kinds** (`AWSCustomKindResourceConfig`) are not wired into the built-in
-CloudTrail live-events rule. Customers add their own EventBridge rules (one per custom kind) that
-forward relevant Management events to the same integration webhook. Because CloudTrail-shaped events
-carry a `detail` envelope, those rules typically use an **input transformer** to send a flat JSON body
-the integration recognizes: `resource_type`, `identifier`, `accountId`, `awsRegion`, and optionally
-`eventName`. The `resource_type` must match the CloudFormation type name configured in Port; the
-`identifier` must be the Cloud Control primary identifier for that resource.
-
-The `port` repo ships a CloudFormation template for this pattern (`live-events-custom-kind.yaml` under
-`s3/port-cloudformation-templates/ocean/aws-v3/`). On each event,
-`InputTransformerWebhookProcessor` resolves the kind via `cloud_control_live_events`, fetches the
-resource with Cloud Control **GetResource**, and upserts into Port. If GetResource returns not-found,
-the entity is treated as deleted.
-
 
 ### Step 2: Create the Resource Models
 
