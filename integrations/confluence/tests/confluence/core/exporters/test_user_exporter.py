@@ -45,7 +45,9 @@ class TestUserExporter:
         ]
 
         assert [user["accountId"] for batch in batches for user in batch] == ["1", "2"]
-        assert batches[0][0]["webUrl"] == "https://example.atlassian.net/wiki/people/1"
+        assert (
+            batches[0][0]["__webUrl"] == "https://example.atlassian.net/wiki/people/1"
+        )
         first_params = client.send_api_request.await_args_list[0].kwargs["params"]
         assert first_params["cql"] == "type=user"
         assert first_params["sitePermissionTypeFilter"] == "all"

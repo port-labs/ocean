@@ -35,7 +35,8 @@ class TestSpaceExporter:
             {"endpoint": "spaces", "params": {"description-format": "plain"}},
         ]
         assert (
-            batches[0][0]["webUrl"] == "https://example.atlassian.net/wiki/spaces/DOCS"
+            batches[0][0]["__webUrl"]
+            == "https://example.atlassian.net/wiki/spaces/DOCS"
         )
 
     async def test_selector_filters_are_forwarded(self) -> None:
@@ -74,7 +75,7 @@ class TestSpaceExporter:
         result = await exporter.get_single_resource("123")
 
         assert result is not None
-        assert result["webUrl"] == "https://example.atlassian.net/wiki/spaces/DOCS"
+        assert result["__webUrl"] == "https://example.atlassian.net/wiki/spaces/DOCS"
         client.send_api_request.assert_awaited_once_with(
             "spaces/123",
             params={"description-format": "plain"},

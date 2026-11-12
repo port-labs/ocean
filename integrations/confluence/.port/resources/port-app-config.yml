@@ -19,7 +19,7 @@ resources:
             homepageId: .homepageId
             authorId: .authorId
             spaceOwnerId: .spaceOwnerId
-            url: .webUrl
+            url: .__webUrl
           relations:
             author: .authorId
             owner: .spaceOwnerId
@@ -44,7 +44,9 @@ resources:
             parentType: .parentType
             position: .position
             content: .body.markdown.value // ""
-            url: .webUrl
+            folderPath: .__folderPath
+            filePath: .__filePath
+            url: .__webUrl
           relations:
             space: .spaceId
             parent: if .parentType == "page" and .parentId != null then .parentId else null end
@@ -67,4 +69,4 @@ resources:
             timeZone: .timeZone
             isExternalCollaborator: .isExternalCollaborator
             isGuest: .isGuest
-            url: .webUrl
+            url: .__webUrl

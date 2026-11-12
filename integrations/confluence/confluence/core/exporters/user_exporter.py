@@ -73,5 +73,5 @@ class UserExporter(AbstractConfluenceExporter[ConfluenceClient]):
         enriched = dict(user) if isinstance(user, dict) else {}
         url = result.get("url")
         if isinstance(url, str) and url.startswith("/"):
-            enriched["webUrl"] = f"{self.client.site_url}/wiki{url}"
+            enriched["__webUrl"] = f"{self.client.site_url}/wiki{url}"
         return enriched

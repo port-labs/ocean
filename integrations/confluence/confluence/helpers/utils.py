@@ -16,5 +16,5 @@ def attach_web_url(site_url: str, item: dict[str, Any]) -> dict[str, Any]:
     links = item.get("_links")
     webui = links.get("webui") if isinstance(links, dict) else None
     if isinstance(webui, str) and webui.startswith("/"):
-        enriched["webUrl"] = f"{site_url}/wiki{webui}"
+        enriched["__webUrl"] = f"{site_url}/wiki{webui}"
     return enriched
