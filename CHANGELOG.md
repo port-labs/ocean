@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.60.0 (2026-11-12)
+
+
+### Features
+
+- Add optional `ResourceConfig.probe_description`, published in the port-app-config kinds schema as `probeDescription` so Port can show it on test connection results (#55928397)
+
+
 ## 0.59.0 (2026-11-11)
 
 
