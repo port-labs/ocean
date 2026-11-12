@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import Callable, cast
 
 from loguru import logger
@@ -103,15 +104,22 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
-@ocean.on_incremental_resync(ObjectKind.USER)
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sync_cursor = active_incremental_cursor()
     async for users in _resync_across_orgs(
-        lambda client: (
-            UserExporter(client).get_paginated_resources()
-            if sync_cursor is None
-            else UserExporter(client).get_changed_users(since=sync_cursor)
+        lambda client: UserExporter(client).get_paginated_resources(),
+        context="User exporter",
+    ):
+        yield users
+
+
+@ocean.on_incremental_resync(ObjectKind.USER)
+async def on_incremental_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    # Ocean sets the cursor before calling incremental handlers
+    cursor = cast(datetime, active_incremental_cursor())
+    async for users in _resync_across_orgs(
+        lambda client: UserExporter(client).get_changed_users(
+            incremental_cursor=cursor
         ),
         context="User exporter",
     ):

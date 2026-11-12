@@ -8,10 +8,8 @@ import pytest
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters import UserExporter
-from datadog.core.exporters.user_exporter import (
-    CHANGED_USERS_AUDIT_QUERY,
-    GetUserOptions,
-)
+from datadog.core.exporters.user_exporter import GetUserOptions
+from datadog.incremental import CHANGED_USERS_AUDIT_QUERY
 
 
 @pytest.mark.asyncio
@@ -100,7 +98,7 @@ def _http_error(status: int) -> httpx.HTTPStatusError:
 
 async def _collect(exporter: UserExporter) -> list[dict[str, Any]]:
     users: list[dict[str, Any]] = []
-    async for batch in exporter.get_changed_users(since=SINCE):
+    async for batch in exporter.get_changed_users(incremental_cursor=SINCE):
         users.extend(batch)
     return users
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from httpx import HTTPStatusError
@@ -10,23 +10,14 @@ from datadog.core.exporters.base_exporter import (
     PaginatedExporter,
     SingleResourceExporter,
 )
-from datadog.webhook.consts import (
-    ROLES_API_PATH_PREFIX,
-    AuditTrailAction,
-    AuditTrailAssetType,
-    AuditTrailEventName,
+from datadog.incremental import (
+    CHANGED_USERS_AUDIT_QUERY,
+    audit_events_search_body,
+    changed_user_id,
 )
 
 if TYPE_CHECKING:
     from datadog.overrides import UserResourceConfig
-
-# Deletes are excluded on purpose: the full resync reconciles removed users.
-# https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
-CHANGED_USERS_AUDIT_QUERY = (
-    f'@evt.name:"{AuditTrailEventName.ACCESS_MANAGEMENT}" '
-    f"@asset.type:{AuditTrailAssetType.USER} "
-    f"@action:({AuditTrailAction.CREATED} OR {AuditTrailAction.MODIFIED})"
-)
 
 
 class GetUserOptions(GetOptions["UserResourceConfig"]):
@@ -48,25 +39,19 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         async for batch in self._paginate_by_page_param(url):
             yield batch
 
-    async def get_changed_users(self, since: datetime) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get users created or modified since ``since``, found through audit events.
+    async def get_changed_users(
+        self, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get users created or modified since ``incremental_cursor``, found through audit events.
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
         url = f"{self.client.api_url}/api/v2/audit/events/search"
-        body = {
-            "filter": {
-                "query": CHANGED_USERS_AUDIT_QUERY,
-                "from": since.astimezone(timezone.utc).isoformat(),
-                "to": "now",
-            },
-            "sort": "-timestamp",
-        }
+        body = audit_events_search_body(CHANGED_USERS_AUDIT_QUERY, incremental_cursor)
 
-        # A user can appear in many events; a dict dedupes and keeps the order
         user_ids: dict[str, None] = {}
         async for events in self._paginate_by_search_cursor(url, body):
             for event in events:
-                if user_id := self._changed_user_id(event):
+                if user_id := changed_user_id(event):
                     user_ids[user_id] = None
 
         users: list[dict[str, Any]] = []
@@ -83,14 +68,6 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
 
         if users:
             yield users
-
-    @staticmethod
-    def _changed_user_id(event: dict[str, Any]) -> str | None:
-        attributes = event.get("attributes", {}).get("attributes", {})
-        path = attributes.get("http", {}).get("url_details", {}).get("path", "")
-        if path.startswith(ROLES_API_PATH_PREFIX):
-            return None
-        return attributes.get("asset", {}).get("id")
 
     async def get_resource(self, options: GetUserOptions) -> dict[str, Any] | None:
         """Get a single user by ID.
