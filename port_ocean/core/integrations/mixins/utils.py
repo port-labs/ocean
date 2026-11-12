@@ -2,7 +2,10 @@ import hashlib
 import json
 import os
 import re
+import time
+import uuid
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 
 from loguru import logger
@@ -31,7 +34,10 @@ from port_ocean.utils.async_http import _http_client
 from port_ocean.core.models import (
     IntegrationFeatureFlag,
     LakehouseDataEntry,
+    LakehouseDataEntryBatch,
     LakehouseDataEntryMetadata,
+    LakehouseEventType,
+    LakehouseOperation,
     ProcessingMode,
 )
 
@@ -64,6 +70,179 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+def build_live_event_entry(
+    items: list[Any],
+    operation: LakehouseOperation,
+    resource_index: int,
+    resource: ResourceConfig,
+    *,
+    extraction_timestamp: int | None = None,
+) -> LakehouseDataEntry:
+    """Build a lakehouse entry for a live-event UPSERT/DELETE payload."""
+    return build_lakehouse_data_entry(
+        items=items,
+        metadata=LakehouseDataEntryMetadata(
+            operation=operation,
+            resource_index=resource_index,
+            extraction_timestamp=(
+                extraction_timestamp
+                if extraction_timestamp is not None
+                else int(time.time() * 1000)
+            ),
+            selector_hash=selector_hash_from_resource(resource),
+        ),
+        export_env_variables=resource.selector.export_env_variables,
+    )
+
+
+class _UnsetBatchEventId:
+    """Sentinel: omit ``event_id`` so the batch gets a generated UUID."""
+
+
+_UNSET_BATCH_EVENT_ID = _UnsetBatchEventId()
+
+
+async def post_live_event_batch_to_lakehouse(
+    *,
+    sync_id: str,
+    kind: str,
+    data_entries: list[LakehouseDataEntry],
+    resync_start_time: datetime | None = None,
+    event_id: str | None | _UnsetBatchEventId = _UNSET_BATCH_EVENT_ID,
+    fatal: bool = False,
+) -> bool:
+    """Post a LIVE_EVENT lakehouse batch. Shared by live events and raw APIs.
+
+    Returns True if sent (or nothing to send), False if a non-fatal failure was
+    swallowed. When ``fatal`` is True (DSP raw APIs), failures propagate so
+    callers do not drop the only delivery path.
+
+    ``event_id`` is written onto the batch as-is when provided (including
+    ``None``, matching prior live-events behavior). When omitted, a UUID is
+    generated for the batch (raw one-shot posts).
+    """
+    if not data_entries:
+        return True
+
+    batch_event_id: str | None
+    if isinstance(event_id, _UnsetBatchEventId):
+        batch_event_id = str(uuid.uuid4())
+    else:
+        batch_event_id = event_id
+    batch = LakehouseDataEntryBatch(
+        event_id=batch_event_id,
+        type=LakehouseEventType.LIVE_EVENT.value,
+        kind=kind,
+        event_type=LakehouseEventType.LIVE_EVENT,
+        resync_start_time=resync_start_time,
+        extraction_timestamp=int(time.time() * 1000),
+        data=data_entries,
+    )
+    try:
+        await ocean.port_client.post_integration_raw_data_batch(sync_id, batch)
+    except Exception as e:
+        logger.warning(
+            f"Failed to post live-event lakehouse batch for kind '{kind}': {e}",
+            event_id=sync_id,
+            kind=kind,
+        )
+        if fatal:
+            raise
+        return False
+    return True
+
+
+async def post_raw_kind_to_lakehouse(
+    kind: str,
+    results: list[dict[Any, Any]],
+    operation: LakehouseOperation,
+    resource_mappings: list[tuple[int, ResourceConfig]],
+    *,
+    event_id: str,
+    fatal: bool = False,
+) -> None:
+    """Post raw items for a kind to lakehouse as a LIVE_EVENT batch.
+
+    When ``fatal`` is False, post failures are logged and swallowed. When
+    ``fatal`` is True (DSP mode), failures propagate.
+    """
+    if not results or not resource_mappings:
+        return
+
+    extraction_timestamp = int(time.time() * 1000)
+    data_entries = [
+        build_live_event_entry(
+            results,
+            operation,
+            resource_index,
+            resource_config,
+            extraction_timestamp=extraction_timestamp,
+        )
+        for resource_index, resource_config in resource_mappings
+    ]
+    if await post_live_event_batch_to_lakehouse(
+        sync_id=event_id,
+        kind=kind,
+        data_entries=data_entries,
+        fatal=fatal,
+    ):
+        logger.info(
+            f"Posted {len(results)} raw items for kind '{kind}' to lakehouse "
+            f"({operation.value})",
+            event_id=event_id,
+        )
+
+
+def raw_kind_resource_mappings(
+    resources: list[ResourceConfig], kind: str
+) -> list[tuple[int, ResourceConfig]]:
+    return [
+        (index, resource)
+        for index, resource in enumerate(resources)
+        if resource.kind == kind
+    ]
+
+
+async def post_raw_to_lakehouse_and_should_skip_ocean_core(
+    kind: str,
+    results: list[dict[Any, Any]],
+    operation: LakehouseOperation,
+    resource_mappings: list[tuple[int, ResourceConfig]],
+) -> bool:
+    """Post raw items to lakehouse when enabled. Returns True to skip Ocean-core.
+
+    Posts with a dedicated ``sync_id`` (never the ambient event/resync id) so
+    LIVE_EVENT batches are not attributed to an in-flight resync.
+
+    ``is_dsp_mode_enabled()`` already requires lakehouse config +
+    ``LAKEHOUSE_ELIGIBLE``. The extra ``lakehouse_enabled`` check is defensive
+    against disagreeing flag reads (cache expiry / fetch errors between calls).
+    Unlike live events, raw posts are ``fatal`` when DSP is on so a failed
+    lakehouse write cannot skip Ocean-core and drop data.
+    """
+    lakehouse_enabled = await is_lakehouse_data_enabled()
+    dsp_enabled = await is_dsp_mode_enabled()
+
+    if lakehouse_enabled:
+        await post_raw_kind_to_lakehouse(
+            kind,
+            results,
+            operation,
+            resource_mappings,
+            event_id=str(uuid.uuid4()),
+            fatal=dsp_enabled,
+        )
+
+    if dsp_enabled and lakehouse_enabled:
+        action = "upsert" if operation == LakehouseOperation.UPSERT else "delete"
+        logger.info(
+            f"DSP mode active: skipping Ocean-core {action} for "
+            f"{operation.value} kind '{kind}' ({len(results)} raw items)"
+        )
+        return True
+    return False
 
 
 def selector_query_from_resource(resource: ResourceConfig) -> str | None:

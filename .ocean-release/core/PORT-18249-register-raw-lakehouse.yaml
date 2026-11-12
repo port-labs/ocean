@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Route register_raw/unregister_raw through LIVE_EVENT lakehouse ingestion and skip Ocean-core upsert/delete when DSP and lakehouse are enabled

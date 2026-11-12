@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import AsyncGenerator
 import uuid
 
@@ -8,21 +7,26 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.integrations.mixins.utils import (
-    build_lakehouse_data_entry,
+    build_live_event_entry,
     handle_items_to_parse,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
-    selector_hash_from_resource,
+    post_live_event_batch_to_lakehouse,
 )
-from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseDataEntryMetadata, LakehouseOperation, LakehouseEventType
+from port_ocean.core.models import (
+    Entity,
+    LakehouseDataEntry,
+    LakehouseOperation,
+)
 from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.context.ocean import ocean
 
 
-
 class LiveEventsMixin(HandlerMixin):
 
-    async def sync_raw_results(self, webhook_events_raw_result: list[WebhookEventRawResults]) -> None:
+    async def sync_raw_results(
+        self, webhook_events_raw_result: list[WebhookEventRawResults]
+    ) -> None:
         """Process the webhook event raw results collected from multiple processors and export it.
 
         Args:
@@ -37,14 +41,17 @@ class LiveEventsMixin(HandlerMixin):
             )
             return
 
-        entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
+        entities_to_create, entities_to_delete = (
+            await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
+        )
 
         if entities_to_create:
-            await self.entities_state_applier.upsert(entities_to_create, UserAgentType.exporter)
+            await self.entities_state_applier.upsert(
+                entities_to_create, UserAgentType.exporter
+            )
 
         if entities_to_delete:
             await self._delete_entities(entities_to_delete)
-
 
     async def _expand_raw_item(
         self, raw_item: RAW_ITEM, resource: ResourceConfig
@@ -60,7 +67,9 @@ class LiveEventsMixin(HandlerMixin):
         else:
             yield [raw_item]
 
-    async def _parse_raw_event_results_to_entities(self, webhook_events_raw_result: list[WebhookEventRawResults]) -> tuple[list[Entity], list[Entity]]:
+    async def _parse_raw_event_results_to_entities(
+        self, webhook_events_raw_result: list[WebhookEventRawResults]
+    ) -> tuple[list[Entity], list[Entity]]:
         """Parse the webhook event raw results and return a list of entities.
 
         Args:
@@ -79,22 +88,32 @@ class LiveEventsMixin(HandlerMixin):
                         resource, batch, parse_all=True
                     )
                     entities.extend(calculation_results.entity_selector_diff.passed)
-                    entities_not_passed.extend(calculation_results.entity_selector_diff.failed)
+                    entities_not_passed.extend(
+                        calculation_results.entity_selector_diff.failed
+                    )
 
             for raw_item in webhook_event_raw_result.deleted_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
                     deletion_results = await self.entity_processor.parse_items(
                         resource, batch, parse_all=True
                     )
-                    entities_to_delete.extend(deletion_results.entity_selector_diff.passed)
+                    entities_to_delete.extend(
+                        deletion_results.entity_selector_diff.passed
+                    )
 
         entities_to_remove = []
         for entity in entities_to_delete + entities_not_passed:
-            if (entity.blueprint, entity.identifier) not in [(entity.blueprint, entity.identifier) for entity in entities]:
+            if (entity.blueprint, entity.identifier) not in [
+                (entity.blueprint, entity.identifier) for entity in entities
+            ]:
                 entities_to_remove.append(entity)
 
-        logger.info(f"Found {len(entities_to_remove)} entities to remove {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in entities_to_remove)}")
-        logger.info(f"Found {len(entities)} entities to upsert {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in entities)}")
+        logger.info(
+            f"Found {len(entities_to_remove)} entities to remove {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in entities_to_remove)}"
+        )
+        logger.info(
+            f"Found {len(entities)} entities to upsert {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in entities)}"
+        )
         return entities, entities_to_remove
 
     async def _send_webhook_raw_data_to_lakehouse(
@@ -136,32 +155,20 @@ class LiveEventsMixin(HandlerMixin):
 
                 if webhook_event_raw_result.updated_raw_results:
                     data_entries.append(
-                        build_lakehouse_data_entry(
-                            items=webhook_event_raw_result.updated_raw_results,
-                            metadata=LakehouseDataEntryMetadata(
-                                operation=LakehouseOperation.UPSERT,
-                                resource_index=resource_index,
-                                extraction_timestamp=int(datetime.now().timestamp() * 1000),
-                                selector_hash=selector_hash_from_resource(
-                                    webhook_event_raw_result.resource
-                                ),
-                            ),
-                            export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
+                        build_live_event_entry(
+                            webhook_event_raw_result.updated_raw_results,
+                            LakehouseOperation.UPSERT,
+                            resource_index,
+                            webhook_event_raw_result.resource,
                         )
                     )
                 if webhook_event_raw_result.deleted_raw_results:
                     data_entries.append(
-                        build_lakehouse_data_entry(
-                            items=webhook_event_raw_result.deleted_raw_results,
-                            metadata=LakehouseDataEntryMetadata(
-                                operation=LakehouseOperation.DELETE,
-                                resource_index=resource_index,
-                                extraction_timestamp=int(datetime.now().timestamp() * 1000),
-                                selector_hash=selector_hash_from_resource(
-                                    webhook_event_raw_result.resource
-                                ),
-                            ),
-                            export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
+                        build_live_event_entry(
+                            webhook_event_raw_result.deleted_raw_results,
+                            LakehouseOperation.DELETE,
+                            resource_index,
+                            webhook_event_raw_result.resource,
                         )
                     )
 
@@ -172,27 +179,14 @@ class LiveEventsMixin(HandlerMixin):
                 )
             if not data_entries:
                 return
-            try:
-                event = LakehouseDataEntryBatch(
-                    event_id=event_id,
-                    type=LakehouseEventType.LIVE_EVENT.value,
-                    kind=kind,
-                    event_type=LakehouseEventType.LIVE_EVENT,
-                    resync_start_time=webhook_event_raw_result.created_at,
-                    extraction_timestamp=int(datetime.now().timestamp() * 1000),
-                    data=data_entries,
-                )
-                event_id_str = event_id or str(uuid.uuid4())
-                await ocean.port_client.post_integration_raw_data_batch(
-                    event_id_str,
-                    event,
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to send webhook raw data to lakehouse: {e}",
-                    event_id=event_id,
-                    kind=kind,
-                )
+            await post_live_event_batch_to_lakehouse(
+                sync_id=event_id or str(uuid.uuid4()),
+                kind=kind,
+                data_entries=data_entries,
+                resync_start_time=webhook_event_raw_result.created_at,
+                event_id=event_id,
+                fatal=False,
+            )
         except Exception as e:
             logger.warning(
                 f"Failed to send webhook raw data to lakehouse (best-effort operation): {e}"
@@ -213,18 +207,13 @@ class LiveEventsMixin(HandlerMixin):
                 {
                     "property": "$identifier",
                     "operator": "=",
-                    "value": entity.identifier
+                    "value": entity.identifier,
                 },
-                {
-                    "property": "$blueprint",
-                    "operator": "=",
-                    "value": entity.blueprint
-                }
-            ]
+                {"property": "$blueprint", "operator": "=", "value": entity.blueprint},
+            ],
         }
         entities_at_port = await ocean.port_client.search_entities(
-            UserAgentType.exporter,
-            query
+            UserAgentType.exporter, query
         )
         return len(entities_at_port) > 0
 
@@ -236,4 +225,6 @@ class LiveEventsMixin(HandlerMixin):
         """
         for entity in entities:
             if await self._does_entity_exists(entity):
-                await self.entities_state_applier.delete([entity], UserAgentType.exporter)
+                await self.entities_state_applier.delete(
+                    [entity], UserAgentType.exporter
+                )

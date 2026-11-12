@@ -22,6 +22,8 @@ from port_ocean.core.integrations.mixins.utils import (
     build_lakehouse_data_entry,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
+    post_raw_to_lakehouse_and_should_skip_ocean_core,
+    raw_kind_resource_mappings,
     selector_hash_from_resource,
     start_kind_tracking,
     stop_kind_tracking,
@@ -29,7 +31,12 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, LakehouseEventType, LakehouseOperation
+from port_ocean.core.models import (
+    Entity,
+    LakehouseDataEntryMetadata,
+    LakehouseEventType,
+    LakehouseOperation,
+)
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -93,9 +100,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else self.event_strategy.resync
         )
 
-        if not (
-            event_mapping.get(resource_config.kind) or event_mapping.get(None)
-        ):
+        if not (event_mapping.get(resource_config.kind) or event_mapping.get(None)):
             return unsupported_kind_response(
                 resource_config.kind,
                 cast(list[str], list(event_mapping.keys())),
@@ -446,7 +451,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 else:
                     async_generators.append(result)
 
-
             buffer: LakehouseBuffer | None = (
                 LakehouseBuffer(
                     sync_id=event.id,
@@ -587,8 +591,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return passed_entities, errors
 
-
-
     async def register_raw(
         self,
         kind: str,
@@ -598,6 +600,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """Register raw entities of a specific kind.
 
         This method registers raw entities of a specific kind into Port.
+        When lakehouse is enabled, raw items are posted first. In DSP mode with
+        lakehouse enabled, Ocean-core transform/load is skipped (DSP processes
+        via lakehouse), matching live events.
 
         Args:
             kind (str): The kind of raw entities being registered.
@@ -605,24 +610,32 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             user_agent_type (UserAgentType): The type of user agent.
 
         Returns:
-            list[Entity]: A list of registered entities.
+            list[Entity]: A list of registered entities. Empty when DSP mode
+            handles processing via lakehouse.
         """
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = [
-            resource for resource in config.resources if resource.kind == kind
-        ]
+        resource_mappings = raw_kind_resource_mappings(config.resources, kind)
 
         if not resource_mappings:
             return []
 
+        if await post_raw_to_lakehouse_and_should_skip_ocean_core(
+            kind,
+            results,
+            LakehouseOperation.UPSERT,
+            resource_mappings,
+        ):
+            return []
+
+        mappings_only = [resource for _, resource in resource_mappings]
         diffs, errors, _, misconfigured_entity_keys = zip(
             *await asyncio.gather(
                 *(
                     self._register_resource_raw(
                         resource, results, user_agent_type, True
                     )
-                    for resource in resource_mappings
+                    for resource in mappings_only
                 )
             )
         )
@@ -678,6 +691,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """Unregister raw entities of a specific kind.
 
         This method unregisters raw entities of a specific kind from Port.
+        When lakehouse is enabled, raw items are posted as DELETE first. In DSP
+        mode with lakehouse enabled, Ocean-core delete is skipped (DSP processes
+        via lakehouse), matching live events.
 
         Args:
             kind (str): The kind of raw entities being unregistered.
@@ -685,19 +701,30 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             user_agent_type (UserAgentType): The type of user agent.
 
         Returns:
-            list[Entity]: A list of unregistered entities.
+            list[Entity]: A list of unregistered entities. Empty when DSP mode
+            handles processing via lakehouse.
         """
-        logger.info(f"Registering state for {kind}")
+        logger.info(f"Unregistering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = [
-            resource for resource in config.resources if resource.kind == kind
-        ]
+        resource_mappings = raw_kind_resource_mappings(config.resources, kind)
 
+        if not resource_mappings:
+            return []
+
+        if await post_raw_to_lakehouse_and_should_skip_ocean_core(
+            kind,
+            results,
+            LakehouseOperation.DELETE,
+            resource_mappings,
+        ):
+            return []
+
+        mappings_only = [resource for _, resource in resource_mappings]
         entities, errors = zip_and_sum(
             await asyncio.gather(
                 *(
                     self._unregister_resource_raw(resource, results, user_agent_type)
-                    for resource in resource_mappings
+                    for resource in mappings_only
                 )
             )
         )
@@ -1446,7 +1473,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                 return True
 
-            logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
+            logger.info(
+                f"Resync will use the following mappings: {json.loads(app_config.json())}"
+            )
 
             lifecycle_poll_task: asyncio.Task[None] | None = None
             if dsp_enabled:
