@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix incremental DSP resyncs for repo-managed mappings by sending the mapping on resync started
