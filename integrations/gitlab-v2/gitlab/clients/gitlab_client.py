@@ -1,5 +1,7 @@
 import asyncio
+from datetime import datetime
 from functools import partial
+from itertools import batched
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, Union
 
 import anyio
@@ -11,10 +13,13 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.time import convert_str_to_utc_datetime
 from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import (
+    PATH_GLOB_FLAGS,
+    ChangedPaths,
     build_search_query,
     parse_file_content,
     SearchQuery,
@@ -29,6 +34,10 @@ class AwardEmoji(BaseModel):
     id: int
     name: str
 
+
+# Same batch size as a full resync, whose repository tree pages use the default page size.
+CHANGED_FILES_BATCH_SIZE = RestClient.DEFAULT_PAGE_SIZE
+GIT_NULL_SHA = "0" * 40
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
@@ -64,6 +73,39 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
 def _is_wildcard_path(path: str) -> bool:
     """Check if a path contains glob wildcard characters."""
     return any(c in path for c in "*?[]")
+
+
+def _tree_match_pattern(query: SearchQuery) -> str:
+    """Return the glob matched against repository tree paths for a search query."""
+    return f"**/{query.filename}" if query.directory is None else query.path
+
+
+def ancestor_dirs(path: str) -> set[str]:
+    """Return every directory containing ``path``: ``a/b/c.txt`` -> ``{"a", "a/b"}``."""
+    parts = path.split("/")[:-1]
+    return {"/".join(parts[:depth]) for depth in range(1, len(parts) + 1)}
+
+
+def _changed_folders(path: str, changed_paths: list[str]) -> set[str]:
+    """Folders matched by the folder selector *path* that contain a changed path.
+
+    A wildcard *path* is matched as a glob; a concrete *path* matches its direct
+    child folders, like the full folder listing.
+    """
+    prefix = path.rstrip("/")
+    is_wildcard = _is_wildcard_path(path)
+
+    def is_match(folder: str) -> bool:
+        if is_wildcard:
+            return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
+        return folder.rpartition("/")[0] == prefix
+
+    return {
+        folder
+        for changed_path in changed_paths
+        for folder in ancestor_dirs(changed_path)
+        if is_match(folder)
+    }
 
 
 def _literal_tree_prefix(path: str) -> str:
@@ -105,6 +147,11 @@ def _minimize_tree_roots(roots: set[str]) -> list[str]:
             continue
         kept.append(root)
     return kept
+
+
+def _is_branch_push_to(event: dict[str, Any], ref: str) -> bool:
+    push = event.get("push_data") or {}
+    return push.get("ref_type") == "branch" and push.get("ref") == ref
 
 
 class GitLabClient:
@@ -154,10 +201,118 @@ class GitLabClient:
             params={"from": from_sha, "to": to_sha},
         )
 
-    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}/releases/{tag_name}"
+    async def changed_paths_since(
+        self, project_path: str, since: datetime, ref: str
+    ) -> ChangedPaths:
+        """Paths changed on ``ref`` since ``since``; ``paths`` is None when a full listing is needed.
+
+        The base is the branch tip before the first push to ``ref`` after ``since``, taken
+        from the push event. No push to ``ref`` after ``since`` means nothing changed. A full
+        listing is needed when the push feed does not reach back to ``since``, the base is a
+        root commit or unreadable, GitLab reports a compare timeout or overflow, or an API
+        call fails.
+        """
+        try:
+            events = await self._push_events_since(project_path, since)
+            if events is None:
+                return ChangedPaths(paths=None)
+            ref_pushes = [event for event in events if _is_branch_push_to(event, ref)]
+            if not ref_pushes:
+                return ChangedPaths(paths=[])
+            # Events come newest first, so the last one is the first push after ``since``.
+            base_sha = await self._push_base_sha(project_path, ref_pushes[-1], ref)
+            if base_sha is None:
+                return ChangedPaths(paths=None)
+            compare = await self.compare_repository(project_path, base_sha, ref)
+        except httpx.HTTPError as err:
+            logger.warning(
+                f"Failed to compare '{ref}' in {project_path} since {since.isoformat()}, "
+                f"full listing needed: {err}"
+            )
+            return ChangedPaths(paths=None)
+
+        # A 403/404 on a GET comes back as {} (see base_client), which has no diffs.
+        # Treat that as an untrusted compare, not as "nothing changed".
+        if "diffs" not in compare:
+            logger.warning(
+                f"Compare for {project_path} returned no diffs (not readable or not found), full listing needed"
+            )
+            return ChangedPaths(paths=None)
+        if compare.get("compare_timeout") or compare.get("overflow"):
+            logger.warning(
+                f"Compare incomplete for {project_path} (timeout or overflow), full listing needed"
+            )
+            return ChangedPaths(paths=None)
+
+        paths = [
+            diff["new_path"]
+            for diff in compare["diffs"]
+            if not diff.get("deleted_file")
+        ]
+        logger.info(f"Found {len(paths)} changed paths in {project_path}")
+        return ChangedPaths(paths=paths)
+
+    async def _push_base_sha(
+        self, project_path: str, push: dict[str, Any], ref: str
+    ) -> str | None:
+        """The commit the branch had before ``push``, or None when it cannot be a diff base."""
+        base_sha = push["push_data"].get("commit_from")
+        if not base_sha or base_sha == GIT_NULL_SHA:
+            logger.info(
+                f"Branch '{ref}' in {project_path} was created after the compared time, full listing needed"
+            )
+            return None
+        base = await self.rest.send_api_request(
+            "GET",
+            f"projects/{quote(project_path, safe='')}/repository/commits/{base_sha}",
         )
+        if not base:
+            logger.warning(
+                f"Base commit {base_sha} in {project_path} is not readable, full listing needed"
+            )
+            return None
+        if not base.get("parent_ids"):
+            logger.info(
+                f"Base commit {base_sha} in {project_path} is a root commit, full listing needed"
+            )
+            return None
+        return base_sha
+
+    async def _push_events_since(
+        self, project_path: str, since: datetime
+    ) -> list[dict[str, Any]] | None:
+        """Push events newer than ``since``, newest first, for every branch and tag.
+
+        Pages through the events feed until an event at or before ``since`` shows up.
+        Returns None, with a warning, when the feed cannot be read (a 403/404 comes back
+        as ``{}``) or ends before reaching ``since``: pushes after ``since`` may then be
+        missing, so the caller needs a full listing.
+        """
+        encoded_path = quote(project_path, safe="")
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        newer: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            events = await self.rest.send_api_request(
+                "GET",
+                f"projects/{encoded_path}/events",
+                params={"action": "pushed", "per_page": page_size, "page": page},
+            )
+            if not isinstance(events, list):
+                logger.warning(
+                    f"Push events for {project_path} are not readable, full listing needed"
+                )
+                return None
+            for event in events:
+                if convert_str_to_utc_datetime(event["created_at"]) <= since:
+                    return newer
+                newer.append(event)
+            if len(events) < page_size:
+                logger.warning(
+                    f"Push events for {project_path} end before {since.isoformat()}, full listing needed"
+                )
+                return None
+            page += 1
 
     async def get_project(
         self,
@@ -387,6 +542,11 @@ class GitLabClient:
         ):
             logger.info(f"Received batch with {len(tags_batch)} tags")
             yield tags_batch
+
+    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/releases/{tag_name}"
+        )
 
     async def get_releases(
         self,
@@ -841,7 +1001,6 @@ class GitLabClient:
         self,
         scope: str,
         query: SearchQuery,
-        *,
         skip_parsing: bool = False,
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
@@ -910,6 +1069,96 @@ class GitLabClient:
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
 
+    async def _search_changed_files_in_project(
+        self,
+        project: dict[str, Any],
+        query: SearchQuery,
+        since: datetime,
+        skip_parsing: bool = False,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        if not project:
+            return
+        project_path = project["path_with_namespace"]
+        ref = self._project_tree_ref(project)
+        if not ref:
+            return
+
+        changed = await self.changed_paths_since(project_path, since, ref)
+        if changed.paths is None:
+            async for batch in self._search_files_in_repository(
+                project_path, "blobs", query, skip_parsing, should_use_tree=True
+            ):
+                yield batch
+            return
+
+        match_pattern = _tree_match_pattern(query)
+        matching_paths = [
+            path
+            for path in changed.paths
+            if glob.globmatch(path, match_pattern, flags=PATH_GLOB_FLAGS)
+        ]
+        if not matching_paths:
+            logger.info(f"No changed files matching '{query.path}' in {project_path}")
+            return
+
+        logger.info(
+            f"Found {len(matching_paths)} changed files matching '{query.path}' in {project_path}"
+        )
+        for paths_batch in batched(matching_paths, CHANGED_FILES_BATCH_SIZE):
+            files_batch = [
+                {"path": path, "ref": ref, "project_id": project["id"]}
+                for path in paths_batch
+            ]
+            processed_batch = await self._process_file_batch(
+                files_batch, project_path, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch
+
+    async def search_changed_files_in_projects(
+        self,
+        query: SearchQuery,
+        since: datetime,
+        skip_parsing: bool = False,
+        repositories: list[str] | None = None,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Like ``search_files_in_projects`` with the tree strategy, for files changed since ``since``.
+
+        Projects whose diff cannot be trusted fall back to a full tree walk
+        (see ``changed_paths_since``).
+        """
+        logger.info(
+            f"Starting search for files changed in '{query.path}' since {since.isoformat()}"
+        )
+
+        async for projects_batch in self._iter_projects(repositories, params):
+            searchable, skipped = self._partition_projects_with_tree_ref(projects_batch)
+            self._log_skipped_projects_without_default_branch(skipped)
+            tasks = [
+                self._search_changed_files_in_project(
+                    project, query, since, skip_parsing
+                )
+                for project in searchable
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
+    async def _iter_projects(
+        self,
+        repositories: list[str] | None,
+        params: Optional[dict[str, Any]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Yield the projects to search: *repositories* when given, else every project matching *params*."""
+        if repositories:
+            projects = await asyncio.gather(
+                *(self.get_project(repo) for repo in repositories)
+            )
+            yield [project for project in projects if project]
+            return
+        async for projects_batch in self.get_projects(params=params):
+            yield projects_batch
+
     async def get_repository_tree(
         self,
         project: dict[str, Any],
@@ -965,13 +1214,72 @@ class GitLabClient:
                 if item["type"] == "tree"
                 and (
                     not is_wildcard
-                    or glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
+                    or glob.globmatch(item["path"], path, flags=PATH_GLOB_FLAGS)
                 )
             ]
             if folders_batch:
                 yield folders_batch
+
+    async def get_repository_folders_since(
+        self,
+        path: str,
+        repository: str,
+        since: datetime,
+        branch: Optional[str] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Like ``get_repository_folders``, limited to changes since ``since``.
+
+        Yields only folders under ``path`` that contain a path changed since
+        ``since``. Falls back to the full folder listing when the diff cannot be trusted.
+        """
+        project = await self.get_project(repository)
+        if not project:
+            return
+        effective_branch = branch or self._project_tree_ref(project)
+        if not effective_branch:
+            return
+
+        changed = await self.changed_paths_since(
+            project["path_with_namespace"], since, effective_branch
+        )
+        if changed.paths is None:
+            async for folders_batch in self.get_repository_folders(
+                path, repository, effective_branch
+            ):
+                yield folders_batch
+            return
+
+        changed_dirs = _changed_folders(path, changed.paths)
+        if not changed_dirs:
+            logger.info(f"No changed folders under '{path}' in {repository}")
+            return
+
+        logger.info(
+            f"Found {len(changed_dirs)} changed folders under '{path}' in {repository}"
+        )
+        async for folders_batch in self._get_folders_by_path(
+            project, changed_dirs, effective_branch
+        ):
+            yield folders_batch
+
+    async def _get_folders_by_path(
+        self,
+        project: dict[str, Any],
+        folder_paths: set[str],
+        branch: str,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch the tree entries of *folder_paths*, listing each parent directory once."""
+        for parent in sorted({folder.rpartition("/")[0] for folder in folder_paths}):
+            async for items_batch in self.get_repository_tree(
+                project, parent, branch, recursive=False
+            ):
+                folders_batch = [
+                    {"folder": item, "repo": project, "__branch": branch}
+                    for item in items_batch
+                    if item["type"] == "tree" and item["path"] in folder_paths
+                ]
+                if folders_batch:
+                    yield folders_batch
 
     async def enrich_merge_requests(
         self,
@@ -1375,9 +1683,7 @@ class GitLabClient:
         walks: set[tuple[str, bool]] = set()
         for path_pattern in path_patterns:
             query = build_search_query(path_pattern)
-            match_pattern = (
-                f"**/{query.filename}" if query.directory is None else query.path
-            )
+            match_pattern = _tree_match_pattern(query)
             match_patterns.append(match_pattern)
             if _is_wildcard_path(match_pattern):
                 walks.add((_literal_tree_prefix(match_pattern), True))
@@ -1421,7 +1727,7 @@ class GitLabClient:
                         glob.globmatch(
                             item["path"],
                             match_pattern,
-                            flags=glob.GLOBSTAR | glob.DOTGLOB,
+                            flags=PATH_GLOB_FLAGS,
                         )
                         for match_pattern in match_patterns
                     )
