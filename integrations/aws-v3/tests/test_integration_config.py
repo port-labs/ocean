@@ -42,6 +42,11 @@ def test_aws_port_app_config_rejects_custom_cloud_control_kind() -> None:
         )
 
 
+def test_aws_custom_kind_declares_probe_description() -> None:
+    assert AWSCustomKindResourceConfig.probe_description
+    assert "not verified" in AWSCustomKindResourceConfig.probe_description
+
+
 def test_aws_custom_kind_resource_config_parses_cloud_control_type() -> None:
     """Model exists for Cloud Control custom kinds (not yet in AWSPortAppConfig)."""
     resource = AWSCustomKindResourceConfig.parse_obj(
