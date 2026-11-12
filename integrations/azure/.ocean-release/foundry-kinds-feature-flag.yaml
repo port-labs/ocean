@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Gate Azure AI Foundry kinds behind a feature flag so they stay hidden in Port until an org is opted in.
