@@ -630,9 +630,11 @@ class TestRefreshPullRequestsExecutor:
         close_info = MagicMock()
         close_info.remaining = MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS - 1
         close_info.seconds_until_reset = 30
+        close_info.is_expired = False
         ok_info = MagicMock()
         ok_info.remaining = MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS + 100
         ok_info.seconds_until_reset = 90
+        ok_info.is_expired = False
         close_client = MagicMock()
         close_client.get_rate_limit_status.return_value = close_info
         ok_client = MagicMock()
@@ -658,3 +660,23 @@ class TestRefreshPullRequestsExecutor:
             executor = RefreshPullRequestsExecutor()
             assert await executor.is_close_to_rate_limit(run) is True
             assert await executor.get_remaining_seconds_until_rate_limit(run) == 30
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_helpers_ignore_expired_info(self) -> None:
+        # Regression: the pre-check sends no requests, so a stale `remaining`
+        # must not block the run after the rate limit window has reset.
+        expired_info = MagicMock()
+        expired_info.remaining = 0
+        expired_info.seconds_until_reset = 1
+        expired_info.is_expired = True
+        client = MagicMock()
+        client.get_rate_limit_status.return_value = expired_info
+
+        run = make_run({"pullRequests": [pull_request_item()]})
+        with patch(
+            f"{MODULE}.create_github_client_for_org",
+            new=AsyncMock(return_value=client),
+        ):
+            executor = RefreshPullRequestsExecutor()
+            assert await executor.is_close_to_rate_limit(run) is False
+            assert await executor.get_remaining_seconds_until_rate_limit(run) == 0.0
