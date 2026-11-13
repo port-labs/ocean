@@ -1,0 +1,30 @@
+{
+  "id": "issue-123",
+  "identifier": "ENG-123",
+  "title": "Add project relation to issue",
+  "url": "https://linear.app/example/issue/ENG-123/add-project-relation-to-issue",
+  "createdAt": "2026-10-29T12:00:00.000Z",
+  "updatedAt": "2026-10-29T12:30:00.000Z",
+  "priorityLabel": "High",
+  "team": {
+    "id": "team-123",
+    "name": "Engineering",
+    "key": "ENG"
+  },
+  "state": {
+    "id": "state-123",
+    "name": "In Progress"
+  },
+  "creator": {
+    "id": "user-123",
+    "name": "Example User",
+    "email": "example@example.com"
+  },
+  "assignee": null,
+  "labelIds": [],
+  "parent": null,
+  "project": {
+    "id": "project-123",
+    "name": "Example Project"
+  }
+}

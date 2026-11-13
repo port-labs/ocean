@@ -53,6 +53,10 @@ QUERIES = {
         id
         identifier
     }
+    project {
+        id
+        name
+    }
     """,
     "BASE_DOCUMENTS_QUERY_FIELDS": """
     id

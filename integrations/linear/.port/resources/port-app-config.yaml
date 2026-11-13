@@ -55,6 +55,7 @@ resources:
             workflowState: .state.id
             labels: .labelIds
             parentIssue: .parent.identifier
+            project: .project.id
   - kind: document
     selector:
       query: "true"
