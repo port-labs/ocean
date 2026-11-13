@@ -212,6 +212,8 @@ class TestRefreshPullRequestsExecutor:
                 repo={"name": "ocean"},
                 enrich_with_first_commit=False,
                 exclude_graphql_fields=[],
+                include_required_checks_status=False,
+                excluded_required_checks=[],
             )
         )
         rest_exporter.get_resource.assert_not_called()
@@ -420,6 +422,8 @@ class TestRefreshPullRequestsExecutor:
                 repo=None,
                 enrich_with_first_commit=False,
                 exclude_graphql_fields=[],
+                include_required_checks_status=False,
+                excluded_required_checks=[],
             )
         )
         graphql_exporter.get_resource.assert_not_called()

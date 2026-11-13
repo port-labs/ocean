@@ -2,6 +2,8 @@ from typing import ClassVar, List, Literal
 
 from pydantic.v1 import BaseModel, Field
 
+from aws_integration.cloud_control_scope import CloudControlResourceScope
+
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -433,18 +435,30 @@ class AWSCustomKindSelector(AWSRegionPolicySelector):
         "resource details instead of relying solely on list results. This makes an additional "
         "API call per resource, which may increase latency and consume more API rate limit quota.",
     )
-    resource_scope: Literal["auto", "regional", "global"] = Field(
+    resource_scope: CloudControlResourceScope = Field(
         alias="resourceScope",
-        default="auto",
+        default=CloudControlResourceScope.AUTO,
         title="Resource Scope",
         description="Whether this Cloud Control type is regional, global, or should be inferred "
         "automatically during sync.",
     )
 
 
+def selector_include_actions(selector: AWSRegionPolicySelector) -> List[str]:
+    return selector.include_actions if isinstance(selector, AWSResourceSelector) else []
+
+
 class AWSCustomKindResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudformation:ListResources",
+        "cloudformation:GetResource",
+    )
+    probe_description: ClassVar[str] = (
+        "Test connection verifies Cloud Control access only. Service permissions "
+        "required by each configured Cloud Control type are not verified."
+    )
     kind: str = Field(
-        title="Custom AWS Resource Kind",
+        title="Custom Kind (Cloud Control)",
         description="Map any resource type supported by the "
         "<a target='_blank' href='https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/supported-resources.html'>"
         "AWS Cloud Control API</a> by setting kind to the CloudFormation type name "

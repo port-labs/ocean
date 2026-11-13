@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.18.1 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.1
+
+
+## 0.18.0 (2026-11-12)
+
+
+### Features
+
+- Wire GitLab into the centralized rate limiter. The integration token has one Redis pool per GitLab host, admission runs before each retry, and the local limiter stays as the fallback.
+
+
+## 0.17.12 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
+## 0.17.11 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.60.0
+
+
+## 0.17.10 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.59.0
+
+
+## 0.17.9 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.4
+
+
+## 0.17.8 (2026-11-09)
+
+
+### Improvements
+
+- Released an empty version to trigger a new build
+
+
+## 0.17.7 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 0.17.6 (2026-11-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.2
+
+
 ## 0.17.5 (2026-11-05)
 
 

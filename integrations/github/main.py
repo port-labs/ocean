@@ -650,6 +650,8 @@ async def resync_pull_requests(
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                                include_required_checks_status=config.selector.include_required_checks_status,
+                                excluded_required_checks=config.selector.excluded_required_checks,
                             )
                         )
                     )

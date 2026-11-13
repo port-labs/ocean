@@ -560,7 +560,15 @@ class ExecutionManager:
                 except UserAuthRequiredError:
                     # Can also be raised here: the rate-limit check above resolves the user's
                     # token too (same code path as actual execution), so a vault miss can
-                    # surface before the run is even acknowledged.
+                    # surface before the run is even acknowledged. Ack it first so Port does
+                    # not offer the run to another claim while it waits for the user
+                    try:
+                        await ocean.port_client.acknowledge_run(run)
+                    except RunAlreadyAcknowledgedError:
+                        logger.warning(
+                            "Run already being processed by another worker, skipping execution",
+                        )
+                        return
                     await self._pause_run_for_user_auth(run)
                     return
                 except Exception as e:
