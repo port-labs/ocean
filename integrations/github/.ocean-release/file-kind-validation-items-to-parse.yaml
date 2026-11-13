@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Validate each itemsToParse item in the File Kind validation check
