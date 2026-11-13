@@ -129,6 +129,7 @@ class FileValidationService:
     def __init__(self, organization: str) -> None:
         self.organization = organization
         self.check_runs = CheckRuns()
+        self._validation_semaphore = asyncio.Semaphore(MAX_CONCURRENT_ITEM_VALIDATIONS)
 
     async def validate_pull_request_files(
         self,
@@ -239,10 +240,8 @@ class FileValidationService:
         raw_items: List[Dict[str, Any]],
         resource_config: GithubFileResourceConfig,
     ) -> List[ValidationResult]:
-        semaphore = asyncio.Semaphore(MAX_CONCURRENT_ITEM_VALIDATIONS)
-
         async def validate_item(raw_item: Dict[str, Any]) -> ValidationResult:
-            async with semaphore:
+            async with self._validation_semaphore:
                 return await self._validate_entity_against_port(
                     cast(FileObject, raw_item), resource_config
                 )
