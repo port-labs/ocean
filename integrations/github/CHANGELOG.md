@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.25.6 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.1
+
+
+## 6.25.5 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
+## 6.25.4 (2026-11-12)
+
+
+### Bug Fixes
+
+- Fetch the latest 10 pull request reviews instead of the oldest 10 in the GraphQL pull request query, and return `submittedAt` and the reviewed commit (`commit.oid`) on each review.
+
+
+## 6.25.3 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.60.0
+
+
+## 6.25.2 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.59.0
+
+
+## 6.25.1 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.4
+
+
 ## 6.25.0 (2026-11-09)
 
 
