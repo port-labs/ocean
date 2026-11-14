@@ -1,6 +1,9 @@
 import asyncio
+from datetime import datetime
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
+from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -9,6 +12,10 @@ from datadog.core.exporters.base_exporter import (
     ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
+)
+from datadog.incremental import (
+    CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY,
+    CHANGED_ROLES_AUDIT_QUERY,
 )
 
 if TYPE_CHECKING:
@@ -64,6 +71,48 @@ class RoleExporter(
         if options.enrich_with_users:
             data["__users"] = await self._fetch_users_for_role(data["id"])
         return data
+
+    async def get_changed_roles(
+        self, options: ListRoleOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get roles created or modified since ``incremental_cursor``, found through
+        audit events. With ``enrich_with_users``, roles whose users were added or
+        removed are included too. Deleted roles are not returned.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        role_ids = dict.fromkeys(
+            await self._changed_asset_ids(CHANGED_ROLES_AUDIT_QUERY, incremental_cursor)
+        )
+        if options.enrich_with_users:
+            role_ids.update(
+                dict.fromkeys(
+                    await self._changed_asset_ids(
+                        CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY, incremental_cursor
+                    )
+                )
+            )
+
+        roles: list[dict[str, Any]] = []
+        for role_id in role_ids:
+            try:
+                role = await self.get_resource(
+                    GetRoleOptions(
+                        resource_id=role_id,
+                        enrich_with_users=options.enrich_with_users,
+                    )
+                )
+            except HTTPStatusError as e:
+                if e.response.status_code != HTTPStatus.NOT_FOUND:
+                    raise
+                logger.warning(
+                    f"Skipping role '{role_id}' from audit events; it no longer exists in Datadog"
+                )
+                continue
+            if role:
+                roles.append(role)
+
+        if roles:
+            yield roles
 
     async def enrich_role_with_users(
         self, role_batch: list[dict[str, Any]]

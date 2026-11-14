@@ -21,6 +21,20 @@ CHANGED_TEAMS_AUDIT_QUERY = (
     "(@action:(created OR modified) OR (@action:deleted @asset.name:membership-*))"
 )
 
+# https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
+# Deleted roles are left out.
+CHANGED_ROLES_AUDIT_QUERY = (
+    '@evt.name:"Access Management" @asset.type:role @action:(created OR modified)'
+)
+
+# Adding or removing a user from a role is logged as a "modified" event with asset type
+# "user" (not "role", despite the docs), but its asset ID is the role's ID. The request
+# path tells it apart from other user changes.
+CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY = (
+    '@evt.name:"Access Management" @asset.type:user @action:modified '
+    "@http.url_details.path:/api/v2/roles/*"
+)
+
 
 def windows_ending_after(
     windows: list[tuple[int, int]], cursor: datetime

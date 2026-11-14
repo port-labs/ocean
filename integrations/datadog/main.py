@@ -249,6 +249,21 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield roles
 
 
+@ocean.on_incremental_resync(ObjectKind.ROLE)
+async def on_incremental_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListRoleOptions.from_resource_config(
+        cast(RoleResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for roles in _resync_across_orgs(
+        lambda client: RoleExporter(client).get_changed_roles(
+            options, incremental_cursor=cursor
+        ),
+        context="Role exporter",
+    ):
+        yield roles
+
+
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for orgs in _resync_across_orgs(
