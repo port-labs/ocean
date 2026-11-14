@@ -1,13 +1,11 @@
 import asyncio
 from datetime import datetime
+from http import HTTPStatus
 from itertools import batched
-
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
-
-from http import HTTPStatus
 
 from httpx import HTTPStatusError
 from loguru import logger
@@ -24,8 +22,6 @@ from datadog.core.exporters.base_exporter import (
 from datadog.incremental import (
     CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY,
     CHANGED_SLOS_AUDIT_QUERY,
-    audit_event_asset_id,
-    audit_events_search_body,
     restricted_resource_id,
 )
 
@@ -98,26 +94,15 @@ class SloExporter(
         included.
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
-        url = f"{self.client.api_url}/api/v2/audit/events/search"
-
-        slo_ids: dict[str, None] = {}
-        async for events in self._paginate_by_search_cursor(
-            url, audit_events_search_body(CHANGED_SLOS_AUDIT_QUERY, incremental_cursor)
-        ):
-            for event in events:
-                if slo_id := audit_event_asset_id(event):
-                    slo_ids[slo_id] = None
-
+        slo_ids = dict.fromkeys(
+            await self._changed_asset_ids(CHANGED_SLOS_AUDIT_QUERY, incremental_cursor)
+        )
         if options.include_restriction_policy:
-            async for events in self._paginate_by_search_cursor(
-                url,
-                audit_events_search_body(
-                    CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY, incremental_cursor
-                ),
+            for asset_id in await self._changed_asset_ids(
+                CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY, incremental_cursor
             ):
-                for event in events:
-                    if slo_id := restricted_resource_id(event, "slo"):
-                        slo_ids[slo_id] = None
+                if slo_id := restricted_resource_id(asset_id, "slo"):
+                    slo_ids[slo_id] = None
 
         slos: list[dict[str, Any]] = []
         for slo_id in slo_ids:
