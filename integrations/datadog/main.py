@@ -104,6 +104,21 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
+@ocean.on_incremental_resync(ObjectKind.TEAM)
+async def on_incremental_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListTeamOptions.from_resource_config(
+        cast(TeamResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for teams in _resync_across_orgs(
+        lambda client: TeamExporter(client).get_changed_teams(
+            options, incremental_cursor=cursor
+        ),
+        context="Team exporter",
+    ):
+        yield teams
+
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users in _resync_across_orgs(

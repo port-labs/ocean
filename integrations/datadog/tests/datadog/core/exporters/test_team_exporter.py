@@ -1,12 +1,15 @@
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Iterator
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters import TeamExporter
-from datadog.core.exporters.team_exporter import ListTeamOptions
+from datadog.core.exporters.team_exporter import GetTeamOptions, ListTeamOptions
+from datadog.incremental import CHANGED_TEAMS_AUDIT_QUERY
 
 
 @pytest.mark.asyncio
@@ -92,3 +95,161 @@ async def test_get_teams_with_members(mock_datadog_client: DatadogClient) -> Non
 
         assert len(teams) == 1
         assert teams[0]["__members"] == members_response["included"]
+
+
+AUDIT_SEARCH_URL = "https://api.datadoghq.com/api/v2/audit/events/search"
+SINCE = datetime(2026, 11, 5, 10, 0, tzinfo=timezone.utc)
+
+
+def _audit_event(team_id: str) -> dict[str, Any]:
+    return {
+        "id": f"event-{team_id}",
+        "attributes": {"attributes": {"asset": {"id": team_id}}},
+    }
+
+
+def _audit_page(*events: dict[str, Any], after: str | None = None) -> dict[str, Any]:
+    return {"data": list(events), "meta": {"page": {"after": after} if after else {}}}
+
+
+def _team(team_id: str) -> dict[str, Any]:
+    return {"id": team_id, "type": "team"}
+
+
+def _http_error(status: int) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", "https://api.datadoghq.com/api/v2/team/1")
+    return httpx.HTTPStatusError(
+        "error", request=request, response=httpx.Response(status, request=request)
+    )
+
+
+async def _collect_changed(
+    exporter: TeamExporter, options: ListTeamOptions = ListTeamOptions()
+) -> list[dict[str, Any]]:
+    teams: list[dict[str, Any]] = []
+    async for batch in exporter.get_changed_teams(options, incremental_cursor=SINCE):
+        teams.extend(batch)
+    return teams
+
+
+@pytest.fixture
+def team_audit_mocks(
+    mock_datadog_client: DatadogClient,
+) -> Iterator[tuple[AsyncMock, AsyncMock]]:
+    """Patch the audit search request and the per-team fetch.
+
+    By default every fetched team exists.
+    """
+    with (
+        patch.object(
+            mock_datadog_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch.object(
+            TeamExporter, "get_resource", new_callable=AsyncMock
+        ) as mock_get_resource,
+    ):
+        mock_get_resource.side_effect = lambda options: _team(options.resource_id)
+        yield mock_request, mock_get_resource
+
+
+def test_changed_teams_query_includes_membership_removals_but_not_team_deletions() -> (
+    None
+):
+    assert CHANGED_TEAMS_AUDIT_QUERY == (
+        '@evt.name:"Teams Management" '
+        "(@action:(created OR modified) OR (@action:deleted @asset.name:membership-*))"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_changed_teams_searches_audit_events_since_cursor(
+    mock_datadog_client: DatadogClient,
+    team_audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, _ = team_audit_mocks
+    mock_request.return_value = _audit_page()
+
+    assert await _collect_changed(TeamExporter(mock_datadog_client)) == []
+
+    mock_request.assert_called_once_with(
+        AUDIT_SEARCH_URL,
+        json_data={
+            "filter": {
+                "query": CHANGED_TEAMS_AUDIT_QUERY,
+                "from": "2026-11-05T10:00:00+00:00",
+                "to": "now",
+            },
+            "sort": "-timestamp",
+            "page": {"limit": MAX_PAGE_SIZE},
+        },
+        method="POST",
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_changed_teams_follows_cursor_and_dedupes(
+    mock_datadog_client: DatadogClient,
+    team_audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, mock_get_resource = team_audit_mocks
+    # Several membership events for one team yield a single fetch
+    mock_request.side_effect = [
+        _audit_page(_audit_event("1"), _audit_event("1"), after="next"),
+        _audit_page(_audit_event("1"), _audit_event("2")),
+    ]
+
+    teams = await _collect_changed(TeamExporter(mock_datadog_client))
+
+    assert teams == [_team("1"), _team("2")]
+    assert mock_get_resource.await_count == 2
+    second_body = mock_request.call_args_list[1].kwargs["json_data"]
+    assert second_body["page"] == {"limit": MAX_PAGE_SIZE, "cursor": "next"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("include_members", [True, False])
+async def test_get_changed_teams_passes_include_members(
+    mock_datadog_client: DatadogClient,
+    team_audit_mocks: tuple[AsyncMock, AsyncMock],
+    include_members: bool,
+) -> None:
+    mock_request, mock_get_resource = team_audit_mocks
+    mock_request.return_value = _audit_page(_audit_event("1"))
+
+    await _collect_changed(
+        TeamExporter(mock_datadog_client),
+        ListTeamOptions(include_members=include_members),
+    )
+
+    mock_get_resource.assert_awaited_once_with(
+        GetTeamOptions(resource_id="1", include_members=include_members)
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_changed_teams_skips_teams_that_no_longer_exist(
+    mock_datadog_client: DatadogClient,
+    team_audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, mock_get_resource = team_audit_mocks
+    mock_request.return_value = _audit_page(_audit_event("1"), _audit_event("2"))
+    mock_get_resource.side_effect = [_http_error(404), _team("2")]
+
+    teams = await _collect_changed(TeamExporter(mock_datadog_client))
+
+    assert teams == [_team("2")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [429, 500])
+async def test_get_changed_teams_raises_other_fetch_errors(
+    mock_datadog_client: DatadogClient,
+    team_audit_mocks: tuple[AsyncMock, AsyncMock],
+    status: int,
+) -> None:
+    mock_request, mock_get_resource = team_audit_mocks
+    mock_request.return_value = _audit_page(_audit_event("1"), _audit_event("2"))
+    mock_get_resource.side_effect = [_http_error(status), _team("2")]
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await _collect_changed(TeamExporter(mock_datadog_client))

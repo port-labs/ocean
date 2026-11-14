@@ -14,6 +14,13 @@ CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY = (
     "@action:(modified OR deleted)"
 )
 
+# https://docs.datadoghq.com/account_management/audit_trail/events/#teams-management
+# a "deleted" event on a "membership-<team>-<user>" asset; deleted teams are left out.
+CHANGED_TEAMS_AUDIT_QUERY = (
+    '@evt.name:"Teams Management" '
+    "(@action:(created OR modified) OR (@action:deleted @asset.name:membership-*))"
+)
+
 
 def windows_ending_after(
     windows: list[tuple[int, int]], cursor: datetime

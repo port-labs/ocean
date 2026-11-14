@@ -1,9 +1,12 @@
-from loguru import logger
+from datetime import datetime
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datadog.overrides import TeamResourceConfig
 
+from httpx import HTTPStatusError
+from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import (
@@ -12,6 +15,7 @@ from datadog.core.exporters.base_exporter import (
     PaginatedExporter,
     SingleResourceExporter,
 )
+from datadog.incremental import CHANGED_TEAMS_AUDIT_QUERY
 
 
 class ListTeamOptions(ListOptions["TeamResourceConfig"]):
@@ -57,6 +61,37 @@ class TeamExporter(
                         members.extend(member_batch)
                     team["__members"] = members
 
+            yield teams
+
+    async def get_changed_teams(
+        self, options: ListTeamOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get teams created or modified, or whose members changed, since
+        ``incremental_cursor``, found through audit events. Deleted teams are not
+        returned.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        teams: list[dict[str, Any]] = []
+        for team_id in await self._changed_asset_ids(
+            CHANGED_TEAMS_AUDIT_QUERY, incremental_cursor
+        ):
+            try:
+                team = await self.get_resource(
+                    GetTeamOptions(
+                        resource_id=team_id, include_members=options.include_members
+                    )
+                )
+            except HTTPStatusError as e:
+                if e.response.status_code != HTTPStatus.NOT_FOUND:
+                    raise
+                logger.warning(
+                    f"Skipping team '{team_id}' from audit events; it no longer exists in Datadog"
+                )
+                continue
+            if team:
+                teams.append(team)
+
+        if teams:
             yield teams
 
     async def _get_team_members(self, team_id: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
