@@ -211,6 +211,23 @@ async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield entities
 
 
+@ocean.on_incremental_resync(ObjectKind.CATALOG_ENTITY)
+async def on_incremental_resync_catalog_entities(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListCatalogEntityOptions.from_resource_config(
+        cast(CatalogEntityResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for entities in _resync_across_orgs(
+        lambda client: CatalogEntityExporter(client).get_changed_entities(
+            options, incremental_cursor=cursor
+        ),
+        context="Catalog entity exporter",
+    ):
+        yield entities
+
+
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListServiceMetricOptions.from_resource_config(

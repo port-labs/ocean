@@ -15,14 +15,12 @@ CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY = (
 )
 
 # https://docs.datadoghq.com/account_management/audit_trail/events/#teams-management
-# a "deleted" event on a "membership-<team>-<user>" asset; deleted teams are left out.
 CHANGED_TEAMS_AUDIT_QUERY = (
     '@evt.name:"Teams Management" '
     "(@action:(created OR modified) OR (@action:deleted @asset.name:membership-*))"
 )
 
 # https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
-# Deleted roles are left out.
 CHANGED_ROLES_AUDIT_QUERY = (
     '@evt.name:"Access Management" @asset.type:role @action:(created OR modified)'
 )
@@ -33,6 +31,12 @@ CHANGED_ROLES_AUDIT_QUERY = (
 CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY = (
     '@evt.name:"Access Management" @asset.type:user @action:modified '
     "@http.url_details.path:/api/v2/roles/*"
+)
+
+# https://docs.datadoghq.com/account_management/audit_trail/events/#internal-developer-portal
+CHANGED_CATALOG_ENTITIES_AUDIT_QUERY = (
+    '@evt.name:"Internal Developer Portal" @asset.type:idp_entity '
+    "@action:(created OR modified)"
 )
 
 
