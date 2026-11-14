@@ -183,8 +183,22 @@ async def test_get_changed_slos_skips_restriction_policy_search_when_disabled(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [404, 500])
-async def test_get_changed_slos_skips_slos_that_fail_to_fetch(
+async def test_get_changed_slos_skips_slos_that_no_longer_exist(
+    mock_datadog_client: DatadogClient,
+    audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, mock_get_resource = audit_mocks
+    mock_request.return_value = _audit_page(_audit_event("1"), _audit_event("2"))
+    mock_get_resource.side_effect = [_http_error(404), _slo("2")]
+
+    slos = await _collect(SloExporter(mock_datadog_client))
+
+    assert slos == [_slo("2")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [429, 500])
+async def test_get_changed_slos_raises_other_fetch_errors(
     mock_datadog_client: DatadogClient,
     audit_mocks: tuple[AsyncMock, AsyncMock],
     status: int,
@@ -193,6 +207,5 @@ async def test_get_changed_slos_skips_slos_that_fail_to_fetch(
     mock_request.return_value = _audit_page(_audit_event("1"), _audit_event("2"))
     mock_get_resource.side_effect = [_http_error(status), _slo("2")]
 
-    slos = await _collect(SloExporter(mock_datadog_client))
-
-    assert slos == [_slo("2")]
+    with pytest.raises(httpx.HTTPStatusError):
+        await _collect(SloExporter(mock_datadog_client))

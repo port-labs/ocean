@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
 
+from http import HTTPStatus
+
 from httpx import HTTPStatusError
 from loguru import logger
 
@@ -126,9 +128,11 @@ class SloExporter(
                         include_restriction_policy=options.include_restriction_policy,
                     )
                 )
-            except HTTPStatusError:
+            except HTTPStatusError as e:
+                if e.response.status_code != HTTPStatus.NOT_FOUND:
+                    raise
                 logger.warning(
-                    f"Skipping SLO '{slo_id}' from audit events; Datadog SLO fetch failed"
+                    f"Skipping SLO '{slo_id}' from audit events; it no longer exists in Datadog"
                 )
                 continue
             if slo:
