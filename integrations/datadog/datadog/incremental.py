@@ -34,11 +34,11 @@ def audit_event_asset_id(event: dict[str, Any]) -> str | None:
     return event.get("attributes", {}).get("attributes", {}).get("asset", {}).get("id")
 
 
-def restricted_resource_id(event: dict[str, Any], resource_type: str) -> str | None:
-    """Return the ID of the *resource_type* resource whose restriction policy an audit
-    event changed (its asset ID is ``<type>:<id>``), or None for other resource types.
+def restricted_resource_id(asset_id: str, resource_type: str) -> str | None:
+    """Return the ID of the *resource_type* resource a restriction policy asset ID
+    (``<type>:<id>``) points at, or None for other resource types.
     """
-    asset = parse_restriction_policy_asset(audit_event_asset_id(event) or "")
+    asset = parse_restriction_policy_asset(asset_id)
     if asset and asset.type == resource_type:
         return asset.id
     return None

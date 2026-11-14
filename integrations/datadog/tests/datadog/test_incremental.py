@@ -32,6 +32,6 @@ def test_audit_event_asset_id() -> None:
 
 
 def test_restricted_resource_id_matches_resource_type() -> None:
-    assert restricted_resource_id(_event("slo:abc"), "slo") == "abc"
-    assert restricted_resource_id(_event("monitor:123"), "slo") is None
-    assert restricted_resource_id(_event("no-type"), "slo") is None
+    assert restricted_resource_id("slo:abc", "slo") == "abc"
+    assert restricted_resource_id("monitor:123", "slo") is None
+    assert restricted_resource_id("no-type", "slo") is None
