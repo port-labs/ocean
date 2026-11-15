@@ -2459,6 +2459,56 @@ async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
 
 
 @pytest.mark.asyncio
+async def test_process_resource_dsp_notifies_kind_failed_with_error_message(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
+        side_effect=RuntimeError("crash")
+    )
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.event_id = "resync-1"
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_started = AsyncMock()
+    lifecycle_client.notify_finished = AsyncMock()
+    lifecycle_client.notify_failed = AsyncMock()
+    lifecycle_client.notify_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ):
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert len(errors) == 1
+    assert str(errors[0]) == "crash"
+    assert mock_ocean.metrics.sync_state == SyncState.FAILED
+    lifecycle_client.notify_failed.assert_awaited_once_with(
+        event_id="resync-1",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+        error_message="crash",
+    )
+    lifecycle_client.notify_finished.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_process_resource_incremental_dsp_notifies_kind_finished(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_resource_config: ResourceConfig,

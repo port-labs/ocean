@@ -909,10 +909,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if dsp_enabled and resync_id:
                 if ocean.metrics.sync_state == SyncState.FAILED:
+                    kind_error_message = None
+                    if kind_results[1]:
+                        kind_error_message = str(kind_results[1][0])
                     await ocean.app.lifecycle_client.notify_failed(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
                         kind_identifier=resource_kind_id,
+                        error_message=kind_error_message,
                     )
                 else:
                     await ocean.app.lifecycle_client.notify_finished(
