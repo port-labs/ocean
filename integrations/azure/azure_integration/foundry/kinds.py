@@ -110,10 +110,11 @@ class ConversationSelector(FoundrySelector):
         alias="sinceDays",
         title="Since (days)",
         description=(
-            "How far back to list conversations when syncing (1–30). Azure Foundry "
-            "typically retains conversation/response state for about 30 days; values "
-            "above that do not recover older threads. Stops pagination once older "
-            "conversations appear (combined with the incremental cursor)."
+            "How far back to list per-agent conversations when syncing (1–30). "
+            "Azure Foundry typically retains conversation/response state for about "
+            "30 days; values above that do not recover older threads. Stops "
+            "pagination once older conversations appear (combined with the "
+            "incremental cursor)."
         ),
     )
 
@@ -122,8 +123,10 @@ class ConversationResourceConfig(ResourceConfig):
     kind: Literal["foundry-conversation"] = Field(
         title="Foundry conversation",
         description=(
-            "OpenAI conversation threads (metadata only; not full message "
-            "transcripts). Conversation state in Azure is short-lived (~30 days)."
+            "OpenAI conversation threads listed per agent via "
+            "agents/{id}/endpoint/protocols/openai/conversations (metadata only; "
+            "not full message transcripts). Scoped to the integration Azure "
+            "identity. Conversation state in Azure is short-lived (~30 days)."
         ),
         featureFlag=FOUNDRY_FEATURE_FLAG,
     )
@@ -140,7 +143,7 @@ class ResponseSelector(FoundrySelector):
         alias="sinceDays",
         title="Since (days)",
         description=(
-            "How far back to list project responses (1–30). Azure Foundry typically "
+            "How far back to list per-agent responses (1–30). Azure Foundry typically "
             "retains response data for about 30 days. Combined with the incremental "
             "cursor when stopping pagination."
         ),
@@ -151,9 +154,11 @@ class ResponseResourceConfig(ResourceConfig):
     kind: Literal["foundry-response"] = Field(
         title="Foundry response",
         description=(
-            "Foundry Responses API runs listed project-wide (usage, status, optional "
-            "conversation relation). Response objects in Azure are retained for a "
-            "limited period (~30 days), not indefinitely."
+            "Foundry Responses API runs listed per agent via "
+            "agents/{id}/endpoint/protocols/openai/responses (usage, status, "
+            "optional conversation relation). Scoped to the integration Azure "
+            "identity. Response objects are retained for a limited period "
+            "(~30 days), not indefinitely."
         ),
         featureFlag=FOUNDRY_FEATURE_FLAG,
     )

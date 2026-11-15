@@ -12,6 +12,11 @@ def build_foundry_url(project_endpoint: str, path: str) -> str:
     return urljoin(base, path.lstrip("/"))
 
 
+def agent_openai_protocol_path(agent_id: str, resource: str) -> str:
+    """Path under the agent OpenAI protocol endpoint (conversations/responses)."""
+    return f"agents/{agent_id}/endpoint/protocols/openai/{resource}"
+
+
 def enrich_with_project(
     item: dict[str, Any],
     *,
