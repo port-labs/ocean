@@ -13,7 +13,6 @@ from actions.exceptions import DevinApiError, SessionBusyError
 from actions.utils import (
     ensure_port_managed_session,
     merge_config,
-    resolve_user_id,
     validate_session_active,
 )
 from core.tracking.run_output import started_output
@@ -34,7 +33,7 @@ MESSAGE_SENT_STATUS_LABEL = "Message sent"
 class SendMessageInputs(AbstractDevinActionInput):
     sessionId: str = Field(min_length=1)
     message: str = Field(min_length=1)
-    messageAsUserEmail: str | None = None
+    messageAsUserId: str | None = None
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
@@ -85,9 +84,6 @@ class SendMessageExecutor(AbstractDevinExecutor):
                 "wait for Devin to finish before sending another message"
             )
 
-        message_as_user_id = await resolve_user_id(
-            self.sessions, inputs.messageAsUserEmail
-        )
         external_id = build_external_id(run.id)
         sent_at = int(time.time())
 
@@ -108,7 +104,10 @@ class SendMessageExecutor(AbstractDevinExecutor):
 
         body = merge_config(
             inputs.config,
-            {"message": inputs.message, "message_as_user_id": message_as_user_id},
+            {
+                "message": inputs.message,
+                "message_as_user_id": inputs.messageAsUserId,
+            },
         )
         try:
             session = await self.sessions.send_message(session_id, body)

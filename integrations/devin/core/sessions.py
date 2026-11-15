@@ -97,15 +97,3 @@ class DevinSessions:
             "POST", endpoints.session_archive(session_id)
         )
         return require_session_response(data)
-
-    async def find_user_id_by_email(self, email: str) -> str | None:
-        data = await self.client._fetch_page(
-            endpoints.members_users_beta(self.client.org_id),
-            params={"email": email},
-            page_size=1,
-            absolute_path=True,
-        )
-        for user in data.get("items") or []:
-            if isinstance(user, dict) and user.get("user_id"):
-                return str(user["user_id"])
-        return None

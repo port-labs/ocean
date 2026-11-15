@@ -11,7 +11,6 @@ import pytest
 
 from actions.exceptions import DevinApiError
 from clients.devin_client import DevinClient
-from core.sessions import DevinSessions
 from core.tracking.tags import pending_tag
 from core.tracking.turn_state import to_epoch_seconds
 from tests.fakes import INSTALLATION_ID, FakeDevin, FakePort, patched_ocean
@@ -86,16 +85,6 @@ async def test_live_empty_session_page_stops_pagination(
 
     assert pages == [[]]
     assert request_mock.await_count == 1
-
-
-async def test_live_member_payload_exposes_user_id(client: DevinClient) -> None:
-    payload = _load("member_lookup_by_email.json")["body"]
-    client._fetch_page = AsyncMock(return_value=payload)  # type: ignore[method-assign]
-
-    user_id = await DevinSessions(client).find_user_id_by_email("user@example.com")
-
-    assert user_id == payload["items"][0]["user_id"]
-    assert user_id
 
 
 def test_live_billing_error_detail_is_surfaced() -> None:

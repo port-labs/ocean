@@ -169,24 +169,6 @@ async def test_list_messages_after_keeps_cursor_when_nothing_new(
     assert cursor == "c9"
 
 
-async def test_find_user_id_by_email(client: DevinClient) -> None:
-    fetch_one = AsyncMock(
-        return_value={"items": [{"user_id": "user-7", "email": "a@b.c"}]}
-    )
-    client._fetch_page = fetch_one  # type: ignore[method-assign]
-
-    assert await DevinSessions(client).find_user_id_by_email("a@b.c") == "user-7"
-    kwargs = _last_kwargs(fetch_one)
-    assert kwargs["params"] == {"email": "a@b.c"}
-    assert kwargs["absolute_path"] is True
-
-
-async def test_find_user_id_by_email_not_found(client: DevinClient) -> None:
-    client._fetch_page = AsyncMock(return_value={"items": []})  # type: ignore[method-assign]
-
-    assert await DevinSessions(client).find_user_id_by_email("a@b.c") is None
-
-
 def _message(event_id: str) -> dict[str, Any]:
     return {"event_id": event_id, "source": "devin", "message": "hi", "created_at": 1}
 

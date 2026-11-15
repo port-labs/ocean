@@ -47,7 +47,6 @@ class FakeDevin(DevinSessions):
         super().__init__(MagicMock())
         self.sessions: dict[str, dict[str, Any]] = {}
         self.messages: dict[str, list[dict[str, Any]]] = {}
-        self.users: dict[str, str] = {}
         self.clock = 1_000
         self.fail_replace_tags = 0
         self.fail_append_tags = False
@@ -173,9 +172,6 @@ class FakeDevin(DevinSessions):
     async def archive(self, session_id: str) -> SessionResponse:
         self.sessions[session_id]["is_archived"] = True
         return self._response(session_id)
-
-    async def find_user_id_by_email(self, email: str) -> str | None:
-        return self.users.get(email)
 
 
 @dataclass

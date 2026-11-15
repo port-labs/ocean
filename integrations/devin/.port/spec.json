@@ -136,10 +136,10 @@
           "required": false
         },
         {
-          "name": "createAsUserEmail",
-          "title": "Create as user (email)",
+          "name": "createAsUserId",
+          "title": "Create as user (ID)",
           "type": "string",
-          "description": "Optional email of a Devin organization member to create the session on behalf of. In workflows, set this from the trigger user, for example {{ .trigger.by.user.email }}. When set, the email must match an org member or the action fails.",
+          "description": "Optional Devin organization user ID to create the session on behalf of. When omitted, the session is created as the integration service user. Requires ImpersonateOrgSessions on the service user.",
           "required": false
         },
         {
@@ -179,10 +179,10 @@
           "required": true
         },
         {
-          "name": "messageAsUserEmail",
-          "title": "Send as user (email)",
+          "name": "messageAsUserId",
+          "title": "Send as user (ID)",
           "type": "string",
-          "description": "Optional email of a Devin organization member to send the message on behalf of. In workflows, set this from the trigger user, for example {{ .trigger.by.user.email }}. When set, the email must match an org member or the action fails.",
+          "description": "Optional Devin organization user ID to send the message on behalf of. When omitted, the message is sent as the integration service user. Requires ImpersonateOrgSessions on the service user.",
           "required": false
         },
         {

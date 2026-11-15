@@ -10,7 +10,7 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
-from actions.utils import ensure_no_reserved_tags, merge_config, resolve_user_id
+from actions.utils import ensure_no_reserved_tags, merge_config
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags
 from integration import ObjectKind
@@ -29,7 +29,7 @@ class CreateSessionInputs(AbstractDevinActionInput):
     tags: list[str] = Field(default_factory=list)
     maxAcuLimit: int | None = None
     structuredOutputSchema: dict[str, Any] | None = None
-    createAsUserEmail: str | None = None
+    createAsUserId: str | None = None
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
@@ -59,9 +59,6 @@ class CreateSessionExecutor(AbstractDevinExecutor):
             should_raise=False,
         )
 
-        create_as_user_id = await resolve_user_id(
-            self.sessions, inputs.createAsUserEmail
-        )
         external_id = build_external_id(run.id)
         sent_at = int(time.time())
         tags = [MANAGED_TAG, *dict.fromkeys(user_tags)]
@@ -80,7 +77,7 @@ class CreateSessionExecutor(AbstractDevinExecutor):
                 "secret_ids": inputs.secretIds,
                 "max_acu_limit": inputs.maxAcuLimit,
                 "structured_output_schema": inputs.structuredOutputSchema,
-                "create_as_user_id": create_as_user_id,
+                "create_as_user_id": inputs.createAsUserId,
                 "tags": tags,
             },
         )

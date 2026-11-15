@@ -1,10 +1,7 @@
 from typing import Any
 
-import httpx
-
-from actions.exceptions import DevinApiError, InvalidActionParametersException
+from actions.exceptions import InvalidActionParametersException
 from clients.models import SessionResponse
-from core.sessions import DevinSessions
 from core.tracking.tags import MANAGED_TAG, reserved_tags
 
 ALLOWED_CONFIG_KEYS = frozenset({"devin_mode", "attachment_urls"})
@@ -61,20 +58,3 @@ def validate_session_active(
             )
         case _:
             return
-
-
-async def resolve_user_id(sessions: DevinSessions, email: str | None) -> str | None:
-    """Resolve a Devin org member by email. Unset email means the service user."""
-    if not email:
-        return None
-    try:
-        user_id = await sessions.find_user_id_by_email(email)
-    except httpx.HTTPError as error:
-        raise DevinApiError.from_http_error(
-            error, f"Failed to look up Devin organization member {email}"
-        ) from error
-    if user_id is None:
-        raise InvalidActionParametersException(
-            f"No Devin organization member found for email {email}"
-        )
-    return user_id
