@@ -31,8 +31,8 @@ async def test_list_by_tag_skips_unparseable_items(
 
     async def paginate(
         _path: str,
-        _params: dict[str, Any] | None = None,
-        _page_size: int = 100,
+        params: dict[str, Any] | None = None,
+        page_size: int = 100,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [good, bad]
 
