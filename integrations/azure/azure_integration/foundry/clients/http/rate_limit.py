@@ -109,13 +109,11 @@ def _retry_after_seconds(headers: httpx.Headers) -> float:
 
 
 class FoundryRateLimiter:
-    """Best-effort deferral from response headers only.
+    """Defer from rate-limit headers / 429 on prior responses.
 
-    Data-plane Foundry GETs (agents / deployments / conversations / responses)
-    do not expose remaining RPM until a call returns ``x-ratelimit-*`` or 429.
-    Cognitive Services Usages / ModelCapacities are subscription TPM capacity
-    ledgers for deployments — not runtime RPM for those catalog APIs — so we
-    do not probe them. Empty state = allow; retries still honor ``retry-after-ms``.
+    Azure does not expose remaining RPM for Foundry data-plane catalog APIs
+    (agents, deployments, conversations, responses) before a call. Headers
+    appear only on some responses; otherwise the first signal is 429.
     """
 
     def __init__(self) -> None:

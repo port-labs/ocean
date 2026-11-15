@@ -26,7 +26,6 @@ class AbstractFoundryExecutor(AbstractExecutor):
         self.client = create_foundry_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        """Defer a new run when a prior Foundry response showed the quota nearly exhausted."""
         return self.client.rate_limiter.is_close_to_rate_limit()
 
     async def get_remaining_seconds_until_rate_limit(
@@ -37,7 +36,7 @@ class AbstractFoundryExecutor(AbstractExecutor):
     async def register_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
-        """Best-effort catalog upsert; failures are logged and never fail the action."""
+        """Upsert into catalog; log failures and continue (do not fail the action)."""
         try:
             await ocean.register_raw(kind, [raw])
         except Exception as error:
@@ -50,7 +49,7 @@ class AbstractFoundryExecutor(AbstractExecutor):
     async def unregister_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
-        """Best-effort catalog delete; failures are logged and never fail the action."""
+        """Delete from catalog; log failures and continue (do not fail the action)."""
         try:
             await ocean.unregister_raw(kind, [raw])
         except Exception as error:
@@ -79,11 +78,7 @@ class AbstractFoundryExecutor(AbstractExecutor):
 
 
 class FoundryAgentExecutor(AbstractFoundryExecutor):
-    """Agent CRUD on shared Foundry client: defer only on real 429 hard blocks.
-
-    Soft headroom from resync ``x-ratelimit-*`` must not stall user actions.
-    Per-request retries still honor ``retry-after-ms``.
-    """
+    """Agent CRUD: defer only on 429. Azure does not expose remaining RPM up front."""
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         return self.client.rate_limiter.hard_block_seconds() > 0
@@ -95,14 +90,14 @@ class FoundryAgentExecutor(AbstractFoundryExecutor):
 
 
 class ArmDeploymentExecutor(AbstractFoundryExecutor):
-    """Deploy/delete use ARM; defer on ARM remaining headers (and Foundry 429)."""
+    """Deploy/delete via ARM; defer on ARM remaining headers or Foundry 429."""
 
     def __init__(self) -> None:
         super().__init__()
         self.arm_deployments: ArmDeploymentsClient = create_arm_deployments_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        # ponytail: ignore Foundry soft headroom; ARM writes ≠ data-plane RPM pools
+        # Ignore Foundry soft headroom; ARM writes use a different pool.
         return (
             self.client.rate_limiter.hard_block_seconds() > 0
             or self.arm_deployments.rate_limiter.is_close_to_rate_limit()
