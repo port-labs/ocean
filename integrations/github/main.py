@@ -653,6 +653,9 @@ async def resync_pull_requests(
                                 include_required_checks_status=config.selector.include_required_checks_status,
                                 excluded_required_checks=config.selector.excluded_required_checks,
                                 include_comments=config.selector.include_comments,
+                                include_review_and_check_status=(
+                                    config.selector.include_review_and_check_status
+                                ),
                             )
                         )
                     )
