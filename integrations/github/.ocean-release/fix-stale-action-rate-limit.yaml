@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix action runs (such as dispatch_workflow and refresh_pull_requests) staying In progress after a GitHub rate limit. The action rate limit pre-check kept using a stale remaining count after the rate limit window reset, which blocked all action workers indefinitely. Runs now proceed once the window has reset.
