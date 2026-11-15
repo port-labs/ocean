@@ -325,7 +325,7 @@ jobs:
         run: |
           echo "CURRENT_COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent')" >> $GITHUB_OUTPUT
 
-      - name: Report coverage regression
+      - name: Report on coverage regression
         if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
         uses: actions/github-script@v9
         env:
