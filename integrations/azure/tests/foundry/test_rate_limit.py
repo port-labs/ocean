@@ -4,8 +4,8 @@ import httpx
 import pytest
 
 from azure_integration.foundry.actions.abstract_executor import (
+    AbstractFoundryExecutor,
     ArmDeploymentExecutor,
-    FoundryAgentExecutor,
 )
 from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 
@@ -15,48 +15,6 @@ def _response(
     headers: dict[str, str] | None = None,
 ) -> httpx.Response:
     return httpx.Response(status_code, headers=headers or {})
-
-
-def test_observe_requests_pool_and_headroom() -> None:
-    limiter = FoundryRateLimiter()
-    limiter.observe(
-        _response(
-            headers={
-                "x-ratelimit-limit-requests": "100",
-                "x-ratelimit-remaining-requests": "50",
-                "x-ratelimit-reset-requests": "30",
-            }
-        )
-    )
-    assert limiter.is_close_to_rate_limit() is False
-
-    limiter.observe(
-        _response(
-            headers={
-                "x-ratelimit-limit-requests": "100",
-                "x-ratelimit-remaining-requests": "5",
-                "x-ratelimit-reset-requests": "20",
-            }
-        )
-    )
-    assert limiter.is_close_to_rate_limit() is True
-    remaining = limiter.seconds_until_rate_limit_reset()
-    assert 15 <= remaining <= 20
-
-
-def test_stale_reset_window_is_treated_as_replenished() -> None:
-    limiter = FoundryRateLimiter()
-    limiter.observe(
-        _response(
-            headers={
-                "x-ratelimit-limit-requests": "100",
-                "x-ratelimit-remaining-requests": "1",
-                "x-ratelimit-reset-requests": "0",
-            }
-        )
-    )
-    assert limiter.is_close_to_rate_limit() is False
-    assert limiter.seconds_until_rate_limit_reset() == 0.0
 
 
 def test_429_sets_hard_block_from_retry_after_ms() -> None:
@@ -76,9 +34,20 @@ def test_arm_remaining_floor() -> None:
     assert limiter.seconds_until_rate_limit_reset() > 0
 
 
+def test_arm_remaining_above_floor_clears_block() -> None:
+    limiter = FoundryRateLimiter()
+    limiter.observe(
+        _response(headers={"x-ms-ratelimit-remaining-subscription-writes": "1"})
+    )
+    limiter.observe(
+        _response(headers={"x-ms-ratelimit-remaining-subscription-writes": "50"})
+    )
+    assert limiter.is_close_to_rate_limit() is False
+
+
 @pytest.mark.asyncio
-async def test_agent_executor_ignores_soft_headroom_honors_hard_429() -> None:
-    class _Stub(FoundryAgentExecutor):
+async def test_agent_executor_honors_hard_429() -> None:
+    class _Stub(AbstractFoundryExecutor):
         async def execute(self, run):  # type: ignore[no-untyped-def]
             return None
 
@@ -114,33 +83,17 @@ async def test_arm_executor_includes_arm_quota() -> None:
     assert await executor.get_remaining_seconds_until_rate_limit(run) == 12.0
 
 
-def test_hard_block_seconds_from_429() -> None:
+def test_hard_block_clears_on_success() -> None:
     limiter = FoundryRateLimiter()
     limiter.observe(_response(status_code=429, headers={"retry-after-ms": "4000"}))
     assert 3.0 <= limiter.hard_block_seconds() <= 4.0
-    limiter.observe(
-        _response(
-            headers={
-                "x-ratelimit-limit-requests": "100",
-                "x-ratelimit-remaining-requests": "5",
-                "x-ratelimit-reset-requests": "20",
-            }
-        )
-    )
+    limiter.observe(_response())
     assert limiter.hard_block_seconds() == 0.0
-    assert limiter.is_close_to_rate_limit() is True
+    assert limiter.is_close_to_rate_limit() is False
 
 
-def test_parse_duration_suffixes() -> None:
+def test_retry_after_duration_suffix() -> None:
     limiter = FoundryRateLimiter()
-    limiter.observe(
-        _response(
-            headers={
-                "x-ratelimit-limit-tokens": "1000",
-                "x-ratelimit-remaining-tokens": "50",
-                "x-ratelimit-reset-tokens": "5s",
-            }
-        )
-    )
+    limiter.observe(_response(status_code=429, headers={"Retry-After": "5s"}))
     assert limiter.is_close_to_rate_limit() is True
     assert 4 <= limiter.seconds_until_rate_limit_reset() <= 5

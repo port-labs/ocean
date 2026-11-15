@@ -1,50 +1,15 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import httpx
-
-# Back off when remaining quota drops below this fraction of the limit.
-_HEADROOM = 0.1
 
 # ARM only reports remaining counts (no limit). Treat the pool as low below this.
 _ARM_REMAINING_FLOOR = 20
 
 # Fallback wait when a reset/retry header is missing or unparseable.
 _DEFAULT_RESET_SECONDS = 10.0
-
-# Foundry (OpenAI-style) request/token pools.
-_FOUNDRY_POOLS = (
-    (
-        "x-ratelimit-limit-requests",
-        "x-ratelimit-remaining-requests",
-        "x-ratelimit-reset-requests",
-    ),
-    (
-        "x-ratelimit-limit-tokens",
-        "x-ratelimit-remaining-tokens",
-        "x-ratelimit-reset-tokens",
-    ),
-)
-
-
-@dataclass(frozen=True)
-class _Quota:
-    limit: int
-    remaining: int
-    reset_at: float
-
-    @property
-    def seconds_until_reset(self) -> float:
-        return max(0.0, self.reset_at - time.time())
-
-    @property
-    def is_low(self) -> bool:
-        if self.limit <= 0 or self.seconds_until_reset <= 0:
-            return False
-        return self.remaining / self.limit < _HEADROOM
 
 
 def _parse_duration_seconds(raw: str | None) -> float | None:
@@ -62,25 +27,6 @@ def _parse_duration_seconds(raw: str | None) -> float | None:
             return max(0.0, float(value))
         reset_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
         return max(0.0, (reset_at - datetime.now(timezone.utc)).total_seconds())
-    except ValueError:
-        return None
-
-
-def _foundry_quota(
-    headers: httpx.Headers, limit_key: str, remaining_key: str, reset_key: str
-) -> _Quota | None:
-    limit_raw = headers.get(limit_key)
-    remaining_raw = headers.get(remaining_key)
-    if limit_raw is None or remaining_raw is None:
-        return None
-    try:
-        parsed_reset = _parse_duration_seconds(headers.get(reset_key))
-        reset_seconds = _DEFAULT_RESET_SECONDS if parsed_reset is None else parsed_reset
-        return _Quota(
-            limit=int(limit_raw),
-            remaining=int(remaining_raw),
-            reset_at=time.time() + reset_seconds,
-        )
     except ValueError:
         return None
 
@@ -109,15 +55,13 @@ def _retry_after_seconds(headers: httpx.Headers) -> float:
 
 
 class FoundryRateLimiter:
-    """Defer from rate-limit headers / 429 on prior responses.
+    """Defer on 429 Retry-After and ARM remaining-floor headers.
 
-    Azure does not expose remaining RPM for Foundry data-plane catalog APIs
-    (agents, deployments, conversations, responses) before a call. Headers
-    appear only on some responses; otherwise the first signal is 429.
+    # ponytail: no Foundry soft RPM headroom — Azure catalog APIs don't expose it;
+    # agent actions defer only on hard 429.
     """
 
     def __init__(self) -> None:
-        self._foundry_quotas: list[_Quota] = []
         self._hard_block_until: float = 0.0
         self._arm_block_until: float = 0.0
 
@@ -129,11 +73,9 @@ class FoundryRateLimiter:
             return
 
         self._hard_block_until = 0.0
-        self._update_foundry_quotas(response.headers)
         self._update_arm_block(response.headers)
 
     def hard_block_seconds(self) -> float:
-        """Seconds left on a real 429; ignores soft headroom from prior responses."""
         return max(0.0, self._hard_block_until - time.time())
 
     def is_close_to_rate_limit(self) -> bool:
@@ -146,20 +88,7 @@ class FoundryRateLimiter:
             waits.append(self._hard_block_until - now)
         if now < self._arm_block_until:
             waits.append(self._arm_block_until - now)
-        waits.extend(
-            quota.seconds_until_reset for quota in self._foundry_quotas if quota.is_low
-        )
         return max(waits, default=0.0)
-
-    def _update_foundry_quotas(self, headers: httpx.Headers) -> None:
-        quotas = [
-            quota
-            for limit_key, remaining_key, reset_key in _FOUNDRY_POOLS
-            if (quota := _foundry_quota(headers, limit_key, remaining_key, reset_key))
-            is not None
-        ]
-        if quotas:
-            self._foundry_quotas = quotas
 
     def _update_arm_block(self, headers: httpx.Headers) -> None:
         remaining = _min_arm_remaining(headers)

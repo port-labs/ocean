@@ -24,7 +24,6 @@ class DeployModelDeploymentInputs(AbstractFoundryActionInput):
     modelVersion: str | None = None
     modelPublisher: str | None = None
     skuName: str = Field(default="GlobalStandard", min_length=1)
-    deploymentType: str = Field(default="ModelDeployment", min_length=1)
     config: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -72,9 +71,10 @@ class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
             deployment = {}
 
         if not deployment:
+            # ponytail: stub when data-plane GET misses; type fixed
             deployment = {
                 "name": inputs.deploymentName,
-                "type": inputs.deploymentType,
+                "type": "ModelDeployment",
                 "modelName": inputs.modelName,
                 "modelVersion": inputs.modelVersion,
                 "modelPublisher": inputs.modelPublisher,

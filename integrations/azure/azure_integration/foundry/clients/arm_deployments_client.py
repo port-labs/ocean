@@ -87,35 +87,23 @@ class ArmDeploymentsClient:
         capacity, tags, raiPolicyName, and other properties we do not model.
         First-class fields always win.
         """
-        properties: dict[str, Any] = {
-            "model": {
-                "format": model_publisher or "OpenAI",
-                "name": model_name,
-            }
+        model: dict[str, Any] = {
+            "format": model_publisher or "OpenAI",
+            "name": model_name,
         }
         if model_version:
-            properties["model"]["version"] = model_version
+            model["version"] = model_version
 
+        # ponytail: config under defaults; force first-class name/model after
         body = deep_merge(
             {
                 "sku": {"name": sku_name, "capacity": capacity},
-                "properties": properties,
+                "properties": {"model": model},
             },
             config or {},
         )
-        # First-class winners after config merge
-        body.setdefault("sku", {})
-        if isinstance(body["sku"], dict):
-            body["sku"]["name"] = sku_name
-            body["sku"].setdefault("capacity", capacity)
-        body.setdefault("properties", {})
-        if isinstance(body["properties"], dict):
-            model = body["properties"].setdefault("model", {})
-            if isinstance(model, dict):
-                model["format"] = model_publisher or model.get("format") or "OpenAI"
-                model["name"] = model_name
-                if model_version:
-                    model["version"] = model_version
+        body["sku"]["name"] = sku_name
+        body["properties"]["model"] = {**body["properties"].get("model", {}), **model}
 
         response = await self._http.put(
             await self._url_for(project_endpoint, deployment_name),

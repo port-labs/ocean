@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -26,38 +26,43 @@ class AbstractFoundryExecutor(AbstractExecutor):
         self.client = create_foundry_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        return self.client.rate_limiter.is_close_to_rate_limit()
+        return self.client.rate_limiter.hard_block_seconds() > 0
 
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun
     ) -> float:
-        return self.client.rate_limiter.seconds_until_rate_limit_reset()
+        return self.client.rate_limiter.hard_block_seconds()
+
+    async def _catalog(
+        self,
+        op: Literal["register", "unregister"],
+        kind: str,
+        raw: dict[str, Any],
+        run: IntegrationRun,
+    ) -> None:
+        """Best-effort catalog sync; never fail the action on catalog errors."""
+        try:
+            if op == "register":
+                await ocean.register_raw(kind, [raw])
+            else:
+                await ocean.unregister_raw(kind, [raw])
+        except Exception as error:
+            verb = "upsert" if op == "register" else "delete"
+            message = f"Failed to {verb} {kind} in the catalog (continuing): {error}"
+            logger.warning(message)
+            await ocean.port_client.post_run_log(
+                run, message, level="WARNING", should_raise=False
+            )
 
     async def register_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
-        """Upsert into catalog; log failures and continue (do not fail the action)."""
-        try:
-            await ocean.register_raw(kind, [raw])
-        except Exception as error:
-            message = f"Failed to upsert {kind} into the catalog (continuing): {error}"
-            logger.warning(message)
-            await ocean.port_client.post_run_log(
-                run, message, level="WARNING", should_raise=False
-            )
+        await self._catalog("register", kind, raw, run)
 
     async def unregister_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
-        """Delete from catalog; log failures and continue (do not fail the action)."""
-        try:
-            await ocean.unregister_raw(kind, [raw])
-        except Exception as error:
-            message = f"Failed to delete {kind} from the catalog (continuing): {error}"
-            logger.warning(message)
-            await ocean.port_client.post_run_log(
-                run, message, level="WARNING", should_raise=False
-            )
+        await self._catalog("unregister", kind, raw, run)
 
     async def sync_agent_catalog(
         self, agent_id: str, run: IntegrationRun, *, project_endpoint: str
@@ -77,18 +82,6 @@ class AbstractFoundryExecutor(AbstractExecutor):
         )
 
 
-class FoundryAgentExecutor(AbstractFoundryExecutor):
-    """Agent CRUD: defer only on 429. Azure does not expose remaining RPM up front."""
-
-    async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        return self.client.rate_limiter.hard_block_seconds() > 0
-
-    async def get_remaining_seconds_until_rate_limit(
-        self, run: IntegrationRun
-    ) -> float:
-        return self.client.rate_limiter.hard_block_seconds()
-
-
 class ArmDeploymentExecutor(AbstractFoundryExecutor):
     """Deploy/delete via ARM; defer on ARM remaining headers or Foundry 429."""
 
@@ -97,7 +90,6 @@ class ArmDeploymentExecutor(AbstractFoundryExecutor):
         self.arm_deployments: ArmDeploymentsClient = create_arm_deployments_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        # Ignore Foundry soft headroom; ARM writes use a different pool.
         return (
             self.client.rate_limiter.hard_block_seconds() > 0
             or self.arm_deployments.rate_limiter.is_close_to_rate_limit()

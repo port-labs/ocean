@@ -297,13 +297,6 @@
           "default": "GlobalStandard"
         },
         {
-          "name": "deploymentType",
-          "title": "Deployment type",
-          "type": "string",
-          "required": false,
-          "default": "ModelDeployment"
-        },
-        {
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",

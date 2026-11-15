@@ -4,10 +4,6 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 
-class InvalidActionParametersException(ActionExecutionError):
-    """Raised when action execution properties fail validation."""
-
-
 class AbstractFoundryActionInput(BaseModel):
     model_config = ConfigDict(extra="ignore", strict=True)
 
@@ -23,14 +19,4 @@ class AbstractFoundryActionInput(BaseModel):
         try:
             return cls.model_validate(execution_properties)
         except ValidationError as error:
-            raise InvalidActionParametersException(
-                cls._format_validation_error(error)
-            ) from error
-
-    @staticmethod
-    def _format_validation_error(error: ValidationError) -> str:
-        messages = [
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in error.errors()
-        ]
-        return "; ".join(messages)
+            raise ActionExecutionError(str(error)) from error

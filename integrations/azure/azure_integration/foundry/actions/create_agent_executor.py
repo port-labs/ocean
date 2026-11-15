@@ -9,8 +9,10 @@ from pydantic import Field
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
-from azure_integration.foundry.actions.abstract_executor import FoundryAgentExecutor
+from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.helpers.agent_api import build_create_agent_body
+from azure_integration.foundry.helpers.utils import enrich_with_project
+from azure_integration.foundry.kinds import ObjectKind
 
 CREATING_STATUS_LABEL = "Creating agent"
 CREATE_FAILED_STATUS_LABEL = "Creation failed"
@@ -24,7 +26,7 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-class CreateAgentExecutor(FoundryAgentExecutor):
+class CreateAgentExecutor(AbstractFoundryExecutor):
     ACTION_NAME = "create_agent"
 
     async def execute(self, run: IntegrationRun) -> None:
@@ -63,8 +65,11 @@ class CreateAgentExecutor(FoundryAgentExecutor):
 
         logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         agent_id = str(agent.get("id") or agent.get("name") or inputs.name)
-        await self.sync_agent_catalog(
-            agent_id, run, project_endpoint=inputs.projectEndpoint
+        # ponytail: create response is the agent; no re-GET
+        await self.register_entity(
+            ObjectKind.FOUNDRY_AGENT,
+            enrich_with_project(agent, project_endpoint=inputs.projectEndpoint),
+            run,
         )
 
         if isinstance(run, WorkflowNodeRun):
