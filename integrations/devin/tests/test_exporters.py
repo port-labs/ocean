@@ -66,7 +66,7 @@ async def test_playbooks_exporter_include_enterprise() -> None:
     pages = [
         page
         async for page in PlaybooksExporter(client).get_paginated_resources(
-            include_enterprise=True
+            {"include_enterprise": True}
         )
     ]
 
