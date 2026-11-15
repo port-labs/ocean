@@ -52,7 +52,12 @@ async def test_sessions_exporter_passes_query_to_client() -> None:
     pages = [
         page
         async for page in exporter.get_paginated_resources(
-            include_archived=True, created_after_days=None, only_managed_by_port=True
+            {
+                "include_archived": True,
+                "created_after_days": None,
+                "origins": None,
+                "only_managed_by_port": True,
+            }
         )
     ]
 
