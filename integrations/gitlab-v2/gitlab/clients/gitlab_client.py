@@ -1040,8 +1040,6 @@ class GitLabClient:
                 "Skipping merge request enrichment; missing project_id or iid "
                 f"(id={merge_request.get('id')!r})"
             )
-            if include_comments:
-                merge_request["__comments"] = []
             return merge_request
 
         try:
@@ -1085,8 +1083,6 @@ class GitLabClient:
                 f"Merge request enrichment failed for merge request "
                 f"{project_id}!{iid}: {e}"
             )
-            if include_comments and "__comments" not in merge_request:
-                merge_request["__comments"] = []
 
         return merge_request
 
@@ -1107,8 +1103,6 @@ class GitLabClient:
             )
             if enrich_with_review_discussion:
                 merge_request["__notes"] = None
-            if include_comments:
-                merge_request["__comments"] = []
             return
 
         if enrich_with_review_discussion:

@@ -8,6 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from gitlab.helpers.merge_request_comments import GITLAB_NOTEABLE_TYPE_MERGE_REQUEST
 from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
@@ -26,21 +27,7 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if not await super().should_process_event(event):
             return False
         noteable_type = event.payload.get("object_attributes", {}).get("noteable_type")
-        return noteable_type == "MergeRequest" and "merge_request" in event.payload
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        attributes = payload.get("object_attributes")
-        merge_request = payload.get("merge_request")
-        project = payload.get("project")
-        return (
-            isinstance(attributes, dict)
-            and bool(attributes.get("id"))
-            and isinstance(merge_request, dict)
-            and merge_request.get("id") is not None
-            and merge_request.get("iid") is not None
-            and isinstance(project, dict)
-            and project.get("id") is not None
-        )
+        return noteable_type == GITLAB_NOTEABLE_TYPE_MERGE_REQUEST
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -53,9 +40,34 @@ class MergeRequestCommentWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        merge_request_payload = payload["merge_request"]
-        project_id = payload["project"]["id"]
-        merge_request_iid = merge_request_payload["iid"]
+        merge_request_payload = payload.get("merge_request")
+        if not isinstance(merge_request_payload, dict):
+            logger.warning(
+                "Skipping merge request note event; missing merge_request in payload"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        project = payload.get("project")
+        if not isinstance(project, dict):
+            logger.warning(
+                "Skipping merge request note event; missing project in payload"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        project_id = project.get("id")
+        merge_request_iid = merge_request_payload.get("iid")
+        if project_id is None or merge_request_iid is None:
+            logger.warning(
+                "Skipping merge request note event; missing project id or merge request iid"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         state = merge_request_payload.get("state")
         logger.info(
             f"Handling merge request note webhook for project {project_id} "

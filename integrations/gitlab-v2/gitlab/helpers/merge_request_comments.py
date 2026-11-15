@@ -1,5 +1,7 @@
 from typing import Any
 
+GITLAB_NOTEABLE_TYPE_MERGE_REQUEST = "MergeRequest"
+
 
 def normalize_merge_request_note(
     note: dict[str, Any], merge_request: dict[str, Any]
