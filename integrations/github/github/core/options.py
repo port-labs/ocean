@@ -48,6 +48,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     include_required_checks_status: NotRequired[bool]
     excluded_required_checks: NotRequired[list[str]]
     include_comments: NotRequired[bool]
+    include_review_stats: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -67,6 +68,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     include_required_checks_status: NotRequired[bool]
     excluded_required_checks: NotRequired[list[str]]
     include_comments: NotRequired[bool]
+    include_review_stats: NotRequired[bool]
 
 
 class ListPullRequestCommentOptions(RepositoryIdentifier):
