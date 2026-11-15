@@ -371,6 +371,7 @@ class TestTerminateSession:
         assert devin.sessions["devin-1"]["is_archived"] is True
         [completion] = port.completions[RUN_ID]
         assert completion.success
+        assert devin.session_op_order == ["replace_tags", "terminate"]
 
     async def test_finished_waiting_run_is_left_alone(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
