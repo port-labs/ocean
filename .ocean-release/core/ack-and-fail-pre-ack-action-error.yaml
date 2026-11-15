@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fail runs that error during the pre-acknowledge rate-limit path instead of leaving them Queued

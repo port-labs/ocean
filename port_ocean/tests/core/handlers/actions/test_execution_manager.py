@@ -1006,6 +1006,36 @@ class TestExecutionManager:
         mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_execute_run_fails_when_rate_limit_check_raises_action_error(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        """GitHub resolves the user token during is_close_to_rate_limit (before ack).
+
+        A misconfigured identity exchange must fail the run, not leave it Queued
+        while Ocean retries the exchange forever.
+        """
+        run = generate_mock_wf_node_run()
+        executor = execution_manager._actions_executors["test_action"]
+        error_msg = "Could not read the user's token: Missing identity OAuth"
+
+        with patch.object(
+            executor,
+            "is_close_to_rate_limit",
+            side_effect=ActionExecutionError(error_msg),
+        ):
+            await execution_manager._execute_run(run)
+
+        mock_port_client.acknowledge_run.assert_called_once_with(run)
+        mock_port_client.report_run_completed.assert_called_once()
+        _, kwargs = mock_port_client.report_run_completed.call_args
+        assert kwargs["success"] is False
+        assert kwargs["message"] == error_msg
+        assert kwargs["status_label"] == DEFAULT_FAILURE_STATUS_LABEL
+        mock_port_client.patch_run.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_execute_run_skips_pause_when_another_worker_acked_the_run(
         self,
         execution_manager: ExecutionManager,
