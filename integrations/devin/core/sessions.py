@@ -4,6 +4,11 @@ from typing import Any
 from clients import endpoints
 from clients.devin_client import DevinClient
 from clients.models import SessionMessage, SessionResponse
+from clients.parsing import (
+    parse_session_message_best_effort,
+    parse_session_response_best_effort,
+    require_session_response,
+)
 
 
 class DevinSessions:
@@ -20,11 +25,11 @@ class DevinSessions:
         data = await self.client.send_api_request(
             "POST", endpoints.SESSIONS, json_body=body
         )
-        return SessionResponse.model_validate(data)
+        return require_session_response(data)
 
     async def get(self, session_id: str) -> SessionResponse:
         data = await self.client.send_api_request("GET", endpoints.session(session_id))
-        return SessionResponse.model_validate(data)
+        return require_session_response(data)
 
     async def list_by_tag(
         self, tag: str
@@ -32,7 +37,12 @@ class DevinSessions:
         async for page in self.client.paginate(
             endpoints.SESSIONS, params={"tags": [tag]}
         ):
-            yield [SessionResponse.model_validate(item) for item in page]
+            page_sessions: list[SessionResponse] = []
+            for item in page:
+                if session := parse_session_response_best_effort(item):
+                    page_sessions.append(session)
+            if page_sessions:
+                yield page_sessions
 
     async def send_message(
         self, session_id: str, body: dict[str, Any]
@@ -40,7 +50,7 @@ class DevinSessions:
         data = await self.client.send_api_request(
             "POST", endpoints.session_messages(session_id), json_body=body
         )
-        return SessionResponse.model_validate(data)
+        return require_session_response(data)
 
     async def list_messages_after(
         self, session_id: str, after: str | None
@@ -57,10 +67,9 @@ class DevinSessions:
             payload = await self.client.fetch_page(
                 endpoints.session_messages(session_id), after=cursor
             )
-            messages.extend(
-                SessionMessage.model_validate(item)
-                for item in payload.get("items") or []
-            )
+            for item in payload.get("items") or []:
+                if message := parse_session_message_best_effort(item):
+                    messages.append(message)
             cursor = payload.get("end_cursor") or cursor
             if not payload.get("has_next_page") or not payload.get("end_cursor"):
                 return messages, cursor
@@ -81,13 +90,13 @@ class DevinSessions:
         data = await self.client.send_api_request(
             "DELETE", endpoints.session(session_id), params={"archive": archive}
         )
-        return SessionResponse.model_validate(data)
+        return require_session_response(data)
 
     async def archive(self, session_id: str) -> SessionResponse:
         data = await self.client.send_api_request(
             "POST", endpoints.session_archive(session_id)
         )
-        return SessionResponse.model_validate(data)
+        return require_session_response(data)
 
     async def find_user_id_by_email(self, email: str) -> str | None:
         data = await self.client.fetch_page(

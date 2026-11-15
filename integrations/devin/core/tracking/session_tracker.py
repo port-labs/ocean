@@ -233,6 +233,16 @@ class SessionTracker:
                 turn.last_devin_message = message.message
                 turn.last_devin_message_at = to_epoch_seconds(message.created_at)
 
+    async def _refresh_session(self, session: SessionResponse) -> SessionResponse:
+        try:
+            return await self._sessions.get(session.session_id)
+        except Exception as error:
+            logger.warning(
+                f"Could not refresh Devin session {session.session_id} from API; "
+                f"using list payload: {error}"
+            )
+            return session
+
     async def _complete(
         self,
         session: SessionResponse,
@@ -245,6 +255,8 @@ class SessionTracker:
         if run is None or not ocean.port_client.is_run_in_progress(run):
             await self._release(session, external_id)
             return
+
+        session = await self._refresh_session(session)
 
         ended_at = (
             turn.last_devin_message_at
