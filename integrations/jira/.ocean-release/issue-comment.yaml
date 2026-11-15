@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Attach issue comments with includeComments and map them via itemsToParse
