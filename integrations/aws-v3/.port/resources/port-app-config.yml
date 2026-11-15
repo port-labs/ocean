@@ -63,3 +63,27 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::EKS::Nodegroup
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.NodegroupArn
+          title: .Properties.NodegroupName
+          blueprint: '"eksNodegroup"'
+          properties:
+            nodegroupArn: .Properties.NodegroupArn
+            status: .Properties.Status
+            capacityType: .Properties.CapacityType
+            instanceTypes: .Properties.InstanceTypes
+            amiType: .Properties.AmiType
+            scalingConfig: .Properties.ScalingConfig
+            version: .Properties.Version
+            releaseVersion: .Properties.ReleaseVersion
+            createdAt: .Properties.CreatedAt
+            region: .__ExtraContext.Region
+            tags: .Properties.Tags
+          relations:
+            eksCluster: .Properties.ClusterName
+            account: .__ExtraContext.AccountId
