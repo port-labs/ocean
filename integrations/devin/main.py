@@ -17,6 +17,7 @@ from exporter_factory import (
     create_secrets_exporter,
     create_sessions_exporter,
 )
+from core.exporters.options import ListPlaybooksOptions
 from integration import ObjectKind, PlaybookResourceConfig, SessionResourceConfig
 
 
@@ -38,9 +39,10 @@ async def on_resync_sessions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_playbooks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(PlaybookResourceConfig, event.resource_config).selector
     exporter = create_playbooks_exporter()
-    async for page in exporter.get_paginated_resources(
-        include_enterprise=selector.include_enterprise
-    ):
+    options: ListPlaybooksOptions = {
+        "include_enterprise": selector.include_enterprise,
+    }
+    async for page in exporter.get_paginated_resources(options):
         if page:
             yield page
 

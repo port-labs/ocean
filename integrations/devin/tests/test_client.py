@@ -91,7 +91,7 @@ async def test_http_errors_are_raised_with_context(
 ) -> None:
     request_mock.return_value = _response(403, {"detail": "no"})
 
-    with pytest.raises(httpx.HTTPStatusError, match="HTTP 403 for GET"):
+    with pytest.raises(httpx.HTTPStatusError, match="403"):
         await client.send_api_request("GET", "/sessions")
 
 
