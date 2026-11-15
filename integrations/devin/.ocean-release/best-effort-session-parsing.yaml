@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Parse Devin list payloads in best-effort mode so one bad session or message does not fail session tracking.
