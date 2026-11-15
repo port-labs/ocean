@@ -50,3 +50,14 @@ def test_enrich_with_project_adds_identity_fields() -> None:
     assert enriched["__foundryProjectName"] == "demo"
     assert enriched["created_at"] == "2024-11-09T16:33:20Z"
     assert enriched["versions"]["latest"]["created_at"] == "2024-11-09T16:33:20Z"
+
+
+def test_enrich_with_project_derives_name_from_endpoint() -> None:
+    enriched = enrich_with_project(
+        {"name": "text-embedding-3-small"},
+        project_endpoint=(
+            "https://omby-project-resource.services.ai.azure.com/api/projects/omby-project"
+        ),
+    )
+    assert enriched["__foundryProjectName"] == "omby-project"
+    assert "__foundryProjectId" not in enriched
