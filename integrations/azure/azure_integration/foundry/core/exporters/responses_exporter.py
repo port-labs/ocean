@@ -21,7 +21,7 @@ from azure_integration.foundry.helpers.utils import (
 
 
 class ResponsesExporter(FoundryExporter):
-    """Responses listed per agent via the OpenAI agent protocol endpoint."""
+    """Responses via agent protocol and/or project openai/v1 list APIs."""
 
     async def get_paginated_resources(
         self, options: ListResponsesOptions
@@ -29,32 +29,61 @@ class ResponsesExporter(FoundryExporter):
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         since_days = options.since_days
+        scopes = options.endpoint_scopes
         incremental_cursor = active_incremental_cursor()
         cutoff = effective_conversation_cutoff(
             incremental_cursor, since_days=since_days
         )
         params = RESPONSE_INCREMENTAL.merge_params({}, cutoff)
-        agents = AgentsExporter(self.client)
+        # When both scopes run, skip ids already yielded from the first scope.
+        seen_ids: set[str] = set()
 
-        async for agents_page in agents._iter_agent_pages(project_endpoint):
-            for agent in agents_page:
-                agent_id = agent.get("id")
-                if not agent_id:
-                    logger.warning(
-                        "Skipping Foundry agent missing required id field",
-                        agent=agent,
+        if "agent" in scopes:
+            agents = AgentsExporter(self.client)
+            async for agents_page in agents._iter_agent_pages(project_endpoint):
+                for agent in agents_page:
+                    agent_id = agent.get("id")
+                    if not agent_id:
+                        logger.warning(
+                            "Skipping Foundry agent missing required id field",
+                            agent=agent,
+                            project_endpoint=project_endpoint,
+                        )
+                        continue
+                    async for page in self._iter_agent_responses(
                         project_endpoint=project_endpoint,
-                    )
-                    continue
-                async for page in self._iter_agent_responses(
-                    project_endpoint=project_endpoint,
-                    project_id=project_id,
-                    agent_id=str(agent_id),
-                    params=params,
-                    cutoff=cutoff,
-                ):
-                    if page:
-                        yield page
+                        project_id=project_id,
+                        agent_id=str(agent_id),
+                        params=params,
+                        cutoff=cutoff,
+                    ):
+                        filtered = self._take_unseen(page, seen_ids)
+                        if filtered:
+                            yield filtered
+
+        if "project" in scopes:
+            async for page in self._iter_project_responses(
+                project_endpoint=project_endpoint,
+                project_id=project_id,
+                params=params,
+                cutoff=cutoff,
+            ):
+                filtered = self._take_unseen(page, seen_ids)
+                if filtered:
+                    yield filtered
+
+    @staticmethod
+    def _take_unseen(
+        page: list[dict[str, Any]], seen_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for item in page:
+            item_id = item.get("id")
+            if not item_id or item_id in seen_ids:
+                continue
+            seen_ids.add(str(item_id))
+            out.append(item)
+        return out
 
     async def _iter_agent_responses(
         self,
@@ -91,3 +120,30 @@ class ResponsesExporter(FoundryExporter):
                 f"Skipping Foundry responses for agent {agent_id} "
                 f"({project_endpoint}): {exc}"
             )
+
+    async def _iter_project_responses(
+        self,
+        *,
+        project_endpoint: str,
+        project_id: str,
+        params: dict[str, Any],
+        cutoff: datetime | None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        async for page in paginate_with_strategy(
+            self.client.send_cursor_paginated_request(
+                project_endpoint,
+                "openai/v1/responses",
+                params=params,
+            ),
+            cursor=cutoff,
+            strategy=RESPONSE_INCREMENTAL,
+        ):
+            yield [
+                enrich_with_project(
+                    item,
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                )
+                for item in page
+                if item.get("id")
+            ]

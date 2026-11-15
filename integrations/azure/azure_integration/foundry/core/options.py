@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+EndpointScope = Literal["agent", "project"]
 
 
 class ProjectIdentifier(BaseModel):
@@ -20,10 +24,12 @@ class ListModelDeploymentsOptions(ProjectIdentifier):
 
 class ListConversationsOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
+    endpoint_scopes: list[EndpointScope] = Field(default_factory=lambda: ["agent"])
 
 
 class ListResponsesOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
+    endpoint_scopes: list[EndpointScope] = Field(default_factory=lambda: ["agent"])
 
 
 class ListMemoryStoresOptions(ProjectIdentifier):

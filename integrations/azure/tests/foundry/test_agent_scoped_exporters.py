@@ -3,6 +3,7 @@ from typing import Any, AsyncIterator
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic.v1 import ValidationError
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.conversations_exporter import (
@@ -15,6 +16,7 @@ from azure_integration.foundry.core.options import (
     ListConversationsOptions,
     ListResponsesOptions,
 )
+from azure_integration.foundry.kinds import ConversationSelector
 
 _NOW = int(datetime.now(UTC).timestamp())
 _PROJECT = "https://example.services.ai.azure.com/api/projects/demo"
@@ -51,6 +53,70 @@ async def test_lists_conversations_per_agent_endpoint() -> None:
     )
     assert pages[0][0]["id"] == "conv-1"
     assert pages[0][0]["__foundryAgentId"] == "agent-a"
+
+
+@pytest.mark.asyncio
+async def test_lists_conversations_project_scope_only() -> None:
+    client = MagicMock()
+    client.send_cursor_paginated_request = MagicMock(
+        side_effect=[_agen([{"id": "conv-p", "created_at": _NOW}])]
+    )
+
+    pages: list[list[dict[str, Any]]] = []
+    async for page in ConversationsExporter(client).get_paginated_resources(
+        ListConversationsOptions(
+            project_endpoint=_PROJECT,
+            project_id=_PROJECT_ID,
+            since_days=30,
+            endpoint_scopes=["project"],
+        )
+    ):
+        pages.append(page)
+
+    assert client.send_cursor_paginated_request.call_count == 1
+    assert client.send_cursor_paginated_request.call_args.args[1] == (
+        "openai/v1/conversations"
+    )
+    assert pages[0][0]["id"] == "conv-p"
+    assert "__foundryAgentId" not in pages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_lists_conversations_both_scopes_dedupes_by_id() -> None:
+    client = MagicMock()
+    client.send_cursor_paginated_request = MagicMock(
+        side_effect=[
+            _agen([{"id": "agent-a"}]),
+            _agen([{"id": "shared", "created_at": _NOW}]),
+            _agen(
+                [
+                    {"id": "shared", "created_at": _NOW},
+                    {"id": "project-only", "created_at": _NOW},
+                ]
+            ),
+        ]
+    )
+
+    ids: list[str] = []
+    async for page in ConversationsExporter(client).get_paginated_resources(
+        ListConversationsOptions(
+            project_endpoint=_PROJECT,
+            project_id=_PROJECT_ID,
+            since_days=30,
+            endpoint_scopes=["agent", "project"],
+        )
+    ):
+        ids.extend(item["id"] for item in page)
+
+    paths = [
+        call.args[1] for call in client.send_cursor_paginated_request.call_args_list
+    ]
+    assert paths == [
+        "agents",
+        "agents/agent-a/endpoint/protocols/openai/conversations",
+        "openai/v1/conversations",
+    ]
+    assert ids == ["shared", "project-only"]
 
 
 @pytest.mark.asyncio
@@ -109,3 +175,13 @@ async def test_skips_agent_when_protocol_endpoint_errors() -> None:
     assert len(pages) == 1
     assert pages[0][0]["id"] == "resp-ok"
     assert pages[0][0]["__foundryAgentId"] == "good-agent"
+
+
+def test_endpoint_scopes_default_agent() -> None:
+    selector = ConversationSelector(query="true")
+    assert selector.endpoint_scopes == ["agent"]
+
+
+def test_endpoint_scopes_rejects_duplicates() -> None:
+    with pytest.raises(ValidationError, match="duplicate"):
+        ConversationSelector(query="true", endpointScopes=["agent", "agent"])
