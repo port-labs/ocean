@@ -27,6 +27,7 @@ async def fetch_single_pull_request(
         rest_client = (
             await create_github_client_for_org(organization)
             if resource_config.selector.include_comments
+            or resource_config.selector.include_review_stats
             else None
         )
         exporter = GraphQLPullRequestExporter(
@@ -53,5 +54,6 @@ async def fetch_single_pull_request(
             ),
             excluded_required_checks=resource_config.selector.excluded_required_checks,
             include_comments=resource_config.selector.include_comments,
+            include_review_stats=resource_config.selector.include_review_stats,
         )
     )

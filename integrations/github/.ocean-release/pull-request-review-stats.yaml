@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add opt-in includeReviewStats with per-pull-request human and bot review numbers

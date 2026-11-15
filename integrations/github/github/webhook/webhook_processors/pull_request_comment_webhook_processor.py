@@ -26,11 +26,11 @@ from integration import GithubPullRequestConfig
 
 
 class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
-    """Refresh a pull request's ``__comments`` when comment-related events fire.
+    """Refresh a pull request when comment-related events fire.
 
-    Matching kind is ``pull-request`` (not a dedicated comment kind). Only runs
-    when ``includeComments`` is true. Never deletes the pull request because a
-    comment changed.
+    Matching kind is ``pull-request`` (not a dedicated comment kind). Runs when
+    ``includeComments`` or ``includeReviewStats`` is true. Never deletes the
+    pull request because a comment changed.
     """
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
@@ -73,7 +73,10 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
     ) -> WebhookEventRawResults:
         empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
         config = cast(GithubPullRequestConfig, resource_config)
-        if not config.selector.include_comments:
+        if (
+            not config.selector.include_comments
+            and not config.selector.include_review_stats
+        ):
             return empty
 
         header = self.event.headers.get("x-github-event")
@@ -112,7 +115,8 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo=repo if is_graphql_api else None,
                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
-                include_comments=True,
+                include_comments=config.selector.include_comments,
+                include_review_stats=config.selector.include_review_stats,
             )
         )
         if not data_to_upsert:
