@@ -35,8 +35,6 @@ class ResponsesExporter(FoundryExporter):
             incremental_cursor, since_days=since_days
         )
         params = RESPONSE_INCREMENTAL.merge_params({}, cutoff)
-        # When both scopes run, skip ids already yielded from the first scope.
-        seen_ids: set[str] = set()
 
         if "agent" in scopes:
             agents = AgentsExporter(self.client)
@@ -57,9 +55,8 @@ class ResponsesExporter(FoundryExporter):
                         params=params,
                         cutoff=cutoff,
                     ):
-                        filtered = self._take_unseen(page, seen_ids)
-                        if filtered:
-                            yield filtered
+                        if page:
+                            yield page
 
         if "project" in scopes:
             async for page in self._iter_project_responses(
@@ -68,22 +65,8 @@ class ResponsesExporter(FoundryExporter):
                 params=params,
                 cutoff=cutoff,
             ):
-                filtered = self._take_unseen(page, seen_ids)
-                if filtered:
-                    yield filtered
-
-    @staticmethod
-    def _take_unseen(
-        page: list[dict[str, Any]], seen_ids: set[str]
-    ) -> list[dict[str, Any]]:
-        out: list[dict[str, Any]] = []
-        for item in page:
-            item_id = item.get("id")
-            if not item_id or item_id in seen_ids:
-                continue
-            seen_ids.add(str(item_id))
-            out.append(item)
-        return out
+                if page:
+                    yield page
 
     async def _iter_agent_responses(
         self,

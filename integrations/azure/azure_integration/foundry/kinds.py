@@ -112,7 +112,7 @@ class FoundryEndpointScopedSelector(FoundrySelector):
             "Which Foundry list APIs to query. "
             "`agent` uses agents/{id}/endpoint/protocols/openai/... (default). "
             "`project` uses openai/v1/... . "
-            "Pass both to list from each API (duplicates skipped by id)."
+            "Pass both to list from each store (separate APIs, separate ids)."
         ),
     )
 

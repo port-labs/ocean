@@ -82,22 +82,17 @@ async def test_lists_conversations_project_scope_only() -> None:
 
 
 @pytest.mark.asyncio
-async def test_lists_conversations_both_scopes_dedupes_by_id() -> None:
+async def test_lists_conversations_both_scopes_are_separate_stores() -> None:
     client = MagicMock()
     client.send_cursor_paginated_request = MagicMock(
         side_effect=[
             _agen([{"id": "agent-a"}]),
-            _agen([{"id": "shared", "created_at": _NOW}]),
-            _agen(
-                [
-                    {"id": "shared", "created_at": _NOW},
-                    {"id": "project-only", "created_at": _NOW},
-                ]
-            ),
+            _agen([{"id": "agent-conv", "created_at": _NOW}]),
+            _agen([{"id": "project-conv", "created_at": _NOW}]),
         ]
     )
 
-    ids: list[str] = []
+    pages: list[list[dict[str, Any]]] = []
     async for page in ConversationsExporter(client).get_paginated_resources(
         ListConversationsOptions(
             project_endpoint=_PROJECT,
@@ -106,7 +101,7 @@ async def test_lists_conversations_both_scopes_dedupes_by_id() -> None:
             endpoint_scopes=["agent", "project"],
         )
     ):
-        ids.extend(item["id"] for item in page)
+        pages.append(page)
 
     paths = [
         call.args[1] for call in client.send_cursor_paginated_request.call_args_list
@@ -116,7 +111,10 @@ async def test_lists_conversations_both_scopes_dedupes_by_id() -> None:
         "agents/agent-a/endpoint/protocols/openai/conversations",
         "openai/v1/conversations",
     ]
-    assert ids == ["shared", "project-only"]
+    assert pages[0][0]["id"] == "agent-conv"
+    assert pages[0][0]["__foundryAgentId"] == "agent-a"
+    assert pages[1][0]["id"] == "project-conv"
+    assert "__foundryAgentId" not in pages[1][0]
 
 
 @pytest.mark.asyncio
