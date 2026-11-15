@@ -2,7 +2,7 @@
 
 Devin has no outbound webhooks and Port has no "list in-progress runs" API, so
 the durable record of in-flight work is the tags on the Devin sessions
-themselves (see `core/tracking/tags.py` and ADR-0041). Every tick lists the
+themselves (see `core/tracking/tags.py`). Every tick lists the
 sessions tagged `port:pending:<installationId>`, posts their new messages to
 the waiting run's logs, and completes the run once the turn has ended.
 
