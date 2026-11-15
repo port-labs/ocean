@@ -1,6 +1,0 @@
-bump: minor
-changelog-type: breaking
-changelog: >-
-  Replace createAsUserEmail and messageAsUserEmail with createAsUserId and
-  messageAsUserId. Impersonation passes the Devin user ID directly; invalid IDs
-  surface as Devin API errors.
