@@ -105,17 +105,17 @@ class TestMergeRequestWebhookProcessor:
         }
 
         processor._gitlab_webhook_client = MagicMock()
-        processor._gitlab_webhook_client.get_merge_request = AsyncMock(
+        processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock(
             return_value=expected_mr
         )
-        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
 
         result = await processor.handle_event(mr_payload, resource_config)
 
-        processor._gitlab_webhook_client.get_merge_request.assert_called_once_with(
-            project_id, mr_id
+        processor._gitlab_webhook_client.fetch_single_merge_request.assert_called_once()
+        assert (
+            processor._gitlab_webhook_client.fetch_single_merge_request.await_args.args
+            == (project_id, mr_id)
         )
-        processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_mr
         assert not result.deleted_raw_results
@@ -127,13 +127,11 @@ class TestMergeRequestWebhookProcessor:
         resource_config = _resource_config(states=["merged"])
 
         processor._gitlab_webhook_client = MagicMock()
-        processor._gitlab_webhook_client.get_merge_request = AsyncMock()
-        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
+        processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock()
 
         result = await processor.handle_event(mr_payload, resource_config)
 
-        processor._gitlab_webhook_client.get_merge_request.assert_not_called()
-        processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
+        processor._gitlab_webhook_client.fetch_single_merge_request.assert_not_called()
         assert not result.updated_raw_results
         assert result.deleted_raw_results
 
@@ -143,12 +141,11 @@ class TestMergeRequestWebhookProcessor:
         resource_config = _resource_config()
 
         processor._gitlab_webhook_client = MagicMock()
-        processor._gitlab_webhook_client.get_merge_request = AsyncMock(return_value={})
-        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
+        processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock(
+            return_value=None
+        )
 
         result = await processor.handle_event(mr_payload, resource_config)
-
-        processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
         assert not result.updated_raw_results
         assert not result.deleted_raw_results
 
@@ -171,20 +168,17 @@ class TestMergeRequestWebhookProcessor:
         }
 
         processor._gitlab_webhook_client = MagicMock()
-        processor._gitlab_webhook_client.get_merge_request = AsyncMock(
-            return_value=fetched_mr
-        )
-        processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock(
-            return_value=[enriched_mr]
+        processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock(
+            return_value=enriched_mr
         )
 
         result = await processor.handle_event(mr_payload, resource_config)
 
-        processor._gitlab_webhook_client.enrich_merge_requests.assert_called_once_with(
-            [fetched_mr],
+        processor._gitlab_webhook_client.fetch_single_merge_request.assert_called_once_with(
+            mr_payload["project"]["id"],
+            mr_payload["object_attributes"]["iid"],
             enrich_with_commits=True,
             enrich_with_review_discussion=True,
             include_comments=False,
-            max_concurrent=1,
         )
         assert result.updated_raw_results == [enriched_mr]

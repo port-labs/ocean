@@ -212,20 +212,16 @@ async def test_webhook_returns_merge_request_kind_with_comments() -> None:
 
     fetched_mr = MERGE_REQUEST.copy()
     processor._gitlab_webhook_client = MagicMock()
-    processor._gitlab_webhook_client.get_merge_request = AsyncMock(
-        return_value=fetched_mr
-    )
-    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock(
-        return_value=[{**fetched_mr, "__comments": [{"__commentId": "99/302"}]}]
+    processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock(
+        return_value={**fetched_mr, "__comments": [{"__commentId": "99/302"}]}
     )
 
     result = await processor.handle_event(_payload(), _config(include_comments=True))
     assert result.updated_raw_results[0]["__comments"][0]["__commentId"] == "99/302"
     assert result.deleted_raw_results == []
-    processor._gitlab_webhook_client.get_merge_request.assert_awaited_once()
-    processor._gitlab_webhook_client.enrich_merge_requests.assert_awaited_once()
+    processor._gitlab_webhook_client.fetch_single_merge_request.assert_awaited_once()
     assert (
-        processor._gitlab_webhook_client.enrich_merge_requests.await_args.kwargs[
+        processor._gitlab_webhook_client.fetch_single_merge_request.await_args.kwargs[
             "include_comments"
         ]
         is True
@@ -236,14 +232,12 @@ async def test_webhook_returns_merge_request_kind_with_comments() -> None:
 async def test_webhook_noops_when_include_comments_false() -> None:
     processor = _processor()
     processor._gitlab_webhook_client = MagicMock()
-    processor._gitlab_webhook_client.get_merge_request = AsyncMock()
-    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock()
+    processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock()
 
     result = await processor.handle_event(_payload(), _config(include_comments=False))
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
-    processor._gitlab_webhook_client.get_merge_request.assert_not_called()
-    processor._gitlab_webhook_client.enrich_merge_requests.assert_not_called()
+    processor._gitlab_webhook_client.fetch_single_merge_request.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -271,11 +265,8 @@ async def test_webhook_system_note_upserts_when_include_comments_true() -> None:
     fetched_mr = MERGE_REQUEST.copy()
     system_comment = normalize_merge_request_note(SYSTEM_NOTE, MERGE_REQUEST)
     processor._gitlab_webhook_client = MagicMock()
-    processor._gitlab_webhook_client.get_merge_request = AsyncMock(
-        return_value=fetched_mr
-    )
-    processor._gitlab_webhook_client.enrich_merge_requests = AsyncMock(
-        return_value=[{**fetched_mr, "__comments": [system_comment]}]
+    processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock(
+        return_value={**fetched_mr, "__comments": [system_comment]}
     )
 
     result = await processor.handle_event(
@@ -285,13 +276,29 @@ async def test_webhook_system_note_upserts_when_include_comments_true() -> None:
     assert result.updated_raw_results[0]["__comments"][0]["system"] is True
     assert result.updated_raw_results[0]["__comments"][0]["__commentType"] == "comment"
     assert result.deleted_raw_results == []
-    processor._gitlab_webhook_client.enrich_merge_requests.assert_awaited_once()
+    processor._gitlab_webhook_client.fetch_single_merge_request.assert_awaited_once()
     assert (
-        processor._gitlab_webhook_client.enrich_merge_requests.await_args.kwargs[
+        processor._gitlab_webhook_client.fetch_single_merge_request.await_args.kwargs[
             "include_comments"
         ]
         is True
     )
+
+
+@pytest.mark.asyncio
+async def test_webhook_deletes_when_state_not_in_selector() -> None:
+    processor = _processor()
+    processor._gitlab_webhook_client = MagicMock()
+    processor._gitlab_webhook_client.fetch_single_merge_request = AsyncMock()
+
+    payload = _payload(
+        merge_request={**MERGE_REQUEST, "state": "merged"},
+    )
+    result = await processor.handle_event(payload, _config(include_comments=True))
+
+    assert not result.updated_raw_results
+    assert result.deleted_raw_results == [payload["merge_request"]]
+    processor._gitlab_webhook_client.fetch_single_merge_request.assert_not_called()
 
 
 @pytest.mark.asyncio

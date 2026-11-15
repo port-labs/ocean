@@ -212,6 +212,34 @@ class GitLabClient:
             "GET", f"projects/{project_id}/merge_requests/{merge_request_id}"
         )
 
+    async def fetch_single_merge_request(
+        self,
+        project_id: int,
+        merge_request_iid: int,
+        *,
+        enrich_with_commits: bool = False,
+        enrich_with_review_discussion: bool = False,
+        include_comments: bool = False,
+    ) -> Optional[dict[str, Any]]:
+        """Fetch one merge request and apply selector-driven enrichment."""
+        merge_request = await self.get_merge_request(project_id, merge_request_iid)
+        if not merge_request:
+            return None
+
+        if not (
+            enrich_with_commits or enrich_with_review_discussion or include_comments
+        ):
+            return merge_request
+
+        enriched = await self.enrich_merge_requests(
+            [merge_request],
+            enrich_with_commits=enrich_with_commits,
+            enrich_with_review_discussion=enrich_with_review_discussion,
+            include_comments=include_comments,
+            max_concurrent=1,
+        )
+        return enriched[0] if enriched else merge_request
+
     async def get_merge_request_commits(
         self, project_id: str | int, merge_request_iid: str | int
     ) -> list[dict[str, Any]]:
