@@ -157,32 +157,27 @@ class TestCreateSession:
         with pytest.raises(InvalidActionParametersException, match="prompt"):
             await build(CreateSessionExecutor, devin).execute(run)
 
-    async def test_known_user_is_resolved(
+    async def test_create_as_user_id_is_forwarded(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
     ) -> None:
-        devin.users["dev@acme.io"] = "user-1"
         run = make_node_run(
             RUN_ID,
             "create_session",
-            {"prompt": "x", "createAsUserEmail": "dev@acme.io"},
+            {"prompt": "x", "createAsUserId": "user-1"},
         )
 
         await build(CreateSessionExecutor, devin).execute(run)
 
         assert devin.last_create_body["create_as_user_id"] == "user-1"
 
-    async def test_unknown_user_fails_the_run(
+    async def test_omitted_create_as_user_id_uses_service_user(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
     ) -> None:
-        run = make_node_run(
-            RUN_ID,
-            "create_session",
-            {"prompt": "x", "createAsUserEmail": "ghost@acme.io"},
-        )
+        run = make_node_run(RUN_ID, "create_session", {"prompt": "x"})
 
-        with pytest.raises(InvalidActionParametersException, match="ghost@acme.io"):
-            await build(CreateSessionExecutor, devin).execute(run)
-        assert devin.sessions == {}
+        await build(CreateSessionExecutor, devin).execute(run)
+
+        assert "create_as_user_id" not in devin.last_create_body
 
     async def test_create_failure_raises_devin_error(
         self, devin: FakeDevin, port: FakePort, ocean_mock: MagicMock
