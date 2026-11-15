@@ -1,0 +1,173 @@
+from enum import StrEnum
+from typing import Literal
+
+from pydantic.v1 import BaseModel, Field
+from port_ocean.core.handlers.port_app_config.models import (
+    ResourceConfig,
+    Selector,
+)
+
+FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
+DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
+FOUNDRY_FEATURE_FLAG = "azure-foundry-agent"
+
+
+class ObjectKind(StrEnum):
+    FOUNDRY_PROJECT = FOUNDRY_ARM_PROJECT_KIND
+    FOUNDRY_AGENT = "foundry-agent"
+    FOUNDRY_MODEL_DEPLOYMENT = "foundry-model-deployment"
+    FOUNDRY_CONVERSATION = "foundry-conversation"
+    FOUNDRY_RESPONSE = "foundry-response"
+    FOUNDRY_MEMORY_STORE = "foundry-memory-store"
+
+
+class FoundryProjectFilters(BaseModel):
+    api_version: str = Field(
+        default=DEFAULT_FOUNDRY_ARM_API_VERSION,
+        alias="apiVersion",
+        title="API Version",
+        description="ARM API version used when discovering Foundry projects.",
+    )
+
+
+class FoundryProjectSelector(Selector):
+    api_version: str = Field(
+        default=DEFAULT_FOUNDRY_ARM_API_VERSION,
+        alias="apiVersion",
+        title="API Version",
+        description="ARM API version used when querying Foundry projects.",
+    )
+
+
+class FoundrySelector(Selector):
+    api_version: str = Field(
+        default="v1",
+        alias="apiVersion",
+        title="Foundry API Version",
+        description=(
+            "Data-plane API version for Foundry project APIs (agents, deployments, "
+            "conversations, responses, memory stores)."
+        ),
+    )
+    project: FoundryProjectFilters = Field(
+        default_factory=FoundryProjectFilters,
+        title="Project discovery",
+        description="ARM filters used when discovering Foundry projects for this kind.",
+    )
+
+
+class FoundryProjectResourceConfig(ResourceConfig):
+    kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
+        title="Foundry project (ARM)",
+        description="Azure AI Foundry project discovered via ARM Cognitive Services accounts/projects.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: FoundryProjectSelector = Field(
+        default_factory=lambda: FoundryProjectSelector(query="true"),
+    )
+
+
+class AgentSelector(FoundrySelector):
+    include_versions: bool = Field(
+        default=False,
+        alias="includeVersions",
+        title="Include versions",
+        description=(
+            "Fetch full agent version history as __versions (additional API calls per "
+            "agent). Use with itemsToParse on .__versions; parent .id is the agent "
+            'identifier (e.g. identifier: .id + "/" + (.item.version | tostring)).'
+        ),
+    )
+
+
+class AgentResourceConfig(ResourceConfig):
+    kind: Literal["foundry-agent"] = Field(
+        title="Foundry agent",
+        description="Microsoft Foundry agent from the project Agent Control Plane.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: AgentSelector = Field(
+        default_factory=lambda: AgentSelector(query="true"),
+    )
+
+
+class ModelDeploymentResourceConfig(ResourceConfig):
+    kind: Literal["foundry-model-deployment"] = Field(
+        title="Foundry model deployment",
+        description="Model deployment visible to a Foundry project (project data-plane).",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: FoundrySelector = Field(
+        default_factory=lambda: FoundrySelector(query="true"),
+    )
+
+
+class ConversationSelector(FoundrySelector):
+    since_days: int = Field(
+        default=30,
+        ge=1,
+        le=30,
+        alias="sinceDays",
+        title="Since (days)",
+        description=(
+            "How far back to list conversations when syncing (1–30). Azure Foundry "
+            "typically retains conversation/response state for about 30 days; values "
+            "above that do not recover older threads. Stops pagination once older "
+            "conversations appear (combined with the incremental cursor)."
+        ),
+    )
+
+
+class ConversationResourceConfig(ResourceConfig):
+    kind: Literal["foundry-conversation"] = Field(
+        title="Foundry conversation",
+        description=(
+            "OpenAI conversation threads (metadata only; not full message "
+            "transcripts). Conversation state in Azure is short-lived (~30 days)."
+        ),
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: ConversationSelector = Field(
+        default_factory=lambda: ConversationSelector(query="true"),
+    )
+
+
+class ResponseSelector(FoundrySelector):
+    since_days: int = Field(
+        default=30,
+        ge=1,
+        le=30,
+        alias="sinceDays",
+        title="Since (days)",
+        description=(
+            "How far back to list project responses (1–30). Azure Foundry typically "
+            "retains response data for about 30 days. Combined with the incremental "
+            "cursor when stopping pagination."
+        ),
+    )
+
+
+class ResponseResourceConfig(ResourceConfig):
+    kind: Literal["foundry-response"] = Field(
+        title="Foundry response",
+        description=(
+            "Foundry Responses API runs listed project-wide (usage, status, optional "
+            "conversation relation). Response objects in Azure are retained for a "
+            "limited period (~30 days), not indefinitely."
+        ),
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: ResponseSelector = Field(
+        default_factory=lambda: ResponseSelector(query="true"),
+    )
+
+
+class MemoryStoreResourceConfig(ResourceConfig):
+    kind: Literal["foundry-memory-store"] = Field(
+        title="Foundry memory store",
+        description="Persistent memory store for Foundry agents in a project.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: FoundrySelector = Field(
+        default_factory=lambda: FoundrySelector(query="true"),
+    )
