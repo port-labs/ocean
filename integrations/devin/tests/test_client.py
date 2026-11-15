@@ -37,7 +37,7 @@ def _last_kwargs(mock: AsyncMock) -> dict[str, Any]:
     return dict(mock.await_args.kwargs)
 
 
-async def test_requests_are_org_scoped_with_bearer_auth_and_retryable(
+async def test_requests_are_org_scoped_with_bearer_auth(
     client: DevinClient, request_mock: AsyncMock
 ) -> None:
     await client.send_api_request("GET", "/sessions/devin-1")
@@ -47,15 +47,7 @@ async def test_requests_are_org_scoped_with_bearer_auth_and_retryable(
         kwargs["url"] == "https://api.devin.ai/v3/organizations/org-1/sessions/devin-1"
     )
     assert kwargs["headers"]["Authorization"] == "Bearer cog_test"
-    assert kwargs["extensions"] == {"retryable": True}
-
-
-async def test_post_requests_are_not_retried(
-    client: DevinClient, request_mock: AsyncMock
-) -> None:
-    await client.send_api_request("POST", "/sessions", json_body={"prompt": "hi"})
-
-    assert _last_kwargs(request_mock)["extensions"] == {"retryable": False}
+    assert kwargs.get("extensions") in (None, {})
 
 
 async def test_absolute_paths_skip_the_org_prefix(
@@ -122,7 +114,7 @@ async def test_page_size_is_capped(client: DevinClient) -> None:
     send = AsyncMock(return_value={"items": []})
     client.send_api_request = send  # type: ignore[method-assign]
 
-    await client.fetch_page("/sessions", page_size=500)
+    await client._fetch_page("/sessions", page_size=500)
 
     assert _last_kwargs(send)["params"]["first"] == 200
 
@@ -146,7 +138,7 @@ async def test_paginate_yields_fetched_pages_then_raises(client: DevinClient) ->
 async def test_list_messages_after_walks_pages_and_returns_last_cursor(
     client: DevinClient,
 ) -> None:
-    client.fetch_page = AsyncMock(  # type: ignore[method-assign]
+    client._fetch_page = AsyncMock(  # type: ignore[method-assign]
         side_effect=[
             {
                 "items": [_message("e1")],
@@ -161,13 +153,13 @@ async def test_list_messages_after_walks_pages_and_returns_last_cursor(
 
     assert [m.event_id for m in messages] == ["e1", "e2"]
     assert cursor == "c2"
-    assert client.fetch_page.await_args_list[1].kwargs["after"] == "c1"
+    assert client._fetch_page.await_args_list[1].kwargs["after"] == "c1"
 
 
 async def test_list_messages_after_keeps_cursor_when_nothing_new(
     client: DevinClient,
 ) -> None:
-    client.fetch_page = AsyncMock(  # type: ignore[method-assign]
+    client._fetch_page = AsyncMock(  # type: ignore[method-assign]
         return_value={"items": [], "end_cursor": None, "has_next_page": False}
     )
 
@@ -178,19 +170,19 @@ async def test_list_messages_after_keeps_cursor_when_nothing_new(
 
 
 async def test_find_user_id_by_email(client: DevinClient) -> None:
-    fetch_page = AsyncMock(
+    fetch_one = AsyncMock(
         return_value={"items": [{"user_id": "user-7", "email": "a@b.c"}]}
     )
-    client.fetch_page = fetch_page  # type: ignore[method-assign]
+    client._fetch_page = fetch_one  # type: ignore[method-assign]
 
     assert await DevinSessions(client).find_user_id_by_email("a@b.c") == "user-7"
-    kwargs = _last_kwargs(fetch_page)
+    kwargs = _last_kwargs(fetch_one)
     assert kwargs["params"] == {"email": "a@b.c"}
     assert kwargs["absolute_path"] is True
 
 
 async def test_find_user_id_by_email_not_found(client: DevinClient) -> None:
-    client.fetch_page = AsyncMock(return_value={"items": []})  # type: ignore[method-assign]
+    client._fetch_page = AsyncMock(return_value={"items": []})  # type: ignore[method-assign]
 
     assert await DevinSessions(client).find_user_id_by_email("a@b.c") is None
 
@@ -200,7 +192,7 @@ def _message(event_id: str) -> dict[str, Any]:
 
 
 async def test_list_messages_after_skips_invalid_rows(client: DevinClient) -> None:
-    client.fetch_page = AsyncMock(  # type: ignore[method-assign]
+    client._fetch_page = AsyncMock(  # type: ignore[method-assign]
         return_value={
             "items": [_message("e1"), {"event_id": "bad"}, _message("e2")],
             "has_next_page": False,
