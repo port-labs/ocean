@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.25.9 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 6.25.8 (2026-11-15)
+
+
+### Features
+
+- Validate each itemsToParse item in the File Kind validation check
+
+
 ## 6.25.7 (2026-11-15)
 
 
