@@ -14,8 +14,8 @@ resources:
             macro: .macro
             accessType: .access_type
             createdBy: .created_by
-            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
-            updatedAt: .updated_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            createdAt: .created_at | todate
+            updatedAt: .updated_at | todate
   - kind: knowledge-note
     selector:
       query: 'true'
@@ -32,8 +32,8 @@ resources:
             pinnedRepo: .pinned_repo
             enabled: .is_enabled
             accessType: .access_type
-            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
-            updatedAt: .updated_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            createdAt: .created_at | todate
+            updatedAt: .updated_at | todate
   - kind: secret
     selector:
       query: 'true'
@@ -49,7 +49,7 @@ resources:
             accessType: .access_type
             sensitive: .is_sensitive
             createdBy: .created_by
-            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            createdAt: .created_at | todate
   - kind: session
     selector:
       query: 'true'
@@ -75,8 +75,8 @@ resources:
             onDemandUsage: .on_demand_usage
             devinMode: .devin_mode
             archived: .is_archived
-            createdAt: .created_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
-            updatedAt: .updated_at | if . > 1000000000000 then . / 1000 else . end | floor | todate
+            createdAt: .created_at | todate
+            updatedAt: .updated_at | todate
           relations:
             playbook: .playbook_id
             parentSession: .parent_session_id
