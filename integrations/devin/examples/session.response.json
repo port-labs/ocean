@@ -1,0 +1,19 @@
+{
+  "session_id": "devin-REDACTED-session-id",
+  "title": "Investigate flaky CI in service-auth",
+  "status": "running",
+  "status_detail": "waiting_for_user",
+  "url": "https://app.devin.ai/sessions/devin-REDACTED-session-id",
+  "origin": "api",
+  "category": "devin",
+  "tags": ["port:managed", "team:platform"],
+  "pull_requests": [{"pr_url": "https://github.com/org-REDACTED/repo/pull/1234"}],
+  "acus_consumed": 42,
+  "on_demand_usage": false,
+  "devin_mode": "standard",
+  "is_archived": false,
+  "created_at": 1762000000,
+  "updated_at": 1762003600,
+  "playbook_id": "playbook-REDACTED",
+  "parent_session_id": null
+}
