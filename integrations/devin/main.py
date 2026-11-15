@@ -17,7 +17,7 @@ from exporter_factory import (
     create_secrets_exporter,
     create_sessions_exporter,
 )
-from core.exporters.options import ListPlaybooksOptions
+from core.exporters.options import ListPlaybooksOptions, SessionsExportOptions
 from integration import ObjectKind, PlaybookResourceConfig, SessionResourceConfig
 
 
@@ -25,12 +25,13 @@ from integration import ObjectKind, PlaybookResourceConfig, SessionResourceConfi
 async def on_resync_sessions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SessionResourceConfig, event.resource_config).selector
     exporter = create_sessions_exporter()
-    async for page in exporter.get_paginated_resources(
-        include_archived=selector.include_archived,
-        created_after_days=selector.created_after_days,
-        origins=list(selector.origins) if selector.origins else None,
-        only_managed_by_port=selector.only_managed_by_port,
-    ):
+    options: SessionsExportOptions = {
+        "include_archived": selector.include_archived,
+        "created_after_days": selector.created_after_days,
+        "origins": list(selector.origins) if selector.origins else None,
+        "only_managed_by_port": selector.only_managed_by_port,
+    }
+    async for page in exporter.get_paginated_resources(options):
         if page:
             yield page
 
