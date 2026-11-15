@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added incremental sync for Datadog users, loading users created or modified since the last cursor from audit events
