@@ -64,7 +64,7 @@ class DevinSessions:
         messages: list[SessionMessage] = []
         cursor = after
         while True:
-            payload = await self.client.fetch_page(
+            payload = await self.client._fetch_page(
                 endpoints.session_messages(session_id), after=cursor
             )
             for item in payload.get("items") or []:
@@ -99,7 +99,7 @@ class DevinSessions:
         return require_session_response(data)
 
     async def find_user_id_by_email(self, email: str) -> str | None:
-        data = await self.client.fetch_page(
+        data = await self.client._fetch_page(
             endpoints.members_users_beta(self.client.org_id),
             params={"email": email},
             page_size=1,

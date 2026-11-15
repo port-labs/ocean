@@ -90,7 +90,7 @@ async def test_live_empty_session_page_stops_pagination(
 
 async def test_live_member_payload_exposes_user_id(client: DevinClient) -> None:
     payload = _load("member_lookup_by_email.json")["body"]
-    client.fetch_page = AsyncMock(return_value=payload)  # type: ignore[method-assign]
+    client._fetch_page = AsyncMock(return_value=payload)  # type: ignore[method-assign]
 
     user_id = await DevinSessions(client).find_user_id_by_email("user@example.com")
 
