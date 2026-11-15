@@ -28,21 +28,27 @@ ALL_STATUS_DETAILS = [
 
 def _expected(status: str, detail: str | None) -> tuple[TurnOutcome, bool]:
     """The documented mapping, written out independently of the implementation."""
-    if status in ("new", "claimed", "resuming"):
-        return IN_PROGRESS, False
-    if status == "running":
-        if detail in ("waiting_for_user", "finished"):
-            return SUCCEEDED, True
-        return IN_PROGRESS, False
-    if status == "exit":
-        return SUCCEEDED, False
-    if status == "error":
-        return FAILED, False
-    if status == "suspended":
-        if detail == "inactivity":
-            return SUCCEEDED, True
-        return FAILED, False
-    return IN_PROGRESS, False
+    match status:
+        case "new" | "claimed" | "resuming":
+            return IN_PROGRESS, False
+        case "running":
+            match detail:
+                case "waiting_for_user" | "finished":
+                    return SUCCEEDED, True
+                case _:
+                    return IN_PROGRESS, False
+        case "exit":
+            return SUCCEEDED, False
+        case "error":
+            return FAILED, False
+        case "suspended":
+            match detail:
+                case "inactivity":
+                    return SUCCEEDED, True
+                case _:
+                    return FAILED, False
+        case _:
+            return IN_PROGRESS, False
 
 
 @pytest.mark.parametrize(

@@ -12,9 +12,9 @@ from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError, SessionBusyError
 from actions.utils import (
     ensure_port_managed_session,
-    ensure_session_accepts_message,
     merge_config,
     resolve_user_id,
+    validate_session_active,
 )
 from core.tracking.run_output import started_output
 from core.tracking.tags import (
@@ -71,9 +71,7 @@ class SendMessageExecutor(AbstractDevinExecutor):
             ) from error
 
         ensure_port_managed_session(session)
-        ensure_session_accepts_message(
-            session.status, session.status_detail, session_id
-        )
+        validate_session_active(session.status, session.status_detail, session_id)
 
         if has_pending_tag(session.tags):
             raise SessionBusyError(
