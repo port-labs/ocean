@@ -1,0 +1,469 @@
+import asyncio
+from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, timezone
+from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+from jira.client import JiraClient
+from jira.comments import (
+    adf_to_plain_text,
+    attach_comments_to_issues,
+    fetch_all_comments_for_issue,
+    normalize_issue_comment,
+)
+from jira.overrides import JiraIssueConfig, JiraIssueSelector
+from kinds import Kinds
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortResourceConfig,
+)
+from webhook_processors.issue_comment_webhook_processor import (
+    IssueCommentWebhookProcessor,
+)
+
+ADF_BODY = {
+    "type": "doc",
+    "version": 1,
+    "content": [
+        {
+            "type": "paragraph",
+            "content": [{"type": "text", "text": "Please confirm the rollout window."}],
+        }
+    ],
+}
+
+COMMENT = {
+    "id": "10000",
+    "self": "https://example.atlassian.net/rest/api/3/issue/10001/comment/10000",
+    "body": ADF_BODY,
+    "author": {
+        "accountId": "712020:test-account-id",
+        "displayName": "Test User",
+        "emailAddress": "test.user@example.com",
+    },
+    "created": "2024-01-15T10:00:00.000+0000",
+    "updated": "2024-01-15T11:00:00.000+0000",
+}
+
+
+def _recent_updated() -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=1)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000+0000"
+    )
+
+
+def _old_updated(days: int = 60) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=days)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000+0000"
+    )
+
+
+def _issue_config(*, include_comments: bool = False) -> JiraIssueConfig:
+    return JiraIssueConfig(
+        kind="issue",
+        selector=JiraIssueSelector(
+            query="true",
+            includeComments=include_comments,
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".key",
+                    title=".fields.summary",
+                    blueprint='"jiraIssue"',
+                    properties={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> None:
+    try:
+        mock_ocean_app = MagicMock()
+        mock_ocean_app.config = MagicMock()
+        mock_ocean_app.config.oauth_access_token_file_path = None
+        initialize_port_ocean_context(mock_ocean_app)
+    except PortOceanContextAlreadyInitializedError:
+        pass
+
+
+@pytest.fixture
+def jira_client() -> JiraClient:
+    return JiraClient(
+        jira_url="https://example.atlassian.net",
+        jira_email="test@example.com",
+        jira_token="test_token",
+    )
+
+
+@pytest.fixture
+def comment_processor() -> IssueCommentWebhookProcessor:
+    return IssueCommentWebhookProcessor(event=MagicMock())
+
+
+def test_adf_to_plain_text_flattens_paragraphs() -> None:
+    assert adf_to_plain_text(ADF_BODY) == "Please confirm the rollout window.\n"
+    assert adf_to_plain_text("already plain") == "already plain"
+    assert adf_to_plain_text(None) == ""
+
+
+def test_adf_to_plain_text_keeps_mentions_breaks_and_attr_nodes() -> None:
+    body = {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "mention", "attrs": {"id": "abc", "text": "@Alice"}},
+                    {"type": "text", "text": " please review"},
+                    {"type": "hardBreak"},
+                    {"type": "emoji", "attrs": {"shortName": ":thumbsup:"}},
+                    {"type": "text", "text": " "},
+                    {"type": "date", "attrs": {"timestamp": "1700000000000"}},
+                    {"type": "text", "text": " "},
+                    {
+                        "type": "inlineCard",
+                        "attrs": {"url": "https://example.atlassian.net/browse/TEST-1"},
+                    },
+                    {"type": "text", "text": " "},
+                    {
+                        "type": "status",
+                        "attrs": {"text": "In Progress", "color": "blue"},
+                    },
+                ],
+            }
+        ],
+    }
+    assert adf_to_plain_text(body) == (
+        "@Alice please review\n"
+        ":thumbsup: 1700000000000 "
+        "https://example.atlassian.net/browse/TEST-1 "
+        "In Progress\n"
+    )
+
+
+def test_normalize_issue_comment_sets_shared_fields() -> None:
+    normalized = normalize_issue_comment(COMMENT, "TEST-1")
+    assert normalized["__commentId"] == "TEST-1/10000"
+    assert normalized["__body"] == "Please confirm the rollout window."
+    assert (
+        normalized["__url"]
+        == "https://example.atlassian.net/browse/TEST-1?focusedCommentId=10000"
+    )
+    assert normalized["id"] == "10000"
+    assert normalized["body"] == ADF_BODY
+    assert normalized["author"] == COMMENT["author"]
+    assert normalized["created"] == COMMENT["created"]
+    assert normalized["updated"] == COMMENT["updated"]
+    assert "__issueKey" not in normalized
+    assert "__author" not in normalized
+    assert "__createdAt" not in normalized
+    assert "__updatedAt" not in normalized
+    assert "__commentType" not in normalized
+
+
+def test_issue_selector_include_comments_defaults_false() -> None:
+    selector = JiraIssueSelector(query="true")
+    assert selector.include_comments is False
+
+
+@pytest.mark.asyncio
+async def test_flag_false_makes_no_comments_api_call(
+    comment_processor: IssueCommentWebhookProcessor,
+) -> None:
+    """includeComments defaults off: webhook must not call the comments API."""
+    payload = {
+        "webhookEvent": "comment_created",
+        "comment": COMMENT,
+        "issue": {
+            "id": "10001",
+            "key": "TEST-1",
+            "fields": {"updated": _recent_updated()},
+        },
+    }
+    # Default selector: includeComments=false
+    config = _issue_config()
+
+    with patch(
+        "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
+    ) as mock_get_client:
+        result = await comment_processor.handle_event(payload, config)
+
+    mock_get_client.assert_not_called()
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+    assert config.selector.include_comments is False
+
+
+async def _attach_with_one_comment(
+    jira_client: JiraClient, issues: list[dict[str, Any]]
+) -> MagicMock:
+    issue_key = str(issues[0]["key"])
+
+    async def _paginated_data(
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        assert extract_key == "comments"
+        assert issue_key in url
+        yield [COMMENT]
+
+    with patch.object(
+        jira_client, "_get_paginated_data", side_effect=_paginated_data
+    ) as mock_paginated:
+        await attach_comments_to_issues(jira_client, issues)
+    return mock_paginated
+
+
+@pytest.mark.asyncio
+async def test_attach_comments_fetches_at_most_ten_issues_at_once() -> None:
+    in_flight = 0
+    peak = 0
+    at_cap = asyncio.Event()
+    release = asyncio.Event()
+
+    class _Client:
+        api_url = "https://example.atlassian.net/rest/api/3"
+
+        def _get_paginated_data(
+            self,
+            _url: str,
+            extract_key: str | None = None,
+            initial_params: dict[str, Any] | None = None,
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            async def _pages() -> AsyncGenerator[list[dict[str, Any]], None]:
+                nonlocal in_flight, peak
+                in_flight += 1
+                peak = max(peak, in_flight)
+                if peak == 10:
+                    at_cap.set()
+                await release.wait()
+                in_flight -= 1
+                yield []
+
+            return _pages()
+
+    issues = [{"key": f"TEST-{index}"} for index in range(12)]
+    task = asyncio.create_task(
+        attach_comments_to_issues(cast(JiraClient, _Client()), issues)
+    )
+    await asyncio.wait_for(at_cap.wait(), timeout=1)
+    assert peak == 10
+    release.set()
+    await task
+    assert peak == 10
+    assert all("__comments" in issue for issue in issues)
+
+
+@pytest.mark.asyncio
+async def test_missing_updated_still_loads_comments(jira_client: JiraClient) -> None:
+    issues: list[dict[str, Any]] = [
+        {"key": "TEST-1", "fields": {"summary": "No updated"}}
+    ]
+    await _attach_with_one_comment(jira_client, issues)
+
+    assert issues[0]["__comments"][0]["__commentId"] == "TEST-1/10000"
+
+
+@pytest.mark.asyncio
+async def test_unparseable_updated_still_loads_comments(
+    jira_client: JiraClient,
+) -> None:
+    issues: list[dict[str, Any]] = [
+        {
+            "key": "TEST-1",
+            "fields": {"updated": "not-a-date", "summary": "Bad date"},
+        }
+    ]
+    await _attach_with_one_comment(jira_client, issues)
+
+    assert issues[0]["__comments"][0]["__body"] == "Please confirm the rollout window."
+
+
+@pytest.mark.asyncio
+async def test_old_updated_still_loads_comments(jira_client: JiraClient) -> None:
+    issues: list[dict[str, Any]] = [
+        {
+            "key": "TEST-OLD",
+            "fields": {"updated": _old_updated(60), "summary": "Old"},
+        }
+    ]
+    await _attach_with_one_comment(jira_client, issues)
+
+    assert issues[0]["__comments"][0]["__commentId"] == "TEST-OLD/10000"
+
+
+@pytest.mark.asyncio
+async def test_recent_issue_attaches_all_comments_with_adf_flattened(
+    jira_client: JiraClient,
+) -> None:
+    issues: list[dict[str, Any]] = [
+        {
+            "key": "TEST-1",
+            "fields": {"updated": _recent_updated(), "summary": "Recent"},
+        }
+    ]
+
+    async def _paginated_data(
+        url: str,
+        extract_key: str | None = None,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        assert extract_key == "comments"
+        assert "TEST-1" in url
+        yield [COMMENT, {**COMMENT, "id": "10001"}]
+
+    with patch.object(jira_client, "_get_paginated_data", side_effect=_paginated_data):
+        await attach_comments_to_issues(jira_client, issues)
+    comments = issues[0]["__comments"]
+    assert len(comments) == 2
+    assert comments[0]["__body"] == "Please confirm the rollout window."
+    assert comments[0]["body"] == ADF_BODY
+    assert comments[1]["__commentId"] == "TEST-1/10001"
+
+
+@pytest.mark.asyncio
+async def test_fetch_all_comments_for_issue(jira_client: JiraClient) -> None:
+    with patch.object(
+        jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "startAt": 0,
+            "maxResults": 50,
+            "total": 1,
+            "comments": [COMMENT],
+        }
+        comments = await fetch_all_comments_for_issue(jira_client, "TEST-1")
+
+    assert comments[0]["__commentId"] == "TEST-1/10000"
+    assert mock_request.await_args is not None
+    assert mock_request.await_args.args[1].endswith("/issue/TEST-1/comment")
+
+
+def _issue_pages(
+    issue: dict[str, Any],
+) -> Any:
+    async def pages(
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        assert params.get("includeComments") is True
+        yield [issue]
+
+    return pages
+
+
+@pytest.mark.asyncio
+async def test_comment_webhook_returns_issue_kind_with_comments_when_enabled(
+    comment_processor: IssueCommentWebhookProcessor,
+) -> None:
+    recent = _recent_updated()
+    payload: dict[str, Any] = {
+        "webhookEvent": "comment_created",
+        "comment": COMMENT,
+        "issue": {
+            "id": "10001",
+            "key": "TEST-1",
+            "fields": {"updated": recent, "summary": "Recent"},
+        },
+    }
+    config = _issue_config(include_comments=True)
+    issue: dict[str, Any] = {
+        **payload["issue"],
+        "__comments": [normalize_issue_comment(COMMENT, "TEST-1")],
+    }
+
+    assert await comment_processor.should_process_event(MagicMock(payload=payload))
+    assert await comment_processor.get_matching_kinds(MagicMock()) == [Kinds.ISSUE]
+
+    with patch(
+        "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
+    ) as mock_get_client:
+        client = MagicMock()
+        client.get_paginated_issues = MagicMock(side_effect=_issue_pages(issue))
+        mock_get_client.return_value = client
+        result = await comment_processor.handle_event(payload, config)
+
+    assert len(result.updated_raw_results) == 1
+    updated = result.updated_raw_results[0]
+    assert updated["key"] == "TEST-1"
+    comments = updated["__comments"]
+    assert comments[0]["__commentId"] == "TEST-1/10000"
+    assert result.deleted_raw_results == []
+    client.get_paginated_issues.assert_called_once()
+    called_params = client.get_paginated_issues.call_args.args[0]
+    assert called_params["jql"].endswith("AND key = TEST-1")
+    assert called_params["includeComments"] is True
+
+
+@pytest.mark.asyncio
+async def test_comment_webhook_noop_when_include_comments_false(
+    comment_processor: IssueCommentWebhookProcessor,
+) -> None:
+    payload = {
+        "webhookEvent": "comment_created",
+        "comment": COMMENT,
+        "issue": {
+            "id": "10001",
+            "key": "TEST-1",
+            "fields": {"updated": _recent_updated()},
+        },
+    }
+    config = _issue_config(include_comments=False)
+
+    with patch(
+        "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
+    ) as mock_get_client:
+        result = await comment_processor.handle_event(payload, config)
+
+    mock_get_client.assert_not_called()
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_comment_webhook_deleted_still_returns_issue_with_refreshed_comments(
+    comment_processor: IssueCommentWebhookProcessor,
+) -> None:
+    payload: dict[str, Any] = {
+        "webhookEvent": "comment_deleted",
+        "comment": {"id": "10000"},
+        "issue": {
+            "id": "10001",
+            "key": "TEST-1",
+            "fields": {"updated": _recent_updated()},
+        },
+    }
+    config = _issue_config(include_comments=True)
+    issue: dict[str, Any] = {**payload["issue"], "__comments": []}
+
+    with patch(
+        "webhook_processors.issue_comment_webhook_processor.get_or_create_jira_client"
+    ) as mock_get_client:
+        client = MagicMock()
+        client.get_paginated_issues = MagicMock(side_effect=_issue_pages(issue))
+        mock_get_client.return_value = client
+        result = await comment_processor.handle_event(payload, config)
+
+    assert result.deleted_raw_results == []
+    assert result.updated_raw_results[0]["__comments"] == []
+
+
+@pytest.mark.asyncio
+async def test_comment_webhook_rejects_payload_without_issue_key(
+    comment_processor: IssueCommentWebhookProcessor,
+) -> None:
+    assert (
+        await comment_processor.validate_payload(
+            {"webhookEvent": "comment_created", "comment": COMMENT}
+        )
+        is False
+    )
