@@ -5,6 +5,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients import endpoints
 from core.exporters.abstract_exporter import AbstractDevinExporter
+from core.exporters.options import SessionsExportOptions
 from core.tracking.tags import MANAGED_TAG
 
 SECONDS_PER_DAY = 24 * 60 * 60
@@ -33,18 +34,13 @@ def build_sessions_query(
 
 class SessionsExporter(AbstractDevinExporter):
     async def get_paginated_resources(  # type: ignore[override]
-        self,
-        *,
-        include_archived: bool = False,
-        created_after_days: int | None = 30,
-        origins: list[str] | None = None,
-        only_managed_by_port: bool = False,
+        self, options: SessionsExportOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params = build_sessions_query(
-            include_archived=include_archived,
-            created_after_days=created_after_days,
-            origins=origins,
-            only_managed_by_port=only_managed_by_port,
+            include_archived=options["include_archived"],
+            created_after_days=options["created_after_days"],
+            origins=options["origins"],
+            only_managed_by_port=options["only_managed_by_port"],
         )
         async for page in self.client.paginate(endpoints.SESSIONS, params=params):
             yield page
