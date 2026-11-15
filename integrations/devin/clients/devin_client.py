@@ -8,6 +8,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 from clients.exceptions import DevinPaginationError
+from utils.http import drop_none
 
 DEFAULT_PAGE_SIZE = 100
 MAX_PAGE_SIZE = 200
@@ -64,17 +65,16 @@ class DevinClient:
             method=method,
             url=url,
             headers=self._headers,
-            params=_drop_none(params),
+            params=drop_none(params),
             json=json_body,
             timeout=self._request_timeout_seconds,
-            extensions={"retryable": method != "POST"},
         )
         response.raise_for_status()
         if not response.content:
             return {}
         return response.json()
 
-    async def fetch_page(
+    async def _fetch_page(
         self,
         path: str,
         params: dict[str, Any] | None = None,
@@ -110,7 +110,9 @@ class DevinClient:
         failed = False
         while True:
             try:
-                payload = await self.fetch_page(path, params, after, page_size)
+                payload = await self._fetch_page(
+                    path, params, after=after, page_size=page_size
+                )
             except httpx.HTTPError as exc:
                 failed = True
                 logger.error(
@@ -133,10 +135,3 @@ class DevinClient:
                 f"Devin pagination {path}: stopped early after {page_count} page(s) "
                 "due to a request failure"
             )
-
-
-def _drop_none(params: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Omit unset filters; list values are sent as repeated query keys by httpx."""
-    if params is None:
-        return None
-    return {key: value for key, value in params.items() if value is not None}
