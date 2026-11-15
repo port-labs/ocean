@@ -42,21 +42,25 @@ def ensure_port_managed_session(session: SessionResponse) -> None:
         )
 
 
-def ensure_session_accepts_message(
+def validate_session_active(
     status: str, status_detail: str | None, session_id: str
 ) -> None:
-    if status == "exit":
-        raise InvalidActionParametersException(
-            f"Session {session_id} has already ended"
-        )
-    if status == "error":
-        raise InvalidActionParametersException(
-            f"Session {session_id} is in an error state"
-        )
-    if status == "suspended" and status_detail == "user_request":
-        raise InvalidActionParametersException(
-            f"Session {session_id} was stopped and cannot accept messages"
-        )
+    """Reject ``send_message`` when the session is ended, failed, or user-stopped."""
+    match (status, status_detail):
+        case ("exit", _):
+            raise InvalidActionParametersException(
+                f"Session {session_id} has already ended"
+            )
+        case ("error", _):
+            raise InvalidActionParametersException(
+                f"Session {session_id} is in an error state"
+            )
+        case ("suspended", "user_request"):
+            raise InvalidActionParametersException(
+                f"Session {session_id} was stopped and cannot accept messages"
+            )
+        case _:
+            return
 
 
 async def resolve_user_id(sessions: DevinSessions, email: str | None) -> str | None:
