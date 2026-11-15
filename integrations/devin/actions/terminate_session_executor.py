@@ -8,7 +8,6 @@ from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
 from actions.utils import ensure_port_managed_session
-from clients.models import SessionResponse
 from core.tracking.tags import parse_external_id, strip_tracking_tags
 from integration import ObjectKind
 
@@ -52,13 +51,13 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
             current = await self.sessions.get(session_id)
             ensure_port_managed_session(current)
             tags = current.tags
+            await self._release_waiting_run(session_id, tags, run)
             session = await self.sessions.terminate(session_id, inputs.archive)
         except httpx.HTTPError as error:
             raise DevinApiError.from_http_error(
                 error, f"Failed to terminate Devin session {session_id}"
             ) from error
 
-        await self._fail_waiting_run(session, tags, run)
         await self.register_entity(ObjectKind.SESSION, session.raw(), run)
         await ocean.port_client.report_run_completed(
             run,
@@ -67,8 +66,8 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
             status_label=SESSION_TERMINATED_STATUS_LABEL,
         )
 
-    async def _fail_waiting_run(
-        self, session: SessionResponse, tags: list[str], run: IntegrationRun
+    async def _release_waiting_run(
+        self, session_id: str, tags: list[str], run: IntegrationRun
     ) -> None:
         external_id = parse_external_id(tags)
         if external_id is None:
@@ -80,16 +79,16 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
             await ocean.port_client.report_run_completed(
                 waiting_run,
                 False,
-                f"Devin session {session.session_id} was terminated by run {run.id}",
+                f"Devin session {session_id} was terminated by run {run.id}",
                 status_label=TERMINATED_STATUS_LABEL,
             )
         try:
             await self.sessions.replace_tags(
-                session.session_id,
+                session_id,
                 strip_tracking_tags(tags, ocean.config.integration.identifier),
             )
         except httpx.HTTPError as error:
             logger.warning(
                 f"Failed to remove tracking tags from Devin session "
-                f"{session.session_id}: {error}"
+                f"{session_id}: {error}"
             )
