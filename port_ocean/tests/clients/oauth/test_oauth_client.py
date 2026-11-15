@@ -61,6 +61,24 @@ def test_oauth_client_disabled_initialization(
     assert disabled_oauth_client.is_oauth_enabled() is False
 
 
+@patch("port_ocean.clients.auth.oauth_client.register_on_retry_callback")
+def test_oauth_client_registers_retry_callback_when_enabled(
+    mock_register_on_retry: MagicMock,
+) -> None:
+    MockOAuthClient(is_oauth_enabled_value=True)
+
+    mock_register_on_retry.assert_called_once()
+
+
+@patch("port_ocean.clients.auth.oauth_client.register_on_retry_callback")
+def test_oauth_client_skips_retry_callback_when_disabled(
+    mock_register_on_retry: MagicMock,
+) -> None:
+    MockOAuthClient(is_oauth_enabled_value=False)
+
+    mock_register_on_retry.assert_not_called()
+
+
 def test_refresh_request_auth_creds(mock_oauth_client: MockOAuthClient) -> None:
     # Create request with some content and existing headers
     original_headers = {"Accept": "application/json", "X-Custom": "value"}
