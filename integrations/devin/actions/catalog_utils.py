@@ -1,16 +1,14 @@
 from typing import Any
 
 from loguru import logger
-from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
 
 async def upsert_raw(kind: str, raw: dict[str, Any]) -> None:
-    """Register one raw object in the catalog with a machine HTTP event context."""
+    """Register one raw object in the catalog."""
     await ocean.integration.port_app_config_handler.get_port_app_config(use_cache=False)
-    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-        await ocean.register_raw(kind, [raw])
+    await ocean.register_raw(kind, [raw])
 
 
 async def upsert_raw_best_effort(
