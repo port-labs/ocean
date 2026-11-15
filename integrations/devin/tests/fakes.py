@@ -55,6 +55,7 @@ class FakeDevin(DevinSessions):
         self.list_message_calls: list[tuple[str, str | None]] = []
         self.last_create_body: dict[str, Any] = {}
         self.last_message_body: dict[str, Any] = {}
+        self.session_op_order: list[str] = []
         self._next_id = 0
 
     def add_session(
@@ -158,6 +159,7 @@ class FakeDevin(DevinSessions):
         return list(current)
 
     async def replace_tags(self, session_id: str, tags: list[str]) -> list[str]:
+        self.session_op_order.append("replace_tags")
         if self.fail_replace_tags:
             self.fail_replace_tags -= 1
             raise http_error(500)
@@ -165,6 +167,7 @@ class FakeDevin(DevinSessions):
         return list(tags)
 
     async def terminate(self, session_id: str, archive: bool) -> SessionResponse:
+        self.session_op_order.append("terminate")
         self.set_status(session_id, "exit", None, self.clock)
         self.sessions[session_id]["is_archived"] = archive
         return self._response(session_id)
