@@ -77,17 +77,21 @@ def test_arm_remaining_floor() -> None:
 
 
 @pytest.mark.asyncio
-async def test_agent_executor_skips_shared_rate_limit_deferral() -> None:
+async def test_agent_executor_ignores_soft_headroom_honors_hard_429() -> None:
     class _Stub(FoundryAgentExecutor):
         async def execute(self, run):  # type: ignore[no-untyped-def]
             return None
 
     executor = _Stub()
     executor.client = MagicMock()
-    executor.client.rate_limiter.is_close_to_rate_limit.return_value = True
+    executor.client.rate_limiter.hard_block_seconds.return_value = 0.0
     run = MagicMock()
     assert await executor.is_close_to_rate_limit(run) is False
     assert await executor.get_remaining_seconds_until_rate_limit(run) == 0.0
+
+    executor.client.rate_limiter.hard_block_seconds.return_value = 3.5
+    assert await executor.is_close_to_rate_limit(run) is True
+    assert await executor.get_remaining_seconds_until_rate_limit(run) == 3.5
 
 
 @pytest.mark.asyncio
@@ -99,9 +103,8 @@ async def test_arm_executor_includes_arm_quota() -> None:
     executor = _Stub()
     executor.client = MagicMock()
     executor.arm_deployments = MagicMock()
-    executor.client.rate_limiter.is_close_to_rate_limit.return_value = False
+    executor.client.rate_limiter.hard_block_seconds.return_value = 0.0
     executor.arm_deployments.rate_limiter.is_close_to_rate_limit.return_value = True
-    executor.client.rate_limiter.seconds_until_rate_limit_reset.return_value = 0.0
     executor.arm_deployments.rate_limiter.seconds_until_rate_limit_reset.return_value = (
         12.0
     )
@@ -109,6 +112,23 @@ async def test_arm_executor_includes_arm_quota() -> None:
     run = MagicMock()
     assert await executor.is_close_to_rate_limit(run) is True
     assert await executor.get_remaining_seconds_until_rate_limit(run) == 12.0
+
+
+def test_hard_block_seconds_from_429() -> None:
+    limiter = FoundryRateLimiter()
+    limiter.observe(_response(status_code=429, headers={"retry-after-ms": "4000"}))
+    assert 3.0 <= limiter.hard_block_seconds() <= 4.0
+    limiter.observe(
+        _response(
+            headers={
+                "x-ratelimit-limit-requests": "100",
+                "x-ratelimit-remaining-requests": "5",
+                "x-ratelimit-reset-requests": "20",
+            }
+        )
+    )
+    assert limiter.hard_block_seconds() == 0.0
+    assert limiter.is_close_to_rate_limit() is True
 
 
 def test_parse_duration_suffixes() -> None:

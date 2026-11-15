@@ -73,6 +73,10 @@ class FoundryHttpClient:
             self._credential = None
 
     @staticmethod
+    def build_url(project_endpoint: str, path: str) -> str:
+        return build_foundry_url(project_endpoint, path)
+
+    @staticmethod
     def uses_openai_compatible_routes(endpoint: str) -> bool:
         """Project ``openai/v1/*`` routes use path versioning, not ``api-version`` query."""
         return "/openai/v1/" in endpoint

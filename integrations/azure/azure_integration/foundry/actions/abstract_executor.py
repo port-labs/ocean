@@ -79,31 +79,32 @@ class AbstractFoundryExecutor(AbstractExecutor):
 
 
 class FoundryAgentExecutor(AbstractFoundryExecutor):
-    """Agent CRUD uses the shared Foundry client; skip sync-driven deferral.
+    """Agent CRUD on shared Foundry client: defer only on real 429 hard blocks.
 
-    Resync shares one client-level rate limiter. User-initiated agent actions
-    should run immediately and rely on per-request retries instead.
+    Soft headroom from resync ``x-ratelimit-*`` must not stall user actions.
+    Per-request retries still honor ``retry-after-ms``.
     """
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        return False
+        return self.client.rate_limiter.hard_block_seconds() > 0
 
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun
     ) -> float:
-        return 0.0
+        return self.client.rate_limiter.hard_block_seconds()
 
 
 class ArmDeploymentExecutor(AbstractFoundryExecutor):
-    """Deploy and delete model deployments go through Azure Resource Manager."""
+    """Deploy/delete use ARM; defer on ARM remaining headers (and Foundry 429)."""
 
     def __init__(self) -> None:
         super().__init__()
         self.arm_deployments: ArmDeploymentsClient = create_arm_deployments_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
+        # ponytail: ignore Foundry soft headroom; ARM writes ≠ data-plane RPM pools
         return (
-            await super().is_close_to_rate_limit(run)
+            self.client.rate_limiter.hard_block_seconds() > 0
             or self.arm_deployments.rate_limiter.is_close_to_rate_limit()
         )
 
@@ -111,6 +112,6 @@ class ArmDeploymentExecutor(AbstractFoundryExecutor):
         self, run: IntegrationRun
     ) -> float:
         return max(
-            await super().get_remaining_seconds_until_rate_limit(run),
+            self.client.rate_limiter.hard_block_seconds(),
             self.arm_deployments.rate_limiter.seconds_until_rate_limit_reset(),
         )

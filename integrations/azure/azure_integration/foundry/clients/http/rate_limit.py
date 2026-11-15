@@ -109,7 +109,14 @@ def _retry_after_seconds(headers: httpx.Headers) -> float:
 
 
 class FoundryRateLimiter:
-    """Tracks Foundry and ARM rate-limit headers so actions can defer new runs."""
+    """Best-effort deferral from response headers only.
+
+    Data-plane Foundry GETs (agents / deployments / conversations / responses)
+    do not expose remaining RPM until a call returns ``x-ratelimit-*`` or 429.
+    Cognitive Services Usages / ModelCapacities are subscription TPM capacity
+    ledgers for deployments — not runtime RPM for those catalog APIs — so we
+    do not probe them. Empty state = allow; retries still honor ``retry-after-ms``.
+    """
 
     def __init__(self) -> None:
         self._foundry_quotas: list[_Quota] = []
@@ -126,6 +133,10 @@ class FoundryRateLimiter:
         self._hard_block_until = 0.0
         self._update_foundry_quotas(response.headers)
         self._update_arm_block(response.headers)
+
+    def hard_block_seconds(self) -> float:
+        """Seconds left on a real 429; ignores soft headroom from prior responses."""
+        return max(0.0, self._hard_block_until - time.time())
 
     def is_close_to_rate_limit(self) -> bool:
         return self.seconds_until_rate_limit_reset() > 0
