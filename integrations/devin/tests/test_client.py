@@ -197,3 +197,16 @@ async def test_find_user_id_by_email_not_found(client: DevinClient) -> None:
 
 def _message(event_id: str) -> dict[str, Any]:
     return {"event_id": event_id, "source": "devin", "message": "hi", "created_at": 1}
+
+
+async def test_list_messages_after_skips_invalid_rows(client: DevinClient) -> None:
+    client.fetch_page = AsyncMock(  # type: ignore[method-assign]
+        return_value={
+            "items": [_message("e1"), {"event_id": "bad"}, _message("e2")],
+            "has_next_page": False,
+        }
+    )
+
+    messages, _ = await DevinSessions(client).list_messages_after("devin-1", None)
+
+    assert [m.event_id for m in messages] == ["e1", "e2"]
