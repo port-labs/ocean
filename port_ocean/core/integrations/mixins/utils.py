@@ -237,7 +237,7 @@ async def post_raw_to_lakehouse_and_should_skip_ocean_core(
 
     if dsp_enabled and lakehouse_enabled:
         action = "upsert" if operation == LakehouseOperation.UPSERT else "delete"
-        logger.info(
+        logger.debug(
             f"DSP mode active: skipping Ocean-core {action} for "
             f"{operation.value} kind '{kind}' ({len(results)} raw items)"
         )
