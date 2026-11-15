@@ -38,41 +38,49 @@ class TurnState:
 
 
 def classify(status: str, status_detail: str | None) -> TurnState:
-    if status in ("new", "claimed"):
-        return TurnState(TurnOutcome.IN_PROGRESS, "Starting")
-    if status == "resuming":
-        return TurnState(TurnOutcome.IN_PROGRESS, "Resuming")
-    if status == "running":
-        return _classify_running(status_detail)
-    if status == "exit":
-        return TurnState(TurnOutcome.SUCCEEDED, "Session ended")
-    if status == "error":
-        return TurnState(TurnOutcome.FAILED, "Session failed")
-    if status == "suspended":
-        return _classify_suspended(status_detail)
-    return TurnState(TurnOutcome.IN_PROGRESS, "Unknown status")
+    match status:
+        case "new" | "claimed":
+            return TurnState(TurnOutcome.IN_PROGRESS, "Starting")
+        case "resuming":
+            return TurnState(TurnOutcome.IN_PROGRESS, "Resuming")
+        case "running":
+            return _classify_running(status_detail)
+        case "exit":
+            return TurnState(TurnOutcome.SUCCEEDED, "Session ended")
+        case "error":
+            return TurnState(TurnOutcome.FAILED, "Session failed")
+        case "suspended":
+            return _classify_suspended(status_detail)
+        case _:
+            return TurnState(TurnOutcome.IN_PROGRESS, "Unknown status")
 
 
 def _classify_running(status_detail: str | None) -> TurnState:
-    if status_detail == "waiting_for_user":
-        return TurnState(TurnOutcome.SUCCEEDED, "Awaiting input", requires_reply=True)
-    if status_detail == "finished":
-        return TurnState(TurnOutcome.SUCCEEDED, "Finished", requires_reply=True)
-    if status_detail == "waiting_for_approval":
-        return TurnState(TurnOutcome.IN_PROGRESS, "Awaiting approval")
-    return TurnState(TurnOutcome.IN_PROGRESS, "Devin working")
+    match status_detail:
+        case "waiting_for_user":
+            return TurnState(
+                TurnOutcome.SUCCEEDED, "Awaiting input", requires_reply=True
+            )
+        case "finished":
+            return TurnState(TurnOutcome.SUCCEEDED, "Finished", requires_reply=True)
+        case "waiting_for_approval":
+            return TurnState(TurnOutcome.IN_PROGRESS, "Awaiting approval")
+        case _:
+            return TurnState(TurnOutcome.IN_PROGRESS, "Devin working")
 
 
 def _classify_suspended(status_detail: str | None) -> TurnState:
-    if status_detail == "inactivity":
-        return TurnState(TurnOutcome.SUCCEEDED, "Session idle", requires_reply=True)
-    if status_detail == "user_request":
-        return TurnState(TurnOutcome.FAILED, "User stopped")
-    if status_detail in LIMIT_STATUS_DETAILS:
-        return TurnState(TurnOutcome.FAILED, "Usage limit")
-    if status_detail == "error":
-        return TurnState(TurnOutcome.FAILED, "Session failed")
-    return TurnState(TurnOutcome.FAILED, "Suspended")
+    match status_detail:
+        case "inactivity":
+            return TurnState(TurnOutcome.SUCCEEDED, "Session idle", requires_reply=True)
+        case "user_request":
+            return TurnState(TurnOutcome.FAILED, "User stopped")
+        case detail if detail in LIMIT_STATUS_DETAILS:
+            return TurnState(TurnOutcome.FAILED, "Usage limit")
+        case "error":
+            return TurnState(TurnOutcome.FAILED, "Session failed")
+        case _:
+            return TurnState(TurnOutcome.FAILED, "Suspended")
 
 
 def turn_has_ended(
