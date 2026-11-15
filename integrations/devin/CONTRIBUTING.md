@@ -19,8 +19,7 @@ Actions (and therefore session tracking) only run when `OCEAN__ACTIONS_PROCESSOR
 Create an organization service user in Devin and grant it:
 
 - `ViewOrgSessions` and `ManageOrgSessions` (resync, actions, tracking).
-- `ImpersonateOrgSessions`, only when `createAsUserEmail` / `messageAsUserEmail` are used.
-- `ViewOrgMembership`, to resolve those emails to Devin users (`/v3beta1/.../members/users`).
+- `ImpersonateOrgSessions`, only when `createAsUserId` / `messageAsUserId` are set (impersonation uses the Devin user ID directly; there is no email lookup).
 - Read access to playbooks, knowledge and secrets for their resyncs.
 
 ## Session tracking
