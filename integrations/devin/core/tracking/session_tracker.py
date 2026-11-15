@@ -24,7 +24,7 @@ from port_ocean.utils.repeat import repeat_every
 
 from clients.client_factory import create_devin_client
 from clients.models import SessionMessage, SessionResponse
-from core.catalog import upsert_raw_best_effort
+from actions.catalog_utils import upsert_raw_best_effort
 from core.sessions import DevinSessions
 from core.tracking.run_output import (
     completion_output,

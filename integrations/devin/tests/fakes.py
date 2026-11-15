@@ -31,7 +31,7 @@ OCEAN_MODULES = (
     "actions.send_message_executor.ocean",
     "actions.terminate_session_executor.ocean",
     "actions.archive_session_executor.ocean",
-    "core.catalog.ocean",
+    "actions.catalog_utils.ocean",
     "core.tracking.session_tracker.ocean",
 )
 
@@ -300,12 +300,6 @@ def patched_ocean(port: FakePort) -> Iterator[MagicMock]:
     mock_ocean.register_raw = AsyncMock()
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     patches = [patch(module, mock_ocean) for module in OCEAN_MODULES]
-    patches.append(
-        patch(
-            "core.catalog.event_context",
-            MagicMock(side_effect=_noop_event_context),
-        )
-    )
     for p in patches:
         p.start()
     try:
@@ -313,15 +307,3 @@ def patched_ocean(port: FakePort) -> Iterator[MagicMock]:
     finally:
         for p in patches:
             p.stop()
-
-
-class _NoopContext:
-    async def __aenter__(self) -> None:
-        return None
-
-    async def __aexit__(self, *args: Any) -> None:
-        return None
-
-
-def _noop_event_context(*args: Any, **kwargs: Any) -> _NoopContext:
-    return _NoopContext()

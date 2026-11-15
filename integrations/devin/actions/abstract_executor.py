@@ -7,7 +7,7 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.models import IntegrationRun
 
 from clients.client_factory import create_devin_client
-from core.catalog import upsert_raw_best_effort
+from actions.catalog_utils import upsert_raw_best_effort
 from core.sessions import DevinSessions
 
 
