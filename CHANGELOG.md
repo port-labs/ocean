@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.61.2 (2026-11-15)
+
+
+### Improvements
+
+- Remove the unused AWS_V3_CUSTOM_KINDS_ENABLED value from IntegrationFeatureFlag.
+
+
 ## 0.61.1 (2026-11-12)
 
 
