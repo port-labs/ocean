@@ -13,6 +13,13 @@ CHANGED_USERS_AUDIT_QUERY = (
 # they don't change the user itself.
 ROLES_API_PATH_PREFIX = "/api/v2/roles"
 
+# https://docs.datadoghq.com/account_management/audit_trail/events/#internal-developer-portal
+# Deletes are excluded: the full resync reconciles removed services.
+CHANGED_SERVICES_AUDIT_QUERY = (
+    '@evt.name:"Internal Developer Portal" @asset.type:idp_entity '
+    r"@action:(created OR modified) @asset.id:service\:*"
+)
+
 
 def audit_events_search_body(query: str, cursor: datetime) -> dict[str, Any]:
     """Build an audit events search body for events matching *query* since *cursor*.
@@ -35,3 +42,16 @@ def changed_user_id(event: dict[str, Any]) -> str | None:
     if path.startswith(ROLES_API_PATH_PREFIX):
         return None
     return attributes.get("asset", {}).get("id")
+
+
+def audit_event_asset_id(event: dict[str, Any]) -> str | None:
+    """Return the ID of the asset an audit event is about."""
+    return event.get("attributes", {}).get("attributes", {}).get("asset", {}).get("id")
+
+
+def service_name_from_ref(ref: str) -> str | None:
+    """Return the service name in a catalog entity reference
+    (``service:<namespace>/<name>``), or None for other entity kinds."""
+    if not ref.startswith("service:"):
+        return None
+    return ref.partition("/")[2] or None

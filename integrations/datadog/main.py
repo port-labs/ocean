@@ -180,6 +180,18 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield services
 
 
+@ocean.on_incremental_resync(ObjectKind.SERVICE)
+async def on_incremental_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    cursor = cast(datetime, active_incremental_cursor())
+    async for services in _resync_across_orgs(
+        lambda client: ServiceExporter(client).get_changed_services(
+            incremental_cursor=cursor
+        ),
+        context="Service exporter",
+    ):
+        yield services
+
+
 @ocean.on_resync(ObjectKind.CATALOG_ENTITY)
 async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListCatalogEntityOptions.from_resource_config(

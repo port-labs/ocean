@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
@@ -6,6 +7,7 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
+from datadog.incremental import audit_event_asset_id, audit_events_search_body
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -164,6 +166,21 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             cursor = result.get("meta", {}).get("page", {}).get("after")
             if not cursor:
                 break
+
+    async def _changed_asset_ids(self, query: str, since: datetime) -> list[str]:
+        """Return the IDs of the assets that audit events matching *query* since
+        *since* are about, deduplicated in order.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        url = f"{self.client.api_url}/api/v2/audit/events/search"
+        asset_ids: dict[str, None] = {}
+        async for events in self._paginate_by_search_cursor(
+            url, audit_events_search_body(query, since)
+        ):
+            for event in events:
+                if asset_id := audit_event_asset_id(event):
+                    asset_ids[asset_id] = None
+        return list(asset_ids)
 
 
 class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
