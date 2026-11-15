@@ -224,6 +224,8 @@ jobs:
     needs: [test, test-integrations]
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.test.result == 'success' && (needs.test-integrations.result == 'success' || needs.test-integrations.result == 'skipped') }}
+    env:
+      SAME_REPO: ${{ github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v7
@@ -281,24 +283,29 @@ jobs:
           stmts=$(jq '.totals.percent_covered | . * 100 | round | . / 100' coverage.json)
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
-      - name: Comment PR with code coverage summary
+      - name: Report code coverage summary
         if: ${{ steps.pr-number.outputs.PR_NUMBER != 0 }}
         uses: actions/github-script@v9
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+          SAME_REPO: ${{ env.SAME_REPO }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `#### Code Coverage Artifact 📈: ${{ env.CODE_COVERAGE_ARTIFACT_URL }}
             #### Code Coverage Total Percentage: \`${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}%\``;
 
-            github.rest.issues.createComment({
-              issue_number: ${{ env.PR_NUMBER }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
+            if (process.env.SAME_REPO === 'true') {
+              await github.rest.issues.createComment({
+                issue_number: ${{ env.PR_NUMBER }},
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            } else {
+              core.info(output);
+            }
 
       - name: Get current repo coverage percentage from Port
         uses: port-labs/port-github-action@v1
@@ -318,24 +325,29 @@ jobs:
         run: |
           echo "CURRENT_COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent')" >> $GITHUB_OUTPUT
 
-      - name: Comment if Coverage Regression
+      - name: Report on coverage regression
         if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
         uses: actions/github-script@v9
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
           CURRENT_COVERAGE: ${{ steps.set-current-coverage.outputs.CURRENT_COVERAGE }}
           NEW_COVERAGE: ${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
+          SAME_REPO: ${{ env.SAME_REPO }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `🚨 The new code coverage percentage is lower than the current one. Current coverage: \`${{ env.CURRENT_COVERAGE }}\`\n While the new one is: \`${{ env.NEW_COVERAGE }}\``;
 
-            github.rest.issues.createComment({
-              issue_number: ${{ env.PR_NUMBER }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
+            if (process.env.SAME_REPO === 'true') {
+              await github.rest.issues.createComment({
+                issue_number: ${{ env.PR_NUMBER }},
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            } else {
+              core.info(output);
+            }
 
       - name: Calculate minimum required coverage with tolerance
         run: |
