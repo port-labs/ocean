@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
@@ -30,11 +30,13 @@ async def test_list_by_tag_skips_unparseable_items(
     bad = {"status": "running"}
 
     async def paginate(
-        *_args: object, **_kwargs: object
-    ) -> AsyncIterator[list[dict[str, Any]]]:
+        _path: str,
+        _params: dict[str, Any] | None = None,
+        _page_size: int = 100,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [good, bad]
 
-    devin_sessions.client.paginate = paginate  # type: ignore[method-assign]
+    devin_sessions.client.paginate = paginate  # type: ignore[method-assign, assignment]
 
     pages = [page async for page in devin_sessions.list_by_tag("port:pending:inst")]
 
