@@ -69,17 +69,7 @@ class DevinClient:
             timeout=self._request_timeout_seconds,
             extensions={"retryable": method != "POST"},
         )
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as error:
-            message = (
-                f"HTTP {response.status_code} for {method} {url}: "
-                f"{response.text[:200]}"
-            )
-            logger.error(message)
-            raise httpx.HTTPStatusError(
-                message, request=error.request, response=error.response
-            ) from error
+        response.raise_for_status()
         if not response.content:
             return {}
         return response.json()
