@@ -48,7 +48,7 @@ def skill_markdown_from_zip(payload: bytes) -> str | None:
         return None
 
 
-class SkillsExporter(FoundryExporter):
+class SkillsExporter(FoundryExporter[ListSkillsOptions]):
     async def get_paginated_resources(
         self, options: ListSkillsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

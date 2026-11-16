@@ -64,7 +64,7 @@ class ConnectionPayload(BaseModel):
     target: str = ""
 
 
-class ToolboxesExporter(FoundryExporter):
+class ToolboxesExporter(FoundryExporter[ListToolboxesOptions]):
     @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListToolboxesOptions
