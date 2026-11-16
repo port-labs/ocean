@@ -39,4 +39,4 @@ resources:
             condition: .item.condition
           relations:
             project: .project
-            cloudResource: '.resource | sub("^//[^/]+/"; "")'
+            cloudResource: 'select(.asset_type != "cloudresourcemanager.googleapis.com/Project") | (.resource | sub("^//[^/]+/"; ""))'
