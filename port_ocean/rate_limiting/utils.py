@@ -50,17 +50,14 @@ async def await_centralized_rate_limit(pool: str) -> None:
         return
 
     tier = derive_sync_tier()
-    acquire_timeout = ocean.config.centralized_rate_limiter.acquire_timeout_seconds
 
     while True:
         try:
-            result = await asyncio.wait_for(
-                limiter.acquire(pool, tier), timeout=acquire_timeout
-            )
+            result = await limiter.acquire(pool, tier)
         except Exception as error:
             logger.warning(
                 "Centralized rate limiter acquire error; allowing request",
-                error=repr(error),
+                error=str(error),
             )
             return
 

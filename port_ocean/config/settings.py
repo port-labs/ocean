@@ -337,14 +337,6 @@ class LiveEventsRedisSettings(RedisConnectionSettings):
             "after a connection error."
         ),
     )
-    dispatch_timeout_seconds: float = Field(
-        default=300.0,
-        gt=0,
-        description=(
-            "Maximum seconds a single stream message may spend in the handler. "
-            "A timeout is handled like any other handler error."
-        ),
-    )
 
     @property
     def stuck_timeout_ms(self) -> int:
@@ -382,14 +374,6 @@ class CentralizedRateLimiterSettings(BaseOceanModel):
     model_config = ConfigDict(extra="allow")
 
     redis: RedisConnectionSettings = Field(default_factory=RedisConnectionSettings)
-    acquire_timeout_seconds: float = Field(
-        default=5.0,
-        gt=0,
-        description=(
-            "Maximum seconds to wait for a centralized rate limiter acquire. On "
-            "timeout the request is allowed through, the same as an acquire error."
-        ),
-    )
 
 
 class IntegrationConfiguration(BaseOceanSettings):

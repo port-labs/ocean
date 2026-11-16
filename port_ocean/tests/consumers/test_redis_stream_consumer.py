@@ -3,7 +3,7 @@ import base64
 import json
 import os
 from datetime import datetime, timezone
-from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from redis.asyncio.connection import SSLConnection
@@ -444,94 +444,6 @@ class TestRedisStreamConsumerConnection:
             )
 
         assert consumer._socket_timeout_seconds == 15.0
-
-    @pytest.mark.asyncio
-    async def test_read_loop_backoffs_on_read_timeout(
-        self,
-        mock_ocean_config: MagicMock,
-        redis_settings: LiveEventsRedisSettings,
-    ) -> None:
-        mock_redis = AsyncMock()
-        read_calls = 0
-
-        async def read_side_effect(**_kwargs: object) -> list[object]:
-            nonlocal read_calls
-            read_calls += 1
-            if read_calls == 1:
-                await asyncio.Event().wait()
-            consumer._is_running = False
-            return []
-
-        mock_redis.xreadgroup = AsyncMock(side_effect=read_side_effect)
-
-        with (
-            patch(
-                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
-            ),
-            patch.object(
-                RedisStreamConsumer,
-                "_socket_timeout_seconds",
-                new_callable=PropertyMock,
-                return_value=0.05,
-            ),
-            patch(
-                "port_ocean.consumers.redis_stream_consumer.asyncio.sleep",
-                new_callable=AsyncMock,
-            ) as mock_sleep,
-        ):
-            consumer = RedisStreamConsumer(
-                redis_settings=redis_settings,
-                stream_key="stream",
-                on_message=AsyncMock(),
-            )
-            consumer._redis = mock_redis
-            consumer._is_running = True
-
-            await asyncio.wait_for(consumer._read_loop(), timeout=5)
-
-        mock_sleep.assert_awaited_once_with(
-            redis_settings.connection_error_backoff_seconds
-        )
-        assert mock_redis.xreadgroup.await_count == 2
-
-    @pytest.mark.asyncio
-    async def test_handle_message_acks_after_dispatch_timeout(
-        self,
-        mock_ocean_config: MagicMock,
-    ) -> None:
-        async def never_finishes(_path: str, _event: object) -> None:
-            await asyncio.Event().wait()
-
-        settings = LiveEventsRedisSettings(
-            url="redis://localhost:6379",
-            block_ms=100,
-            dispatch_timeout_seconds=0.05,
-        )
-        with patch(
-            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
-        ):
-            consumer = RedisStreamConsumer(
-                redis_settings=settings,
-                stream_key="stream",
-                on_message=never_finishes,
-                registered_paths={"/webhook"},
-            )
-        consumer._ack = AsyncMock()  # type: ignore[method-assign]
-
-        await asyncio.wait_for(
-            consumer._handle_message(
-                "1700000000000-0",
-                {
-                    "eventId": "event-1",
-                    "webhookPath": "integration/webhook",
-                    "payload": "{}",
-                    "headers": "{}",
-                },
-            ),
-            timeout=5,
-        )
-
-        consumer._ack.assert_awaited_once_with("1700000000000-0")
 
 
 class TestRedisStreamConsumerGroupCreation:
