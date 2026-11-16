@@ -28,7 +28,7 @@ class PlainPermissionProbe:
 
     async def run(self) -> None:
         try:
-            permissions = await self.client.get_my_permissions()
+            permissions = await self.client.get_my_permissions(skip_retry=True)
         except PlainHTTPError as error:
             await self.context.fail(
                 authentication_failure_message(status_code=error.status_code)

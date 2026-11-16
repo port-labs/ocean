@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Test connection no longer retries on 401 (Unauthorized), failing immediately with a clear auth error message instead of retrying ~10 times
