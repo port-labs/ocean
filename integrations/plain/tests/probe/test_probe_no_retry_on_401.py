@@ -37,9 +37,7 @@ async def test_probe_401_makes_exactly_one_request_no_retries(
 
     # Mock the innermost HTTP transport to track requests
     class CountingTransport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(
-            self, request: httpx.Request
-        ) -> httpx.Response:
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             request_count["count"] += 1
             # Always return 401
             return httpx.Response(
@@ -104,9 +102,7 @@ async def test_resync_calls_still_retry_on_failures(
 
     # Mock the innermost HTTP transport to track requests
     class CountingTransport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(
-            self, request: httpx.Request
-        ) -> httpx.Response:
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             request_count["count"] += 1
             if request_count["count"] < 3:
                 # First 2 attempts: return 503 (retryable)
@@ -178,9 +174,7 @@ async def test_probe_status_is_failed_not_internal_failure_on_401(
 
     # Mock the innermost HTTP transport
     class Http401Transport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(
-            self, request: httpx.Request
-        ) -> httpx.Response:
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 HTTPStatus.UNAUTHORIZED,
                 request=request,
@@ -232,9 +226,7 @@ async def test_probe_ssl_error_makes_exactly_one_request_no_retries(
 
     # Mock the innermost HTTP transport
     class SSLErrorTransport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(
-            self, request: httpx.Request
-        ) -> httpx.Response:
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             request_count["count"] += 1
             # Simulate SSL certificate verification failure
             ssl_err = ssl.SSLCertVerificationError(
@@ -295,9 +287,7 @@ async def test_probe_blocked_ip_is_failed_not_internal_failure(
 
     # Mock the innermost HTTP transport
     class BlockedIPTransport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(
-            self, request: httpx.Request
-        ) -> httpx.Response:
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             raise BlockedIPError(
                 f"Request to {request.url.host} was blocked: "
                 "Host IP address ['127.0.0.1'] is not within the allowed ranges"
