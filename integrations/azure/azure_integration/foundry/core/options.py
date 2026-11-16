@@ -24,12 +24,12 @@ class ListModelDeploymentsOptions(ProjectIdentifier):
 
 class ListConversationsOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
-    endpoint_scopes: list[EndpointScope] = Field(default_factory=lambda: ["agent"])
+    endpoint_scopes: list[EndpointScope] = Field(default=["agent"])
 
 
 class ListResponsesOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
-    endpoint_scopes: list[EndpointScope] = Field(default_factory=lambda: ["agent"])
+    endpoint_scopes: list[EndpointScope] = Field(default=["agent"])
 
 
 class ListMemoryStoresOptions(ProjectIdentifier):
