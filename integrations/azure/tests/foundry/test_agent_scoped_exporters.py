@@ -190,7 +190,7 @@ async def test_rethrows_non_skippable_agent_protocol_errors() -> None:
     client = MagicMock()
     client.send_cursor_paginated_request = MagicMock(side_effect=fail_server)
 
-    with pytest.raises(FoundryApiError, match="500"):
+    with pytest.raises(ExceptionGroup) as exc_info:  # noqa: F821
         async for _ in ResponsesExporter(client).get_paginated_resources(
             ListResponsesOptions(
                 project_endpoint=_PROJECT,
@@ -199,6 +199,11 @@ async def test_rethrows_non_skippable_agent_protocol_errors() -> None:
             )
         ):
             pass
+
+    assert any(
+        isinstance(err, FoundryApiError) and err.status_code == 500
+        for err in exc_info.value.exceptions
+    )
 
 
 def test_endpoint_scopes_default_agent() -> None:

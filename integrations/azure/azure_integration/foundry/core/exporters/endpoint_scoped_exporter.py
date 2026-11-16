@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -10,6 +11,10 @@ from port_ocean.core.incremental.strategies import (
     paginate_with_strategy,
 )
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_independent_async_iterators,
+)
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
@@ -26,6 +31,7 @@ from azure_integration.foundry.helpers.utils import (
 )
 
 EndpointScopedOptions = ListConversationsOptions | ListResponsesOptions
+MAX_CONCURRENT_AGENTS = 10
 
 
 class EndpointScopedExporter(FoundryExporter):
@@ -67,7 +73,11 @@ class EndpointScopedExporter(FoundryExporter):
         cutoff: datetime | None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         agents = AgentsExporter(self.client)
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_AGENTS)
+        context = f"Foundry {self.resource}"
+
         async for agents_page in agents.iter_agent_pages(project_endpoint):
+            tasks = []
             for agent in agents_page:
                 agent_id = agent.get("id")
                 if not agent_id:
@@ -77,13 +87,27 @@ class EndpointScopedExporter(FoundryExporter):
                         project_endpoint=project_endpoint,
                     )
                     continue
-                async for page in self._iter_agent_resource(
-                    project_endpoint=project_endpoint,
-                    project_id=project_id,
-                    agent_id=str(agent_id),
-                    params=params,
-                    cutoff=cutoff,
-                ):
+
+                def build_iterator(
+                    agent_id: str = str(agent_id),
+                ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+                    return self._iter_agent_resource(
+                        project_endpoint=project_endpoint,
+                        project_id=project_id,
+                        agent_id=agent_id,
+                        params=params,
+                        cutoff=cutoff,
+                    )
+
+                tasks.append(semaphore_async_iterator(semaphore, build_iterator))
+
+            if not tasks:
+                continue
+
+            async for page in stream_independent_async_iterators(
+                *tasks, context=context
+            ):
+                if page:
                     yield page
 
     async def _iter_agent_resource(
