@@ -1,0 +1,54 @@
+{
+  "Type": "AWS::EKS::Nodegroup",
+  "Properties": {
+    "NodegroupName": "my-nodegroup",
+    "NodegroupArn": "arn:aws:eks:us-west-2:123456789012:nodegroup/my-production-cluster/my-nodegroup/abcdef12-3456-7890-abcd-ef1234567890",
+    "ClusterName": "my-production-cluster",
+    "Status": "ACTIVE",
+    "CapacityType": "ON_DEMAND",
+    "ScalingConfig": {
+      "minSize": 1,
+      "maxSize": 5,
+      "desiredSize": 3
+    },
+    "InstanceTypes": ["t3.medium"],
+    "Subnets": [
+      "subnet-12345678901234567",
+      "subnet-23456789012345678"
+    ],
+    "AmiType": "AL2_x86_64",
+    "NodeRole": "arn:aws:iam::123456789012:role/AmazonEKSNodeRole",
+    "Labels": {
+      "env": "production"
+    },
+    "Taints": [],
+    "Resources": {
+      "autoScalingGroups": [
+        {
+          "name": "eks-my-nodegroup-abcdef12-3456-7890-abcd-ef1234567890"
+        }
+      ],
+      "remoteAccessSecurityGroup": null
+    },
+    "DiskSize": 20,
+    "Health": {
+      "issues": []
+    },
+    "UpdateConfig": {
+      "maxUnavailable": 1
+    },
+    "LaunchTemplate": null,
+    "CreatedAt": "2025-01-15T10:30:00.000000+00:00",
+    "ModifiedAt": "2025-06-01T08:15:00.000000+00:00",
+    "ReleaseVersion": "1.33.0-20250601",
+    "Version": "1.33",
+    "Tags": {
+      "Environment": "production",
+      "Team": "platform"
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-west-2"
+  }
+}
