@@ -184,3 +184,32 @@ async def test_list_messages_after_skips_invalid_rows(client: DevinClient) -> No
     messages, _ = await DevinSessions(client).list_messages_after("devin-1", None)
 
     assert [m.event_id for m in messages] == ["e1", "e2"]
+
+
+async def test_find_secret_id_by_key_scans_pages(client: DevinClient) -> None:
+    async def fake_paginate(
+        path: str, params: dict[str, Any] | None = None, page_size: int = 100
+    ):
+        yield [{"secret_id": "sec-1", "key": "OTHER"}]
+        yield [{"secret_id": "sec-2", "key": "MCP_PORT_TOKEN"}]
+
+    client.paginate = fake_paginate  # type: ignore[method-assign]
+
+    assert await client.find_secret_id_by_key("MCP_PORT_TOKEN") == "sec-2"
+
+
+async def test_create_and_delete_secret(client: DevinClient) -> None:
+    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
+        side_effect=[
+            {"secret_id": "sec-new", "key": "MCP_PORT_TOKEN"},
+            {},
+        ]
+    )
+
+    created = await client.create_secret("MCP_PORT_TOKEN", "jwt")
+    await client.delete_secret("sec-new")
+
+    assert created["secret_id"] == "sec-new"
+    calls = [call.args for call in client.send_api_request.await_args_list]
+    assert calls[0][0:2] == ("POST", "/secrets")
+    assert calls[1][0:2] == ("DELETE", "/secrets/sec-new")

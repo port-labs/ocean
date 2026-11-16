@@ -4,6 +4,10 @@ KNOWLEDGE_NOTES = "/knowledge/notes"
 SECRETS = "/secrets"
 
 
+def secret(secret_id: str) -> str:
+    return f"{SECRETS}/{secret_id}"
+
+
 def session(session_id: str) -> str:
     return f"{SESSIONS}/{session_id}"
 

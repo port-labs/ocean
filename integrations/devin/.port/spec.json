@@ -147,8 +147,16 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, injects a session secret (PORT_MCP_ACCESS_TOKEN) from the workflow node's execution identity so a preconfigured Devin Port MCP plugin can authenticate. Requires executionIdentity on the node.",
+          "description": "When true, rotates a Devin organization secret from this run's Port access token (workflow actor or service account) so a preconfigured Port MCP HTTP server in Devin Customize can authenticate. The secret value is replaced on every execution before the session is created. Requires executionIdentity on the node.",
           "default": false,
+          "required": false
+        },
+        {
+          "name": "portMcpSecretKey",
+          "title": "Port MCP org secret key",
+          "type": "string",
+          "description": "Devin organization secret key to rotate when enablePortMcp is true. Must start with MCP_ and match the org secret your Port MCP server references in Customize. Defaults to MCP_PORT_TOKEN.",
+          "default": "MCP_PORT_TOKEN",
           "required": false
         },
         {
@@ -199,8 +207,16 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, re-injects PORT_MCP_ACCESS_TOKEN for this turn from the workflow node's execution identity.",
+          "description": "When true, rotates the Port MCP org secret from this run's Port access token before sending the message so continued sessions use a fresh user token. Requires executionIdentity on the node.",
           "default": false,
+          "required": false
+        },
+        {
+          "name": "portMcpSecretKey",
+          "title": "Port MCP org secret key",
+          "type": "string",
+          "description": "Devin organization secret key to rotate when enablePortMcp is true. Must start with MCP_ and match the org secret your Port MCP server references in Customize. Defaults to MCP_PORT_TOKEN.",
+          "default": "MCP_PORT_TOKEN",
           "required": false
         },
         {

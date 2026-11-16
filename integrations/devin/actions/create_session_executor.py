@@ -10,7 +10,11 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
-from actions.port_mcp_utils import apply_port_mcp_session_secrets
+from actions.port_mcp_utils import (
+    PortMcpActionMixin,
+    merge_port_mcp_secret_id,
+    rotate_port_mcp_org_secret,
+)
 from actions.utils import ensure_no_reserved_tags, merge_config
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags
@@ -21,7 +25,7 @@ SESSION_RUNNING_STATUS_LABEL = "Session running"
 SESSION_CREATED_STATUS_LABEL = "Session created"
 
 
-class CreateSessionInputs(AbstractDevinActionInput):
+class CreateSessionInputs(AbstractDevinActionInput, PortMcpActionMixin):
     prompt: str = Field(min_length=1)
     playbookId: str | None = None
     repos: list[str] | None = None
@@ -31,7 +35,6 @@ class CreateSessionInputs(AbstractDevinActionInput):
     maxAcuLimit: int | None = None
     structuredOutputSchema: dict[str, Any] | None = None
     createAsUserId: str | None = None
-    enablePortMcp: bool = False
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
@@ -83,7 +86,13 @@ class CreateSessionExecutor(AbstractDevinExecutor):
                 "tags": tags,
             },
         )
-        apply_port_mcp_session_secrets(body, run, inputs.enablePortMcp)
+        port_mcp_secret_id = await rotate_port_mcp_org_secret(
+            self.sessions.client,
+            run,
+            inputs.enablePortMcp,
+            inputs.portMcpSecretKey,
+        )
+        merge_port_mcp_secret_id(body, port_mcp_secret_id)
 
         try:
             session = await self.sessions.create(body)

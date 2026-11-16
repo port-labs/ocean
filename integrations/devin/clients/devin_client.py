@@ -7,6 +7,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
+from clients import endpoints
 from clients.exceptions import DevinPaginationError
 from utils.http import drop_none
 
@@ -135,3 +136,34 @@ class DevinClient:
                 f"Devin pagination {path}: stopped early after {page_count} page(s) "
                 "due to a request failure"
             )
+
+    async def find_secret_id_by_key(self, key: str) -> str | None:
+        async for page in self.paginate(endpoints.SECRETS):
+            for item in page:
+                if item.get("key") == key:
+                    secret_id = item.get("secret_id")
+                    if isinstance(secret_id, str):
+                        return secret_id
+        return None
+
+    async def delete_secret(self, secret_id: str) -> None:
+        await self.send_api_request("DELETE", endpoints.secret(secret_id))
+
+    async def create_secret(
+        self,
+        key: str,
+        value: str,
+        *,
+        secret_type: str = "key-value",
+        is_sensitive: bool = True,
+    ) -> dict[str, Any]:
+        return await self.send_api_request(
+            "POST",
+            endpoints.SECRETS,
+            json_body={
+                "key": key,
+                "value": value,
+                "type": secret_type,
+                "is_sensitive": is_sensitive,
+            },
+        )
