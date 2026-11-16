@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -23,19 +23,34 @@ def validate_port_mcp_secret_key(value: str) -> str:
     return value
 
 
+class PortMcpInstallationConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    port_mcp_secret_key: str = DEFAULT_PORT_MCP_SESSION_SECRET_KEY
+
+    @field_validator("port_mcp_secret_key")
+    @classmethod
+    def _port_mcp_secret_key_prefix(cls, value: str) -> str:
+        return validate_port_mcp_secret_key(value)
+
+    @classmethod
+    def _format_validation_error(cls, error: ValidationError) -> str:
+        return "; ".join(
+            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
+            for err in error.errors()
+        )
+
+
 def port_mcp_secret_key_from_config(integration_config: dict[str, Any]) -> str:
     """Session secret key from installation config; used only when enablePortMcp is true."""
-    raw = integration_config.get("port_mcp_secret_key")
-    if raw is None or raw == "":
-        return DEFAULT_PORT_MCP_SESSION_SECRET_KEY
-    if not isinstance(raw, str):
-        raise ActionExecutionError(
-            "portMcpSecretKey integration configuration must be a string"
-        )
     try:
-        return validate_port_mcp_secret_key(raw)
-    except ValueError as error:
-        raise ActionExecutionError(str(error)) from error
+        return PortMcpInstallationConfig.model_validate(
+            integration_config
+        ).port_mcp_secret_key
+    except ValidationError as error:
+        raise ActionExecutionError(
+            PortMcpInstallationConfig._format_validation_error(error)
+        ) from error
 
 
 def apply_port_mcp_session_secrets(
