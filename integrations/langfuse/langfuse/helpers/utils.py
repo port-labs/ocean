@@ -6,3 +6,4 @@ class ObjectKind(StrEnum):
     PROMPT = "prompt"
     DATASET = "dataset"
     MODEL = "model"
+    SESSION = "session"

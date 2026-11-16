@@ -138,5 +138,49 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "langfuseSession",
+    "title": "Langfuse Session",
+    "icon": "Langfuse",
+    "schema": {
+      "properties": {
+        "environment": {
+          "type": "string",
+          "title": "Environment"
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "foundryConversation": {
+        "title": "Foundry Conversation",
+        "target": "azureFoundryConversation",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Project",
+        "target": "langfuseProject",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

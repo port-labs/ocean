@@ -62,3 +62,23 @@ resources:
             matchPattern: .matchPattern
             isLangfuseManaged: .isLangfuseManaged
             createdAt: .createdAt
+
+  - kind: session
+    selector:
+      query: 'true'
+      lookback_days: 7
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"langfuseSession"'
+          properties:
+            environment: .environment
+            userId: .userId
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            # Match when Langfuse session id == Foundry conversation id (e.g. conv_…)
+            foundryConversation: .id
+            project: .projectId

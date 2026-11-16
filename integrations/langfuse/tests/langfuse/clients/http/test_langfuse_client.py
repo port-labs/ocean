@@ -61,3 +61,22 @@ class TestLangfuseClient:
         batches = [batch async for batch in client.send_paginated_request("v2/prompts")]
         assert batches == [[{"name": "a"}], [{"name": "b"}]]
         assert client.send_api_request.await_count == 2
+
+    async def test_send_cursor_paginated_request_follows_cursor(self) -> None:
+        client = self._client()
+        pages = [
+            {"data": [{"id": "1"}], "meta": {"cursor": "cur-2"}},
+            {"data": [], "meta": {"cursor": "cur-3"}},
+            {"data": [{"id": "3"}], "meta": {}},
+        ]
+        client.send_api_request = AsyncMock(side_effect=pages)  # type: ignore[method-assign]
+
+        batches = [
+            batch
+            async for batch in client.send_cursor_paginated_request("v2/observations")
+        ]
+        assert batches == [[{"id": "1"}], [{"id": "3"}]]
+        assert client.send_api_request.await_count == 3
+        assert client.send_api_request.await_args_list[1].kwargs["params"]["cursor"] == (
+            "cur-2"
+        )

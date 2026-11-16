@@ -43,12 +43,30 @@ class ModelResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.MODEL] = Field(description="Langfuse model definition")
 
 
+class SessionSelector(Selector):
+    lookback_days: int = Field(
+        default=7,
+        ge=1,
+        description="How many days of observations to scan when reconstructing sessions.",
+    )
+
+
+class SessionResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.SESSION] = Field(description="Langfuse session")
+    selector: SessionSelector = Field(
+        default_factory=SessionSelector,
+        title="Session Selector",
+        description="Lookback window for reconstructing sessions from observations.",
+    )
+
+
 class LangfusePortAppConfig(PortAppConfig):
     resources: list[
         ProjectResourceConfig
         | PromptResourceConfig
         | DatasetResourceConfig
         | ModelResourceConfig
+        | SessionResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]

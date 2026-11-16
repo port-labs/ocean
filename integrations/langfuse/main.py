@@ -6,16 +6,18 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import PromptResourceConfig
+from integration import PromptResourceConfig, SessionResourceConfig
 from langfuse.clients.client_factory import create_langfuse_client
 from langfuse.core.exporters import (
     DatasetExporter,
     ModelExporter,
     ProjectExporter,
     PromptExporter,
+    SessionExporter,
 )
 from langfuse.core.exporters.prompt_exporter import PROMPT_INCREMENTAL
-from langfuse.core.options import ListPromptOptions
+from langfuse.core.exporters.session_exporter import SESSION_INCREMENTAL
+from langfuse.core.options import ListPromptOptions, ListSessionOptions
 from langfuse.helpers.utils import ObjectKind
 from langfuse.webhook.registry import register_live_events_webhooks
 
@@ -56,6 +58,23 @@ async def on_resync_datasets(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_models(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = ModelExporter(create_langfuse_client())
     async for batch in exporter.get_paginated_resources():
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.SESSION)
+@ocean.on_resync(ObjectKind.SESSION)
+async def on_resync_sessions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(SessionResourceConfig, event.resource_config).selector
+    cursor = active_incremental_cursor()
+    params = SESSION_INCREMENTAL.merge_params({}, cursor)
+
+    exporter = SessionExporter(create_langfuse_client())
+    async for batch in exporter.get_paginated_resources(
+        ListSessionOptions(
+            from_start_time=params.get("fromStartTime"),
+            lookback_days=selector.lookback_days,
+        )
+    ):
         yield batch
 
 

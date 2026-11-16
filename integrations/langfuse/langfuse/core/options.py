@@ -17,3 +17,13 @@ class SingleDatasetOptions(TypedDict):
 
 class SingleModelOptions(TypedDict):
     model_id: Required[str]
+
+
+class ListSessionOptions(TypedDict, total=False):
+    from_start_time: str | None
+    lookback_days: int
+
+
+class SingleSessionOptions(TypedDict, total=False):
+    session_id: Required[str]
+    lookback_days: int

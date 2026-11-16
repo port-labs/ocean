@@ -83,3 +83,38 @@ class LangfuseClient:
             if total_pages is None or page >= int(total_pages) or not items:
                 break
             page += 1
+
+    async def send_cursor_paginated_request(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        data_key: str = "data",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Cursor pagination (`meta.cursor`). Empty page can still have a cursor."""
+        cursor: str | None = None
+        base_params = {**(params or {}), "limit": PAGE_SIZE}
+
+        while True:
+            req_params = {**base_params}
+            if cursor:
+                req_params["cursor"] = cursor
+
+            response = await self.send_api_request(endpoint, params=req_params)
+            if not response:
+                break
+
+            items = response.get(data_key) or []
+            if not isinstance(items, list):
+                logger.error(f"Unexpected {data_key!r} payload from {endpoint}")
+                break
+
+            if items:
+                logger.info(
+                    f"Fetched {len(items)} items from {endpoint}"
+                    f"{f' cursor={cursor[:16]}…' if cursor else ''}"
+                )
+                yield items
+
+            cursor = (response.get("meta") or {}).get("cursor")
+            if not cursor:
+                break
