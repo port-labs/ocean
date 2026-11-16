@@ -25,7 +25,7 @@ def skill_names_from_refs(skills: list[Any]) -> list[str]:
         if isinstance(ref, str) and ref:
             names.append(ref)
         elif isinstance(ref, dict):
-            name = ref.get("name") or ref.get("skill_name") or ref.get("id")
+            name = ref.get("name") or ref.get("id")
             if name:
                 names.append(str(name))
     return names

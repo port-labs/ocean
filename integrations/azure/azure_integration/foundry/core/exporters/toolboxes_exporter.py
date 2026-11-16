@@ -8,7 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListToolboxesOptions
-from azure_integration.foundry.foundry_incremental import TOOLBOX_INCREMENTAL
+from azure_integration.foundry.foundry_incremental import MEMORY_STORE_INCREMENTAL
 from azure_integration.foundry.helpers.a2a import (
     a2a_connection_ids_from_tools,
     parse_foundry_a2a_url,
@@ -29,7 +29,7 @@ class ToolboxesExporter(FoundryExporter):
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         cursor = active_incremental_cursor()
-        params = TOOLBOX_INCREMENTAL.merge_params({}, cursor)
+        params = MEMORY_STORE_INCREMENTAL.merge_params({}, cursor)
         headers = {"Foundry-Features": _TOOLBOXES_FEATURE}
 
         async for page in paginate_with_strategy(
@@ -40,7 +40,7 @@ class ToolboxesExporter(FoundryExporter):
                 extra_headers=headers,
             ),
             cursor=cursor,
-            strategy=TOOLBOX_INCREMENTAL,
+            strategy=MEMORY_STORE_INCREMENTAL,
         ):
             batch: list[dict[str, Any]] = []
             for item in page:
@@ -88,19 +88,17 @@ class ToolboxesExporter(FoundryExporter):
         versions = enriched.get("versions")
         latest = versions.get("latest") if isinstance(versions, dict) else None
         if not isinstance(latest, dict):
-            enriched["__skillNames"] = []
-            enriched["__a2aSubagents"] = []
-            return enriched
+            return {**enriched, "__skillNames": [], "__a2aSubagents": []}
 
         skills = latest.get("skills") or []
         tools = latest.get("tools") or []
-        enriched["__skillNames"] = skill_names_from_refs(
-            skills if isinstance(skills, list) else []
-        )
+        if not isinstance(skills, list):
+            skills = []
+        if not isinstance(tools, list):
+            tools = []
+        enriched["__skillNames"] = skill_names_from_refs(skills)
         enriched["__a2aSubagents"] = await self._a2a_subagents(
-            project_endpoint,
-            tools if isinstance(tools, list) else [],
-            headers=headers,
+            project_endpoint, tools, headers=headers
         )
         return enriched
 

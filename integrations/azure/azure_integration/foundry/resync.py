@@ -200,12 +200,11 @@ async def resync_foundry_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(SkillResourceConfig, event.resource_config).selector
     exporter = SkillsExporter(create_foundry_client(selector.api_version))
-    regions = list(selector.project.regions)
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects_matching_regions(projects, selector.project.regions):
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry skills for project {project['name']} ({project_endpoint})"
@@ -230,12 +229,11 @@ async def resync_foundry_toolboxes(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(ToolboxResourceConfig, event.resource_config).selector
     exporter = ToolboxesExporter(create_foundry_client(selector.api_version))
-    regions = list(selector.project.regions)
 
     async for projects in ProjectExporter().get_paginated_resources(
         api_version=selector.project.api_version
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects_matching_regions(projects, selector.project.regions):
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry toolboxes for project {project['name']} ({project_endpoint})"

@@ -42,9 +42,5 @@ class ListMemoryStoresOptions(ProjectIdentifier):
     pass
 
 
-class ListSkillsOptions(ProjectIdentifier):
-    pass
-
-
-class ListToolboxesOptions(ProjectIdentifier):
-    pass
+ListSkillsOptions = ListMemoryStoresOptions
+ListToolboxesOptions = ListMemoryStoresOptions
