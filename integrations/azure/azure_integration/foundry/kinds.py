@@ -21,6 +21,8 @@ class ObjectKind(StrEnum):
     FOUNDRY_CONVERSATION = "foundry-conversation"
     FOUNDRY_RESPONSE = "foundry-response"
     FOUNDRY_MEMORY_STORE = "foundry-memory-store"
+    FOUNDRY_SKILL = "foundry-skill"
+    FOUNDRY_TOOLBOX = "foundry-toolbox"
 
 
 class FoundryProjectFilters(BaseModel):
@@ -29,6 +31,15 @@ class FoundryProjectFilters(BaseModel):
         alias="apiVersion",
         title="API Version",
         description="ARM API version used when discovering Foundry projects.",
+    )
+    regions: list[str] = Field(
+        default_factory=list,
+        alias="regions",
+        title="Regions",
+        description=(
+            "ARM location names (e.g. eastus). Empty = all projects. Filters which "
+            "projects are queried for this kind."
+        ),
     )
 
 
@@ -48,7 +59,7 @@ class FoundrySelector(Selector):
         title="Foundry API Version",
         description=(
             "Data-plane API version for Foundry project APIs (agents, deployments, "
-            "conversations, responses, memory stores)."
+            "conversations, responses, memory stores, skills, toolboxes)."
         ),
     )
     project: FoundryProjectFilters = Field(
@@ -198,6 +209,31 @@ class MemoryStoreResourceConfig(ResourceConfig):
     kind: Literal["foundry-memory-store"] = Field(
         title="Foundry memory store",
         description="Persistent memory store for Foundry agents in a project.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: FoundrySelector = Field(
+        default_factory=lambda: FoundrySelector(query="true"),
+    )
+
+
+class SkillResourceConfig(ResourceConfig):
+    kind: Literal["foundry-skill"] = Field(
+        title="Foundry skill",
+        description="Reusable skill definition in a Foundry project.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
+    )
+    selector: FoundrySelector = Field(
+        default_factory=lambda: FoundrySelector(query="true"),
+    )
+
+
+class ToolboxResourceConfig(ResourceConfig):
+    kind: Literal["foundry-toolbox"] = Field(
+        title="Foundry toolbox",
+        description=(
+            "Toolbox bundling tools and skills in a Foundry project, including A2A "
+            "sub-agent connection metadata."
+        ),
         featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(

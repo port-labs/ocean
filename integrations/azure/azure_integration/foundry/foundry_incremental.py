@@ -53,6 +53,8 @@ AGENT_INCREMENTAL = _created_at_desc()
 CONVERSATION_INCREMENTAL = _created_at_desc()
 RESPONSE_INCREMENTAL = _created_at_desc()
 MEMORY_STORE_INCREMENTAL = _created_at_desc()
+SKILL_INCREMENTAL = _created_at_desc()
+TOOLBOX_INCREMENTAL = _created_at_desc()
 
 # Deployments list has no ``order`` param and no timestamps — always full scan.
 MODEL_DEPLOYMENT_INCREMENTAL = None

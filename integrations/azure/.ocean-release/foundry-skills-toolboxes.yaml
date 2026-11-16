@@ -1,0 +1,5 @@
+bump: minor
+changelog-type: feature
+changelog: >-
+  Add Foundry skill and toolbox sync kinds with optional ARM region filtering on
+  project discovery, plus A2A sub-agent enrichment on toolboxes.
