@@ -57,6 +57,22 @@ async def test_get_404_returns_empty() -> None:
 
 
 @pytest.mark.asyncio
+async def test_bytes_get_404_returns_empty() -> None:
+    client = _client_with_response(404)
+    assert await client.send_bytes_request("https://example/skills/x/content") == b""
+
+
+@pytest.mark.asyncio
+async def test_bytes_get_returns_content() -> None:
+    client = _client_with_response(200)
+    client._http.request.return_value.is_error = False
+    client._http.request.return_value.content = b"PK\x03\x04zip"
+    assert await client.send_bytes_request("https://example/skills/x/content") == (
+        b"PK\x03\x04zip"
+    )
+
+
+@pytest.mark.asyncio
 async def test_post_404_raises() -> None:
     client = _client_with_response(404)
     with pytest.raises(FoundryApiError):

@@ -34,7 +34,11 @@ async def test_toolboxes_exporter_enriches_skills_and_a2a() -> None:
                         "tools": [
                             {
                                 "type": "a2a",
-                                "project_connection_id": "to-sub-agent",
+                                "project_connection_id": (
+                                    "/subscriptions/s/resourceGroups/rg/providers/"
+                                    "Microsoft.CognitiveServices/accounts/acct/"
+                                    "projects/demo/connections/to-sub-agent"
+                                ),
                             }
                         ],
                     }

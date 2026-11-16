@@ -31,6 +31,15 @@ def skill_names_from_refs(skills: list[Any]) -> list[str]:
     return names
 
 
+def connection_name_from_ref(conn: str) -> str:
+    """Short connection name from a bare id or ARM project-connection resource id."""
+    raw = conn.strip().rstrip("/")
+    marker = "/connections/"
+    if marker in raw:
+        return raw.rsplit(marker, 1)[-1]
+    return raw
+
+
 def a2a_connection_ids_from_tools(tools: list[Any]) -> list[str]:
     ids: list[str] = []
     seen: set[str] = set()
@@ -41,7 +50,10 @@ def a2a_connection_ids_from_tools(tools: list[Any]) -> list[str]:
         if tool_type not in _A2A_TOOL_TYPES:
             continue
         conn = tool.get("project_connection_id") or tool.get("projectConnectionId")
-        if conn and conn not in seen:
-            seen.add(str(conn))
-            ids.append(str(conn))
+        if not conn:
+            continue
+        name = connection_name_from_ref(str(conn))
+        if name and name not in seen:
+            seen.add(name)
+            ids.append(name)
     return ids
