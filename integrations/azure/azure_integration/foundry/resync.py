@@ -121,6 +121,7 @@ async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
                     project_endpoint=project_endpoint,
                     project_id=str(project["id"]),
                     since_days=selector.since_days,
+                    endpoint_scopes=list(selector.endpoint_scopes),
                 )
             ):
                 yield page
@@ -146,6 +147,7 @@ async def resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     project_endpoint=project_endpoint,
                     project_id=str(project["id"]),
                     since_days=selector.since_days,
+                    endpoint_scopes=list(selector.endpoint_scopes),
                 )
             ):
                 yield page

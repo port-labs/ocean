@@ -1,11 +1,13 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic.v1 import BaseModel, Field
+from pydantic.v1 import BaseModel, Field, validator
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+
+from azure_integration.foundry.core.options import EndpointScope
 
 FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
 DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
@@ -102,7 +104,34 @@ class ModelDeploymentResourceConfig(ResourceConfig):
     )
 
 
-class ConversationSelector(FoundrySelector):
+class FoundryEndpointScopedSelector(FoundrySelector):
+    endpoint_scopes: list[EndpointScope] = Field(
+        default=[EndpointScope.AGENT],
+        alias="endpointScopes",
+        min_items=1,
+        title="Endpoint scopes",
+        description=(
+            "Which Foundry list APIs to query. "
+            "`agent` uses agents/{id}/endpoint/protocols/openai/... (default). "
+            "`project` uses openai/v1/... . "
+            "Pass both to list from each store (separate APIs, separate ids)."
+        ),
+    )
+
+    @validator("endpoint_scopes", always=True)
+    def endpoint_scopes_must_be_unique(
+        cls, value: list[EndpointScope]
+    ) -> list[EndpointScope]:
+        if len(value) != len(set(value)):
+            duplicates = sorted({item for item in value if value.count(item) > 1})
+            raise ValueError(
+                "endpointScopes must not contain duplicate values — "
+                f"found duplicates: {duplicates}"
+            )
+        return value
+
+
+class ConversationSelector(FoundryEndpointScopedSelector):
     since_days: int = Field(
         default=30,
         ge=1,
@@ -123,7 +152,9 @@ class ConversationResourceConfig(ResourceConfig):
         title="Foundry conversation",
         description=(
             "OpenAI conversation threads (metadata only; not full message "
-            "transcripts). Conversation state in Azure is short-lived (~30 days)."
+            "transcripts). Listed via selector.endpointScopes (default agent "
+            "protocol). Scoped to the integration Azure identity. Conversation "
+            "state in Azure is short-lived (~30 days)."
         ),
         featureFlag=FOUNDRY_FEATURE_FLAG,
     )
@@ -132,7 +163,7 @@ class ConversationResourceConfig(ResourceConfig):
     )
 
 
-class ResponseSelector(FoundrySelector):
+class ResponseSelector(FoundryEndpointScopedSelector):
     since_days: int = Field(
         default=30,
         ge=1,
@@ -140,7 +171,7 @@ class ResponseSelector(FoundrySelector):
         alias="sinceDays",
         title="Since (days)",
         description=(
-            "How far back to list project responses (1–30). Azure Foundry typically "
+            "How far back to list responses (1–30). Azure Foundry typically "
             "retains response data for about 30 days. Combined with the incremental "
             "cursor when stopping pagination."
         ),
@@ -151,9 +182,10 @@ class ResponseResourceConfig(ResourceConfig):
     kind: Literal["foundry-response"] = Field(
         title="Foundry response",
         description=(
-            "Foundry Responses API runs listed project-wide (usage, status, optional "
-            "conversation relation). Response objects in Azure are retained for a "
-            "limited period (~30 days), not indefinitely."
+            "Foundry Responses API runs (usage, status, optional conversation "
+            "relation). Listed via selector.endpointScopes (default agent "
+            "protocol). Scoped to the integration Azure identity. Response objects "
+            "are retained for a limited period (~30 days), not indefinitely."
         ),
         featureFlag=FOUNDRY_FEATURE_FLAG,
     )
