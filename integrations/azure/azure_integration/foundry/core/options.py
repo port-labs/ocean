@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
+
+
+class EndpointScope(StrEnum):
+    AGENT = "agent"
+    PROJECT = "project"
 
 
 class ProjectIdentifier(BaseModel):
@@ -18,12 +25,17 @@ class ListModelDeploymentsOptions(ProjectIdentifier):
     pass
 
 
-class ListConversationsOptions(ProjectIdentifier):
+class EndpointScopedOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
+    endpoint_scopes: list[EndpointScope] = Field(default=[EndpointScope.AGENT])
 
 
-class ListResponsesOptions(ProjectIdentifier):
-    since_days: int | None = Field(default=30)
+class ListConversationsOptions(EndpointScopedOptions):
+    pass
+
+
+class ListResponsesOptions(EndpointScopedOptions):
+    pass
 
 
 class ListMemoryStoresOptions(ProjectIdentifier):

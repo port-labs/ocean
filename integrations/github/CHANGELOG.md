@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.25.11 (2026-11-15)
+
+
+### Bug Fixes
+
+- Fix action runs (such as dispatch_workflow and refresh_pull_requests) staying In progress after a GitHub rate limit. The action rate limit pre-check kept using a stale remaining count after the rate limit window reset, which blocked all action workers indefinitely. Runs now proceed once the window has reset.
+
+
+## 6.25.10 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
+## 6.25.9 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 6.25.8 (2026-11-15)
+
+
+### Features
+
+- Validate each itemsToParse item in the File Kind validation check
+
+
+## 6.25.7 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.2
+
+
+## 6.25.6 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.1
+
+
+## 6.25.5 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
+## 6.25.4 (2026-11-12)
+
+
+### Bug Fixes
+
+- Fetch the latest 10 pull request reviews instead of the oldest 10 in the GraphQL pull request query, and return `submittedAt` and the reviewed commit (`commit.oid`) on each review.
+
+
+## 6.25.3 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.60.0
+
+
 ## 6.25.2 (2026-11-11)
 
 

@@ -23,7 +23,15 @@ _client: FoundryHttpClient | None = None
 
 
 class FoundryApiError(Exception):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+    @property
+    def is_skippable_client_error(self) -> bool:
+        """True for expected 4xx (e.g. missing protocol); false for 429/5xx."""
+        code = self.status_code
+        return code is not None and 400 <= code < 500 and code != 429
 
 
 class FoundryHttpClient:
@@ -95,7 +103,10 @@ class FoundryHttpClient:
                 if response.text
                 else response.reason_phrase
             )
-            raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
+            raise FoundryApiError(
+                f"Foundry API {response.status_code}: {detail}",
+                status_code=response.status_code,
+            )
         if not response.content:
             return {}
         payload = response.json()
