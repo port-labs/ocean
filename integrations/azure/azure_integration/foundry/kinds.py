@@ -9,6 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 
 FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
 DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
+FOUNDRY_FEATURE_FLAG = "azure-foundry-agent"
 
 
 class ObjectKind(StrEnum):
@@ -59,6 +60,7 @@ class FoundryProjectResourceConfig(ResourceConfig):
     kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
         title="Foundry project (ARM)",
         description="Azure AI Foundry project discovered via ARM Cognitive Services accounts/projects.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundryProjectSelector = Field(
         default_factory=lambda: FoundryProjectSelector(query="true"),
@@ -82,6 +84,7 @@ class AgentResourceConfig(ResourceConfig):
     kind: Literal["foundry-agent"] = Field(
         title="Foundry agent",
         description="Microsoft Foundry agent from the project Agent Control Plane.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: AgentSelector = Field(
         default_factory=lambda: AgentSelector(query="true"),
@@ -92,6 +95,7 @@ class ModelDeploymentResourceConfig(ResourceConfig):
     kind: Literal["foundry-model-deployment"] = Field(
         title="Foundry model deployment",
         description="Model deployment visible to a Foundry project (project data-plane).",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(
         default_factory=lambda: FoundrySelector(query="true"),
@@ -121,6 +125,7 @@ class ConversationResourceConfig(ResourceConfig):
             "OpenAI conversation threads (metadata only; not full message "
             "transcripts). Conversation state in Azure is short-lived (~30 days)."
         ),
+        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: ConversationSelector = Field(
         default_factory=lambda: ConversationSelector(query="true"),
@@ -150,6 +155,7 @@ class ResponseResourceConfig(ResourceConfig):
             "conversation relation). Response objects in Azure are retained for a "
             "limited period (~30 days), not indefinitely."
         ),
+        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: ResponseSelector = Field(
         default_factory=lambda: ResponseSelector(query="true"),
@@ -160,6 +166,7 @@ class MemoryStoreResourceConfig(ResourceConfig):
     kind: Literal["foundry-memory-store"] = Field(
         title="Foundry memory store",
         description="Persistent memory store for Foundry agents in a project.",
+        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(
         default_factory=lambda: FoundrySelector(query="true"),

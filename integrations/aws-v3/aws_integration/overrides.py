@@ -472,6 +472,8 @@ class AWSCustomKindResourceConfig(AWSResourceConfig):
 
 
 class AWSPortAppConfig(PortAppConfig):
+    allow_custom_kinds: ClassVar[bool] = True
+
     resources: List[
         AWSS3BucketResourceConfig
         | AWSEC2InstanceResourceConfig
@@ -506,6 +508,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSDynamoDBTableResourceConfig
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
+        | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
