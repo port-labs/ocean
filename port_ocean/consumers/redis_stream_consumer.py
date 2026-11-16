@@ -35,6 +35,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 _INTEGRATION_PATH_PREFIX = "/integration/"
+# Keeps the socket timeout above the XREADGROUP block time, so an empty read
+# never trips it.
+STREAM_SOCKET_TIMEOUT_MARGIN_SECONDS = 5.0
 
 
 OnStreamMessage = Callable[[str, WebhookEvent], Awaitable[None]]
@@ -69,8 +72,16 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         integration = ocean.config.integration
         return f"{integration.type}.{integration.identifier}"
 
+    @property
+    def _socket_timeout_seconds(self) -> float:
+        return max(
+            self._settings.socket_timeout_seconds,
+            self._settings.block_ms / 1000 + STREAM_SOCKET_TIMEOUT_MARGIN_SECONDS,
+        )
+
     async def start(self) -> None:
         client_kwargs = self._redis_connection_helper.client_kwargs(self._settings)
+        client_kwargs["socket_timeout"] = self._socket_timeout_seconds
         self._redis = await create_redis_client_with_retry(
             self._settings.url,
             max_retries=self._settings.connection_startup_max_retries,
@@ -122,11 +133,14 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
     async def _ack(self, message_id: str) -> None:
         if self._redis is None:
             return
-        await ack_and_finalize_stream_entry(
-            self._redis,
-            stream_key=self._stream_key,
-            consumer_group=self._consumer_group,
-            message_id=message_id,
+        await asyncio.wait_for(
+            ack_and_finalize_stream_entry(
+                self._redis,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                message_id=message_id,
+            ),
+            timeout=self._socket_timeout_seconds,
         )
 
     def _require_redis(self) -> RedisClient:
@@ -161,12 +175,15 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
 
         while self._is_running:
             try:
-                response = await redis.xreadgroup(
-                    groupname=self._consumer_group,
-                    consumername=self._consumer_name,
-                    streams={self._stream_key: ">"},
-                    count=self._settings.read_count,
-                    block=self._settings.block_ms,
+                response = await asyncio.wait_for(
+                    redis.xreadgroup(
+                        groupname=self._consumer_group,
+                        consumername=self._consumer_name,
+                        streams={self._stream_key: ">"},
+                        count=self._settings.read_count,
+                        block=self._settings.block_ms,
+                    ),
+                    timeout=self._socket_timeout_seconds,
                 )
                 for _stream_name, messages in iter_xreadgroup_streams(response):
                     for message_id, fields in messages:
@@ -268,7 +285,10 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                     webhook_path=webhook_path,
                     trace_id=redis_event_id,
                 )
-                await self._on_message(webhook_path, webhook_event)
+                await asyncio.wait_for(
+                    self._on_message(webhook_path, webhook_event),
+                    timeout=self._settings.dispatch_timeout_seconds,
+                )
             except Exception as error:
                 logger.exception(
                     "Failed to handle Redis stream message",

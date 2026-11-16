@@ -1,8 +1,10 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from port_ocean.config.settings import CentralizedRateLimiterSettings
 from port_ocean.rate_limiting.models import (
     AcquireResult,
     CentralizedRateLimitState,
@@ -68,7 +70,12 @@ async def test_await_centralized_rate_limit_sleeps_for_the_block() -> None:
     with (
         patch(
             "port_ocean.rate_limiting.utils.ocean",
-            SimpleNamespace(centralized_rate_limiter=mock_limiter),
+            SimpleNamespace(
+                centralized_rate_limiter=mock_limiter,
+                config=SimpleNamespace(
+                    centralized_rate_limiter=CentralizedRateLimiterSettings()
+                ),
+            ),
         ),
         patch(
             "port_ocean.rate_limiting.utils.derive_sync_tier",
@@ -83,3 +90,36 @@ async def test_await_centralized_rate_limit_sleeps_for_the_block() -> None:
 
     sleep.assert_awaited_once_with(125)
     assert mock_limiter.acquire.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_await_centralized_rate_limit_allows_request_on_acquire_timeout() -> None:
+    async def hang(*_args: object) -> AcquireResult:
+        await asyncio.Event().wait()
+        return AcquireResult(decision=RateLimitAcquireDecision.ALLOW)
+
+    mock_limiter = MagicMock()
+    mock_limiter.acquire = AsyncMock(side_effect=hang)
+
+    with (
+        patch(
+            "port_ocean.rate_limiting.utils.ocean",
+            SimpleNamespace(
+                centralized_rate_limiter=mock_limiter,
+                config=SimpleNamespace(
+                    centralized_rate_limiter=CentralizedRateLimiterSettings(
+                        acquire_timeout_seconds=0.05
+                    )
+                ),
+            ),
+        ),
+        patch(
+            "port_ocean.rate_limiting.utils.derive_sync_tier",
+            return_value=SyncTier.HIGH,
+        ),
+        patch("port_ocean.rate_limiting.utils.logger") as logger,
+    ):
+        await asyncio.wait_for(await_centralized_rate_limit("ocean-sandbox"), 5)
+
+    mock_limiter.acquire.assert_awaited_once()
+    assert "TimeoutError" in logger.warning.call_args.kwargs["error"]
