@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.5 (2026-11-16)
+
+
+### Improvements
+
+- List Foundry conversation and response kinds via selectable endpointScopes (default agent protocol; optional project openai/v1 or both as separate stores), scoped to the integration Azure identity.
+
+
 ## 0.3.4 (2026-11-15)
 
 
