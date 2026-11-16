@@ -7,8 +7,8 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 from actions.create_session_executor import CreateSessionExecutor
 from actions.port_mcp_utils import (
     DEFAULT_PORT_MCP_SESSION_SECRET_KEY,
-    PortMcpInstallationConfig,
     apply_port_mcp_session_secrets,
+    port_mcp_secret_key,
 )
 from tests.fakes import FakeDevin, FakePort, make_node_run, patched_ocean
 from tests.test_actions import build
@@ -46,17 +46,11 @@ def test_apply_port_mcp_session_secrets_uses_configured_key() -> None:
     ]
 
 
-def test_port_mcp_installation_config_secret_key() -> None:
-    assert (
-        PortMcpInstallationConfig.secret_key_from({})
-        == DEFAULT_PORT_MCP_SESSION_SECRET_KEY
-    )
-    assert (
-        PortMcpInstallationConfig.secret_key_from({"port_mcp_secret_key": "MCP_MY_PORT"})
-        == "MCP_MY_PORT"
-    )
+def test_port_mcp_secret_key_pattern() -> None:
+    assert port_mcp_secret_key({}) == DEFAULT_PORT_MCP_SESSION_SECRET_KEY
+    assert port_mcp_secret_key({"port_mcp_secret_key": "MCP_MY_PORT"}) == "MCP_MY_PORT"
     with pytest.raises(ActionExecutionError, match="MCP_"):
-        PortMcpInstallationConfig.secret_key_from({"port_mcp_secret_key": "BAD"})
+        port_mcp_secret_key({"port_mcp_secret_key": "BAD"})
 
 
 async def test_create_session_injects_session_secret(

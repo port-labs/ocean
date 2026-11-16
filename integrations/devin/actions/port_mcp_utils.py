@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict
 from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -17,32 +17,15 @@ _TOKEN_ERROR = (
 )
 
 
-class PortMcpInstallationConfig(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    port_mcp_secret_key: str = DEFAULT_PORT_MCP_SESSION_SECRET_KEY
-
-    @field_validator("port_mcp_secret_key")
-    @classmethod
-    def _port_mcp_secret_key_prefix(cls, value: str) -> str:
-        if not value.startswith("MCP_"):
-            raise ValueError("portMcpSecretKey must start with MCP_")
-        return value
-
-    @classmethod
-    def secret_key_from(cls, integration_config: dict[str, Any]) -> str:
-        """Used when enablePortMcp is true on a workflow node."""
-        try:
-            return cls.model_validate(integration_config).port_mcp_secret_key
-        except ValidationError as error:
-            raise ActionExecutionError(cls._validation_message(error)) from error
-
-    @classmethod
-    def _validation_message(cls, error: ValidationError) -> str:
-        return "; ".join(
-            f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
-            for err in error.errors()
-        )
+def port_mcp_secret_key(integration_config: dict[str, Any]) -> str:
+    """Used when enablePortMcp is true; installation config types come from spec.json."""
+    key = (
+        integration_config.get("port_mcp_secret_key")
+        or DEFAULT_PORT_MCP_SESSION_SECRET_KEY
+    )
+    if not key.startswith("MCP_"):
+        raise ActionExecutionError("portMcpSecretKey must start with MCP_")
+    return key
 
 
 def apply_port_mcp_session_secrets(

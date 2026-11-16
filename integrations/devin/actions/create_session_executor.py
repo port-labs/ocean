@@ -12,8 +12,8 @@ from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
 from actions.port_mcp_utils import (
     PortMcpActionMixin,
-    PortMcpInstallationConfig,
     apply_port_mcp_session_secrets,
+    port_mcp_secret_key,
 )
 from actions.utils import ensure_no_reserved_tags, merge_config
 from core.tracking.run_output import started_output
@@ -90,7 +90,7 @@ class CreateSessionExecutor(AbstractDevinExecutor):
             body,
             run,
             inputs.enablePortMcp,
-            PortMcpInstallationConfig.secret_key_from(ocean.integration_config),
+            port_mcp_secret_key(ocean.integration_config),
         )
 
         try:
