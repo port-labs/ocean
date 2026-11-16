@@ -6,6 +6,7 @@ from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.cache import cache_iterator_result
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListToolboxesOptions
@@ -21,6 +22,46 @@ from azure_integration.foundry.helpers.utils import (
 )
 
 _TOOLBOXES_FEATURE = "Toolboxes=V1Preview"
+
+
+class ToolboxLatestVersion(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    skills: list[Any] = Field(default_factory=list)
+    tools: list[Any] = Field(default_factory=list)
+
+    @field_validator("skills", "tools", mode="before")
+    @classmethod
+    def _coerce_list(cls, value: Any) -> list[Any]:
+        return value if isinstance(value, list) else []
+
+
+class ToolboxVersions(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    latest: ToolboxLatestVersion | None = None
+
+    @field_validator("latest", mode="before")
+    @classmethod
+    def _coerce_latest(cls, value: Any) -> Any:
+        return value if isinstance(value, dict) else None
+
+
+class ToolboxPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    versions: ToolboxVersions | None = None
+
+    @field_validator("versions", mode="before")
+    @classmethod
+    def _coerce_versions(cls, value: Any) -> Any:
+        return value if isinstance(value, dict) else None
+
+
+class ConnectionPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    target: str = ""
 
 
 class ToolboxesExporter(FoundryExporter):
@@ -87,20 +128,18 @@ class ToolboxesExporter(FoundryExporter):
         headers: dict[str, str],
     ) -> dict[str, Any]:
         enriched = dict(toolbox)
-        versions = enriched.get("versions")
-        latest = versions.get("latest") if isinstance(versions, dict) else None
-        if not isinstance(latest, dict):
+        try:
+            parsed = ToolboxPayload.model_validate(toolbox)
+        except ValidationError:
             return {**enriched, "__skillNames": [], "__a2aSubagents": []}
 
-        skills = latest.get("skills") or []
-        tools = latest.get("tools") or []
-        if not isinstance(skills, list):
-            skills = []
-        if not isinstance(tools, list):
-            tools = []
-        enriched["__skillNames"] = skill_names_from_refs(skills)
+        latest = parsed.versions.latest if parsed.versions else None
+        if latest is None:
+            return {**enriched, "__skillNames": [], "__a2aSubagents": []}
+
+        enriched["__skillNames"] = skill_names_from_refs(latest.skills)
         enriched["__a2aSubagents"] = await self._a2a_subagents(
-            project_endpoint, tools, headers=headers
+            project_endpoint, latest.tools, headers=headers
         )
         return enriched
 
@@ -120,12 +159,12 @@ class ToolboxesExporter(FoundryExporter):
             if not isinstance(payload, dict) or not payload:
                 subagents.append({"connectionName": conn_name})
                 continue
-            target = str(payload.get("target") or "")
+            connection = ConnectionPayload.model_validate(payload)
             entry: dict[str, Any] = {
                 "connectionName": conn_name,
-                "target": target,
+                "target": connection.target,
             }
-            project_name, agent_name = parse_foundry_a2a_url(target)
+            project_name, agent_name = parse_foundry_a2a_url(connection.target)
             if project_name:
                 entry["projectName"] = project_name
             if agent_name:
