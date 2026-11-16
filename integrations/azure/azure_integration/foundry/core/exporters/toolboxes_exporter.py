@@ -5,6 +5,7 @@ from typing import Any
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.cache import cache_iterator_result
 
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListToolboxesOptions
@@ -23,6 +24,7 @@ _TOOLBOXES_FEATURE = "Toolboxes=V1Preview"
 
 
 class ToolboxesExporter(FoundryExporter):
+    @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListToolboxesOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
