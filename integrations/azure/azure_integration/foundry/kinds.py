@@ -7,6 +7,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 
+from azure_integration.foundry.core.options import EndpointScope
+
 FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
 DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
 FOUNDRY_FEATURE_FLAG = "azure-foundry-agent"
@@ -103,8 +105,8 @@ class ModelDeploymentResourceConfig(ResourceConfig):
 
 
 class FoundryEndpointScopedSelector(FoundrySelector):
-    endpoint_scopes: list[Literal["agent", "project"]] = Field(
-        default=["agent"],
+    endpoint_scopes: list[EndpointScope] = Field(
+        default=[EndpointScope.AGENT],
         alias="endpointScopes",
         min_items=1,
         title="Endpoint scopes",
@@ -118,8 +120,8 @@ class FoundryEndpointScopedSelector(FoundrySelector):
 
     @validator("endpoint_scopes", always=True)
     def endpoint_scopes_must_be_unique(
-        cls, value: list[Literal["agent", "project"]]
-    ) -> list[Literal["agent", "project"]]:
+        cls, value: list[EndpointScope]
+    ) -> list[EndpointScope]:
         if len(value) != len(set(value)):
             duplicates = sorted({item for item in value if value.count(item) > 1})
             raise ValueError(

@@ -13,6 +13,7 @@ from azure_integration.foundry.core.exporters.responses_exporter import (
     ResponsesExporter,
 )
 from azure_integration.foundry.core.options import (
+    EndpointScope,
     ListConversationsOptions,
     ListResponsesOptions,
 )
@@ -68,7 +69,7 @@ async def test_lists_conversations_project_scope_only() -> None:
             project_endpoint=_PROJECT,
             project_id=_PROJECT_ID,
             since_days=30,
-            endpoint_scopes=["project"],
+            endpoint_scopes=[EndpointScope.PROJECT],
         )
     ):
         pages.append(page)
@@ -98,7 +99,7 @@ async def test_lists_conversations_both_scopes_are_separate_stores() -> None:
             project_endpoint=_PROJECT,
             project_id=_PROJECT_ID,
             since_days=30,
-            endpoint_scopes=["agent", "project"],
+            endpoint_scopes=[EndpointScope.AGENT, EndpointScope.PROJECT],
         )
     ):
         pages.append(page)
@@ -154,7 +155,7 @@ async def test_skips_agent_when_protocol_endpoint_errors() -> None:
             yield [{"id": "bad-agent"}, {"id": "good-agent"}]
             return
         if "bad-agent" in path:
-            raise FoundryApiError("Foundry API 400: no protocol")
+            raise FoundryApiError("Foundry API 400: no protocol", status_code=400)
         yield [{"id": "resp-ok", "created_at": _NOW}]
 
     client = MagicMock()
@@ -175,6 +176,31 @@ async def test_skips_agent_when_protocol_endpoint_errors() -> None:
     assert pages[0][0]["__foundryAgentId"] == "good-agent"
 
 
+@pytest.mark.asyncio
+async def test_rethrows_non_skippable_agent_protocol_errors() -> None:
+    async def fail_server(
+        project_endpoint: str, path: str, **kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        del project_endpoint, kwargs
+        if path == "agents":
+            yield [{"id": "agent-a"}]
+            return
+        raise FoundryApiError("Foundry API 500: boom", status_code=500)
+
+    client = MagicMock()
+    client.send_cursor_paginated_request = MagicMock(side_effect=fail_server)
+
+    with pytest.raises(FoundryApiError, match="500"):
+        async for _ in ResponsesExporter(client).get_paginated_resources(
+            ListResponsesOptions(
+                project_endpoint=_PROJECT,
+                project_id=_PROJECT_ID,
+                since_days=7,
+            )
+        ):
+            pass
+
+
 def test_endpoint_scopes_default_agent() -> None:
     selector = ConversationSelector(query="true")
     assert selector.endpoint_scopes == ["agent"]
@@ -182,4 +208,7 @@ def test_endpoint_scopes_default_agent() -> None:
 
 def test_endpoint_scopes_rejects_duplicates() -> None:
     with pytest.raises(ValidationError, match="duplicate"):
-        ConversationSelector(query="true", endpointScopes=["agent", "agent"])
+        ConversationSelector(
+            query="true",
+            endpointScopes=[EndpointScope.AGENT, EndpointScope.AGENT],
+        )

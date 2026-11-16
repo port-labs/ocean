@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-EndpointScope = Literal["agent", "project"]
+
+class EndpointScope(StrEnum):
+    AGENT = "agent"
+    PROJECT = "project"
 
 
 class ProjectIdentifier(BaseModel):
@@ -24,12 +27,12 @@ class ListModelDeploymentsOptions(ProjectIdentifier):
 
 class ListConversationsOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
-    endpoint_scopes: list[EndpointScope] = Field(default=["agent"])
+    endpoint_scopes: list[EndpointScope] = Field(default=[EndpointScope.AGENT])
 
 
 class ListResponsesOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
-    endpoint_scopes: list[EndpointScope] = Field(default=["agent"])
+    endpoint_scopes: list[EndpointScope] = Field(default=[EndpointScope.AGENT])
 
 
 class ListMemoryStoresOptions(ProjectIdentifier):
