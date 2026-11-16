@@ -13,6 +13,7 @@ from gcp_core.cloud_function.resync import resync_cloud_function_resources
 from gcp_core.overrides import (
     GCPCloudFunctionResourceConfig,
     GCPCloudResourceSelector,
+    GCPIamPolicySelector,
 )
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
@@ -20,6 +21,7 @@ from gcp_core.search.resource_searches import (
     list_all_topics_per_project,
     search_all_folders,
     search_all_organizations,
+    search_all_iam_policies_per_project,
     search_all_projects,
     search_all_resources,
 )
@@ -165,6 +167,21 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         async for resources_batch in iterator_resync_method:
             yield resources_batch
+
+
+@ocean.on_resync(kind=AssetTypesWithSpecialHandling.IAM_POLICY)
+async def resync_iam_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = typing.cast(GCPIamPolicySelector, get_current_resource_config().selector)
+    rate_limiter, semaphore = await resolve_request_controllers(kind)
+    async for batch in iterate_per_available_project(
+        search_all_iam_policies_per_project,
+        asset_type=kind,
+        asset_types=selector.asset_types,
+        policy_query=selector.policy_query,
+        rate_limiter=rate_limiter,
+        semaphore=semaphore,
+    ):
+        yield batch
 
 
 register_webhook_processors()
