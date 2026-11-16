@@ -11,7 +11,7 @@ from azure_integration.foundry.core.options import EndpointScope
 
 FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
 DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
-FOUNDRY_FEATURE_FLAG = "azure-foundry-agent"
+FOUNDRY_FEATURE_FLAG = "AZURE_AI_FOUNDRY"
 
 
 class ObjectKind(StrEnum):
