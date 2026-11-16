@@ -78,6 +78,7 @@
       "name": "create_session",
       "icon": "Devin",
       "description": "Start a new Devin session with a prompt. When reportCompletion is true, the Port run stays in progress until Devin finishes the turn (or fails), Devin's messages are posted to the run logs while it works, and the run output includes the pull requests, structured output, ACU usage and start/end timestamps.",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "prompt",
@@ -143,6 +144,14 @@
           "required": false
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, injects a session secret (PORT_MCP_ACCESS_TOKEN) from the workflow node's execution identity so a preconfigured Devin Port MCP plugin can authenticate. Requires executionIdentity on the node.",
+          "default": false,
+          "required": false
+        },
+        {
           "name": "reportCompletion",
           "title": "Report completion",
           "type": "boolean",
@@ -163,6 +172,7 @@
       "name": "send_message",
       "icon": "Devin",
       "description": "Send a follow-up message to an existing Devin session. Rejected while the session is still working on a previous turn. When reportCompletion is true, the Port run stays in progress until Devin finishes this turn, and only this turn's messages are posted to the run logs.",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "sessionId",
@@ -183,6 +193,14 @@
           "title": "Send as user (ID)",
           "type": "string",
           "description": "Optional Devin organization user ID to send the message on behalf of. When omitted, the message is sent as the integration service user. Requires ImpersonateOrgSessions on the service user.",
+          "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "description": "When true, re-injects PORT_MCP_ACCESS_TOKEN for this turn from the workflow node's execution identity.",
+          "default": false,
           "required": false
         },
         {

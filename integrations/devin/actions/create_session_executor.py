@@ -10,6 +10,7 @@ from pydantic import Field
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
+from actions.port_mcp_utils import apply_port_mcp_session_secrets
 from actions.utils import ensure_no_reserved_tags, merge_config
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags
@@ -30,6 +31,7 @@ class CreateSessionInputs(AbstractDevinActionInput):
     maxAcuLimit: int | None = None
     structuredOutputSchema: dict[str, Any] | None = None
     createAsUserId: str | None = None
+    enablePortMcp: bool = False
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
@@ -81,6 +83,7 @@ class CreateSessionExecutor(AbstractDevinExecutor):
                 "tags": tags,
             },
         )
+        apply_port_mcp_session_secrets(body, run, inputs.enablePortMcp)
 
         try:
             session = await self.sessions.create(body)
