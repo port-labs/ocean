@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.5.0 (2026-11-16)
+
+
+### Features
+
+- Add support for syncing AWS EKS Nodegroups (`AWS::EKS::Nodegroup`), including CloudTrail live events
+
+
 ## 3.4.2 (2026-11-15)
 
 
