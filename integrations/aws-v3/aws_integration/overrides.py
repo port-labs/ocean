@@ -426,6 +426,18 @@ class AWSSNSTopicResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSEKSNodegroupResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "eks:ListClusters",
+        "eks:ListNodegroups",
+        "eks:DescribeNodegroup",
+    )
+    kind: Literal["AWS::EKS::Nodegroup"] = Field(
+        title="AWS EKS Nodegroup",
+        description="AWS EKS Nodegroup resource kind.",
+    )
+
+
 class AWSCustomKindSelector(AWSRegionPolicySelector):
     use_get_resource_api: bool = Field(
         alias="useGetResourceAPI",
@@ -508,6 +520,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSDynamoDBTableResourceConfig
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
+        | AWSEKSNodegroupResourceConfig
         | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,
