@@ -35,9 +35,7 @@ class EksNodegroupProperties(BaseAWSPropertiesModel):
 
 class EksNodegroup(ResourceModel[EksNodegroupProperties]):
     Type: str = "AWS::EKS::Nodegroup"
-    Properties: EksNodegroupProperties = Field(
-        default_factory=EksNodegroupProperties
-    )
+    Properties: EksNodegroupProperties = Field(default_factory=EksNodegroupProperties)
 
 
 class SingleEksNodegroupRequest(ResourceRequestModel):

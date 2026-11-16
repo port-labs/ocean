@@ -11,9 +11,7 @@ class NodegroupRecord(TypedDict):
 
 
 class DescribeNodegroupAction(Action[list[NodegroupRecord]]):
-    async def _execute(
-        self, nodegroups: List[NodegroupRecord]
-    ) -> List[Dict[str, Any]]:
+    async def _execute(self, nodegroups: List[NodegroupRecord]) -> List[Dict[str, Any]]:
         """Fetch detailed information for each EKS nodegroup."""
 
         nodegroup_results = await asyncio.gather(
@@ -40,9 +38,7 @@ class DescribeNodegroupAction(Action[list[NodegroupRecord]]):
 
         return results
 
-    async def _fetch_nodegroup(
-        self, record: NodegroupRecord
-    ) -> Dict[str, Any]:
+    async def _fetch_nodegroup(self, record: NodegroupRecord) -> Dict[str, Any]:
         """Fetch a single nodegroup by cluster name and nodegroup name."""
         response = await self.client.describe_nodegroup(
             clusterName=record["clusterName"],
