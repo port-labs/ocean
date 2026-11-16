@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fetch Linear issue project identity in issue GraphQL queries
