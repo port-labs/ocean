@@ -140,3 +140,41 @@ class TestIPBlockerTransport:
                 )
             assert "could not resolve" in str(exc_info.value).lower()
             wrapped.handle_async_request.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_plain_api_hostname_not_rewritten(self) -> None:
+        """
+        Plain API (core-api.uk.plain.com) should NOT have its hostname rewritten to IP
+        in SaaS mode. It should be treated as a trusted subdomain and passed through as-is.
+        """
+        wrapped = AsyncMock(spec=httpx.AsyncBaseTransport)
+        wrapped.handle_async_request.return_value = httpx.Response(
+            200, request=httpx.Request("POST", "https://core-api.uk.plain.com/graphql/v1")
+        )
+        transport = IPBlockerTransport(wrapped=wrapped)
+
+        await transport.handle_async_request(
+            httpx.Request("POST", "https://core-api.uk.plain.com/graphql/v1")
+        )
+
+        # Assert: hostname should NOT be rewritten
+        sent: httpx.Request = wrapped.handle_async_request.call_args[0][0]
+        assert sent.url.host == "core-api.uk.plain.com"
+        # Host header and sni_hostname should not be set (no rewriting happened)
+        assert sent.headers.get("host") != "core-api.uk.plain.com" or sent.headers.get("host") is None
+
+    @pytest.mark.asyncio
+    async def test_other_plain_subdomains_also_trusted(self) -> None:
+        """Verify other Plain subdomains are also trusted (e.g., potential US/EU variants)."""
+        wrapped = AsyncMock(spec=httpx.AsyncBaseTransport)
+        wrapped.handle_async_request.return_value = httpx.Response(
+            200, request=httpx.Request("POST", "https://core-api.us.plain.com/graphql/v1")
+        )
+        transport = IPBlockerTransport(wrapped=wrapped)
+
+        await transport.handle_async_request(
+            httpx.Request("POST", "https://core-api.us.plain.com/graphql/v1")
+        )
+
+        sent: httpx.Request = wrapped.handle_async_request.call_args[0][0]
+        assert sent.url.host == "core-api.us.plain.com"
