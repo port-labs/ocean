@@ -1,5 +1,6 @@
 from typing import Any
 
+from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
@@ -15,6 +16,7 @@ from azure_integration.foundry.helpers.agent_api import build_agent_responses_in
 from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
+from azure_integration.foundry.helpers.port_mcp import remint_port_mcp_on_agent
 from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
     WEBHOOK_PATH,
 )
@@ -28,7 +30,8 @@ class InvokeAgentInputs(AbstractFoundryActionInput):
     input: str = Field(min_length=1)
     conversationId: str | None = None
     conversationMetadata: dict[str, Any] | None = None
-    reportInvocationStatus: bool = Field(default=True)
+    reportInvocationStatus: bool = Field(default=False)
+    enablePortMcp: bool = Field(default=True)
     extraBody: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -39,6 +42,15 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeAgentInputs.from_execution_properties(run.execution_properties)
+        if inputs.enablePortMcp:
+            token = get_run_access_token(run)
+            if token:
+                await remint_port_mcp_on_agent(
+                    self.client,
+                    project_endpoint=inputs.projectEndpoint,
+                    agent_id=inputs.agentId,
+                    access_token=token,
+                )
         try:
             conversation_id = await resolve_conversation_for_invoke(
                 self.client,

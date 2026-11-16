@@ -2,6 +2,7 @@ from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
@@ -14,6 +15,14 @@ from azure_integration.foundry.helpers.agent_api import (
     definition_kind,
     foundry_features_header,
     latest_agent_definition,
+)
+from azure_integration.foundry.helpers.port_mcp import (
+    TOOLBOX_SERVER_LABEL,
+    attach_toolbox_to_agent_config,
+    ensure_ootb_mcp,
+    fetch_agent_tools,
+    sanitize_git_provider,
+    toolbox_consumer_url,
 )
 from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
@@ -28,6 +37,9 @@ class UpdateAgentInputs(AbstractFoundryActionInput):
     model: str | None = None
     instructions: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
+    enablePortMcp: bool | None = None
+    gitAccessToken: str | None = Field(default=None, min_length=1)
+    gitProvider: str = Field(default="github")
 
     def to_api_body(self) -> dict[str, Any]:
         # Partial patch; executor merges over GET before POST.
@@ -51,18 +63,88 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = UpdateAgentInputs.from_execution_properties(run.execution_properties)
-        patch = inputs.to_api_body()
+        git_provider = sanitize_git_provider(inputs.gitProvider)
 
         if not any(
             (
                 inputs.model is not None,
                 inputs.instructions is not None,
                 bool(inputs.config),
+                inputs.enablePortMcp is not None,
+                inputs.gitAccessToken is not None,
             )
         ):
             raise ActionExecutionError(
                 "At least one field must be provided to update",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
+            )
+
+        patch = inputs.to_api_body()
+
+        if inputs.enablePortMcp is not None or inputs.gitAccessToken is not None:
+            existing_tools = await fetch_agent_tools(
+                self.client,
+                project_endpoint=inputs.projectEndpoint,
+                agent_id=inputs.agentId,
+            )
+            enable_port = inputs.enablePortMcp is True
+            had_ootb_toolbox = any(
+                isinstance(t, dict) and t.get("server_label") == TOOLBOX_SERVER_LABEL
+                for t in existing_tools
+            )
+            if enable_port and not get_run_access_token(run):
+                logger.warning(
+                    f"enablePortMcp set for update on agent {inputs.agentId} but "
+                    "no execution identity token; Port connection will not be reminted"
+                )
+            try:
+                toolbox_result = await ensure_ootb_mcp(
+                    self.client,
+                    project_endpoint=inputs.projectEndpoint,
+                    agent_id=inputs.agentId,
+                    enable_port_mcp=enable_port,
+                    port_access_token=(
+                        get_run_access_token(run) if enable_port else None
+                    ),
+                    git_access_token=inputs.gitAccessToken,
+                    git_provider=git_provider,
+                    attach_to_prompt_agent=False,
+                    existing_tools=existing_tools,
+                    include_existing_port_in_toolbox=(
+                        inputs.enablePortMcp is None
+                        and bool(inputs.gitAccessToken)
+                        and had_ootb_toolbox
+                    ),
+                )
+            except Exception as error:
+                raise ActionExecutionError(
+                    f"Failed to prepare ootb MCP toolbox: {error}",
+                    status_label=UPDATE_FAILED_STATUS_LABEL,
+                ) from error
+
+            if inputs.enablePortMcp is False:
+                toolbox_url: str | None = None
+            elif toolbox_result:
+                toolbox_name, toolbox_version = toolbox_result
+                toolbox_url = toolbox_consumer_url(
+                    inputs.projectEndpoint,
+                    toolbox_name,
+                    version=toolbox_version,
+                )
+            else:
+                toolbox_url = next(
+                    (
+                        t.get("server_url")
+                        for t in existing_tools
+                        if isinstance(t, dict)
+                        and t.get("server_label") == TOOLBOX_SERVER_LABEL
+                    ),
+                    None,
+                )
+            patch = attach_toolbox_to_agent_config(
+                patch,
+                toolbox_url=toolbox_url,
+                existing_tools=existing_tools,
             )
 
         await ocean.port_client.post_run_log(

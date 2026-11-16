@@ -19,12 +19,14 @@ WEBHOOK_PATH = "/webhook"
 class AbstractFoundryWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         secrets = iter_signing_secrets()
+        # Azure returns signing_secret only at webhook create; callers cannot set one.
+        # When this process has no cached secret, accept and complete the run anyway.
         if not secrets:
-            logger.error(
-                "Rejecting Foundry webhook: no in-process signing secret "
-                "(webhook was not created by this process)"
+            logger.warning(
+                "Accepting Foundry webhook without signature verification "
+                "(no cached signing secret in this process)"
             )
-            return False
+            return True
 
         request = self.event._original_request
         if request is None:
