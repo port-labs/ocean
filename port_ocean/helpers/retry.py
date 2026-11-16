@@ -27,6 +27,8 @@ from port_ocean.helpers.sync_tier import (
 )
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 
+__all__ = ["_is_ssl_error", "RetryTransport", "RetryConfig"]
+
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 _RETRY_CONFIG_CALLBACK: Callable[[], "RetryConfig"] | None = None
