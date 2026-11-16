@@ -6,13 +6,11 @@ import pytest
 from port_ocean.core.models import ResolvedExecutionIdentity
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from actions.exceptions import InvalidActionParametersException
-
 from actions.create_session_executor import CreateSessionExecutor
-from actions.create_session_executor import CreateSessionInputs
 from actions.port_mcp_utils import (
     DEFAULT_PORT_MCP_ORG_SECRET_KEY,
     merge_port_mcp_secret_id,
+    port_mcp_secret_key_from_config,
     rotate_port_mcp_org_secret,
     validate_port_mcp_secret_key,
 )
@@ -156,10 +154,16 @@ def test_port_mcp_secret_key_must_start_with_mcp() -> None:
     with pytest.raises(ValueError, match="MCP_"):
         validate_port_mcp_secret_key("PORT_TOKEN")
 
-    with pytest.raises(InvalidActionParametersException):
-        CreateSessionInputs.from_execution_properties(
-            {"prompt": "hi", "enablePortMcp": True, "portMcpSecretKey": "BAD"}
-        )
+    with pytest.raises(ActionExecutionError, match="MCP_"):
+        port_mcp_secret_key_from_config({"port_mcp_secret_key": "BAD"})
+
+
+def test_port_mcp_secret_key_from_config_defaults() -> None:
+    assert port_mcp_secret_key_from_config({}) == DEFAULT_PORT_MCP_ORG_SECRET_KEY
+    assert (
+        port_mcp_secret_key_from_config({"port_mcp_secret_key": "MCP_CUSTOM"})
+        == "MCP_CUSTOM"
+    )
 
 
 async def test_rotate_uses_custom_secret_key() -> None:
@@ -205,6 +209,7 @@ async def test_create_session_merges_rotated_secret_id(
 
     with patched_ocean(port) as ocean_mock:
         ocean_mock.config.port.mcp_url = "https://mcp.port.io/v1"
+        ocean_mock.integration_config = {"port_mcp_secret_key": "MCP_PORT_TOKEN"}
         with patch(
             "actions.port_mcp_utils.get_run_access_token", return_value="port.jwt"
         ):

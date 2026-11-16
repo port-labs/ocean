@@ -13,6 +13,7 @@ from actions.exceptions import DevinApiError
 from actions.port_mcp_utils import (
     PortMcpActionMixin,
     merge_port_mcp_secret_id,
+    port_mcp_secret_key_from_config,
     rotate_port_mcp_org_secret,
 )
 from actions.utils import ensure_no_reserved_tags, merge_config
@@ -90,7 +91,7 @@ class CreateSessionExecutor(AbstractDevinExecutor):
             self.sessions.client,
             run,
             inputs.enablePortMcp,
-            inputs.portMcpSecretKey,
+            port_mcp_secret_key_from_config(ocean.integration_config),
         )
         merge_port_mcp_secret_id(body, port_mcp_secret_id)
 

@@ -11,7 +11,7 @@ from actions.abstract_action_input import AbstractDevinActionInput
 from actions.port_mcp_utils import PortMcpActionMixin
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError, SessionBusyError
-from actions.port_mcp_utils import rotate_port_mcp_org_secret
+from actions.port_mcp_utils import port_mcp_secret_key_from_config, rotate_port_mcp_org_secret
 from actions.utils import (
     ensure_port_managed_session,
     merge_config,
@@ -115,7 +115,7 @@ class SendMessageExecutor(AbstractDevinExecutor):
             self.sessions.client,
             run,
             inputs.enablePortMcp,
-            inputs.portMcpSecretKey,
+            port_mcp_secret_key_from_config(ocean.integration_config),
         )
         try:
             session = await self.sessions.send_message(session_id, body)

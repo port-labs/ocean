@@ -9,7 +9,7 @@ from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
 
 from clients.devin_client import DevinClient
 
@@ -50,6 +50,23 @@ def _require_port_mcp_token(run: IntegrationRun) -> str:
     return access_token
 
 
+def port_mcp_secret_key_from_config(
+    integration_config: dict[str, Any],
+) -> str:
+    """Secret key from installation config; used only when enablePortMcp is true."""
+    raw = integration_config.get("port_mcp_secret_key")
+    if raw is None or raw == "":
+        return DEFAULT_PORT_MCP_ORG_SECRET_KEY
+    if not isinstance(raw, str):
+        raise ActionExecutionError(
+            "portMcpSecretKey integration configuration must be a string"
+        )
+    try:
+        return validate_port_mcp_secret_key(raw)
+    except ValueError as error:
+        raise ActionExecutionError(str(error)) from error
+
+
 async def rotate_port_mcp_org_secret(
     client: DevinClient,
     run: IntegrationRun,
@@ -79,12 +96,6 @@ class PortMcpActionMixin(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enablePortMcp: bool = False
-    portMcpSecretKey: str = DEFAULT_PORT_MCP_ORG_SECRET_KEY
-
-    @field_validator("portMcpSecretKey")
-    @classmethod
-    def _port_mcp_secret_key_prefix(cls, value: str) -> str:
-        return validate_port_mcp_secret_key(value)
 
 
 def merge_port_mcp_secret_id(body: dict[str, Any], secret_id: str | None) -> None:
