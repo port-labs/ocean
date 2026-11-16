@@ -11,6 +11,7 @@ from port_ocean.utils.async_iterators import stream_independent_async_iterators
 from port_ocean.utils.cache import cache_iterator_result
 from pydantic import BaseModel, ConfigDict, Field
 
+from azure_integration.foundry.helpers.utils import projects_matching_regions
 from azure_integration.foundry.kinds import (
     DEFAULT_FOUNDRY_ARM_API_VERSION,
     FOUNDRY_ARM_PROJECT_KIND,
@@ -73,6 +74,23 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
 class ProjectExporter:
     @cache_iterator_result()
     async def get_paginated_resources(
+        self,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+        regions: list[str] | None = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Yield Foundry projects, optionally filtered by ARM location.
+
+        Full ARM discovery is cached separately so different ``regions`` filters
+        reuse the same project list within an event.
+        """
+        async for projects in self._iter_all_projects(api_version=api_version):
+            matched = projects_matching_regions(projects, regions or [])
+            if matched:
+                yield matched
+
+    @cache_iterator_result()
+    async def _iter_all_projects(
         self,
         *,
         api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,

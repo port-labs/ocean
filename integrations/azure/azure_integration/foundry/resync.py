@@ -49,7 +49,6 @@ from azure_integration.foundry.kinds import (
     SkillResourceConfig,
     ToolboxResourceConfig,
 )
-from azure_integration.foundry.helpers.utils import projects_matching_regions
 
 
 @ocean.on_incremental_resync(ObjectKind.FOUNDRY_PROJECT)
@@ -71,11 +70,11 @@ async def resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AgentResourceConfig, event.resource_config).selector
     exporter = AgentsExporter(create_foundry_client(selector.api_version))
 
-    regions = list(selector.project.regions)
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry agents for project {project['name']} ({project_endpoint})"
@@ -97,11 +96,11 @@ async def resync_foundry_model_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_
     selector = cast(ModelDeploymentResourceConfig, event.resource_config).selector
     exporter = ModelDeploymentsExporter(create_foundry_client(selector.api_version))
 
-    regions = list(selector.project.regions)
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry deployments for project {project['name']} ({project_endpoint})"
@@ -122,11 +121,11 @@ async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     selector = cast(ConversationResourceConfig, event.resource_config).selector
     exporter = ConversationsExporter(create_foundry_client(selector.api_version))
 
-    regions = list(selector.project.regions)
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry conversations for project {project['name']} ({project_endpoint})"
@@ -149,11 +148,11 @@ async def resync_foundry_responses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ResponseResourceConfig, event.resource_config).selector
     exporter = ResponsesExporter(create_foundry_client(selector.api_version))
 
-    regions = list(selector.project.regions)
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry responses for project {project['name']} ({project_endpoint})"
@@ -176,11 +175,11 @@ async def resync_foundry_memory_stores(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     selector = cast(MemoryStoreResourceConfig, event.resource_config).selector
     exporter = MemoryStoresExporter(create_foundry_client(selector.api_version))
 
-    regions = list(selector.project.regions)
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry memory stores for project {project['name']} ({project_endpoint})"
@@ -202,9 +201,10 @@ async def resync_foundry_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = SkillsExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, selector.project.regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry skills for project {project['name']} ({project_endpoint})"
@@ -231,9 +231,10 @@ async def resync_foundry_toolboxes(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = ToolboxesExporter(create_foundry_client(selector.api_version))
 
     async for projects in ProjectExporter().get_paginated_resources(
-        api_version=selector.project.api_version
+        api_version=selector.project.api_version,
+        regions=list(selector.project.regions),
     ):
-        for project in projects_matching_regions(projects, selector.project.regions):
+        for project in projects:
             project_endpoint = str(project["__foundryProjectEndpoint"])
             logger.info(
                 f"Syncing Foundry toolboxes for project {project['name']} ({project_endpoint})"
