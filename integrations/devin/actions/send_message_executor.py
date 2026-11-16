@@ -8,8 +8,10 @@ from port_ocean.core.models import IntegrationRun
 from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
+from actions.port_mcp_utils import PortMcpActionMixin
 from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError, SessionBusyError
+from actions.port_mcp_utils import apply_port_mcp_session_secrets, port_mcp_secret_key
 from actions.utils import (
     ensure_port_managed_session,
     merge_config,
@@ -30,7 +32,7 @@ SESSION_RUNNING_STATUS_LABEL = "Session running"
 MESSAGE_SENT_STATUS_LABEL = "Message sent"
 
 
-class SendMessageInputs(AbstractDevinActionInput):
+class SendMessageInputs(AbstractDevinActionInput, PortMcpActionMixin):
     sessionId: str = Field(min_length=1)
     message: str = Field(min_length=1)
     messageAsUserId: str | None = None
@@ -108,6 +110,12 @@ class SendMessageExecutor(AbstractDevinExecutor):
                 "message": inputs.message,
                 "message_as_user_id": inputs.messageAsUserId,
             },
+        )
+        apply_port_mcp_session_secrets(
+            body,
+            run,
+            inputs.enablePortMcp,
+            port_mcp_secret_key(ocean.integration_config),
         )
         try:
             session = await self.sessions.send_message(session_id, body)
