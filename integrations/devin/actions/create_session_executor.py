@@ -12,9 +12,8 @@ from actions.abstract_executor import AbstractDevinExecutor
 from actions.exceptions import DevinApiError
 from actions.port_mcp_utils import (
     PortMcpActionMixin,
-    merge_port_mcp_secret_id,
+    apply_port_mcp_session_secrets,
     port_mcp_secret_key_from_config,
-    rotate_port_mcp_org_secret,
 )
 from actions.utils import ensure_no_reserved_tags, merge_config
 from core.tracking.run_output import started_output
@@ -87,13 +86,12 @@ class CreateSessionExecutor(AbstractDevinExecutor):
                 "tags": tags,
             },
         )
-        port_mcp_secret_id = await rotate_port_mcp_org_secret(
-            self.sessions.client,
+        apply_port_mcp_session_secrets(
+            body,
             run,
             inputs.enablePortMcp,
             port_mcp_secret_key_from_config(ocean.integration_config),
         )
-        merge_port_mcp_secret_id(body, port_mcp_secret_id)
 
         try:
             session = await self.sessions.create(body)

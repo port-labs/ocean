@@ -77,7 +77,7 @@
       "required": false,
       "sensitive": false,
       "default": "MCP_PORT_TOKEN",
-      "description": "Devin organization secret key the integration rotates when a workflow node sets enablePortMcp on create_session or send_message. Must start with MCP_ and match the org secret your Port MCP HTTP server references in Devin Customize. Ignored when enablePortMcp is not used on any node."
+      "description": "Session secret key injected into Devin session_secrets when a workflow node sets enablePortMcp on create_session or send_message. Must start with MCP_ and match what your Port MCP configuration expects. Ignored when enablePortMcp is not used on any node."
     }
   ],
   "actionsProcessingEnabled": true,
@@ -155,7 +155,7 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, rotates a Devin organization secret from this run's Port access token (workflow actor or service account) so a preconfigured Port MCP HTTP server in Devin Customize can authenticate. The secret value is replaced on every execution before the session is created. Requires executionIdentity on the node.",
+          "description": "When true, injects a per-session user secret (session_secrets) with this run's Port access token so Devin can authenticate to Port MCP. Requires executionIdentity on the node.",
           "default": false,
           "required": false
         },
@@ -207,7 +207,7 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, rotates the Port MCP org secret from this run's Port access token before sending the message so continued sessions use a fresh user token. Requires executionIdentity on the node.",
+          "description": "When true, injects a per-session user secret (session_secrets) with this run's Port access token for this turn. Requires executionIdentity on the node.",
           "default": false,
           "required": false
         },
