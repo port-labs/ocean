@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -8,11 +9,10 @@ from clients.rate_limiter import (
     PagerDutyRateLimiter,
 )
 from clients.rate_limit_wrapper import (
-    DAILY_POOL,
+    MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS,
     MINUTE_POOL,
     PagerDutyRateLimitWrapper,
 )
-from port_ocean.rate_limiting.pool_state import PoolRedisState
 
 
 def _wrapper() -> PagerDutyRateLimitWrapper:
@@ -43,6 +43,10 @@ def _response(
     if daily_reset is not None:
         headers["daily-ratelimit-reset"] = daily_reset
     return httpx.Response(status_code, headers=headers)
+
+
+def _redis_on() -> SimpleNamespace:
+    return SimpleNamespace(centralized_rate_limiter=object())
 
 
 def test_minute_reset_header_becomes_an_absolute_epoch() -> None:
@@ -76,13 +80,11 @@ def test_minute_429_sets_blocked_until_from_reset_seconds() -> None:
     assert state is not None
     assert state.remaining == 0
     assert state.blocked_until == now + 56
-    assert state.reset_at == now + 56
     assert wrapper._centralized_is_rate_limited(response) is True
 
 
 def test_daily_429_does_not_block_the_minute_pool() -> None:
     wrapper = _wrapper()
-    now = 1_000_000.0
     response = _response(
         429,
         remaining="959",
@@ -91,19 +93,13 @@ def test_daily_429_does_not_block_the_minute_pool() -> None:
         daily_remaining="-1",
         daily_reset="49015",
     )
-    with patch("clients.rate_limit_wrapper.time.time", return_value=now):
-        minute = wrapper._parse_centralized_state(response, context="analytics/metrics")
-        daily = wrapper._daily_state(response, context="analytics/metrics")
 
-    assert minute is not None
-    assert minute.remaining == 959
-    assert minute.blocked_until is None
+    state = wrapper._parse_centralized_state(response, context="analytics/metrics")
+
+    assert state is not None
+    assert state.remaining == 959
+    assert state.blocked_until is None
     assert wrapper._centralized_is_rate_limited(response) is False
-    assert daily is not None
-    assert daily.remaining == -1
-    assert daily.limit == 10
-    assert daily.reset_at == now + 49015
-    assert daily.blocked_until is None
 
 
 def test_minute_and_daily_exhausted_still_blocks_the_minute_pool() -> None:
@@ -125,19 +121,29 @@ def test_minute_and_daily_exhausted_still_blocks_the_minute_pool() -> None:
     assert wrapper._centralized_is_rate_limited(response) is True
 
 
-def test_rest_response_has_no_daily_state() -> None:
+@pytest.mark.asyncio
+async def test_redis_publishes_only_the_minute_pool() -> None:
     wrapper = _wrapper()
-    assert wrapper._daily_state(_response(), context="services") is None
+    response = _response(daily_limit="10", daily_remaining="3", daily_reset="1000")
+    with (
+        patch("port_ocean.rate_limiting.rate_limit_wrapper.ocean", _redis_on()),
+        patch(
+            "port_ocean.rate_limiting.rate_limit_wrapper.record_centralized_rate_limit",
+            new_callable=AsyncMock,
+        ) as record_limit,
+    ):
+        await wrapper.record_rate_limit_response(response, context="analytics/x")
+
+    record_limit.assert_awaited_once()
+    assert record_limit.await_args is not None
+    assert record_limit.await_args.args[0] == MINUTE_POOL
 
 
 @pytest.mark.asyncio
 async def test_centralized_acquire_waits_on_the_minute_pool() -> None:
     wrapper = _wrapper()
     with (
-        patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
-        ),
+        patch("port_ocean.rate_limiting.rate_limit_wrapper.ocean", _redis_on()),
         patch(
             "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",
             new_callable=AsyncMock,
@@ -149,118 +155,32 @@ async def test_centralized_acquire_waits_on_the_minute_pool() -> None:
     await_limit.assert_awaited_once_with(MINUTE_POOL)
 
 
-@pytest.mark.asyncio
-async def test_daily_publish_does_not_acquire() -> None:
+def test_daily_budget_raises_from_the_local_snapshot() -> None:
     wrapper = _wrapper()
-    now = 1_000_000.0
-    response = _response(
-        daily_limit="10",
-        daily_remaining="5",
-        daily_reset="49015",
+    wrapper.update_rate_limits(
+        _response(daily_limit="10", daily_remaining="0", daily_reset="1000").headers,
+        "analytics/metrics/incidents/services",
     )
-    with (
-        patch("clients.rate_limit_wrapper.time.time", return_value=now),
-        patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
-        ),
-        patch(
-            "clients.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
-        ),
-        patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.record_centralized_rate_limit",
-            new_callable=AsyncMock,
-        ) as minute_record,
-        patch(
-            "clients.rate_limit_wrapper.record_centralized_rate_limit",
-            new_callable=AsyncMock,
-        ) as daily_record,
-        patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",
-            new_callable=AsyncMock,
-        ) as await_limit,
-    ):
-        await wrapper.record_rate_limit_response(response, context="analytics/metrics")
 
-    await_limit.assert_not_awaited()
-    minute_record.assert_awaited_once()
-    minute_call = minute_record.await_args
-    assert minute_call is not None
-    assert minute_call.args[0] == MINUTE_POOL
-    daily_record.assert_awaited_once()
-    daily_call = daily_record.await_args
-    assert daily_call is not None
-    assert daily_call.args[0] == DAILY_POOL
-    daily_state = daily_call.args[1]
-    assert daily_state.remaining == 5
-    assert daily_state.reset_at == now + 49015
-    assert daily_state.blocked_until is None
-    assert daily_call.kwargs["is_rate_limited"] is False
+    with pytest.raises(PagerDutyDailyRateLimitExceededError):
+        wrapper.check_daily_budget("analytics/metrics/incidents/services")
+    wrapper.check_daily_budget("services")
 
 
-@pytest.mark.asyncio
-async def test_daily_budget_raises_from_redis_without_sleeping() -> None:
+def test_local_action_pause_uses_remaining_threshold() -> None:
     wrapper = _wrapper()
-    now = 1_000_000.0
-    snapshot = PoolRedisState(limit=10, remaining=0, reset_at=now + 49015)
-    with (
-        patch("clients.rate_limit_wrapper.time.time", return_value=now),
-        patch(
-            "clients.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
-        ),
-        patch(
-            "clients.rate_limit_wrapper._read_daily_pool",
-            new_callable=AsyncMock,
-            return_value=snapshot,
-        ),
-        patch(
-            "port_ocean.rate_limiting.rate_limit_wrapper.await_centralized_rate_limit",
-            new_callable=AsyncMock,
-        ) as await_limit,
+    wrapper.update_rate_limits(
+        _response(remaining=str(MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS - 1)).headers,
+        "incidents",
+    )
+
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        SimpleNamespace(centralized_rate_limiter=None),
     ):
-        with pytest.raises(PagerDutyDailyRateLimitExceededError):
-            await wrapper.check_daily_budget("analytics/metrics/incidents/services")
+        assert wrapper.is_close_to_rate_limit() is True
+        assert wrapper.seconds_until_rate_limit_reset() > 0
 
-    await_limit.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_expired_daily_window_does_not_raise() -> None:
-    wrapper = _wrapper()
-    now = 1_000_000.0
-    snapshot = PoolRedisState(limit=10, remaining=0, reset_at=now - 1)
-    with (
-        patch("clients.rate_limit_wrapper.time.time", return_value=now),
-        patch(
-            "clients.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
-        ),
-        patch(
-            "clients.rate_limit_wrapper._read_daily_pool",
-            new_callable=AsyncMock,
-            return_value=snapshot,
-        ),
-    ):
-        await wrapper.check_daily_budget("analytics/metrics/incidents/services")
-
-
-@pytest.mark.asyncio
-async def test_daily_budget_ignores_rest_endpoints() -> None:
-    wrapper = _wrapper()
-    snapshot = PoolRedisState(limit=10, remaining=-1, reset_at=9_999_999_999.0)
-    with (
-        patch(
-            "clients.rate_limit_wrapper.use_centralized_rate_limiting",
-            return_value=True,
-        ),
-        patch(
-            "clients.rate_limit_wrapper._read_daily_pool",
-            new_callable=AsyncMock,
-            return_value=snapshot,
-        ) as read_daily,
-    ):
-        await wrapper.check_daily_budget("services")
-
-    read_daily.assert_not_awaited()
+    with patch("port_ocean.rate_limiting.rate_limit_wrapper.ocean", _redis_on()):
+        assert wrapper.is_close_to_rate_limit() is False
+        assert wrapper.seconds_until_rate_limit_reset() == 0.0

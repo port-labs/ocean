@@ -1,11 +1,11 @@
-from clients.pagerduty import PagerDutyClient
 from clients.rate_limiter import RateLimitInfo
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.models import IntegrationRun
-from port_ocean.rate_limiting.utils import use_centralized_rate_limiting
+
+from clients.pagerduty import PagerDutyClient
 
 MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE = 20
 
@@ -33,9 +33,6 @@ class AbstractPagerDutyExecutor(AbstractExecutor):
         return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        # Redis admission already waits. A second pause here would stack.
-        if use_centralized_rate_limiting():
-            return False
         return self._is_snapshot_close_to_rate_limit(
             self.client.get_rate_limit_status()
         )
@@ -43,8 +40,6 @@ class AbstractPagerDutyExecutor(AbstractExecutor):
     async def get_remaining_seconds_until_rate_limit(
         self, run: IntegrationRun
     ) -> float:
-        if use_centralized_rate_limiting():
-            return 0.0
         info = self.client.get_rate_limit_status()
         if info is None or not self._is_snapshot_close_to_rate_limit(info):
             return 0.0
