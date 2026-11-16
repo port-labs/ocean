@@ -403,11 +403,15 @@ def _pr_optional_field_defs(
         (
             "reviews",
             """
-            reviews (first: 10) {
+            reviews (last: 10) {
               nodes {
                 state
                 body
                 createdAt
+                submittedAt
+                commit {
+                  oid
+                }
                 author {
                   login
                   avatarUrl

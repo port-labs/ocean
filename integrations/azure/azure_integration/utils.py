@@ -3,6 +3,7 @@ import enum
 import typing
 
 from port_ocean.context.event import event
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
@@ -11,8 +12,6 @@ from azure_integration.overrides import (
     AzureCloudResourceConfig,
     AzureCloudResourceSelector,
     AzureSpecificKindSelector,
-    AzureResourceGroupResourceConfig,
-    AzureSubscriptionResourceConfig,
 )
 
 BATCH_SIZE = 20
@@ -27,6 +26,12 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     RESOURCE_GROUPS = "Microsoft.Resources/resourceGroups"
     SUBSCRIPTION = "subscription"
     CLOUD_RESOURCE = "cloudResource"
+    FOUNDRY_PROJECT = "Microsoft.CognitiveServices/accounts/projects"
+    FOUNDRY_AGENT = "foundry-agent"
+    FOUNDRY_MODEL_DEPLOYMENT = "foundry-model-deployment"
+    FOUNDRY_CONVERSATION = "foundry-conversation"
+    FOUNDRY_RESPONSE = "foundry-response"
+    FOUNDRY_MEMORY_STORE = "foundry-memory-store"
 
 
 def get_current_resource_config() -> (
@@ -78,22 +83,8 @@ def resolve_resource_type_from_resource_uri(resource_uri: str) -> str:
 
 def get_resource_configs_with_resource_kind(
     resource_kind: str,
-    resource_configs: typing.List[
-        typing.Union[
-            AzureResourceGroupResourceConfig,
-            AzureSubscriptionResourceConfig,
-            AzureCloudResourceConfig,
-            AzureCustomKindResourceConfig,
-        ]
-    ],
-) -> list[
-    typing.Union[
-        AzureResourceGroupResourceConfig,
-        AzureSubscriptionResourceConfig,
-        AzureCloudResourceConfig,
-        AzureCustomKindResourceConfig,
-    ]
-]:
+    resource_configs: typing.Sequence[ResourceConfig],
+) -> list[ResourceConfig]:
     """
     Returns the resource configs that have the resource kind
 

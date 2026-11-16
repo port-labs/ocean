@@ -426,6 +426,18 @@ class AWSSNSTopicResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSEKSNodegroupResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "eks:ListClusters",
+        "eks:ListNodegroups",
+        "eks:DescribeNodegroup",
+    )
+    kind: Literal["AWS::EKS::Nodegroup"] = Field(
+        title="AWS EKS Nodegroup",
+        description="AWS EKS Nodegroup resource kind.",
+    )
+
+
 class AWSCustomKindSelector(AWSRegionPolicySelector):
     use_get_resource_api: bool = Field(
         alias="useGetResourceAPI",
@@ -449,8 +461,16 @@ def selector_include_actions(selector: AWSRegionPolicySelector) -> List[str]:
 
 
 class AWSCustomKindResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudformation:ListResources",
+        "cloudformation:GetResource",
+    )
+    probe_description: ClassVar[str] = (
+        "Test connection verifies Cloud Control access only. Service permissions "
+        "required by each configured Cloud Control type are not verified."
+    )
     kind: str = Field(
-        title="Custom AWS Resource Kind",
+        title="Custom Kind (Cloud Control)",
         description="Map any resource type supported by the "
         "<a target='_blank' href='https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/supported-resources.html'>"
         "AWS Cloud Control API</a> by setting kind to the CloudFormation type name "
@@ -464,6 +484,8 @@ class AWSCustomKindResourceConfig(AWSResourceConfig):
 
 
 class AWSPortAppConfig(PortAppConfig):
+    allow_custom_kinds: ClassVar[bool] = True
+
     resources: List[
         AWSS3BucketResourceConfig
         | AWSEC2InstanceResourceConfig
@@ -498,6 +520,8 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSDynamoDBTableResourceConfig
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
+        | AWSEKSNodegroupResourceConfig
+        | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
