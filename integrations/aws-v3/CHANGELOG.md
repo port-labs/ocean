@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.5.0 (2026-11-16)
+
+
+### Features
+
+- Add support for syncing AWS EKS Nodegroups (`AWS::EKS::Nodegroup`), including CloudTrail live events
+
+
+## 3.4.2 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
+## 3.4.1 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 3.4.0 (2026-11-15)
+
+
+### Features
+
+- Expose Cloud Control custom resource kinds in port-app-config so any AWS Cloud Control supported type (for example AWS::IAM::Role) can be synced without a first-class integration kind
+
+
+## 3.3.2 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.2
+
+
 ## 3.3.1 (2026-11-12)
 
 
