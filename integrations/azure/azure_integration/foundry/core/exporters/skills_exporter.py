@@ -6,7 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListSkillsOptions
-from azure_integration.foundry.foundry_incremental import MEMORY_STORE_INCREMENTAL
+from azure_integration.foundry.foundry_incremental import SKILL_INCREMENTAL
 from azure_integration.foundry.helpers.utils import enrich_with_project
 
 _SKILLS_FEATURE = "Skills=V1Preview"
@@ -19,7 +19,7 @@ class SkillsExporter(FoundryExporter):
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         cursor = active_incremental_cursor()
-        params = MEMORY_STORE_INCREMENTAL.merge_params({}, cursor)
+        params = SKILL_INCREMENTAL.merge_params({}, cursor)
         headers = {"Foundry-Features": _SKILLS_FEATURE}
 
         async for page in paginate_with_strategy(
@@ -30,7 +30,7 @@ class SkillsExporter(FoundryExporter):
                 extra_headers=headers,
             ),
             cursor=cursor,
-            strategy=MEMORY_STORE_INCREMENTAL,
+            strategy=SKILL_INCREMENTAL,
         ):
             yield [
                 enrich_with_project(

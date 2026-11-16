@@ -8,7 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListToolboxesOptions
-from azure_integration.foundry.foundry_incremental import MEMORY_STORE_INCREMENTAL
+from azure_integration.foundry.foundry_incremental import TOOLBOX_INCREMENTAL
 from azure_integration.foundry.helpers.a2a import (
     a2a_connection_ids_from_tools,
     parse_foundry_a2a_url,
@@ -29,7 +29,7 @@ class ToolboxesExporter(FoundryExporter):
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         cursor = active_incremental_cursor()
-        params = MEMORY_STORE_INCREMENTAL.merge_params({}, cursor)
+        params = TOOLBOX_INCREMENTAL.merge_params({}, cursor)
         headers = {"Foundry-Features": _TOOLBOXES_FEATURE}
 
         async for page in paginate_with_strategy(
@@ -40,7 +40,7 @@ class ToolboxesExporter(FoundryExporter):
                 extra_headers=headers,
             ),
             cursor=cursor,
-            strategy=MEMORY_STORE_INCREMENTAL,
+            strategy=TOOLBOX_INCREMENTAL,
         ):
             batch: list[dict[str, Any]] = []
             for item in page:
