@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
@@ -12,15 +13,14 @@ from azure_integration.foundry.core.options import ProjectIdentifier
 TOptions = TypeVar("TOptions", bound=ProjectIdentifier)
 
 
-class FoundryExporter(Generic[TOptions]):
+class FoundryExporter(ABC, Generic[TOptions]):
     def __init__(self, client: FoundryHttpClient) -> None:
         self.client = client
 
-    async def get_paginated_resources(
+    @abstractmethod
+    def get_paginated_resources(
         self, options: TOptions
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise NotImplementedError
-        yield  # pragma: no cover — async-generator typing for subclasses
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
 
     async def get_paginated_resources_across_projects(
         self,
