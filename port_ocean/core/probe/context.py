@@ -32,11 +32,20 @@ class ProbeContext:
     checks: list[ProbeCheck] = field(default_factory=list)
     reporter: ProbeReporter | None = None
 
-    async def add_scopes(self, *scopes: dict[str, str | int]) -> list[ProbeCheck]:
-        logger.debug("Registering additional scopes", scopes=scopes)
+    def _select_kinds(self, kinds: list[str] | None) -> list[str]:
+        if kinds is None:
+            return self.available_kinds
+        requested = set(kinds)
+        return [kind for kind in self.available_kinds if kind in requested]
+
+    async def add_scopes(
+        self, *scopes: dict[str, str | int], kinds: list[str] | None = None
+    ) -> list[ProbeCheck]:
+        logger.debug("Registering additional scopes", scopes=scopes, kinds=kinds)
+        scoped_kinds = self._select_kinds(kinds)
         new_checks: list[ProbeCheck] = []
         for scope in scopes:
-            for kind in self.available_kinds:
+            for kind in scoped_kinds:
                 check = ProbeCheck(kind=kind, scopes=scope.copy())
                 new_checks.append(check)
                 self.checks.append(check)
@@ -44,10 +53,12 @@ class ProbeContext:
         await self.update_progress()
         return new_checks
 
-    async def setup_unscoped_checks(self) -> list[ProbeCheck]:
-        logger.debug("Registering unscoped checks")
+    async def setup_unscoped_checks(
+        self, kinds: list[str] | None = None
+    ) -> list[ProbeCheck]:
+        logger.debug("Registering unscoped checks", kinds=kinds)
         new_checks: list[ProbeCheck] = []
-        for kind in self.available_kinds:
+        for kind in self._select_kinds(kinds):
             check = ProbeCheck(kind=kind)
             new_checks.append(check)
             self.checks.append(check)

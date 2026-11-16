@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Add an optional kinds argument to ProbeContext.add_scopes and setup_unscoped_checks to register checks for specific kinds only

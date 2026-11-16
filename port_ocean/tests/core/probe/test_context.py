@@ -117,6 +117,42 @@ async def test_add_scopes_returns_only_new_checks(
 
 @patch("port_ocean.core.probe.context.ProbeContext.update_progress")
 @pytest.mark.asyncio
+async def test_add_scopes_restricts_checks_to_requested_kinds(
+    mock_update_progress: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository", "pull-request", "team"]
+
+    # Act
+    new_checks = await context.add_scopes({"org": "acme"}, kinds=["repository", "team"])
+
+    # Assert
+    assert {check.kind for check in new_checks} == {"repository", "team"}
+    assert all(check.scopes == {"org": "acme"} for check in new_checks)
+    assert context.checks == new_checks
+
+
+@patch("port_ocean.core.probe.context.ProbeContext.update_progress")
+@pytest.mark.asyncio
+async def test_add_scopes_ignores_kinds_that_are_not_available(
+    mock_update_progress: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository"]
+
+    # Act
+    new_checks = await context.add_scopes(
+        {"org": "acme"}, kinds=["repository", "not-configured"]
+    )
+
+    # Assert
+    assert [check.kind for check in new_checks] == ["repository"]
+
+
+@patch("port_ocean.core.probe.context.ProbeContext.update_progress")
+@pytest.mark.asyncio
 async def test_setup_unscoped_checks_creates_check_per_kind(
     mock_update_progress: MagicMock,
 ) -> None:
@@ -156,6 +192,23 @@ async def test_setup_unscoped_checks_returns_only_new_checks(
     assert existing_check not in new_checks
     assert len(context.checks) == 2
     mock_update_progress.assert_called_once()
+
+
+@patch("port_ocean.core.probe.context.ProbeContext.update_progress")
+@pytest.mark.asyncio
+async def test_setup_unscoped_checks_restricts_checks_to_requested_kinds(
+    mock_update_progress: MagicMock,
+) -> None:
+    # Arrange
+    context = ProbeContext()
+    context.available_kinds = ["repository", "pull-request", "team"]
+
+    # Act
+    new_checks = await context.setup_unscoped_checks(kinds=["team", "not-configured"])
+
+    # Assert
+    assert [check.kind for check in new_checks] == ["team"]
+    assert new_checks[0].scopes == {}
 
 
 @patch("port_ocean.core.probe.context.ProbeContext.update_progress")
