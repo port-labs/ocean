@@ -36,36 +36,49 @@ class ConversationsExporter(FoundryExporter):
         )
         params = CONVERSATION_INCREMENTAL.merge_params({}, cutoff)
 
-        if "agent" in scopes:
-            agents = AgentsExporter(self.client)
-            async for agents_page in agents._iter_agent_pages(project_endpoint):
-                for agent in agents_page:
-                    agent_id = agent.get("id")
-                    if not agent_id:
-                        logger.warning(
-                            "Skipping Foundry agent missing required id field",
-                            agent=agent,
-                            project_endpoint=project_endpoint,
-                        )
-                        continue
-                    async for page in self._iter_agent_conversations(
-                        project_endpoint=project_endpoint,
-                        project_id=project_id,
-                        agent_id=str(agent_id),
-                        params=params,
-                        cutoff=cutoff,
-                    ):
-                        if page:
-                            yield page
-
-        if "project" in scopes:
-            async for page in self._iter_project_conversations(
+        scope_iters = {
+            "agent": self._iter_agent_scoped_conversations,
+            "project": self._iter_project_conversations,
+        }
+        for scope in scopes:
+            iter_fn = scope_iters.get(scope)
+            if not iter_fn:
+                continue
+            async for page in iter_fn(
                 project_endpoint=project_endpoint,
                 project_id=project_id,
                 params=params,
                 cutoff=cutoff,
             ):
                 if page:
+                    yield page
+
+    async def _iter_agent_scoped_conversations(
+        self,
+        *,
+        project_endpoint: str,
+        project_id: str,
+        params: dict[str, Any],
+        cutoff: datetime | None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        agents = AgentsExporter(self.client)
+        async for agents_page in agents._iter_agent_pages(project_endpoint):
+            for agent in agents_page:
+                agent_id = agent.get("id")
+                if not agent_id:
+                    logger.warning(
+                        "Skipping Foundry agent missing required id field",
+                        agent=agent,
+                        project_endpoint=project_endpoint,
+                    )
+                    continue
+                async for page in self._iter_agent_conversations(
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                    agent_id=str(agent_id),
+                    params=params,
+                    cutoff=cutoff,
+                ):
                     yield page
 
     async def _iter_agent_conversations(
