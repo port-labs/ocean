@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added incremental sync for GitHub tags, branches and plugins, scanning only repositories pushed since the last cursor (creating, updating or deleting a tag or branch updates the repository's pushed_at); all tags, branches (including detail and protection enrichment) and plugin detection for those repositories are unchanged. Fixed incremental tag, branch, workflow and plugin syncs that use the Search API missing recently pushed repositories, by filtering on each result's pushed_at instead of the search index's lagging pushed qualifier

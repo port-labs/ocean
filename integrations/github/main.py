@@ -780,12 +780,16 @@ async def resync_releases(
                     yield releases
 
 
+@ocean.on_incremental_resync(ObjectKind.TAG)
 @ocean.on_resync(ObjectKind.TAG)
 @_resync_per_authenticator
 async def resync_tags(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all tags in the organization's repositories."""
+    """Resync tags; incremental runs fetch all tags for repos pushed since the cursor.
+
+    Tags have no timestamps, but creating or pushing a tag updates the repo's pushed_at.
+    """
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
@@ -794,6 +798,7 @@ async def resync_tags(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -804,6 +809,7 @@ async def resync_tags(
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
                 exclude_archived=config.selector.exclude_archived,
+                pushed_since=sync_cursor,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -823,12 +829,16 @@ async def resync_tags(
                     yield tags
 
 
+@ocean.on_incremental_resync(ObjectKind.BRANCH)
 @ocean.on_resync(ObjectKind.BRANCH)
 @_resync_per_authenticator
 async def resync_branches(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all branches in the organization's repositories."""
+    """Resync branches; incremental runs fetch all branches for repos pushed since the cursor.
+
+    Creating, updating or deleting a branch updates the repo's pushed_at.
+    """
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client(authenticator)
@@ -838,6 +848,7 @@ async def resync_branches(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     selector = cast(GithubBranchConfig, event.resource_config).selector
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
@@ -848,6 +859,7 @@ async def resync_branches(
                 type=port_app_config.repository_type,
                 search_params=selector.repo_search,
                 exclude_archived=selector.exclude_archived,
+                pushed_since=sync_cursor,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -1391,13 +1403,16 @@ async def resync_skills(
         yield skills
 
 
+@ocean.on_incremental_resync(ObjectKind.PLUGIN)
 @ocean.on_resync(ObjectKind.PLUGIN)
 @_resync_per_authenticator
 async def resync_plugins(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync agent plugin packages detected via provider manifests."""
+    """Resync agent plugin packages detected via provider manifests; incremental
+    runs scan only repos pushed since the cursor."""
     config = cast(GithubPluginResourceConfig, event.resource_config)
+    sync_cursor = active_incremental_cursor()
     selector = config.selector
     paths = [
         path
@@ -1424,7 +1439,11 @@ async def resync_plugins(
                 org_login = org["login"]
                 repositories: list[PluginRepositoryOptions] = []
                 async for _repo_name, branch, repo_obj in repo_selector.select_repos(
-                    path, repo_exporter, org_login, org["type"]
+                    path,
+                    repo_exporter,
+                    org_login,
+                    org["type"],
+                    pushed_since=sync_cursor,
                 ):
                     repositories.append(
                         PluginRepositoryOptions(

@@ -665,15 +665,24 @@ class TestRestRepositoryExporter:
                     {"type": "all", "sort": "pushed", "direction": "desc"},
                 )
 
-    async def test_search_strategy_applies_pushed_since_qualifier(
+    async def test_search_strategy_filters_pushed_since_on_response_pushed_at(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
+        """The search index can lag far behind real pushes, so a pushed: qualifier
+        misses repos that were just pushed. The query carries no pushed: qualifier and
+        results are kept by their (current) pushed_at instead."""
         cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        pushed_repo = {"name": "pushed-repo", "pushed_at": "2026-06-01T12:30:00Z"}
+        at_cursor_repo = {"name": "at-cursor-repo", "pushed_at": "2026-06-01T12:00:00Z"}
+        stale_repo = {"name": "stale-repo", "pushed_at": "2026-05-01T00:00:00Z"}
+        never_pushed_repo = {"name": "never-pushed-repo", "pushed_at": None}
 
         async def mock_paginated_request(
             url: str, params: dict[str, Any], *args: Any, **kwargs: Any
         ) -> AsyncGenerator[dict[str, Any], None]:
-            yield {"items": TEST_REPOS}
+            yield {"items": [pushed_repo, stale_repo]}
+            yield {"items": [stale_repo, never_pushed_repo]}
+            yield {"items": [at_cursor_repo]}
 
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
@@ -692,10 +701,10 @@ class TestRestRepositoryExporter:
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]
 
-                assert repos == [TEST_REPOS]
+                assert repos == [[pushed_repo], [at_cursor_repo]]
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/search/repositories",
-                    {"q": "org:test-org code in:name pushed:>=2026-06-01T12:00:00Z"},
+                    {"q": "org:test-org code in:name"},
                 )
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(

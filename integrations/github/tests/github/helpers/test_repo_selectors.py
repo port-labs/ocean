@@ -1,10 +1,15 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from github.core.options import ListRepositoryOptions
-from github.helpers.repo_selectors import AllRepositorySelector, ExactRepositorySelector
+from github.helpers.repo_selectors import (
+    AllRepositorySelector,
+    CompositeRepositorySelector,
+    ExactRepositorySelector,
+)
 from integration import RepositorySourceModel
 
 
@@ -114,5 +119,109 @@ class TestExactRepositorySelector:
                 selector, repo_exporter, "test-org", "Organization"
             )
         ]
+
+        assert results == []
+
+
+PUSHED_SINCE = datetime(2026, 11, 15, 10, 0, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+class TestPushedSinceFilter:
+    async def test_all_selector_passes_pushed_since_to_repo_listing(self) -> None:
+        selector = RepositorySourceModel.parse_obj({})
+        repo_exporter = MagicMock()
+        repo_exporter.get_paginated_resources = _make_paginated_resources_mock(
+            [[{"name": "repo1", "default_branch": "main"}]]
+        )
+
+        strategy = AllRepositorySelector("repository")
+        [
+            result
+            async for result in strategy.select_repos(
+                selector,
+                repo_exporter,
+                "test-org",
+                "Organization",
+                pushed_since=PUSHED_SINCE,
+            )
+        ]
+
+        called_options = repo_exporter.get_paginated_resources.call_args.args[0]
+        assert called_options["pushed_since"] == PUSHED_SINCE
+
+    async def test_all_selector_without_pushed_since_lists_all_repos(self) -> None:
+        selector = RepositorySourceModel.parse_obj({})
+        repo_exporter = MagicMock()
+        repo_exporter.get_paginated_resources = _make_paginated_resources_mock(
+            [[{"name": "repo1", "default_branch": "main"}]]
+        )
+
+        strategy = AllRepositorySelector("repository")
+        [
+            result
+            async for result in strategy.select_repos(
+                selector, repo_exporter, "test-org", "Organization"
+            )
+        ]
+
+        called_options = repo_exporter.get_paginated_resources.call_args.args[0]
+        assert called_options["pushed_since"] is None
+
+    @pytest.mark.parametrize(
+        ("pushed_at", "included"),
+        [
+            ("2026-11-15T10:30:00Z", True),
+            ("2026-11-15T10:00:00Z", True),
+            ("2026-11-15T09:59:59Z", False),
+            (None, False),
+        ],
+    )
+    async def test_exact_selector_keeps_only_repos_pushed_since(
+        self, pushed_at: str | None, included: bool
+    ) -> None:
+        selector = RepositorySourceModel.parse_obj({"repos": [{"name": "repo1"}]})
+        repo_exporter = MagicMock()
+        repo = {"name": "repo1", "default_branch": "main", "pushed_at": pushed_at}
+
+        with patch(
+            "github.helpers.repo_selectors.get_repository_metadata",
+            new=AsyncMock(return_value=repo),
+        ):
+            results = [
+                result
+                async for result in ExactRepositorySelector().select_repos(
+                    selector,
+                    repo_exporter,
+                    "test-org",
+                    "Organization",
+                    pushed_since=PUSHED_SINCE,
+                )
+            ]
+
+        assert results == ([("repo1", "main", repo)] if included else [])
+
+    async def test_composite_selector_forwards_pushed_since(self) -> None:
+        selector = RepositorySourceModel.parse_obj({"repos": [{"name": "repo1"}]})
+        stale_repo = {
+            "name": "repo1",
+            "default_branch": "main",
+            "pushed_at": "2026-01-01T00:00:00Z",
+        }
+
+        with patch(
+            "github.helpers.repo_selectors.get_repository_metadata",
+            new=AsyncMock(return_value=stale_repo),
+        ):
+            results = [
+                result
+                async for result in CompositeRepositorySelector("all").select_repos(
+                    selector,
+                    MagicMock(),
+                    "test-org",
+                    "Organization",
+                    pushed_since=PUSHED_SINCE,
+                )
+            ]
 
         assert results == []

@@ -1,7 +1,7 @@
 import asyncio
 import copy
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -10,6 +10,7 @@ from github.helpers.utils import (
     parse_github_options,
     get_repository_metadata,
     fetch_repository_metadata,
+    is_pushed_since,
 )
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
@@ -101,12 +102,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         options_dict = dict(options)
         included_relations = options_dict.pop("included_relations", None)
-        incremental_cursor = options_dict.pop("updated_since", None)
+        updated_since = options_dict.pop("updated_since", None)
         pushed_since = options_dict.pop("pushed_since", None)
 
         async for repos in self._fetch_repositories(
             cast(ListRepositoryOptions, options_dict),
-            incremental_cursor=incremental_cursor,
+            updated_since=updated_since,
             pushed_since=pushed_since,
         ):
             if not included_relations:
@@ -136,7 +137,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         options: ListRepositoryOptions,
         *,
-        incremental_cursor: datetime | None = None,
+        updated_since: datetime | None = None,
         pushed_since: datetime | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
@@ -160,7 +161,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             organization_type,
             params,
             search_params,
-            incremental_cursor=incremental_cursor,
+            updated_since=updated_since,
             pushed_since=pushed_since,
             exclude_archived=exclude_archived,
         ):
@@ -177,14 +178,14 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         _: Optional[RepoSearchParams],
         *,
-        incremental_cursor: datetime | None = None,
+        updated_since: datetime | None = None,
         pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         strategy, cursor = (
             (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
             if pushed_since
-            else (REPOSITORY_INCREMENTAL, incremental_cursor)
+            else (REPOSITORY_INCREMENTAL, updated_since)
         )
         url, final_params = self._build_repos_url_and_params(
             organization,
@@ -209,7 +210,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
         *,
-        incremental_cursor: datetime | None = None,
+        updated_since: datetime | None = None,
         pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -231,33 +232,30 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
         if pushed_since:
-            # Search has no "pushed" sort, so filter server-side with a qualifier instead.
-            raw_q = (
-                f"{raw_q} pushed:>={self._format_search_datetime(pushed_since)}".strip()
-            )
-            incremental_cursor = None
+            # Not a pushed: qualifier: the search index can lag far behind real pushes
+            # (over an hour seen for tag pushes), while each result's pushed_at is
+            # current. Search has no "pushed" sort either, so filter the results below.
+            updated_since = None
 
         query_params = {
             "q": f"org:{organization} {raw_q}",
-            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
+            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, updated_since),
         }
         url = f"{self.client.base_url}/search/repositories"
 
         async for repos in paginate_with_strategy(
             self._search_result_items(url, query_params),
-            cursor=incremental_cursor,
+            cursor=updated_since,
             strategy=REPOSITORY_SEARCH_INCREMENTAL,
         ):
+            if pushed_since:
+                repos = [repo for repo in repos if is_pushed_since(repo, pushed_since)]
+                if not repos:
+                    continue
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
             )
             yield repos
-
-    @staticmethod
-    def _format_search_datetime(value: datetime) -> str:
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     async def _search_result_items(
         self, url: str, query_params: dict[str, Any]
