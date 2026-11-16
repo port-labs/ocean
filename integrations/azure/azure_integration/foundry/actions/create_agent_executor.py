@@ -25,18 +25,21 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     instructions: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
 
+    def to_api_body(self) -> dict[str, Any]:
+        return build_create_agent_body(
+            name=self.name,
+            model=self.model,
+            instructions=self.instructions,
+            config=self.config or None,
+        )
+
 
 class CreateAgentExecutor(AbstractFoundryExecutor):
     ACTION_NAME = "create_agent"
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateAgentInputs.from_execution_properties(run.execution_properties)
-        body = build_create_agent_body(
-            name=inputs.name,
-            model=inputs.model,
-            instructions=inputs.instructions,
-            config=inputs.config or None,
-        )
+        body = inputs.to_api_body()
 
         await ocean.port_client.post_run_log(
             run,
@@ -65,7 +68,6 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
 
         logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         agent_id = str(agent.get("id") or agent.get("name") or inputs.name)
-        # ponytail: create response is the agent; no re-GET
         await self.register_entity(
             ObjectKind.FOUNDRY_AGENT,
             enrich_with_project(agent, project_endpoint=inputs.projectEndpoint),

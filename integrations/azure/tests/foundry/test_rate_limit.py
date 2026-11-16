@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from azure_integration.foundry.actions.abstract_executor import (
-    AbstractFoundryExecutor,
+from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.actions.arm_deployment_executor import (
     ArmDeploymentExecutor,
 )
 from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
@@ -53,12 +53,14 @@ async def test_agent_executor_honors_hard_429() -> None:
 
     executor = _Stub()
     executor.client = MagicMock()
-    executor.client.rate_limiter.hard_block_seconds.return_value = 0.0
+    executor.client.rate_limiter.is_close_to_rate_limit.return_value = False
+    executor.client.rate_limiter.seconds_until_rate_limit_reset.return_value = 0.0
     run = MagicMock()
     assert await executor.is_close_to_rate_limit(run) is False
     assert await executor.get_remaining_seconds_until_rate_limit(run) == 0.0
 
-    executor.client.rate_limiter.hard_block_seconds.return_value = 3.5
+    executor.client.rate_limiter.is_close_to_rate_limit.return_value = True
+    executor.client.rate_limiter.seconds_until_rate_limit_reset.return_value = 3.5
     assert await executor.is_close_to_rate_limit(run) is True
     assert await executor.get_remaining_seconds_until_rate_limit(run) == 3.5
 
@@ -72,7 +74,8 @@ async def test_arm_executor_includes_arm_quota() -> None:
     executor = _Stub()
     executor.client = MagicMock()
     executor.arm_deployments = MagicMock()
-    executor.client.rate_limiter.hard_block_seconds.return_value = 0.0
+    executor.client.rate_limiter.is_close_to_rate_limit.return_value = False
+    executor.client.rate_limiter.seconds_until_rate_limit_reset.return_value = 0.0
     executor.arm_deployments.rate_limiter.is_close_to_rate_limit.return_value = True
     executor.arm_deployments.rate_limiter.seconds_until_rate_limit_reset.return_value = (
         12.0

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from azure.identity.aio import DefaultAzureCredential
 
-from azure_integration.foundry.clients.arm_deployments_client import (
-    ArmDeploymentsClient,
-)
 from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
+
+if TYPE_CHECKING:
+    from azure_integration.foundry.clients.arm_deployments_client import (
+        ArmDeploymentsClient,
+    )
 
 _ARM_SCOPE = "https://management.azure.com/.default"
 
@@ -29,6 +33,11 @@ async def management_headers() -> dict[str, str]:
 def create_arm_deployments_client() -> ArmDeploymentsClient:
     global _arm_client
     if _arm_client is None:
+        # Lazy import: ArmDeploymentsClient imports management_headers at module load.
+        from azure_integration.foundry.clients.arm_deployments_client import (
+            ArmDeploymentsClient,
+        )
+
         _arm_client = ArmDeploymentsClient()
     return _arm_client
 

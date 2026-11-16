@@ -55,11 +55,7 @@ def _retry_after_seconds(headers: httpx.Headers) -> float:
 
 
 class FoundryRateLimiter:
-    """Defer on 429 Retry-After and ARM remaining-floor headers.
-
-    # ponytail: no Foundry soft RPM headroom — Azure catalog APIs don't expose it;
-    # agent actions defer only on hard 429.
-    """
+    """Defer action runs on hard 429 Retry-After and low ARM remaining headers."""
 
     def __init__(self) -> None:
         self._hard_block_until: float = 0.0

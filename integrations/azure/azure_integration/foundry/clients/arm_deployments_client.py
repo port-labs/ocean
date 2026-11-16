@@ -5,27 +5,10 @@ from typing import Any
 import httpx
 from port_ocean.helpers.async_client import OceanAsyncClient
 
+from azure_integration.foundry.clients.client_factory import management_headers
 from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
-from azure_integration.foundry.helpers.utils import deep_merge
 from azure_integration.foundry.kinds import DEFAULT_FOUNDRY_ARM_API_VERSION
-
-
-def _deployment_url(
-    *,
-    subscription_id: str,
-    resource_group_name: str,
-    account_name: str,
-    deployment_name: str,
-    api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
-) -> str:
-    return (
-        "https://management.azure.com/subscriptions/"
-        f"{subscription_id}/resourceGroups/{resource_group_name}"
-        "/providers/Microsoft.CognitiveServices/accounts/"
-        f"{account_name}/deployments/{deployment_name}"
-        f"?api-version={api_version}"
-    )
 
 
 class ArmDeploymentsClient:
@@ -44,18 +27,14 @@ class ArmDeploymentsClient:
     async def close(self) -> None:
         await self._http.aclose()
 
-    async def _headers(self) -> dict[str, str]:
-        from azure_integration.foundry.clients.client_factory import management_headers
-
-        return await management_headers()
-
     async def _url_for(self, project_endpoint: str, deployment_name: str) -> str:
         project = await ProjectExporter().find_by_endpoint(project_endpoint)
-        return _deployment_url(
-            subscription_id=project.subscription_id,
-            resource_group_name=project.resource_group_name,
-            account_name=project.account_name,
-            deployment_name=deployment_name,
+        return (
+            "https://management.azure.com/subscriptions/"
+            f"{project.subscription_id}/resourceGroups/{project.resource_group_name}"
+            "/providers/Microsoft.CognitiveServices/accounts/"
+            f"{project.account_name}/deployments/{deployment_name}"
+            f"?api-version={DEFAULT_FOUNDRY_ARM_API_VERSION}"
         )
 
     async def delete_deployment(
@@ -63,11 +42,10 @@ class ArmDeploymentsClient:
     ) -> None:
         response = await self._http.delete(
             await self._url_for(project_endpoint, deployment_name),
-            headers=await self._headers(),
+            headers=await management_headers(),
         )
-        if response.status_code in {200, 202, 204, 404}:
-            return
-        response.raise_for_status()
+        if response.status_code != 404:
+            response.raise_for_status()
 
     async def upsert_model_deployment(
         self,
@@ -83,9 +61,9 @@ class ArmDeploymentsClient:
     ) -> dict[str, Any]:
         """PUT a Cognitive Services account deployment.
 
-        ``config`` is deep-merged under the ARM body so callers can pass SKU
-        capacity, tags, raiPolicyName, and other properties we do not model.
-        First-class fields always win.
+        ``config`` may pass through ARM extras (capacity, tags, raiPolicyName).
+        First-class ``sku_name`` / model fields always win and are not taken from
+        ``config``.
         """
         model: dict[str, Any] = {
             "format": model_publisher or "OpenAI",
@@ -94,20 +72,24 @@ class ArmDeploymentsClient:
         if model_version:
             model["version"] = model_version
 
-        # ponytail: config under defaults; force first-class name/model after
-        body = deep_merge(
-            {
-                "sku": {"name": sku_name, "capacity": capacity},
-                "properties": {"model": model},
-            },
-            config or {},
-        )
-        body["sku"]["name"] = sku_name
-        body["properties"]["model"] = {**body["properties"].get("model", {}), **model}
+        overlay = dict(config or {})
+        sku_extra = dict(overlay.pop("sku", {}) or {})
+        sku_extra.pop("name", None)
+        props_extra = dict(overlay.pop("properties", {}) or {})
+        props_extra.pop("model", None)
+
+        body: dict[str, Any] = {
+            **overlay,
+            "sku": {"capacity": capacity, **sku_extra, "name": sku_name},
+            "properties": {**props_extra, "model": model},
+        }
 
         response = await self._http.put(
             await self._url_for(project_endpoint, deployment_name),
-            headers={**(await self._headers()), "Content-Type": "application/json"},
+            headers={
+                **(await management_headers()),
+                "Content-Type": "application/json",
+            },
             json=body,
         )
         response.raise_for_status()

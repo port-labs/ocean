@@ -9,7 +9,9 @@ from pydantic import Field
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
-from azure_integration.foundry.actions.abstract_executor import ArmDeploymentExecutor
+from azure_integration.foundry.actions.arm_deployment_executor import (
+    ArmDeploymentExecutor,
+)
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
