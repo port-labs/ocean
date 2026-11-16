@@ -35,10 +35,9 @@ class ResponsesInvokeMixin:
         invoke_label: str,
         stream_key: str,
         invoke_url: str,
-        params: dict[str, Any],
         body: dict[str, Any],
-        agent_id: str | None,
         bind_output: dict[str, Any],
+        params: dict[str, Any] | None = None,
         report_invocation_status: bool = False,
         early_complete_on_bind: bool = False,
         complete_on_sse_terminal: bool | None = None,
@@ -49,11 +48,10 @@ class ResponsesInvokeMixin:
             status_label=INVOKE_STARTING_STATUS_LABEL,
             should_raise=False,
         )
-        await_webhook_completion, mode_complete_on_sse = invoke_agent_completion_mode(
-            report_invocation_status=report_invocation_status
-        )
         if complete_on_sse_terminal is None:
-            complete_on_sse_terminal = mode_complete_on_sse
+            complete_on_sse_terminal = invoke_agent_completion_mode(
+                report_invocation_status=report_invocation_status
+            )
 
         invoke_body = dict(body)
         invoke_body["background"] = True
@@ -64,11 +62,9 @@ class ResponsesInvokeMixin:
             params=params,
             body=invoke_body,
             stream_key=stream_key,
-            agent_id=agent_id,
             bind_output=bind_output,
             early_complete_on_bind=early_complete_on_bind,
             complete_on_sse_terminal=complete_on_sse_terminal,
-            await_webhook_completion=await_webhook_completion,
         )
 
     async def _execute_with_sse_completion(
@@ -76,14 +72,12 @@ class ResponsesInvokeMixin:
         run: IntegrationRun,
         *,
         invoke_url: str,
-        params: dict[str, Any],
         body: dict[str, Any],
         stream_key: str,
-        agent_id: str | None,
         bind_output: dict[str, Any],
+        params: dict[str, Any] | None = None,
         early_complete_on_bind: bool = False,
         complete_on_sse_terminal: bool = True,
-        await_webhook_completion: bool = False,
     ) -> None:
         submitted_after_bind = False
 

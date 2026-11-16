@@ -12,17 +12,13 @@ def foundry_webhook_completion_available() -> bool:
     return True
 
 
-def invoke_agent_completion_mode(
-    *, report_invocation_status: bool
-) -> tuple[bool, bool]:
-    """Return ``(await_webhook_completion, complete_on_sse_terminal)``.
+def invoke_agent_completion_mode(*, report_invocation_status: bool) -> bool:
+    """Return whether invoke should complete on SSE terminal events.
 
     Invoke always sends ``background=true``. When ``reportInvocationStatus`` is
     false, the run closes on bind (caller sets early_complete_on_bind). When true,
     prefer webhook completion; fall back to SSE if webhooks are unavailable.
     """
     if not report_invocation_status:
-        return False, False
-    if foundry_webhook_completion_available():
-        return True, False
-    return False, True
+        return False
+    return not foundry_webhook_completion_available()

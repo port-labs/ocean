@@ -12,18 +12,10 @@ from azure_integration.foundry.helpers.model_responses_api import (
     InvokeModelInputs,
     build_model_responses_invoke,
 )
-from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
-    WEBHOOK_PATH,
-)
-from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
-    ConversationWebhookProcessor,
-)
 
 
 class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     ACTION_NAME = "invoke_model"
-    WEBHOOK_PROCESSOR_CLASS = ConversationWebhookProcessor
-    WEBHOOK_PATH = WEBHOOK_PATH
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeModelInputs.from_execution_properties(run.execution_properties)
@@ -37,27 +29,22 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             raise ActionExecutionError(
                 f"Failed to resolve conversation: {error}"
             ) from error
-        path, params, body = build_model_responses_invoke(
+        path, body = build_model_responses_invoke(
             model=inputs.deploymentName,
             user_input=inputs.input,
             conversation_id=conversation_id,
             extra_body=inputs.extraBody,
         )
         invoke_url = self.client.build_url(inputs.projectEndpoint, path)
-        stream_key = f"{run.id}:{inputs.deploymentName}"
-        bind_output = {
-            "deploymentName": inputs.deploymentName,
-            "conversationId": conversation_id,
-        }
-
         await self.execute_responses_invoke(
             run,
             invoke_label=f"Invoking model deployment {inputs.deploymentName}",
-            stream_key=stream_key,
+            stream_key=f"{run.id}:{inputs.deploymentName}",
             invoke_url=invoke_url,
-            params=params,
             body=body,
-            agent_id=None,
-            bind_output=bind_output,
+            bind_output={
+                "deploymentName": inputs.deploymentName,
+                "conversationId": conversation_id,
+            },
             complete_on_sse_terminal=True,
         )

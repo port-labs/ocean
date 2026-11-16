@@ -1,20 +1,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
-
-
-def account_base_url_from_project_endpoint(project_endpoint: str) -> str:
-    """Strip ``/api/projects/...`` to the Foundry account host base."""
-    parsed = urlparse(project_endpoint.rstrip("/"))
-    path = parsed.path or ""
-    marker = "/api/projects/"
-    if marker in path:
-        account_path = path.split(marker, maxsplit=1)[0]
-    else:
-        account_path = path
-    base = f"{parsed.scheme}://{parsed.netloc}{account_path}"
-    return base.rstrip("/")
 
 
 def dashboard_webhook_endpoints_url(account_base: str) -> str:

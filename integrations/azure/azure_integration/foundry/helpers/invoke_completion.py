@@ -15,6 +15,9 @@ from azure_integration.foundry.helpers.responses_catalog import (
     conversation_row_from_response,
     normalize_foundry_response,
 )
+from azure_integration.foundry.helpers.responses_stream import (
+    success_for_terminal_sse_event,
+)
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.helpers.webhook_scope import (
     build_response_external_id,
@@ -38,23 +41,9 @@ def _remember_completed_run(run_id: str) -> None:
         _completed_invoke_run_ids.pop(next(iter(_completed_invoke_run_ids)))
 
 
-_TERMINAL_SSE_TYPES = {
-    "response.completed": True,
-    "response.failed": False,
-    "response.cancelled": False,
-    "response.incomplete": False,
-}
-
-
 def response_body_from_sse_event(parsed: dict[str, Any]) -> dict[str, Any] | None:
     response = parsed.get("response")
     return response if isinstance(response, dict) else None
-
-
-def success_for_terminal_event(event_type: str) -> bool | None:
-    if event_type in _TERMINAL_SSE_TYPES:
-        return _TERMINAL_SSE_TYPES[event_type]
-    return None
 
 
 def _project_endpoint_from_run(run: IntegrationRun) -> str | None:
@@ -217,9 +206,7 @@ async def complete_invoke_run_for_response(
                 display_body, agent_id=agent_id or None
             )
             if row:
-                await register_catalog_rows(
-                    ObjectKind.FOUNDRY_CONVERSATION, [row], run
-                )
+                await register_catalog_rows(ObjectKind.FOUNDRY_CONVERSATION, [row], run)
 
     if not keep_stream:
         from azure_integration.foundry.stream_manager import get_stream_manager
@@ -279,7 +266,7 @@ async def complete_invoke_run_from_sse(
     event_type = parsed.get("type")
     if not isinstance(event_type, str):
         return False
-    success = success_for_terminal_event(event_type)
+    success = success_for_terminal_sse_event(event_type)
     if success is None:
         return False
     response_body = response_body_from_sse_event(parsed)

@@ -6,10 +6,7 @@ import httpx
 from azure.identity.aio import DefaultAzureCredential
 from port_ocean.helpers.async_client import OceanAsyncClient
 
-from azure_integration.foundry.clients.http.foundry_client import (
-    clear_foundry_client,
-    create_foundry_client,
-)
+from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
 from azure_integration.foundry.clients.webhook_client import (
     FoundryWebhookClient,
     clear_webhook_secret_cache,
@@ -25,14 +22,6 @@ _FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 
 _credential: DefaultAzureCredential | None = None
 _arm_client: ArmDeploymentsClient | None = None
-
-__all__ = [
-    "clear_client_cache",
-    "create_arm_deployments_client",
-    "create_foundry_client",
-    "create_webhook_client_for_account",
-    "management_headers",
-]
 
 
 class _FoundryHeaderProvider:

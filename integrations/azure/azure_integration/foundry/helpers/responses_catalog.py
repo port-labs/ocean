@@ -5,10 +5,6 @@ from typing import Any
 from azure_integration.foundry.helpers.utils import timestamp_to_iso
 
 
-def _as_int(value: Any) -> int:
-    return int(value)
-
-
 def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
     prompt = usage.get("prompt_tokens")
     if prompt is None:
@@ -18,36 +14,13 @@ def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
         completion = usage.get("output_tokens")
     total = usage.get("total_tokens")
     if prompt is not None:
-        row["prompt_tokens"] = _as_int(prompt)
+        row["prompt_tokens"] = int(prompt)
     if completion is not None:
-        row["completion_tokens"] = _as_int(completion)
+        row["completion_tokens"] = int(completion)
     if total is not None:
-        row["total_tokens"] = _as_int(total)
+        row["total_tokens"] = int(total)
     elif prompt is not None and completion is not None:
-        row["total_tokens"] = _as_int(prompt) + _as_int(completion)
-
-
-def add_usage_rows(
-    totals: dict[str, int],
-    usage: dict[str, Any] | None,
-) -> None:
-    if not isinstance(usage, dict):
-        return
-    prompt = usage.get("prompt_tokens") or usage.get("input_tokens")
-    completion = usage.get("completion_tokens") or usage.get("output_tokens")
-    total = usage.get("total_tokens")
-    if prompt is not None:
-        totals["prompt_tokens"] = totals.get("prompt_tokens", 0) + _as_int(prompt)
-    if completion is not None:
-        totals["completion_tokens"] = totals.get("completion_tokens", 0) + _as_int(
-            completion
-        )
-    if total is not None:
-        totals["total_tokens"] = totals.get("total_tokens", 0) + _as_int(total)
-    elif prompt is not None and completion is not None:
-        totals["total_tokens"] = (
-            totals.get("total_tokens", 0) + _as_int(prompt) + _as_int(completion)
-        )
+        row["total_tokens"] = int(prompt) + int(completion)
 
 
 def count_tool_calls_in_response(response: dict[str, Any]) -> int:
@@ -171,33 +144,3 @@ def normalize_foundry_response(source: dict[str, Any]) -> dict[str, Any] | None:
     if model_id:
         row["model_deployment_id"] = model_id
     return row
-
-
-def merge_response_into_conversation_rollup(
-    rollup: dict[str, Any], response_row: dict[str, Any], *, source: dict[str, Any]
-) -> None:
-    totals: dict[str, int] = {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-        "tool_call_count": 0,
-    }
-    add_usage_rows(totals, source.get("usage"))
-    totals["tool_call_count"] = count_tool_calls_in_response(source)
-    for key in (
-        "prompt_tokens",
-        "completion_tokens",
-        "total_tokens",
-        "tool_call_count",
-    ):
-        delta = int(totals.get(key) or 0)
-        if delta:
-            rollup[key] = int(rollup.get(key) or 0) + delta
-    agents = rollup.setdefault("participant_agent_ids", [])
-    agent_id = response_row.get("agent_id")
-    if isinstance(agent_id, str) and agent_id and agent_id not in agents:
-        agents.append(agent_id)
-    models = rollup.setdefault("participant_model_deployment_ids", [])
-    model_id = response_row.get("model_deployment_id")
-    if isinstance(model_id, str) and model_id and model_id not in models:
-        models.append(model_id)

@@ -8,18 +8,14 @@ from pydantic import Field
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
-from azure_integration.foundry.clients.client_factory import create_foundry_client
-
-
-def response_resource_path(response_id: str) -> str:
-    return f"openai/v1/responses/{response_id}"
+from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 
 
 async def fetch_foundry_response(
     response_id: str, *, project_endpoint: str
 ) -> dict[str, Any] | None:
     client = create_foundry_client()
-    url = client.build_url(project_endpoint, response_resource_path(response_id))
+    url = client.build_url(project_endpoint, f"openai/v1/responses/{response_id}")
     try:
         payload = await client.send_api_request(url, method="GET")
     except Exception as error:
@@ -36,13 +32,12 @@ def build_model_responses_invoke(
     user_input: str,
     conversation_id: str | None = None,
     extra_body: dict[str, Any] | None = None,
-) -> tuple[str, dict[str, Any], dict[str, Any]]:
-    """Return (path, query_params, json_body) for generic ``openai/v1/responses`` invoke."""
-    path = "openai/v1/responses"
+) -> tuple[str, dict[str, Any]]:
+    """Return (path, json_body) for generic ``openai/v1/responses`` invoke."""
     body: dict[str, Any] = {"model": model, "input": user_input, **(extra_body or {})}
     if conversation_id:
         body.setdefault("conversation", conversation_id)
-    return path, {}, body
+    return "openai/v1/responses", body
 
 
 class InvokeModelInputs(AbstractFoundryActionInput):
