@@ -44,6 +44,23 @@ Each tick (`sessionTrackingIntervalSeconds`, default 30):
 3. Classifies `status` / `status_detail` (`core/tracking/turn_state.py`). A finished turn completes the run with the session output (`startedAt`, `endedAt`, `durationSeconds`, PRs, ACUs, structured output, last Devin message). `waiting_for_user`, `finished` and `suspended/inactivity` need a Devin message after `sent-at`, so a status left over from the previous turn is ignored.
 4. Fails runs waiting longer than `sessionTrackingMaxHours` (default 72) with status label `Timed out`.
 
+## Port MCP (execution identity)
+
+When `enablePortMcp` is `true` on `create_session` or `send_message`, the integration adds a **session secret** `PORT_MCP_ACCESS_TOKEN` from the workflow node's `executionIdentity` (`portAccessToken` on claim). Configure a Devin plugin MCP server once, for example:
+
+```json
+{
+  "mcpServers": {
+    "port": {
+      "url": "https://mcp.port.io/v1",
+      "headers": { "Authorization": "Bearer ${PORT_MCP_ACCESS_TOKEN}" }
+    }
+  }
+}
+```
+
+Port MCP identity is separate from `createAsUserId` / `messageAsUserId` (Devin org member vs Port actor). Tokens are short-lived; long sessions may need a follow-up `send_message` with `enablePortMcp` to refresh the session secret.
+
 ## Gotchas
 
 - `send_message` fails with `Session busy` when the session has a pending tag or Devin is still working. Runs are serialized per `sessionId`.
