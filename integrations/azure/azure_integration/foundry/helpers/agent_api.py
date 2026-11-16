@@ -39,10 +39,10 @@ def build_agent_responses_invoke(
     user_input: str,
     conversation_id: str | None = None,
     extra_body: dict[str, Any] | None = None,
-) -> tuple[str, dict[str, Any], dict[str, Any]]:
-    """Return (path, query_params, json_body) for agent Responses invoke."""
+) -> tuple[str, dict[str, Any]]:
+    """Return (path, json_body) for agent Responses invoke."""
     path = f"agents/{agent_id}/endpoint/protocols/openai/responses"
     body: dict[str, Any] = {"input": user_input, **(extra_body or {})}
     if conversation_id:
         body.setdefault("conversation", conversation_id)
-    return path, {}, body
+    return path, body

@@ -17,12 +17,6 @@ from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
 from azure_integration.foundry.helpers.port_mcp import remint_port_mcp_on_agent
-from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
-    WEBHOOK_PATH,
-)
-from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
-    ConversationWebhookProcessor,
-)
 
 
 class InvokeAgentInputs(AbstractFoundryActionInput):
@@ -37,8 +31,6 @@ class InvokeAgentInputs(AbstractFoundryActionInput):
 
 class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     ACTION_NAME = "invoke_agent"
-    WEBHOOK_PROCESSOR_CLASS = ConversationWebhookProcessor
-    WEBHOOK_PATH = WEBHOOK_PATH
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeAgentInputs.from_execution_properties(run.execution_properties)
@@ -62,7 +54,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             raise ActionExecutionError(
                 f"Failed to resolve conversation: {error}"
             ) from error
-        path, params, body = build_agent_responses_invoke(
+        path, body = build_agent_responses_invoke(
             agent_id=inputs.agentId,
             user_input=inputs.input,
             conversation_id=conversation_id,
@@ -74,9 +66,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             invoke_label=f"Invoking Foundry agent {inputs.agentId}",
             stream_key=f"{run.id}:{inputs.agentId}",
             invoke_url=invoke_url,
-            params=params,
             body=body,
-            agent_id=inputs.agentId,
             bind_output={
                 "agentId": inputs.agentId,
                 "conversationId": conversation_id,

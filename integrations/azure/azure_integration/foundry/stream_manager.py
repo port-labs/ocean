@@ -12,7 +12,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
 
-from azure_integration.foundry.clients.client_factory import create_foundry_client
+from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.helpers.responses_stream import (
     format_responses_sse_log_message,
     parse_responses_sse_payload,
@@ -71,14 +71,6 @@ class ResponsesStreamManager:
         for key in list(self._tasks):
             if key.startswith(prefix):
                 await self.untrack(key)
-
-    async def join(self, stream_key: str) -> BaseException | None:
-        task = self._tasks.get(stream_key)
-        if task is None:
-            return None
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
-        return task.exception()
 
     async def _consume_stream(
         self,

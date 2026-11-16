@@ -164,12 +164,11 @@ def test_foundry_features_header(kind: str, expected: dict[str, str] | None) -> 
 
 
 def test_build_agent_responses_invoke_uses_protocol_path() -> None:
-    path, params, body = build_agent_responses_invoke(
+    path, body = build_agent_responses_invoke(
         agent_id="Omby-agent",
         user_input="hello",
         conversation_id="conv_123",
     )
     assert path == "agents/Omby-agent/endpoint/protocols/openai/responses"
-    assert params == {}
     assert body["input"] == "hello"
     assert body["conversation"] == "conv_123"

@@ -35,9 +35,7 @@ async def test_register_applies_model_deployment_fallback() -> None:
     ctx.__aenter__ = AsyncMock(return_value=None)
     ctx.__aexit__ = AsyncMock(return_value=None)
     with (
-        patch(
-            "azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean
-        ),
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
         patch(
             "azure_integration.foundry.helpers.invoke_completion.event_context",
             return_value=ctx,

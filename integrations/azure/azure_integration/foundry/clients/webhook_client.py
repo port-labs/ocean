@@ -26,10 +26,6 @@ class _HeaderProvider(Protocol):
     def get_authorization_header(self) -> Awaitable[dict[str, str]]: ...
 
 
-def has_any_signing_secret() -> bool:
-    return bool(_signing_secrets)
-
-
 def iter_signing_secrets() -> list[str]:
     return list(_signing_secrets.values())
 

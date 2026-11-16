@@ -34,10 +34,7 @@ from azure_integration.foundry.clients.client_factory import (
     clear_client_cache,
     create_webhook_client_for_account,
 )
-from azure_integration.foundry.core.exporters.project_exporter import (
-    FoundryProject,
-    ProjectExporter,
-)
+from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
 from azure_integration.foundry.kinds import DEFAULT_FOUNDRY_ARM_API_VERSION
 import azure_integration.foundry.resync  # noqa: F401
 from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
@@ -222,13 +219,16 @@ async def cloud_event_validation_middleware_handler(
     return await call_next(request)
 
 
-async def _discover_foundry_projects() -> list[FoundryProject]:
-    projects: list[FoundryProject] = []
-    async for batch in ProjectExporter()._projects(
+async def _discover_foundry_account_bases() -> set[str]:
+    hosts: set[str] = set()
+    async for batch in ProjectExporter().get_paginated_resources(
         api_version=DEFAULT_FOUNDRY_ARM_API_VERSION
     ):
-        projects.extend(batch)
-    return projects
+        for raw in batch:
+            host = raw.get("accountEndpointHost")
+            if host:
+                hosts.add(f"https://{host}")
+    return hosts
 
 
 @ocean.on_start()
@@ -265,12 +265,11 @@ async def on_start() -> None:
         return
 
     try:
-        projects = await _discover_foundry_projects()
+        hosts = await _discover_foundry_account_bases()
     except Exception as error:
         logger.warning(f"Foundry discovery failed at startup (continuing): {error}")
         return
 
-    hosts = {project.account_base_url for project in projects}
     for account_base in hosts:
         await create_webhook_client_for_account(account_base).upsert_webhook(base_url)
 
