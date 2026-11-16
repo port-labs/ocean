@@ -129,6 +129,44 @@ async def test_project_exporter_yields_successes_then_raises_failed_subscription
     assert isinstance(exc_info.value.exceptions[0], HttpResponseError)
 
 
+@pytest.mark.asyncio
+async def test_project_exporter_filters_regions() -> None:
+    east = _arm_project(account="east-acct", name="east")
+    west = _arm_project(account="west-acct", name="west")
+    west["location"] = "westus"
+
+    async def fake_subs(
+        *_args: Any, **_kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        yield [{"subscription_id": "sub-1"}]
+
+    async def fake_ext(
+        *_args: Any, **_kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        yield [east, west]
+
+    cred, sub_client = _credential_and_sub_client()
+
+    with (
+        patch(f"{_MODULE}.DefaultAzureCredential", return_value=cred),
+        patch(f"{_MODULE}.SubscriptionClient", return_value=sub_client),
+        patch(f"{_MODULE}.batch_resources_iterator", fake_subs),
+        patch(f"{_MODULE}.resource_extention_kind_iterator", fake_ext),
+    ):
+        exporter = ProjectExporter()
+        east_only: list[dict[str, Any]] = []
+        async for batch in exporter.get_paginated_resources(
+            api_version="2024-10-01", regions=["EastUS"]
+        ):
+            east_only.extend(batch)
+        all_projects: list[dict[str, Any]] = []
+        async for batch in exporter.get_paginated_resources(api_version="2024-10-01"):
+            all_projects.extend(batch)
+
+    assert [p["name"] for p in east_only] == ["east"]
+    assert [p["name"] for p in all_projects] == ["east", "west"]
+
+
 def test_project_from_arm_builds_endpoint_from_arm_id() -> None:
     project = {
         "id": (

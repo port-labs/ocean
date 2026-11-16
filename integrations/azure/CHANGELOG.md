@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2026-11-16)
+
+
+### Features
+
+- >-
+    Add Foundry skill and toolbox sync kinds with optional ARM region filtering on
+    project discovery, A2A sub-agent enrichment on toolboxes (normalize ARM
+    connection ids), and SKILL.md content download for skills (throttled).
+
+
+## 0.3.5 (2026-11-16)
+
+
+### Improvements
+
+- List Foundry conversation and response kinds via selectable endpointScopes (default agent protocol; optional project openai/v1 or both as separate stores), scoped to the integration Azure identity.
+
+
 ## 0.3.4 (2026-11-15)
 
 

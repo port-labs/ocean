@@ -40,3 +40,11 @@ class ListResponsesOptions(EndpointScopedOptions):
 
 class ListMemoryStoresOptions(ProjectIdentifier):
     pass
+
+
+class ListSkillsOptions(ProjectIdentifier):
+    pass
+
+
+class ListToolboxesOptions(ProjectIdentifier):
+    pass
