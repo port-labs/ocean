@@ -2,6 +2,7 @@ from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
@@ -13,6 +14,10 @@ from azure_integration.foundry.actions.abstract_executor import AbstractFoundryE
 from azure_integration.foundry.helpers.agent_api import (
     definition_kind,
     foundry_features_header,
+)
+from azure_integration.foundry.helpers.port_mcp import (
+    ensure_ootb_mcp,
+    sanitize_git_provider,
 )
 from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
@@ -27,6 +32,9 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     model: str = Field(min_length=1)
     instructions: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
+    enablePortMcp: bool = Field(default=True)
+    gitAccessToken: str | None = Field(default=None, min_length=1)
+    gitProvider: str = Field(default="github")
 
     def to_api_body(self) -> dict[str, Any]:
         # First-class fields win; config deep-merged underneath for passthrough API fields.
@@ -50,6 +58,8 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CreateAgentInputs.from_execution_properties(run.execution_properties)
+        git_provider = sanitize_git_provider(inputs.gitProvider)
+        port_token = get_run_access_token(run) if inputs.enablePortMcp else None
         body = inputs.to_api_body()
 
         await ocean.port_client.post_run_log(
@@ -78,8 +88,27 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
                 status_label=CREATE_FAILED_STATUS_LABEL,
             )
 
-        logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         agent_id = str(agent.get("id") or agent.get("name") or inputs.name)
+
+        if inputs.enablePortMcp or inputs.gitAccessToken:
+            try:
+                await ensure_ootb_mcp(
+                    self.client,
+                    project_endpoint=inputs.projectEndpoint,
+                    agent_id=agent_id,
+                    enable_port_mcp=inputs.enablePortMcp,
+                    port_access_token=port_token,
+                    git_access_token=inputs.gitAccessToken,
+                    git_provider=git_provider,
+                    attach_to_prompt_agent=True,
+                )
+            except Exception as error:
+                raise ActionExecutionError(
+                    f"Failed to prepare ootb MCP toolbox: {error}",
+                    status_label=CREATE_FAILED_STATUS_LABEL,
+                ) from error
+
+        logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         await self.register_entity(
             ObjectKind.FOUNDRY_AGENT,
             enrich_with_project(agent, project_endpoint=inputs.projectEndpoint),

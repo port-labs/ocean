@@ -159,6 +159,7 @@
       "name": "create_agent",
       "icon": "Azure",
       "description": "Create a Foundry agent in the configured project",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -186,6 +187,14 @@
           "required": false
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "When true, attaches the Port MCP tool (server_label=port) using the integration's Port MCP URL. With a Service Account or Actor execution identity, stores that identity's Bearer token in the agent MCP headers. Limitation: Foundry MCP credentials are project-scoped on the agent — concurrent runs reminting the same agent can overwrite each other's identity; use with caution."
+        },
+        {
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
@@ -198,6 +207,7 @@
       "name": "update_agent",
       "icon": "Azure",
       "description": "Update a Foundry agent",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -223,6 +233,13 @@
           "title": "Instructions",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "required": false,
+          "description": "When true, ensures Port MCP is attached (and remints Bearer headers for Service Account/Actor execution identities). When false, removes the Port MCP tool. Omit to leave MCP tools unchanged. Limitation: Foundry MCP credentials are project-scoped on the agent — concurrent remints of the same agent can drift identity; use with caution."
         },
         {
           "name": "config",
@@ -329,6 +346,7 @@
       "name": "invoke_agent",
       "icon": "Azure",
       "description": "Invoke a Foundry agent via the Responses API",
+      "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -364,12 +382,20 @@
           "description": "Optional metadata to set on the conversation before invoke (for example subject, ticket id, or owner). Applied on create when conversationId is omitted, or patched onto an existing conversationId."
         },
         {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "When true and a Service Account or Actor execution identity is present, remints the Port MCP Bearer token on the agent before invoke. Limitation: Foundry MCP credentials are project-scoped on the agent — concurrent invokes reminting the same agent can overwrite each other's identity; use with caution."
+        },
+        {
           "name": "reportInvocationStatus",
           "title": "Report invocation status",
           "type": "boolean",
           "required": false,
-          "default": true,
-          "description": "When true, keeps the run open until a terminal Foundry response.* webhook completes it (requires OCEAN__BASE_URL and a registered Foundry webhook). Falls back to SSE terminal completion when webhook signing secret is unavailable."
+          "default": false,
+          "description": "When true, keeps the run open until a terminal Foundry response.* webhook completes it (requires OCEAN__BASE_URL and webhook processing); falls back to SSE terminal completion when webhooks are unavailable. When false, closes the run after the invoke is submitted. The Responses request always uses background=true."
         }
       ]
     },

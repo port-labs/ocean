@@ -49,18 +49,14 @@ class ResponsesInvokeMixin:
             status_label=INVOKE_STARTING_STATUS_LABEL,
             should_raise=False,
         )
-        use_background, _ = invoke_agent_completion_mode(
+        await_webhook_completion, mode_complete_on_sse = invoke_agent_completion_mode(
             report_invocation_status=report_invocation_status
         )
-        await_webhook_completion = use_background
         if complete_on_sse_terminal is None:
-            complete_on_sse_terminal = (
-                not early_complete_on_bind and not await_webhook_completion
-            )
+            complete_on_sse_terminal = mode_complete_on_sse
 
         invoke_body = dict(body)
-        if use_background:
-            invoke_body["background"] = True
+        invoke_body["background"] = True
 
         await self._execute_with_sse_completion(
             run,

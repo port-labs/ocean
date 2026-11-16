@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from port_ocean.context.ocean import ocean
 
-from azure_integration.foundry.clients.webhook_client import has_any_signing_secret
-
 
 def foundry_webhook_completion_available() -> bool:
     """True when Ocean can receive Foundry ``response.*`` webhooks."""
@@ -17,11 +15,14 @@ def foundry_webhook_completion_available() -> bool:
 def invoke_agent_completion_mode(
     *, report_invocation_status: bool
 ) -> tuple[bool, bool]:
-    """Return ``(use_background, complete_on_sse_terminal)`` for invoke_agent."""
+    """Return ``(await_webhook_completion, complete_on_sse_terminal)``.
+
+    Invoke always sends ``background=true``. When ``reportInvocationStatus`` is
+    false, the run closes on bind (caller sets early_complete_on_bind). When true,
+    prefer webhook completion; fall back to SSE if webhooks are unavailable.
+    """
     if not report_invocation_status:
         return False, False
-    if not foundry_webhook_completion_available():
-        return False, True
-    # Prefer webhook completion when we have a signing secret from registration
-    use_background = has_any_signing_secret()
-    return use_background, not use_background
+    if foundry_webhook_completion_available():
+        return True, False
+    return False, True
