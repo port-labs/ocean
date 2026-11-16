@@ -149,7 +149,8 @@ class TestIPBlockerTransport:
         """
         wrapped = AsyncMock(spec=httpx.AsyncBaseTransport)
         wrapped.handle_async_request.return_value = httpx.Response(
-            200, request=httpx.Request("POST", "https://core-api.uk.plain.com/graphql/v1")
+            200,
+            request=httpx.Request("POST", "https://core-api.uk.plain.com/graphql/v1"),
         )
         transport = IPBlockerTransport(wrapped=wrapped)
 
@@ -157,18 +158,19 @@ class TestIPBlockerTransport:
             httpx.Request("POST", "https://core-api.uk.plain.com/graphql/v1")
         )
 
-        # Assert: hostname should NOT be rewritten
+        # Assert: hostname should NOT be rewritten to an IP
         sent: httpx.Request = wrapped.handle_async_request.call_args[0][0]
         assert sent.url.host == "core-api.uk.plain.com"
-        # Host header and sni_hostname should not be set (no rewriting happened)
-        assert sent.headers.get("host") != "core-api.uk.plain.com" or sent.headers.get("host") is None
+        # sni_hostname extension should NOT be set (only set when hostname is rewritten)
+        assert "sni_hostname" not in sent.extensions
 
     @pytest.mark.asyncio
     async def test_other_plain_subdomains_also_trusted(self) -> None:
         """Verify other Plain subdomains are also trusted (e.g., potential US/EU variants)."""
         wrapped = AsyncMock(spec=httpx.AsyncBaseTransport)
         wrapped.handle_async_request.return_value = httpx.Response(
-            200, request=httpx.Request("POST", "https://core-api.us.plain.com/graphql/v1")
+            200,
+            request=httpx.Request("POST", "https://core-api.us.plain.com/graphql/v1"),
         )
         transport = IPBlockerTransport(wrapped=wrapped)
 

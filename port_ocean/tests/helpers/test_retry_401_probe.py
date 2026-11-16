@@ -13,7 +13,11 @@ from unittest.mock import Mock, AsyncMock, patch
 from http import HTTPStatus
 import httpx
 
-from port_ocean.helpers.retry import RetryConfig, RetryTransport, SKIP_RETRY_EXTENSION_KEY
+from port_ocean.helpers.retry import (
+    RetryConfig,
+    RetryTransport,
+    SKIP_RETRY_EXTENSION_KEY,
+)
 
 
 class TestProbe401NoRetry:
@@ -24,7 +28,7 @@ class TestProbe401NoRetry:
         """
         When skip_retry extension is set, a 401 response should NOT be retried.
         This is the CURRENT and EXPECTED behavior for test connection / probe.
-        
+
         This test confirms the mechanism works correctly.
         """
         mock_transport = Mock()
@@ -71,25 +75,19 @@ class TestProbe401NoRetry:
         request = httpx.Request("GET", "https://example.com/api/myself")
 
         # Mock responses: two 401s, then success
-        response_401_1 = httpx.Response(
-            HTTPStatus.UNAUTHORIZED,
-            request=request,
-            json={"error": "Unauthorized"},
-        )
+        response_401_1 = Mock()
+        response_401_1.status_code = HTTPStatus.UNAUTHORIZED
+        response_401_1.headers = {}
         response_401_1.aclose = AsyncMock()
 
-        response_401_2 = httpx.Response(
-            HTTPStatus.UNAUTHORIZED,
-            request=request,
-            json={"error": "Unauthorized"},
-        )
+        response_401_2 = Mock()
+        response_401_2.status_code = HTTPStatus.UNAUTHORIZED
+        response_401_2.headers = {}
         response_401_2.aclose = AsyncMock()
 
-        response_200 = httpx.Response(
-            HTTPStatus.OK,
-            request=request,
-            json={"user": "test"},
-        )
+        response_200 = Mock()
+        response_200.status_code = HTTPStatus.OK
+        response_200.headers = {}
 
         mock_transport.handle_async_request = AsyncMock(
             side_effect=[response_401_1, response_401_2, response_200]
