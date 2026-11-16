@@ -295,6 +295,8 @@ jobs:
   # Image scan pulls published GHCR tags; this workflow does not push PR builds.
   wiz-cli-dir-scan:
     name: Wiz-cli code scan
+    # infra-utils is private; GitHub cannot resolve it on fork pull_request runs.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     uses: port-labs/infra-utils/.github/workflows/wizcli.yml@f693e30f50d07da38f5fc682257dd4526b09b673
     secrets: inherit
     with:
@@ -311,6 +313,7 @@ jobs:
     name: Prepare Wiz image URIs
     needs: [prepare-matrix, build-integration]
     if: >
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
       needs.prepare-matrix.result == 'success' &&
       needs.build-integration.result == 'success' &&
       needs.prepare-matrix.outputs.matrix != '' &&
@@ -334,10 +337,10 @@ jobs:
             type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
             version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
             [[ -z "$type" ]] && continue
-            # PR builds are not pushed. Scan the published :latest of the same
-            # integration so Wiz can pull from GHCR. The version tag is used
-            # when :latest is not part of the release tags (dev versions).
-            if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+-beta[0-9]*$ ]]; then
+            # PR builds are not pushed. Scan published :latest when release
+            # would have applied that tag (stable, post, beta). Otherwise use
+            # the version tag (dev/rc/alpha).
+            if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+[.-]post[0-9]+$ || "$version" =~ ^[0-9.]+-beta[0-9]*$ ]]; then
               image_uri="ghcr.io/port-labs/port-ocean-${type}:latest"
             else
               image_uri="ghcr.io/port-labs/port-ocean-${type}:${version}"
@@ -350,7 +353,7 @@ jobs:
   wiz-cli-image-scan:
     name: Wiz-cli image scan
     needs: prepare-wiz-images
-    if: ${{ needs.prepare-wiz-images.result == 'success' && needs.prepare-wiz-images.outputs.images != '' && needs.prepare-wiz-images.outputs.images != '[]' }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-wiz-images.result == 'success' && needs.prepare-wiz-images.outputs.images != '' && needs.prepare-wiz-images.outputs.images != '[]' }}
     uses: port-labs/infra-utils/.github/workflows/wizcli.yml@f693e30f50d07da38f5fc682257dd4526b09b673
     secrets: inherit
     with:
