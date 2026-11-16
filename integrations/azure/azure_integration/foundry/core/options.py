@@ -25,14 +25,17 @@ class ListModelDeploymentsOptions(ProjectIdentifier):
     pass
 
 
-class ListConversationsOptions(ProjectIdentifier):
+class EndpointScopedOptions(ProjectIdentifier):
     since_days: int | None = Field(default=30)
     endpoint_scopes: list[EndpointScope] = Field(default=[EndpointScope.AGENT])
 
 
-class ListResponsesOptions(ProjectIdentifier):
-    since_days: int | None = Field(default=30)
-    endpoint_scopes: list[EndpointScope] = Field(default=[EndpointScope.AGENT])
+class ListConversationsOptions(EndpointScopedOptions):
+    pass
+
+
+class ListResponsesOptions(EndpointScopedOptions):
+    pass
 
 
 class ListMemoryStoresOptions(ProjectIdentifier):

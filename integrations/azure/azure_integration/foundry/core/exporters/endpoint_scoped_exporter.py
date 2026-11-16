@@ -19,29 +19,24 @@ from port_ocean.utils.async_iterators import (
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 from azure_integration.foundry.core.exporters.base import FoundryExporter
-from azure_integration.foundry.core.options import (
-    EndpointScope,
-    ListConversationsOptions,
-    ListResponsesOptions,
-)
+from azure_integration.foundry.core.options import EndpointScope, EndpointScopedOptions
 from azure_integration.foundry.helpers.utils import (
     agent_openai_protocol_path,
     effective_conversation_cutoff,
     enrich_with_project,
 )
 
-EndpointScopedOptions = ListConversationsOptions | ListResponsesOptions
 MAX_CONCURRENT_AGENTS = 10
 
 
-class EndpointScopedExporter(FoundryExporter):
+class EndpointScopedExporter[OptionsT: EndpointScopedOptions](FoundryExporter):
     """Lists a Foundry resource via agent protocol and/or project openai/v1 APIs."""
 
     resource: ClassVar[str]
     strategy: ClassVar[IncrementalStrategy]
 
     async def get_paginated_resources(
-        self, options: EndpointScopedOptions
+        self, options: OptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         project_endpoint = options.project_endpoint
         project_id = options.project_id
