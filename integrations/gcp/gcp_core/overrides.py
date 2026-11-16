@@ -45,6 +45,9 @@ class GCPIamPolicySelector(Selector):
 
 
 class GCPIamPolicyResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllIamPolicies",
+    )
     kind: Literal["iamPolicy"] = Field(
         title="GCP IAM Policy",
         description="GCP IAM allow-policy bindings kind.",
