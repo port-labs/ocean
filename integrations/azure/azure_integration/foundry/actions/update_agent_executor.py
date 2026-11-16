@@ -24,20 +24,30 @@ class UpdateAgentInputs(AbstractFoundryActionInput):
     instructions: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
 
+    def to_api_body(self) -> dict[str, Any]:
+        return build_update_agent_body(
+            name=self.name,
+            model=self.model,
+            instructions=self.instructions,
+            config=self.config or None,
+        )
+
 
 class UpdateAgentExecutor(AbstractFoundryExecutor):
     ACTION_NAME = "update_agent"
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = UpdateAgentInputs.from_execution_properties(run.execution_properties)
-        body = build_update_agent_body(
-            name=inputs.name,
-            model=inputs.model,
-            instructions=inputs.instructions,
-            config=inputs.config or None,
-        )
+        body = inputs.to_api_body()
 
-        if not body:
+        if not any(
+            (
+                inputs.name is not None,
+                inputs.model is not None,
+                inputs.instructions is not None,
+                bool(inputs.config),
+            )
+        ):
             raise ActionExecutionError(
                 "At least one field must be provided to update",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
@@ -51,11 +61,12 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
         )
 
         try:
+            # POST creates a new agent version; PATCH is endpoint/protocol only.
             agent = await self.client.send_api_request(
                 self.client.build_url(
                     inputs.projectEndpoint, f"agents/{inputs.agentId}"
                 ),
-                method="PATCH",
+                method="POST",
                 json_body=body,
             )
         except Exception as error:

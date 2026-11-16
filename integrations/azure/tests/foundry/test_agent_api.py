@@ -57,6 +57,7 @@ def test_build_create_agent_body_merges_config_under_first_class() -> None:
 def test_build_update_agent_body_nested_definition() -> None:
     body = build_update_agent_body(instructions="New text", model="gpt-5")
     assert body["definition"] == {
+        "kind": "prompt",
         "model": "gpt-5",
         "instructions": "New text",
     }
@@ -74,6 +75,7 @@ def test_build_update_agent_body_merges_config_tools() -> None:
     )
     assert body["description"] == "updated"
     assert body["definition"] == {
+        "kind": "prompt",
         "tools": [{"type": "function", "name": "lookup"}],
         "instructions": "New text",
     }

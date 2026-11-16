@@ -27,6 +27,31 @@ class DeployModelDeploymentInputs(AbstractFoundryActionInput):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+def deployment_from_arm(
+    arm_payload: dict[str, Any],
+    *,
+    deployment_name: str,
+    model_name: str,
+    model_version: str | None,
+    model_publisher: str | None,
+    sku_name: str,
+) -> dict[str, Any]:
+    """Map ARM deployment PUT response into data-plane catalog shape."""
+    props = arm_payload.get("properties")
+    model = props.get("model") if isinstance(props, dict) else None
+    if not isinstance(model, dict):
+        model = {}
+    sku = arm_payload.get("sku")
+    return {
+        "name": arm_payload.get("name") or deployment_name,
+        "type": "ModelDeployment",
+        "modelName": model.get("name") or model_name,
+        "modelVersion": model.get("version") or model_version,
+        "modelPublisher": model.get("format") or model_publisher,
+        "sku": sku if isinstance(sku, dict) else {"name": sku_name},
+    }
+
+
 class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
     ACTION_NAME = "deploy_model_deployment"
 
@@ -43,7 +68,7 @@ class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
         )
 
         try:
-            await self.arm_deployments.upsert_model_deployment(
+            arm_payload = await self.arm_deployments.upsert_model_deployment(
                 project_endpoint=inputs.projectEndpoint,
                 deployment_name=inputs.deploymentName,
                 model_name=inputs.modelName,
@@ -58,28 +83,14 @@ class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
                 status_label=DEPLOY_FAILED_STATUS_LABEL,
             ) from error
 
-        deployment: dict[str, Any]
-        try:
-            payload = await self.client.send_api_request(
-                self.client.build_url(
-                    inputs.projectEndpoint,
-                    f"deployments/{inputs.deploymentName}",
-                ),
-            )
-            deployment = payload if isinstance(payload, dict) and payload else {}
-        except Exception:
-            deployment = {}
-
-        if not deployment:
-            # ponytail: stub when data-plane GET misses; type fixed
-            deployment = {
-                "name": inputs.deploymentName,
-                "type": "ModelDeployment",
-                "modelName": inputs.modelName,
-                "modelVersion": inputs.modelVersion,
-                "modelPublisher": inputs.modelPublisher,
-                "sku": {"name": inputs.skuName},
-            }
+        deployment = deployment_from_arm(
+            arm_payload if isinstance(arm_payload, dict) else {},
+            deployment_name=inputs.deploymentName,
+            model_name=inputs.modelName,
+            model_version=inputs.modelVersion,
+            model_publisher=inputs.modelPublisher,
+            sku_name=inputs.skuName,
+        )
 
         logger.info(
             f"Deployed Foundry model deployment {inputs.deploymentName} for run {run.id}"

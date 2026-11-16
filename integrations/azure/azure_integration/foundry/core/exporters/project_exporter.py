@@ -126,10 +126,14 @@ class ProjectExporter:
         """ARM deploy/delete needs subscription, resource group, and account.
 
         The data-plane URL only carries the account host and project name.
+        Uses the cached project list from ``get_paginated_resources``.
         """
         target = endpoint.rstrip("/")
-        async for projects in self._projects(api_version=api_version):
-            for project in projects:
-                if project.endpoint.rstrip("/") == target:
+        async for projects in self.get_paginated_resources(api_version=api_version):
+            for raw in projects:
+                if str(raw["__foundryProjectEndpoint"]).rstrip("/") != target:
+                    continue
+                project = foundry_project_from_arm(raw)
+                if project is not None:
                     return project
         raise ValueError(f"No discovered Foundry project matches endpoint {target}")

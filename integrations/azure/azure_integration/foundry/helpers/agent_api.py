@@ -39,20 +39,23 @@ def build_update_agent_body(
     instructions: str | None = None,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build a Foundry update-agent payload with the same config passthrough rules."""
-    body = deep_merge({}, config or {})
+    """Build a Foundry update-agent (POST) payload.
+
+    ``POST /agents/{name}`` requires a ``definition.kind`` discriminator; PATCH is
+    only for endpoint/protocol settings, not model or instructions.
+    """
+    body = deep_merge({"definition": {"kind": "prompt"}}, config or {})
     if name is not None:
         body["name"] = name
 
-    definition_overlay: dict[str, Any] = {}
+    definition = body.get("definition")
+    if not isinstance(definition, dict):
+        definition = {"kind": "prompt"}
+        body["definition"] = definition
+    definition["kind"] = definition.get("kind") or "prompt"
+
     if model is not None:
-        definition_overlay["model"] = model
+        definition["model"] = model
     if instructions is not None:
-        definition_overlay["instructions"] = instructions
-    if definition_overlay:
-        existing = body.get("definition")
-        if isinstance(existing, dict):
-            body["definition"] = deep_merge(existing, definition_overlay)
-        else:
-            body["definition"] = definition_overlay
+        definition["instructions"] = instructions
     return body

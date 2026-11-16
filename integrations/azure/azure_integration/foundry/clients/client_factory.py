@@ -5,22 +5,12 @@ from azure.identity.aio import DefaultAzureCredential
 from azure_integration.foundry.clients.arm_deployments_client import (
     ArmDeploymentsClient,
 )
-from azure_integration.foundry.clients.http.foundry_client import (
-    clear_foundry_client,
-    create_foundry_client,
-)
+from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
 
 _ARM_SCOPE = "https://management.azure.com/.default"
 
 _credential: DefaultAzureCredential | None = None
 _arm_client: ArmDeploymentsClient | None = None
-
-__all__ = [
-    "clear_client_cache",
-    "create_arm_deployments_client",
-    "create_foundry_client",
-    "management_headers",
-]
 
 
 def azure_credential() -> DefaultAzureCredential:

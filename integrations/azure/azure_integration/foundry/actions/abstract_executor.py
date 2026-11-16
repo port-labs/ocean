@@ -13,8 +13,8 @@ from azure_integration.foundry.clients.arm_deployments_client import (
 )
 from azure_integration.foundry.clients.client_factory import (
     create_arm_deployments_client,
-    create_foundry_client,
 )
+from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
