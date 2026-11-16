@@ -29,7 +29,9 @@ from azure_integration.foundry.helpers.utils import (
 MAX_CONCURRENT_AGENTS = 10
 
 
-class EndpointScopedExporter[OptionsT: EndpointScopedOptions](FoundryExporter[OptionsT]):
+class EndpointScopedExporter[OptionsT: EndpointScopedOptions](
+    FoundryExporter[OptionsT]
+):
     """Lists a Foundry resource via agent protocol and/or project openai/v1 APIs."""
 
     resource: ClassVar[str]

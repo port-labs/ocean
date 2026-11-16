@@ -26,7 +26,6 @@ _CONTENT_HEADERS = {
     "Foundry-Features": _SKILLS_FEATURE,
     "Accept": "application/zip",
 }
-# ponytail: concurrency 5; raise if Foundry rate limits allow more
 _CONTENT_CONCURRENCY = 5
 
 
