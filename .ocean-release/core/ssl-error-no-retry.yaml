@@ -1,6 +1,6 @@
-kind: core
 bump: minor
-description: |
+changelog-type: improvement
+changelog: |
   Fail fast on SSL/TLS certificate errors without retrying.
   
   SSL/TLS errors (certificate verification failures, hostname mismatches, expired certificates)

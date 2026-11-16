@@ -1,5 +1,5 @@
 bump: minor
-changelog-type: enhancement
+changelog-type: improvement
 changelog: |
   Improved error handling for test connection and webhook setup:
   - Test connection now fails immediately on HTTP 401 (Unauthorized) with exactly one request instead of retrying ~10 times
