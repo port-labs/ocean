@@ -1,1 +1,0 @@
-# EKS Nodegroup exporter package

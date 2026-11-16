@@ -11,44 +11,54 @@ from aws.utils import RegionHelper
 CLOUDTRAIL_EVENT_SOURCE = "eks.amazonaws.com"
 
 
+NODEGROUP_ARN_RESOURCE_PREFIX = ":nodegroup/"
+
+
+def _split_identifier(identifier: str) -> tuple[str, str, str | None]:
+    """Split "<clusterName>/<nodegroupName>[/<nodegroupUuid>]".
+
+    The UUID is only known when CloudTrail returns the nodegroup ARN (DeleteNodegroup).
+    """
+    cluster_name, nodegroup_name, *rest = identifier.split("/", 2)
+    return cluster_name, nodegroup_name, rest[0] if rest else None
+
+
 def _nodegroup_arn(context: LiveEventContext) -> str:
-    # context.identifier is "<clusterName>/<nodegroupName>"
-    cluster_name, nodegroup_name = context.identifier.split("/", 1)
+    cluster_name, nodegroup_name, nodegroup_uuid = _split_identifier(context.identifier)
     partition = RegionHelper.get_partition()
-    return (
+    arn = (
         f"arn:{partition}:eks:{context.region}:{context.account_id}:"
         f"nodegroup/{cluster_name}/{nodegroup_name}"
     )
+    return f"{arn}/{nodegroup_uuid}" if nodegroup_uuid else arn
 
 
 def _extract_nodegroup_identifier(detail: CloudTrailDetail) -> str | None:
     """Extract '<clusterName>/<nodegroupName>' from CloudTrail request parameters."""
     request_parameters = detail.get("requestParameters", {}) or {}
-    cluster_name = request_parameters.get("clusterName") or request_parameters.get(
-        "name"
-    )
+    # The cluster name is the "name" URI parameter in the EKS REST API
+    cluster_name = request_parameters.get("name")
     nodegroup_name = request_parameters.get("nodegroupName")
     if not cluster_name or not nodegroup_name:
         return None
     return f"{cluster_name}/{nodegroup_name}"
 
 
-def _extract_create_nodegroup_identifier(detail: CloudTrailDetail) -> str | None:
-    """Extract identifier from CreateNodegroup response elements."""
+def _extract_delete_nodegroup_identifier(detail: CloudTrailDetail) -> str | None:
+    """Extract '<clusterName>/<nodegroupName>/<uuid>' from the DeleteNodegroup response ARN."""
     response_elements = detail.get("responseElements") or {}
     nodegroup = response_elements.get("nodegroup") or {}
-    cluster_name = nodegroup.get("clusterName")
-    nodegroup_name = nodegroup.get("nodegroupName")
-    if cluster_name and nodegroup_name:
-        return f"{cluster_name}/{nodegroup_name}"
-    # Fall back to request parameters
-    return _extract_nodegroup_identifier(detail)
+    nodegroup_arn = nodegroup.get("nodegroupArn") or ""
+    _, separator, resource_path = nodegroup_arn.partition(NODEGROUP_ARN_RESOURCE_PREFIX)
+    if separator and resource_path.count("/") == 2:
+        return resource_path
+    return None
 
 
 def _request_factory(
     context: LiveEventContext, include_actions: list[str]
 ) -> SingleEksNodegroupRequest:
-    cluster_name, nodegroup_name = context.identifier.split("/", 1)
+    cluster_name, nodegroup_name, _ = _split_identifier(context.identifier)
     return SingleEksNodegroupRequest(
         cluster_name=cluster_name,
         nodegroup_name=nodegroup_name,
@@ -59,7 +69,7 @@ def _request_factory(
 
 
 def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]:
-    cluster_name, nodegroup_name = context.identifier.split("/", 1)
+    cluster_name, nodegroup_name, _ = _split_identifier(context.identifier)
     return {
         "NodegroupArn": _nodegroup_arn(context),
         "NodegroupName": nodegroup_name,
@@ -73,7 +83,7 @@ EKS_NODEGROUP_LIVE_EVENTS = LiveEventFactories(
     cloudtrail_mappings={
         "CreateNodegroup": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
-            _extract_create_nodegroup_identifier,
+            _extract_nodegroup_identifier,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "UpdateNodegroupConfig": CloudTrailEventMapping(
@@ -88,7 +98,7 @@ EKS_NODEGROUP_LIVE_EVENTS = LiveEventFactories(
         ),
         "DeleteNodegroup": CloudTrailEventMapping(
             CloudTrailEventAction.DELETE,
-            _extract_nodegroup_identifier,
+            _extract_delete_nodegroup_identifier,
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
     },
