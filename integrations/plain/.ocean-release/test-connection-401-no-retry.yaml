@@ -1,3 +1,8 @@
-bump: patch
-changelog-type: bugfix
-changelog: Test connection no longer retries on 401 (Unauthorized), failing immediately with a clear auth error message instead of retrying ~10 times
+bump: minor
+changelog-type: enhancement
+changelog: |
+  Improved error handling for test connection and webhook setup:
+  - Test connection now fails immediately on HTTP 401 (Unauthorized) with exactly one request instead of retrying ~10 times
+  - Test connection fails fast on SSL/TLS certificate errors with clear messaging about secure connection issues
+  - Blocked IP addresses (from network security policy) are treated as test connection failures with clear messaging, not internal errors
+  - Webhook registration now logs a warning instead of crashing when Plain API cannot be reached

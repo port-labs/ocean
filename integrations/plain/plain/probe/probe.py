@@ -7,6 +7,7 @@ from plain.probe.permissions import (
     authentication_failure_message,
 )
 from port_ocean.core.probe import ProbeCheck, ProbeContext
+from port_ocean.exceptions.clients import BlockedIPError
 
 
 def _is_unauthenticated_graphql_error(error: PlainGraphQLError) -> bool:
@@ -40,6 +41,26 @@ class PlainPermissionProbe:
             else:
                 await self.context.fail(
                     "Failed to verify Plain authentication: " f"{error}"
+                )
+            return
+        except BlockedIPError as error:
+            await self.context.fail(
+                "Plain API host was blocked by network security policy: " f"{error}"
+            )
+            return
+        except httpx.ConnectError as error:
+            # Provide clear message for SSL/certificate errors vs generic connection failures
+            error_str = str(error).lower()
+            if "ssl" in error_str or "certificate" in error_str or "tls" in error_str:
+                await self.context.fail(
+                    "Could not establish a secure connection to Plain API. "
+                    "This may indicate an SSL/TLS certificate verification failure. "
+                    f"Details: {error}"
+                )
+            else:
+                await self.context.fail(
+                    "Plain could not be reached while verifying authentication: "
+                    f"{error}"
                 )
             return
         except httpx.RequestError as error:

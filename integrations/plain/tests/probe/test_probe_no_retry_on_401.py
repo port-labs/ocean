@@ -1,19 +1,21 @@
 """
-Test that Plain probe does NOT retry on 401 (Unauthorized).
+Test that Plain probe does NOT retry on 401 (Unauthorized) or SSL/certificate errors.
 
-When test connection gets a 401 from Plain API, it should:
+When test connection gets a 401 or SSL error from Plain API, it should:
 1. Make exactly ONE request (no retries)
 2. Mark probe status as FAILED
-3. Provide a clear message that credentials were rejected
+3. Provide a clear message about what went wrong
 """
 
 import pytest
+import ssl
 from unittest.mock import AsyncMock, Mock, patch
 from http import HTTPStatus
 import httpx
 
 from plain.probe.probe import PlainPermissionProbe
 from port_ocean.core.probe import ProbeContext, ProbeStatus
+from port_ocean.exceptions.clients import BlockedIPError
 
 
 @pytest.mark.asyncio
@@ -35,7 +37,9 @@ async def test_probe_401_makes_exactly_one_request_no_retries(
 
     # Mock the innermost HTTP transport to track requests
     class CountingTransport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(self, request):
+        async def handle_async_request(
+            self, request: httpx.Request
+        ) -> httpx.Response:
             request_count["count"] += 1
             # Always return 401
             return httpx.Response(
@@ -100,7 +104,9 @@ async def test_resync_calls_still_retry_on_failures(
 
     # Mock the innermost HTTP transport to track requests
     class CountingTransport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(self, request):
+        async def handle_async_request(
+            self, request: httpx.Request
+        ) -> httpx.Response:
             request_count["count"] += 1
             if request_count["count"] < 3:
                 # First 2 attempts: return 503 (retryable)
@@ -172,7 +178,9 @@ async def test_probe_status_is_failed_not_internal_failure_on_401(
 
     # Mock the innermost HTTP transport
     class Http401Transport(httpx.AsyncHTTPTransport):
-        async def handle_async_request(self, request):
+        async def handle_async_request(
+            self, request: httpx.Request
+        ) -> httpx.Response:
             return httpx.Response(
                 HTTPStatus.UNAUTHORIZED,
                 request=request,
@@ -210,3 +218,122 @@ async def test_probe_status_is_failed_not_internal_failure_on_401(
     # Message should mention authentication/credentials
     assert context.message is not None
     assert "authentication" in context.message.lower() or "401" in context.message
+
+
+@pytest.mark.asyncio
+async def test_probe_ssl_error_makes_exactly_one_request_no_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    SSL/certificate errors should NOT be retried during probe.
+    Should make exactly ONE request and fail immediately.
+    """
+    request_count = {"count": 0}
+
+    # Mock the innermost HTTP transport
+    class SSLErrorTransport(httpx.AsyncHTTPTransport):
+        async def handle_async_request(
+            self, request: httpx.Request
+        ) -> httpx.Response:
+            request_count["count"] += 1
+            # Simulate SSL certificate verification failure
+            ssl_err = ssl.SSLCertVerificationError(
+                "certificate verify failed: self signed certificate"
+            )
+            connect_err = httpx.ConnectError("SSL: CERTIFICATE_VERIFY_FAILED")
+            connect_err.__cause__ = ssl_err
+            raise connect_err
+
+    monkeypatch.setattr("httpx.AsyncHTTPTransport", SSLErrorTransport)
+
+    # Mock ocean config
+    mock_ocean = Mock()
+    mock_ocean.integration_config = {
+        "api_token": "test-token",
+        "api_url": "https://core-api.uk.plain.com/graphql/v1",
+    }
+    mock_ocean.config.client_timeout = 30
+    mock_ocean.config.integration.identifier = "plain-test"
+    mock_ocean.config.ssl.third_party.enabled = False
+    mock_ocean.config.ssl.third_party.certificate = None
+    mock_ocean.config.disable_ip_outbound_blocker = True
+    monkeypatch.setattr("plain.client.ocean", mock_ocean)
+    monkeypatch.setattr("port_ocean.helpers.async_client.ocean", mock_ocean)
+
+    # Run the probe
+    context = ProbeContext()
+    context.reporter = Mock()
+    context.reporter.report = AsyncMock()
+    context.available_kinds = ["company"]
+
+    await PlainPermissionProbe(context).run()
+
+    # Assert: Should make exactly ONE request, no retries
+    assert (
+        request_count["count"] == 1
+    ), f"Expected exactly 1 request for SSL error, got {request_count['count']}"
+
+    # Assert: Probe should be marked as FAILED
+    assert context.status is ProbeStatus.FAILED
+
+    # Assert: Message should indicate connection/certificate issue
+    assert context.message is not None
+    assert any(
+        keyword in context.message.lower()
+        for keyword in ["connection", "certificate", "ssl", "secure", "reach"]
+    ), f"Expected clear SSL/connection error message, got: {context.message}"
+
+
+@pytest.mark.asyncio
+async def test_probe_blocked_ip_is_failed_not_internal_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    BlockedIPError should be treated as FAILED (third-party issue),
+    not INTERNAL_FAILURE (our bug).
+    """
+
+    # Mock the innermost HTTP transport
+    class BlockedIPTransport(httpx.AsyncHTTPTransport):
+        async def handle_async_request(
+            self, request: httpx.Request
+        ) -> httpx.Response:
+            raise BlockedIPError(
+                f"Request to {request.url.host} was blocked: "
+                "Host IP address ['127.0.0.1'] is not within the allowed ranges"
+            )
+
+    monkeypatch.setattr("httpx.AsyncHTTPTransport", BlockedIPTransport)
+
+    # Mock ocean config
+    mock_ocean = Mock()
+    mock_ocean.integration_config = {
+        "api_token": "test-token",
+        "api_url": "https://core-api.uk.plain.com/graphql/v1",
+    }
+    mock_ocean.config.client_timeout = 30
+    mock_ocean.config.integration.identifier = "plain-test"
+    mock_ocean.config.ssl.third_party.enabled = False
+    mock_ocean.config.ssl.third_party.certificate = None
+    mock_ocean.config.disable_ip_outbound_blocker = False  # Enable IP blocker
+    monkeypatch.setattr("plain.client.ocean", mock_ocean)
+    monkeypatch.setattr("port_ocean.helpers.async_client.ocean", mock_ocean)
+
+    # Run the probe
+    context = ProbeContext()
+    context.reporter = Mock()
+    context.reporter.report = AsyncMock()
+    context.available_kinds = ["company"]
+
+    await PlainPermissionProbe(context).run()
+
+    # Assert: Should be FAILED, not INTERNAL_FAILURE
+    assert context.status is ProbeStatus.FAILED
+    assert context.status is not ProbeStatus.INTERNAL_FAILURE
+
+    # Assert: Message should clearly indicate IP was blocked
+    assert context.message is not None
+    assert any(
+        keyword in context.message.lower()
+        for keyword in ["blocked", "ip", "address", "allowed"]
+    ), f"Expected clear blocked IP message, got: {context.message}"
