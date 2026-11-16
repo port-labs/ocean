@@ -571,6 +571,13 @@ class ExecutionManager:
                         return
                     await self._pause_run_for_user_auth(run)
                     return
+                except ActionExecutionError as e:
+                    await self._ack_and_fail_run(
+                        run,
+                        message=str(e),
+                        status_label=e.status_label or DEFAULT_FAILURE_STATUS_LABEL,
+                    )
+                    return
                 except Exception as e:
                     logger.exception(
                         "Error occurred while trying to acknowledge run",
