@@ -17,12 +17,6 @@ _TOKEN_ERROR = (
 )
 
 
-def validate_port_mcp_secret_key(value: str) -> str:
-    if not value.startswith("MCP_"):
-        raise ValueError("portMcpSecretKey must start with MCP_")
-    return value
-
-
 class PortMcpInstallationConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -31,26 +25,24 @@ class PortMcpInstallationConfig(BaseModel):
     @field_validator("port_mcp_secret_key")
     @classmethod
     def _port_mcp_secret_key_prefix(cls, value: str) -> str:
-        return validate_port_mcp_secret_key(value)
+        if not value.startswith("MCP_"):
+            raise ValueError("portMcpSecretKey must start with MCP_")
+        return value
 
     @classmethod
-    def _format_validation_error(cls, error: ValidationError) -> str:
+    def secret_key_from(cls, integration_config: dict[str, Any]) -> str:
+        """Used when enablePortMcp is true on a workflow node."""
+        try:
+            return cls.model_validate(integration_config).port_mcp_secret_key
+        except ValidationError as error:
+            raise ActionExecutionError(cls._validation_message(error)) from error
+
+    @classmethod
+    def _validation_message(cls, error: ValidationError) -> str:
         return "; ".join(
             f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
             for err in error.errors()
         )
-
-
-def port_mcp_secret_key_from_config(integration_config: dict[str, Any]) -> str:
-    """Session secret key from installation config; used only when enablePortMcp is true."""
-    try:
-        return PortMcpInstallationConfig.model_validate(
-            integration_config
-        ).port_mcp_secret_key
-    except ValidationError as error:
-        raise ActionExecutionError(
-            PortMcpInstallationConfig._format_validation_error(error)
-        ) from error
 
 
 def apply_port_mcp_session_secrets(
@@ -61,7 +53,6 @@ def apply_port_mcp_session_secrets(
 ) -> None:
     if not enable_port_mcp:
         return
-    secret_key = validate_port_mcp_secret_key(secret_key)
     access_token = get_run_access_token(run)
     if access_token is None:
         raise ActionExecutionError(_TOKEN_ERROR)
