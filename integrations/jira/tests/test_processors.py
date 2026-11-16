@@ -215,12 +215,12 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_upda
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
         mock_client.get_paginated_issues.assert_called_once_with(
-            params={
+            {
                 "jql": "key = TEST-123",
                 "fields": "*all",
                 "expand": None,
                 "reconcileIssues": [12345],
-            }
+            },
         )
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
@@ -249,12 +249,12 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_d
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
         mock_client.get_paginated_issues.assert_called_once_with(
-            params={
+            {
                 "jql": "key = TEST-123",
                 "fields": "*all",
                 "expand": None,
                 "reconcileIssues": [12345],
-            }
+            },
         )
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
@@ -285,12 +285,12 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
         mock_client.get_paginated_issues.assert_called_once_with(
-            params={
+            {
                 "jql": "(project = TEST) AND key = TEST-123",
                 "fields": "*all",
                 "expand": None,
                 "reconcileIssues": [12345],
-            }
+            },
         )
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
@@ -317,12 +317,12 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
         mock_client.get_paginated_issues.assert_called_once_with(
-            params={
+            {
                 "jql": "(project = TEST) AND key = TEST-123",
                 "fields": "*all",
                 "expand": None,
                 "reconcileIssues": [12345],
-            }
+            },
         )
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
@@ -669,12 +669,12 @@ async def test_handleEvent_issueUpdated_jqlFilterIsWrappedWithParentheses(
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
         mock_client.get_paginated_issues.assert_called_once_with(
-            params={
+            {
                 "jql": "((statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)) AND key = TEST-123",
                 "fields": "*all",
                 "expand": None,
                 "reconcileIssues": [12345],
-            }
+            },
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == mock_issue

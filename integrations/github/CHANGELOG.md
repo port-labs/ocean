@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.25.11 (2026-11-15)
+
+
+### Bug Fixes
+
+- Fix action runs (such as dispatch_workflow and refresh_pull_requests) staying In progress after a GitHub rate limit. The action rate limit pre-check kept using a stale remaining count after the rate limit window reset, which blocked all action workers indefinitely. Runs now proceed once the window has reset.
+
+
+## 6.25.10 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
 ## 6.25.9 (2026-11-15)
 
 
