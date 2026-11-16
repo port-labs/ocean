@@ -124,6 +124,37 @@ class FoundryHttpClient:
             return payload
         return {}
 
+    async def send_bytes_request(
+        self,
+        endpoint: str,
+        *,
+        params: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> bytes:
+        """GET binary payloads (e.g. skill content ZIP). 404 → empty bytes."""
+        query_params = dict(params or {})
+        if not self.uses_openai_compatible_routes(endpoint):
+            query_params.setdefault("api-version", self._api_version)
+        response = await self._http.request(
+            "GET",
+            endpoint,
+            params=query_params or None,
+            headers={
+                **await self._authorization_headers(),
+                **(extra_headers or {}),
+            },
+        )
+        if response.status_code == 404:
+            return b""
+        if response.is_error:
+            detail = (
+                response.text[:_ERROR_BODY_LIMIT]
+                if response.text
+                else response.reason_phrase
+            )
+            raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
+        return response.content or b""
+
     @staticmethod
     def items_from_payload(payload: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
         if isinstance(payload, list):

@@ -44,6 +44,12 @@
         },
         {
           "kind": "foundry-memory-store"
+        },
+        {
+          "kind": "foundry-skill"
+        },
+        {
+          "kind": "foundry-toolbox"
         }
       ]
     }

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import AsyncIterator
 from typing import Any
 
 from azure.identity.aio import DefaultAzureCredential
@@ -12,6 +11,7 @@ from port_ocean.utils.async_iterators import stream_independent_async_iterators
 from port_ocean.utils.cache import cache_iterator_result
 from pydantic import BaseModel, ConfigDict, Field
 
+from azure_integration.foundry.helpers.utils import projects_matching_regions
 from azure_integration.foundry.kinds import (
     DEFAULT_FOUNDRY_ARM_API_VERSION,
     FOUNDRY_ARM_PROJECT_KIND,
@@ -72,12 +72,32 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
 
 
 class ProjectExporter:
-    async def _projects(
+    @cache_iterator_result()
+    async def get_paginated_resources(
         self,
         *,
-        api_version: str,
-    ) -> AsyncIterator[list[FoundryProject]]:
-        discovered = 0
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+        regions: list[str] | None = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Yield Foundry projects, optionally filtered by ARM location.
+
+        Full ARM discovery is cached separately so different ``regions`` filters
+        reuse the same project list within an event.
+        """
+        exported = 0
+        async for projects in self._iter_all_projects(api_version=api_version):
+            matched = projects_matching_regions(projects, regions or [])
+            if matched:
+                exported += len(matched)
+                yield matched
+        logger.info(f"Exported {exported} Foundry project(s)")
+
+    @cache_iterator_result()
+    async def _iter_all_projects(
+        self,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async with DefaultAzureCredential() as credential:
             async with SubscriptionClient(credential=credential) as subscription_client:
                 async for subscriptions_batch in batch_resources_iterator(
@@ -98,24 +118,12 @@ class ProjectExporter:
                         *tasks, context="Foundry project exporter"
                     ):
                         projects = [
-                            project
+                            project.model_dump()
                             for raw in batch
                             if (project := foundry_project_from_arm(raw)) is not None
                         ]
                         if projects:
-                            discovered += len(projects)
                             yield projects
-
-        logger.info(f"Exported {discovered} Foundry project(s)")
-
-    @cache_iterator_result()
-    async def get_paginated_resources(
-        self,
-        *,
-        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for projects in self._projects(api_version=api_version):
-            yield [project.model_dump() for project in projects]
 
     async def find_by_endpoint(
         self,

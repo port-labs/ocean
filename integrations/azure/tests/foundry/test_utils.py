@@ -3,8 +3,20 @@ from datetime import UTC, datetime
 from azure_integration.foundry.helpers.utils import (
     enrich_with_project,
     parse_foundry_timestamp,
+    projects_matching_regions,
     timestamp_to_iso,
 )
+
+
+def test_projects_matching_regions_filters_case_insensitive() -> None:
+    projects = [
+        {"name": "a", "location": "eastus"},
+        {"name": "b", "location": "WestUS"},
+        {"name": "c", "location": "northeurope"},
+    ]
+    assert projects_matching_regions(projects, []) == projects
+    assert [p["name"] for p in projects_matching_regions(projects, ["EastUS"])] == ["a"]
+    assert [p["name"] for p in projects_matching_regions(projects, ["westus"])] == ["b"]
 
 
 def test_parse_foundry_timestamp_unix_string() -> None:
