@@ -16,10 +16,13 @@ An integration used to import gcp resources into Port.
 - cloudasset.feeds.list
 - pubsub.topics.list
 - pubsub.topics.get
+- pubsub.subscriptions.list
+- pubsub.subscriptions.get
 - resourcemanager.projects.get
 - resourcemanager.projects.list
 - resourcemanager.folders.get
 - resourcemanager.folders.list
+- resourcemanager.organizations.get
 
 #### Suggested way of achieving this
 
