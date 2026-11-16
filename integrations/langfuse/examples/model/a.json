@@ -1,0 +1,15 @@
+{
+  "id": "model_abc",
+  "modelName": "gpt-4o",
+  "matchPattern": "(?i)^gpt-4o$",
+  "startDate": null,
+  "unit": "TOKENS",
+  "inputPrice": 0.000005,
+  "outputPrice": 0.000015,
+  "totalPrice": null,
+  "tokenizerId": null,
+  "tokenizerConfig": null,
+  "isLangfuseManaged": true,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "prices": {}
+}
