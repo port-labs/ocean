@@ -8,7 +8,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.foundry.clients.http.foundry_client import (
-    FoundryApiError,
     create_foundry_client,
 )
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
@@ -209,18 +208,13 @@ async def resync_foundry_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 f"Syncing Foundry skills for project {project['name']} ({project_endpoint})"
             )
-            try:
-                async for page in exporter.get_paginated_resources(
-                    ListSkillsOptions(
-                        project_endpoint=project_endpoint,
-                        project_id=str(project["id"]),
-                    )
-                ):
-                    yield page
-            except FoundryApiError as exc:
-                logger.warning(
-                    f"Skipping Foundry skills for project {project['name']}: {exc}"
+            async for page in exporter.get_paginated_resources(
+                ListSkillsOptions(
+                    project_endpoint=project_endpoint,
+                    project_id=str(project["id"]),
                 )
+            ):
+                yield page
 
 
 @ocean.on_incremental_resync(ObjectKind.FOUNDRY_TOOLBOX)
@@ -239,15 +233,10 @@ async def resync_foundry_toolboxes(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 f"Syncing Foundry toolboxes for project {project['name']} ({project_endpoint})"
             )
-            try:
-                async for page in exporter.get_paginated_resources(
-                    ListToolboxesOptions(
-                        project_endpoint=project_endpoint,
-                        project_id=str(project["id"]),
-                    )
-                ):
-                    yield page
-            except FoundryApiError as exc:
-                logger.warning(
-                    f"Skipping Foundry toolboxes for project {project['name']}: {exc}"
+            async for page in exporter.get_paginated_resources(
+                ListToolboxesOptions(
+                    project_endpoint=project_endpoint,
+                    project_id=str(project["id"]),
                 )
+            ):
+                yield page
