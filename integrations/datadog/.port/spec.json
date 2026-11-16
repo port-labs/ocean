@@ -5,6 +5,8 @@
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/datadog",
   "icon": "Datadog",
   "formMappingEnabled": true,
+  "testConnectionAvailable": true,
+  "testConnectionScopes": [{"key": "org", "title": "Organization"}],
   "recommendedInstallationMethod": "Saas",
   "features": [
     {

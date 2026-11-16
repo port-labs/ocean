@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import ClassVar, Literal, Optional
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -47,6 +47,7 @@ class SLOHistorySelector(Selector):
 
 
 class SLOHistoryResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("slos_read",)
     kind: Literal["sloHistory"] = Field(
         title="Datadog SLO History",
         description="Datadog SLO history resource kind.",
@@ -105,6 +106,10 @@ class ServiceMetricResourceSelector(Selector):
 
 
 class ServiceMetricResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "apm_service_catalog_read",
+        "timeseries_query",
+    )
     kind: Literal["serviceMetric"] = Field(
         title="Datadog Service Metric",
         description="Datadog service metric resource kind.",
@@ -125,6 +130,7 @@ class TeamSelector(Selector):
 
 
 class TeamResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("teams_read",)
     kind: Literal["team"] = Field(
         title="Datadog Team",
         description="Datadog team resource kind.",
@@ -151,6 +157,7 @@ class DatadogServiceDependencySelector(Selector):
 
 
 class ServiceDependencyResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("apm_read",)
     kind: Literal["serviceDependency"] = Field(
         title="Datadog Service Dependency",
         description="Datadog service dependency resource kind.",
@@ -162,6 +169,7 @@ class ServiceDependencyResourceConfig(ResourceConfig):
 
 
 class HostResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("hosts_read",)
     kind: Literal["host"] = Field(
         title="Datadog Host",
         description="Datadog host resource kind.",
@@ -178,6 +186,7 @@ class MonitorSelector(Selector):
 
 
 class MonitorResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("monitors_read",)
     kind: Literal["monitor"] = Field(
         title="Datadog Monitor",
         description="Datadog monitor resource kind.",
@@ -198,6 +207,7 @@ class SLOSelector(Selector):
 
 
 class SLOResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("slos_read",)
     kind: Literal["slo"] = Field(
         title="Datadog SLO",
         description="Datadog SLO resource kind.",
@@ -209,6 +219,7 @@ class SLOResourceConfig(ResourceConfig):
 
 
 class ServiceResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("apm_service_catalog_read",)
     kind: Literal["service"] = Field(
         title="Datadog Service",
         description="Datadog service resource kind.",
@@ -231,6 +242,7 @@ class CatalogEntitySelector(Selector):
 
 
 class CatalogEntityResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("apm_service_catalog_read",)
     kind: Literal["catalogEntity"] = Field(
         title="Datadog Catalog Entity",
         description="Datadog Software Catalog entity resource kind, covering every entity kind.",
@@ -242,6 +254,7 @@ class CatalogEntityResourceConfig(ResourceConfig):
 
 
 class UserResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("user_access_read",)
     kind: Literal["user"] = Field(
         title="Datadog User",
         description="Datadog user resource kind.",
@@ -258,6 +271,7 @@ class RoleSelector(Selector):
 
 
 class RoleResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("user_access_read",)
     kind: Literal["role"] = Field(
         title="Datadog Role",
         description="Datadog role resource kind.",
@@ -268,6 +282,7 @@ class RoleResourceConfig(ResourceConfig):
 
 
 class OrgResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("org_management",)
     kind: Literal["organization"] = Field(
         title="Datadog Organization",
         description="Datadog organization resource kind.",

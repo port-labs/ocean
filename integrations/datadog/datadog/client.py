@@ -7,7 +7,7 @@ from http import HTTPStatus
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.retry import SKIP_RETRY_EXTENSION_KEY, RetryConfig
 
 DATADOG_UNKNOWN_STATUS_CODE = 512
 
@@ -79,12 +79,48 @@ class DatadogClient:
             url=url,
         ).warning(f"Datadog rate limit hit — {method} {url}")
 
+    async def validate_api_key(self) -> None:
+        """Raise when Datadog rejects the API key (it ignores the application key).
+        Docs: https://docs.datadoghq.com/api/latest/authentication/#validate-api-key
+        """
+        await self.send_api_request(f"{self.api_url}/api/v1/validate", skip_retry=True)
+
+    async def get_current_user(self) -> dict[str, Any]:
+        """Return the user that owns the credentials; needs no permission.
+        Docs: https://docs.datadoghq.com/api/latest/users/#get-current-user
+        """
+        response = await self.send_api_request(
+            f"{self.api_url}/api/v2/current_user", skip_retry=True
+        )
+        return response["data"]
+
+    async def get_user_permissions(self, user_id: str) -> set[str]:
+        """Return the names of the permissions *user_id* gets from their roles.
+        Docs: https://docs.datadoghq.com/api/latest/users/#get-a-user-permissions
+        """
+        response = await self.send_api_request(
+            f"{self.api_url}/api/v2/users/{user_id}/permissions", skip_retry=True
+        )
+        return {permission["attributes"]["name"] for permission in response["data"]}
+
+    async def get_current_user_application_keys(self) -> list[dict[str, Any]]:
+        """Return the application keys owned by the current user, with their scopes.
+        Docs: https://docs.datadoghq.com/api/latest/key-management/#get-all-application-keys-owned-by-current-user
+        """
+        response = await self.send_api_request(
+            f"{self.api_url}/api/v2/current_user/application_keys",
+            params={"page[size]": 100},
+            skip_retry=True,
+        )
+        return response["data"]
+
     async def send_api_request(
         self,
         url: str,
         params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
+        skip_retry: bool = False,
     ) -> Any:
         logger.debug(f"Sending request {method} to endpoint {url}")
 
@@ -94,6 +130,7 @@ class DatadogClient:
             headers=await self.auth_headers,
             params=params,
             json=json_data,
+            extensions={SKIP_RETRY_EXTENSION_KEY: True} if skip_retry else None,
         )
         self._log_rate_limit_context(url, method, response)
         response.raise_for_status()

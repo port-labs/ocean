@@ -5,12 +5,14 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_independent_async_iterators,
 )
 
 from datadog.client import DatadogClient
+from datadog.probe import DatadogPermissionProbe
 from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY, enrich_batch
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
@@ -223,6 +225,15 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         enrich_with_org_identity=False,
     ):
         yield orgs
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Datadog access for {len(context.available_kinds)} resource kinds"
+    )
+    await DatadogPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_start()
