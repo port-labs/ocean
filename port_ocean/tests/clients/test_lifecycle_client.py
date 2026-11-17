@@ -569,34 +569,6 @@ class TestNotifyGranularFailed:
         assert body["kind_identifier"] == "svc-99"
 
     @pytest.mark.asyncio
-    async def test_error_message_included_when_provided(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_failed(
-            event_id="e1",
-            granularity=GranularityType.KIND,
-            kind_identifier="project-0",
-            error_message="PagerDuty API 401 Unauthorized",
-            error_type="EXTRACT_FAILED",
-        )
-        body = mock_post.call_args[1]["json"]
-        assert body["error_message"] == "PagerDuty API 401 Unauthorized"
-        assert body["error_type"] == "EXTRACT_FAILED"
-
-    @pytest.mark.asyncio
-    async def test_error_message_omitted_when_not_provided(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_failed(
-            event_id="e1",
-            granularity=GranularityType.KIND,
-            kind_identifier="project-0",
-        )
-        body = mock_post.call_args[1]["json"]
-        assert "error_message" not in body
-        assert "error_type" not in body
-
-    @pytest.mark.asyncio
     async def test_kind_identifier_omitted_when_not_provided(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:

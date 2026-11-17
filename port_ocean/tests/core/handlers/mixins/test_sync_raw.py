@@ -2593,14 +2593,17 @@ async def test_process_resource_logs_kind_fetch_failure(
         log_fetch_failure.assert_not_called()
 
 
-def test_log_kind_fetch_failure_emits_failed_entity_extract_log() -> None:
+@pytest.mark.asyncio
+async def test_log_kind_fetch_failure_emits_failed_entity_extract_log() -> None:
     leaf = RuntimeError("PagerDuty API 401 Unauthorized")
     abort = OceanAbortException(f"Failed to execute resync function, error: {leaf}")
     abort.__cause__ = leaf
     records: list[Any] = []
     sink_id = logger.add(lambda message: records.append(message.record), level="ERROR")
     try:
-        _log_kind_fetch_failure("service-0", [abort])
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event_id = event.id
+            _log_kind_fetch_failure("service-0", [abort])
     finally:
         logger.remove(sink_id)
 
@@ -2611,6 +2614,7 @@ def test_log_kind_fetch_failure_emits_failed_entity_extract_log() -> None:
     assert record["extra"]["etl_phase"] == "extract"
     assert record["extra"]["failed_entity"] is True
     assert record["extra"]["kind_identifier"] == "service-0"
+    assert record["extra"]["event_id"] == event_id
 
 
 @pytest.mark.asyncio

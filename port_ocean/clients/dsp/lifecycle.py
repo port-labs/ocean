@@ -185,15 +185,8 @@ class LifecycleClient:
         event_id: str,
         granularity: GranularityType,
         kind_identifier: str | None = None,
-        error_message: str | None = None,
-        error_type: str | None = None,
     ) -> None:
-        extra: dict[str, Any] = {}
-        if error_message:
-            extra["error_message"] = error_message
-        if error_type:
-            extra["error_type"] = error_type
-        body = self._build_granular_body("failed", kind_identifier, **extra)
+        body = self._build_granular_body("failed", kind_identifier)
         logger.info(
             f"Notifying lifecycle API for status=failed granularity={granularity.value}"
         )
