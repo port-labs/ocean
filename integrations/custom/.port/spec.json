@@ -245,7 +245,7 @@
       "required": false,
       "type": "string",
       "default": "query",
-      "description": "Where to send the cursor and page size for cursor pagination: 'query' (URL query parameters, default) or 'body' (JSON request body). Use body for APIs that expect the cursor in the POST payload.",
+      "description": "Where to send the cursor and page size for cursor pagination: 'query' (URL query parameters, default) or 'body' (JSON request body for non-GET methods only; GET always uses query params). Use body for APIs that expect the cursor in the POST payload.",
       "enum": [
         "query",
         "body"

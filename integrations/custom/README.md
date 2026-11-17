@@ -122,7 +122,7 @@ OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
 # Optional: Custom parameter names for cursor pagination
 OCEAN__INTEGRATION__CONFIG__CURSOR_PARAM=cursor    # Default: "cursor"
 OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
-# Send cursor/size in query params (default) or JSON body
+# Send cursor/size in query params (default) or JSON body (non-GET only; GET always uses query)
 OCEAN__INTEGRATION__CONFIG__PAGINATION_PLACEMENT=query  # query | body
 
 # Optional: next_link pagination (absolute URLs used as-is; relative paths resolve against base_url)
