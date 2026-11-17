@@ -21,12 +21,20 @@ class TestMockRouteRequest:
             {
                 "method": "GET",
                 "path": "/api/v2/team",
-                "query": {"page[number]": 0, "page[size]": None},
-                "headers": {"X-RateLimit": 100},
+                "query": {
+                    "page[number]": 0,
+                    "page[size]": None,
+                    "enabled": True,
+                },
+                "headers": {"X-RateLimit": 100, "X-Cached": False},
             }
         )
-        assert request.query == {"page[number]": "0", "page[size]": ""}
-        assert request.headers == {"X-RateLimit": "100"}
+        assert request.query == {
+            "page[number]": "0",
+            "page[size]": "",
+            "enabled": "true",
+        }
+        assert request.headers == {"X-RateLimit": "100", "X-Cached": "false"}
 
     def test_rejects_unknown_fields(self) -> None:
         with pytest.raises(ValidationError, match="extra_forbidden"):
@@ -110,6 +118,12 @@ class TestMockRouteResponse:
     def test_status_must_be_http_code(self) -> None:
         with pytest.raises(ValidationError):
             MockRouteResponse.model_validate({"status": 99})
+
+    def test_stringifies_boolean_header_values(self) -> None:
+        response = MockRouteResponse.model_validate(
+            {"status": 200, "headers": {"X-Enabled": True, "X-Cached": False}}
+        )
+        assert response.headers == {"X-Enabled": "true", "X-Cached": "false"}
 
     def test_strips_blank_optional_strings(self) -> None:
         response = MockRouteResponse.model_validate(

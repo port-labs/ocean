@@ -9,6 +9,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 
 
+def _stringify_http_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 class MockRouteRequest(BaseModel):
     """Match criteria for an incoming request.
 
@@ -39,9 +47,7 @@ class MockRouteRequest(BaseModel):
             return None
         if not isinstance(value, dict):
             return value
-        return {
-            str(key): "" if item is None else str(item) for key, item in value.items()
-        }
+        return {str(key): _stringify_http_value(item) for key, item in value.items()}
 
 
 class MockRouteResponse(BaseModel):
@@ -66,9 +72,7 @@ class MockRouteResponse(BaseModel):
             return None
         if not isinstance(value, dict):
             return value
-        return {
-            str(key): "" if item is None else str(item) for key, item in value.items()
-        }
+        return {str(key): _stringify_http_value(item) for key, item in value.items()}
 
     @field_validator("body_file", "response_model", mode="before")
     @classmethod
