@@ -7,7 +7,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from gitlab.clients.gitlab_client import GitLabClient, ancestor_dirs
+from gitlab.clients.gitlab_client import GitLabClient
 from gitlab.helpers.utils import ChangedPaths
 from gitlab.clients.rest_client import RestClient
 from gitlab.helpers.utils import build_search_query
@@ -312,18 +312,6 @@ async def test_changed_paths_none_on_http_error(client: GitLabClient) -> None:
     assert (
         await client.changed_paths_since(PROJECT["path_with_namespace"], SINCE, "main")
     ).paths is None
-
-
-@pytest.mark.parametrize(
-    "path, expected",
-    [
-        ("c.txt", set()),
-        ("a/c.txt", {"a"}),
-        ("a/b/c.txt", {"a", "a/b"}),
-    ],
-)
-def testancestor_dirs(path: str, expected: set[str]) -> None:
-    assert ancestor_dirs(path) == expected
 
 
 async def test_changed_files_fall_back_to_tree_walk(client: GitLabClient) -> None:

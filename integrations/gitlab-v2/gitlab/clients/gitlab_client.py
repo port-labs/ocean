@@ -21,6 +21,8 @@ from gitlab.helpers.utils import (
     PATH_GLOB_FLAGS,
     ChangedPaths,
     build_search_query,
+    changed_folders,
+    is_wildcard_path,
     parse_file_content,
     SearchQuery,
     is_bot_member,
@@ -70,42 +72,9 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
 
 
-def _is_wildcard_path(path: str) -> bool:
-    """Check if a path contains glob wildcard characters."""
-    return any(c in path for c in "*?[]")
-
-
 def _tree_match_pattern(query: SearchQuery) -> str:
     """Return the glob matched against repository tree paths for a search query."""
     return f"**/{query.filename}" if query.directory is None else query.path
-
-
-def ancestor_dirs(path: str) -> set[str]:
-    """Return every directory containing ``path``: ``a/b/c.txt`` -> ``{"a", "a/b"}``."""
-    parts = path.split("/")[:-1]
-    return {"/".join(parts[:depth]) for depth in range(1, len(parts) + 1)}
-
-
-def _changed_folders(path: str, changed_paths: list[str]) -> set[str]:
-    """Folders matched by the folder selector *path* that contain a changed path.
-
-    A wildcard *path* is matched as a glob; a concrete *path* matches its direct
-    child folders, like the full folder listing.
-    """
-    prefix = path.rstrip("/")
-    is_wildcard = _is_wildcard_path(path)
-
-    def is_match(folder: str) -> bool:
-        if is_wildcard:
-            return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
-        return folder.rpartition("/")[0] == prefix
-
-    return {
-        folder
-        for changed_path in changed_paths
-        for folder in ancestor_dirs(changed_path)
-        if is_match(folder)
-    }
 
 
 def _literal_tree_prefix(path: str) -> str:
@@ -118,7 +87,7 @@ def _literal_tree_prefix(path: str) -> str:
     """
     parts: list[str] = []
     for part in path.strip("/").split("/"):
-        if _is_wildcard_path(part):
+        if is_wildcard_path(part):
             break
         if part:
             parts.append(part)
@@ -131,7 +100,7 @@ def _repository_tree_params(path: str) -> tuple[str, bool]:
     Wildcard patterns recurse under their literal prefix instead of always walking
     the whole repository. Concrete paths list that directory non-recursively.
     """
-    if not _is_wildcard_path(path):
+    if not is_wildcard_path(path):
         return path, False
     return _literal_tree_prefix(path), True
 
@@ -1204,7 +1173,7 @@ class GitLabClient:
         if not effective_branch:
             return
 
-        is_wildcard = _is_wildcard_path(path)
+        is_wildcard = is_wildcard_path(path)
         async for items_batch in self.get_repository_tree(
             project, path, effective_branch
         ):
@@ -1249,7 +1218,7 @@ class GitLabClient:
                 yield folders_batch
             return
 
-        changed_dirs = _changed_folders(path, changed.paths)
+        changed_dirs = changed_folders(path, changed.paths)
         if not changed_dirs:
             logger.info(f"No changed folders under '{path}' in {repository}")
             return
@@ -1685,7 +1654,7 @@ class GitLabClient:
             query = build_search_query(path_pattern)
             match_pattern = _tree_match_pattern(query)
             match_patterns.append(match_pattern)
-            if _is_wildcard_path(match_pattern):
+            if is_wildcard_path(match_pattern):
                 walks.add((_literal_tree_prefix(match_pattern), True))
             else:
                 walks.add((query.directory or "", False))

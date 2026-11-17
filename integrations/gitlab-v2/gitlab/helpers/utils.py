@@ -172,6 +172,39 @@ def build_search_query(search_path: str) -> SearchQuery:
     )
 
 
+def ancestor_dirs(path: str) -> set[str]:
+    """Return every directory containing ``path``: ``a/b/c.txt`` -> ``{"a", "a/b"}``."""
+    parts = path.split("/")[:-1]
+    return {"/".join(parts[:depth]) for depth in range(1, len(parts) + 1)}
+
+
+def is_wildcard_path(path: str) -> bool:
+    """Check if a path contains glob wildcard characters."""
+    return any(c in path for c in "*?[]")
+
+
+def changed_folders(path: str, changed_paths: list[str]) -> set[str]:
+    """Folders matched by the folder selector *path* that contain a changed path.
+
+    A wildcard *path* is matched as a glob; a concrete *path* matches its direct
+    child folders, like the full folder listing.
+    """
+    prefix = path.rstrip("/")
+    is_wildcard = is_wildcard_path(path)
+
+    def is_match(folder: str) -> bool:
+        if is_wildcard:
+            return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
+        return folder.rpartition("/")[0] == prefix
+
+    return {
+        folder
+        for changed_path in changed_paths
+        for folder in ancestor_dirs(changed_path)
+        if is_match(folder)
+    }
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:

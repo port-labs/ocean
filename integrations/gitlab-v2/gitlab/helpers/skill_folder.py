@@ -4,12 +4,9 @@ from typing import Any
 
 from loguru import logger
 
-from gitlab.clients.gitlab_client import (
-    GitLabClient,
-    _literal_tree_prefix,
-    ancestor_dirs,
-)
+from gitlab.clients.gitlab_client import GitLabClient, _literal_tree_prefix
 from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME, matches_skill_path
+from gitlab.helpers.utils import ancestor_dirs
 
 TEXT_FILE_EXTENSIONS: frozenset[str] = frozenset(
     {
