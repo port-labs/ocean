@@ -8,7 +8,8 @@ def dashboard_webhook_endpoints_url(account_base: str) -> str:
 
 
 def build_response_external_id(response_id: str) -> str:
-    return f"foundry_response_{response_id}"
+    """Port externalRunId = Foundry response id (traceable from webhook payload)."""
+    return response_id
 
 
 def response_id_from_webhook_payload(payload: dict[str, Any]) -> str | None:

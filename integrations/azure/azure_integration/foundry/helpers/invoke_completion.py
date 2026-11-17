@@ -31,14 +31,27 @@ FAILED_STATUS_LABEL = "Response failed"
 INVOCATION_SUBMITTED_STATUS_LABEL = "Invoke submitted"
 
 _completion_lock = asyncio.Lock()
-_MAX_COMPLETED_RUN_IDS = 1024
+_MAX_COMPLETED = 1024
+# Claimed completions: webhook/SSE race — skip second path (incl. Foundry GET).
 _completed_invoke_run_ids: dict[str, None] = {}
+_completed_response_ids: dict[str, None] = {}
 
 
-def _remember_completed_run(run_id: str) -> None:
+def _trim(cache: dict[str, None]) -> None:
+    while len(cache) > _MAX_COMPLETED:
+        cache.pop(next(iter(cache)))
+
+
+def _remember_completed(run_id: str, response_id: str = "") -> None:
     _completed_invoke_run_ids[run_id] = None
-    while len(_completed_invoke_run_ids) > _MAX_COMPLETED_RUN_IDS:
-        _completed_invoke_run_ids.pop(next(iter(_completed_invoke_run_ids)))
+    _trim(_completed_invoke_run_ids)
+    if response_id:
+        _completed_response_ids[response_id] = None
+        _trim(_completed_response_ids)
+
+
+def is_response_completion_claimed(response_id: str) -> bool:
+    return bool(response_id) and response_id in _completed_response_ids
 
 
 def response_body_from_sse_event(parsed: dict[str, Any]) -> dict[str, Any] | None:
@@ -148,12 +161,12 @@ async def complete_invoke_run_for_response(
 ) -> bool:
     """Attach usage/output and close the wf run. Returns False if already terminal."""
     async with _completion_lock:
-        if run.id in _completed_invoke_run_ids:
+        if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
             return False
         if not ocean.port_client.is_run_in_progress(run):
-            _remember_completed_run(run.id)
+            _remember_completed(run.id, response_id)
             return False
-        _remember_completed_run(run.id)
+        _remember_completed(run.id, response_id)
 
     output = run.output if isinstance(run, WorkflowNodeRun) else {}
     agent_id = str(
@@ -165,6 +178,7 @@ async def complete_invoke_run_for_response(
         or ""
     ).strip()
     project_endpoint = _project_endpoint_from_run(run)
+    # Always prefer a GET so usage/model/conversation exist (webhook payload is id-only).
     display_body = (
         await response_body_for_catalog(
             response_id, response_body, project_endpoint=project_endpoint
@@ -178,6 +192,10 @@ async def complete_invoke_run_for_response(
         text = extract_assistant_text_from_response(display_body)
         if text:
             extra_output["response"] = text
+        if display_body.get("model"):
+            extra_output["model"] = display_body["model"]
+        if display_body.get("status"):
+            extra_output["responseStatus"] = display_body["status"]
         conversation = display_body.get("conversation")
         if isinstance(conversation, dict) and conversation.get("id"):
             extra_output["conversationId"] = conversation["id"]
@@ -242,21 +260,21 @@ async def complete_invoke_run_from_webhook(
     event_type: str,
     response_id: str,
 ) -> bool:
+    if is_response_completion_claimed(response_id):
+        logger.debug(
+            f"Skipping Foundry webhook {event_type} for {response_id}; "
+            "already completed (SSE or prior webhook)"
+        )
+        return False
     success = event_type == "response.completed"
-    project_endpoint = _project_endpoint_from_run(run)
-    response_body = (
-        await fetch_foundry_response(response_id, project_endpoint=project_endpoint)
-        if project_endpoint
-        else None
-    )
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
-        response_body=response_body,
+        response_body=None,  # force GET via response_body_for_catalog
         success=success,
         source=f"Foundry webhook {event_type}",
         keep_stream=True,
-        register_catalog=event_type == "response.completed",
+        register_catalog=success,
     )
 
 
@@ -276,12 +294,15 @@ async def complete_invoke_run_from_sse(
     response_id = str((response_body or {}).get("id") or bound_response_id or "")
     if not response_id:
         return False
+    if is_response_completion_claimed(response_id):
+        return False
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
         response_body=response_body,
         success=success,
         source=f"Responses SSE {event_type}",
+        register_catalog=success,
     )
 
 
@@ -302,6 +323,8 @@ def _foundry_response_entity_page_url(response_id: str) -> str | None:
 
 
 async def find_in_progress_run_for_response(response_id: str) -> IntegrationRun | None:
+    if is_response_completion_claimed(response_id):
+        return None
     run = await ocean.port_client.find_run_by_external_id(
         build_response_external_id(response_id)
     )

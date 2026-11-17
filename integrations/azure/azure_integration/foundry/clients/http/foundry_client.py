@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -244,9 +245,13 @@ class FoundryHttpClient:
         )
         if response.is_error:
             detail = response.text[:2000] if response.text else response.reason_phrase
+            status_code = response.status_code
+            # Close before raise so the connection is not left half-open (SSL shutdown).
+            with contextlib.suppress(Exception):
+                await response.aclose()
             raise FoundryApiError(
-                f"Foundry stream {response.status_code}: {detail}",
-                status_code=response.status_code,
+                f"Foundry stream {status_code}: {detail}",
+                status_code=status_code,
             )
         return response
 

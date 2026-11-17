@@ -49,6 +49,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 project_endpoint=inputs.projectEndpoint,
                 conversation_id=inputs.conversationId,
                 metadata=inputs.conversationMetadata,
+                agent_id=inputs.agentId,
             )
         except Exception as error:
             raise ActionExecutionError(
