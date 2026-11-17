@@ -40,6 +40,7 @@ class UpdateAgentInputs(AbstractFoundryActionInput):
     enablePortMcp: bool | None = None
     gitAccessToken: str | None = Field(default=None, min_length=1)
     gitProvider: str = Field(default="github")
+    toolboxName: str | None = Field(default=None, min_length=1)
 
     def to_api_body(self) -> dict[str, Any]:
         # Partial patch; executor merges over GET before POST.
@@ -115,6 +116,7 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                         and bool(inputs.gitAccessToken)
                         and had_ootb_toolbox
                     ),
+                    toolbox_name=inputs.toolboxName,
                 )
             except Exception as error:
                 raise ActionExecutionError(
