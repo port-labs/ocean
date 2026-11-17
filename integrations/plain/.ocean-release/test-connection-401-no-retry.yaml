@@ -3,6 +3,7 @@ changelog-type: improvement
 changelog: |
   Improved error handling for test connection and webhook setup:
   - Test connection now fails immediately on HTTP 401 (Unauthorized) with exactly one request instead of retrying ~10 times
-  - Test connection fails fast on SSL/TLS certificate errors with clear messaging about secure connection issues
+  - Test connection detects SSL/TLS certificate errors and provides clear messaging about secure connection issues
   - Blocked IP addresses (from network security policy) are treated as test connection failures with clear messaging, not internal errors
   - Webhook registration now logs a warning instead of crashing when Plain API cannot be reached
+  - Note: Resync and webhook calls continue to use normal retry behavior including for SSL errors

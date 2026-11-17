@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import random
-import ssl
 import time
 from datetime import datetime
 from functools import partial
@@ -27,8 +26,6 @@ from port_ocean.helpers.sync_tier import (
 )
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 
-__all__ = ["_is_ssl_error", "RetryTransport", "RetryConfig"]
-
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
 _RETRY_CONFIG_CALLBACK: Callable[[], "RetryConfig"] | None = None
@@ -37,31 +34,6 @@ SKIP_RETRY_EXTENSION_KEY = "skip_retry"
 Request extension that overrides the retry decision for a single request.
 Set it to True to opt out of retries entirely.
 """
-
-
-def _is_ssl_error(error: Exception) -> bool:
-    """Check if an exception is an SSL/TLS certificate error.
-
-    Walks the exception chain (__cause__ and __context__) to detect
-    ssl.SSLError or ssl.SSLCertVerificationError, which indicate
-    certificate validation failures or TLS handshake problems.
-
-    These are not transient and should not be retried.
-    """
-    current: Exception | None = error
-    seen = set()
-    while current is not None:
-        if id(current) in seen:
-            break
-        seen.add(id(current))
-        if isinstance(current, (ssl.SSLError, ssl.SSLCertVerificationError)):
-            return True
-        # Check both __cause__ (explicit) and __context__ (implicit)
-        next_error = getattr(current, "__cause__", None)
-        if next_error is None:
-            next_error = getattr(current, "__context__", None)
-        current = next_error
-    return False
 
 
 def register_on_retry_callback(
@@ -784,21 +756,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                             raise
                     return response
                 await response.aclose()
-            except httpx.ConnectError as e:
-                # SSL/TLS errors are not transient - fail fast
-                if _is_ssl_error(e):
-                    if self._logger:
-                        self._logger.error(
-                            f"SSL/TLS error connecting to {request.url.host}: {str(e)}. "
-                            "This indicates a certificate verification failure or TLS handshake problem. "
-                            "Verify the server's SSL certificate is valid and trusted."
-                        )
-                    raise
-                # Other ConnectErrors (connection refused, etc.) are retryable
-                error = e
-                if auth_refresh_only or remaining_attempts < 1:
-                    self._log_error(request, error)
-                    raise
             except httpx.ConnectTimeout as e:
                 error = e
                 if auth_refresh_only or remaining_attempts < 1:
@@ -883,21 +840,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                             raise
                     return response
                 response.close()
-            except httpx.ConnectError as e:
-                # SSL/TLS errors are not transient - fail fast
-                if _is_ssl_error(e):
-                    if self._logger:
-                        self._logger.error(
-                            f"SSL/TLS error connecting to {request.url.host}: {str(e)}. "
-                            "This indicates a certificate verification failure or TLS handshake problem. "
-                            "Verify the server's SSL certificate is valid and trusted."
-                        )
-                    raise
-                # Other ConnectErrors (connection refused, etc.) are retryable
-                error = e
-                if auth_refresh_only or remaining_attempts < 1:
-                    self._log_error(request, error)
-                    raise
             except httpx.ConnectTimeout as e:
                 error = e
                 if auth_refresh_only or remaining_attempts < 1:

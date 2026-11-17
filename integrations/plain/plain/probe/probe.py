@@ -6,9 +6,9 @@ from plain.probe.permissions import (
     PlainKindPermissionVerdict,
     authentication_failure_message,
 )
+from plain.probe.ssl_utils import is_ssl_error
 from port_ocean.core.probe import ProbeCheck, ProbeContext
 from port_ocean.exceptions.clients import BlockedIPError
-from port_ocean.helpers.retry import _is_ssl_error
 
 
 def _is_unauthenticated_graphql_error(error: PlainGraphQLError) -> bool:
@@ -51,7 +51,7 @@ class PlainPermissionProbe:
             return
         except httpx.ConnectError as error:
             # Provide clear message for SSL/certificate errors vs generic connection failures
-            if _is_ssl_error(error):
+            if is_ssl_error(error):
                 await self.context.fail(
                     "Could not establish a secure connection to Plain API. "
                     "This may indicate an SSL/TLS certificate verification failure. "
