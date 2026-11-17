@@ -69,6 +69,53 @@ SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 10
 
 
+def _kind_failure_error_message(errors: list[Exception]) -> str | None:
+    """Build a user-facing extract failure message for a failed kind.
+
+    Resync generators wrap leaf failures in ExceptionGroup / OceanAbortException.
+    Prefer the leaf ``__cause__`` (the real extract error) so failed-entities UI
+    shows something actionable instead of the ExceptionGroup summary.
+    """
+    if not errors:
+        return None
+
+    def leaves(exc: BaseException) -> list[BaseException]:
+        if isinstance(exc, BaseExceptionGroup):
+            out: list[BaseException] = []
+            for sub in exc.exceptions:
+                out.extend(leaves(sub))
+            return out
+        return [exc]
+
+    messages: list[str] = []
+    seen: set[str] = set()
+    for err in errors:
+        for leaf in leaves(err):
+            root = leaf.__cause__ if leaf.__cause__ is not None else leaf
+            msg = str(root).strip()
+            if msg and msg not in seen:
+                seen.add(msg)
+                messages.append(msg)
+    if not messages:
+        return str(errors[0])
+    return "; ".join(messages)
+
+
+def _log_kind_fetch_failure(kind_identifier: str, errors: list[Exception]) -> None:
+    """Report a failed kind's fetch error as a failed entity.
+
+    Integration-observer stores ERROR extract logs flagged ``failed_entity`` as failed
+    entities of the resync in the log's ``event_id``.
+    """
+    message = _kind_failure_error_message(errors) or "kind terminal failure"
+    with logger.contextualize(
+        etl_phase=ETLPhase.EXTRACT,
+        failed_entity=True,
+        kind_identifier=kind_identifier,
+    ):
+        logger.error(f"Fetch failed: {message}")
+
+
 class SyncRawMixin(HandlerMixin, EventsMixin):
     """Mixin class for synchronization of raw constructed entities.
 
@@ -909,14 +956,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if dsp_enabled and resync_id:
                 if ocean.metrics.sync_state == SyncState.FAILED:
-                    kind_error_message = None
-                    if kind_results[1]:
-                        kind_error_message = str(kind_results[1][0])
+                    _log_kind_fetch_failure(resource_kind_id, kind_results[1])
                     await ocean.app.lifecycle_client.notify_failed(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
                         kind_identifier=resource_kind_id,
-                        error_message=kind_error_message,
                     )
                 else:
                     await ocean.app.lifecycle_client.notify_finished(
