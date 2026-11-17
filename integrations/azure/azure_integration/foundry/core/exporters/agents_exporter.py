@@ -18,7 +18,7 @@ from azure_integration.foundry.helpers.utils import (
 )
 
 
-class AgentsExporter(FoundryExporter):
+class AgentsExporter(FoundryExporter[ListAgentsOptions]):
     @cache_iterator_result()
     async def iter_agent_pages(
         self, project_endpoint: str
