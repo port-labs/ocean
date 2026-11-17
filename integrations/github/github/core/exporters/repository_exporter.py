@@ -2,6 +2,7 @@ import asyncio
 import copy
 import re
 from datetime import datetime
+from collections.abc import AsyncIterator
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -10,7 +11,6 @@ from github.helpers.utils import (
     parse_github_options,
     get_repository_metadata,
     fetch_repository_metadata,
-    is_pushed_since,
 )
 from github.clients.auth.github_app.installation_authenticator import (
     GitHubAppInstallationAuthenticator,
@@ -34,15 +34,13 @@ REPOSITORY_INCREMENTAL = ClientSideCutoffStrategy(
 )
 
 
-REPOSITORY_SEARCH_INCREMENTAL = ClientSideCutoffStrategy(
-    stop_field="updated_at",
-    query_params={"sort": "updated", "order": "desc"},
-)
-
 REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="pushed_at",
     query_params={"sort": "pushed", "direction": "desc"},
 )
+
+# Pushed repositories matched against the search query in one search call.
+SEARCH_REPO_BATCH_SIZE = 50
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
@@ -146,13 +144,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
         exclude_archived = params.pop("exclude_archived", False)
-        is_personal_account = organization_type == "User"
-        is_github_app_authenticated = isinstance(
-            self.client.authenticator, GitHubAppInstallationAuthenticator
-        )
 
         use_search_api = search_params is not None or (
-            is_github_app_authenticated and is_personal_account
+            self._is_app_on_personal_account(organization_type)
         )
         strategy = self._search_strategy if use_search_api else self._list_strategy
 
@@ -182,11 +176,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        strategy, cursor = (
-            (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
-            if pushed_since
-            else (REPOSITORY_INCREMENTAL, incremental_cursor)
-        )
+        strategy, cursor = self._cutoff(incremental_cursor, pushed_since)
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
@@ -206,7 +196,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def _search_strategy(
         self,
         organization: str,
-        _: str,
+        organization_type: str,
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
         *,
@@ -214,15 +204,6 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """List the organization's repositories through the Search API.
-
-        ``pushed_since`` is applied by filtering the results on their ``pushed_at``,
-        not with a ``pushed:`` qualifier: that qualifier reads a search index that
-        can lag real pushes by over an hour, while each result's ``pushed_at`` is
-        current, and search has no "pushed" sort. When set, it replaces the
-        "updated" sort-and-stop cursor, which would cut off on a different field.
-        """
-        updated_cursor = None if pushed_since else incremental_cursor
         repository_type = params.pop("type")
         forced_qualifiers = (
             ["fork:true", f"is:{repository_type}"] if search_params is None else []
@@ -240,39 +221,125 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
-        query_params = {
-            "q": f"org:{organization} {raw_q}",
-            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, updated_cursor),
-        }
-        url = f"{self.client.base_url}/search/repositories"
-
-        async for repos in paginate_with_strategy(
-            self._search_result_items(url, query_params),
-            cursor=updated_cursor,
-            strategy=REPOSITORY_SEARCH_INCREMENTAL,
+        async for scope, full_names in self._search_scopes(
+            organization,
+            organization_type,
+            incremental_cursor=incremental_cursor,
+            pushed_since=pushed_since,
         ):
-            if pushed_since:
-                repos = self._filter_pushed_since(repos, pushed_since)
-                if not repos:
-                    continue
-            logger.info(
-                f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
-            )
+            async for repos in self._search_result_items(
+                {"q": f"{scope} {raw_q}".strip(), **params}
+            ):
+                if full_names is not None:
+                    repos = [
+                        repo
+                        for repo in repos
+                        if repo["full_name"].lower() in full_names
+                    ]
+                if repos:
+                    logger.info(
+                        f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
+                    )
+                    yield repos
+
+    async def _search_scopes(
+        self,
+        organization: str,
+        organization_type: str,
+        *,
+        incremental_cursor: datetime | None,
+        pushed_since: datetime | None,
+    ) -> AsyncIterator[tuple[str, Optional[set[str]]]]:
+        """Scopes to run the search query in, each with the repositories it is
+        limited to (``None``: no limit).
+
+        Without a cursor the whole organization is one scope. With one, the
+        search index can report changes late, so the changed repositories come
+        from a live listing and are searched in batches of ``repo:``
+        qualifiers. Search ORs those with any scope qualifier in the query, so
+        results are limited to the batch.
+        """
+        if not (incremental_cursor or pushed_since):
+            yield f"org:{organization}", None
+            return
+
+        async for changed in self._list_changed_repos(
+            organization,
+            organization_type,
+            incremental_cursor=incremental_cursor,
+            pushed_since=pushed_since,
+        ):
+            for batch in batched(changed, SEARCH_REPO_BATCH_SIZE):
+                full_names = [repo["full_name"] for repo in batch]
+                yield (
+                    " ".join(f"repo:{name}" for name in full_names),
+                    {name.lower() for name in full_names},
+                )
+
+    async def _list_changed_repos(
+        self,
+        organization: str,
+        organization_type: str,
+        *,
+        incremental_cursor: datetime | None,
+        pushed_since: datetime | None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """List the repositories changed since the cursor, from live data.
+
+        Uses the list strategy sorted by the cursor's field, which stops at the
+        cursor. A GitHub App on a personal account cannot list the account's
+        private repositories that way, so the installation's repositories are
+        listed (unsorted) and cut off by the same field, as one batch so search
+        calls are not split by page.
+        """
+        if self._is_app_on_personal_account(organization_type):
+            strategy, cursor = self._cutoff(incremental_cursor, pushed_since)
+            changed = [
+                repo
+                async for page in self.client.send_paginated_request(
+                    f"{self.client.base_url}/installation/repositories"
+                )
+                for repo in strategy.filter_page(
+                    cast(dict[str, list[dict[str, Any]]], page)["repositories"],
+                    cursor,
+                )
+            ]
+            if changed:
+                yield changed
+            return
+
+        async for repos in self._list_strategy(
+            organization,
+            organization_type,
+            {"type": "all"},
+            None,
+            incremental_cursor=incremental_cursor,
+            pushed_since=pushed_since,
+        ):
             yield repos
 
     @staticmethod
-    def _filter_pushed_since(
-        repos: list[dict[str, Any]], pushed_since: datetime
-    ) -> list[dict[str, Any]]:
-        """Keep the repositories pushed at or after *pushed_since*."""
-        return [repo for repo in repos if is_pushed_since(repo, pushed_since)]
+    def _cutoff(
+        incremental_cursor: datetime | None, pushed_since: datetime | None
+    ) -> tuple[ClientSideCutoffStrategy, datetime | None]:
+        """The live-list cutoff: by ``pushed_at`` when set, else ``updated_at``."""
+        if pushed_since:
+            return REPOSITORY_PUSHED_INCREMENTAL, pushed_since
+        return REPOSITORY_INCREMENTAL, incremental_cursor
+
+    def _is_app_on_personal_account(self, organization_type: str) -> bool:
+        """GitHub App installation tokens cannot list a personal account's
+        private repositories through ``/user/repos``."""
+        return organization_type == "User" and isinstance(
+            self.client.authenticator, GitHubAppInstallationAuthenticator
+        )
 
     async def _search_result_items(
-        self, url: str, query_params: dict[str, Any]
+        self, query_params: dict[str, Any]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Unwrap the search API envelope so pages are plain repository lists."""
+        """Search repositories, unwrapping the envelope so pages are plain lists."""
         async for search_results in self.client.send_paginated_request(
-            url, query_params
+            f"{self.client.base_url}/search/repositories", query_params
         ):
             casted = cast(dict[str, Any], search_results)
             yield casted["items"]

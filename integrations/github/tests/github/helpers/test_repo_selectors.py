@@ -128,45 +128,28 @@ PUSHED_SINCE = datetime(2026, 11, 15, 10, 0, tzinfo=timezone.utc)
 
 @pytest.mark.asyncio
 class TestPushedSinceFilter:
-    async def test_all_selector_passes_pushed_since_to_repo_listing(self) -> None:
-        selector = RepositorySourceModel.parse_obj({})
+    @pytest.mark.parametrize("pushed_since", [PUSHED_SINCE, None])
+    async def test_all_selector_passes_pushed_since_to_repo_listing(
+        self, pushed_since: datetime | None
+    ) -> None:
         repo_exporter = MagicMock()
         repo_exporter.get_paginated_resources = _make_paginated_resources_mock(
             [[{"name": "repo1", "default_branch": "main"}]]
         )
 
-        strategy = AllRepositorySelector("repository")
         [
             result
-            async for result in strategy.select_repos(
-                selector,
+            async for result in AllRepositorySelector("repository").select_repos(
+                RepositorySourceModel.parse_obj({}),
                 repo_exporter,
                 "test-org",
                 "Organization",
-                pushed_since=PUSHED_SINCE,
+                pushed_since=pushed_since,
             )
         ]
 
         called_options = repo_exporter.get_paginated_resources.call_args.args[0]
-        assert called_options["pushed_since"] == PUSHED_SINCE
-
-    async def test_all_selector_without_pushed_since_lists_all_repos(self) -> None:
-        selector = RepositorySourceModel.parse_obj({})
-        repo_exporter = MagicMock()
-        repo_exporter.get_paginated_resources = _make_paginated_resources_mock(
-            [[{"name": "repo1", "default_branch": "main"}]]
-        )
-
-        strategy = AllRepositorySelector("repository")
-        [
-            result
-            async for result in strategy.select_repos(
-                selector, repo_exporter, "test-org", "Organization"
-            )
-        ]
-
-        called_options = repo_exporter.get_paginated_resources.call_args.args[0]
-        assert called_options["pushed_since"] is None
+        assert called_options["pushed_since"] == pushed_since
 
     @pytest.mark.parametrize(
         ("pushed_at", "included"),

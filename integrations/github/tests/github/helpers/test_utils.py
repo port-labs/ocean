@@ -619,22 +619,20 @@ PUSHED_SINCE = datetime(2026, 11, 16, 15, 0, 0, tzinfo=timezone.utc)
 
 class TestIsPushedSince:
     @pytest.mark.parametrize(
-        ("pushed_at", "expected"),
+        ("repo", "expected"),
         [
-            ("2026-11-16T15:30:00Z", True),
-            ("2026-11-16T15:00:00Z", True),
-            ("2026-11-16T14:59:59Z", False),
-            (None, False),
-            ("", False),
+            ({"pushed_at": "2026-11-16T15:30:00Z"}, True),
+            ({"pushed_at": "2026-11-16T15:00:00Z"}, True),
+            ({"pushed_at": "2026-11-16T14:59:59Z"}, False),
+            ({"pushed_at": None}, False),
+            ({"pushed_at": ""}, False),
+            ({"name": "never-pushed"}, False),
         ],
     )
     def test_compares_pushed_at_with_cursor(
-        self, pushed_at: str | None, expected: bool
+        self, repo: dict[str, Any], expected: bool
     ) -> None:
-        assert is_pushed_since({"pushed_at": pushed_at}, PUSHED_SINCE) is expected
-
-    def test_missing_pushed_at_is_not_pushed(self) -> None:
-        assert is_pushed_since({"name": "empty-repo"}, PUSHED_SINCE) is False
+        assert is_pushed_since(repo, PUSHED_SINCE) is expected
 
     def test_naive_cursor_is_treated_as_utc(self) -> None:
         naive_cursor = PUSHED_SINCE.replace(tzinfo=None)
