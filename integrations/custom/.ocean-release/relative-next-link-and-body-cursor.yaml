@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: feature
-changelog: Add paginationPlacement (query|body) for cursor pagination in the request body, and resolve relative next-link URLs against the integration base URL (including query-only and scheme-relative links).
