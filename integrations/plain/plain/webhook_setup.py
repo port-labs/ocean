@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.core import OceanAbortException
@@ -28,6 +29,15 @@ async def register_webhook_target() -> None:
             "manually in Plain, pointing at {}. "
             "The API key needs webhookTarget:read, webhookTarget:create, "
             "and webhookTarget:edit.",
+            error,
+            target_url,
+        )
+    except httpx.RequestError as error:
+        target_url = f"{base_url.rstrip('/')}{WEBHOOK_PATH_SUFFIX}"
+        logger.warning(
+            "Could not reach Plain API to register webhook target ({}). "
+            "The integration will keep running. "
+            "You can create the webhook target manually in Plain, pointing at {}.",
             error,
             target_url,
         )

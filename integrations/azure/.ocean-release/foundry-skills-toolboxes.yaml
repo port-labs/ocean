@@ -1,6 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: >-
-  Add Foundry skill and toolbox sync kinds with optional ARM region filtering on
-  project discovery, A2A sub-agent enrichment on toolboxes (normalize ARM
-  connection ids), and SKILL.md content download for skills (throttled).

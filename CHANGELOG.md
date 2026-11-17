@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.61.6 (2026-11-17)
+
+
+### Bug Fixes
+
+- Set Redis socket and connect timeouts (previously unbounded) so a dead Redis connection can no longer hang the live-events consumer or the centralized rate limiter, which silently stalled the integration
+
+
+## 0.61.5 (2026-11-17)
+
+
+### Bug Fixes
+
+- Add Plain API (*.plain.com) to trusted subdomains list so its hostname is not rewritten to IP in SaaS mode, preventing TLS/certificate issues
+
+
 ## 0.61.4 (2026-11-15)
 
 
