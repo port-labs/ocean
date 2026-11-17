@@ -141,7 +141,7 @@
   {
     "identifier": "coralogixAlertDefinition",
     "title": "Coralogix Alert Definition",
-    "icon": "Alert",
+    "icon": "Coralogix",
     "schema": {
       "properties": {
         "description": {
