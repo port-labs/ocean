@@ -2,7 +2,7 @@
   "id": "989124ea-7a5e-4748-afe3-9d938c6e5d39",
   "name": "Login latency: avg under 200ms (window)",
   "description": "Window-based: share of 5-minute windows where login-service average server latency is at or under 200 ms.",
-  "creator": "isaac@getport.io",
+  "creator": "user@email.com",
   "labels": {
     "env": "docker-desktop",
     "service": "login-service",

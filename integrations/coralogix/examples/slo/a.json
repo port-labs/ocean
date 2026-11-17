@@ -2,7 +2,7 @@
   "id": "45504bbb-00ea-4ad5-bc31-869ab94e37bd",
   "name": "Payment availability",
   "description": "Request-based: non-error payment-service requests / all. The demo injects ~5% failures, so this burns budget.",
-  "creator": "isaac@getport.io",
+  "creator": "user@email.com",
   "labels": {
     "env": "docker-desktop",
     "service": "payment-service",

@@ -3,7 +3,7 @@
   "title": "Payment service error rate above 2%",
   "description": "payment-service server error rate over 2% (APM span metrics).",
   "assignee": {
-    "email": "isaac@getport.io"
+    "email": "user@email.com"
   },
   "status": "CASE_STATUS_ACKNOWLEDGED",
   "priority": "CASE_PRIORITY_P1",
