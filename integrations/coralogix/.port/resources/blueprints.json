@@ -1,0 +1,347 @@
+[
+  {
+    "identifier": "coralogixService",
+    "title": "Coralogix Service",
+    "icon": "Coralogix",
+    "schema": {
+      "properties": {
+        "environments": {
+          "type": "array",
+          "title": "Environments",
+          "items": {
+            "type": "string"
+          }
+        },
+        "clusters": {
+          "type": "array",
+          "title": "Clusters",
+          "items": {
+            "type": "string"
+          }
+        },
+        "namespaces": {
+          "type": "array",
+          "title": "Namespaces",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requestsPerSecond": {
+          "type": "number",
+          "title": "Requests per second"
+        },
+        "errorRatePct": {
+          "type": "number",
+          "title": "Error rate (%)"
+        },
+        "p95LatencyMs": {
+          "type": "number",
+          "title": "P95 latency (ms)"
+        },
+        "metricsWindow": {
+          "type": "string",
+          "title": "Metrics window"
+        },
+        "metricsSource": {
+          "type": "string",
+          "title": "Span metric"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Coralogix link"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "coralogixSlo",
+    "title": "Coralogix SLO",
+    "icon": "Coralogix",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "targetPct": {
+          "type": "number",
+          "title": "Target (%)"
+        },
+        "timeFrame": {
+          "type": "string",
+          "title": "Time frame",
+          "enum": [
+            "1 day",
+            "7 days",
+            "14 days",
+            "21 days",
+            "28 days",
+            "30 days"
+          ]
+        },
+        "sliType": {
+          "type": "string",
+          "title": "SLI type",
+          "enum": [
+            "request",
+            "window",
+            "apm"
+          ],
+          "enumColors": {
+            "request": "blue",
+            "window": "purple",
+            "apm": "turquoise"
+          }
+        },
+        "compliancePct": {
+          "type": "number",
+          "title": "Compliance (%)"
+        },
+        "remainingErrorBudgetPct": {
+          "type": "number",
+          "title": "Remaining error budget (%)"
+        },
+        "completeWindow": {
+          "type": "boolean",
+          "title": "Full window of data"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "creator": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created at"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Coralogix link"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "service": {
+        "title": "Service",
+        "target": "coralogixService",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "coralogixAlertDefinition",
+    "title": "Coralogix Alert Definition",
+    "icon": "Alert",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "P5"
+          ],
+          "enumColors": {
+            "P1": "red",
+            "P2": "orange",
+            "P3": "yellow",
+            "P4": "blue",
+            "P5": "lightGray"
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "title": "Enabled"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "ALERTING",
+            "OK",
+            "NO_DATA",
+            "UNSPECIFIED"
+          ],
+          "enumColors": {
+            "ALERTING": "red",
+            "OK": "green",
+            "NO_DATA": "lightGray",
+            "UNSPECIFIED": "lightGray"
+          }
+        },
+        "groupByKeys": {
+          "type": "array",
+          "title": "Group by keys",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hasNotificationTarget": {
+          "type": "boolean",
+          "title": "Has notification target"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "lastTriggeredAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last triggered"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Coralogix link"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "service": {
+        "title": "Service",
+        "target": "coralogixService",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "coralogixCase",
+    "title": "Coralogix Case",
+    "icon": "Coralogix",
+    "schema": {
+      "properties": {
+        "readableId": {
+          "type": "string",
+          "title": "Case ID"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "PENDING_ACTIVATION",
+            "ACTIVE",
+            "ACKNOWLEDGED",
+            "RESOLVED",
+            "CLOSED"
+          ],
+          "enumColors": {
+            "PENDING_ACTIVATION": "lightGray",
+            "ACTIVE": "red",
+            "ACKNOWLEDGED": "orange",
+            "RESOLVED": "green",
+            "CLOSED": "darkGray"
+          }
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "P5"
+          ],
+          "enumColors": {
+            "P1": "red",
+            "P2": "orange",
+            "P3": "yellow",
+            "P4": "blue",
+            "P5": "lightGray"
+          }
+        },
+        "priorityOverridden": {
+          "type": "boolean",
+          "title": "Priority overridden"
+        },
+        "category": {
+          "type": "string",
+          "title": "Category"
+        },
+        "assignee": {
+          "type": "string",
+          "format": "user",
+          "title": "Assignee"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created at"
+        },
+        "acknowledgedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Acknowledged at"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Resolved at"
+        },
+        "resolutionReason": {
+          "type": "string",
+          "title": "Resolution reason"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Coralogix link"
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {
+      "minutesToAcknowledge": {
+        "title": "Minutes to acknowledge",
+        "type": "number",
+        "calculation": "if .properties.acknowledgedAt and .properties.createdAt then (((.properties.acknowledgedAt | sub(\"\\\\.[0-9]+\"; \"\") | fromdateiso8601) - (.properties.createdAt | sub(\"\\\\.[0-9]+\"; \"\") | fromdateiso8601)) / 60 | floor) else null end"
+      },
+      "minutesToResolve": {
+        "title": "Minutes to resolve",
+        "type": "number",
+        "calculation": "if .properties.resolvedAt and .properties.createdAt then (((.properties.resolvedAt | sub(\"\\\\.[0-9]+\"; \"\") | fromdateiso8601) - (.properties.createdAt | sub(\"\\\\.[0-9]+\"; \"\") | fromdateiso8601)) / 60 | floor) else null end"
+      }
+    },
+    "relations": {
+      "alertDefinitions": {
+        "title": "Alert definitions",
+        "target": "coralogixAlertDefinition",
+        "required": false,
+        "many": true
+      },
+      "service": {
+        "title": "Service",
+        "target": "coralogixService",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

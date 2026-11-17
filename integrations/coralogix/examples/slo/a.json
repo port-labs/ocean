@@ -1,0 +1,74 @@
+{
+  "id": "45504bbb-00ea-4ad5-bc31-869ab94e37bd",
+  "name": "Payment availability",
+  "description": "Request-based: non-error payment-service requests / all. The demo injects ~5% failures, so this burns budget.",
+  "creator": "isaac@getport.io",
+  "labels": {
+    "env": "docker-desktop",
+    "service": "payment-service",
+    "team": "platform-demo"
+  },
+  "revision": {
+    "revision": 1,
+    "updateTime": "2026-11-16T15:28:11.490Z"
+  },
+  "grouping": {
+    "labels": []
+  },
+  "createTime": "2026-11-16T15:28:11.490Z",
+  "updateTime": "2026-11-16T15:28:11.490Z",
+  "targetThresholdPercentage": 99,
+  "sloTimeFrame": "SLO_TIME_FRAME_7_DAYS",
+  "requestBasedMetricSli": {
+    "goodEvents": {
+      "query": "sum(rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"payment-service\",status_code!=\"STATUS_CODE_ERROR\"}[1m]))"
+    },
+    "totalEvents": {
+      "query": "sum(rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"payment-service\"}[1m]))"
+    }
+  },
+  "sliDefinition": {
+    "requestBased": {
+      "custom": {
+        "goodEvents": {
+          "query": "sum(rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"payment-service\",status_code!=\"STATUS_CODE_ERROR\"}[1m]))"
+        },
+        "totalEvents": {
+          "query": "sum(rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"payment-service\"}[1m]))"
+        }
+      }
+    }
+  },
+  "type": "request",
+  "sloType": "SLO_TYPE_REQUEST",
+  "productType": "SLO_PRODUCT_TYPE_UNSPECIFIED",
+  "ownershipTags": {
+    "environment": {
+      "staticValues": [
+        "docker-desktop"
+      ],
+      "labelKeys": [],
+      "resolvedValues": [
+        "docker-desktop"
+      ]
+    },
+    "team": {
+      "staticValues": [
+        "platform-demo"
+      ],
+      "labelKeys": [],
+      "resolvedValues": [
+        "platform-demo"
+      ]
+    }
+  },
+  "__status": {
+    "computedAt": "2026-11-16T16:16:00Z",
+    "effectiveFrom": "2026-11-09T16:08:00Z",
+    "effectiveTo": "2026-11-16T16:08:00Z",
+    "lowestCompliance": 0.9449588,
+    "lowestRemainingErrorBudget": 0,
+    "effectiveWindowCompleteData": false
+  },
+  "__teamUrl": "https://getport.app.eu2.coralogix.com"
+}

@@ -1,0 +1,48 @@
+{
+  "title": "Coralogix",
+  "description": "Coralogix integration for Port Ocean",
+  "icon": "Coralogix",
+  "docs": "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/available-integrations/apm-alerting/coralogix",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "APM & Alerting",
+      "resources": [
+        {
+          "kind": "service"
+        },
+        {
+          "kind": "slo"
+        },
+        {
+          "kind": "alert-definition"
+        },
+        {
+          "kind": "case"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "coralogixApiKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "Coralogix personal or team API key with SLO:READCONFIG, ALERTS:READCONFIG, CASES:READ and METRICS.DATA-API#HIGH:READDATA. See <a href=\"https://coralogix.com/docs/user-guides/account-management/api-keys/api-keys/\" target=\"_blank\">API keys</a>."
+    },
+    {
+      "name": "coralogixApiUrl",
+      "required": true,
+      "type": "url",
+      "description": "Your Coralogix API URL (e.g. https://api.eu2.coralogix.com) or the team URL you open in the browser (e.g. https://myteam.app.eu2.coralogix.com). The region is derived from it.",
+      "example": "https://api.eu2.coralogix.com"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    }
+  }
+}
