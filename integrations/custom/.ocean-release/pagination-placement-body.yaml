@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Add paginationPlacement (query|body) so cursor pagination can send the cursor and page size in the JSON request body for non-GET methods.

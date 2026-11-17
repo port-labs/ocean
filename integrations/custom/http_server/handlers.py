@@ -222,8 +222,11 @@ class CursorPagination(PaginationHandler):
 
     ``pagination_placement`` controls where the cursor and page size are sent:
     ``query`` (default) uses query parameters; ``body`` merges them into the
-    JSON request body. When using body placement, the cursor field is omitted
-    on the first page and set only after a cursor is extracted.
+    JSON request body for non-GET methods. GET requests always use query
+    parameters so servers that ignore bodies cannot loop forever. When using
+    body placement, the cursor field is omitted on the first page and set only
+    after a cursor is extracted. Pagination also stops if the next cursor
+    repeats the previous one.
     """
 
     async def fetch_all(
@@ -239,13 +242,14 @@ class CursorPagination(PaginationHandler):
         cursor_path = self.config.get("cursor_path", "")
         has_more_path = self.config.get("has_more_path", "")
         placement = self.config.get("pagination_placement", "query")
+        use_body_placement = placement == "body" and method.upper() != "GET"
 
         cursor = None
 
         while True:
             current_params: Optional[Dict[str, Any]]
             current_body: Optional[Dict[str, Any]]
-            if placement == "body":
+            if use_body_placement:
                 current_params = dict(params) if params else {}
                 body_payload = dict(body) if body is not None else {}
                 body_payload[limit_param] = self.page_size
@@ -293,8 +297,8 @@ class CursorPagination(PaginationHandler):
                         ),
                     )
 
-                # Stop if no more pages
-                if not next_cursor or not has_more:
+                # Stop if no more pages or the cursor did not advance
+                if not next_cursor or not has_more or next_cursor == cursor:
                     break
 
                 # Update cursor for next iteration
@@ -344,7 +348,9 @@ class NextLinkPagination(PaginationHandler):
             if not next_url:
                 break
 
-            current_url = resolve_next_link_url(next_url, base_url)
+            current_url = resolve_next_link_url(
+                next_url, base_url, current_url=current_url
+            )
             current_params = None
 
 

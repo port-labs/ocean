@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Add HTTP fixture routes for relative next-link and body-cursor pagination used by Custom Ocean local e2e.

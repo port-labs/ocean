@@ -50,3 +50,30 @@ class TestResolveNextLinkUrl:
             resolve_next_link_url(next_url, base_url)
             == "https://api.example.com/tenant/items?page=2"
         )
+
+    def test_query_only_next_link_keeps_current_path(self) -> None:
+        base_url = "https://api.example.com/ex/tenant/cloud-id-123"
+        current_url = (
+            "https://api.example.com/ex/tenant/cloud-id-123/wiki/api/v2/spaces"
+        )
+        next_url = "?cursor=abc"
+        assert (
+            resolve_next_link_url(next_url, base_url, current_url=current_url)
+            == "https://api.example.com/ex/tenant/cloud-id-123/wiki/api/v2/spaces?cursor=abc"
+        )
+
+    def test_query_only_next_link_falls_back_to_base_url_path(self) -> None:
+        base_url = "https://api.example.com/ex/tenant/cloud-id-123"
+        next_url = "?cursor=abc"
+        assert (
+            resolve_next_link_url(next_url, base_url)
+            == "https://api.example.com/ex/tenant/cloud-id-123?cursor=abc"
+        )
+
+    def test_scheme_relative_next_link_inherits_base_scheme(self) -> None:
+        base_url = "https://api.example.com/ex/tenant/cloud-id-123"
+        next_url = "//cdn.example.com/wiki/api/v2/spaces?cursor=abc"
+        assert (
+            resolve_next_link_url(next_url, base_url)
+            == "https://cdn.example.com/wiki/api/v2/spaces?cursor=abc"
+        )

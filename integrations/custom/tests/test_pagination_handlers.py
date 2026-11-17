@@ -447,6 +447,131 @@ class TestCursorPagination:
         assert captured_bodies[0] is original_body
         assert captured_bodies[1] is original_body
 
+    async def test_get_with_body_placement_falls_back_to_query(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """GET ignores body placement and puts cursor/limit in query params"""
+        page1 = {
+            "data": [{"id": "1"}],
+            "next_cursor": "c2",
+            "has_more": True,
+        }
+        page2 = {"data": [{"id": "2"}], "has_more": False}
+
+        responses = [page1, page2]
+        response_index = 0
+        captured_params: List[Optional[Dict[str, Any]]] = []
+        captured_bodies: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            captured_params.append(params)
+            captured_bodies.append(body)
+            mock_response = MagicMock()
+            mock_response.json.return_value = responses[response_index]
+            response_index += 1
+            return mock_response
+
+        handler = CursorPagination(
+            client=mock_client,
+            config={
+                "pagination_placement": "body",
+                "pagination_param": "cursor",
+                "size_param": "limit",
+                "cursor_path": "next_cursor",
+                "has_more_path": "has_more",
+                "page_size": 25,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        original_body = {"filter": "active"}
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/items",
+            method="GET",
+            params={},
+            headers={},
+            body=original_body,
+        ):
+            results.append(batch)
+
+        assert len(results) == 2
+        assert captured_params[0] == {"limit": 25}
+        assert captured_params[1] == {"limit": 25, "cursor": "c2"}
+        assert captured_bodies[0] is original_body
+        assert captured_bodies[1] is original_body
+        assert "cursor" not in (captured_bodies[0] or {})
+        assert "limit" not in (captured_bodies[0] or {})
+
+    async def test_repeated_cursor_stops_pagination(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Identical next cursor with has_more true still terminates the loop"""
+        stuck_page = {
+            "data": [{"id": "1"}],
+            "next_cursor": "same-token",
+            "has_more": True,
+        }
+
+        request_count = 0
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal request_count
+            request_count += 1
+            if request_count > 3:
+                raise AssertionError("pagination did not stop on repeated cursor")
+            mock_response = MagicMock()
+            mock_response.json.return_value = stuck_page
+            return mock_response
+
+        handler = CursorPagination(
+            client=mock_client,
+            config={
+                "pagination_param": "cursor",
+                "size_param": "limit",
+                "cursor_path": "next_cursor",
+                "has_more_path": "has_more",
+                "page_size": 10,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/items",
+            method="GET",
+            params={},
+            headers={},
+        ):
+            results.append(batch)
+
+        # Page 1 has no prior cursor; page 2 repeats "same-token" and must stop.
+        assert len(results) == 2
+        assert request_count == 2
+
 
 class TestPaginationHandlerRegistry:
     """Test cases for pagination handler registry"""
