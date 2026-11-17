@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Add Plain API (*.plain.com) to trusted subdomains list so its hostname is not rewritten to IP in SaaS mode, preventing TLS/certificate issues
