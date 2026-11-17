@@ -1,5 +1,6 @@
 from typing import Any
 
+from loguru import logger
 from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
@@ -16,7 +17,10 @@ from azure_integration.foundry.helpers.agent_api import build_agent_responses_in
 from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
-from azure_integration.foundry.helpers.port_mcp import remint_port_mcp_on_agent
+from azure_integration.foundry.helpers.port_mcp import (
+    ensure_ootb_mcp,
+    sanitize_git_provider,
+)
 
 
 class InvokeAgentInputs(AbstractFoundryActionInput):
@@ -26,6 +30,8 @@ class InvokeAgentInputs(AbstractFoundryActionInput):
     conversationMetadata: dict[str, Any] | None = None
     reportInvocationStatus: bool = Field(default=False)
     enablePortMcp: bool = Field(default=True)
+    gitAccessToken: str | None = Field(default=None, min_length=1)
+    gitProvider: str = Field(default="github")
     extraBody: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -34,14 +40,23 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeAgentInputs.from_execution_properties(run.execution_properties)
-        if inputs.enablePortMcp:
-            token = get_run_access_token(run)
-            if token:
-                await remint_port_mcp_on_agent(
+        git_provider = sanitize_git_provider(inputs.gitProvider)
+        if inputs.enablePortMcp or inputs.gitAccessToken:
+            port_token = get_run_access_token(run) if inputs.enablePortMcp else None
+            try:
+                await ensure_ootb_mcp(
                     self.client,
                     project_endpoint=inputs.projectEndpoint,
                     agent_id=inputs.agentId,
-                    access_token=token,
+                    enable_port_mcp=inputs.enablePortMcp,
+                    port_access_token=port_token,
+                    git_access_token=inputs.gitAccessToken,
+                    git_provider=git_provider,
+                    attach_to_prompt_agent=True,
+                )
+            except Exception as error:
+                logger.warning(
+                    f"Failed to remint ootb MCP on agent {inputs.agentId}: {error}"
                 )
         try:
             conversation_id = await resolve_conversation_for_invoke(
