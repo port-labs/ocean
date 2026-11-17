@@ -11,11 +11,10 @@ from azure_integration.foundry.actions.abstract_action_input import (
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.helpers.agent_api import (
-    build_create_agent_body,
     definition_kind,
     foundry_features_header,
 )
-from azure_integration.foundry.helpers.utils import enrich_with_project
+from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
 CREATING_STATUS_LABEL = "Creating agent"
@@ -30,12 +29,20 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     config: dict[str, Any] = Field(default_factory=dict)
 
     def to_api_body(self) -> dict[str, Any]:
-        return build_create_agent_body(
-            name=self.name,
-            model=self.model,
-            instructions=self.instructions,
-            config=self.config or None,
-        )
+        # First-class fields win; config deep-merged underneath for passthrough API fields.
+        body = deep_merge({"definition": {"kind": "prompt"}}, self.config)
+        definition = body.get("definition")
+        if not isinstance(definition, dict):
+            definition = {}
+            body["definition"] = definition
+
+        body["name"] = self.name
+        definition["kind"] = definition.get("kind") or "prompt"
+        if definition["kind"] == "prompt":
+            definition["model"] = self.model
+            if self.instructions is not None:
+                definition["instructions"] = self.instructions
+        return body
 
 
 class CreateAgentExecutor(AbstractFoundryExecutor):

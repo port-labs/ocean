@@ -2,20 +2,23 @@ from typing import Any
 
 import pytest
 
+from azure_integration.foundry.actions.create_agent_executor import CreateAgentInputs
+from azure_integration.foundry.actions.update_agent_executor import UpdateAgentInputs
 from azure_integration.foundry.helpers.agent_api import (
-    build_create_agent_body,
-    build_update_agent_body,
     foundry_features_header,
     latest_agent_definition,
 )
 
+_ENDPOINT = "https://example.services.ai.azure.com/api/projects/p1"
 
-def test_build_create_agent_body_wraps_definition() -> None:
-    body = build_create_agent_body(
+
+def test_create_agent_to_api_body_wraps_definition() -> None:
+    body = CreateAgentInputs(
+        projectEndpoint=_ENDPOINT,
         name="my-agent",
         model="gpt-4.1",
         instructions="Be helpful",
-    )
+    ).to_api_body()
     assert body["name"] == "my-agent"
     assert body["definition"] == {
         "kind": "prompt",
@@ -24,20 +27,22 @@ def test_build_create_agent_body_wraps_definition() -> None:
     }
 
 
-def test_build_create_agent_body_skips_prompt_fields_for_hosted() -> None:
-    body = build_create_agent_body(
+def test_create_agent_to_api_body_skips_prompt_fields_for_hosted() -> None:
+    body = CreateAgentInputs(
+        projectEndpoint=_ENDPOINT,
         name="hosted-agent",
         model="ignored",
         instructions="ignored",
         config={"definition": {"kind": "hosted", "cpu": "1"}},
-    )
+    ).to_api_body()
     assert body["definition"] == {"kind": "hosted", "cpu": "1"}
     assert "model" not in body["definition"]
     assert "instructions" not in body["definition"]
 
 
-def test_build_create_agent_body_merges_config_under_first_class() -> None:
-    body = build_create_agent_body(
+def test_create_agent_to_api_body_merges_config_under_first_class() -> None:
+    body = CreateAgentInputs(
+        projectEndpoint=_ENDPOINT,
         name="my-agent",
         model="gpt-4.1",
         instructions="Be helpful",
@@ -57,7 +62,7 @@ def test_build_create_agent_body_merges_config_under_first_class() -> None:
                 ],
             },
         },
-    )
+    ).to_api_body()
     assert body["name"] == "my-agent"
     assert body["description"] == "ops agent"
     assert body["metadata"] == {"team": "platform"}
@@ -72,16 +77,23 @@ def test_build_create_agent_body_merges_config_under_first_class() -> None:
     ]
 
 
-def test_build_update_agent_body_nested_definition() -> None:
-    body = build_update_agent_body(instructions="New text", model="gpt-5")
+def test_update_agent_to_api_body_nested_definition() -> None:
+    body = UpdateAgentInputs(
+        projectEndpoint=_ENDPOINT,
+        agentId="agent-1",
+        instructions="New text",
+        model="gpt-5",
+    ).to_api_body()
     assert body["definition"] == {
         "model": "gpt-5",
         "instructions": "New text",
     }
 
 
-def test_build_update_agent_body_merges_config_tools() -> None:
-    body = build_update_agent_body(
+def test_update_agent_to_api_body_merges_config_tools() -> None:
+    body = UpdateAgentInputs(
+        projectEndpoint=_ENDPOINT,
+        agentId="agent-1",
         instructions="New text",
         config={
             "definition": {
@@ -89,7 +101,7 @@ def test_build_update_agent_body_merges_config_tools() -> None:
             },
             "description": "updated",
         },
-    )
+    ).to_api_body()
     assert body["description"] == "updated"
     assert body["definition"] == {
         "tools": [{"type": "function", "name": "lookup"}],
@@ -97,10 +109,12 @@ def test_build_update_agent_body_merges_config_tools() -> None:
     }
 
 
-def test_build_update_agent_body_does_not_force_prompt_kind() -> None:
-    body = build_update_agent_body(
-        config={"definition": {"kind": "hosted", "cpu": "1"}}
-    )
+def test_update_agent_to_api_body_does_not_force_prompt_kind() -> None:
+    body = UpdateAgentInputs(
+        projectEndpoint=_ENDPOINT,
+        agentId="agent-1",
+        config={"definition": {"kind": "hosted", "cpu": "1"}},
+    ).to_api_body()
     assert body["definition"]["kind"] == "hosted"
 
 

@@ -11,7 +11,6 @@ from azure_integration.foundry.actions.abstract_action_input import (
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.helpers.agent_api import (
-    build_update_agent_body,
     definition_kind,
     foundry_features_header,
     latest_agent_definition,
@@ -31,11 +30,20 @@ class UpdateAgentInputs(AbstractFoundryActionInput):
     config: dict[str, Any] = Field(default_factory=dict)
 
     def to_api_body(self) -> dict[str, Any]:
-        return build_update_agent_body(
-            model=self.model,
-            instructions=self.instructions,
-            config=self.config or None,
-        )
+        # Partial patch; executor merges over GET before POST.
+        body = deep_merge({}, self.config)
+        definition = body.get("definition")
+        if not isinstance(definition, dict):
+            definition = {}
+            body["definition"] = definition
+
+        kind = definition.get("kind")
+        if kind in (None, "prompt"):
+            if self.model is not None:
+                definition["model"] = self.model
+            if self.instructions is not None:
+                definition["instructions"] = self.instructions
+        return body
 
 
 class UpdateAgentExecutor(AbstractFoundryExecutor):

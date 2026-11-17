@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from azure_integration.foundry.helpers.utils import deep_merge
-
 
 def latest_agent_definition(agent: dict[str, Any]) -> dict[str, Any]:
     """Latest definition from a Foundry agent GET payload."""
@@ -33,53 +31,3 @@ def foundry_features_header(kind: object) -> dict[str, str] | None:
         "voice": "VoiceAgents=V1Preview",
     }.get(kind)
     return {"Foundry-Features": feature} if feature else None
-
-
-def build_create_agent_body(
-    *,
-    name: str,
-    model: str,
-    instructions: str | None = None,
-    config: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Build a Foundry create-agent payload.
-
-    First-class fields always win. ``config`` is deep-merged underneath so callers
-    can pass through API fields we do not model (tools, description, metadata,
-    rai_config, hosted/workflow kind, etc.).
-    """
-    body = deep_merge({"definition": {"kind": "prompt"}}, config or {})
-    definition = body.get("definition")
-    if not isinstance(definition, dict):
-        definition = {}
-        body["definition"] = definition
-
-    body["name"] = name
-    definition["kind"] = definition.get("kind") or "prompt"
-    if definition["kind"] == "prompt":
-        definition["model"] = model
-        if instructions is not None:
-            definition["instructions"] = instructions
-    return body
-
-
-def build_update_agent_body(
-    *,
-    model: str | None = None,
-    instructions: str | None = None,
-    config: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Partial update payload; executor merges over GET before POST."""
-    body = deep_merge({}, config or {})
-    definition = body.get("definition")
-    if not isinstance(definition, dict):
-        definition = {}
-        body["definition"] = definition
-
-    kind = definition.get("kind")
-    if kind in (None, "prompt"):
-        if model is not None:
-            definition["model"] = model
-        if instructions is not None:
-            definition["instructions"] = instructions
-    return body
