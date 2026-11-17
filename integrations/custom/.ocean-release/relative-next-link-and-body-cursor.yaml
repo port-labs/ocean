@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Resolve relative next-link pagination URLs against the integration base URL, and add paginationPlacement (query|body) so cursor pagination can send the cursor in the JSON request body.

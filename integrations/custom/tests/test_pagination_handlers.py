@@ -8,6 +8,7 @@ from http_server.handlers import (
     NextLinkPagination,
     HeaderLinkPagination,
     PagePagination,
+    CursorPagination,
     get_pagination_handler,
     PAGINATION_HANDLERS,
 )
@@ -224,6 +225,227 @@ class TestNextLinkPagination:
 
         assert captured_params[0] == {"initial": "param"}
         assert captured_params[1] is None
+
+    async def test_relative_next_link_resolved_against_base_url(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Relative next links are resolved against integration base_url"""
+        page1 = {
+            "results": [{"id": "1"}],
+            "_links": {"next": "/wiki/api/v2/spaces?cursor=page2"},
+        }
+        page2 = {"results": [{"id": "2"}]}
+
+        responses = [page1, page2]
+        response_index = 0
+        captured_urls: List[str] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            captured_urls.append(url)
+            mock_response = MagicMock()
+            mock_response.json.return_value = responses[response_index]
+            response_index += 1
+            return mock_response
+
+        handler = NextLinkPagination(
+            client=mock_client,
+            config={
+                "next_link_path": "_links.next",
+                "base_url": "https://api.example.com/ex/tenant/cloud-id-123",
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/ex/tenant/cloud-id-123/wiki/api/v2/spaces",
+            method="GET",
+            params={},
+            headers={},
+        ):
+            results.append(batch)
+
+        assert len(results) == 2
+        assert (
+            captured_urls[1]
+            == "https://api.example.com/ex/tenant/cloud-id-123/wiki/api/v2/spaces?cursor=page2"
+        )
+
+
+class TestCursorPagination:
+    """Test cases for CursorPagination handler"""
+
+    @pytest.fixture
+    def mock_client(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_extract_items(self) -> MagicMock:
+        return MagicMock(
+            side_effect=lambda data: data if isinstance(data, list) else [data]
+        )
+
+    @pytest.fixture
+    def mock_get_nested_value(self) -> MagicMock:
+        def _get_nested(data: Dict[str, Any], path: str) -> Any:
+            current: Any = data
+            for key in path.split("."):
+                if not isinstance(current, dict) or key not in current:
+                    return None
+                current = current[key]
+            return current
+
+        return MagicMock(side_effect=_get_nested)
+
+    async def test_body_placement_omits_cursor_on_first_page(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Body placement sends size in body and omits cursor on page 1"""
+        page1 = {
+            "data": [{"id": "1"}],
+            "next_page_token": "tok-2",
+            "has_more": True,
+        }
+        page2 = {"data": [{"id": "2"}], "has_more": False}
+
+        responses = [page1, page2]
+        response_index = 0
+        captured_params: List[Optional[Dict[str, Any]]] = []
+        captured_bodies: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            captured_params.append(params)
+            captured_bodies.append(body)
+            mock_response = MagicMock()
+            mock_response.json.return_value = responses[response_index]
+            response_index += 1
+            return mock_response
+
+        handler = CursorPagination(
+            client=mock_client,
+            config={
+                "pagination_placement": "body",
+                "pagination_param": "next_page_token",
+                "size_param": "limit",
+                "cursor_path": "next_page_token",
+                "has_more_path": "has_more",
+                "page_size": 100,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/query",
+            method="POST",
+            params={},
+            headers={},
+            body={"query": "status = open"},
+        ):
+            results.append(batch)
+
+        assert len(results) == 2
+        assert captured_bodies[0] == {
+            "query": "status = open",
+            "limit": 100,
+        }
+        assert "next_page_token" not in (captured_bodies[0] or {})
+        assert captured_bodies[1] == {
+            "query": "status = open",
+            "limit": 100,
+            "next_page_token": "tok-2",
+        }
+        assert "next_page_token" not in (captured_params[0] or {})
+        assert "next_page_token" not in (captured_params[1] or {})
+
+    async def test_query_placement_keeps_cursor_in_params(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Default query placement puts cursor in query params and leaves body alone"""
+        page1 = {
+            "data": [{"id": "1"}],
+            "next_cursor": "c2",
+            "has_more": True,
+        }
+        page2 = {"data": [{"id": "2"}], "has_more": False}
+
+        responses = [page1, page2]
+        response_index = 0
+        captured_params: List[Optional[Dict[str, Any]]] = []
+        captured_bodies: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            captured_params.append(params)
+            captured_bodies.append(body)
+            mock_response = MagicMock()
+            mock_response.json.return_value = responses[response_index]
+            response_index += 1
+            return mock_response
+
+        handler = CursorPagination(
+            client=mock_client,
+            config={
+                "pagination_param": "cursor",
+                "size_param": "limit",
+                "cursor_path": "next_cursor",
+                "has_more_path": "has_more",
+                "page_size": 50,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        original_body = {"filter": "active"}
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/items",
+            method="GET",
+            params={},
+            headers={},
+            body=original_body,
+        ):
+            results.append(batch)
+
+        assert len(results) == 2
+        assert captured_params[0] == {"limit": 50}
+        assert captured_params[1] == {"limit": 50, "cursor": "c2"}
+        assert captured_bodies[0] is original_body
+        assert captured_bodies[1] is original_body
 
 
 class TestPaginationHandlerRegistry:

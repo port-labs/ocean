@@ -14,6 +14,7 @@ from typing import (
     Any,
     Tuple,
 )
+from urllib.parse import urlparse
 
 from loguru import logger
 from port_ocean.utils.async_iterators import (
@@ -25,6 +26,33 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
 )
 
 DEFAULT_CONCURRENCY_LIMIT = 10
+
+
+def resolve_next_link_url(next_url: str, base_url: str) -> str:
+    """Resolve a next-link value against the integration base URL.
+
+    Absolute http(s) URLs are returned unchanged. Relative paths are joined to
+    ``base_url`` without RFC urljoin, which would drop gateway path prefixes.
+    When the relative path already starts with the base URL path (segment
+    boundary), use scheme://host + next path to avoid doubling the prefix.
+    """
+    if next_url.lower().startswith(("http://", "https://")):
+        return next_url
+
+    parsed_base = urlparse(base_url)
+    base_path = parsed_base.path.rstrip("/")
+    next_path = urlparse(next_url).path
+
+    if (
+        base_path
+        and base_path != "/"
+        and (next_path == base_path or next_path.startswith(base_path + "/"))
+    ):
+        return f"{parsed_base.scheme}://{parsed_base.netloc}{next_url}"
+
+    if next_url.startswith("/"):
+        return f"{base_url.rstrip('/')}{next_url}"
+    return f"{base_url.rstrip('/')}/{next_url}"
 
 
 def inject_path_params(
