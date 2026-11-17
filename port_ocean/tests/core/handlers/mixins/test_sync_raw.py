@@ -2547,7 +2547,9 @@ async def test_process_resource_logs_kind_fetch_failure(
         [abort],
     )
 
-    async def return_failed_kind(*_args: object, **_kwargs: object) -> tuple:
+    async def return_failed_kind(
+        *_args: object, **_kwargs: object
+    ) -> tuple[list[Any], list[Exception]]:
         mock_ocean.metrics.sync_state = SyncState.FAILED
         return [], [group]
 
