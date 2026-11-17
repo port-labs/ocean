@@ -192,7 +192,23 @@
           "type": "boolean",
           "required": false,
           "default": true,
-          "description": "When true, attaches the Port MCP tool (server_label=port) using the integration's Port MCP URL. With a Service Account or Actor execution identity, stores that identity's Bearer token in the agent MCP headers. Limitation: Foundry MCP credentials are project-scoped on the agent — concurrent runs reminting the same agent can overwrite each other's identity; use with caution."
+          "description": "When true, upserts a per-agent Foundry CustomKeys connection + ootb toolbox with Port MCP (project_connection_id), and attaches that toolbox MCP endpoint on prompt agents. Requires a Service Account or Actor execution identity for the Bearer token. Hosted agents get the toolbox only — wire FoundryToolbox/TOOLBOX_NAME in the container. Concurrent remints of the same agent can overwrite the shared connection token."
+        },
+        {
+          "name": "gitAccessToken",
+          "title": "Git access token",
+          "type": "string",
+          "required": false,
+          "sensitive": true,
+          "description": "Optional GitHub PAT. When set, adds GitHub MCP (https://api.githubcopilot.com/mcp) to the per-agent ootb toolbox via a CustomKeys connection. Omit to skip GitHub MCP."
+        },
+        {
+          "name": "gitProvider",
+          "title": "Git provider",
+          "type": "string",
+          "required": false,
+          "default": "github",
+          "description": "Git provider for gitAccessToken. Only github is supported."
         },
         {
           "name": "config",
@@ -239,7 +255,23 @@
           "title": "Enable Port MCP",
           "type": "boolean",
           "required": false,
-          "description": "When true, ensures Port MCP is attached (and remints Bearer headers for Service Account/Actor execution identities). When false, removes the Port MCP tool. Omit to leave MCP tools unchanged. Limitation: Foundry MCP credentials are project-scoped on the agent — concurrent remints of the same agent can drift identity; use with caution."
+          "description": "When true, ensures the per-agent Port MCP connection/toolbox and attaches the toolbox on prompt agents. When false, removes the ootb toolbox MCP tool from the agent (connections left in place). Omit to leave MCP tools unchanged unless gitAccessToken is set."
+        },
+        {
+          "name": "gitAccessToken",
+          "title": "Git access token",
+          "type": "string",
+          "required": false,
+          "sensitive": true,
+          "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP CustomKeys connection and includes GitHub MCP in the ootb toolbox."
+        },
+        {
+          "name": "gitProvider",
+          "title": "Git provider",
+          "type": "string",
+          "required": false,
+          "default": "github",
+          "description": "Git provider for gitAccessToken. Only github is supported."
         },
         {
           "name": "config",
@@ -387,7 +419,23 @@
           "type": "boolean",
           "required": false,
           "default": true,
-          "description": "When true and a Service Account or Actor execution identity is present, remints the Port MCP Bearer token on the agent before invoke. Limitation: Foundry MCP credentials are project-scoped on the agent — concurrent invokes reminting the same agent can overwrite each other's identity; use with caution."
+          "description": "When true and a Service Account or Actor execution identity is present, remints the per-agent Port MCP CustomKeys connection and ensures the ootb toolbox is attached (prompt) or available (hosted) before invoke. Concurrent remints of the same agent can overwrite the connection token."
+        },
+        {
+          "name": "gitAccessToken",
+          "title": "Git access token",
+          "type": "string",
+          "required": false,
+          "sensitive": true,
+          "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP connection and includes GitHub MCP in the ootb toolbox for this invoke. Omit to skip GitHub MCP."
+        },
+        {
+          "name": "gitProvider",
+          "title": "Git provider",
+          "type": "string",
+          "required": false,
+          "default": "github",
+          "description": "Git provider for gitAccessToken. Only github is supported."
         },
         {
           "name": "reportInvocationStatus",
