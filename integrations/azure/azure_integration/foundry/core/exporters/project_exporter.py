@@ -11,6 +11,7 @@ from port_ocean.utils.async_iterators import stream_independent_async_iterators
 from port_ocean.utils.cache import cache_iterator_result
 from pydantic import BaseModel, ConfigDict, Field
 
+from azure_integration.foundry.helpers.utils import projects_matching_regions
 from azure_integration.foundry.kinds import (
     DEFAULT_FOUNDRY_ARM_API_VERSION,
     FOUNDRY_ARM_PROJECT_KIND,
@@ -76,8 +77,27 @@ class ProjectExporter:
         self,
         *,
         api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+        regions: list[str] | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        discovered = 0
+        """Yield Foundry projects, optionally filtered by ARM location.
+
+        Full ARM discovery is cached separately so different ``regions`` filters
+        reuse the same project list within an event.
+        """
+        exported = 0
+        async for projects in self._iter_all_projects(api_version=api_version):
+            matched = projects_matching_regions(projects, regions or [])
+            if matched:
+                exported += len(matched)
+                yield matched
+        logger.info(f"Exported {exported} Foundry project(s)")
+
+    @cache_iterator_result()
+    async def _iter_all_projects(
+        self,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async with DefaultAzureCredential() as credential:
             async with SubscriptionClient(credential=credential) as subscription_client:
                 async for subscriptions_batch in batch_resources_iterator(
@@ -103,7 +123,4 @@ class ProjectExporter:
                             if (project := foundry_project_from_arm(raw)) is not None
                         ]
                         if projects:
-                            discovered += len(projects)
                             yield projects
-
-        logger.info(f"Exported {discovered} Foundry project(s)")
