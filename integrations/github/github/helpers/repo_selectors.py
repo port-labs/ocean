@@ -16,7 +16,8 @@ from loguru import logger
 
 from github.core.options import ListRepositoryOptions
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import get_repository_metadata, is_pushed_since
+from github.helpers.incremental import is_pushed_since
+from github.helpers.utils import get_repository_metadata
 
 if TYPE_CHECKING:
     from integration import RepositoryBranchMapping
