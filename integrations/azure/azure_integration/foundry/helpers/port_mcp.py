@@ -43,6 +43,21 @@ def ootb_toolbox_name(agent_id: str) -> str:
     return _agent_resource("port-mcps", agent_id)
 
 
+def resolve_toolbox_name(agent_id: str, toolbox_name: str | None = None) -> str:
+    custom = (toolbox_name or "").strip()
+    return custom or ootb_toolbox_name(agent_id)
+
+
+def agent_definition_kind(agent: dict[str, Any] | None) -> str:
+    if not isinstance(agent, dict):
+        return "prompt"
+    definition = agent.get("definition")
+    if not isinstance(definition, dict):
+        return "prompt"
+    kind = definition.get("kind")
+    return kind if isinstance(kind, str) and kind else "prompt"
+
+
 def toolbox_consumer_url(
     project_endpoint: str, toolbox_name: str, *, version: str | int
 ) -> str:
@@ -250,6 +265,8 @@ async def ensure_ootb_mcp(
     attach_to_prompt_agent: bool = True,
     existing_tools: list[Any] | None = None,
     include_existing_port_in_toolbox: bool = False,
+    toolbox_name: str | None = None,
+    agent_kind: str | None = None,
 ) -> tuple[str, str] | None:
     _ = git_provider
     toolbox_tools: list[dict[str, Any]] = []
@@ -322,24 +339,24 @@ async def ensure_ootb_mcp(
                 )
         return None
 
-    toolbox_name = ootb_toolbox_name(agent_id)
+    resolved_toolbox_name = resolve_toolbox_name(agent_id, toolbox_name)
     toolbox_version = await upsert_ootb_toolbox(
         client,
         project_endpoint=project_endpoint,
-        toolbox_name=toolbox_name,
+        toolbox_name=resolved_toolbox_name,
         tools=toolbox_tools,
     )
 
     if not attach_to_prompt_agent:
-        return toolbox_name, toolbox_version
+        return resolved_toolbox_name, toolbox_version
+
+    kind = agent_kind or agent_definition_kind(agent_payload)
+    if kind != "prompt":
+        return resolved_toolbox_name, toolbox_version
 
     toolbox_url = toolbox_consumer_url(
-        project_endpoint, toolbox_name, version=toolbox_version
+        project_endpoint, resolved_toolbox_name, version=toolbox_version
     )
-    if agent_payload is not None:
-        kind = (agent_payload.get("definition") or {}).get("kind") or "prompt"
-        if kind != "prompt":
-            return toolbox_name, toolbox_version
     tools = list(tools_context)
 
     try:
@@ -351,7 +368,7 @@ async def ensure_ootb_mcp(
         )
     except Exception as error:
         logger.warning(f"Failed to attach ootb toolbox on agent {agent_id}: {error}")
-    return toolbox_name, toolbox_version
+    return resolved_toolbox_name, toolbox_version
 
 
 def sanitize_git_provider(value: str | None) -> GitProvider:

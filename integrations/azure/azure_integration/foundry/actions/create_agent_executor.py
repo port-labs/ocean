@@ -35,6 +35,7 @@ class CreateAgentInputs(AbstractFoundryActionInput):
     enablePortMcp: bool = Field(default=True)
     gitAccessToken: str | None = Field(default=None, min_length=1)
     gitProvider: str = Field(default="github")
+    toolboxName: str | None = Field(default=None, min_length=1)
 
     def to_api_body(self) -> dict[str, Any]:
         # First-class fields win; config deep-merged underneath for passthrough API fields.
@@ -90,9 +91,10 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
 
         agent_id = str(agent.get("id") or agent.get("name") or inputs.name)
 
+        toolbox_name: str | None = None
         if inputs.enablePortMcp or inputs.gitAccessToken:
             try:
-                await ensure_ootb_mcp(
+                toolbox_result = await ensure_ootb_mcp(
                     self.client,
                     project_endpoint=inputs.projectEndpoint,
                     agent_id=agent_id,
@@ -101,12 +103,16 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
                     git_access_token=inputs.gitAccessToken,
                     git_provider=git_provider,
                     attach_to_prompt_agent=True,
+                    toolbox_name=inputs.toolboxName,
+                    agent_kind=definition_kind(body),
                 )
             except Exception as error:
                 raise ActionExecutionError(
                     f"Failed to prepare ootb MCP toolbox: {error}",
                     status_label=CREATE_FAILED_STATUS_LABEL,
                 ) from error
+            if toolbox_result:
+                toolbox_name, _ = toolbox_result
 
         logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         await self.register_entity(
@@ -117,6 +123,8 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id
+            if toolbox_name:
+                run.output["toolboxName"] = toolbox_name
 
         await ocean.port_client.report_run_completed(
             run,

@@ -7,11 +7,13 @@ from azure_integration.foundry.helpers.port_mcp import (
     GITHUB_MCP_URL,
     PORT_MCP_SERVER_LABEL,
     TOOLBOX_SERVER_LABEL,
+    agent_definition_kind,
     attach_toolbox_to_agent_config,
     ensure_ootb_mcp,
     merge_toolbox_into_tools,
     ootb_toolbox_name,
     port_connection_name,
+    resolve_toolbox_name,
     sanitize_git_provider,
     tools_from_agent_payload,
     toolbox_consumer_url,
@@ -23,6 +25,10 @@ def test_resource_names_are_stable_and_short() -> None:
     assert len(port_connection_name(agent_id)) <= 33
     assert len(ootb_toolbox_name(agent_id)) <= 33
     assert port_connection_name(agent_id) == port_connection_name(agent_id)
+    assert resolve_toolbox_name(agent_id) == ootb_toolbox_name(agent_id)
+    assert resolve_toolbox_name(agent_id, " my-toolbox ") == "my-toolbox"
+    assert agent_definition_kind({"definition": {"kind": "hosted"}}) == "hosted"
+    assert agent_definition_kind({}) == "prompt"
 
 
 def test_merge_toolbox_adds_and_strips_legacy_port() -> None:
@@ -163,14 +169,18 @@ async def test_ensure_ootb_mcp_skips_attach_for_hosted() -> None:
         "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
         return_value="https://mcp.example/v1",
     ):
-        await ensure_ootb_mcp(
+        result = await ensure_ootb_mcp(
             client,
             project_endpoint="https://proj",
             agent_id="hosted-1",
             enable_port_mcp=True,
             port_access_token="tok",
+            toolbox_name="team-toolbox",
         )
+    assert result == ("team-toolbox", "1")
     assert client.send_api_request.await_count == 3
+    toolbox_url = client.send_api_request.await_args_list[2].args[0]
+    assert toolbox_url.endswith("toolboxes/team-toolbox/versions")
 
 
 @pytest.mark.asyncio
