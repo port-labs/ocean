@@ -70,7 +70,7 @@ def _expected(windows: list[tuple[int, int]]) -> list[tuple[str, int, int]]:
         (2 * WEEK - 10, [(WEEK, 2 * WEEK), (2 * WEEK, 3 * WEEK)]),
     ],
 )
-async def test_get_latest_histories_fetches_windows_ending_after_cursor(
+async def test_get_paginated_resources_with_cursor_fetches_windows_ending_after_it(
     mock_datadog_client: DatadogClient,
     mock_get_history: AsyncMock,
     since_ts: int,
@@ -79,8 +79,8 @@ async def test_get_latest_histories_fetches_windows_ending_after_cursor(
     since = datetime.fromtimestamp(since_ts, tz=timezone.utc)
 
     await _drain(
-        SloHistoryExporter(mock_datadog_client).get_latest_histories(
-            OPTIONS, incremental_cursor=since
+        SloHistoryExporter(mock_datadog_client).get_paginated_resources(
+            OPTIONS.copy(update={"incremental_cursor": since})
         )
     )
 
