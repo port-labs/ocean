@@ -62,7 +62,7 @@ class MockRouteResponse(BaseModel):
     fallback_body: Any | None = None
     response_model: str | None = Field(
         default=None,
-        description="Dotted reference to a VendorModel, e.g. 'team.TeamListResponse'.",
+        description="Dotted response model reference, e.g. 'team.TeamListResponse'.",
     )
 
     @field_validator("headers", mode="before")
