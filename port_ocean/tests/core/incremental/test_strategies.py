@@ -63,6 +63,29 @@ class TestServerSideTimestampStrategy:
         base = {"state": "open"}
         assert strategy.merge_params(base, None) == base
 
+    def test_merge_params_drops_replaced_keys_when_cursor_given(
+        self, cursor: datetime
+    ) -> None:
+        strategy = ServerSideTimestampStrategy(
+            param_key="updated_after", replaces={"updated_after", "updated_before"}
+        )
+        base = {
+            "state": "open",
+            "updated_after": "2020-01-01T00:00:00Z",
+            "updated_before": "2021-01-01T00:00:00Z",
+        }
+        assert strategy.merge_params(base, cursor) == {
+            "state": "open",
+            "updated_after": "2026-06-01T12:00:00+00:00",
+        }
+
+    def test_merge_params_keeps_replaced_keys_when_no_cursor(self) -> None:
+        strategy = ServerSideTimestampStrategy(
+            param_key="updated_after", replaces={"updated_before"}
+        )
+        base = {"state": "open", "updated_before": "2021-01-01T00:00:00Z"}
+        assert strategy.merge_params(base, None) == base
+
 
 class TestClientSideCutoffStrategy:
     @pytest.fixture
