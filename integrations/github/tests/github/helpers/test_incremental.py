@@ -25,6 +25,12 @@ class TestIsPushedSince:
     ) -> None:
         assert is_pushed_since(repo, PUSHED_SINCE) is expected
 
+    @pytest.mark.parametrize(
+        "repo", [{"pushed_at": "2020-01-01T00:00:00Z"}, {"name": "never-pushed"}]
+    )
+    def test_no_cursor_keeps_every_repository(self, repo: dict[str, Any]) -> None:
+        assert is_pushed_since(repo, None) is True
+
     def test_naive_cursor_is_treated_as_utc(self) -> None:
         naive_cursor = PUSHED_SINCE.replace(tzinfo=None)
 

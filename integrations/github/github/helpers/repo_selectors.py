@@ -119,7 +119,7 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
             if not repo_obj:
                 logger.warning(f"Repository {repo_sel.name} not found in {org_login}")
                 continue
-            if pushed_since and not is_pushed_since(repo_obj, pushed_since):
+            if not is_pushed_since(repo_obj, pushed_since):
                 continue
 
             branch = repo_sel.branch or repo_obj["default_branch"]
