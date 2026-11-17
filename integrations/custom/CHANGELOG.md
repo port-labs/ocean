@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.174 (2026-11-17)
+
+
+### Features
+
+- Add paginationPlacement (query|body) for cursor pagination in the request body, and resolve relative next-link URLs against the integration base URL (including query-only and scheme-relative links).
+
+
 ## 0.6.173 (2026-11-17)
 
 
