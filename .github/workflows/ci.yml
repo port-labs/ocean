@@ -291,13 +291,8 @@ jobs:
               body: output
             })
 
-  # Non-blocking Wiz scans via the in-repo reusable workflow (wizcli.yml).
-  # Ocean is public and cannot call port-labs/infra-utils. Image scan pulls
-  # published GHCR tags; this workflow does not push PR builds.
   wiz-cli-dir-scan:
     name: Wiz-cli code scan
-    # Skip fork PRs: WIZ_* secrets are not available on pull_request from forks.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     uses: ./.github/workflows/wizcli.yml
     secrets: inherit
     with:
@@ -314,7 +309,6 @@ jobs:
     name: Prepare Wiz image URIs
     needs: [prepare-matrix, build-integration]
     if: >
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
       needs.prepare-matrix.result == 'success' &&
       needs.build-integration.result == 'success' &&
       needs.prepare-matrix.outputs.matrix != '' &&
@@ -354,7 +348,7 @@ jobs:
   wiz-cli-image-scan:
     name: Wiz-cli image scan
     needs: prepare-wiz-images
-    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-wiz-images.result == 'success' && needs.prepare-wiz-images.outputs.images != '' && needs.prepare-wiz-images.outputs.images != '[]' }}
+    if: ${{ needs.prepare-wiz-images.result == 'success' && needs.prepare-wiz-images.outputs.images != '' && needs.prepare-wiz-images.outputs.images != '[]' }}
     uses: ./.github/workflows/wizcli.yml
     secrets: inherit
     with:
