@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Set Redis socket and connect timeouts (previously unbounded) so a dead Redis connection can no longer hang the live-events consumer or the centralized rate limiter, which silently stalled the integration
