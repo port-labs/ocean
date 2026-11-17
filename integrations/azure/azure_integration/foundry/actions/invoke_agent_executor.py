@@ -41,8 +41,13 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeAgentInputs.from_execution_properties(run.execution_properties)
         git_provider = sanitize_git_provider(inputs.gitProvider)
-        if inputs.enablePortMcp or inputs.gitAccessToken:
-            port_token = get_run_access_token(run) if inputs.enablePortMcp else None
+        port_token = get_run_access_token(run) if inputs.enablePortMcp else None
+        if inputs.gitAccessToken or port_token:
+            if inputs.enablePortMcp and not port_token:
+                logger.warning(
+                    f"enablePortMcp set for invoke on agent {inputs.agentId} but "
+                    "no execution identity token; Port connection will not be reminted"
+                )
             try:
                 await ensure_ootb_mcp(
                     self.client,
