@@ -231,19 +231,6 @@ class IgnoredError(NamedTuple):
     body_contains: Optional[str] = None
 
 
-def is_pushed_since(repo: Dict[str, Any], since: datetime) -> bool:
-    """Whether the repository's pushed_at is at or after *since*.
-
-    Repositories that were never pushed (no pushed_at) are not.
-    """
-    pushed_at = repo.get("pushed_at")
-    if not pushed_at:
-        return False
-    if since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
-    return datetime.fromisoformat(pushed_at) >= since
-
-
 async def fetch_repository_metadata(
     client: "AbstractGithubClient", organization: str, repo_name: str
 ) -> Dict[str, Any]:
