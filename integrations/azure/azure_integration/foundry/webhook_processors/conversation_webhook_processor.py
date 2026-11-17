@@ -14,6 +14,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from azure_integration.foundry.helpers.invoke_completion import (
     complete_invoke_run_from_webhook,
     find_in_progress_run_for_response,
+    is_response_completion_claimed,
 )
 from azure_integration.foundry.helpers.webhook_scope import (
     response_id_from_webhook_payload,
@@ -51,6 +52,14 @@ class ConversationWebhookProcessor(AbstractFoundryWebhookProcessor):
         if not response_id:
             logger.warning(
                 f"Ignoring Foundry webhook without response id ({event_type})"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+        if is_response_completion_claimed(response_id):
+            logger.debug(
+                f"Ignoring Foundry webhook {event_type} for {response_id}; "
+                "run already completed"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]

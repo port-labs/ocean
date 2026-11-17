@@ -7,7 +7,7 @@ from azure_integration.foundry.helpers.webhook_scope import (
 
 
 def test_build_response_external_id() -> None:
-    assert build_response_external_id("resp_abc") == "foundry_response_resp_abc"
+    assert build_response_external_id("resp_abc") == "resp_abc"
 
 
 def test_response_id_from_webhook_payload() -> None:

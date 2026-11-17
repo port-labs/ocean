@@ -7,10 +7,7 @@ from azure.identity.aio import DefaultAzureCredential
 from port_ocean.helpers.async_client import OceanAsyncClient
 
 from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
-from azure_integration.foundry.clients.webhook_client import (
-    FoundryWebhookClient,
-    clear_webhook_secret_cache,
-)
+from azure_integration.foundry.clients.webhook_client import FoundryWebhookClient
 
 if TYPE_CHECKING:
     from azure_integration.foundry.clients.arm_deployments_client import (
@@ -79,4 +76,3 @@ async def clear_client_cache() -> None:
         await _credential.close()
     _arm_client = None
     _credential = None
-    clear_webhook_secret_cache()

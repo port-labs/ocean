@@ -139,12 +139,28 @@ class ResponsesStreamManager:
                 await _flush_logs(run, buffer)
             raise
         except Exception as error:
+            # Fire-and-forget task: log + fail the Port run; do not re-raise
+            # (avoids "Task exception was never retrieved" / debugger stops).
             logger.exception(f"Responses stream failed for {stream_key}: {error}")
-            raise
+            if ocean.port_client.is_run_in_progress(run):
+                with contextlib.suppress(Exception):
+                    await ocean.port_client.post_run_log(
+                        run,
+                        f"Responses stream failed: {error}",
+                        level="ERROR",
+                    )
+                with contextlib.suppress(Exception):
+                    await ocean.port_client.report_run_completed(
+                        run,
+                        False,
+                        status_label="Invoke failed",
+                        should_raise=False,
+                    )
         finally:
             self._tasks.pop(stream_key, None)
             if response is not None:
-                await response.aclose()
+                with contextlib.suppress(Exception):
+                    await response.aclose()
 
 
 async def _iter_sse_lines(response: httpx.Response) -> AsyncIterator[str]:

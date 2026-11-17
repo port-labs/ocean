@@ -395,7 +395,7 @@
           "type": "boolean",
           "required": false,
           "default": false,
-          "description": "When true, keeps the run open until a terminal Foundry response.* webhook completes it (requires OCEAN__BASE_URL and webhook processing); falls back to SSE terminal completion when webhooks are unavailable. When false, closes the run after the invoke is submitted. The Responses request always uses background=true."
+          "description": "When true, keeps the run open until a terminal Foundry response.* webhook or SSE event completes it. When false, closes the run after the invoke is submitted. The Responses request always uses background=true."
         }
       ]
     },
