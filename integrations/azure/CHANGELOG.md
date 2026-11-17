@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2026-11-16)
+
+
+### Features
+
+- >-
+    Add Foundry skill and toolbox sync kinds with optional ARM region filtering on
+    project discovery, A2A sub-agent enrichment on toolboxes (normalize ARM
+    connection ids), and SKILL.md content download for skills (throttled).
+
+
+## 0.3.5 (2026-11-16)
+
+
+### Improvements
+
+- List Foundry conversation and response kinds via selectable endpointScopes (default agent protocol; optional project openai/v1 or both as separate stores), scoped to the integration Azure identity.
+
+
+## 0.3.4 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
+## 0.3.3 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 0.3.2 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.2
+
+
+## 0.3.1 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.1
+
+
+## 0.3.0 (2026-11-12)
+
+
+### Features
+
+- Gate Azure AI Foundry kinds behind a feature flag so they stay hidden in Port until an org is opted in.
+
+
+## 0.2.4 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
 ## 0.2.3 (2026-11-12)
 
 

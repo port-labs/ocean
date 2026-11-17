@@ -7,9 +7,27 @@ from urllib.parse import urljoin
 from port_ocean.utils.time import convert_str_to_utc_datetime
 
 
+def projects_matching_regions(
+    projects: list[dict[str, Any]], regions: list[str]
+) -> list[dict[str, Any]]:
+    if not regions:
+        return projects
+    allowed = {r.casefold() for r in regions}
+    return [
+        project
+        for project in projects
+        if (project.get("location") or "").casefold() in allowed
+    ]
+
+
 def build_foundry_url(project_endpoint: str, path: str) -> str:
     base = project_endpoint.rstrip("/") + "/"
     return urljoin(base, path.lstrip("/"))
+
+
+def agent_openai_protocol_path(agent_id: str, resource: str) -> str:
+    """Path under the agent OpenAI protocol endpoint (conversations/responses)."""
+    return f"agents/{agent_id}/endpoint/protocols/openai/{resource}"
 
 
 def enrich_with_project(

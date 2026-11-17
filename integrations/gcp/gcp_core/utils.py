@@ -131,6 +131,7 @@ class AssetTypesWithSpecialHandling(enum.StrEnum):
     FOLDER = "cloudresourcemanager.googleapis.com/Folder"
     CLOUD_RESOURCE = "cloudResource"
     CLOUD_FUNCTION = "gcpCloudFunction"
+    IAM_POLICY = "iamPolicy"
 
 
 def get_current_resource_config() -> (

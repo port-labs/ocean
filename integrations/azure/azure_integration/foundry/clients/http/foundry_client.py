@@ -23,7 +23,15 @@ _client: FoundryHttpClient | None = None
 
 
 class FoundryApiError(Exception):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+    @property
+    def is_skippable_client_error(self) -> bool:
+        """True for expected 4xx (e.g. missing protocol); false for 429/5xx."""
+        code = self.status_code
+        return code is not None and 400 <= code < 500 and code != 429
 
 
 class FoundryHttpClient:
@@ -95,13 +103,47 @@ class FoundryHttpClient:
                 if response.text
                 else response.reason_phrase
             )
-            raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
+            raise FoundryApiError(
+                f"Foundry API {response.status_code}: {detail}",
+                status_code=response.status_code,
+            )
         if not response.content:
             return {}
         payload = response.json()
         if isinstance(payload, (list, dict)):
             return payload
         return {}
+
+    async def send_bytes_request(
+        self,
+        endpoint: str,
+        *,
+        params: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> bytes:
+        """GET binary payloads (e.g. skill content ZIP). 404 → empty bytes."""
+        query_params = dict(params or {})
+        if not self.uses_openai_compatible_routes(endpoint):
+            query_params.setdefault("api-version", self._api_version)
+        response = await self._http.request(
+            "GET",
+            endpoint,
+            params=query_params or None,
+            headers={
+                **await self._authorization_headers(),
+                **(extra_headers or {}),
+            },
+        )
+        if response.status_code == 404:
+            return b""
+        if response.is_error:
+            detail = (
+                response.text[:_ERROR_BODY_LIMIT]
+                if response.text
+                else response.reason_phrase
+            )
+            raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
+        return response.content or b""
 
     @staticmethod
     def items_from_payload(payload: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:

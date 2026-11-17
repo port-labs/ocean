@@ -7,6 +7,46 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.61.4 (2026-11-15)
+
+
+### Bug Fixes
+
+- Route register_raw/unregister_raw through LIVE_EVENT lakehouse ingestion and skip Ocean-core upsert/delete when DSP and lakehouse are enabled
+
+
+## 0.61.3 (2026-11-15)
+
+
+### Bug Fixes
+
+- Fail runs that error during the pre-acknowledge rate-limit path instead of leaving them Queued
+
+
+## 0.61.2 (2026-11-15)
+
+
+### Improvements
+
+- Remove the unused AWS_V3_CUSTOM_KINDS_ENABLED value from IntegrationFeatureFlag.
+
+
+## 0.61.1 (2026-11-12)
+
+
+### Bug Fixes
+
+- Fix incremental DSP resyncs for repo-managed mappings by sending the mapping on resync started
+
+
+## 0.61.0 (2026-11-12)
+
+
+### Features
+
+- Add `port` vault type for SaaS identity propagation, exchanging identity JWTs for downstream tokens
+
+
 ## 0.60.0 (2026-11-12)
 
 

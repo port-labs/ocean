@@ -11,6 +11,7 @@ An integration used to import gcp resources into Port.
 - cloudasset.assets.exportResource
 - cloudasset.assets.listCloudAssetFeeds
 - cloudasset.assets.listResource
+- cloudasset.assets.searchAllIamPolicies
 - cloudasset.assets.searchAllResources
 - cloudasset.feeds.create
 - cloudasset.feeds.list
@@ -20,6 +21,8 @@ An integration used to import gcp resources into Port.
 - resourcemanager.projects.list
 - resourcemanager.folders.get
 - resourcemanager.folders.list
+
+The `iamPolicy` kind is the only kind that needs `cloudasset.assets.searchAllIamPolicies`, and it needs it on every project in scope.
 
 #### Suggested way of achieving this
 
