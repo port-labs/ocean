@@ -10,7 +10,11 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.helpers.agent_api import build_create_agent_body
+from azure_integration.foundry.helpers.agent_api import (
+    build_create_agent_body,
+    definition_kind,
+    foundry_features_header,
+)
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 
@@ -53,6 +57,7 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
                 self.client.build_url(inputs.projectEndpoint, "agents"),
                 method="POST",
                 json_body=body,
+                extra_headers=foundry_features_header(definition_kind(body)),
             )
         except Exception as error:
             raise ActionExecutionError(

@@ -9,8 +9,6 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.models import IntegrationRun
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
-from azure_integration.foundry.helpers.utils import enrich_with_project
-from azure_integration.foundry.kinds import ObjectKind
 
 
 class AbstractFoundryExecutor(AbstractExecutor):
@@ -58,20 +56,3 @@ class AbstractFoundryExecutor(AbstractExecutor):
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
         await self._catalog(register=False, kind=kind, raw=raw, run=run)
-
-    async def sync_agent_catalog(
-        self, agent_id: str, run: IntegrationRun, *, project_endpoint: str
-    ) -> None:
-        """Fetch agent from Foundry and upsert catalog without waiting for resync."""
-        agent_payload = await self.client.send_api_request(
-            self.client.build_url(project_endpoint, f"agents/{agent_id}"),
-        )
-        if not isinstance(agent_payload, dict) or not agent_payload:
-            logger.warning(f"Could not load agent {agent_id} for catalog sync")
-            return
-
-        await self.register_entity(
-            ObjectKind.FOUNDRY_AGENT,
-            enrich_with_project(agent_payload, project_endpoint=project_endpoint),
-            run,
-        )

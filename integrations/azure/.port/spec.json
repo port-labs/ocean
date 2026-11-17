@@ -213,12 +213,6 @@
           "required": true
         },
         {
-          "name": "name",
-          "title": "Name",
-          "type": "string",
-          "required": false
-        },
-        {
           "name": "model",
           "title": "Model deployment",
           "type": "string",
@@ -234,7 +228,7 @@
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
-          "description": "Optional advanced agent configuration deep-merged into the Foundry update payload (for example definition.tools, description, metadata). First-class fields (name, model, instructions) always win. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
+          "description": "Optional advanced agent configuration deep-merged into the Foundry update payload (for example definition.tools, description, metadata). First-class fields (model, instructions) always win. Agent names are immutable. Reference trigger data with double brackets, for example: {{ .trigger.by.user.email }}.",
           "required": false
         }
       ]
