@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
 
 
 def resolve_effective_datetime(
@@ -12,19 +11,3 @@ def resolve_effective_datetime(
     if cursor is not None:
         return cursor
     return selector_value
-
-
-def is_pushed_since(repo: dict[str, Any], since: datetime | None) -> bool:
-    """Whether the repository's pushed_at is at or after *since*.
-
-    With no *since* (no filter) every repository is. Repositories that were
-    never pushed (no pushed_at) are not.
-    """
-    if since is None:
-        return True
-    pushed_at = repo.get("pushed_at")
-    if not pushed_at:
-        return False
-    if since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
-    return datetime.fromisoformat(pushed_at) >= since

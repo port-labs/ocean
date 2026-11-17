@@ -6,7 +6,6 @@ import httpx
 from github.core.exporters.repository_exporter import (
     ARCHIVED_QUALIFIER_PATTERN,
     ENRICHMENT_BATCH_SIZE,
-    SEARCH_REPO_BATCH_SIZE,
     RestRepositoryExporter,
 )
 from pydantic.v1 import ValidationError
@@ -17,8 +16,6 @@ from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 from integration import GithubRepositorySelector
 from github.clients.auth.github_app.app_authenticator import GitHubAppAuthenticator
-
-PUSHED_SINCE = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 TEST_REPOS = [
     {
@@ -578,6 +575,50 @@ class TestRestRepositoryExporter:
                     "archived-repo",
                 ]
 
+    async def test_search_strategy_applies_incremental_cursor(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        mixed_repos = [
+            {"id": 1, "name": "fresh-repo", "updated_at": "2026-06-02T00:00:00Z"},
+            {"id": 2, "name": "stale-repo", "updated_at": "2026-05-01T00:00:00Z"},
+        ]
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            yield {"items": mixed_repos}
+            yield {"items": mixed_repos}
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                    updated_since=cursor,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert [repo["name"] for repo in repos[0]] == ["fresh-repo"]
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {
+                        "q": "org:test-org code in:name",
+                        "sort": "updated",
+                        "order": "desc",
+                    },
+                )
+
     async def test_list_strategy_applies_pushed_since_cursor(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
@@ -624,25 +665,15 @@ class TestRestRepositoryExporter:
                     {"type": "all", "sort": "pushed", "direction": "desc"},
                 )
 
-    @staticmethod
-    def _pushed_repo(name: str, pushed_at: str | None) -> dict[str, Any]:
-        return {"name": name, "full_name": f"test-org/{name}", "pushed_at": pushed_at}
+    async def test_search_strategy_applies_pushed_since_qualifier(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 
-    @staticmethod
-    async def _collect_incremental_search(
-        rest_client: GithubRestClient,
-        pages_by_url: dict[str, list[Any]],
-        *,
-        organization_type: str = "Organization",
-        repository_type: str = "all",
-        search_params: RepoSearchParams | None = None,
-        cursor_option: str = "pushed_since",
-    ) -> tuple[list[list[dict[str, Any]]], MagicMock]:
         async def mock_paginated_request(
-            url: str, params: dict[str, Any] | None = None, *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[Any, None]:
-            for page in pages_by_url.get(url, []):
-                yield page
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            yield {"items": TEST_REPOS}
 
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
@@ -650,183 +681,22 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
-                    organization_type=organization_type,
-                    type=repository_type,
-                    search_params=search_params,
-                    **{cursor_option: PUSHED_SINCE},  # type: ignore[typeddict-item]
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    search_params=RepoSearchParams(query="code in:name"),
+                    pushed_since=cursor,
                 )
-                repos = [
-                    batch
-                    async for batch in RestRepositoryExporter(
-                        rest_client
-                    ).get_paginated_resources(options)
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
                 ]
-        return repos, mock_request
 
-    async def test_search_pushed_since_lists_pushed_repos_then_matches_query(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        """The search index can report a push late, so pushed repositories come from
-        the live list sorted by pushed_at, and search only checks which of them match
-        the query."""
-        pushed = self._pushed_repo("pushed", "2026-06-01T12:30:00Z")
-        at_cursor = self._pushed_repo("at-cursor", "2026-06-01T12:00:00Z")
-        old = self._pushed_repo("old", "2026-06-01T11:00:00Z")
-        list_url = f"{rest_client.base_url}/orgs/test-org/repos"
-        search_url = f"{rest_client.base_url}/search/repositories"
-
-        repos, mock_request = await self._collect_incremental_search(
-            rest_client,
-            {
-                list_url: [[pushed, at_cursor, old], [old]],
-                # A result outside the pushed batch (e.g. via an org: qualifier in
-                # the query) is not yielded.
-                search_url: [{"items": [pushed, old]}],
-            },
-            search_params=RepoSearchParams(query="code in:name"),
-        )
-
-        assert repos == [[pushed]]
-        assert [c.args for c in mock_request.call_args_list] == [
-            (list_url, {"type": "all", "sort": "pushed", "direction": "desc"}),
-            (
-                search_url,
-                {"q": "repo:test-org/pushed repo:test-org/at-cursor code in:name"},
-            ),
-        ]
-
-    async def test_search_updated_since_lists_updated_repos_then_matches_query(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        """The repository kind's updated_since cursor uses the same flow: the live list
-        sorted by updated_at, not the search index's updated sort."""
-        fresh = {
-            "name": "fresh",
-            "full_name": "test-org/fresh",
-            "updated_at": "2026-06-01T12:30:00Z",
-        }
-        stale = {
-            "name": "stale",
-            "full_name": "test-org/stale",
-            "updated_at": "2026-05-01T00:00:00Z",
-        }
-        list_url = f"{rest_client.base_url}/orgs/test-org/repos"
-        search_url = f"{rest_client.base_url}/search/repositories"
-
-        repos, mock_request = await self._collect_incremental_search(
-            rest_client,
-            {list_url: [[fresh, stale]], search_url: [{"items": [fresh]}]},
-            search_params=RepoSearchParams(query="code in:name"),
-            cursor_option="updated_since",
-        )
-
-        assert repos == [[fresh]]
-        assert [c.args for c in mock_request.call_args_list] == [
-            (list_url, {"type": "all", "sort": "updated", "direction": "desc"}),
-            (search_url, {"q": "repo:test-org/fresh code in:name"}),
-        ]
-
-    async def test_search_pushed_since_with_empty_query_searches_repo_scope(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        pushed = self._pushed_repo("pushed", "2026-06-01T12:30:00Z")
-        old = self._pushed_repo("old", "2026-06-01T11:00:00Z")
-        search_url = f"{rest_client.base_url}/search/repositories"
-
-        repos, mock_request = await self._collect_incremental_search(
-            rest_client,
-            {
-                f"{rest_client.base_url}/orgs/test-org/repos": [[pushed, old]],
-                search_url: [{"items": [pushed]}],
-            },
-            search_params=RepoSearchParams(query=""),
-        )
-
-        assert repos == [[pushed]]
-        assert mock_request.call_args_list[1].args == (
-            search_url,
-            {"q": "repo:test-org/pushed "},
-        )
-
-    async def test_search_pushed_since_without_pushed_repos_skips_search(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        old = self._pushed_repo("old", "2026-06-01T11:00:00Z")
-
-        repos, mock_request = await self._collect_incremental_search(
-            rest_client,
-            {f"{rest_client.base_url}/orgs/test-org/repos": [[old]]},
-            search_params=RepoSearchParams(query="code in:name"),
-        )
-
-        assert repos == []
-        mock_request.assert_called_once()
-
-    async def test_search_pushed_since_batches_repo_qualifiers(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        pushed = [
-            self._pushed_repo(f"repo-{i:02}", "2026-06-01T12:30:00Z")
-            for i in range(SEARCH_REPO_BATCH_SIZE + 5)
-        ]
-
-        _, mock_request = await self._collect_incremental_search(
-            rest_client,
-            {f"{rest_client.base_url}/orgs/test-org/repos": [pushed]},
-            search_params=RepoSearchParams(query="code"),
-        )
-
-        search_queries = [c.args[1]["q"] for c in mock_request.call_args_list[1:]]
-        assert [q.count("repo:") for q in search_queries] == [
-            SEARCH_REPO_BATCH_SIZE,
-            5,
-        ]
-
-    async def test_search_pushed_since_app_on_personal_account_lists_installation(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        """A GitHub App cannot list a personal account's repositories sorted by push,
-        so the installation's repositories are kept by pushed_at across all pages,
-        then matched against the visibility qualifiers in one search call."""
-        from github.clients.auth.github_app.installation_authenticator import (
-            GitHubAppInstallationAuthenticator,
-        )
-
-        app_authenticator = GitHubAppInstallationAuthenticator(
-            app_auth=GitHubAppAuthenticator(
-                app_id="app", private_key="key", github_host=rest_client.base_url
-            ),
-            organization="test-org",
-            installation_id="123",
-        )
-        public = self._pushed_repo("public", "2026-06-01T12:30:00Z")
-        private = self._pushed_repo("private", "2026-06-01T12:30:00Z")
-        old = self._pushed_repo("old", "2026-06-01T11:00:00Z")
-        installation_url = f"{rest_client.base_url}/installation/repositories"
-        search_url = f"{rest_client.base_url}/search/repositories"
-
-        with patch.object(rest_client, "authenticator", app_authenticator):
-            repos, mock_request = await self._collect_incremental_search(
-                rest_client,
-                {
-                    installation_url: [
-                        {"repositories": [old, public]},
-                        {"repositories": [private]},
-                    ],
-                    search_url: [{"items": [public]}],
-                },
-                organization_type="User",
-                repository_type="public",
-            )
-
-        assert repos == [[public]]
-        assert [c.args for c in mock_request.call_args_list] == [
-            (installation_url,),
-            (
-                search_url,
-                {"q": "repo:test-org/public repo:test-org/private fork:true is:public"},
-            ),
-        ]
+                assert repos == [TEST_REPOS]
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {"q": "org:test-org code in:name pushed:>=2026-06-01T12:00:00Z"},
+                )
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig

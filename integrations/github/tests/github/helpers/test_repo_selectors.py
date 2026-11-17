@@ -7,7 +7,6 @@ import pytest
 from github.core.options import ListRepositoryOptions
 from github.helpers.repo_selectors import (
     AllRepositorySelector,
-    CompositeRepositorySelector,
     ExactRepositorySelector,
 )
 from integration import RepositorySourceModel
@@ -123,88 +122,67 @@ class TestExactRepositorySelector:
         assert results == []
 
 
-PUSHED_SINCE = datetime(2026, 11, 15, 10, 0, tzinfo=timezone.utc)
+PUSHED_SINCE = datetime(2026, 6, 1, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
-class TestPushedSinceFilter:
-    @pytest.mark.parametrize("pushed_since", [PUSHED_SINCE, None])
-    async def test_all_selector_passes_pushed_since_to_repo_listing(
-        self, pushed_since: datetime | None
-    ) -> None:
+class TestPushedSinceSelection:
+    async def test_all_selector_passes_pushed_since_to_exporter(self) -> None:
+        selector = RepositorySourceModel.parse_obj({})
         repo_exporter = MagicMock()
         repo_exporter.get_paginated_resources = _make_paginated_resources_mock(
             [[{"name": "repo1", "default_branch": "main"}]]
         )
 
+        strategy = AllRepositorySelector("all")
         [
             result
-            async for result in AllRepositorySelector("repository").select_repos(
-                RepositorySourceModel.parse_obj({}),
-                repo_exporter,
-                "test-org",
-                "Organization",
-                pushed_since=pushed_since,
+            async for result in strategy.select_repos(
+                selector, repo_exporter, "test-org", "Organization", PUSHED_SINCE
             )
         ]
 
-        called_options = repo_exporter.get_paginated_resources.call_args.args[0]
-        assert called_options["pushed_since"] == pushed_since
+        options = repo_exporter.get_paginated_resources.call_args.args[0]
+        assert options["pushed_since"] == PUSHED_SINCE
 
-    @pytest.mark.parametrize(
-        ("pushed_at", "included"),
-        [
-            ("2026-11-15T10:30:00Z", True),
-            ("2026-11-15T10:00:00Z", True),
-            ("2026-11-15T09:59:59Z", False),
-            (None, False),
-        ],
-    )
-    async def test_exact_selector_keeps_only_repos_pushed_since(
-        self, pushed_at: str | None, included: bool
-    ) -> None:
-        selector = RepositorySourceModel.parse_obj({"repos": [{"name": "repo1"}]})
+    async def test_exact_selector_skips_repos_not_pushed_since(self) -> None:
+        selector = RepositorySourceModel.parse_obj(
+            {
+                "repos": [
+                    {"name": "pushed", "branch": "release"},
+                    {"name": "idle"},
+                    {"name": "no-push-time"},
+                ]
+            }
+        )
         repo_exporter = MagicMock()
-        repo = {"name": "repo1", "default_branch": "main", "pushed_at": pushed_at}
-
-        with patch(
-            "github.helpers.repo_selectors.get_repository_metadata",
-            new=AsyncMock(return_value=repo),
-        ):
-            results = [
-                result
-                async for result in ExactRepositorySelector().select_repos(
-                    selector,
-                    repo_exporter,
-                    "test-org",
-                    "Organization",
-                    pushed_since=PUSHED_SINCE,
-                )
-            ]
-
-        assert results == ([("repo1", "main", repo)] if included else [])
-
-    async def test_composite_selector_forwards_pushed_since(self) -> None:
-        selector = RepositorySourceModel.parse_obj({"repos": [{"name": "repo1"}]})
-        stale_repo = {
-            "name": "repo1",
-            "default_branch": "main",
-            "pushed_at": "2026-01-01T00:00:00Z",
+        metadata = {
+            "pushed": {
+                "name": "pushed",
+                "default_branch": "main",
+                "pushed_at": "2026-06-02T00:00:00Z",
+            },
+            "idle": {
+                "name": "idle",
+                "default_branch": "main",
+                "pushed_at": "2026-05-01T00:00:00Z",
+            },
+            "no-push-time": {"name": "no-push-time", "default_branch": "main"},
         }
 
+        async def _get_metadata(client: Any, org: str, name: str) -> Dict[str, Any]:
+            return metadata[name]
+
         with patch(
             "github.helpers.repo_selectors.get_repository_metadata",
-            new=AsyncMock(return_value=stale_repo),
+            new=AsyncMock(side_effect=_get_metadata),
         ):
+            strategy = ExactRepositorySelector()
             results = [
-                result
-                async for result in CompositeRepositorySelector("all").select_repos(
-                    selector,
-                    MagicMock(),
-                    "test-org",
-                    "Organization",
-                    pushed_since=PUSHED_SINCE,
+                (name, branch)
+                async for name, branch, _ in strategy.select_repos(
+                    selector, repo_exporter, "test-org", "Organization", PUSHED_SINCE
                 )
             ]
 
-        assert results == []
+        assert results == [("pushed", "release"), ("no-push-time", "main")]

@@ -1,8 +1,7 @@
 import asyncio
 import copy
 import re
-from datetime import datetime
-from collections.abc import AsyncIterator
+from datetime import datetime, timezone
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -34,13 +33,15 @@ REPOSITORY_INCREMENTAL = ClientSideCutoffStrategy(
 )
 
 
+REPOSITORY_SEARCH_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "order": "desc"},
+)
+
 REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="pushed_at",
     query_params={"sort": "pushed", "direction": "desc"},
 )
-
-# Changed repositories searched per call, as repo: qualifiers.
-SEARCH_REPO_BATCH_SIZE = 50
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
@@ -204,7 +205,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def _search_strategy(
         self,
         organization: str,
-        organization_type: str,
+        _: str,
         params: dict[str, Any],
         search_params: Optional[RepoSearchParams],
         *,
@@ -229,106 +230,34 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else:
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
-        async for scope, full_names in self._search_scopes(
-            organization,
-            organization_type,
-            incremental_cursor=incremental_cursor,
-            pushed_since=pushed_since,
-        ):
-            query_params = {"q": f"{scope} {raw_q}", **params}
-            url = f"{self.client.base_url}/search/repositories"
-
-            async for repos in self._search_result_items(url, query_params):
-                if full_names is not None:
-                    repos = [
-                        repo
-                        for repo in repos
-                        if repo["full_name"].lower() in full_names
-                    ]
-                if repos:
-                    logger.info(
-                        f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
-                    )
-                    yield repos
-
-    async def _search_scopes(
-        self,
-        organization: str,
-        organization_type: str,
-        *,
-        incremental_cursor: datetime | None,
-        pushed_since: datetime | None,
-    ) -> AsyncIterator[tuple[str, Optional[set[str]]]]:
-        """Scopes to run the search query in, with the repositories each is
-        limited to (``None``: no limit).
-
-        Without a cursor this is the whole organization. With one, the search
-        index can report changes late, so changed repositories come from a live
-        listing and are searched in ``repo:`` batches; results are limited to
-        the batch because search ORs those with scope qualifiers in the query.
-        """
-        if not (incremental_cursor or pushed_since):
-            yield f"org:{organization}", None
-            return
-
-        async for changed in self._list_changed_repos(
-            organization,
-            organization_type,
-            incremental_cursor=incremental_cursor,
-            pushed_since=pushed_since,
-        ):
-            for batch in batched(changed, SEARCH_REPO_BATCH_SIZE):
-                full_names = [repo["full_name"] for repo in batch]
-                yield (
-                    " ".join(f"repo:{name}" for name in full_names),
-                    {name.lower() for name in full_names},
-                )
-
-    async def _list_changed_repos(
-        self,
-        organization: str,
-        organization_type: str,
-        *,
-        incremental_cursor: datetime | None,
-        pushed_since: datetime | None,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """List the repositories changed since the cursor, from live data.
-
-        A GitHub App cannot list a personal account's private repositories
-        through ``/user/repos``, so it lists the installation's repositories
-        (unsorted) and cuts them off by the cursor, as one batch.
-        """
-        if organization_type == "User" and isinstance(
-            self.client.authenticator, GitHubAppInstallationAuthenticator
-        ):
-            strategy, cursor = (
-                (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
-                if pushed_since
-                else (REPOSITORY_INCREMENTAL, incremental_cursor)
+        if pushed_since:
+            # Search has no "pushed" sort, so filter server-side with a qualifier instead.
+            raw_q = (
+                f"{raw_q} pushed:>={self._format_search_datetime(pushed_since)}".strip()
             )
-            changed = [
-                repo
-                async for page in self.client.send_paginated_request(
-                    f"{self.client.base_url}/installation/repositories"
-                )
-                for repo in strategy.filter_page(
-                    cast(dict[str, list[dict[str, Any]]], page)["repositories"],
-                    cursor,
-                )
-            ]
-            if changed:
-                yield changed
-            return
+            incremental_cursor = None
 
-        async for repos in self._list_strategy(
-            organization,
-            organization_type,
-            {"type": "all"},
-            None,
-            incremental_cursor=incremental_cursor,
-            pushed_since=pushed_since,
+        query_params = {
+            "q": f"org:{organization} {raw_q}",
+            **REPOSITORY_SEARCH_INCREMENTAL.merge_params(params, incremental_cursor),
+        }
+        url = f"{self.client.base_url}/search/repositories"
+
+        async for repos in paginate_with_strategy(
+            self._search_result_items(url, query_params),
+            cursor=incremental_cursor,
+            strategy=REPOSITORY_SEARCH_INCREMENTAL,
         ):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from search for organization {organization}"
+            )
             yield repos
+
+    @staticmethod
+    def _format_search_datetime(value: datetime) -> str:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     async def _search_result_items(
         self, url: str, query_params: dict[str, Any]
