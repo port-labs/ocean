@@ -43,8 +43,13 @@ def ootb_toolbox_name(agent_id: str) -> str:
     return _agent_resource("port-mcps", agent_id)
 
 
-def toolbox_consumer_url(project_endpoint: str, toolbox_name: str) -> str:
-    return f"{project_endpoint.rstrip('/')}/toolboxes/{toolbox_name}/mcp?api-version=v1"
+def toolbox_consumer_url(
+    project_endpoint: str, toolbox_name: str, *, version: str | int
+) -> str:
+    base = project_endpoint.rstrip("/")
+    return (
+        f"{base}/toolboxes/{toolbox_name}/versions/{version}/mcp?api-version=v1"
+    )
 
 
 def _bearer_value(token: str) -> str:
@@ -72,6 +77,38 @@ def _managed_mcp_tool(tool: Any) -> bool:
         return False
     label = tool.get("server_label")
     return label in (TOOLBOX_SERVER_LABEL, PORT_MCP_SERVER_LABEL)
+
+
+def _agent_had_ootb_port(tools: list[Any] | None) -> bool:
+    if not tools:
+        return False
+    return any(_managed_mcp_tool(tool) for tool in tools)
+
+
+def _port_toolbox_entry(agent_id: str) -> dict[str, Any]:
+    conn = port_connection_name(agent_id)
+    port_url = required_port_mcp_url()
+    return _mcp_toolbox_tool(
+        server_label=PORT_MCP_SERVER_LABEL,
+        server_url=port_url,
+        project_connection_id=conn,
+    )
+
+
+def _port_in_toolbox_entries(toolbox_tools: list[dict[str, Any]]) -> bool:
+    return any(
+        t.get("server_label") == PORT_MCP_SERVER_LABEL for t in toolbox_tools
+    )
+
+
+def _toolbox_version_from_response(payload: Any) -> str:
+    if not isinstance(payload, dict):
+        return "1"
+    for key in ("version", "id", "name", "version_id"):
+        value = payload.get(key)
+        if value is not None and str(value).strip():
+            return str(value)
+    return "1"
 
 
 def tools_from_agent_payload(agent: Any) -> list[Any]:
@@ -174,8 +211,8 @@ async def upsert_ootb_toolbox(
     project_endpoint: str,
     toolbox_name: str,
     tools: list[dict[str, Any]],
-) -> None:
-    await client.send_api_request(
+) -> str:
+    response = await client.send_api_request(
         client.build_url(project_endpoint, f"toolboxes/{toolbox_name}/versions"),
         method="POST",
         json_body={
@@ -184,6 +221,7 @@ async def upsert_ootb_toolbox(
         },
         extra_headers=_TOOLBOXES_HEADER,
     )
+    return _toolbox_version_from_response(response)
 
 
 async def _patch_agent_tools(
@@ -212,14 +250,15 @@ async def ensure_ootb_mcp(
     attach_to_prompt_agent: bool = True,
     existing_tools: list[Any] | None = None,
     include_existing_port_in_toolbox: bool = False,
-) -> str | None:
+) -> tuple[str, str] | None:
+    _ = git_provider
     toolbox_tools: list[dict[str, Any]] = []
 
     if enable_port_mcp:
         if not port_access_token:
             logger.warning(
                 f"enablePortMcp set for agent {agent_id} but no execution "
-                "identity token; skipping Port MCP connection"
+                "identity token; skipping Port MCP connection remint"
             )
         else:
             conn = port_connection_name(agent_id)
@@ -256,16 +295,20 @@ async def ensure_ootb_mcp(
             )
         )
 
-    if include_existing_port_in_toolbox and not enable_port_mcp:
-        conn = port_connection_name(agent_id)
-        port_url = required_port_mcp_url()
-        toolbox_tools.append(
-            _mcp_toolbox_tool(
-                server_label=PORT_MCP_SERVER_LABEL,
-                server_url=port_url,
-                project_connection_id=conn,
-            )
+    agent_payload: dict[str, Any] | None = None
+    if existing_tools is not None:
+        tools_context = list(existing_tools)
+    else:
+        agent_payload = await _load_agent(
+            client, project_endpoint=project_endpoint, agent_id=agent_id
         )
+        tools_context = tools_from_agent_payload(agent_payload)
+    should_preserve_port = (
+        include_existing_port_in_toolbox or (enable_port_mcp and not port_access_token)
+    ) and toolbox_tools and _agent_had_ootb_port(tools_context)
+
+    if should_preserve_port and not _port_in_toolbox_entries(toolbox_tools):
+        toolbox_tools.append(_port_toolbox_entry(agent_id))
 
     if not toolbox_tools:
         if attach_to_prompt_agent and existing_tools is not None:
@@ -280,7 +323,7 @@ async def ensure_ootb_mcp(
         return None
 
     toolbox_name = ootb_toolbox_name(agent_id)
-    await upsert_ootb_toolbox(
+    toolbox_version = await upsert_ootb_toolbox(
         client,
         project_endpoint=project_endpoint,
         toolbox_name=toolbox_name,
@@ -288,18 +331,16 @@ async def ensure_ootb_mcp(
     )
 
     if not attach_to_prompt_agent:
-        return toolbox_name
+        return toolbox_name, toolbox_version
 
-    toolbox_url = toolbox_consumer_url(project_endpoint, toolbox_name)
-    tools = list(existing_tools) if existing_tools is not None else []
-    if existing_tools is None:
-        agent = await _load_agent(
-            client, project_endpoint=project_endpoint, agent_id=agent_id
-        )
-        kind = (agent.get("definition") or {}).get("kind") or "prompt"
+    toolbox_url = toolbox_consumer_url(
+        project_endpoint, toolbox_name, version=toolbox_version
+    )
+    if agent_payload is not None:
+        kind = (agent_payload.get("definition") or {}).get("kind") or "prompt"
         if kind != "prompt":
-            return toolbox_name
-        tools = tools_from_agent_payload(agent)
+            return toolbox_name, toolbox_version
+    tools = list(tools_context)
 
     try:
         await _patch_agent_tools(
@@ -310,7 +351,7 @@ async def ensure_ootb_mcp(
         )
     except Exception as error:
         logger.warning(f"Failed to attach ootb toolbox on agent {agent_id}: {error}")
-    return toolbox_name
+    return toolbox_name, toolbox_version
 
 
 def sanitize_git_provider(value: str | None) -> GitProvider:
