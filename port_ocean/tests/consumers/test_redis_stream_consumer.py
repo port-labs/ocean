@@ -100,7 +100,8 @@ class TestRedisStreamConsumerConnection:
         assert consumer._redis_connection_helper.client_kwargs(settings) == {
             "decode_responses": True,
             "legacy_responses": True,
-            "socket_timeout": None,
+            "socket_timeout": 15.0,
+            "socket_connect_timeout": 5.0,
             "username": "redis-user",
             "password": "redis-pass",
         }
@@ -134,7 +135,7 @@ class TestRedisStreamConsumerConnection:
 
         assert kwargs["connection_class"] is SSLConnection
         assert kwargs["legacy_responses"] is True
-        assert kwargs["socket_timeout"] is None
+        assert kwargs["socket_timeout"] == 15.0
         assert kwargs["ssl_ca_data"] == ca_pem
         assert kwargs["ssl_certfile"] == helper._ssl_cert_file
         assert kwargs["ssl_keyfile"] == helper._ssl_key_file
@@ -423,6 +424,26 @@ class TestRedisStreamConsumerConnection:
 
         mock_sleep.assert_awaited_once_with(2.5)
         assert mock_redis.xreadgroup.await_count == 2
+
+    def test_socket_timeout_exceeds_block_time(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            block_ms=10_000,
+            socket_timeout_seconds=1.0,
+        )
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+
+        assert consumer._socket_timeout_seconds == 15.0
 
 
 class TestRedisStreamConsumerGroupCreation:
