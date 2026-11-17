@@ -39,7 +39,7 @@ REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     query_params={"sort": "pushed", "direction": "desc"},
 )
 
-# Pushed repositories matched against the search query in one search call.
+# Changed repositories searched per call, as repo: qualifiers.
 SEARCH_REPO_BATCH_SIZE = 50
 
 if TYPE_CHECKING:
@@ -144,9 +144,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
         exclude_archived = params.pop("exclude_archived", False)
+        is_personal_account = organization_type == "User"
+        is_github_app_authenticated = isinstance(
+            self.client.authenticator, GitHubAppInstallationAuthenticator
+        )
 
         use_search_api = search_params is not None or (
-            self._is_app_on_personal_account(organization_type)
+            is_github_app_authenticated and is_personal_account
         )
         strategy = self._search_strategy if use_search_api else self._list_strategy
 
@@ -176,7 +180,11 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         pushed_since: datetime | None = None,
         exclude_archived: bool = False,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        strategy, cursor = self._cutoff(incremental_cursor, pushed_since)
+        strategy, cursor = (
+            (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
+            if pushed_since
+            else (REPOSITORY_INCREMENTAL, incremental_cursor)
+        )
         url, final_params = self._build_repos_url_and_params(
             organization,
             organization_type,
@@ -227,9 +235,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             incremental_cursor=incremental_cursor,
             pushed_since=pushed_since,
         ):
-            async for repos in self._search_result_items(
-                {"q": f"{scope} {raw_q}".strip(), **params}
-            ):
+            query_params = {"q": f"{scope} {raw_q}", **params}
+            url = f"{self.client.base_url}/search/repositories"
+
+            async for repos in self._search_result_items(url, query_params):
                 if full_names is not None:
                     repos = [
                         repo
@@ -250,14 +259,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         incremental_cursor: datetime | None,
         pushed_since: datetime | None,
     ) -> AsyncIterator[tuple[str, Optional[set[str]]]]:
-        """Scopes to run the search query in, each with the repositories it is
+        """Scopes to run the search query in, with the repositories each is
         limited to (``None``: no limit).
 
-        Without a cursor the whole organization is one scope. With one, the
-        search index can report changes late, so the changed repositories come
-        from a live listing and are searched in batches of ``repo:``
-        qualifiers. Search ORs those with any scope qualifier in the query, so
-        results are limited to the batch.
+        Without a cursor this is the whole organization. With one, the search
+        index can report changes late, so changed repositories come from a live
+        listing and are searched in ``repo:`` batches; results are limited to
+        the batch because search ORs those with scope qualifiers in the query.
         """
         if not (incremental_cursor or pushed_since):
             yield f"org:{organization}", None
@@ -286,14 +294,18 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """List the repositories changed since the cursor, from live data.
 
-        Uses the list strategy sorted by the cursor's field, which stops at the
-        cursor. A GitHub App on a personal account cannot list the account's
-        private repositories that way, so the installation's repositories are
-        listed (unsorted) and cut off by the same field, as one batch so search
-        calls are not split by page.
+        A GitHub App cannot list a personal account's private repositories
+        through ``/user/repos``, so it lists the installation's repositories
+        (unsorted) and cuts them off by the cursor, as one batch.
         """
-        if self._is_app_on_personal_account(organization_type):
-            strategy, cursor = self._cutoff(incremental_cursor, pushed_since)
+        if organization_type == "User" and isinstance(
+            self.client.authenticator, GitHubAppInstallationAuthenticator
+        ):
+            strategy, cursor = (
+                (REPOSITORY_PUSHED_INCREMENTAL, pushed_since)
+                if pushed_since
+                else (REPOSITORY_INCREMENTAL, incremental_cursor)
+            )
             changed = [
                 repo
                 async for page in self.client.send_paginated_request(
@@ -318,28 +330,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ):
             yield repos
 
-    @staticmethod
-    def _cutoff(
-        incremental_cursor: datetime | None, pushed_since: datetime | None
-    ) -> tuple[ClientSideCutoffStrategy, datetime | None]:
-        """The live-list cutoff: by ``pushed_at`` when set, else ``updated_at``."""
-        if pushed_since:
-            return REPOSITORY_PUSHED_INCREMENTAL, pushed_since
-        return REPOSITORY_INCREMENTAL, incremental_cursor
-
-    def _is_app_on_personal_account(self, organization_type: str) -> bool:
-        """GitHub App installation tokens cannot list a personal account's
-        private repositories through ``/user/repos``."""
-        return organization_type == "User" and isinstance(
-            self.client.authenticator, GitHubAppInstallationAuthenticator
-        )
-
     async def _search_result_items(
-        self, query_params: dict[str, Any]
+        self, url: str, query_params: dict[str, Any]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Search repositories, unwrapping the envelope so pages are plain lists."""
+        """Unwrap the search API envelope so pages are plain repository lists."""
         async for search_results in self.client.send_paginated_request(
-            f"{self.client.base_url}/search/repositories", query_params
+            url, query_params
         ):
             casted = cast(dict[str, Any], search_results)
             yield casted["items"]

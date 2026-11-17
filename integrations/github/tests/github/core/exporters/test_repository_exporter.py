@@ -745,7 +745,7 @@ class TestRestRepositoryExporter:
         assert repos == [[pushed]]
         assert mock_request.call_args_list[1].args == (
             search_url,
-            {"q": "repo:test-org/pushed"},
+            {"q": "repo:test-org/pushed "},
         )
 
     async def test_search_pushed_since_without_pushed_repos_skips_search(
