@@ -1,44 +1,5 @@
 name: Wiz CLI scan
 
-# In-repo copy of port-labs/infra-utils/.github/workflows/wizcli.yml.
-# Ocean is public, so GitHub cannot resolve reusable workflows from the
-# private infra-utils repo (see https://github.com/port-labs/ocean/actions/runs/44057839898).
-#
-# This workflow does not build images. The caller must pass already-built
-# image URIs (GHCR tags for Ocean). ECR/OIDC login from infra-utils is omitted
-# because it used a private composite action.
-#
-# Caller workflow needs:
-#   permissions:
-#     contents: read
-#     packages: read    # GHCR pull for image scan
-#   secrets: inherit    # WIZ_CLIENT_ID, WIZ_CLIENT_SECRET (org secrets preferred)
-#
-# Caller (directory scan only):
-#   wiz-cli-dir-scan:
-#     uses: ./.github/workflows/wizcli.yml
-#     secrets: inherit
-#     with:
-#       enable_directory_scan: true
-#       enable_image_scan: false
-#
-# Caller (image scan of images already built/pushed by CI):
-#   wiz-cli-image-scan:
-#     needs: prepare-wiz-images
-#     uses: ./.github/workflows/wizcli.yml
-#     secrets: inherit
-#     with:
-#       enable_directory_scan: false
-#       enable_image_scan: true
-#       images: ${{ needs.prepare-wiz-images.outputs.images }}
-#
-# `images` is a JSON array of image URIs and/or objects:
-#   ["ghcr.io/port-labs/port-ocean-jira:latest"]
-#   [{ "name": "jira", "image_uri": "ghcr.io/port-labs/port-ocean-jira:latest" }]
-#
-# Scans are non-blocking by default (continue_on_error: true). Enforcement is a
-# separate follow-up: set continue_on_error: false and add a required check.
-
 on:
   workflow_call:
     inputs:
@@ -138,10 +99,6 @@ permissions:
   packages: read
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Code scan (runs once on the caller repo)
-  # Policies with a "Code Action": IaC, SAST, Secrets, Sensitive data, Vulnerabilities (SCA)
-  # ---------------------------------------------------------------------------
   wiz-cli-dir-scan:
     name: Wiz-cli code scan
     if: ${{ inputs.enable_directory_scan }}
@@ -181,9 +138,6 @@ jobs:
           unset IFS
           "${RUNNER_TEMP}/wizcli" scan dir "$SCAN_PATH" --policies "$POLICIES"
 
-  # ---------------------------------------------------------------------------
-  # Expand `images` into {name, image_uri, platforms}. Does not build images.
-  # ---------------------------------------------------------------------------
   prepare-images:
     name: Normalize images to scan
     if: ${{ inputs.enable_image_scan }}
@@ -259,11 +213,6 @@ jobs:
           echo "Normalized $(echo "$result" | jq 'length') image(s)"
           echo "$result" | jq .
 
-  # ---------------------------------------------------------------------------
-  # Container image scan of already-built images
-  # Policies with a "Build Action" that apply to images:
-  # Host configuration, Malware, Secrets, Sensitive data, Vulnerabilities
-  # ---------------------------------------------------------------------------
   wiz-cli-image-scan:
     name: Wiz-cli scan ${{ matrix.name }}
     needs: prepare-images
@@ -272,7 +221,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Dummy object keeps fromJson valid if this job is skipped (directory-scan-only callers).
         include: ${{ fromJson(needs.prepare-images.outputs.images != '[]' && needs.prepare-images.outputs.images || '[{"name":"noop","image_uri":"noop","platforms":"linux/amd64"}]') }}
     steps:
       - name: Log in to GHCR
