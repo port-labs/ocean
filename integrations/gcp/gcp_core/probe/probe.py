@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import BoundedSemaphore
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -16,10 +17,10 @@ from gcp_core.utils import AssetTypesWithSpecialHandling
 from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
 from port_ocean.core.probe import ProbeCheck, ProbeCheckStatus, ProbeContext
 
-_MAX_LISTED_CONTAINERS = 5
+_MAX_LISTED_GROUPS = 5
 
-# (container, granted permissions, error) - exactly one of the last two is set.
-_ContainerResult = tuple[str, frozenset[str] | None, str | None]
+# (granted permissions, error) - exactly one is set.
+_ContainerResult = tuple[frozenset[str] | None, str | None]
 
 
 @dataclass(frozen=True)
@@ -62,11 +63,15 @@ _LEVELS = (
 )
 
 
-def _summarize(messages: list[str]) -> str:
-    shown = messages[:_MAX_LISTED_CONTAINERS]
-    summary = "; ".join(shown)
-    remaining = len(messages) - len(shown)
-    if remaining:
+def _summarize(label: str, total: int, messages: list[str]) -> str:
+    groups = Counter(messages).most_common()
+    noun = label if total == 1 else f"{label}s"
+    summary = "; ".join(
+        f"{count} of {total} {noun} - {message}"
+        for message, count in groups[:_MAX_LISTED_GROUPS]
+    )
+    remaining = len(groups) - _MAX_LISTED_GROUPS
+    if remaining > 0:
         summary += f" (and {remaining} more)"
     return summary
 
@@ -77,8 +82,9 @@ class GcpPermissionProbe:
     Checks are unscoped on purpose - one per kind, not one per kind x container.
     Scoping them the way aws-v3 does would multiply: an org with 500 projects and the
     5 project-level kinds is 2,500 checks re-serialized on every update_progress, where
-    aws-v3's accounts x regions stays far lower. Per-container detail goes into the
-    check message instead, capped at _MAX_LISTED_CONTAINERS.
+    aws-v3's accounts x regions stays far lower. The per-container detail goes into
+    the check message instead, as a count of containers per distinct verdict rather
+    than a list of container names, which does not grow with the size of the org.
 
     IAM grants are verified, not whether the backing API is enabled on the container -
     a granted cloudasset permission still fails with SERVICE_DISABLED at resync. That
@@ -169,7 +175,7 @@ class GcpPermissionProbe:
             )
         )
         for check in level_checks:
-            check.status, check.message = self._combine(check.kind, results)
+            check.status, check.message = self._combine(level, check.kind, results)
         await self.context.update_progress()
 
     async def _discover(self, level: _ContainerLevel) -> list[str]:
@@ -203,32 +209,34 @@ class GcpPermissionProbe:
                 logger.warning(
                     f"Failed to test IAM permissions on {container}: {error}"
                 )
-                return container, None, f"Could not verify access: {error.message}"
-        return container, frozenset(response.permissions), None
+                return None, f"Could not verify access: {error.message}"
+        return frozenset(response.permissions), None
 
     def _combine(
         self,
+        level: _ContainerLevel,
         kind: str,
         results: list[_ContainerResult],
     ) -> tuple[ProbeCheckStatus, str]:
         failures: list[str] = []
         unknowns: list[str] = []
-        for container, granted, error in results:
+        for granted, error in results:
             if granted is None:
-                unknowns.append(f"{container}: {error}")
+                unknowns.append(str(error))
                 continue
             status, message = self.permission_verdict.verdict(
                 kind, dict.fromkeys(granted, True)
             )
             if status is ProbeCheckStatus.FAILURE:
-                failures.append(f"{container}: {message}")
+                failures.append(message)
             elif status is ProbeCheckStatus.UNKNOWN:
-                unknowns.append(f"{container}: {message}")
+                unknowns.append(message)
 
+        total = len(results)
         if failures:
-            return ProbeCheckStatus.FAILURE, _summarize(failures)
+            return ProbeCheckStatus.FAILURE, _summarize(level.label, total, failures)
         if unknowns:
-            return ProbeCheckStatus.UNKNOWN, _summarize(unknowns)
+            return ProbeCheckStatus.UNKNOWN, _summarize(level.label, total, unknowns)
         return ProbeCheckStatus.SUCCESS, self.permission_verdict.granted_message(
             self.permission_verdict.kind_permissions[kind]
         )

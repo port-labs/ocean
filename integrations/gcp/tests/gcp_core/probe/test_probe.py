@@ -109,7 +109,7 @@ async def test_probe_fails_only_the_kind_whose_permission_is_missing(
     checks = checks_by_kind(probe_context)
     assert checks[PROJECT].status is ProbeCheckStatus.SUCCESS
     assert checks[TOPIC].status is ProbeCheckStatus.FAILURE
-    assert "projects/sandbox" in str(checks[TOPIC].message)
+    assert "1 of 1 project" in str(checks[TOPIC].message)
     assert "pubsub.topics.list" in str(checks[TOPIC].message)
 
 
@@ -211,16 +211,23 @@ async def test_probe_reports_unknown_when_a_container_check_errors(
 
 
 @pytest.mark.asyncio
-async def test_probe_truncates_the_container_list_past_five(
+async def test_probe_counts_the_containers_sharing_a_verdict(
     probe_context: ProbeContext,
     install_client: Callable[[str, MagicMock], None],
 ) -> None:
     probe_context.available_kinds = [PROJECT]
     client = make_client(
-        "search_projects",
-        "projects",
-        [f"projects/p{index}" for index in range(8)],
-        granted=[],
+        "search_projects", "projects", [f"projects/p{index}" for index in range(8)]
+    )
+    granted_projects = {"projects/p0", "projects/p1", "projects/p2"}
+    client.test_iam_permissions = AsyncMock(
+        side_effect=lambda request, **_: SimpleNamespace(
+            permissions=(
+                ["resourcemanager.projects.get"]
+                if request["resource"] in granted_projects
+                else []
+            )
+        )
     )
     install_client("ProjectsAsyncClient", client)
 
@@ -228,8 +235,32 @@ async def test_probe_truncates_the_container_list_past_five(
 
     check = checks_by_kind(probe_context)[PROJECT]
     assert check.status is ProbeCheckStatus.FAILURE
-    assert str(check.message).count("projects/p") == 5
-    assert "(and 3 more)" in str(check.message)
+    assert (
+        str(check.message)
+        == "5 of 8 projects - Missing permission(s): resourcemanager.projects.get"
+    )
+
+
+@pytest.mark.asyncio
+async def test_probe_caps_the_number_of_distinct_verdicts_listed(
+    probe_context: ProbeContext,
+    install_client: Callable[[str, MagicMock], None],
+) -> None:
+    probe_context.available_kinds = [PROJECT]
+    client = make_client(
+        "search_projects", "projects", [f"projects/p{index}" for index in range(7)]
+    )
+    client.test_iam_permissions = AsyncMock(
+        side_effect=[PermissionDenied(f"denied on p{index}") for index in range(7)]
+    )
+    install_client("ProjectsAsyncClient", client)
+
+    await run_probe(probe_context)
+
+    check = checks_by_kind(probe_context)[PROJECT]
+    assert check.status is ProbeCheckStatus.UNKNOWN
+    assert str(check.message).count("Could not verify access") == 5
+    assert "(and 2 more)" in str(check.message)
 
 
 @pytest.mark.asyncio
