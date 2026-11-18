@@ -37,6 +37,41 @@ def _clear_completion_caches() -> None:
 
 
 @pytest.mark.asyncio
+async def test_complete_unclaims_when_port_report_fails() -> None:
+    _clear_completion_caches()
+    run = _workflow_run("run_fail_report")
+    run.config.integrationActionExecutionProperties = {
+        "projectEndpoint": "https://x/api/projects/p",
+    }
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.report_run_completed = AsyncMock(
+        side_effect=RuntimeError("port down")
+    )
+    with (
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
+            AsyncMock(return_value={"id": "resp_fail", "status": "completed"}),
+        ),
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
+        pytest.raises(RuntimeError, match="port down"),
+    ):
+        mock_manager.return_value.untrack_for_run = AsyncMock()
+        await complete_invoke_run_for_response(
+            run,
+            response_id="resp_fail",
+            response_body={"id": "resp_fail"},
+            success=True,
+            source="test",
+        )
+    assert not is_response_completion_claimed("resp_fail")
+    assert "run_fail_report" not in _completed_invoke_run_ids
+
+
+@pytest.mark.asyncio
 async def test_complete_invoke_run_is_idempotent() -> None:
     _clear_completion_caches()
     run = MagicMock()

@@ -11,6 +11,7 @@ from azure_integration.foundry.actions.abstract_action_input import (
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.actions.responses_invoke_mixin import (
+    INVOKE_RUNNING_STATUS_LABEL,
     ResponsesInvokeMixin,
 )
 from azure_integration.foundry.helpers.conversation_api import (
@@ -69,7 +70,16 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         project_endpoint = inputs.project_endpoint
         git_provider = sanitize_git_provider(inputs.gitProvider)
         port_token = get_run_access_token(run) if inputs.enablePortMcp else None
-        want_mcp = inputs.enablePortMcp or bool(inputs.gitAccessToken)
+        # Remint only when credentials exist; bare enablePortMcp without a token
+        # must not strip existing toolboxes or fail hosted invokes.
+        want_mcp = bool(inputs.gitAccessToken) or (
+            inputs.enablePortMcp and bool(port_token)
+        )
+        if inputs.enablePortMcp and not port_token:
+            logger.warning(
+                f"enablePortMcp set for invoke on agent {inputs.agentId} but "
+                "no execution identity token; Port connection will not be reminted"
+            )
         if want_mcp:
             await self._ensure_mcp_before_invoke(
                 run, inputs, port_token, git_provider, project_endpoint
@@ -101,6 +111,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             bind_output=bind_output,
             report_invocation_status=inputs.reportInvocationStatus,
             early_complete_on_bind=not inputs.reportInvocationStatus,
+            running_status_label=INVOKE_RUNNING_STATUS_LABEL,
         )
 
     async def _ensure_mcp_before_invoke(
@@ -111,12 +122,6 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         git_provider: str,
         project_endpoint: str,
     ) -> None:
-        if inputs.enablePortMcp and not port_token:
-            logger.warning(
-                f"enablePortMcp set for invoke on agent {inputs.agentId} but "
-                "no execution identity token; Port connection will not be reminted"
-            )
-
         try:
             agent = await self.client.send_api_request(
                 self.client.build_url(
@@ -124,10 +129,10 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 )
             )
         except Exception as error:
-            agent = {}
-            logger.warning(
+            # Kind unknown without the agent payload — do not guess prompt vs hosted.
+            raise ActionExecutionError(
                 f"Could not load agent {inputs.agentId} before MCP remint: {error}"
-            )
+            ) from error
 
         agent_payload = agent if isinstance(agent, dict) else {}
         kind = agent_definition_kind(agent_payload)

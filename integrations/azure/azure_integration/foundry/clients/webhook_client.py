@@ -71,6 +71,21 @@ class FoundryWebhookClient:
             raise httpx.HTTPError("Unexpected create webhook response")
         return body
 
+    async def update_webhook_endpoint(
+        self, endpoint_id: str, *, event_types: list[str]
+    ) -> None:
+        url = (
+            f"{dashboard_webhook_endpoints_url(self._account_base_url)}/"
+            f"{endpoint_id}"
+        )
+        headers = await self._auth_headers()
+        response = await self._http.post(
+            url,
+            headers=headers,
+            json={"event_types": event_types},
+        )
+        response.raise_for_status()
+
     async def upsert_webhook(self, base_url: str) -> None:
         webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
         try:
@@ -87,10 +102,18 @@ class FoundryWebhookClient:
                 if set(_RESPONSE_WEBHOOK_EVENTS).issubset(current):
                     logger.info(f"Foundry webhook already registered for {webhook_url}")
                     return
-                logger.warning(
-                    "Foundry webhook URL exists but event_types differ; "
-                    "update manually in Foundry dashboard"
+                endpoint_id = existing.get("id")
+                if not endpoint_id:
+                    logger.warning(
+                        "Foundry webhook URL exists but event_types differ and "
+                        "endpoint id is missing; update manually in Foundry dashboard"
+                    )
+                    return
+                await self.update_webhook_endpoint(
+                    str(endpoint_id),
+                    event_types=_RESPONSE_WEBHOOK_EVENTS,
                 )
+                logger.info(f"Updated Foundry webhook events for {webhook_url}")
                 return
 
             await self.create_webhook_endpoint(

@@ -3,6 +3,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.actions.responses_invoke_mixin import (
+    MODEL_RUNNING_STATUS_LABEL,
     ResponsesInvokeMixin,
 )
 from azure_integration.foundry.helpers.conversation_api import (
@@ -48,4 +49,5 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 "projectArmId": inputs.projectArmId,
             },
             complete_on_sse_terminal=True,
+            running_status_label=MODEL_RUNNING_STATUS_LABEL,
         )

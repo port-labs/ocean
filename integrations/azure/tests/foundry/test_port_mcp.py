@@ -227,6 +227,34 @@ async def test_ensure_port_mcp_github_only() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ensure_port_mcp_empty_tools_does_not_strip_agent() -> None:
+    client = MagicMock()
+    client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
+    client.send_api_request = AsyncMock()
+    existing = [
+        {
+            "type": "mcp",
+            "server_label": TOOLBOX_SERVER_LABEL,
+            "server_url": "https://old/versions/1/mcp",
+        }
+    ]
+    with patch(
+        "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+        return_value="https://mcp.example/v1",
+    ):
+        result = await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id="agent-1",
+            enable_port_mcp=True,
+            port_access_token=None,
+            existing_tools=existing,
+        )
+    assert result is None
+    client.send_api_request.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> None:
     client = MagicMock()
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
