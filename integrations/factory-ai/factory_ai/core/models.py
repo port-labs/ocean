@@ -9,7 +9,8 @@ class FactoryModel(BaseModel):
     """Base for Factory Public API payloads.
 
     ``extra = allow`` keeps unknown fields so Port mappings stay forward-compatible.
-    ``dict(by_alias=True)`` restores the API's camelCase shape for Ocean RAW_ITEMs.
+    ``dict(by_alias=True, exclude_none=True)`` restores the API's camelCase
+    shape and drops absent optional fields so JQ does not see invented nulls.
     """
 
     class Config:
@@ -18,7 +19,7 @@ class FactoryModel(BaseModel):
         frozen = True
 
     def to_raw_item(self) -> dict[str, Any]:
-        return self.dict(by_alias=True)
+        return self.dict(by_alias=True, exclude_none=True)
 
 
 class FactoryListOptions(BaseModel):
