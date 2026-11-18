@@ -9,9 +9,9 @@ from azure_integration.foundry.helpers.port_mcp import (
     TOOLBOX_SERVER_LABEL,
     agent_definition_kind,
     attach_toolbox_to_agent_config,
-    ensure_ootb_mcp,
+    ensure_port_mcp,
     merge_toolbox_into_tools,
-    ootb_toolbox_name,
+    port_toolbox_name,
     port_connection_name,
     resolve_toolbox_name,
     sanitize_git_provider,
@@ -23,9 +23,9 @@ from azure_integration.foundry.helpers.port_mcp import (
 def test_resource_names_are_stable_and_short() -> None:
     agent_id = "agent-framework-agent-basic-responses"
     assert len(port_connection_name(agent_id)) <= 33
-    assert len(ootb_toolbox_name(agent_id)) <= 33
+    assert len(port_toolbox_name(agent_id)) <= 33
     assert port_connection_name(agent_id) == port_connection_name(agent_id)
-    assert resolve_toolbox_name(agent_id) == ootb_toolbox_name(agent_id)
+    assert resolve_toolbox_name(agent_id) == port_toolbox_name(agent_id)
     assert resolve_toolbox_name(agent_id, " my-toolbox ") == "my-toolbox"
     assert agent_definition_kind({"definition": {"kind": "hosted"}}) == "hosted"
     assert agent_definition_kind({}) == "prompt"
@@ -102,7 +102,7 @@ def test_toolbox_consumer_url() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ensure_ootb_mcp_upserts_port_and_github() -> None:
+async def test_ensure_port_mcp_upserts_port_and_github() -> None:
     client = MagicMock()
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
@@ -118,7 +118,7 @@ async def test_ensure_ootb_mcp_upserts_port_and_github() -> None:
         "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
         return_value="https://mcp.example/v1",
     ):
-        result = await ensure_ootb_mcp(
+        result = await ensure_port_mcp(
             client,
             project_endpoint="https://proj",
             agent_id="cursor-test-agent",
@@ -127,7 +127,7 @@ async def test_ensure_ootb_mcp_upserts_port_and_github() -> None:
             git_access_token="ghp_x",
             git_provider="github",
         )
-    assert result == (ootb_toolbox_name("cursor-test-agent"), "3")
+    assert result == (port_toolbox_name("cursor-test-agent"), "3")
     assert client.send_api_request.await_count == 5
 
     port_put = client.send_api_request.await_args_list[0]
@@ -155,7 +155,7 @@ async def test_ensure_ootb_mcp_upserts_port_and_github() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ensure_ootb_mcp_skips_attach_for_hosted() -> None:
+async def test_ensure_port_mcp_skips_attach_for_hosted() -> None:
     client = MagicMock()
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
@@ -169,7 +169,7 @@ async def test_ensure_ootb_mcp_skips_attach_for_hosted() -> None:
         "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
         return_value="https://mcp.example/v1",
     ):
-        result = await ensure_ootb_mcp(
+        result = await ensure_port_mcp(
             client,
             project_endpoint="https://proj",
             agent_id="hosted-1",
@@ -184,7 +184,7 @@ async def test_ensure_ootb_mcp_skips_attach_for_hosted() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ensure_ootb_mcp_github_only() -> None:
+async def test_ensure_port_mcp_github_only() -> None:
     client = MagicMock()
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
@@ -194,7 +194,7 @@ async def test_ensure_ootb_mcp_github_only() -> None:
             {"version": "1"},  # toolbox POST
         ]
     )
-    result = await ensure_ootb_mcp(
+    result = await ensure_port_mcp(
         client,
         project_endpoint="https://proj",
         agent_id="a1",
@@ -203,7 +203,7 @@ async def test_ensure_ootb_mcp_github_only() -> None:
         git_access_token="ghp_x",
         attach_to_prompt_agent=False,
     )
-    assert result == (ootb_toolbox_name("a1"), "1")
+    assert result == (port_toolbox_name("a1"), "1")
     toolbox_tools = client.send_api_request.await_args_list[2].kwargs["json_body"][
         "tools"
     ]
@@ -212,7 +212,7 @@ async def test_ensure_ootb_mcp_github_only() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ensure_ootb_mcp_preserves_port_on_git_remint_without_token() -> None:
+async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> None:
     client = MagicMock()
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
@@ -238,7 +238,7 @@ async def test_ensure_ootb_mcp_preserves_port_on_git_remint_without_token() -> N
         "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
         return_value="https://mcp.example/v1",
     ):
-        result = await ensure_ootb_mcp(
+        result = await ensure_port_mcp(
             client,
             project_endpoint="https://proj",
             agent_id="agent-1",

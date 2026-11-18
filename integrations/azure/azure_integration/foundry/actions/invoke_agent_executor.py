@@ -19,7 +19,7 @@ from azure_integration.foundry.helpers.conversation_api import (
 )
 from azure_integration.foundry.helpers.port_mcp import (
     agent_definition_kind,
-    ensure_ootb_mcp,
+    ensure_port_mcp,
     sanitize_git_provider,
     tools_from_agent_payload,
 )
@@ -111,7 +111,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         hosted = kind == "hosted"
 
         try:
-            toolbox_result = await ensure_ootb_mcp(
+            toolbox_result = await ensure_port_mcp(
                 self.client,
                 project_endpoint=inputs.projectEndpoint,
                 agent_id=inputs.agentId,
@@ -131,7 +131,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                     f"{inputs.agentId}: {error}"
                 ) from error
             logger.warning(
-                f"Failed to remint ootb MCP on agent {inputs.agentId}: {error}"
+                f"Failed to remint Port MCP on agent {inputs.agentId}: {error}"
             )
             return
 

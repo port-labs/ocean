@@ -39,13 +39,13 @@ def github_connection_name(agent_id: str) -> str:
     return _agent_resource("github-mcp", agent_id)
 
 
-def ootb_toolbox_name(agent_id: str) -> str:
+def port_toolbox_name(agent_id: str) -> str:
     return _agent_resource("port-mcps", agent_id)
 
 
 def resolve_toolbox_name(agent_id: str, toolbox_name: str | None = None) -> str:
     custom = (toolbox_name or "").strip()
-    return custom or ootb_toolbox_name(agent_id)
+    return custom or port_toolbox_name(agent_id)
 
 
 def agent_definition_kind(agent: dict[str, Any] | None) -> str:
@@ -94,7 +94,7 @@ def _managed_mcp_tool(tool: Any) -> bool:
     return label in (TOOLBOX_SERVER_LABEL, PORT_MCP_SERVER_LABEL)
 
 
-def _agent_had_ootb_port(tools: list[Any] | None) -> bool:
+def _agent_had_port_toolbox(tools: list[Any] | None) -> bool:
     if not tools:
         return False
     return any(_managed_mcp_tool(tool) for tool in tools)
@@ -220,7 +220,7 @@ async def upsert_custom_keys_connection(
     )
 
 
-async def upsert_ootb_toolbox(
+async def upsert_port_toolbox(
     client: Any,
     *,
     project_endpoint: str,
@@ -231,7 +231,7 @@ async def upsert_ootb_toolbox(
         client.build_url(project_endpoint, f"toolboxes/{toolbox_name}/versions"),
         method="POST",
         json_body={
-            "description": "Port Ocean ootb MCP toolbox (Port ± GitHub)",
+            "description": "Port toolbox (Port ± GitHub MCP)",
             "tools": tools,
         },
         extra_headers=_TOOLBOXES_HEADER,
@@ -253,7 +253,7 @@ async def _patch_agent_tools(
     )
 
 
-async def ensure_ootb_mcp(
+async def ensure_port_mcp(
     client: Any,
     *,
     project_endpoint: str,
@@ -322,7 +322,7 @@ async def ensure_ootb_mcp(
         tools_context = tools_from_agent_payload(agent_payload)
     should_preserve_port = (
         include_existing_port_in_toolbox or (enable_port_mcp and not port_access_token)
-    ) and toolbox_tools and _agent_had_ootb_port(tools_context)
+    ) and toolbox_tools and _agent_had_port_toolbox(tools_context)
 
     if should_preserve_port and not _port_in_toolbox_entries(toolbox_tools):
         toolbox_tools.append(_port_toolbox_entry(agent_id))
@@ -340,7 +340,7 @@ async def ensure_ootb_mcp(
         return None
 
     resolved_toolbox_name = resolve_toolbox_name(agent_id, toolbox_name)
-    toolbox_version = await upsert_ootb_toolbox(
+    toolbox_version = await upsert_port_toolbox(
         client,
         project_endpoint=project_endpoint,
         toolbox_name=resolved_toolbox_name,
@@ -367,7 +367,7 @@ async def ensure_ootb_mcp(
             tools=merge_toolbox_into_tools(tools, toolbox_url=toolbox_url),
         )
     except Exception as error:
-        logger.warning(f"Failed to attach ootb toolbox on agent {agent_id}: {error}")
+        logger.warning(f"Failed to attach Port toolbox on agent {agent_id}: {error}")
     return resolved_toolbox_name, toolbox_version
 
 
