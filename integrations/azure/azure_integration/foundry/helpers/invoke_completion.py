@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from urllib.parse import quote
 
 from loguru import logger
 from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 
+from azure_integration.foundry.core.exporters.project_exporter import (
+    foundry_project_from_arm_id,
+)
 from azure_integration.foundry.helpers.model_responses_api import fetch_foundry_response
 from azure_integration.foundry.helpers.responses_catalog import (
     catalog_agent_id,
@@ -16,11 +18,11 @@ from azure_integration.foundry.helpers.responses_catalog import (
     normalize_foundry_response,
 )
 from azure_integration.foundry.helpers.responses_stream import (
+    ResponsesSseEvent,
     success_for_terminal_sse_event,
 )
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.helpers.webhook_scope import (
-    build_response_external_id,
     extract_assistant_text_from_response,
     usage_from_response,
 )
@@ -54,16 +56,52 @@ def is_response_completion_claimed(response_id: str) -> bool:
     return bool(response_id) and response_id in _completed_response_ids
 
 
-def response_body_from_sse_event(parsed: dict[str, Any]) -> dict[str, Any] | None:
-    response = parsed.get("response")
-    return response if isinstance(response, dict) else None
+def response_body_from_sse_event(
+    parsed: ResponsesSseEvent,
+) -> dict[str, Any] | None:
+    return parsed.response
+
+
+def _is_unresolved_template(value: str) -> bool:
+    return "{{" in value
+
+
+def _looks_like_resolved_project_endpoint(value: str) -> bool:
+    endpoint = value.strip()
+    if not endpoint or _is_unresolved_template(endpoint):
+        return False
+    lower = endpoint.casefold()
+    return lower.startswith("http://") or lower.startswith("https://")
+
+
+def _endpoint_from_arm_id(arm_id: str | None) -> str | None:
+    if (
+        not isinstance(arm_id, str)
+        or not arm_id.strip()
+        or _is_unresolved_template(arm_id)
+    ):
+        return None
+    project = foundry_project_from_arm_id(arm_id.strip())
+    if project is None:
+        return None
+    return project.endpoint.rstrip("/")
 
 
 def _project_endpoint_from_run(run: IntegrationRun) -> str | None:
-    props = run.execution_properties or {}
-    endpoint = props.get("projectEndpoint")
-    if isinstance(endpoint, str) and endpoint.strip():
-        return endpoint.rstrip("/")
+    # Prefer bound run.output (resolved ids) over execution_properties (may still
+    # hold unresolved JQ like "{{ .outputs... }}").
+    sources: list[Any] = []
+    prior = run.output if isinstance(run, WorkflowNodeRun) else None
+    if isinstance(prior, dict):
+        sources.append(prior)
+    sources.append(run.execution_properties or {})
+    for src in sources:
+        endpoint = src.get("projectEndpoint")
+        if isinstance(endpoint, str) and _looks_like_resolved_project_endpoint(endpoint):
+            return endpoint.rstrip("/")
+        resolved = _endpoint_from_arm_id(src.get("projectArmId"))
+        if resolved:
+            return resolved
     return None
 
 
@@ -166,18 +204,34 @@ async def complete_invoke_run_for_response(
         if not ocean.port_client.is_run_in_progress(run):
             _remember_completed(run.id, response_id)
             return False
-        _remember_completed(run.id, response_id)
 
-    output = run.output if isinstance(run, WorkflowNodeRun) else {}
+    prior = run.output if isinstance(run, WorkflowNodeRun) else {}
     agent_id = str(
-        run.execution_properties.get("agentId") or output.get("agentId") or ""
+        run.execution_properties.get("agentId") or prior.get("agentId") or ""
     )
     deployment_name = str(
         run.execution_properties.get("deploymentName")
-        or output.get("deploymentName")
+        or prior.get("deploymentName")
         or ""
     ).strip()
     project_endpoint = _project_endpoint_from_run(run)
+    if response_body is None and not project_endpoint:
+        logger.error(
+            f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "
+            f"(response {response_id})"
+        )
+        async with _completion_lock:
+            if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
+                return False
+            _remember_completed(run.id, response_id)
+        await ocean.port_client.report_run_completed(
+            run,
+            False,
+            status_label=FAILED_STATUS_LABEL,
+            should_raise=False,
+        )
+        return True
+
     # Always prefer a GET so usage/model/conversation exist (webhook payload is id-only).
     display_body = (
         await response_body_for_catalog(
@@ -186,39 +240,36 @@ async def complete_invoke_run_for_response(
         if project_endpoint
         else response_body
     )
-    extra_output: dict[str, Any] = {"responseId": response_id}
+    # Slim run output: ids + answer text + token usage only.
+    slim: dict[str, Any] = {"responseId": response_id}
+    if prior.get("conversationId"):
+        slim["conversationId"] = prior["conversationId"]
     if isinstance(display_body, dict):
-        extra_output.update(usage_from_response(display_body))
+        slim.update(usage_from_response(display_body))
         text = extract_assistant_text_from_response(display_body)
         if text:
-            extra_output["response"] = text
-        if display_body.get("model"):
-            extra_output["model"] = display_body["model"]
-        if display_body.get("status"):
-            extra_output["responseStatus"] = display_body["status"]
+            slim["answer"] = text
         conversation = display_body.get("conversation")
         if isinstance(conversation, dict) and conversation.get("id"):
-            extra_output["conversationId"] = conversation["id"]
+            slim["conversationId"] = conversation["id"]
         elif display_body.get("conversation_id"):
-            extra_output["conversationId"] = display_body["conversation_id"]
+            slim["conversationId"] = display_body["conversation_id"]
 
     if isinstance(run, WorkflowNodeRun):
-        run.output.update(extra_output)
+        run.output = slim
 
-    entity_link: str | None = None
+    async with _completion_lock:
+        if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
+            return False
+        _remember_completed(run.id, response_id)
+
     if register_catalog and isinstance(display_body, dict):
-        registered = await register_catalog_response_from_body(
+        await register_catalog_response_from_body(
             display_body,
             run,
             fallback_agent_id=agent_id or None,
             fallback_model_deployment_id=deployment_name or None,
         )
-        if registered:
-            entity_link = foundry_response_entity_page_url(response_id)
-            if entity_link:
-                extra_output["responseEntityLink"] = entity_link
-                if isinstance(run, WorkflowNodeRun):
-                    run.output["responseEntityLink"] = entity_link
         if success:
             row = conversation_row_from_response(
                 display_body, agent_id=agent_id or None
@@ -239,12 +290,6 @@ async def complete_invoke_run_for_response(
         f"Completing run {run.id} from {source} "
         f"(response {response_id}, success={success})"
     )
-    if isinstance(run, WorkflowNodeRun) and entity_link:
-        await ocean.port_client.patch_wf_node_run(
-            run.id,
-            {"links": [entity_link], "output": run.output},
-            should_raise=False,
-        )
     await ocean.port_client.report_run_completed(
         run,
         success,
@@ -267,24 +312,21 @@ async def complete_invoke_run_from_webhook(
         )
         return False
     success = event_type == "response.completed"
+    # Option C: untrack (cancel → flush buffer) before report_run_completed.
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
         response_body=None,  # force GET via response_body_for_catalog
         success=success,
         source=f"Foundry webhook {event_type}",
-        keep_stream=True,
         register_catalog=success,
     )
 
 
 async def complete_invoke_run_from_sse(
-    run: IntegrationRun, parsed: dict[str, Any]
+    run: IntegrationRun, parsed: ResponsesSseEvent
 ) -> bool:
-    event_type = parsed.get("type")
-    if not isinstance(event_type, str):
-        return False
-    success = success_for_terminal_sse_event(event_type)
+    success = success_for_terminal_sse_event(parsed.type)
     if success is None:
         return False
     response_body = response_body_from_sse_event(parsed)
@@ -301,33 +343,15 @@ async def complete_invoke_run_from_sse(
         response_id=response_id,
         response_body=response_body,
         success=success,
-        source=f"Responses SSE {event_type}",
+        source=f"Responses SSE {parsed.type}",
         register_catalog=success,
     )
-
-
-def foundry_response_entity_page_url(response_id: str) -> str | None:
-    if not response_id:
-        return None
-    configured = ocean.config.port.app_url
-    if configured is not None:
-        base = str(configured).rstrip("/")
-    else:
-        api_url = str(ocean.port_client.api_url).rstrip("/")
-        base = api_url.replace("api.", "app.").removesuffix("/v1")
-    if not base:
-        return None
-    page = f"{quote('foundry_response', safe='')}Entity"
-    query = quote(response_id, safe="")
-    return f"{base}/{page}?identifier={query}"
 
 
 async def find_in_progress_run_for_response(response_id: str) -> IntegrationRun | None:
     if is_response_completion_claimed(response_id):
         return None
-    run = await ocean.port_client.find_run_by_external_id(
-        build_response_external_id(response_id)
-    )
+    run = await ocean.port_client.find_run_by_external_id(response_id)
     if run is None or not ocean.port_client.is_run_in_progress(run):
         return None
     return run

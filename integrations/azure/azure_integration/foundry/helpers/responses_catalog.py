@@ -2,43 +2,68 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+
 from azure_integration.foundry.helpers.utils import timestamp_to_iso
+
+_TOOL_CALL_TYPES = {
+    "function_call",
+    "mcp_call",
+    "tool_call",
+    "code_interpreter_call",
+    "file_search_call",
+    "web_search_call",
+}
+
+
+class FoundryUsage(BaseModel):
+    """Stable token-usage shape (OpenAI + Responses aliases)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+    def row_fields(self) -> dict[str, int]:
+        prompt = (
+            self.prompt_tokens if self.prompt_tokens is not None else self.input_tokens
+        )
+        completion = (
+            self.completion_tokens
+            if self.completion_tokens is not None
+            else self.output_tokens
+        )
+        fields: dict[str, int] = {}
+        if prompt is not None:
+            fields["prompt_tokens"] = int(prompt)
+        if completion is not None:
+            fields["completion_tokens"] = int(completion)
+        if self.total_tokens is not None:
+            fields["total_tokens"] = int(self.total_tokens)
+        elif prompt is not None and completion is not None:
+            fields["total_tokens"] = int(prompt) + int(completion)
+        return fields
 
 
 def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
-    prompt = usage.get("prompt_tokens")
-    if prompt is None:
-        prompt = usage.get("input_tokens")
-    completion = usage.get("completion_tokens")
-    if completion is None:
-        completion = usage.get("output_tokens")
-    total = usage.get("total_tokens")
-    if prompt is not None:
-        row["prompt_tokens"] = int(prompt)
-    if completion is not None:
-        row["completion_tokens"] = int(completion)
-    if total is not None:
-        row["total_tokens"] = int(total)
-    elif prompt is not None and completion is not None:
-        row["total_tokens"] = int(prompt) + int(completion)
+    try:
+        row.update(FoundryUsage.model_validate(usage).row_fields())
+    except ValidationError:
+        return
 
 
 def count_tool_calls_in_response(response: dict[str, Any]) -> int:
+    # output[] items vary widely by tool — keep as plain dicts.
     output = response.get("output")
     if not isinstance(output, list):
         return 0
-    tool_types = {
-        "function_call",
-        "mcp_call",
-        "tool_call",
-        "code_interpreter_call",
-        "file_search_call",
-        "web_search_call",
-    }
     return sum(
         1
         for item in output
-        if isinstance(item, dict) and str(item.get("type") or "") in tool_types
+        if isinstance(item, dict) and str(item.get("type") or "") in _TOOL_CALL_TYPES
     )
 
 
@@ -113,6 +138,7 @@ def model_deployment_id_from_response(response: dict[str, Any]) -> str | None:
 
 
 def normalize_foundry_response(source: dict[str, Any]) -> dict[str, Any] | None:
+    # Full Foundry response body stays a dict — shape is large and unstable.
     response_id = source.get("id")
     if not response_id:
         return None

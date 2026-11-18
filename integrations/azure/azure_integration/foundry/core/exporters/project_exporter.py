@@ -48,8 +48,9 @@ class FoundryProject(BaseModel):
         return f"https://{self.account_endpoint_host}"
 
 
-def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
-    project_id = str(project.get("id") or "")
+def foundry_project_from_arm_id(arm_id: str) -> FoundryProject | None:
+    """Parse a project resource id without ARM list/discovery."""
+    project_id = arm_id.strip()
     match = _ARM_PROJECT_ID.match(project_id)
     if match is None:
         return None
@@ -71,8 +72,18 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
             f"https://{account_name}.services.ai.azure.com/api/projects/{project_name}"
         ),
         account_endpoint_host=f"{account_name}.services.ai.azure.com",
-        location=str(project["location"]) if project.get("location") else None,
-        tags=project["tags"] if isinstance(project.get("tags"), dict) else {},
+    )
+
+
+def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
+    base = foundry_project_from_arm_id(str(project.get("id") or ""))
+    if base is None:
+        return None
+    return base.model_copy(
+        update={
+            "location": str(project["location"]) if project.get("location") else None,
+            "tags": project["tags"] if isinstance(project.get("tags"), dict) else {},
+        }
     )
 
 

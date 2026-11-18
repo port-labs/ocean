@@ -1,13 +1,8 @@
 from azure_integration.foundry.helpers.webhook_scope import (
-    build_response_external_id,
     extract_assistant_text_from_response,
     response_id_from_webhook_payload,
     usage_from_response,
 )
-
-
-def test_build_response_external_id() -> None:
-    assert build_response_external_id("resp_abc") == "resp_abc"
 
 
 def test_response_id_from_webhook_payload() -> None:
@@ -35,4 +30,11 @@ def test_usage_from_response() -> None:
         {"usage": {"input_tokens": 3, "output_tokens": 5, "total_tokens": 8}}
     )
     assert usage["inputTokens"] == 3
+    assert usage["totalTokens"] == 8
+
+
+def test_usage_from_response_sums_when_total_missing() -> None:
+    usage = usage_from_response(
+        {"usage": {"input_tokens": 3, "output_tokens": 5}}
+    )
     assert usage["totalTokens"] == 8

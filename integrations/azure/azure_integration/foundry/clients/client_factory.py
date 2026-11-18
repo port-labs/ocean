@@ -13,23 +13,9 @@ if TYPE_CHECKING:
     from azure_integration.foundry.clients.foundry_arm_client import FoundryArmClient
 
 _ARM_SCOPE = "https://management.azure.com/.default"
-_FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 
 _credential: DefaultAzureCredential | None = None
 _arm_client: FoundryArmClient | None = None
-
-
-class _FoundryHeaderProvider:
-    """Bearer tokens for Foundry account-level webhook APIs."""
-
-    def __init__(self) -> None:
-        self._credential: DefaultAzureCredential | None = None
-
-    async def get_authorization_header(self) -> dict[str, str]:
-        if self._credential is None:
-            self._credential = DefaultAzureCredential()
-        token = await self._credential.get_token(_FOUNDRY_SCOPE)
-        return {"Authorization": f"Bearer {token.token}"}
 
 
 def azure_credential() -> DefaultAzureCredential:
@@ -60,7 +46,6 @@ def create_foundry_arm_client() -> FoundryArmClient:
 def create_webhook_client_for_account(account_base_url: str) -> FoundryWebhookClient:
     return FoundryWebhookClient(
         http=OceanAsyncClient(timeout=httpx.Timeout(60.0)),
-        authenticator=_FoundryHeaderProvider(),
         account_base_url=account_base_url,
     )
 

@@ -202,6 +202,7 @@ async def upsert_custom_keys_connection(
     name: str,
     target: str,
     access_token: str,
+    project_arm_id: str | None = None,
 ) -> None:
     # Data-plane /connections is GET-only; remint must go through ARM.
     from azure_integration.foundry.clients.client_factory import (
@@ -213,6 +214,7 @@ async def upsert_custom_keys_connection(
         name=name,
         target=target,
         access_token=access_token,
+        project_arm_id=project_arm_id,
     )
 
 
@@ -278,6 +280,7 @@ async def ensure_port_mcp(
     include_existing_port_in_toolbox: bool = False,
     toolbox_name: str | None = None,
     agent_kind: str | None = None,
+    project_arm_id: str | None = None,
 ) -> tuple[str, str] | None:
     _ = git_provider
     toolbox_tools: list[dict[str, Any]] = []
@@ -296,6 +299,7 @@ async def ensure_port_mcp(
                 name=conn,
                 target=port_url,
                 access_token=port_access_token,
+                project_arm_id=project_arm_id,
             )
             toolbox_tools.append(
                 _mcp_toolbox_tool(
@@ -312,6 +316,7 @@ async def ensure_port_mcp(
             name=conn,
             target=GITHUB_MCP_URL,
             access_token=git_access_token,
+            project_arm_id=project_arm_id,
         )
         toolbox_tools.append(
             _mcp_toolbox_tool(

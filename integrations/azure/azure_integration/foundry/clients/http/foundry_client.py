@@ -13,6 +13,7 @@ from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 from azure_integration.foundry.clients.http.retry_transport import (
     FOUNDRY_RETRY_AFTER_HEADERS,
     FoundryRetryTransport,
+    FoundryStreamingTransport,
 )
 from azure_integration.foundry.helpers.utils import build_foundry_url
 
@@ -51,11 +52,21 @@ class FoundryHttpClient:
         self._page_size = page_size
         self.rate_limiter = FoundryRateLimiter()
         self._credential: DefaultAzureCredential | None = None
+        retry_config = RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS)
+        hooks = {"response": [self._on_response]}
         self._http = OceanAsyncClient(
             FoundryRetryTransport,
-            retry_config=RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS),
+            retry_config=retry_config,
             timeout=httpx.Timeout(60.0),
-            event_hooks={"response": [self._on_response]},
+            event_hooks=hooks,
+        )
+        # Separate client for SSE: default retry transport buffers chunked bodies
+        # when Ocean streaming.enabled is false.
+        self._stream_http = OceanAsyncClient(
+            FoundryStreamingTransport,
+            retry_config=retry_config,
+            timeout=httpx.Timeout(60.0, read=None),
+            event_hooks=hooks,
         )
 
     async def _on_response(self, response: httpx.Response) -> None:
@@ -69,6 +80,7 @@ class FoundryHttpClient:
 
     async def close(self) -> None:
         await self._http.aclose()
+        await self._stream_http.aclose()
         if self._credential is not None:
             await self._credential.close()
             self._credential = None
@@ -236,15 +248,20 @@ class FoundryHttpClient:
         query_params = dict(params or {})
         if not self.uses_openai_compatible_routes(invoke_url):
             query_params.setdefault("api-version", self._api_version)
-        response = await self._http.request(
+        # Use _stream_http (no body prefetch) + send(stream=True). Regular
+        # _http RetryTransport buffers chunked SSE until the agent finishes.
+        request = self._stream_http.build_request(
             "POST",
             invoke_url,
             params=query_params or None,
             json=stream_body,
             headers=headers,
         )
+        response = await self._stream_http.send(request, stream=True)
         if response.is_error:
-            detail = response.text[:2000] if response.text else response.reason_phrase
+            with contextlib.suppress(Exception):
+                await response.aread()
+            detail = (response.text or response.reason_phrase or "")[:2000]
             status_code = response.status_code
             # Close before raise so the connection is not left half-open (SSL shutdown).
             with contextlib.suppress(Exception):

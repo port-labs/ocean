@@ -19,10 +19,11 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeModelInputs.from_execution_properties(run.execution_properties)
+        project_endpoint = inputs.project_endpoint
         try:
             conversation_id = await resolve_conversation_for_invoke(
                 self.client,
-                project_endpoint=inputs.projectEndpoint,
+                project_endpoint=project_endpoint,
                 conversation_id=inputs.conversationId,
             )
         except Exception as error:
@@ -35,7 +36,7 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             conversation_id=conversation_id,
             extra_body=inputs.extraBody,
         )
-        invoke_url = self.client.build_url(inputs.projectEndpoint, path)
+        invoke_url = self.client.build_url(project_endpoint, path)
         await self.execute_responses_invoke(
             run,
             invoke_label=f"Invoking model deployment {inputs.deploymentName}",
@@ -43,8 +44,8 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             invoke_url=invoke_url,
             body=body,
             bind_output={
-                "deploymentName": inputs.deploymentName,
                 "conversationId": conversation_id,
+                "projectArmId": inputs.projectArmId,
             },
             complete_on_sse_terminal=True,
         )

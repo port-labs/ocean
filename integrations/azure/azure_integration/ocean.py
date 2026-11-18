@@ -37,10 +37,8 @@ from azure_integration.foundry.clients.client_factory import (
 from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
 from azure_integration.foundry.kinds import DEFAULT_FOUNDRY_ARM_API_VERSION
 import azure_integration.foundry.resync  # noqa: F401
-from azure_integration.foundry.webhook_processors.abstract_webhook_processor import (
-    WEBHOOK_PATH,
-)
 from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
+    WEBHOOK_PATH,
     ConversationWebhookProcessor,
 )
 from port_ocean.utils.signal import signal_handler
@@ -249,6 +247,13 @@ async def on_start() -> None:
 
     register_action_executors()
     signal_handler.register(clear_client_cache)
+
+    async def _shutdown_foundry_streams() -> None:
+        from azure_integration.foundry.stream_manager import get_stream_manager
+
+        await get_stream_manager().shutdown()
+
+    signal_handler.register(_shutdown_foundry_streams)
 
     if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(

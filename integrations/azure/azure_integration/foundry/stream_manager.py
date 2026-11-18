@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.helpers.responses_stream import (
+    ResponsesSseEvent,
     format_responses_sse_log_message,
     parse_responses_sse_payload,
     response_id_from_sse_event,
@@ -21,7 +23,11 @@ from azure_integration.foundry.helpers.responses_stream import (
 )
 
 OnResponseIdCallback = Callable[[str], Awaitable[None] | None]
-OnTerminalSseCallback = Callable[[dict[str, Any]], Awaitable[None] | None]
+OnTerminalSseCallback = Callable[[ResponsesSseEvent], Awaitable[None] | None]
+
+# Same default as CMA stream manager; not user-configurable.
+_MAX_CONCURRENT_STREAMS = 10
+_LOG_FLUSH_BATCH_SIZE = 10
 
 
 class ResponsesStreamManager:
@@ -42,6 +48,11 @@ class ResponsesStreamManager:
     ) -> bool:
         if stream_key in self._tasks:
             return False
+        if len(self._tasks) >= _MAX_CONCURRENT_STREAMS:
+            raise ActionExecutionError(
+                f"Too many concurrent Foundry response streams "
+                f"(max {_MAX_CONCURRENT_STREAMS}); retry later"
+            )
         task = asyncio.create_task(
             self._consume_stream(
                 stream_key,
@@ -62,6 +73,10 @@ class ResponsesStreamManager:
         task = self._tasks.pop(stream_key, None)
         if task is None:
             return
+        # SSE completion may untrack from inside the stream task; do not
+        # cancel/await self (deadlock). finally already pops the entry.
+        if task is asyncio.current_task():
+            return
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
@@ -71,6 +86,11 @@ class ResponsesStreamManager:
         for key in list(self._tasks):
             if key.startswith(prefix):
                 await self.untrack(key)
+
+    async def shutdown(self) -> None:
+        """Cancel all live streams (process exit)."""
+        for key in list(self._tasks):
+            await self.untrack(key)
 
     async def _consume_stream(
         self,
@@ -88,16 +108,19 @@ class ResponsesStreamManager:
         buffer: list[WorkflowNodeRunLog] = []
         response: httpx.Response | None = None
         response_id_reported = False
+        terminal_parsed: ResponsesSseEvent | None = None
         try:
             response = await client.open_responses_stream(
                 invoke_url, response_body, params=params
             )
-            async for line in _iter_sse_lines(response):
-                if not line.startswith("data:"):
+            async for line in response.aiter_lines():
+                if not line or not line.startswith("data:"):
                     continue
                 payload = line.removeprefix("data:").strip()
-                if not payload or payload == "[DONE]":
+                if not payload:
                     continue
+                if payload == "[DONE]":
+                    break
                 parsed = parse_responses_sse_payload(payload)
                 if parsed is None:
                     continue
@@ -108,18 +131,11 @@ class ResponsesStreamManager:
                         result = on_response_id(response_id)
                         if asyncio.iscoroutine(result):
                             await result
-                event_type = parsed.get("type")
                 if (
                     stop_on_terminal_sse
-                    and isinstance(event_type, str)
-                    and success_for_terminal_sse_event(event_type) is not None
+                    and success_for_terminal_sse_event(parsed.type) is not None
                 ):
-                    if buffer:
-                        await _flush_logs(run, buffer)
-                    if on_terminal_sse is not None:
-                        result = on_terminal_sse(parsed)
-                        if asyncio.iscoroutine(result):
-                            await result
+                    terminal_parsed = parsed
                     break
                 message = format_responses_sse_log_message(parsed)
                 if message is None:
@@ -130,10 +146,14 @@ class ResponsesStreamManager:
                         level="INFO",
                     )
                 )
-                if len(buffer) >= 10:
+                if len(buffer) >= _LOG_FLUSH_BATCH_SIZE:
                     await _flush_logs(run, buffer)
             if buffer:
                 await _flush_logs(run, buffer)
+            if terminal_parsed is not None and on_terminal_sse is not None:
+                result = on_terminal_sse(terminal_parsed)
+                if asyncio.iscoroutine(result):
+                    await result
         except asyncio.CancelledError:
             if buffer:
                 await _flush_logs(run, buffer)
@@ -163,18 +183,16 @@ class ResponsesStreamManager:
                     await response.aclose()
 
 
-async def _iter_sse_lines(response: httpx.Response) -> AsyncIterator[str]:
-    async for chunk in response.aiter_lines():
-        if chunk:
-            yield chunk
-
-
 async def _flush_logs(run: IntegrationRun, buffer: list[WorkflowNodeRunLog]) -> None:
     if not buffer:
         return
     logs = list(buffer)
     buffer.clear()
-    await ocean.port_client.post_run_logs(run, logs)
+    # Skip once Port run is terminal (avoids 409 noise after webhook wins).
+    if not ocean.port_client.is_run_in_progress(run):
+        return
+    with contextlib.suppress(Exception):
+        await ocean.port_client.post_run_logs(run, logs)
 
 
 _stream_manager: ResponsesStreamManager | None = None
