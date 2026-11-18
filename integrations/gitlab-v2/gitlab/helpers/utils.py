@@ -205,6 +205,12 @@ def changed_folders(path: str, changed_paths: list[str]) -> set[str]:
     }
 
 
+def is_branch_push_to(event: dict[str, Any], ref: str) -> bool:
+    """True when a project event is a push to branch ``ref``."""
+    push = event.get("push_data") or {}
+    return push.get("ref_type") == "branch" and push.get("ref") == ref
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:

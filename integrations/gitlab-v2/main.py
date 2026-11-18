@@ -1,4 +1,3 @@
-from functools import partial
 from itertools import batched
 from typing import cast, Any
 
@@ -591,26 +590,15 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
     )
 
-    files_stream = (
-        client.search_changed_files_in_projects(
-            build_search_query(search_path),
-            sync_cursor,
-            skip_parsing=skip_parsing,
-            repositories=repositories,
-            params=params,
-        )
-        if sync_cursor is not None and search_strategy == "repositoryTree"
-        else client.search_files(
-            scope,
-            build_search_query(search_path),
-            skip_parsing=skip_parsing,
-            repositories=repositories,
-            params=params,
-            strategy=search_strategy,
-        )
-    )
-
-    async for files_batch in files_stream:
+    async for files_batch in client.search_files(
+        scope,
+        build_search_query(search_path),
+        skip_parsing=skip_parsing,
+        repositories=repositories,
+        params=params,
+        strategy=search_strategy,
+        since=sync_cursor,
+    ):
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
             yield enriched_batch
@@ -682,12 +670,6 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             include_only_active_projects, sync_cursor
         )
 
-    list_folders = (
-        partial(client.get_repository_folders_since, since=sync_cursor)
-        if sync_cursor is not None
-        else client.get_repository_folders
-    )
-
     for folder_selector in selector.folders:
         path = folder_selector.path
         repos = folder_selector.repos
@@ -704,8 +686,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    async for folders_batch in list_folders(
-                        path=path, repository=project["path_with_namespace"]
+                    async for folders_batch in client.get_repository_folders(
+                        path=path,
+                        repository=project["path_with_namespace"],
+                        since=sync_cursor,
                     ):
                         if folders_batch:
                             if included_files:
@@ -731,8 +715,11 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                async for folders_batch in list_folders(
-                    path=path, repository=repo.name, branch=repo.branch
+                async for folders_batch in client.get_repository_folders(
+                    path=path,
+                    repository=repo.name,
+                    branch=repo.branch,
+                    since=sync_cursor,
                 ):
                     if included_files and folders_batch:
                         from gitlab.enrichments.included_files import (

@@ -26,6 +26,7 @@ from gitlab.helpers.utils import (
     parse_file_content,
     SearchQuery,
     is_bot_member,
+    is_branch_push_to,
 )
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
@@ -118,11 +119,6 @@ def _minimize_tree_roots(roots: set[str]) -> list[str]:
     return kept
 
 
-def _is_branch_push_to(event: dict[str, Any], ref: str) -> bool:
-    push = event.get("push_data") or {}
-    return push.get("ref_type") == "branch" and push.get("ref") == ref
-
-
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -185,7 +181,7 @@ class GitLabClient:
             events = await self._push_events_since(project_path, since)
             if events is None:
                 return ChangedPaths(paths=None)
-            ref_pushes = [event for event in events if _is_branch_push_to(event, ref)]
+            ref_pushes = [event for event in events if is_branch_push_to(event, ref)]
             if not ref_pushes:
                 return ChangedPaths(paths=[])
             # Events come newest first, so the last one is the first push after ``since``.
@@ -852,6 +848,7 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
         strategy: str = "repositoryTree",
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files based on the specified strategy.
 
@@ -862,11 +859,25 @@ class GitLabClient:
                 - repositoryTree: Search across all accessible projects using tree API
                 - projectSearch: Search across all accessible projects via Search API
                 - groupSearch: Search across groups (with fallback to projectSearch if no results)
+            since: Only return files changed since this time. Applies to
+                repositoryTree only: the Search API has no time filter, so
+                projectSearch and groupSearch ignore it.
 
             GitLab's Search API (groupSearch / projectSearch) does not guarantee complete
             results; see https://docs.gitlab.com/user/search/advanced_search/#known-issues
         """
         should_use_tree = strategy == "repositoryTree"
+
+        if should_use_tree and since is not None:
+            async for batch in self.search_changed_files_in_projects(
+                query,
+                since,
+                skip_parsing=skip_parsing,
+                repositories=repositories,
+                params=params,
+            ):
+                yield batch
+            return
 
         if strategy in ("projectSearch", "repositoryTree"):
             logger.info(
@@ -1162,9 +1173,18 @@ class GitLabClient:
                 yield batch
 
     async def get_repository_folders(
-        self, path: str, repository: str, branch: Optional[str] = None
+        self,
+        path: str,
+        repository: str,
+        branch: Optional[str] = None,
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for folders in specified repositories only."""
+        """Search for folders in specified repositories only.
+
+        With ``since``, yields only folders under ``path`` that contain a path
+        changed since then, falling back to the full listing when the diff
+        cannot be trusted.
+        """
         project = await self.get_project(repository)
         if not project:
             return
@@ -1172,6 +1192,17 @@ class GitLabClient:
         effective_branch = branch or self._project_tree_ref(project)
         if not effective_branch:
             return
+
+        if since is not None:
+            changed_dirs = await self._changed_folders_since(
+                project, path, effective_branch, since
+            )
+            if changed_dirs is not None:
+                async for folders_batch in self._get_folders_by_path(
+                    project, changed_dirs, effective_branch
+                ):
+                    yield folders_batch
+                return
 
         is_wildcard = is_wildcard_path(path)
         async for items_batch in self.get_repository_tree(
@@ -1189,47 +1220,26 @@ class GitLabClient:
             if folders_batch:
                 yield folders_batch
 
-    async def get_repository_folders_since(
+    async def _changed_folders_since(
         self,
+        project: dict[str, Any],
         path: str,
-        repository: str,
+        branch: str,
         since: datetime,
-        branch: Optional[str] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Like ``get_repository_folders``, limited to changes since ``since``.
-
-        Yields only folders under ``path`` that contain a path changed since
-        ``since``. Falls back to the full folder listing when the diff cannot be trusted.
-        """
-        project = await self.get_project(repository)
-        if not project:
-            return
-        effective_branch = branch or self._project_tree_ref(project)
-        if not effective_branch:
-            return
-
-        changed = await self.changed_paths_since(
-            project["path_with_namespace"], since, effective_branch
-        )
+    ) -> set[str] | None:
+        """Folders under ``path`` with a change since ``since``; ``None`` when the diff can't be trusted."""
+        repository = project["path_with_namespace"]
+        changed = await self.changed_paths_since(repository, since, branch)
         if changed.paths is None:
-            async for folders_batch in self.get_repository_folders(
-                path, repository, effective_branch
-            ):
-                yield folders_batch
-            return
-
+            return None
         changed_dirs = changed_folders(path, changed.paths)
         if not changed_dirs:
             logger.info(f"No changed folders under '{path}' in {repository}")
-            return
-
+            return changed_dirs
         logger.info(
             f"Found {len(changed_dirs)} changed folders under '{path}' in {repository}"
         )
-        async for folders_batch in self._get_folders_by_path(
-            project, changed_dirs, effective_branch
-        ):
-            yield folders_batch
+        return changed_dirs
 
     async def _get_folders_by_path(
         self,

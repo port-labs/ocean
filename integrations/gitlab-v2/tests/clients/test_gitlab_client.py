@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -795,6 +796,66 @@ class TestGitLabClient:
                     False,
                     should_use_tree=True,
                 )
+
+    async def test_search_files_with_since_uses_changed_files_for_tree(
+        self, client: GitLabClient
+    ) -> None:
+        since = datetime(2026, 10, 18, tzinfo=timezone.utc)
+        query = build_search_query("**/*.json")
+        changed = [{"path": "a.json", "project_id": "123"}]
+        with (
+            patch.object(
+                client,
+                "search_changed_files_in_projects",
+                return_value=async_mock_generator([changed]),
+            ) as mock_changed,
+            patch.object(client, "search_files_in_projects") as mock_full,
+        ):
+            results = [
+                batch
+                async for batch in client.search_files(
+                    "blobs",
+                    query,
+                    repositories=["group/project"],
+                    params={"active": True},
+                    strategy="repositoryTree",
+                    since=since,
+                )
+            ]
+
+        assert results == [changed]
+        mock_changed.assert_called_once_with(
+            query,
+            since,
+            skip_parsing=False,
+            repositories=["group/project"],
+            params={"active": True},
+        )
+        mock_full.assert_not_called()
+
+    async def test_search_files_with_since_ignored_for_project_search(
+        self, client: GitLabClient
+    ) -> None:
+        since = datetime(2026, 10, 18, tzinfo=timezone.utc)
+        query = build_search_query("**/*.json")
+        found = [{"path": "a.json", "project_id": "123"}]
+        with (
+            patch.object(client, "search_changed_files_in_projects") as mock_changed,
+            patch.object(
+                client,
+                "search_files_in_projects",
+                return_value=async_mock_generator([found]),
+            ),
+        ):
+            results = [
+                batch
+                async for batch in client.search_files(
+                    "blobs", query, strategy="projectSearch", since=since
+                )
+            ]
+
+        assert results == [found]
+        mock_changed.assert_not_called()
 
     @pytest.mark.parametrize(
         "status_code,response_text",

@@ -369,7 +369,7 @@ async def test_changed_folders_yield_only_changed_children(
     )
 
     batches = await _collect(
-        client.get_repository_folders_since("docs", "group/repo", SINCE)
+        client.get_repository_folders("docs", "group/repo", since=SINCE)
     )
 
     assert batches == [
@@ -390,7 +390,7 @@ async def test_unreadable_project_yields_no_folders(client: GitLabClient) -> Non
     client.changed_paths_since = AsyncMock()  # type: ignore[method-assign]
 
     batches = await _collect(
-        client.get_repository_folders_since("docs", "group/repo", SINCE, branch="dev")
+        client.get_repository_folders("docs", "group/repo", branch="dev", since=SINCE)
     )
 
     assert batches == []
@@ -402,18 +402,39 @@ async def test_changed_folders_fall_back_to_full_listing(
 ) -> None:
     client.get_project = AsyncMock(return_value=PROJECT)  # type: ignore[method-assign]
     client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
+    tree_items = [
+        {"type": "tree", "path": "docs/api"},
+        {"type": "tree", "path": "docs/unchanged"},
+    ]
+    client.get_repository_tree = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda *args, **kwargs: _gen([tree_items])
+    )
 
-    with patch.object(
-        client,
-        "get_repository_folders",
-        side_effect=lambda *args, **kwargs: _gen([[{"folder": {"path": "docs"}}]]),
-    ) as full_listing:
-        batches = await _collect(
-            client.get_repository_folders_since("docs", "group/repo", SINCE)
-        )
+    batches = await _collect(
+        client.get_repository_folders("docs", "group/repo", since=SINCE)
+    )
 
-    assert batches == [[{"folder": {"path": "docs"}}]]
-    full_listing.assert_called_once_with("docs", "group/repo", "main")
+    assert [[row["folder"]["path"] for row in batch] for batch in batches] == [
+        ["docs/api", "docs/unchanged"]
+    ]
+    client.get_project.assert_awaited_once()
+
+
+async def test_changed_folders_none_changed_yields_nothing(
+    client: GitLabClient,
+) -> None:
+    client.get_project = AsyncMock(return_value=PROJECT)  # type: ignore[method-assign]
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["other/x.txt"])
+    )
+    client.get_repository_tree = MagicMock()  # type: ignore[method-assign]
+
+    batches = await _collect(
+        client.get_repository_folders("docs", "group/repo", since=SINCE)
+    )
+
+    assert batches == []
+    client.get_repository_tree.assert_not_called()
 
 
 async def test_force_push_compares_from_the_old_tip(client: GitLabClient) -> None:
