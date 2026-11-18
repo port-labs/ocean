@@ -47,7 +47,9 @@ class FactoryClient:
         path: str,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+        *,
+        allow_not_found: bool = False,
+    ) -> dict[str, Any] | None:
         url = f"{self._base_url}{path}"
         response = await self._client.request(
             method=method,
@@ -57,6 +59,9 @@ class FactoryClient:
             json=json_body,
             timeout=self._request_timeout_seconds,
         )
+        if allow_not_found and response.status_code == 404:
+            logger.warning(f"HTTP 404 for {method} {url}")
+            return None
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as error:
@@ -77,9 +82,15 @@ class FactoryClient:
         path: str,
         response_model: type[TResponse],
         params: dict[str, Any] | None = None,
-    ) -> TResponse:
+        *,
+        allow_not_found: bool = False,
+    ) -> TResponse | None:
         """GET ``path`` and validate the JSON body as ``response_model``."""
-        payload = await self.send_api_request("GET", path, params=params)
+        payload = await self.send_api_request(
+            "GET", path, params=params, allow_not_found=allow_not_found
+        )
+        if payload is None:
+            return None
         try:
             return response_model.parse_obj(payload)
         except ValidationError as error:
