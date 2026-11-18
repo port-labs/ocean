@@ -90,14 +90,15 @@ class TestCreateRedisClient:
                 "port_ocean.consumers.redis_client.Redis.from_url",
                 return_value=mock_standalone,
             ),
-            patch("port_ocean.consumers.redis_client.logger.exception") as mock_log,
+            patch("port_ocean.consumers.redis_client.logger.error") as mock_log,
             pytest.raises(ConnectionError, match="refused"),
         ):
             await create_redis_client("redis://localhost:6379")
 
         mock_standalone.aclose.assert_awaited_once()
         mock_log.assert_called_once()
-        assert mock_log.call_args.args[0] == "Failed to connect to Redis"
+        assert mock_log.call_args.args[0] == "Failed to connect to Redis: {error}"
+        assert mock_log.call_args.kwargs["error"] == "refused"
 
 
 class TestCreateRedisClientWithRetry:
@@ -149,7 +150,7 @@ class TestCreateRedisClientWithRetry:
                 "port_ocean.consumers.redis_client.asyncio.sleep",
                 new_callable=AsyncMock,
             ) as mock_sleep,
-            patch("port_ocean.consumers.redis_client.logger.exception") as mock_log,
+            patch("port_ocean.consumers.redis_client.logger.error") as mock_log,
             pytest.raises(ConnectionError, match="refused"),
         ):
             await create_redis_client_with_retry(
@@ -163,5 +164,6 @@ class TestCreateRedisClientWithRetry:
         mock_log.assert_called_once()
         assert (
             mock_log.call_args.args[0]
-            == "Failed to connect to Redis after exhausting startup retries"
+            == "Failed to connect to Redis after exhausting startup retries: {error}"
         )
+        assert mock_log.call_args.kwargs["error"] == "refused"
