@@ -6,8 +6,6 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-DEFAULT_FACTORY_API_HOST = "https://api.factory.ai"
-
 
 class FactoryClient:
     """HTTP transport for the Factory Public API.

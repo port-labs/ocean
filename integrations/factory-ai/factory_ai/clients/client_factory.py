@@ -2,7 +2,8 @@ from typing import Any
 
 from port_ocean.context.ocean import ocean
 
-from factory_ai.clients.factory_client import DEFAULT_FACTORY_API_HOST, FactoryClient
+from factory_ai.clients.factory_client import FactoryClient
+from factory_ai.config import DEFAULT_FACTORY_API_HOST
 
 
 class ClientFactory:

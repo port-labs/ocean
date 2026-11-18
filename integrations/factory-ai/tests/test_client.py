@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from factory_ai.clients.factory_client import DEFAULT_FACTORY_API_HOST, FactoryClient
+from factory_ai.clients.factory_client import FactoryClient
+from factory_ai.config import DEFAULT_FACTORY_API_HOST
 
 
 @pytest.fixture
