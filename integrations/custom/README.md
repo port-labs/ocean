@@ -111,17 +111,21 @@ OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=offset  # offset, page, cursor, next
 OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
 
 # Optional: Custom parameter names for offset pagination
-OCEAN__INTEGRATION__CONFIG__OFFSET_PARAM=offset    # Default: "offset"
-OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PARAM=offset   # Default: "offset" (e.g. start_at_index)
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=limit          # Default: "limit"
+OCEAN__INTEGRATION__CONFIG__INITIAL_OFFSET=0          # Default: 0 (use 1 for 1-based APIs)
+OCEAN__INTEGRATION__CONFIG__TOTAL_COUNT_PATH=total_items  # Optional stop via total count
+# Send offset/size in query params (default) or JSON body (non-GET only; GET always uses query)
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PLACEMENT=query  # query | body
 
 # Optional: Custom parameter names for page pagination
-OCEAN__INTEGRATION__CONFIG__PAGE_PARAM=page        # Default: "page"
-OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=size        # Default: "size"
-OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PARAM=page     # Default: "page"
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=size           # Default: "size"
+OCEAN__INTEGRATION__CONFIG__START_PAGE=1              # Default: 1
 
 # Optional: Custom parameter names for cursor pagination
-OCEAN__INTEGRATION__CONFIG__CURSOR_PARAM=cursor    # Default: "cursor"
-OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PARAM=cursor   # Default: "cursor"
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=limit          # Default: "limit"
 # Send cursor/size in query params (default) or JSON body (non-GET only; GET always uses query)
 OCEAN__INTEGRATION__CONFIG__PAGINATION_PLACEMENT=query  # query | body
 
@@ -132,6 +136,20 @@ OCEAN__INTEGRATION__CONFIG__NEXT_LINK_PATH=@odata.nextLink
 # Optional: Pagination stop signals
 OCEAN__INTEGRATION__CONFIG__HAS_MORE_PATH=meta.has_more    # Truthy = more pages (default semantics)
 OCEAN__INTEGRATION__CONFIG__LAST_PAGE_PATH=data.last       # Truthy = STOP (inverted, for Spring/Harness APIs)
+```
+
+#### Orca-style offset-in-body example
+
+For POST discovery APIs that put `start_at_index` + `limit` in the JSON body and return `total_items`:
+
+```bash
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=offset
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PLACEMENT=body
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PARAM=start_at_index
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=limit
+OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
+OCEAN__INTEGRATION__CONFIG__INITIAL_OFFSET=0
+OCEAN__INTEGRATION__CONFIG__TOTAL_COUNT_PATH=total_items
 ```
 
 #### Spring Data REST / Harness example

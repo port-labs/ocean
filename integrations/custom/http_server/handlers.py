@@ -164,8 +164,61 @@ class PagePagination(PaginationHandler):
             page += 1
 
 
+def _offset_dict_has_more(
+    response_data: Dict[str, Any],
+    config: Dict[str, Any],
+    get_nested_value: Callable[[Dict[str, Any], str], Any],
+    *,
+    offset: int,
+    page_size: int,
+) -> bool:
+    """Decide whether offset pagination should request another page.
+
+    Precedence:
+    - has_more_path: truthy resolved value means continue (None falls through)
+    - total_count_path: continue while offset + page_size < total
+    - has_more / hasMore keys when present
+    - common list envelopes (data/items/results/content): continue on full page
+    - otherwise stop (never default to True forever)
+    """
+    has_more_path = config.get("has_more_path", "")
+    if has_more_path:
+        value = get_nested_value(response_data, has_more_path)
+        if value is not None:
+            return bool(value)
+
+    total_count_path = config.get("total_count_path", "")
+    if total_count_path:
+        total = get_nested_value(response_data, total_count_path)
+        if total is not None:
+            try:
+                return offset + page_size < int(total)
+            except (TypeError, ValueError):
+                return False
+
+    if "has_more" in response_data:
+        return bool(response_data["has_more"])
+    if "hasMore" in response_data:
+        return bool(response_data["hasMore"])
+
+    for key in ("data", "items", "results", "content"):
+        value = response_data.get(key)
+        if isinstance(value, list):
+            return len(value) >= page_size
+
+    return False
+
+
 class OffsetPagination(PaginationHandler):
-    """Offset/limit pagination with configurable response paths"""
+    """Offset/limit pagination with configurable response paths.
+
+    ``pagination_placement`` controls where the offset and page size are sent:
+    ``query`` (default) uses query parameters; ``body`` merges them into the
+    JSON request body for non-GET methods. GET requests always use query
+    parameters so servers that ignore bodies cannot loop forever. Offset is
+    sent on every page (including the first), starting at ``initial_offset``
+    (default 0).
+    """
 
     async def fetch_all(
         self,
@@ -177,19 +230,29 @@ class OffsetPagination(PaginationHandler):
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         offset_param = self.config.get("pagination_param", "offset")
         limit_param = self.config.get("size_param", "limit")
-        has_more_path = self.config.get("has_more_path", "")
-
-        offset = 0
+        placement = self.config.get("pagination_placement", "query")
+        use_body_placement = placement == "body" and method.upper() != "GET"
+        offset = int(self.config.get("initial_offset", 0))
 
         while True:
-            current_params = {
-                **params,
-                offset_param: offset,
-                limit_param: self.page_size,
-            }
+            current_params: Optional[Dict[str, Any]]
+            current_body: Optional[Dict[str, Any]]
+            if use_body_placement:
+                current_params = dict(params) if params else {}
+                body_payload = dict(body) if body is not None else {}
+                body_payload[offset_param] = offset
+                body_payload[limit_param] = self.page_size
+                current_body = body_payload
+            else:
+                current_params = {
+                    **params,
+                    offset_param: offset,
+                    limit_param: self.page_size,
+                }
+                current_body = body
 
             response = await self.make_request(
-                url, method, current_params, headers, body
+                url, method, current_params, headers, current_body
             )
             response_data = response.json()
 
@@ -198,13 +261,13 @@ class OffsetPagination(PaginationHandler):
 
             # Check if there are more pages
             if isinstance(response_data, dict):
-                if has_more_path:
-                    has_more = self.get_nested_value(response_data, has_more_path)
-                else:
-                    has_more = response_data.get(
-                        "has_more", response_data.get("hasMore", True)
-                    )
-                if not has_more:
+                if not _offset_dict_has_more(
+                    response_data,
+                    self.config,
+                    self.get_nested_value,
+                    offset=offset,
+                    page_size=self.page_size,
+                ):
                     break
             else:
                 # For list responses, check if we got a full page

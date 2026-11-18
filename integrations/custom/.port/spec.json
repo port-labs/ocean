@@ -167,7 +167,7 @@
       "name": "paginationParam",
       "required": false,
       "type": "string",
-      "description": "Parameter or body field name for the main pagination value (query or body depending on paginationPlacement). For cursor: 'cursor', 'page[after]', 'after', 'next_page_token'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip'. Defaults vary by paginationType.",
+      "description": "Parameter or body field name for the main pagination value (query or body depending on paginationPlacement). For cursor: 'cursor', 'page[after]', 'after', 'next_page_token'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip', 'start_at_index'. Defaults vary by paginationType.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -224,6 +224,24 @@
       ]
     },
     {
+      "name": "initialOffset",
+      "required": false,
+      "type": "string",
+      "default": "0",
+      "description": "Starting offset for offset-based pagination (e.g., 0 or 1). Defaults to 0. Use 1 for APIs that are 1-based (for example some Orca discovery samples that start at start_at_index=1).",
+      "dependencies": [
+        {
+          "on": "paginationType",
+          "when": {
+            "equals": "offset"
+          },
+          "then": {
+            "required": false
+          }
+        }
+      ]
+    },
+    {
       "name": "cursorPath",
       "required": false,
       "type": "string",
@@ -245,7 +263,7 @@
       "required": false,
       "type": "string",
       "default": "query",
-      "description": "Where to send the cursor and page size for cursor pagination: 'query' (URL query parameters, default) or 'body' (JSON request body for non-GET methods only; GET always uses query params). Use body for APIs that expect the cursor in the POST payload.",
+      "description": "Where to send the pagination value and page size for cursor or offset pagination: 'query' (URL query parameters, default) or 'body' (JSON request body for non-GET methods only; GET always uses query params). Use body for APIs that expect offset/cursor fields in the POST payload.",
       "enum": [
         "query",
         "body"
@@ -254,7 +272,10 @@
         {
           "on": "paginationType",
           "when": {
-            "equals": "cursor"
+            "in": [
+              "cursor",
+              "offset"
+            ]
           },
           "then": {
             "required": false
@@ -276,6 +297,23 @@
               "page",
               "cursor"
             ]
+          },
+          "then": {
+            "required": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "totalCountPath",
+      "required": false,
+      "type": "string",
+      "description": "Dot-notation path to a total item count in the response for offset pagination (e.g., 'total_items'). When set, paging continues while offset + pageSize < total. Useful for APIs without a has_more flag.",
+      "dependencies": [
+        {
+          "on": "paginationType",
+          "when": {
+            "equals": "offset"
           },
           "then": {
             "required": false
@@ -402,9 +440,11 @@
           "paginationParam",
           "sizeParam",
           "startPage",
+          "initialOffset",
           "cursorPath",
           "paginationPlacement",
           "hasMorePath",
+          "totalCountPath",
           "lastPagePath",
           "nextLinkPath",
           "headerLinkRel",
