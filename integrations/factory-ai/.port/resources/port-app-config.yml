@@ -1,3 +1,22 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-resources: []
+resources:
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"factory_environment"'
+          properties:
+            status: .status
+            scope: .scope
+            isDefault: .isDefault
+            sourceName: .source.name
+            providerName: .source.provider.name
+            repositoryUrls: '[.repositories[]?.url | select(. != null and . != "")]'
+            latestBuildStatus: .latestBuild.status
+            createdAt: '(.createdAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            updatedAt: '(.updatedAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
