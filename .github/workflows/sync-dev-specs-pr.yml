@@ -75,6 +75,10 @@ jobs:
             git checkout -B "${BRANCH}" "origin/main"
           fi
 
+
+          chmod +x scripts/ci/merge_pr_specs_into_dev_specs.sh
+          scripts/ci/merge_pr_specs_into_dev_specs.sh "${PR_SHA}" "${BASE_SHA}"
+
           if git diff --cached --quiet; then
             if [ "${BRANCH_EXISTS}" = "true" ]; then
               echo "No changes to commit (already up to date on ${BRANCH})."
