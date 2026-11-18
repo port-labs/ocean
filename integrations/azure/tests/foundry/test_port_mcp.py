@@ -305,6 +305,41 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
 
 
 @pytest.mark.asyncio
+async def test_ensure_port_mcp_attach_failure_propagates() -> None:
+    client = MagicMock()
+    client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
+    client.send_api_request = AsyncMock(
+        side_effect=[
+            {"definition": {"kind": "prompt", "tools": []}},
+            {"version": "1"},
+        ]
+    )
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value="https://mcp.example/v1",
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            AsyncMock(),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp._update_agent_tools",
+            AsyncMock(side_effect=RuntimeError("attach failed")),
+        ),
+        pytest.raises(RuntimeError, match="attach failed"),
+    ):
+        await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id="prompt-1",
+            enable_port_mcp=True,
+            port_access_token="tok",
+            attach_to_prompt_agent=True,
+        )
+
+
+@pytest.mark.asyncio
 async def test_ensure_port_mcp_passes_project_arm_id_to_connection_upsert() -> None:
     client = MagicMock()
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"

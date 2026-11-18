@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRun, WorkflowNodeRunLog
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
@@ -45,7 +45,6 @@ class ResponsesStreamManager:
         on_response_id: OnResponseIdCallback | None = None,
         stop_on_terminal_sse: bool = False,
         on_terminal_sse: OnTerminalSseCallback | None = None,
-        fail_run_if_stream_errors_after_bind: bool = True,
     ) -> bool:
         if stream_key in self._tasks:
             return False
@@ -64,7 +63,6 @@ class ResponsesStreamManager:
                 on_response_id=on_response_id,
                 stop_on_terminal_sse=stop_on_terminal_sse,
                 on_terminal_sse=on_terminal_sse,
-                fail_run_if_stream_errors_after_bind=fail_run_if_stream_errors_after_bind,
             ),
             name=f"foundry-stream-{stream_key}",
         )
@@ -105,7 +103,6 @@ class ResponsesStreamManager:
         on_response_id: OnResponseIdCallback | None = None,
         stop_on_terminal_sse: bool = False,
         on_terminal_sse: OnTerminalSseCallback | None = None,
-        fail_run_if_stream_errors_after_bind: bool = True,
     ) -> None:
         client = create_foundry_client()
         buffer: list[WorkflowNodeRunLog] = []
@@ -156,23 +153,30 @@ class ResponsesStreamManager:
                 result = on_terminal_sse(terminal_parsed)
                 if asyncio.iscoroutine(result):
                     await result
-            elif ocean.port_client.is_run_in_progress(run) and (
-                not response_id_reported or fail_run_if_stream_errors_after_bind
-            ):
-                # No terminal SSE: fail unless bound + webhook may still complete.
-                with contextlib.suppress(Exception):
-                    await ocean.port_client.post_run_log(
+            elif ocean.port_client.is_run_in_progress(run):
+                if response_id_reported:
+                    await _complete_or_leave_after_sse_drop(
                         run,
-                        "Responses stream ended without a terminal event",
-                        level="ERROR",
+                        note=(
+                            "Responses stream ended without a terminal event; "
+                            "completing from Foundry GET if terminal"
+                        ),
                     )
-                with contextlib.suppress(Exception):
-                    await ocean.port_client.report_run_completed(
-                        run,
-                        False,
-                        status_label="Invoke failed",
-                        should_raise=False,
-                    )
+                else:
+                    # No terminal SSE and never bound: fail the Port run.
+                    with contextlib.suppress(Exception):
+                        await ocean.port_client.post_run_log(
+                            run,
+                            "Responses stream ended without a terminal event",
+                            level="ERROR",
+                        )
+                    with contextlib.suppress(Exception):
+                        await ocean.port_client.report_run_completed(
+                            run,
+                            False,
+                            status_label="Invoke failed",
+                            should_raise=False,
+                        )
         except asyncio.CancelledError:
             if buffer:
                 await _flush_logs(run, buffer)
@@ -183,15 +187,14 @@ class ResponsesStreamManager:
             logger.exception(f"Responses stream failed for {stream_key}: {error}")
             if not ocean.port_client.is_run_in_progress(run):
                 return
-            # After bind, optional webhook completion may still close the run.
-            if response_id_reported and not fail_run_if_stream_errors_after_bind:
-                with contextlib.suppress(Exception):
-                    await ocean.port_client.post_run_log(
-                        run,
-                        f"Responses stream failed after bind "
-                        f"(waiting for completion): {error}",
-                        level="WARN",
-                    )
+            if response_id_reported:
+                await _complete_or_leave_after_sse_drop(
+                    run,
+                    note=(
+                        f"Responses stream failed after bind; "
+                        f"completing from Foundry GET if terminal: {error}"
+                    ),
+                )
                 return
             with contextlib.suppress(Exception):
                 await ocean.port_client.post_run_log(
@@ -211,6 +214,57 @@ class ResponsesStreamManager:
             if response is not None:
                 with contextlib.suppress(Exception):
                     await response.aclose()
+
+
+async def _complete_or_leave_after_sse_drop(run: IntegrationRun, *, note: str) -> None:
+    """SSE dropped after bind: complete from Foundry GET if terminal, else leave open (webhook may still finish)."""
+    with contextlib.suppress(Exception):
+        await ocean.port_client.post_run_log(run, note, level="WARN")
+
+    # Lazy imports: avoid circular import with invoke_completion ↔ stream_manager.
+    from azure_integration.foundry.helpers.invoke_completion import (
+        _project_endpoint_from_run,
+        complete_invoke_run_for_response,
+        response_body_for_catalog,
+    )
+    from azure_integration.foundry.helpers.webhook_scope import FoundryResponseBody
+
+    response_id: str | None = None
+    if isinstance(run, WorkflowNodeRun) and isinstance(run.output, dict):
+        rid = run.output.get("responseId")
+        if isinstance(rid, str) and rid:
+            response_id = rid
+    if not response_id:
+        return
+
+    endpoint = _project_endpoint_from_run(run)
+    if not endpoint:
+        return
+
+    try:
+        body = await response_body_for_catalog(
+            response_id, None, project_endpoint=endpoint
+        )
+    except Exception:
+        return
+    if not isinstance(body, dict):
+        return
+
+    try:
+        override = FoundryResponseBody.model_validate(body).success_override()
+    except Exception:
+        return
+    if override is None:
+        return
+
+    await complete_invoke_run_for_response(
+        run,
+        response_id=response_id,
+        response_body=body,
+        success=override,
+        register_catalog=override,
+        source=note,
+    )
 
 
 async def _flush_logs(run: IntegrationRun, buffer: list[WorkflowNodeRunLog]) -> None:

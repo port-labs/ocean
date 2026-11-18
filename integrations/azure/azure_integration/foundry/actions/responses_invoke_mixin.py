@@ -71,11 +71,6 @@ class ResponsesInvokeMixin:
             early_complete_on_bind=early_complete_on_bind,
             complete_on_sse_terminal=complete_on_sse_terminal,
             running_status_label=running_status_label,
-            # Fail post-bind only when SSE is the sole completion path (model).
-            # Agent+report: webhook can finish. Agent fire-and-forget: already closed.
-            fail_run_if_stream_errors_after_bind=(
-                complete_on_sse_terminal and not report_invocation_status
-            ),
         )
 
     async def _execute_with_sse_completion(
@@ -90,7 +85,6 @@ class ResponsesInvokeMixin:
         params: dict[str, Any] | None = None,
         early_complete_on_bind: bool = False,
         complete_on_sse_terminal: bool = True,
-        fail_run_if_stream_errors_after_bind: bool = True,
     ) -> None:
         submitted_after_bind = False
 
@@ -129,7 +123,6 @@ class ResponsesInvokeMixin:
             on_response_id=on_response_id,
             stop_on_terminal_sse=complete_on_sse_terminal,
             on_terminal_sse=on_terminal_sse if complete_on_sse_terminal else None,
-            fail_run_if_stream_errors_after_bind=fail_run_if_stream_errors_after_bind,
         )
         if started:
             return

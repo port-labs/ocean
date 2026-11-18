@@ -144,6 +144,7 @@ async def test_stream_error_after_bind_waits_when_webhook_can_complete() -> None
     mock_ocean.port_client.post_run_log = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
     on_response_id = AsyncMock()
+    complete_or_leave = AsyncMock()
 
     with (
         patch(
@@ -151,6 +152,10 @@ async def test_stream_error_after_bind_waits_when_webhook_can_complete() -> None
             return_value=client,
         ),
         patch("azure_integration.foundry.stream_manager.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.stream_manager._complete_or_leave_after_sse_drop",
+            complete_or_leave,
+        ),
     ):
         assert await manager.track(
             stream_key="after-bind",
@@ -158,17 +163,16 @@ async def test_stream_error_after_bind_waits_when_webhook_can_complete() -> None
             response_body={"input": "hi"},
             run=run,
             on_response_id=on_response_id,
-            fail_run_if_stream_errors_after_bind=False,
         )
         await manager._tasks["after-bind"]
 
     on_response_id.assert_awaited_once_with("resp_1")
+    complete_or_leave.assert_awaited_once()
     mock_ocean.port_client.report_run_completed.assert_not_called()
-    mock_ocean.port_client.post_run_log.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_stream_error_after_bind_fails_when_required() -> None:
+async def test_stream_error_after_bind_tries_foundry_get() -> None:
     manager = ResponsesStreamManager()
     run = _run()
     lines = [
@@ -191,6 +195,7 @@ async def test_stream_error_after_bind_fails_when_required() -> None:
     mock_ocean.port_client.post_run_logs = AsyncMock()
     mock_ocean.port_client.post_run_log = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
+    complete_or_leave = AsyncMock()
 
     with (
         patch(
@@ -198,6 +203,10 @@ async def test_stream_error_after_bind_fails_when_required() -> None:
             return_value=client,
         ),
         patch("azure_integration.foundry.stream_manager.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.stream_manager._complete_or_leave_after_sse_drop",
+            complete_or_leave,
+        ),
     ):
         assert await manager.track(
             stream_key="after-bind-fail",
@@ -205,11 +214,61 @@ async def test_stream_error_after_bind_fails_when_required() -> None:
             response_body={"input": "hi"},
             run=run,
             on_response_id=AsyncMock(),
-            fail_run_if_stream_errors_after_bind=True,
         )
         await manager._tasks["after-bind-fail"]
 
-    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    complete_or_leave.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_clean_exit_after_bind_tries_foundry_get() -> None:
+    manager = ResponsesStreamManager()
+    run = _run()
+    lines = [
+        'data: {"type":"response.created","response":{"id":"resp_1"}}',
+        "data: [DONE]",
+    ]
+
+    class _FakeResponse:
+        async def aiter_lines(self):
+            for line in lines:
+                yield line
+
+        async def aclose(self) -> None:
+            return None
+
+    client = MagicMock()
+    client.open_responses_stream = AsyncMock(return_value=_FakeResponse())
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.post_run_logs = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+    complete_or_leave = AsyncMock()
+
+    with (
+        patch(
+            "azure_integration.foundry.stream_manager.create_foundry_client",
+            return_value=client,
+        ),
+        patch("azure_integration.foundry.stream_manager.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.stream_manager._complete_or_leave_after_sse_drop",
+            complete_or_leave,
+        ),
+    ):
+        assert await manager.track(
+            stream_key="clean-exit-bind",
+            invoke_url="https://example/responses",
+            response_body={"input": "hi"},
+            run=run,
+            on_response_id=AsyncMock(),
+        )
+        await manager._tasks["clean-exit-bind"]
+
+    complete_or_leave.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_not_called()
 
 
 @pytest.mark.asyncio

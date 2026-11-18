@@ -270,7 +270,8 @@ async def complete_invoke_run_for_response(
         success = success_override
 
     if isinstance(run, WorkflowNodeRun):
-        run.output = slim
+        # Keep bind-time fields (projectArmId, deploymentName, …); slim wins on overlap.
+        run.output = {**(prior if isinstance(prior, dict) else {}), **slim}
 
     async with _completion_lock:
         if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
