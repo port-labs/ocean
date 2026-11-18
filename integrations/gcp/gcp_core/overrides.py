@@ -40,7 +40,7 @@ class GCPIamPolicySelector(Selector):
         default=None,
         alias="policyQuery",
         title="Policy Query",
-        description="Server-side IAM policy filter, e.g. memberTypes:serviceAccount. See https://cloud.google.com/asset-inventory/docs/searching-iam-policies",
+        description="Server-side IAM policy filter, e.g. memberTypes:serviceAccount. Setting this turns off live events for the resource, because a feed delivers the whole policy and the grants it filters out would be ingested live and then removed by the next resync. See https://cloud.google.com/asset-inventory/docs/searching-iam-policies",
     )
 
 

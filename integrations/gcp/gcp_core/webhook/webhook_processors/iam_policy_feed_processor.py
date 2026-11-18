@@ -139,6 +139,14 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
         )
         resource_name = canonical_resource_name(asset_name, assets)
         if resource_name is None:
+            # Not every alias is searchable: a project is not indexed by its number, which is the
+            # only name a feed gives it. Scoped to one asset type in one project this is small.
+            assets = await search_asset_names_in_project(
+                asset_project, asset_type, None, rate_limiter, semaphore
+            )
+            resource_name = canonical_resource_name(asset_name, assets)
+
+        if resource_name is None:
             logger.warning(
                 f"Couldn't match feed asset {asset_name} to a name searchAllIamPolicies returns. "
                 "Its grants would land under a different identifier than the resync's, so the "

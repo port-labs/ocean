@@ -181,7 +181,7 @@ async def search_all_iam_policies_per_project(
 async def search_asset_names_in_project(
     project_name: str,
     asset_type: str,
-    search_term: str,
+    search_term: str | None,
     rate_limiter: FixedWindowLimiter,
     semaphore: BoundedSemaphore,
 ) -> list[dict[str, Any]]:
@@ -200,19 +200,23 @@ async def search_asset_names_in_project(
         return [
             {
                 "name": result.name,
-                # Absent entirely for types that do not alias, such as buckets and topics.
+                # additionalAttributes is absent entirely for types that do not alias, such as
+                # buckets and topics. `project` is the number, which is how a feed names a project
+                # where searchAllResources names it by id, and it is in no other field.
                 "aliases": [
                     value
                     for value in dict(result.additional_attributes or {}).values()
                     if isinstance(value, str)
-                ],
+                ]
+                + ([result.project.rsplit("/", 1)[-1]] if result.project else []),
             }
             for result in response.results
         ]
 
     async with semaphore:
         logger.info(
-            f"Searching {asset_type} names matching {search_term!r} in project {project_name}"
+            f"Searching {asset_type} names matching {search_term or 'anything'!r} "
+            f"in project {project_name}"
         )
         assets: list[dict[str, Any]] = []
         async for batch in paginated_query(
@@ -221,10 +225,13 @@ async def search_asset_names_in_project(
             {
                 "scope": project_name,
                 "asset_types": [asset_type],
-                "read_mask": "name,additionalAttributes",
+                "read_mask": "name,additionalAttributes,project",
                 # Free text, not `name=`: the feed's identifier is matched against every indexed
-                # field, where `name=` only matches the canonical name and so never the alias.
-                "query": search_term,
+                # field, where `name=` only matches the canonical name and so never an alias.
+                # Quoted, because a resource name's last segment may hold a `:` (a container image
+                # digest, say), which is query syntax and 400s the request unquoted. Omitted
+                # entirely when the caller wants the whole type listed.
+                **({"query": f'"{search_term}"'} if search_term else {}),
             },
             parse_names,
             rate_limiter,
