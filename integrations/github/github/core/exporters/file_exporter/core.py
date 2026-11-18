@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
+from typing import AsyncGenerator, Dict, List, Any, Optional, Sequence, Tuple, cast
 from urllib.parse import quote
 import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -27,6 +27,7 @@ from github.core.exporters.file_exporter.utils import (
     decode_content,
     extract_file_index,
     extract_file_paths_and_metadata,
+    file_or_included_files_changed,
     filter_github_tree_entries_by_pattern,
     get_graphql_file_metadata,
 )
@@ -42,9 +43,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         IgnoredError(status=409, message="empty repository"),
     ]
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, included_files: Sequence[str] = (), **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.file_processor = FileProcessor(self)
+        # The selector's includedFiles: a file also counts as changed when one of them did.
+        self.included_files = list(included_files)
 
     async def get_resource[ExporterOptionsT: FileContentOptions](
         self, options: ExporterOptionsT
@@ -202,6 +207,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> List[Dict[str, Any]]:
         """Tree entries matching ``pattern``, limited to files changed since ``changed_since``.
 
+        A file counts as changed when its own path changed or one of its
+        ``included_files`` did.
+
         When the changed paths are unknown (no ``changed_since``, or changes that
         can't be trusted), every matching file in the tree is returned.
         """
@@ -214,7 +222,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         if changed_paths is None:
             return matched
         changed = set(changed_paths)
-        return [match for match in matched if match["path"] in changed]
+        return [
+            match
+            for match in matched
+            if file_or_included_files_changed(
+                match["path"], self.included_files, changed
+            )
+        ]
 
     async def process_rest_api_files(
         self, files: List[Dict[str, Any]]

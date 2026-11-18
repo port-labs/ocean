@@ -30,7 +30,12 @@ FILE_PATTERN = [
 
 
 def _patch_changed_paths(module: str, paths: list[str] | None) -> Any:
-    return patch(f"{module}.changed_paths_since", AsyncMock(return_value=paths))
+    """Patch ``changed_paths_since``; like the real one, no ``since`` means unknown changes."""
+
+    async def _changed(*args: Any) -> list[str] | None:
+        return None if args[-1] is None else paths
+
+    return patch(f"{module}.changed_paths_since", AsyncMock(side_effect=_changed))
 
 
 async def _matched_paths(
@@ -66,6 +71,32 @@ class TestFileExporterChangedSince:
             "a/port.yml"
         ]
 
+    @pytest.mark.parametrize(
+        "included_files, changed_paths, expected",
+        [
+            (["README.md"], ["a/README.md"], ["a/port.yml"]),
+            (["/CODEOWNERS"], ["a/CODEOWNERS"], ["a/port.yml"]),
+            (["README.md"], ["README.md"], []),
+            ([], ["a/README.md"], []),
+        ],
+        ids=[
+            "included-file-next-to-it",
+            "leading-slash-is-still-next-to-it",
+            "same-name-elsewhere",
+            "no-included-files",
+        ],
+    )
+    async def test_included_file_change_refreshes_the_file(
+        self,
+        rest_client: GithubRestClient,
+        included_files: list[str],
+        changed_paths: list[str],
+        expected: list[str],
+    ) -> None:
+        exporter = RestFileExporter(rest_client, included_files=included_files)
+
+        assert await _matched_paths(exporter, changed_paths) == expected
+
     async def test_nothing_changed_matches_no_file(
         self, rest_client: GithubRestClient
     ) -> None:
@@ -90,25 +121,42 @@ SKILL_TREE = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "changed_paths, expected",
+    "include_skill_folder, changed_paths, expected",
     [
-        (["skills/a/scripts/run.sh"], ["skills/a/SKILL.md"]),
-        (["skills/ab/SKILL.md"], ["skills/ab/SKILL.md"]),
-        (["README.md"], []),
-        (None, ["skills/a/SKILL.md", "skills/ab/SKILL.md", "skills/c/SKILL.md"]),
+        (True, ["skills/a/scripts/run.sh"], ["skills/a/SKILL.md"]),
+        (False, ["skills/a/scripts/run.sh"], []),
+        (True, ["skills/ab/SKILL.md"], ["skills/ab/SKILL.md"]),
+        (False, ["skills/ab/SKILL.md"], ["skills/ab/SKILL.md"]),
+        (True, ["README.md"], []),
+        (
+            True,
+            None,
+            ["skills/a/SKILL.md", "skills/ab/SKILL.md", "skills/c/SKILL.md"],
+        ),
     ],
-    ids=["folder-file", "skill-md", "outside-skills", "unknown-changes"],
+    ids=[
+        "folder-file-with-folder",
+        "folder-file-without-folder",
+        "skill-md-with-folder",
+        "skill-md-without-folder",
+        "outside-skills",
+        "unknown-changes",
+    ],
 )
-async def test_skill_changes_when_any_file_in_its_folder_changes(
+async def test_skill_changes(
     rest_client: GithubRestClient,
+    include_skill_folder: bool,
     changed_paths: list[str] | None,
     expected: list[str],
 ) -> None:
-    exporter = SkillExporter(rest_client)
+    """With includeSkillFolder a change to any file in the folder rebuilds the skill;
+    without it only SKILL.md changes count."""
+    exporter = SkillExporter(rest_client, include_skill_folder=include_skill_folder)
     with (
         _patch_changed_paths(
             "github.core.exporters.skill_exporter.core", changed_paths
         ),
+        _patch_changed_paths("github.core.exporters.file_exporter.core", changed_paths),
         patch.object(
             exporter, "get_tree_recursive", AsyncMock(return_value=(SKILL_TREE, False))
         ),

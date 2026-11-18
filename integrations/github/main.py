@@ -145,7 +145,6 @@ from github.helpers.repo_selectors import (
 from github.core.options import (
     ListOrganizationOptions,
     ListPluginOptions,
-    ListSkillSearchOptions,
     PluginRepositoryOptions,
 )
 from github.enrichments.included_files import (
@@ -1323,7 +1322,9 @@ async def resync_files(
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
-    file_exporter = RestFileExporter(rest_client)
+    file_exporter = RestFileExporter(
+        rest_client, included_files=config.selector.included_files
+    )
     repo_exporter = RestRepositoryExporter(rest_client)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     should_enrich_with_included_files = bool(config.selector.included_files)
@@ -1373,7 +1374,9 @@ async def resync_skills(
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
-    skill_exporter = SkillExporter(rest_client)
+    skill_exporter = SkillExporter(
+        rest_client, include_skill_folder=selector.include_skill_folder
+    )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
 
     file_patterns = [
@@ -1396,12 +1399,7 @@ async def resync_skills(
         file_patterns, changed_since=active_incremental_cursor()
     )
 
-    async for skills in skill_exporter.get_paginated_resources(
-        ListSkillSearchOptions(
-            repositories=repo_path_map,
-            include_skill_folder=selector.include_skill_folder,
-        )
-    ):
+    async for skills in skill_exporter.get_paginated_resources(repo_path_map):
         yield skills
 
 

@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import StrEnum
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 from typing import (
     Any,
@@ -20,6 +20,7 @@ from typing import (
     Union,
 )
 
+from port_ocean.core.utils.included_files import resolve_included_file_path
 from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
@@ -221,6 +222,22 @@ class FilePatternMappingBuilder:
             )
             for (org, repo), items in repo_map.items()
         ]
+
+
+def file_or_included_files_changed(
+    path: str, included_files: List[str], changed_paths: set[str]
+) -> bool:
+    """Whether the file at ``path`` or one of its ``included_files`` is in ``changed_paths``.
+
+    Included files are resolved next to the file, as the includedFiles enrichment does.
+    """
+    if path in changed_paths:
+        return True
+    base_path = str(PurePosixPath(path).parent)
+    return any(
+        resolve_included_file_path(included, base_path) in changed_paths
+        for included in included_files
+    )
 
 
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
