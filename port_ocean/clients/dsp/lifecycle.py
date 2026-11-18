@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, TypedDict
+from typing import Any, Callable, Self, TypedDict
 
 from loguru import logger
 
 from port_ocean.clients.dsp.lifecycle_http import get_lifecycle_http_client
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.config.settings import ApplicationSettings
 from port_ocean.version import __integration_version__, __version__
 
 
@@ -25,6 +26,47 @@ class SyncType(Enum):
     INCREMENTAL_RESYNC = "incremental_resync"
 
 
+class LifecycleCapability(str):
+    """A lifecycle feature advertised to DSP only while its condition holds."""
+
+    condition: Callable[[], bool]
+
+    def __new__(cls, value: str, condition: Callable[[], bool] = lambda: True) -> Self:
+        capability = super().__new__(cls, value)
+        capability.condition = condition
+        return capability
+
+
+class LifecycleCapabilities:
+    # The failed-entity log reaches integration-observer only through the HTTP log handler.
+    FAILED_ENTITIES_LOGS = LifecycleCapability(
+        "FAILED_ENTITIES_LOGS",
+        condition=lambda: ApplicationSettings().enable_http_logging,
+    )
+
+    HEADER_NAME = "x-port-lifecycle-capabilities"
+
+    def _collect_capabilities(self) -> dict[str, LifecycleCapability]:
+        """Collect all LifecycleCapability attributes defined on the class."""
+        return {
+            name: value
+            for cls in reversed(type(self).__mro__)
+            for name, value in vars(cls).items()
+            if isinstance(value, LifecycleCapability)
+        }
+
+    def to_headers(self) -> dict[str, str]:
+        """Build request headers advertising the supported capabilities."""
+        capabilities = [
+            capability
+            for capability in self._collect_capabilities().values()
+            if capability.condition()
+        ]
+        if not capabilities:
+            return {}
+        return {self.HEADER_NAME: ",".join(sorted(capabilities))}
+
+
 class LifecycleClient:
     """Client for the integration-life-cycle service."""
 
@@ -32,6 +74,12 @@ class LifecycleClient:
         self._lifecycle_http_client = get_lifecycle_http_client(auth)
         self._lifecycle_attributes: LifecycleAttributes | None = None
         self._lifecycle_auth = auth
+        self._capabilities_headers = LifecycleCapabilities().to_headers()
+
+    async def _post(self, url: str, body: dict[str, Any]) -> None:
+        await self._lifecycle_http_client.do_post(
+            url, json=body, headers=self._capabilities_headers
+        )
 
     async def _lifecycle_base_url(self) -> str:
         return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle"
@@ -75,9 +123,7 @@ class LifecycleClient:
             body["kind_identifiers"] = kind_identifiers
 
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
-        await self._lifecycle_http_client.do_post(
-            await self._resync_url(resync_id), json=body
-        )
+        await self._post(await self._resync_url(resync_id), body)
 
     async def notify_resync_finished(
         self, resync_id: str, integration_id: str, integration_type: str
@@ -90,32 +136,26 @@ class LifecycleClient:
             ocean_version=__version__,
         )
         logger.info(f"Notifying lifecycle API resync finished, resync_id={resync_id}")
-        await self._lifecycle_http_client.do_post(
-            await self._resync_url(resync_id), json=body
-        )
+        await self._post(await self._resync_url(resync_id), body)
 
     async def notify_resync_failed(
         self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("failed")
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
-        await self._lifecycle_http_client.do_post(
-            await self._resync_url(resync_id), json=body
-        )
+        await self._post(await self._resync_url(resync_id), body)
 
     async def notify_resync_aborted(
         self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("aborted")
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")
-        await self._lifecycle_http_client.do_post(
-            await self._resync_url(resync_id), json=body
-        )
+        await self._post(await self._resync_url(resync_id), body)
 
     async def get_resync_status(self, resync_id: str) -> str | None:
         logger.debug(f"Polling lifecycle API resync status, resync_id={resync_id}")
         response = await self._lifecycle_http_client.do_get(
-            await self._resync_url(resync_id)
+            await self._resync_url(resync_id), headers=self._capabilities_headers
         )
         if response is None:
             return None
@@ -159,9 +199,7 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=started granularity={granularity.value}"
         )
-        await self._lifecycle_http_client.do_post(
-            await self._granular_url(event_id, granularity), json=body
-        )
+        await self._post(await self._granular_url(event_id, granularity), body)
 
     async def notify_finished(
         self,
@@ -176,9 +214,7 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=finished granularity={granularity.value}"
         )
-        await self._lifecycle_http_client.do_post(
-            await self._granular_url(event_id, granularity), json=body
-        )
+        await self._post(await self._granular_url(event_id, granularity), body)
 
     async def notify_failed(
         self,
@@ -190,9 +226,7 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=failed granularity={granularity.value}"
         )
-        await self._lifecycle_http_client.do_post(
-            await self._granular_url(event_id, granularity), json=body
-        )
+        await self._post(await self._granular_url(event_id, granularity), body)
 
     async def notify_aborted(
         self,
@@ -204,6 +238,4 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=aborted granularity={granularity.value}"
         )
-        await self._lifecycle_http_client.do_post(
-            await self._granular_url(event_id, granularity), json=body
-        )
+        await self._post(await self._granular_url(event_id, granularity), body)

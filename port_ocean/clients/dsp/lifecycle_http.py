@@ -47,9 +47,14 @@ class OceanResyncHttpClient(OceanAsyncClient):
     async def _raw_get(self, url: str, **kwargs: Any) -> httpx.Response:
         return await super().get(url, **kwargs)
 
-    async def do_post(self, url: str, json: dict[str, Any] | None = None) -> None:
+    async def do_post(
+        self,
+        url: str,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         try:
-            headers = await self._lifecycle_auth.headers()
+            headers = {**await self._lifecycle_auth.headers(), **(headers or {})}
             response = await self._raw_post(url, headers=headers, json=json)
 
             if response.is_error:
@@ -73,9 +78,11 @@ class OceanResyncHttpClient(OceanAsyncClient):
         except Exception as exc:
             logger.error(f"Failed HTTP request: {type(exc).__name__}: {exc}")
 
-    async def do_get(self, url: str) -> dict[str, Any] | None:
+    async def do_get(
+        self, url: str, headers: dict[str, str] | None = None
+    ) -> dict[str, Any] | None:
         try:
-            headers = await self._lifecycle_auth.headers()
+            headers = {**await self._lifecycle_auth.headers(), **(headers or {})}
             response = await self._raw_get(url, headers=headers)
             if response.is_error:
                 escaped = response.text.replace("{", "{{").replace("}", "}}")
