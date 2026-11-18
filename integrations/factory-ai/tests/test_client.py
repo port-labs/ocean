@@ -29,7 +29,6 @@ def test_factory_retry_config_skips_unauthorized() -> None:
     assert HTTPStatus.GATEWAY_TIMEOUT in config.retry_status_codes
 
 
-
 @pytest.fixture
 def client() -> FactoryClient:
     instance = FactoryClient(
