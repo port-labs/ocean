@@ -263,6 +263,71 @@ async def test_sse_success_registers_catalog_and_usage() -> None:
 
 
 @pytest.mark.asyncio
+async def test_webhook_posts_answer_log_before_complete() -> None:
+    _clear_completion_caches()
+    run = _workflow_run("run_webhook_answer")
+    run.config.integrationActionExecutionProperties = {
+        "projectEndpoint": "https://x/api/projects/p",
+        "agentId": "agent-1",
+        "reportInvocationStatus": True,
+    }
+    run.output = {"responseId": "resp_wh", "conversationId": "conv_1"}
+
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
+
+    with (
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_rows",
+            AsyncMock(),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
+            AsyncMock(
+                return_value={
+                    "id": "resp_wh",
+                    "status": "completed",
+                    "usage": {
+                        "input_tokens": 1,
+                        "output_tokens": 2,
+                        "total_tokens": 3,
+                    },
+                    "output": [
+                        {
+                            "type": "message",
+                            "content": [
+                                {"type": "output_text", "text": "webhook answer"}
+                            ],
+                        }
+                    ],
+                }
+            ),
+        ) as fetch,
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
+    ):
+        mock_manager.return_value.untrack_for_run = AsyncMock()
+        assert await complete_invoke_run_from_webhook(
+            run, event_type="response.completed", response_id="resp_wh"
+        )
+    fetch.assert_awaited_once()
+    assert fetch.await_args.kwargs.get("agent_id") == "agent-1"
+    mock_ocean.port_client.post_run_log.assert_awaited_once_with(
+        run, "webhook answer", should_raise=False
+    )
+    assert run.output["answer"] == "webhook answer"
+    assert run.output["totalTokens"] == 3
+
+
+@pytest.mark.asyncio
 async def test_webhook_skips_when_response_already_claimed() -> None:
     _clear_completion_caches()
     _completed_response_ids["resp_done"] = None

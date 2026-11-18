@@ -125,6 +125,75 @@ def _toolbox_version_from_response(payload: Any) -> str:
     return "1"
 
 
+def _explicit_toolbox_version(payload: Any) -> str | None:
+    """Version id from a toolbox version object (no silent default)."""
+    if not isinstance(payload, dict):
+        return None
+    for key in ("version", "version_id", "id"):
+        value = payload.get(key)
+        if value is not None and str(value).strip():
+            return str(value)
+    return None
+
+
+def _toolbox_tool_key(tool: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        tool.get("type"),
+        tool.get("server_label"),
+        tool.get("server_url"),
+        tool.get("project_connection_id") or tool.get("projectConnectionId"),
+    )
+
+
+def _toolbox_tools_satisfied(
+    existing: list[Any] | None, desired: list[dict[str, Any]]
+) -> bool:
+    # Subset match: custom team toolboxes may carry extra tools.
+    if not desired:
+        return True
+    if not isinstance(existing, list):
+        return False
+    have = {
+        _toolbox_tool_key(tool) for tool in existing if isinstance(tool, dict)
+    }
+    return all(_toolbox_tool_key(tool) in have for tool in desired)
+
+
+def _latest_toolbox_version(payload: Any) -> tuple[str, list[Any]] | None:
+    if not isinstance(payload, dict) or not payload:
+        return None
+    versions = payload.get("versions")
+    if not isinstance(versions, dict):
+        return None
+    latest = versions.get("latest")
+    if not isinstance(latest, dict):
+        return None
+    version = _explicit_toolbox_version(latest) or _explicit_toolbox_version(
+        {"version": payload.get("default_version")}
+    )
+    if not version:
+        return None
+    tools = latest.get("tools")
+    return version, tools if isinstance(tools, list) else []
+
+
+def _agent_points_at_toolbox(
+    tools: list[Any] | None, *, toolbox_name: str
+) -> bool:
+    marker = f"/toolboxes/{toolbox_name}/"
+    if not tools:
+        return False
+    for tool in tools:
+        if not isinstance(tool, dict) or tool.get("type") != "mcp":
+            continue
+        if tool.get("server_label") != TOOLBOX_SERVER_LABEL:
+            continue
+        url = tool.get("server_url")
+        if isinstance(url, str) and marker in url:
+            return True
+    return False
+
+
 def tools_from_agent_payload(agent: Any) -> list[Any]:
     if not isinstance(agent, dict):
         return []
@@ -237,6 +306,36 @@ async def upsert_port_toolbox(
     return _toolbox_version_from_response(response)
 
 
+async def ensure_toolbox_version(
+    client: Any,
+    *,
+    project_endpoint: str,
+    toolbox_name: str,
+    tools: list[dict[str, Any]],
+) -> str:
+    """Reuse latest toolbox version when desired MCP tools already present.
+
+    Credentials live on project connections; remint must not mint a new
+    immutable toolbox version for token-only refresh.
+    """
+    # ponytail: GET then subset-match; POST only when tools missing
+    existing = await client.send_api_request(
+        client.build_url(project_endpoint, f"toolboxes/{toolbox_name}"),
+        extra_headers=_TOOLBOXES_HEADER,
+    )
+    latest = _latest_toolbox_version(existing)
+    if latest is not None:
+        version, existing_tools = latest
+        if _toolbox_tools_satisfied(existing_tools, tools):
+            return version
+    return await upsert_port_toolbox(
+        client,
+        project_endpoint=project_endpoint,
+        toolbox_name=toolbox_name,
+        tools=tools,
+    )
+
+
 async def _update_agent_tools(
     client: Any,
     *,
@@ -346,7 +445,7 @@ async def ensure_port_mcp(
         return None
 
     resolved_toolbox_name = resolve_toolbox_name(agent_id, toolbox_name)
-    toolbox_version = await upsert_port_toolbox(
+    toolbox_version = await ensure_toolbox_version(
         client,
         project_endpoint=project_endpoint,
         toolbox_name=resolved_toolbox_name,
@@ -358,6 +457,9 @@ async def ensure_port_mcp(
 
     kind = agent_kind or agent_definition_kind(agent_payload)
     if kind != "prompt":
+        return resolved_toolbox_name, toolbox_version
+
+    if _agent_points_at_toolbox(tools_context, toolbox_name=resolved_toolbox_name):
         return resolved_toolbox_name, toolbox_version
 
     toolbox_url = toolbox_consumer_url(

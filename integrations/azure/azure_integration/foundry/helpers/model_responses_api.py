@@ -12,17 +12,34 @@ from azure_integration.foundry.clients.http.foundry_client import create_foundry
 
 
 async def fetch_foundry_response(
-    response_id: str, *, project_endpoint: str
+    response_id: str,
+    *,
+    project_endpoint: str,
+    agent_id: str | None = None,
 ) -> dict[str, Any] | None:
+    """GET a stored Responses body. Agent invokes: try agent protocol path first."""
+    from azure_integration.foundry.helpers.utils import agent_openai_protocol_path
+
     client = create_foundry_client()
-    url = client.build_url(project_endpoint, f"openai/v1/responses/{response_id}")
-    try:
-        payload = await client.send_api_request(url, method="GET")
-    except Exception as error:
-        logger.warning(f"Failed to GET Foundry response {response_id}: {error}")
-        return None
-    if isinstance(payload, dict) and payload:
-        return payload
+    paths: list[str] = []
+    if agent_id and agent_id.strip():
+        paths.append(
+            f"{agent_openai_protocol_path(agent_id.strip(), 'responses')}/{response_id}"
+        )
+    paths.append(f"openai/v1/responses/{response_id}")
+
+    last_error: Exception | None = None
+    for path in paths:
+        url = client.build_url(project_endpoint, path)
+        try:
+            payload = await client.send_api_request(url, method="GET")
+        except Exception as error:
+            last_error = error
+            continue
+        if isinstance(payload, dict) and payload:
+            return payload
+    if last_error is not None:
+        logger.warning(f"Failed to GET Foundry response {response_id}: {last_error}")
     return None
 
 

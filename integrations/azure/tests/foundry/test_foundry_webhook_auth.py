@@ -67,11 +67,6 @@ async def test_handle_event_respects_report_invocation_status_default(
             "complete_invoke_run_from_webhook",
             new_callable=AsyncMock,
         ) as complete,
-        patch(
-            "azure_integration.foundry.webhook_processors.conversation_webhook_processor."
-            "response_id_from_webhook_payload",
-            return_value="resp_1",
-        ),
     ):
         await processor.handle_event(payload, None)
 

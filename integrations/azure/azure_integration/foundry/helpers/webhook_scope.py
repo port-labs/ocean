@@ -16,22 +16,6 @@ def dashboard_webhook_endpoints_url(account_base: str) -> str:
     return f"{account_base}/openai/v1/dashboard/webhook_endpoints"
 
 
-def response_id_from_webhook_payload(payload: dict[str, Any]) -> str | None:
-    event_type = payload.get("type")
-    if not isinstance(event_type, str) or not event_type.startswith("response."):
-        return None
-    data = payload.get("data")
-    if isinstance(data, dict):
-        for key in ("id", "response_id", "responseId"):
-            value = data.get(key)
-            if value:
-                return str(value)
-        nested = data.get("response")
-        if isinstance(nested, dict) and nested.get("id"):
-            return str(nested["id"])
-    return None
-
-
 class FoundryResponseBody(BaseModel):
     """Responses API body fields needed for invoke run completion."""
 
