@@ -11,6 +11,9 @@
       "section": "AI Agents",
       "resources": [
         {
+          "kind": "environment"
+        },
+        {
           "kind": "session"
         },
         {
