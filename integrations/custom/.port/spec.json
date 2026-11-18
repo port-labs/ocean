@@ -167,7 +167,7 @@
       "name": "paginationParam",
       "required": false,
       "type": "string",
-      "description": "Query parameter name for the main pagination value. For cursor: 'cursor', 'page[after]', 'after'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip'. Defaults vary by paginationType.",
+      "description": "Parameter or body field name for the main pagination value (query or body depending on paginationPlacement). For cursor: 'cursor', 'page[after]', 'after', 'next_page_token'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip'. Defaults vary by paginationType.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -188,7 +188,7 @@
       "name": "sizeParam",
       "required": false,
       "type": "string",
-      "description": "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType.",
+      "description": "Parameter or body field name for page size/limit (query or body depending on paginationPlacement). Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -228,6 +228,28 @@
       "required": false,
       "type": "string",
       "description": "Dot-notation path to extract cursor from response for cursor pagination (e.g., 'meta.after_cursor', 'links.next'). Defaults to common patterns if not specified.",
+      "dependencies": [
+        {
+          "on": "paginationType",
+          "when": {
+            "equals": "cursor"
+          },
+          "then": {
+            "required": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "paginationPlacement",
+      "required": false,
+      "type": "string",
+      "default": "query",
+      "description": "Where to send the cursor and page size for cursor pagination: 'query' (URL query parameters, default) or 'body' (JSON request body for non-GET methods only; GET always uses query params). Use body for APIs that expect the cursor in the POST payload.",
+      "enum": [
+        "query",
+        "body"
+      ],
       "dependencies": [
         {
           "on": "paginationType",
@@ -283,7 +305,7 @@
       "required": false,
       "type": "string",
       "default": "@odata.nextLink",
-      "description": "Path to the next page URL in the response (e.g., '@odata.nextLink', 'links.next', 'nextRecordsUrl'). Used with next_link pagination type.",
+      "description": "Path to the next page URL in the response (e.g., '@odata.nextLink', 'links.next', 'nextRecordsUrl'). Absolute URLs are used as-is; relative paths are resolved against the integration base URL. Used with next_link pagination type.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -381,6 +403,7 @@
           "sizeParam",
           "startPage",
           "cursorPath",
+          "paginationPlacement",
           "hasMorePath",
           "lastPagePath",
           "nextLinkPath",

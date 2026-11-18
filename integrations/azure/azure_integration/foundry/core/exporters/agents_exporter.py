@@ -18,9 +18,9 @@ from azure_integration.foundry.helpers.utils import (
 )
 
 
-class AgentsExporter(FoundryExporter):
+class AgentsExporter(FoundryExporter[ListAgentsOptions]):
     @cache_iterator_result()
-    async def _iter_agent_pages(
+    async def iter_agent_pages(
         self, project_endpoint: str
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Bare agents list, cached for the current event (shared across agent resources)."""
@@ -44,7 +44,7 @@ class AgentsExporter(FoundryExporter):
         cursor = active_incremental_cursor()
 
         async for page in paginate_with_strategy(
-            self._iter_agent_pages(project_endpoint),
+            self.iter_agent_pages(project_endpoint),
             cursor=cursor,
             strategy=AGENT_INCREMENTAL,
         ):

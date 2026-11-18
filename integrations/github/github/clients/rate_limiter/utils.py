@@ -37,6 +37,11 @@ class RateLimitInfo:
         return max(1, self.reset_time - int(time.time()))
 
     @property
+    def is_expired(self) -> bool:
+        """The rate limit window has reset, so `remaining` is stale."""
+        return int(time.time()) >= self.reset_time
+
+    @property
     def utilization_percentage(self) -> float:
         return (
             0 if self.limit == 0 else ((self.limit - self.remaining) / self.limit) * 100
