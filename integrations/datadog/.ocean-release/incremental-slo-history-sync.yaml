@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added incremental sync for Datadog SLO histories, refreshing the current time window (and the window that just closed) for all SLOs
