@@ -37,7 +37,7 @@ resources:
           blueprint: '"confluencePage"'
           properties:
             status: .status
-            subtype: .subtype
+            subtype: .subtype // ""
             createdAt: .createdAt
             updatedAt: .version.createdAt
             version: .version.number
