@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
@@ -124,3 +125,42 @@ class ProjectExporter:
                         ]
                         if projects:
                             yield projects
+
+    async def find_by_endpoint(
+        self,
+        endpoint: str,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> FoundryProject:
+        """ARM deploy/delete needs subscription, resource group, and account.
+
+        The data-plane URL only carries the account host and project name.
+        ``.../projects/_project`` is Foundry's default-project alias; resolve it to
+        the sole project on that account host when discovery has exactly one.
+        Uses the cached project list from ``get_paginated_resources``.
+        """
+        target = endpoint.rstrip("/")
+        target_host = urlparse(target).netloc.casefold()
+        alias_default = target.rsplit("/", 1)[-1] == "_project"
+        account_matches: list[FoundryProject] = []
+
+        async for projects in self.get_paginated_resources(api_version=api_version):
+            for raw in projects:
+                ep = str(raw["__foundryProjectEndpoint"]).rstrip("/")
+                project = foundry_project_from_arm(raw)
+                if project is None:
+                    continue
+                if ep == target:
+                    return project
+                if alias_default and urlparse(ep).netloc.casefold() == target_host:
+                    account_matches.append(project)
+
+        if alias_default and len(account_matches) == 1:
+            return account_matches[0]
+        if alias_default and len(account_matches) > 1:
+            raise ValueError(
+                f"Endpoint {target} is ambiguous "
+                f"({len(account_matches)} projects on this account); "
+                "use the concrete project name in the URL"
+            )
+        raise ValueError(f"No discovered Foundry project matches endpoint {target}")
