@@ -56,4 +56,5 @@ register_action_executors()
 
 @ocean.on_start()
 async def on_start() -> None:
+    logger.info("Starting fake integration")
     print("Starting fake integration!")
