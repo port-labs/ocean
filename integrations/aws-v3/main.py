@@ -1,6 +1,5 @@
 from typing import cast
 
-from aws.core.exporters.exporter_metadata import kind_to_export_metadata
 from aws.probe import AwsPermissionProbe
 from aws.utils import RegionHelper
 from port_ocean.context.ocean import ocean
@@ -19,7 +18,7 @@ from aws.core.helpers.utils import is_access_denied_exception
 from aws.webhook.registry import register_cloudtrail_live_events
 
 from loguru import logger
-from resync import ResyncAWSService
+from resync import resync_from_resource_config
 from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
@@ -105,16 +104,7 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 
 @ocean.on_resync()
 async def resync_standard_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind not in kind_to_export_metadata:
-        return
-
-    metadata = kind_to_export_metadata[ObjectKind(kind)]
-    selector = cast(AWSResourceConfig, event.resource_config).selector
-    async for batch in ResyncAWSService(
-        kind=kind,
-        exporter_cls=metadata.exporter,
-        request_cls=metadata.paginated_request_model,
-        regional=metadata.resolve_regional(selector),
-        request_extras=metadata.build_request_extras(selector),
+    async for batch in resync_from_resource_config(
+        kind, cast(AWSResourceConfig, event.resource_config)
     ):
         yield batch

@@ -7,6 +7,107 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.61.6 (2026-11-17)
+
+
+### Bug Fixes
+
+- Set Redis socket and connect timeouts (previously unbounded) so a dead Redis connection can no longer hang the live-events consumer or the centralized rate limiter, which silently stalled the integration
+
+
+## 0.61.5 (2026-11-17)
+
+
+### Bug Fixes
+
+- Add Plain API (*.plain.com) to trusted subdomains list so its hostname is not rewritten to IP in SaaS mode, preventing TLS/certificate issues
+
+
+## 0.61.4 (2026-11-15)
+
+
+### Bug Fixes
+
+- Route register_raw/unregister_raw through LIVE_EVENT lakehouse ingestion and skip Ocean-core upsert/delete when DSP and lakehouse are enabled
+
+
+## 0.61.3 (2026-11-15)
+
+
+### Bug Fixes
+
+- Fail runs that error during the pre-acknowledge rate-limit path instead of leaving them Queued
+
+
+## 0.61.2 (2026-11-15)
+
+
+### Improvements
+
+- Remove the unused AWS_V3_CUSTOM_KINDS_ENABLED value from IntegrationFeatureFlag.
+
+
+## 0.61.1 (2026-11-12)
+
+
+### Bug Fixes
+
+- Fix incremental DSP resyncs for repo-managed mappings by sending the mapping on resync started
+
+
+## 0.61.0 (2026-11-12)
+
+
+### Features
+
+- Add `port` vault type for SaaS identity propagation, exchanging identity JWTs for downstream tokens
+
+
+## 0.60.0 (2026-11-12)
+
+
+### Features
+
+- Add optional `ResourceConfig.probe_description`, published in the port-app-config kinds schema as `probeDescription` so Port can show it on test connection results (#55928397)
+
+
+## 0.59.0 (2026-11-11)
+
+
+### Features
+
+- Include the custom kind slot in probe kinds and permissions when its resource config declares `probe_permissions`, and treat constrained `str` kind fields (e.g. `Field(regex=...)`) as the custom kind slot (#456453)
+
+
+## 0.58.4 (2026-11-11)
+
+
+### Bug Fixes
+
+- When OAuth is enabled, POST requests are now retried on 401 with refreshed credentials for every integration, including those with a custom retry config. POST is still not retried on other errors.
+
+
+## 0.58.3 (2026-11-09)
+
+
+### Bug Fixes
+
+- >-
+    Acknowledge a workflow node run before pausing it for user authentication when
+    the rate-limit check finds no stored user token, so Port does not offer the run
+    to another claim while it waits for the user.
+
+
+## 0.58.2 (2026-11-08)
+
+
+### Bug Fixes
+
+- >-
+    Scaffold new integrations with .port/spec.json instead of .port/spec.yaml,
+    matching every shipped integration and the registry's spec.json format.
+
+
 ## 0.58.1 (2026-11-05)
 
 

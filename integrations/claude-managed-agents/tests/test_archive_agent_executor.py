@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from actions.archive_agent_executor import (
+from claude_managed_agents.actions.archive_agent_executor import (
     AGENT_ARCHIVED_STATUS_LABEL,
     ArchiveAgentExecutor,
 )
-from actions.exceptions import InvalidActionParametersException
+from claude_managed_agents.actions.exceptions import InvalidActionParametersException
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
@@ -35,9 +35,12 @@ async def test_archive_agent_executor_archives_and_completes() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.archive_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.archive_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -63,9 +66,12 @@ async def test_archive_agent_executor_sets_agent_id_output_for_workflow_nodes() 
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.archive_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.archive_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -88,9 +94,12 @@ async def test_archive_agent_executor_skips_output_for_classic_action_runs() -> 
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.archive_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.archive_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 
@@ -111,9 +120,12 @@ async def test_archive_agent_executor_reports_failure_on_api_error() -> None:
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.archive_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.archive_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         with pytest.raises(ActionExecutionError, match="agent not found"):
             await executor.execute(run)
@@ -150,9 +162,12 @@ async def test_archive_agent_executor_posts_warn_log_when_catalog_upsert_fails()
     mock_ocean.port_client.report_run_completed = AsyncMock()
 
     with (
-        patch("actions.archive_agent_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.ocean", mock_ocean),
-        patch("actions.abstract_executor.event_context", mock_event_context),
+        patch("claude_managed_agents.actions.archive_agent_executor.ocean", mock_ocean),
+        patch("claude_managed_agents.actions.abstract_executor.ocean", mock_ocean),
+        patch(
+            "claude_managed_agents.actions.abstract_executor.event_context",
+            mock_event_context,
+        ),
     ):
         await executor.execute(run)
 

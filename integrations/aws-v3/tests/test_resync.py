@@ -442,6 +442,77 @@ class TestRequestExtras:
             assert options.region == region
             assert options.scope_to_region is True
 
+    @pytest.mark.asyncio
+    async def test_request_extras_passed_to_extended_request_model(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_semaphore_iter: None,
+        fake_stream_tasks: None,
+    ) -> None:
+        captured: list[Any] = []
+
+        class _ExtendedRequest(_Request):
+            def __init__(
+                self,
+                region: str,
+                include: List[str],
+                account_id: str,
+                type_name: str = "",
+                use_get_resource_api: bool = False,
+                resource_scope: str = "auto",
+            ) -> None:
+                super().__init__(region, include, account_id)
+                self.type_name = type_name
+                self.use_get_resource_api = use_get_resource_api
+                self.resource_scope = resource_scope
+
+        class _CapturingExporter:
+            def __init__(self, session: Any) -> None:
+                self.session = session
+
+            async def get_paginated_resources(
+                self, options: _ExtendedRequest
+            ) -> AsyncIterator[Any]:
+                captured.append(options)
+                async for item in _aiter_from_list([["x"]]):
+                    yield item
+
+        async def _accounts() -> AsyncIterator[Tuple[Dict[str, str], Any]]:
+            yield ({"Id": "111111111111", "Name": "Account 1"}, object())
+
+        monkeypatch.setattr(resync, "get_all_account_sessions", lambda: _accounts())
+        monkeypatch.setattr(
+            resync,
+            "get_allowed_regions",
+            AsyncMock(return_value=["us-east-1"]),
+        )
+
+        selector = AWSResourceSelector(
+            regionPolicy=RegionPolicy(allow=[], deny=[]),
+            includeActions=[],
+            query="*",
+        )
+        _patch_event_selector(monkeypatch, selector)
+
+        service = resync.ResyncAWSService(
+            "AWS::IAM::Role",
+            cast(Any, _CapturingExporter),
+            cast(Type[ResourceRequestModel], _ExtendedRequest),
+            regional=True,
+            request_extras={
+                "type_name": "AWS::IAM::Role",
+                "use_get_resource_api": True,
+                "resource_scope": "global",
+            },
+        )
+        async for _ in service:
+            pass
+
+        assert len(captured) == 1
+        assert captured[0].type_name == "AWS::IAM::Role"
+        assert captured[0].use_get_resource_api is True
+        assert captured[0].resource_scope == "global"
+
 
 class TestRegionalBucketDiscoveryResync:
     @pytest.mark.asyncio

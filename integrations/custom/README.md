@@ -105,9 +105,9 @@ OCEAN__INTEGRATION__CONFIG__AUTH_TYPE=none
 
 ```bash
 # Pagination method
-OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=offset  # offset, page, cursor, or none
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=offset  # offset, page, cursor, next_link, header_link, or none
 
-# Page size (applies to all pagination types)
+# Page size (applies to offset/page/cursor)
 OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
 
 # Optional: Custom parameter names for offset pagination
@@ -122,6 +122,12 @@ OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
 # Optional: Custom parameter names for cursor pagination
 OCEAN__INTEGRATION__CONFIG__CURSOR_PARAM=cursor    # Default: "cursor"
 OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
+# Send cursor/size in query params (default) or JSON body (non-GET only; GET always uses query)
+OCEAN__INTEGRATION__CONFIG__PAGINATION_PLACEMENT=query  # query | body
+
+# Optional: next_link pagination (absolute URLs used as-is; relative paths resolve against base_url)
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=next_link
+OCEAN__INTEGRATION__CONFIG__NEXT_LINK_PATH=@odata.nextLink
 
 # Optional: Pagination stop signals
 OCEAN__INTEGRATION__CONFIG__HAS_MORE_PATH=meta.has_more    # Truthy = more pages (default semantics)

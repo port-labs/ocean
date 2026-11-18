@@ -159,10 +159,12 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield slos
 
 
+@ocean.on_incremental_resync(ObjectKind.SLO_HISTORY)
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListSloHistoryOptions.from_resource_config(
-        cast(SLOHistoryResourceConfig, event.resource_config)
+        cast(SLOHistoryResourceConfig, event.resource_config),
+        incremental_cursor=active_incremental_cursor(),
     )
     async for histories in _resync_across_orgs(
         lambda client: SloHistoryExporter(client).get_paginated_resources(options),

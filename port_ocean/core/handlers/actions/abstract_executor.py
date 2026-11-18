@@ -18,7 +18,7 @@ class AbstractExecutor(ABC):
 
     Class Attributes:
         ACTION_NAME (str): The unique identifier for this action, matching the action name
-            in the integration's `.port/spec.yaml` file.
+            in the integration's `.port/spec.json` file.
         PARTITION_KEY (str): The key used to partition action runs for concurrent execution.
             If provided, runs with the same partition key value will be executed sequentially.
         WEBHOOK_PROCESSOR_CLASS (Optional[Type[AbstractWebhookProcessor]]): The webhook processor
@@ -26,7 +26,7 @@ class AbstractExecutor(ABC):
         WEBHOOK_PATH (str): The URL path where webhook events for this action should be sent.
 
     Implementation Requirements:
-        1. Set ACTION_NAME to match the action name in the integration's `.port/spec.yaml`.
+        1. Set ACTION_NAME to match the action name in the integration's `.port/spec.json`.
         2. Implement rate limit checking methods to prevent API quota exhaustion.
         3. Implement the execute method to perform the actual action logic.
         4. Optionally set PARTITION_KEY to control concurrent execution.
