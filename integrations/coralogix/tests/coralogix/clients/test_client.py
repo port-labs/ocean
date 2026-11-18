@@ -21,7 +21,7 @@ def _response(status: int, body: Any = None) -> httpx.Response:
 def _client(*responses: httpx.Response) -> tuple[CoralogixClient, AsyncMock]:
     client = CoralogixClient(base_url=BASE, api_key="k")
     request = AsyncMock(side_effect=list(responses))
-    client.http_client = MagicMock(request=request)
+    client._http_client = MagicMock(request=request)
     return client, request
 
 

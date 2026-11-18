@@ -47,8 +47,8 @@ class CoralogixClient:
     def __init__(self, base_url: str, api_key: str) -> None:
         self.base_url = base_url.rstrip("/")
         self._api_key = api_key
-        self.http_client: OceanAsyncClient = http_async_client  # type: ignore[assignment]
-        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        self._http_client: OceanAsyncClient = http_async_client  # type: ignore[assignment]
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -66,8 +66,8 @@ class CoralogixClient:
     ) -> Dict[str, Any]:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         try:
-            async with self.semaphore:
-                response = await self.http_client.request(
+            async with self._semaphore:
+                response = await self._http_client.request(
                     method=method,
                     url=url,
                     params=params,
