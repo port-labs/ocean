@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeVar
 
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
+from pydantic.v1 import BaseModel, ValidationError
+
+from factory_ai.clients.exceptions import FactoryAIError
+
+TResponse = TypeVar("TResponse", bound=BaseModel)
 
 
 class FactoryClient:
@@ -13,7 +18,8 @@ class FactoryClient:
     Auth: Bearer token (Factory API key). Base URL: https://api.factory.ai
     See https://docs.factory.com/api-reference
 
-    Resource-specific fetch logic belongs in exporters, not here.
+    Resource-specific fetch logic belongs in exporters, not here. This client
+    only exposes generic request helpers that exporters compose against.
     """
 
     def __init__(
@@ -65,3 +71,18 @@ class FactoryClient:
         if not response.content:
             return {}
         return response.json()
+
+    async def get(
+        self,
+        path: str,
+        response_model: type[TResponse],
+        params: dict[str, Any] | None = None,
+    ) -> TResponse:
+        """GET ``path`` and validate the JSON body as ``response_model``."""
+        payload = await self.send_api_request("GET", path, params=params)
+        try:
+            return response_model.parse_obj(payload)
+        except ValidationError as error:
+            message = f"Invalid Factory response for GET {path}: {error}"
+            logger.error(message)
+            raise FactoryAIError(message) from error
