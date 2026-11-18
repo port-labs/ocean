@@ -138,6 +138,16 @@ OCEAN__INTEGRATION__CONFIG__HAS_MORE_PATH=meta.has_more    # Truthy = more pages
 OCEAN__INTEGRATION__CONFIG__LAST_PAGE_PATH=data.last       # Truthy = STOP (inverted, for Spring/Harness APIs)
 ```
 
+#### Offset stop signals
+
+Prefer `HAS_MORE_PATH` or `TOTAL_COUNT_PATH` for offset pagination. Without either:
+
+- Top-level `has_more` / `hasMore` is honored when present
+- Otherwise only top-level list envelopes named `data`, `items`, `results`, or `content` keep paging while the list length is `>= page size`
+- Other envelopes (for example `records`, or nested `data.items` where `data` is an object) stop after the current page; a warning is logged so the stop is not silent
+
+`TOTAL_COUNT_PATH` continues while `offset + pageSize < total + initialOffset`.
+
 #### Orca-style offset-in-body example
 
 For POST discovery APIs that put `start_at_index` + `limit` in the JSON body and return `total_items`:

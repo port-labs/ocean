@@ -1,7 +1,7 @@
 """Tests for pagination handlers"""
 
 from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
 
 from http_server.handlers import (
@@ -981,6 +981,66 @@ class TestOffsetPagination:
 
         assert len(results) == 1
         assert request_count == 1
+
+    async def test_unrecognized_envelope_stops_after_page_one(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """records-style envelopes without stop signals intentionally stop at page 1"""
+        stuck_page = {
+            "status": "success",
+            "records": [{"id": "1"}] * 100,
+        }
+
+        request_count = 0
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal request_count
+            request_count += 1
+            if request_count > 3:
+                raise AssertionError(
+                    "pagination did not stop on unrecognized envelope"
+                )
+            mock_response = MagicMock()
+            mock_response.json.return_value = stuck_page
+            return mock_response
+
+        handler = OffsetPagination(
+            client=mock_client,
+            config={
+                "pagination_param": "offset",
+                "size_param": "limit",
+                "page_size": 100,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        with patch("http_server.handlers.logger.warning") as mock_warning:
+            results: List[List[Dict[str, Any]]] = []
+            async for batch in handler.fetch_all(
+                url="https://api.example.com/items",
+                method="GET",
+                params={},
+                headers={},
+            ):
+                results.append(batch)
+
+        assert len(results) == 1
+        assert request_count == 1
+        mock_warning.assert_called()
+        warning_text = mock_warning.call_args[0][0]
+        assert "recognised list envelope" in warning_text
+        assert "hasMorePath" in warning_text
 
 
 class TestPaginationHandlerRegistry:
