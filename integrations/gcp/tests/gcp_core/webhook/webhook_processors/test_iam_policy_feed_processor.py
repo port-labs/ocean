@@ -157,10 +157,6 @@ def _patch_parsed(
                 AsyncMock(return_value=asset_data),
             ),
             (
-                f"{module}.resolve_request_controllers",
-                AsyncMock(return_value=(MagicMock(), MagicMock())),
-            ),
-            (
                 f"{module}.search_asset_names_in_project",
                 AsyncMock(return_value=assets),
             ),
@@ -667,10 +663,6 @@ class TestProjectAssetResolution:
                 "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
                 new=AsyncMock(return_value=project_payload),
             ),
-            patch(
-                f"{module}.resolve_request_controllers",
-                new=AsyncMock(return_value=(MagicMock(), MagicMock())),
-            ),
             patch(f"{module}.search_asset_names_in_project", new=lookup),
         ):
             result = await processor.handle_event(
@@ -683,6 +675,29 @@ class TestProjectAssetResolution:
         # The narrowed call first, then the same lookup with no search term.
         assert lookup.await_args_list[0].args[2] == "385573848890"
         assert lookup.await_args_list[1].args[2] is None
+
+    async def test_a_non_project_type_does_not_fall_back_to_listing(
+        self, processor: Any, asset_payload: dict[str, Any], resource_config: MagicMock
+    ) -> None:
+        """Listing a type to find one asset is affordable only because a project scope holds one
+        project. One sandbox project holds 4,751 container images, which would be 48 paged calls
+        inside a single webhook event."""
+        module = "gcp_core.webhook.webhook_processors.iam_policy_feed_processor"
+        lookup = AsyncMock(side_effect=[[], [{"name": ASSET_NAME, "aliases": []}]])
+        with (
+            patch(
+                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
+                new=AsyncMock(return_value=asset_payload),
+            ),
+            patch(f"{module}.search_asset_names_in_project", new=lookup),
+        ):
+            result = await processor.handle_event(
+                _pubsub_payload(asset_payload), resource_config
+            )
+
+        assert lookup.await_count == 1
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
 
 
 class TestSearchRequest:
@@ -698,19 +713,28 @@ class TestSearchRequest:
             client: Any, method: str, request: dict[str, Any], parse: Any, limiter: Any
         ) -> Any:
             captured.update(request)
-            for batch in ():
-                yield batch
+            return
+            yield  # pragma: no cover - makes this an async generator
 
+        controllers = MagicMock()
+        controllers.limiter = AsyncMock(return_value=MagicMock())
+        controllers.semaphore = AsyncMock(return_value=AsyncMock())
         with (
             patch.object(resource_searches, "paginated_query", fake_paginated_query),
             patch.object(resource_searches, "get_asset_client", MagicMock()),
+            patch.object(
+                resource_searches,
+                "get_service_account_project_id",
+                lambda: "sendbox-go",
+            ),
+            patch.object(
+                resource_searches, "search_all_resources_qpm_per_project", controllers
+            ),
         ):
             await resource_searches.search_asset_names_in_project(
                 "projects/x",
                 "containerregistry.googleapis.com/Image",
                 "headless-shipping@sha256:5d26e",
-                MagicMock(),
-                AsyncMock(),
             )
 
         assert captured["query"] == '"headless-shipping@sha256:5d26e"'

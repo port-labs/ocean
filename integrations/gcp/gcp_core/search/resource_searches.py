@@ -8,6 +8,8 @@ from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
+    get_service_account_project_id,
+    search_all_resources_qpm_per_project,
     AssetData,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
@@ -198,8 +200,6 @@ async def search_asset_names_in_project(
     project_name: str,
     asset_type: str,
     search_term: str | None,
-    rate_limiter: FixedWindowLimiter,
-    semaphore: BoundedSemaphore,
 ) -> list[dict[str, Any]]:
     """The name `searchAllResources` holds for every asset of one type, with the aliases it also answers to.
 
@@ -220,6 +220,14 @@ async def search_asset_names_in_project(
             }
             for result in response.results
         ]
+
+    # Not resolve_request_controllers: that dispatches on the asset type, which is right where the
+    # caller then hits that type's own API. This always calls searchAllResources on cloudasset, so
+    # an asset type of Project or Topic would otherwise gate it on a quota for an API it never
+    # touches, leaving the cloudasset limiter blind to this traffic.
+    quota_project = get_service_account_project_id()
+    rate_limiter = await search_all_resources_qpm_per_project.limiter(quota_project)
+    semaphore = await search_all_resources_qpm_per_project.semaphore(quota_project)
 
     async with semaphore:
         logger.info(

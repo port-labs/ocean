@@ -13,11 +13,7 @@ from gcp_core.feed_event import (
 )
 from gcp_core.search.resource_searches import search_asset_names_in_project
 from gcp_core.overrides import GCPIamPolicySelector, GCPPortAppConfig, ProtoConfig
-from gcp_core.utils import (
-    AssetTypesWithSpecialHandling,
-    parse_protobuf_message,
-    resolve_request_controllers,
-)
+from gcp_core.utils import AssetTypesWithSpecialHandling, parse_protobuf_message
 from gcp_core.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
@@ -65,9 +61,12 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
 
         asset = asset_data.get("asset") or {}
         # handle_event indexes these directly, and an empty `ancestors` is as unusable as a missing one.
-        missing = [f for f in ("name", "assetType", "ancestors") if not asset.get(f)]
+        missing = [
+            field
+            for field in ("name", "assetType", "ancestors")
+            if not asset.get(field)
+        ]
         if missing:
-            # The manager logs only "Invalid payload", which does not say which field.
             logger.warning(
                 f"Skipping IAM policy feed event: asset is missing {', '.join(missing)}"
             )
@@ -91,8 +90,7 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
         if selector.policy_query:
             logger.info(
                 f"Skipping real-time IAM policy event for {asset_name}: the feed delivers the whole "
-                f"policy, and policyQuery '{selector.policy_query}' filters it server-side on resync, "
-                "so grants ingested now would be removed by the next resync."
+                f"policy, and this resource sets policyQuery '{selector.policy_query}'."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -101,19 +99,23 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
         if asset_type not in selector.asset_types:
             logger.info(
                 f"Skipping real-time IAM policy event for {asset_name}: {asset_type} is not in this "
-                f"resource's assetTypes {selector.asset_types}. The feed's --asset-types is wider "
-                "than the mapping."
+                f"resource's assetTypes {selector.asset_types}."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         ancestors = asset["ancestors"]
-        # searchAllIamPolicies reports these alongside `project`; a hand-written mapping that reads
-        # `.organization` must not see a value on resync and nothing here.
-        asset_folders = [a for a in ancestors if a.startswith("folders/")]
+        asset_folders = [
+            ancestor for ancestor in ancestors if ancestor.startswith("folders/")
+        ]
         asset_organization = next(
-            (a for a in ancestors if a.startswith("organizations/")), ""
+            (
+                ancestor
+                for ancestor in ancestors
+                if ancestor.startswith("organizations/")
+            ),
+            "",
         )
 
         try:
@@ -127,22 +129,22 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rate_limiter, semaphore = await resolve_request_controllers(asset_type)
         # The identifier the feed used, which is what the free-text search matches on. It only
         # narrows the candidates; canonical_resource_name still has to anchor one of them.
         assets = await search_asset_names_in_project(
-            asset_project,
-            asset_type,
-            asset_name.rsplit("/", 1)[-1],
-            rate_limiter,
-            semaphore,
+            asset_project, asset_type, asset_name.rsplit("/", 1)[-1]
         )
         resource_name = canonical_resource_name(asset_name, assets)
-        if resource_name is None:
-            # Not every alias is searchable: a project is not indexed by its number, which is the
-            # only name a feed gives it. Scoped to one asset type in one project this is small.
+
+        if (
+            resource_name is None
+            and asset_type == AssetTypesWithSpecialHandling.PROJECT
+        ):
+            # A project is the one asset the free-text index does not hold under the number the
+            # feed names it with, and a project scope holds exactly one project. Listing any other
+            # type could be thousands of assets paged 100 at a time inside one webhook event.
             assets = await search_asset_names_in_project(
-                asset_project, asset_type, None, rate_limiter, semaphore
+                asset_project, asset_type, None
             )
             resource_name = canonical_resource_name(asset_name, assets)
 
