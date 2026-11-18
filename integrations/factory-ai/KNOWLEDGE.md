@@ -23,3 +23,10 @@
 
 - List is **not paginated** (`{ computers: [...] }`); newest first
 - Relation to environment when `computerSource.kind` is `environment` (`environmentId`) or legacy `template` (`templateId`)
+
+### user
+
+- List is **cursor-paginated** (`{ users: [...], pagination: { hasMore, nextCursor } }`) via `/api/v0/organization/users`
+- Page size: `limit` 1–100 (integration defaults to 100)
+- No get-by-id endpoint; `get_resource` scans list pages
+- List contract documents id/email/createdAt/metadata (+ optional names/lastSignInAt); role/status appear on invite responses and are retained when present
