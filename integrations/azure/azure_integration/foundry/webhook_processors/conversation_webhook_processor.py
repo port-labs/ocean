@@ -18,9 +18,6 @@ from azure_integration.foundry.helpers.invoke_completion import (
     find_in_progress_run_for_response,
     is_response_completion_claimed,
 )
-from azure_integration.foundry.helpers.webhook_scope import (
-    response_id_from_webhook_payload,
-)
 
 WEBHOOK_PATH = "/webhook"
 
@@ -61,7 +58,9 @@ class ConversationWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig | None
     ) -> WebhookEventRawResults:
         event_type = str(payload.get("type") or "")
-        response_id = response_id_from_webhook_payload(payload)
+        data = payload.get("data")
+        raw_id = data.get("id") if isinstance(data, dict) else None
+        response_id = str(raw_id) if raw_id else ""
         if not response_id:
             logger.warning(
                 f"Ignoring Foundry webhook without response id ({event_type})"

@@ -162,11 +162,12 @@ async def response_body_for_catalog(
     response_body: dict[str, Any] | None,
     *,
     project_endpoint: str,
+    agent_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Prefer a GET response payload so usage/model/conversation fields exist for mapping."""
     if response_body is None:
         return await fetch_foundry_response(
-            response_id, project_endpoint=project_endpoint
+            response_id, project_endpoint=project_endpoint, agent_id=agent_id
         )
     needs_fetch = not response_body.get("usage") or not (
         response_body.get("model")
@@ -176,7 +177,7 @@ async def response_body_for_catalog(
     if not needs_fetch:
         return response_body
     fetched = await fetch_foundry_response(
-        response_id, project_endpoint=project_endpoint
+        response_id, project_endpoint=project_endpoint, agent_id=agent_id
     )
     return fetched or response_body
 
@@ -208,6 +209,7 @@ async def complete_invoke_run_for_response(
     status_label: str | None = None,
     keep_stream: bool = False,
     register_catalog: bool = False,
+    post_answer_log: bool = False,
 ) -> bool:
     """Attach usage/output and close the wf run. Returns False if already terminal."""
     async with _completion_lock:
@@ -253,11 +255,19 @@ async def complete_invoke_run_for_response(
     # Always prefer a GET so usage/model/conversation exist (webhook payload is id-only).
     display_body = (
         await response_body_for_catalog(
-            response_id, response_body, project_endpoint=project_endpoint
+            response_id,
+            response_body,
+            project_endpoint=project_endpoint,
+            agent_id=agent_id or None,
         )
         if project_endpoint
         else response_body
     )
+    if response_body is None and not isinstance(display_body, dict):
+        logger.warning(
+            f"Foundry GET returned no body for response {response_id} "
+            f"(run {run.id}); completing without answer/usage"
+        )
     prior_conversation_id = (
         str(prior["conversationId"]) if prior.get("conversationId") else None
     )
@@ -295,9 +305,18 @@ async def complete_invoke_run_for_response(
                     ObjectKind.FOUNDRY_CONVERSATION, [row], run
                 )
 
+        # Webhook often beats SSE: post answer here so UI still gets the text log.
+        if post_answer_log:
+            answer = slim.get("answer")
+            if isinstance(answer, str) and answer.strip():
+                await ocean.port_client.post_run_log(
+                    run, answer, should_raise=False
+                )
+
         if not keep_stream:
             from azure_integration.foundry.stream_manager import get_stream_manager
 
+            # Untrack after answer log so cancel-flush cannot race the post.
             await get_stream_manager().untrack_for_run(run.id)
 
         resolved_label = status_label
@@ -338,7 +357,6 @@ async def complete_invoke_run_from_webhook(
         )
         return False
     success = event_type == "response.completed"
-    # Option C: untrack (cancel → flush buffer) before report_run_completed.
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
@@ -346,6 +364,7 @@ async def complete_invoke_run_from_webhook(
         success=success,
         source=f"Foundry webhook {event_type}",
         register_catalog=success,
+        post_answer_log=True,
     )
 
 

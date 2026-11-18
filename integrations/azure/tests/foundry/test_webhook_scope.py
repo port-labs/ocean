@@ -1,16 +1,7 @@
 from azure_integration.foundry.helpers.webhook_scope import (
     FoundryResponseBody,
-    response_id_from_webhook_payload,
     usage_from_response,
 )
-
-
-def test_response_id_from_webhook_payload() -> None:
-    payload = {
-        "type": "response.completed",
-        "data": {"response": {"id": "resp_1"}},
-    }
-    assert response_id_from_webhook_payload(payload) == "resp_1"
 
 
 def test_assistant_text() -> None:

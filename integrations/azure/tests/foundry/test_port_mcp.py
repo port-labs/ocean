@@ -108,6 +108,7 @@ async def test_ensure_port_mcp_upserts_port_and_github() -> None:
     client.send_api_request = AsyncMock(
         side_effect=[
             {"definition": {"kind": "prompt", "tools": []}},  # GET agent
+            {},  # GET toolbox missing
             {"version": "3"},  # toolbox POST
             {},  # POST agent tools
         ]
@@ -133,7 +134,7 @@ async def test_ensure_port_mcp_upserts_port_and_github() -> None:
             git_provider="github",
         )
     assert result == (port_toolbox_name("cursor-test-agent"), "3")
-    assert client.send_api_request.await_count == 3
+    assert client.send_api_request.await_count == 4
     assert conn.await_count == 2
     assert conn.await_args_list[0].kwargs == {
         "project_endpoint": "https://proj",
@@ -145,14 +146,14 @@ async def test_ensure_port_mcp_upserts_port_and_github() -> None:
     assert conn.await_args_list[1].kwargs["target"] == GITHUB_MCP_URL
     assert conn.await_args_list[1].kwargs["access_token"] == "ghp_x"
 
-    toolbox_post = client.send_api_request.await_args_list[1]
+    toolbox_post = client.send_api_request.await_args_list[2]
     tools = toolbox_post.kwargs["json_body"]["tools"]
     assert {t["server_label"] for t in tools} == {
         PORT_MCP_SERVER_LABEL,
         GITHUB_MCP_SERVER_LABEL,
     }
 
-    agent_post = client.send_api_request.await_args_list[2]
+    agent_post = client.send_api_request.await_args_list[3]
     assert agent_post.kwargs["method"] == "POST"
     port_mcps = agent_post.kwargs["json_body"]["definition"]["tools"][0]
     assert port_mcps["server_label"] == TOOLBOX_SERVER_LABEL
@@ -166,7 +167,8 @@ async def test_ensure_port_mcp_skips_attach_for_hosted() -> None:
     client.send_api_request = AsyncMock(
         side_effect=[
             {"definition": {"kind": "hosted", "tools": []}},  # GET agent
-            {"version": "1"},  # toolbox
+            {},  # GET toolbox missing
+            {"version": "1"},  # toolbox POST
         ]
     )
     with (
@@ -188,8 +190,8 @@ async def test_ensure_port_mcp_skips_attach_for_hosted() -> None:
             toolbox_name="team-toolbox",
         )
     assert result == ("team-toolbox", "1")
-    assert client.send_api_request.await_count == 2
-    toolbox_url = client.send_api_request.await_args_list[1].args[0]
+    assert client.send_api_request.await_count == 3
+    toolbox_url = client.send_api_request.await_args_list[2].args[0]
     assert toolbox_url.endswith("toolboxes/team-toolbox/versions")
 
 
@@ -200,6 +202,7 @@ async def test_ensure_port_mcp_github_only() -> None:
     client.send_api_request = AsyncMock(
         side_effect=[
             {"definition": {"kind": "prompt", "tools": []}},  # GET agent
+            {},  # GET toolbox missing
             {"version": "1"},  # toolbox POST
         ]
     )
@@ -219,7 +222,7 @@ async def test_ensure_port_mcp_github_only() -> None:
         )
     assert result == (port_toolbox_name("a1"), "1")
     assert conn.await_count == 1
-    toolbox_tools = client.send_api_request.await_args_list[1].kwargs["json_body"][
+    toolbox_tools = client.send_api_request.await_args_list[2].kwargs["json_body"][
         "tools"
     ]
     assert len(toolbox_tools) == 1
@@ -272,6 +275,7 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
                     ],
                 }
             },
+            {},  # GET toolbox missing
             {"version": "2"},  # toolbox POST
             {},  # POST agent tools
         ]
@@ -295,7 +299,7 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
             git_access_token="ghp_x",
         )
     assert result is not None
-    toolbox_tools = client.send_api_request.await_args_list[1].kwargs["json_body"][
+    toolbox_tools = client.send_api_request.await_args_list[2].kwargs["json_body"][
         "tools"
     ]
     assert {t["server_label"] for t in toolbox_tools} == {
@@ -311,6 +315,7 @@ async def test_ensure_port_mcp_attach_failure_propagates() -> None:
     client.send_api_request = AsyncMock(
         side_effect=[
             {"definition": {"kind": "prompt", "tools": []}},
+            {},  # GET toolbox missing
             {"version": "1"},
         ]
     )
@@ -346,6 +351,7 @@ async def test_ensure_port_mcp_passes_project_arm_id_to_connection_upsert() -> N
     client.send_api_request = AsyncMock(
         side_effect=[
             {"definition": {"kind": "hosted", "tools": []}},
+            {},  # GET toolbox missing
             {"version": "1"},
         ]
     )
@@ -374,3 +380,108 @@ async def test_ensure_port_mcp_passes_project_arm_id_to_connection_upsert() -> N
             project_arm_id=arm_id,
         )
     assert conn.await_args.kwargs["project_arm_id"] == arm_id
+
+
+@pytest.mark.asyncio
+async def test_ensure_port_mcp_reuses_toolbox_on_token_remint() -> None:
+    agent_id = "reuse-agent"
+    tb = port_toolbox_name(agent_id)
+    port_conn = port_connection_name(agent_id)
+    port_url = "https://mcp.example/v1"
+    client = MagicMock()
+    client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
+    client.send_api_request = AsyncMock(
+        side_effect=[
+            {
+                "name": tb,
+                "default_version": "7",
+                "versions": {
+                    "latest": {
+                        "version": "7",
+                        "tools": [
+                            {
+                                "type": "mcp",
+                                "server_label": PORT_MCP_SERVER_LABEL,
+                                "server_url": port_url,
+                                "project_connection_id": port_conn,
+                            },
+                            {"type": "web_search"},
+                        ],
+                    }
+                },
+            }
+        ]
+    )
+    conn = AsyncMock()
+    existing = [
+        {
+            "type": "mcp",
+            "server_label": TOOLBOX_SERVER_LABEL,
+            "server_url": f"https://proj/toolboxes/{tb}/versions/7/mcp",
+        }
+    ]
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value=port_url,
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            conn,
+        ),
+    ):
+        result = await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id=agent_id,
+            enable_port_mcp=True,
+            port_access_token="fresh-tok",
+            existing_tools=existing,
+            agent_kind="prompt",
+        )
+    assert result == (tb, "7")
+    assert conn.await_count == 1
+    assert client.send_api_request.await_count == 1
+    assert client.send_api_request.await_args.kwargs.get("method", "GET") == "GET"
+    assert client.send_api_request.await_args.args[0].endswith(f"toolboxes/{tb}")
+
+
+@pytest.mark.asyncio
+async def test_ensure_port_mcp_posts_when_desired_tools_missing() -> None:
+    agent_id = "gap-agent"
+    tb = port_toolbox_name(agent_id)
+    client = MagicMock()
+    client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
+    client.send_api_request = AsyncMock(
+        side_effect=[
+            {
+                "name": tb,
+                "default_version": "1",
+                "versions": {
+                    "latest": {
+                        "version": "1",
+                        "tools": [{"type": "web_search"}],
+                    }
+                },
+            },
+            {"version": "2"},
+        ]
+    )
+    with patch(
+        "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+        AsyncMock(),
+    ):
+        result = await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id=agent_id,
+            enable_port_mcp=False,
+            port_access_token=None,
+            git_access_token="ghp_x",
+            existing_tools=[],
+            attach_to_prompt_agent=False,
+            agent_kind="hosted",
+        )
+    assert result == (tb, "2")
+    assert client.send_api_request.await_count == 2
+    assert client.send_api_request.await_args_list[1].kwargs["method"] == "POST"
