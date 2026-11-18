@@ -75,8 +75,15 @@ jobs:
             git checkout -B "${BRANCH}" "origin/main"
           fi
 
-          chmod +x scripts/ci/merge_pr_specs_into_dev_specs.sh
-          scripts/ci/merge_pr_specs_into_dev_specs.sh "${PR_SHA}" "${BASE_SHA}"
+          # Run the merge helper from the PR head — not from the checked-out
+          # `dev-specs` tree. That branch only carries merged specs and still
+          # has main's (often stale) copy of the script, so a PR that fixes
+          # sync logic would otherwise never dogfood itself.
+          MERGE_SCRIPT="$(mktemp)"
+          git show "${PR_SHA}:scripts/ci/merge_pr_specs_into_dev_specs.sh" > "${MERGE_SCRIPT}"
+          chmod +x "${MERGE_SCRIPT}"
+          "${MERGE_SCRIPT}" "${PR_SHA}" "${BASE_SHA}"
+          rm -f "${MERGE_SCRIPT}"
 
           if git diff --cached --quiet; then
             if [ "${BRANCH_EXISTS}" = "true" ]; then
