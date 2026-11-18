@@ -6,6 +6,8 @@ from azure_integration.foundry.foundry_incremental import (
     MEMORY_STORE_INCREMENTAL,
     MODEL_DEPLOYMENT_INCREMENTAL,
     RESPONSE_INCREMENTAL,
+    SKILL_INCREMENTAL,
+    TOOLBOX_INCREMENTAL,
 )
 
 
@@ -16,6 +18,8 @@ def test_order_desc_kinds_always_send_order() -> None:
         CONVERSATION_INCREMENTAL,
         RESPONSE_INCREMENTAL,
         MEMORY_STORE_INCREMENTAL,
+        SKILL_INCREMENTAL,
+        TOOLBOX_INCREMENTAL,
     ):
         assert strategy.merge_params({}, None) == {"order": "desc"}
         assert strategy.merge_params({"limit": 50}, None) == {

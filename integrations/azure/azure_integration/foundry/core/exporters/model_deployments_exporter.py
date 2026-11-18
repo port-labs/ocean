@@ -7,7 +7,7 @@ from azure_integration.foundry.core.options import ListModelDeploymentsOptions
 from azure_integration.foundry.helpers.utils import enrich_with_project
 
 
-class ModelDeploymentsExporter(FoundryExporter):
+class ModelDeploymentsExporter(FoundryExporter[ListModelDeploymentsOptions]):
     async def get_paginated_resources(
         self, options: ListModelDeploymentsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

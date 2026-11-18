@@ -137,9 +137,18 @@ class RefreshPullRequestsExecutor(AbstractGithubExecutor):
                 infos.append(info)
         return infos
 
+    @staticmethod
+    def _is_info_close_to_rate_limit(info: RateLimitInfo) -> bool:
+        # The pre-check backs off without sending requests, so an expired window
+        # must not keep blocking the run on a stale `remaining`.
+        return (
+            not info.is_expired
+            and info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
+        )
+
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         return any(
-            info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
+            self._is_info_close_to_rate_limit(info)
             for info in await self._rate_limit_infos(run)
         )
 
@@ -150,7 +159,7 @@ class RefreshPullRequestsExecutor(AbstractGithubExecutor):
             (
                 info.seconds_until_reset
                 for info in await self._rate_limit_infos(run)
-                if info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
+                if self._is_info_close_to_rate_limit(info)
             ),
             default=0.0,
         )
