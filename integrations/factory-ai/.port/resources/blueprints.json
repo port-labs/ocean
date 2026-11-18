@@ -164,5 +164,53 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "factory_user",
+    "title": "Factory User",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email"
+        },
+        "firstName": {
+          "type": "string",
+          "title": "First Name"
+        },
+        "lastName": {
+          "type": "string",
+          "title": "Last Name"
+        },
+        "role": {
+          "type": "string",
+          "title": "Role",
+          "enum": ["user", "manager", "owner"],
+          "enumColors": {
+            "user": "lightGray",
+            "manager": "blue",
+            "owner": "purple"
+          }
+        },
+        "status": {
+          "type": "string",
+          "title": "Status"
+        },
+        "lastSignInAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Sign In At"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
   }
 ]
