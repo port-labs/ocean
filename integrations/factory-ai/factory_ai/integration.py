@@ -21,8 +21,17 @@ class ComputerResourceConfig(ResourceConfig):
     )
 
 
+class UserResourceConfig(ResourceConfig):
+    kind: Literal["user"] = Field(
+        description="Factory organization user resource kind",
+        title="User",
+    )
+
+
 class FactoryAIPortAppConfig(PortAppConfig):
-    resources: list[EnvironmentResourceConfig | ComputerResourceConfig] = Field(
+    resources: list[
+        EnvironmentResourceConfig | ComputerResourceConfig | UserResourceConfig
+    ] = Field(
         description="Resources for factory-ai",
         title="Resources",
         default_factory=list,
