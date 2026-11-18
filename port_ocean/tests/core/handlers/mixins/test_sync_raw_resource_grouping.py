@@ -14,7 +14,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin
-from port_ocean.core.integrations.mixins.sync_raw import (
+from port_ocean.core.integrations.mixins.utils import (
     FetchUnit,
     group_resources_for_fetch,
 )
@@ -30,6 +30,7 @@ def make_block(
     resource_id: str | None = None,
     query: str = "true",
     items_to_parse: str | None = None,
+    port_fields: dict[str, Any] | None = None,
 ) -> ResourceConfig:
     raw: dict[str, Any] = {
         "kind": kind,
@@ -48,6 +49,7 @@ def make_block(
         raw["resourceId"] = resource_id
     if items_to_parse:
         raw["port"]["itemsToParse"] = items_to_parse
+    raw["port"].update(port_fields or {})
     return ResourceConfig.parse_obj(raw)
 
 
@@ -72,6 +74,45 @@ class TestGroupResourcesForFetch:
         resources = [
             make_block("file", "a", "res_file", items_to_parse=".a"),
             make_block("file", "b", "res_file", items_to_parse=".b"),
+        ]
+
+        units = group_resources_for_fetch(resources, dsp_enabled=True)
+
+        assert _slots(units) == [("file-0", False), ("file-1", False)]
+
+    @pytest.mark.parametrize(
+        "head, other",
+        [
+            ({}, {"itemsToParse": ""}),
+            ({}, {"itemsToParseName": ""}),
+            ({"itemsToParseName": "item"}, {"itemsToParseName": ""}),
+            ({}, {"itemsToParseTopLevelTransform": True}),
+        ],
+    )
+    def test_settings_the_dsp_treats_as_equal_are_grouped(
+        self, head: dict[str, Any], other: dict[str, Any]
+    ) -> None:
+        # Mirrors parsingOf in the DSP's resourcegroup.go: an empty itemsToParse is
+        # unset and an empty itemsToParseName is "item".
+        resources = [
+            make_block("file", "a", "res_file", port_fields=head),
+            make_block("file", "b", "res_file", port_fields=other),
+        ]
+
+        units = group_resources_for_fetch(resources, dsp_enabled=True)
+
+        assert _slots(units) == [("file-0", True)]
+
+    @pytest.mark.parametrize(
+        "other",
+        [{"itemsToParseName": "row"}, {"itemsToParseTopLevelTransform": False}],
+    )
+    def test_settings_the_dsp_treats_as_different_split(
+        self, other: dict[str, Any]
+    ) -> None:
+        resources = [
+            make_block("file", "a", "res_file"),
+            make_block("file", "b", "res_file", port_fields=other),
         ]
 
         units = group_resources_for_fetch(resources, dsp_enabled=True)
