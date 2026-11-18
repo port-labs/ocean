@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from port_ocean.validation.mock_server.models import (
+from tools.integration_validation.mock_server.models import (
     MockRoute,
     MockRouteFile,
     MockRouteRequest,

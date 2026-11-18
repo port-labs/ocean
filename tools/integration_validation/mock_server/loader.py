@@ -9,8 +9,8 @@ from typing import Iterable
 import yaml
 from pydantic import ValidationError
 
-from port_ocean.validation.mock_server.exceptions import RouteFileLoadError
-from port_ocean.validation.mock_server.models import MockRoute, MockRouteFile
+from tools.integration_validation.mock_server.exceptions import RouteFileLoadError
+from tools.integration_validation.mock_server.models import MockRoute, MockRouteFile
 
 
 def load_route_file(path: Path | str) -> MockRouteFile:

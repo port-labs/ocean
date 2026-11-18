@@ -2,8 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from port_ocean.validation.mock_server.exceptions import RouteFileLoadError
-from port_ocean.validation.mock_server.loader import load_route_file, load_route_files
+from tools.integration_validation.mock_server.exceptions import RouteFileLoadError
+from tools.integration_validation.mock_server.loader import (
+    load_route_file,
+    load_route_files,
+)
 
 
 def _write_yaml(path: Path, content: str) -> Path:

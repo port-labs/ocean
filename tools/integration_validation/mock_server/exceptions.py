@@ -1,9 +1,7 @@
 from pathlib import Path
 
-from port_ocean.exceptions.base import BaseOceanException
 
-
-class RouteFileLoadError(BaseOceanException):
+class RouteFileLoadError(Exception):
     """Raised when a mock route YAML file cannot be read or validated."""
 
     def __init__(self, path: Path | str, message: str) -> None:
