@@ -1,5 +1,19 @@
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from factory_ai.clients.client_factory import ClientFactory
+from factory_ai.exporter_factory import get_exporter_metadata
+from factory_ai.kinds import ObjectKind
+
+
+@ocean.on_resync()
+async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    metadata = get_exporter_metadata(ObjectKind(kind))
+    exporter = metadata.exporter(ClientFactory.get_client())
+    async for batch in exporter.get_paginated_resources(metadata.list_options_model()):
+        if batch:
+            yield batch
 
 
 @ocean.on_start()
