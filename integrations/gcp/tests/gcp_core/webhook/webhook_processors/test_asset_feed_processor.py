@@ -53,6 +53,8 @@ def asset_payload() -> dict[str, Any]:
             "assetType": ASSET_TYPE,
             "name": ASSET_NAME,
             "ancestors": [ASSET_PROJECT, "organizations/123"],
+            # A content-type=resource feed always carries this; feed_event_to_resource indexes it.
+            "resource": {"data": ASSET_RESOURCE_DATA},
         },
         "deleted": False,
     }
@@ -93,7 +95,7 @@ class TestShouldProcessEvent:
         asset_payload: dict[str, Any],
     ) -> None:
         with patch(
-            "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+            "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
             new=AsyncMock(return_value=asset_payload),
         ):
             assert await processor.should_process_event(mock_webhook_event) is True
@@ -107,7 +109,7 @@ class TestShouldProcessEvent:
         from gcp_core.errors import GotFeedCreatedSuccessfullyMessageError
 
         with patch(
-            "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+            "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
             new=AsyncMock(side_effect=GotFeedCreatedSuccessfullyMessageError),
         ):
             assert await processor.should_process_event(mock_webhook_event) is False
@@ -123,6 +125,29 @@ class TestShouldProcessEvent:
             payload={"not": "a pubsub message"},
         )
         assert await processor.should_process_event(event) is False
+
+    async def test_returns_false_for_an_iam_policy_event(
+        self,
+        mock_ocean_context: None,
+        processor: MagicMock,
+        mock_webhook_event: WebhookEvent,
+    ) -> None:
+        # An iam-policy feed stamps the underlying asset's type, so this event would otherwise
+        # match a mapped resource kind and reach feed_event_to_resource, which reads `resource`.
+        iam_policy_payload = {
+            "asset": {
+                "assetType": ASSET_TYPE,
+                "name": ASSET_NAME,
+                "ancestors": [ASSET_PROJECT],
+                "iamPolicy": {"bindings": []},
+            },
+            "deleted": False,
+        }
+        with patch(
+            "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
+            new=AsyncMock(return_value=iam_policy_payload),
+        ):
+            assert await processor.should_process_event(mock_webhook_event) is False
 
 
 class TestGetMatchingKinds:
@@ -140,7 +165,7 @@ class TestGetMatchingKinds:
         mock_event.port_app_config.resources = [mock_resource_config]
         with (
             patch(
-                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
                 new=AsyncMock(return_value=asset_payload),
             ),
             patch(
@@ -182,7 +207,7 @@ class TestValidatePayload:
         expected: bool,
     ) -> None:
         with patch(
-            "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+            "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
             new=AsyncMock(return_value={"some": "data"}),
         ):
             assert await processor.validate_payload(payload) is expected
@@ -204,7 +229,7 @@ class TestHandleEvent:
                 new=AsyncMock(return_value=(MagicMock(), MagicMock())),
             ),
             patch(
-                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
                 new=AsyncMock(return_value=asset_payload),
             ),
             patch(
@@ -239,7 +264,7 @@ class TestHandleEvent:
                 new=AsyncMock(return_value=(MagicMock(), MagicMock())),
             ),
             patch(
-                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
                 new=AsyncMock(return_value=deleted_payload),
             ),
             patch(
@@ -268,7 +293,7 @@ class TestHandleEvent:
 
         with (
             patch(
-                "gcp_core.webhook.webhook_processors.asset_feed_processor.parse_asset_data",
+                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
                 new=AsyncMock(return_value=asset_payload),
             ),
             patch(

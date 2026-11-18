@@ -178,6 +178,61 @@ async def search_all_iam_policies_per_project(
             )
 
 
+async def search_asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+    search_term: str,
+    rate_limiter: FixedWindowLimiter,
+    semaphore: BoundedSemaphore,
+) -> list[dict[str, Any]]:
+    """The name `searchAllResources` holds for every asset of one type, with the aliases it also answers to.
+
+    An IAM_POLICY feed event names a service account by its numeric `uniqueId` while
+    `searchAllIamPolicies` names it by email, so a grant ingested from a feed event lands under a
+    different identifier than the resync's unless the feed's name is translated through this.
+
+    Failures are deliberately not swallowed: they propagate out of the webhook processor and are
+    logged there as a failed event, because an empty list is indistinguishable from "the project has
+    no assets of this type" and would quietly ingest nothing.
+    """
+
+    def parse_names(response: Any) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": result.name,
+                # Absent entirely for types that do not alias, such as buckets and topics.
+                "aliases": [
+                    value
+                    for value in dict(result.additional_attributes or {}).values()
+                    if isinstance(value, str)
+                ],
+            }
+            for result in response.results
+        ]
+
+    async with semaphore:
+        logger.info(
+            f"Searching {asset_type} names matching {search_term!r} in project {project_name}"
+        )
+        assets: list[dict[str, Any]] = []
+        async for batch in paginated_query(
+            get_asset_client(),
+            "search_all_resources",
+            {
+                "scope": project_name,
+                "asset_types": [asset_type],
+                "read_mask": "name,additionalAttributes",
+                # Free text, not `name=`: the feed's identifier is matched against every indexed
+                # field, where `name=` only matches the canonical name and so never the alias.
+                "query": search_term,
+            },
+            parse_names,
+            rate_limiter,
+        ):
+            assets.extend(batch)
+        return assets
+
+
 async def list_all_topics_per_project(
     project: dict[str, Any], **kwargs: Any
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:

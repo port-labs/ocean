@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added live events for the iamPolicy kind via a Cloud Asset Inventory iam-policy feed.
