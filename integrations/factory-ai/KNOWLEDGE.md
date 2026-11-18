@@ -6,22 +6,15 @@
 - [OpenAPI specification](https://factory.com/openapi.json)
 - [API keys settings](https://app.factory.ai/settings/api-keys)
 
-## Base URL
+## Integration-wide
 
-Production Public API host: `https://api.factory.ai`
+- Base URL: `https://api.factory.ai` (paths like `/api/v0/...`)
+- Auth: `Authorization: Bearer <FACTORY_API_KEY>` (`fk-…`; `401` if missing/invalid)
+- No outbound webhooks → resync-only; `saas.liveEvents.enabled` stays `false`
+- Errors use a shared `FactoryApiError` envelope (`detail`, `status`, `title`, optional `metadata`)
 
-Operation paths are relative to that host (for example `GET /api/v0/sessions`).
+## Kind notes
 
-## Auth
+### environment
 
-Every Public API request uses a bearer token in the `Authorization` header:
-
-```http
-Authorization: Bearer <FACTORY_API_KEY>
-```
-
-Create keys in the Factory App (API keys settings). Keys are shown once; documented form is `fk-…`. Missing or invalid keys receive `401`.
-
-## Live events
-
-Factory has no outbound webhooks / push event API for the Public API surface we integrate against. Catalog freshness is resync-only; `saas.liveEvents.enabled` stays `false` and there is no webhook processor package.
+- List is **not paginated** (full `{ environments: [...] }` in one response; computers look the same)

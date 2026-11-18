@@ -1,10 +1,30 @@
 from __future__ import annotations
 
-from typing import Any
+from http import HTTPStatus
+from typing import Any, TypeVar
 
 import httpx
 from loguru import logger
+from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils import http_async_client
+from pydantic.v1 import BaseModel, ValidationError
+
+from factory_ai.clients.exceptions import FactoryAIError
+
+TResponse = TypeVar("TResponse", bound=BaseModel)
+
+
+def create_factory_retry_config() -> RetryConfig:
+    """Retry transient Factory API failures, but not auth errors.
+
+    Ocean retries 401 by default so OAuth integrations can refresh tokens.
+    Factory auth is a static API key, so 401 is permanent and should fail fast.
+    """
+    config = RetryConfig()
+    config.retry_status_codes = config.retry_status_codes - {
+        HTTPStatus.UNAUTHORIZED,
+    }
+    return config
 
 
 class FactoryClient:
@@ -13,7 +33,8 @@ class FactoryClient:
     Auth: Bearer token (Factory API key). Base URL: https://api.factory.ai
     See https://docs.factory.com/api-reference
 
-    Resource-specific fetch logic belongs in exporters, not here.
+    Resource-specific fetch logic belongs in exporters, not here. This client
+    only exposes generic request helpers that exporters compose against.
     """
 
     def __init__(
@@ -65,3 +86,33 @@ class FactoryClient:
         if not response.content:
             return {}
         return response.json()
+
+    async def get(
+        self,
+        path: str,
+        response_model: type[TResponse],
+        params: dict[str, Any] | None = None,
+    ) -> TResponse:
+        """GET ``path`` and validate the JSON body as ``response_model``."""
+        payload = await self.send_api_request("GET", path, params=params)
+        try:
+            return response_model.parse_obj(payload)
+        except ValidationError as error:
+            message = f"Invalid Factory response for GET {path}: {error}"
+            logger.error(message)
+            raise FactoryAIError(message) from error
+
+    async def get_or_none(
+        self,
+        path: str,
+        response_model: type[TResponse],
+        params: dict[str, Any] | None = None,
+    ) -> TResponse | None:
+        """GET ``path``, returning ``None`` on 404 instead of raising."""
+        try:
+            return await self.get(path, response_model, params=params)
+        except httpx.HTTPStatusError as error:
+            if error.response is not None and error.response.status_code == 404:
+                logger.warning(f"HTTP 404 for GET {self._base_url}{path}")
+                return None
+            raise
