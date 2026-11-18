@@ -230,3 +230,26 @@ async def test_bundle_file_ignored_without_include_skill_folder(
         )
 
     client._process_file_batch.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "changed_path",
+    ["skills/foo/skill.md", "Skills/foo/SKILL.md"],
+)
+async def test_skill_incremental_ignores_paths_full_resync_skips(
+    client: GitLabClient, changed_path: str
+) -> None:
+    """The full resync's tree search is case-sensitive, so these never become skills."""
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=[changed_path])
+    )
+    client._process_file_batch = AsyncMock(return_value=[])  # type: ignore[method-assign]
+
+    with patch.object(
+        incremental, "iter_projects", side_effect=lambda *a, **k: _gen([[PROJECT]])
+    ):
+        await _collect(
+            incremental.resync_skills_incremental(client, _selector(), None, SINCE)
+        )
+
+    client._process_file_batch.assert_not_awaited()

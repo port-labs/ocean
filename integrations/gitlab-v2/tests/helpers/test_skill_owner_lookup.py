@@ -123,3 +123,24 @@ async def test_non_matching_skill_name_is_not_an_owner() -> None:
     )
 
     assert owners == set()
+
+
+async def test_case_variant_skill_md_is_not_an_owner() -> None:
+    """A full resync never emits .../skill.md for a SKILL.md glob, so the outer skill owns the file."""
+    client = FakeFolderListingClient(
+        [
+            _blob(".cursor/skills/billing/SKILL.md"),
+            _blob(".cursor/skills/billing/notes/skill.md"),
+            _blob(".cursor/skills/billing/notes/a.md"),
+        ]
+    )
+
+    owners = await find_owning_skill_md_paths(
+        client,  # type: ignore[arg-type]
+        PROJECT,
+        "main",
+        {".cursor/skills/billing/notes/a.md"},
+        GLOBS,
+    )
+
+    assert owners == {".cursor/skills/billing/SKILL.md"}

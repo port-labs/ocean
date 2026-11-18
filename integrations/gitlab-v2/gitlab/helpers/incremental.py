@@ -28,6 +28,7 @@ from gitlab.clients.utils import (
     build_project_params,
 )
 from gitlab.helpers.skill_folder import find_owning_skill_md_paths
+from gitlab.helpers.utils import build_search_query, changed_files
 from gitlab.helpers.skill_plugin import (
     PluginProvider,
     matches_skill_path,
@@ -206,7 +207,13 @@ async def _changed_skill_md_paths(
     include_skill_folder: bool,
 ) -> set[str]:
     """SKILL.md paths to rebuild: edited skills, plus owners of changed bundle files."""
-    direct = {path for path in changed if matches_skill_path(path, patterns)}
+    # Same rule as the full resync: the repository tree match, then matches_skill_path.
+    direct = {
+        path
+        for pattern in patterns
+        for path in changed_files(build_search_query(pattern), changed)
+        if matches_skill_path(path, patterns)
+    }
     if not include_skill_folder:
         return direct
     owners = await find_owning_skill_md_paths(

@@ -6,7 +6,7 @@ from loguru import logger
 
 from gitlab.clients.gitlab_client import GitLabClient, _literal_tree_prefix
 from gitlab.helpers.skill_plugin import SKILL_MD_FILENAME, matches_skill_path
-from gitlab.helpers.utils import ancestor_dirs
+from gitlab.helpers.utils import ancestor_dirs, build_search_query, changed_files
 
 TEXT_FILE_EXTENSIONS: frozenset[str] = frozenset(
     {
@@ -112,15 +112,18 @@ async def _skill_md_in_folder(
     folder: str,
     path_globs: list[str],
 ) -> str | None:
-    """The SKILL.md directly inside ``folder`` if it matches the globs, from one listing."""
+    """The SKILL.md directly inside ``folder`` that a full resync would emit, from one listing.
+
+    Same rule as the full resync: the repository tree match, then matches_skill_path.
+    """
     async for batch in client.get_repository_tree(
         project, folder, ref, recursive=False
     ):
-        for entry in batch:
-            if entry.get("type") == "blob" and matches_skill_path(
-                entry["path"], path_globs
-            ):
-                return entry["path"]
+        blob_paths = [entry["path"] for entry in batch if entry.get("type") == "blob"]
+        for pattern in path_globs:
+            for path in changed_files(build_search_query(pattern), blob_paths):
+                if matches_skill_path(path, path_globs):
+                    return path
     return None
 
 
