@@ -108,7 +108,7 @@
       "required": false,
       "type": "string",
       "sensitive": true,
-      "description": "GitHub personal access token with necessary permissions. This is only necessary if the integration is not functioning as an app. - tester",
+      "description": "GitHub personal access token with necessary permissions. This is only necessary if the integration is not functioning as an app. - tester A",
       "dependencies": [
         {
           "on": "authenticationMode",
