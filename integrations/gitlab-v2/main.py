@@ -1,3 +1,4 @@
+from datetime import datetime
 from itertools import batched
 from typing import cast, Any
 
@@ -604,51 +605,63 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield enriched_batch
 
 
-@ocean.on_incremental_resync(ObjectKind.SKILL)
+def _required_incremental_cursor() -> datetime:
+    """The cursor of the running incremental resync; core binds one for every such run."""
+    sync_cursor = active_incremental_cursor()
+    if sync_cursor is None:
+        raise RuntimeError("Incremental resync handler ran without a sync cursor")
+    return sync_cursor
+
+
 @ocean.on_resync(ObjectKind.SKILL)
 async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
-    sync_cursor = active_incremental_cursor()
-    project_params = (
-        build_incremental_project_updated_params(
-            selector.include_only_active_groups, sync_cursor
-        )
-        if sync_cursor is not None
-        else build_project_params(
-            include_only_active_projects=selector.include_only_active_groups
-        )
+    project_params = build_project_params(
+        include_only_active_projects=selector.include_only_active_groups
     )
-    stream = (
-        resync_skills_incremental(client, selector, project_params, sync_cursor)
-        if sync_cursor is not None
-        else resync_skills(client, selector, project_params)
-    )
-    async for batch in stream:
+    async for batch in resync_skills(client, selector, project_params):
         yield batch
 
 
-@ocean.on_incremental_resync(ObjectKind.PLUGIN)
+@ocean.on_incremental_resync(ObjectKind.SKILL)
+async def resync_incremental_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Rebuild only the skills whose files changed since the cursor."""
+    client = create_gitlab_client()
+    selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
+    sync_cursor = _required_incremental_cursor()
+    project_params = build_incremental_project_updated_params(
+        selector.include_only_active_groups, sync_cursor
+    )
+    async for batch in resync_skills_incremental(
+        client, selector, project_params, sync_cursor
+    ):
+        yield batch
+
+
 @ocean.on_resync(ObjectKind.PLUGIN)
 async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
-    sync_cursor = active_incremental_cursor()
-    project_params = (
-        build_incremental_project_updated_params(
-            selector.include_only_active_groups, sync_cursor
-        )
-        if sync_cursor is not None
-        else build_project_params(
-            include_only_active_projects=selector.include_only_active_groups
-        )
+    project_params = build_project_params(
+        include_only_active_projects=selector.include_only_active_groups
     )
-    stream = (
-        resync_plugins_incremental(client, selector, project_params, sync_cursor)
-        if sync_cursor is not None
-        else resync_plugins(client, selector, project_params)
+    async for batch in resync_plugins(client, selector, project_params):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.PLUGIN)
+async def resync_incremental_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Rebuild only the plugins of projects whose changes touch a plugin."""
+    client = create_gitlab_client()
+    selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
+    sync_cursor = _required_incremental_cursor()
+    project_params = build_incremental_project_updated_params(
+        selector.include_only_active_groups, sync_cursor
     )
-    async for batch in stream:
+    async for batch in resync_plugins_incremental(
+        client, selector, project_params, sync_cursor
+    ):
         yield batch
 
 
