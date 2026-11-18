@@ -10,15 +10,13 @@ from azure_integration.foundry.clients.http.foundry_client import clear_foundry_
 from azure_integration.foundry.clients.webhook_client import FoundryWebhookClient
 
 if TYPE_CHECKING:
-    from azure_integration.foundry.clients.arm_deployments_client import (
-        ArmDeploymentsClient,
-    )
+    from azure_integration.foundry.clients.foundry_arm_client import FoundryArmClient
 
 _ARM_SCOPE = "https://management.azure.com/.default"
 _FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 
 _credential: DefaultAzureCredential | None = None
-_arm_client: ArmDeploymentsClient | None = None
+_arm_client: FoundryArmClient | None = None
 
 
 class _FoundryHeaderProvider:
@@ -47,15 +45,15 @@ async def management_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {token.token}"}
 
 
-def create_arm_deployments_client() -> ArmDeploymentsClient:
+def create_foundry_arm_client() -> FoundryArmClient:
     global _arm_client
     if _arm_client is None:
-        # Lazy import: ArmDeploymentsClient imports management_headers at module load.
-        from azure_integration.foundry.clients.arm_deployments_client import (
-            ArmDeploymentsClient,
+        # Lazy import: FoundryArmClient imports management_headers at module load.
+        from azure_integration.foundry.clients.foundry_arm_client import (
+            FoundryArmClient,
         )
 
-        _arm_client = ArmDeploymentsClient()
+        _arm_client = FoundryArmClient()
     return _arm_client
 
 

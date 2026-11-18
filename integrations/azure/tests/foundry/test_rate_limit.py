@@ -73,11 +73,11 @@ async def test_arm_executor_includes_arm_quota() -> None:
 
     executor = _Stub()
     executor.client = MagicMock()
-    executor.arm_deployments = MagicMock()
+    executor.foundry_arm = MagicMock()
     executor.client.rate_limiter.is_close_to_rate_limit.return_value = False
     executor.client.rate_limiter.seconds_until_rate_limit_reset.return_value = 0.0
-    executor.arm_deployments.rate_limiter.is_close_to_rate_limit.return_value = True
-    executor.arm_deployments.rate_limiter.seconds_until_rate_limit_reset.return_value = (
+    executor.foundry_arm.rate_limiter.is_close_to_rate_limit.return_value = True
+    executor.foundry_arm.rate_limiter.seconds_until_rate_limit_reset.return_value = (
         12.0
     )
 

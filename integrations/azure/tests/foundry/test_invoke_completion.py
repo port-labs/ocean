@@ -112,7 +112,7 @@ async def test_complete_invoke_run_sets_response_entity_link_when_registered() -
             AsyncMock(return_value=True),
         ),
         patch(
-            "azure_integration.foundry.helpers.invoke_completion._foundry_response_entity_page_url",
+            "azure_integration.foundry.helpers.invoke_completion.foundry_response_entity_page_url",
             return_value="http://localhost:3000/foundry_responseEntity?identifier=resp_1",
         ),
         patch(

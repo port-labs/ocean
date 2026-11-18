@@ -107,16 +107,21 @@ async def test_ensure_port_mcp_upserts_port_and_github() -> None:
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
         side_effect=[
-            {},  # port connection PUT
-            {},  # github connection PUT
             {"definition": {"kind": "prompt", "tools": []}},  # GET agent
             {"version": "3"},  # toolbox POST
-            {},  # PATCH agent tools
+            {},  # POST agent tools
         ]
     )
-    with patch(
-        "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
-        return_value="https://mcp.example/v1",
+    conn = AsyncMock()
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value="https://mcp.example/v1",
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            conn,
+        ),
     ):
         result = await ensure_port_mcp(
             client,
@@ -128,28 +133,27 @@ async def test_ensure_port_mcp_upserts_port_and_github() -> None:
             git_provider="github",
         )
     assert result == (port_toolbox_name("cursor-test-agent"), "3")
-    assert client.send_api_request.await_count == 5
+    assert client.send_api_request.await_count == 3
+    assert conn.await_count == 2
+    assert conn.await_args_list[0].kwargs == {
+        "project_endpoint": "https://proj",
+        "name": port_connection_name("cursor-test-agent"),
+        "target": "https://mcp.example/v1",
+        "access_token": "port-tok",
+    }
+    assert conn.await_args_list[1].kwargs["target"] == GITHUB_MCP_URL
+    assert conn.await_args_list[1].kwargs["access_token"] == "ghp_x"
 
-    port_put = client.send_api_request.await_args_list[0]
-    assert port_put.kwargs["method"] == "PUT"
-    assert (
-        port_put.kwargs["json_body"]["credentials"]["Authorization"]
-        == "Bearer port-tok"
-    )
-
-    gh_put = client.send_api_request.await_args_list[1]
-    assert gh_put.kwargs["json_body"]["target"] == GITHUB_MCP_URL
-    assert gh_put.kwargs["json_body"]["credentials"]["Authorization"] == "Bearer ghp_x"
-
-    toolbox_post = client.send_api_request.await_args_list[3]
+    toolbox_post = client.send_api_request.await_args_list[1]
     tools = toolbox_post.kwargs["json_body"]["tools"]
     assert {t["server_label"] for t in tools} == {
         PORT_MCP_SERVER_LABEL,
         GITHUB_MCP_SERVER_LABEL,
     }
 
-    patch_body = client.send_api_request.await_args_list[4].kwargs["json_body"]
-    port_mcps = patch_body["definition"]["tools"][0]
+    agent_post = client.send_api_request.await_args_list[2]
+    assert agent_post.kwargs["method"] == "POST"
+    port_mcps = agent_post.kwargs["json_body"]["definition"]["tools"][0]
     assert port_mcps["server_label"] == TOOLBOX_SERVER_LABEL
     assert "/versions/3/mcp" in port_mcps["server_url"]
 
@@ -160,14 +164,19 @@ async def test_ensure_port_mcp_skips_attach_for_hosted() -> None:
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
         side_effect=[
-            {},  # port connection
             {"definition": {"kind": "hosted", "tools": []}},  # GET agent
             {"version": "1"},  # toolbox
         ]
     )
-    with patch(
-        "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
-        return_value="https://mcp.example/v1",
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value="https://mcp.example/v1",
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            AsyncMock(),
+        ),
     ):
         result = await ensure_port_mcp(
             client,
@@ -178,8 +187,8 @@ async def test_ensure_port_mcp_skips_attach_for_hosted() -> None:
             toolbox_name="team-toolbox",
         )
     assert result == ("team-toolbox", "1")
-    assert client.send_api_request.await_count == 3
-    toolbox_url = client.send_api_request.await_args_list[2].args[0]
+    assert client.send_api_request.await_count == 2
+    toolbox_url = client.send_api_request.await_args_list[1].args[0]
     assert toolbox_url.endswith("toolboxes/team-toolbox/versions")
 
 
@@ -189,22 +198,27 @@ async def test_ensure_port_mcp_github_only() -> None:
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
         side_effect=[
-            {},  # github connection
             {"definition": {"kind": "prompt", "tools": []}},  # GET agent
             {"version": "1"},  # toolbox POST
         ]
     )
-    result = await ensure_port_mcp(
-        client,
-        project_endpoint="https://proj",
-        agent_id="a1",
-        enable_port_mcp=False,
-        port_access_token=None,
-        git_access_token="ghp_x",
-        attach_to_prompt_agent=False,
-    )
+    conn = AsyncMock()
+    with patch(
+        "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+        conn,
+    ):
+        result = await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id="a1",
+            enable_port_mcp=False,
+            port_access_token=None,
+            git_access_token="ghp_x",
+            attach_to_prompt_agent=False,
+        )
     assert result == (port_toolbox_name("a1"), "1")
-    toolbox_tools = client.send_api_request.await_args_list[2].kwargs["json_body"][
+    assert conn.await_count == 1
+    toolbox_tools = client.send_api_request.await_args_list[1].kwargs["json_body"][
         "tools"
     ]
     assert len(toolbox_tools) == 1
@@ -217,7 +231,6 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
     client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
     client.send_api_request = AsyncMock(
         side_effect=[
-            {},  # github connection
             {
                 "definition": {
                     "kind": "prompt",
@@ -231,12 +244,18 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
                 }
             },
             {"version": "2"},  # toolbox POST
-            {},  # PATCH
+            {},  # POST agent tools
         ]
     )
-    with patch(
-        "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
-        return_value="https://mcp.example/v1",
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value="https://mcp.example/v1",
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            AsyncMock(),
+        ),
     ):
         result = await ensure_port_mcp(
             client,
@@ -247,7 +266,7 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
             git_access_token="ghp_x",
         )
     assert result is not None
-    toolbox_tools = client.send_api_request.await_args_list[2].kwargs["json_body"][
+    toolbox_tools = client.send_api_request.await_args_list[1].kwargs["json_body"][
         "tools"
     ]
     assert {t["server_label"] for t in toolbox_tools} == {
