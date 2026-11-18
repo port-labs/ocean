@@ -20,3 +20,28 @@ resources:
             latestBuildStatus: .latestBuild.status
             createdAt: '(.createdAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
             updatedAt: '(.updatedAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+  - kind: computer
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"factory_computer"'
+          properties:
+            status: .status
+            providerStatus: .providerStatus
+            providerType: .providerType
+            isListed: .isListed
+            diskBand: .disk.band
+            ownerPrincipalKind: .ownerPrincipalKind
+            lastSeenAt: '(.lastSeenAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))?'
+            createdAt: '(.createdAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+          relations:
+            # Prefer environmentId; legacy template sources used templateId as the environment id.
+            environment: >-
+              .computerSource
+              | if .kind == "environment" then .environmentId
+                elif .kind == "template" then .templateId
+                else empty end

@@ -78,5 +78,91 @@
       "required": []
     },
     "relations": {}
+  },
+  {
+    "identifier": "factory_computer",
+    "title": "Factory Computer",
+    "icon": "Cluster",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["provisioning", "active", "error"],
+          "enumColors": {
+            "provisioning": "blue",
+            "active": "green",
+            "error": "red"
+          }
+        },
+        "providerStatus": {
+          "type": "string",
+          "title": "Provider Status",
+          "enum": [
+            "requested",
+            "provisioning",
+            "booting",
+            "running",
+            "paused",
+            "snapshotting",
+            "terminating",
+            "terminated",
+            "failed"
+          ],
+          "enumColors": {
+            "requested": "lightGray",
+            "provisioning": "blue",
+            "booting": "blue",
+            "running": "green",
+            "paused": "yellow",
+            "snapshotting": "purple",
+            "terminating": "orange",
+            "terminated": "lightGray",
+            "failed": "red"
+          }
+        },
+        "providerType": {
+          "type": "string",
+          "title": "Provider Type"
+        },
+        "isListed": {
+          "type": "boolean",
+          "title": "Listed"
+        },
+        "diskBand": {
+          "type": "string",
+          "title": "Disk Band",
+          "enum": ["ok", "low", "full"],
+          "enumColors": {
+            "ok": "green",
+            "low": "yellow",
+            "full": "red"
+          }
+        },
+        "ownerPrincipalKind": {
+          "type": "string",
+          "title": "Owner Kind"
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Seen At"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "environment": {
+        "title": "Environment",
+        "target": "factory_environment",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
