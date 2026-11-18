@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic.v1 import BaseModel
+from pydantic.v1 import BaseModel, Field
 
 
 class FactoryModel(BaseModel):
@@ -41,3 +41,10 @@ class FactoryListOptions(BaseModel):
             key = field.alias or name
             params[key] = "true" if value is True else str(value)
         return params
+
+
+class FactoryPagination(FactoryModel):
+    """Cursor page info shared by Factory list endpoints that paginate."""
+
+    has_more: bool = Field(alias="hasMore")
+    next_cursor: str | None = Field(None, alias="nextCursor")
