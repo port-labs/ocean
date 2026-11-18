@@ -4,16 +4,19 @@ from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import (
+    IntegrationRun,
+    WorkflowNodeRun,
+    WorkflowNodeRunStatus,
+)
 
 from azure_integration.foundry.helpers.invoke_completion import (
     INVOCATION_SUBMITTED_STATUS_LABEL,
     complete_invoke_run_for_response,
     complete_invoke_run_from_sse,
-    foundry_response_entity_page_url,
 )
 from azure_integration.foundry.helpers.invoke_mode import invoke_agent_completion_mode
-from azure_integration.foundry.helpers.webhook_scope import build_response_external_id
+from azure_integration.foundry.helpers.responses_stream import ResponsesSseEvent
 from azure_integration.foundry.stream_manager import get_stream_manager
 
 INVOKE_RUNNING_STATUS_LABEL = "Agent working"
@@ -96,7 +99,7 @@ class ResponsesInvokeMixin:
                 keep_stream=True,
             )
 
-        async def on_terminal_sse(parsed: dict[str, Any]) -> None:
+        async def on_terminal_sse(parsed: ResponsesSseEvent) -> None:
             if complete_on_sse_terminal:
                 await complete_invoke_run_from_sse(run, parsed)
 
@@ -131,19 +134,25 @@ class ResponsesInvokeMixin:
                 f"(response {response_id})"
             )
             return
-        # Same shape as CMA trigger_agent: update_run_started after the remote
-        # work is accepted so UI leaves "Invoking" and gets ids in output.
-        external_id = build_response_external_id(response_id)
-        prior = dict(run.output) if isinstance(run, WorkflowNodeRun) else {}
-        extra_output = {**prior, **bind_output, "responseId": response_id}
-        link = foundry_response_entity_page_url(response_id) or ""
-        await ocean.port_client.update_run_started(
-            run,
-            link,
-            external_id,
-            extra_output=extra_output,
-            status_label=INVOKE_RUNNING_STATUS_LABEL,
-        )
-        logger.info(
-            f"Bound run {run.id} to Foundry response {response_id} (external {external_id})"
-        )
+        # Bind after remote accept: external id for webhook lookup + slim output.
+        # Patch directly so we do not get core's workflowRunUrl/links noise.
+        output = {**bind_output, "responseId": response_id}
+        if isinstance(run, WorkflowNodeRun):
+            run.output = output
+            await ocean.port_client.patch_wf_node_run(
+                run.id,
+                {
+                    "status": WorkflowNodeRunStatus.IN_PROGRESS,
+                    "externalRunId": response_id,
+                    "output": output,
+                    "statusLabel": {"text": INVOKE_RUNNING_STATUS_LABEL},
+                },
+            )
+        else:
+            await ocean.port_client.update_run_started(
+                run,
+                "",
+                response_id,
+                status_label=INVOKE_RUNNING_STATUS_LABEL,
+            )
+        logger.info(f"Bound run {run.id} to Foundry response {response_id}")

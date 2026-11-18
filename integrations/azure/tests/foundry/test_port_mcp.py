@@ -140,6 +140,7 @@ async def test_ensure_port_mcp_upserts_port_and_github() -> None:
         "name": port_connection_name("cursor-test-agent"),
         "target": "https://mcp.example/v1",
         "access_token": "port-tok",
+        "project_arm_id": None,
     }
     assert conn.await_args_list[1].kwargs["target"] == GITHUB_MCP_URL
     assert conn.await_args_list[1].kwargs["access_token"] == "ghp_x"
@@ -273,3 +274,40 @@ async def test_ensure_port_mcp_preserves_port_on_git_remint_without_token() -> N
         GITHUB_MCP_SERVER_LABEL,
         PORT_MCP_SERVER_LABEL,
     }
+
+
+@pytest.mark.asyncio
+async def test_ensure_port_mcp_passes_project_arm_id_to_connection_upsert() -> None:
+    client = MagicMock()
+    client.build_url.side_effect = lambda ep, path: f"{ep}/{path}"
+    client.send_api_request = AsyncMock(
+        side_effect=[
+            {"definition": {"kind": "hosted", "tools": []}},
+            {"version": "1"},
+        ]
+    )
+    conn = AsyncMock()
+    arm_id = (
+        "/subscriptions/s/resourceGroups/rg/providers/"
+        "Microsoft.CognitiveServices/accounts/acct/projects/p"
+    )
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value="https://mcp.example/v1",
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            conn,
+        ),
+    ):
+        await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id="a1",
+            enable_port_mcp=True,
+            port_access_token="port_tok",
+            attach_to_prompt_agent=False,
+            project_arm_id=arm_id,
+        )
+    assert conn.await_args.kwargs["project_arm_id"] == arm_id

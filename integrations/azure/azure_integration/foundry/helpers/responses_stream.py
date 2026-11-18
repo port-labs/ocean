@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+
 from azure_integration.foundry.helpers.webhook_scope import usage_from_response
 
 _TERMINAL_SSE_TYPES = {
@@ -12,70 +14,78 @@ _TERMINAL_SSE_TYPES = {
     "response.incomplete": False,
 }
 
+_RESPONSE_ID_EVENT_TYPES = {
+    "response.created",
+    "response.in_progress",
+    "response.completed",
+}
 
-def parse_responses_sse_payload(payload: str) -> dict[str, Any] | None:
+
+class ResponsesSseEvent(BaseModel):
+    """SSE event envelope. Nested ``response`` stays a dict — payload is large/variable."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: str
+    text: str | None = None
+    message: str | None = None
+    error: Any = None
+    response: dict[str, Any] | None = None
+
+
+def parse_responses_sse_payload(payload: str) -> ResponsesSseEvent | None:
     try:
-        parsed = json.loads(payload)
+        raw = json.loads(payload)
     except json.JSONDecodeError:
         return None
-    return parsed if isinstance(parsed, dict) else None
-
-
-def response_id_from_sse_event(parsed: dict[str, Any]) -> str | None:
-    event_type = parsed.get("type")
-    if event_type not in {
-        "response.created",
-        "response.in_progress",
-        "response.completed",
-    }:
+    if not isinstance(raw, dict):
         return None
-    response = parsed.get("response")
-    if isinstance(response, dict) and response.get("id"):
+    try:
+        return ResponsesSseEvent.model_validate(raw)
+    except ValidationError:
+        return None
+
+
+def response_id_from_sse_event(parsed: ResponsesSseEvent) -> str | None:
+    if parsed.type not in _RESPONSE_ID_EVENT_TYPES:
+        return None
+    response = parsed.response
+    if response and response.get("id"):
         return str(response["id"])
     return None
 
 
 def success_for_terminal_sse_event(event_type: str) -> bool | None:
-    if event_type in _TERMINAL_SSE_TYPES:
-        return _TERMINAL_SSE_TYPES[event_type]
-    return None
+    return _TERMINAL_SSE_TYPES.get(event_type)
 
 
-def format_responses_sse_log_message(parsed: dict[str, Any]) -> str | None:
+def format_responses_sse_log_message(parsed: ResponsesSseEvent) -> str | None:
     """Human-readable Port run log line for a Responses SSE event, or None to skip."""
-    event_type = parsed.get("type")
-    if not isinstance(event_type, str):
+    if parsed.type == "response.output_text.delta":
         return None
 
-    if event_type == "response.output_text.delta":
+    if parsed.type == "response.output_text.done":
+        if isinstance(parsed.text, str) and parsed.text.strip():
+            return parsed.text
         return None
 
-    if event_type == "response.output_text.done":
-        text = parsed.get("text")
-        if isinstance(text, str) and text.strip():
-            return text
-        return None
-
-    if event_type == "response.completed":
-        response = parsed.get("response")
-        if isinstance(response, dict):
-            usage = usage_from_response(response)
+    if parsed.type == "response.completed":
+        if parsed.response:
+            usage = usage_from_response(parsed.response)
             if usage:
                 parts = ", ".join(f"{key}={value}" for key, value in usage.items())
                 return f"Response completed ({parts})"
         return "Response completed"
 
-    if event_type == "error":
-        message = parsed.get("message") or parsed.get("error")
+    if parsed.type == "error":
+        message = parsed.message or parsed.error
         if message:
             return f"Error: {message}"
 
-    response = parsed.get("response")
-    if isinstance(response, dict) and response.get("error"):
-        error = response["error"]
-        if isinstance(error, dict):
-            msg = error.get("message") or error.get("code")
-            if msg:
-                return f"Error: {msg}"
+    if parsed.response and isinstance(parsed.response.get("error"), dict):
+        error = parsed.response["error"]
+        msg = error.get("message") or error.get("code")
+        if msg:
+            return f"Error: {msg}"
 
     return None

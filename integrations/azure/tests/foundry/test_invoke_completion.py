@@ -92,9 +92,13 @@ async def test_complete_invoke_run_is_idempotent() -> None:
 
 
 @pytest.mark.asyncio
-async def test_complete_invoke_run_sets_response_entity_link_when_registered() -> None:
+async def test_complete_invoke_run_omits_entity_link_and_noise() -> None:
     _clear_completion_caches()
     run = _workflow_run("run_2")
+    run.config.integrationActionExecutionProperties = {
+        "projectEndpoint": "https://x/api/projects/p",
+    }
+    run.output = {"conversationId": "conv_keep", "toolboxName": "noise"}
 
     mock_ocean = MagicMock()
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
@@ -112,13 +116,20 @@ async def test_complete_invoke_run_sets_response_entity_link_when_registered() -
             AsyncMock(return_value=True),
         ),
         patch(
-            "azure_integration.foundry.helpers.invoke_completion.foundry_response_entity_page_url",
-            return_value="http://localhost:3000/foundry_responseEntity?identifier=resp_1",
-        ),
-        patch(
             "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
             AsyncMock(
-                return_value={"id": "resp_1", "status": "completed", "usage": {}}
+                return_value={
+                    "id": "resp_1",
+                    "status": "completed",
+                    "model": "gpt",
+                    "usage": {},
+                    "output": [
+                        {
+                            "type": "message",
+                            "content": [{"type": "output_text", "text": "hi"}],
+                        }
+                    ],
+                }
             ),
         ),
         patch(
@@ -135,9 +146,12 @@ async def test_complete_invoke_run_sets_response_entity_link_when_registered() -
             register_catalog=True,
         )
 
-    assert run.output["responseEntityLink"] == (
-        "http://localhost:3000/foundry_responseEntity?identifier=resp_1"
-    )
+    assert run.output == {
+        "responseId": "resp_1",
+        "conversationId": "conv_keep",
+        "answer": "hi",
+    }
+    mock_ocean.port_client.patch_wf_node_run.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -192,11 +206,15 @@ async def test_sse_success_registers_catalog_and_usage() -> None:
 
     register.assert_awaited_once()
     assert is_response_completion_claimed("resp_1")
-    assert run.output["inputTokens"] == 1
-    assert run.output["outputTokens"] == 2
-    assert run.output["totalTokens"] == 3
-    assert run.output["model"] == "gpt"
-    assert run.output["responseStatus"] == "completed"
+    assert run.output == {
+        "responseId": "resp_1",
+        "inputTokens": 1,
+        "outputTokens": 2,
+        "totalTokens": 3,
+    }
+    assert "model" not in run.output
+    assert "responseStatus" not in run.output
+    assert "responseEntityLink" not in run.output
 
 
 @pytest.mark.asyncio
@@ -223,3 +241,56 @@ async def test_webhook_skips_when_response_already_claimed() -> None:
         )
     fetch.assert_not_awaited()
     mock_ocean.port_client.report_run_completed.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_complete_invoke_uses_bound_project_arm_id_over_jq_props() -> None:
+    _clear_completion_caches()
+    run = _workflow_run("run_jq")
+    arm_id = (
+        "/subscriptions/s/resourceGroups/rg/providers/"
+        "Microsoft.CognitiveServices/accounts/acct/projects/p"
+    )
+    run.config.integrationActionExecutionProperties = {
+        "projectArmId": "{{ .outputs.fetch_agent.projectId }}",
+    }
+    run.output = {"responseId": "resp_jq", "projectArmId": arm_id}
+
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    fetch = AsyncMock(
+        return_value={"id": "resp_jq", "status": "completed", "usage": {}}
+    )
+    with (
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_rows",
+            AsyncMock(),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.register_catalog_response_from_body",
+            AsyncMock(),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.response_body_for_catalog",
+            fetch,
+        ),
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
+    ):
+        mock_manager.return_value.untrack_for_run = AsyncMock()
+        await complete_invoke_run_from_webhook(
+            run, event_type="response.completed", response_id="resp_jq"
+        )
+        # Option C: webhook untracks stream (flush via cancel) before complete.
+        mock_manager.return_value.untrack_for_run.assert_awaited_once_with(run.id)
+
+    fetch.assert_awaited_once()
+    assert (
+        fetch.await_args.kwargs["project_endpoint"]
+        == "https://acct.services.ai.azure.com/api/projects/p"
+    )
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()

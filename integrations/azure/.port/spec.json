@@ -329,14 +329,14 @@
       "name": "invoke_agent",
       "icon": "Azure",
       "description": "Invoke a Foundry agent via the Responses API. Optionally creates/remints the Port toolbox before the call (first invoke does full wiring).",
-      "allowedExecutionIdentities": ["actor", "service_account"],
+      "allowedExecutionIdentities": ["service_account"],
       "inputs": [
         {
-          "name": "projectEndpoint",
-          "title": "Foundry project endpoint",
+          "name": "projectArmId",
+          "title": "Foundry project ARM ID",
           "type": "string",
           "required": true,
-          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+          "description": "ARM resource id for the project: /subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/.../projects/.... Data-plane URL is derived from this id for invoke and MCP remint."
         },
         {
           "name": "agentId",
@@ -370,7 +370,16 @@
           "type": "boolean",
           "required": false,
           "default": true,
-          "description": "When true and a Service Account or Actor execution identity is present, creates or remints the per-agent Port MCP CustomKeys connection and Port toolbox before invoke (first invoke does full wiring; later invokes remint). Attaches the toolbox on prompt agents; hosted agents get the toolbox only. Fails fast for hosted agents if toolbox prep fails. Concurrent remints of the same agent can overwrite the connection token."
+          "description": "When true and a Service Account execution identity is present, creates or remints the per-agent Port MCP CustomKeys connection and Port toolbox before invoke (first invoke does full wiring; later invokes remint). Attaches the toolbox on prompt agents; hosted agents get the toolbox only. Fails fast for hosted agents if toolbox prep fails. Same-agent invokes are serialized so remints do not race."
+        },
+        {
+          "name": "gitProvider",
+          "title": "Git provider",
+          "type": "string",
+          "required": false,
+          "default": "github",
+          "enum": ["github"],
+          "description": "Git provider for gitAccessToken. Only github is supported."
         },
         {
           "name": "gitAccessToken",
@@ -379,14 +388,6 @@
           "required": false,
           "sensitive": true,
           "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP connection and includes GitHub MCP in the Port toolbox for this invoke. Omit to skip GitHub MCP."
-        },
-        {
-          "name": "gitProvider",
-          "title": "Git provider",
-          "type": "string",
-          "required": false,
-          "default": "github",
-          "description": "Git provider for gitAccessToken. Only github is supported."
         },
         {
           "name": "toolboxName",
@@ -411,11 +412,11 @@
       "description": "Invoke a model deployment via the project openai/v1/responses API",
       "inputs": [
         {
-          "name": "projectEndpoint",
-          "title": "Foundry project endpoint",
+          "name": "projectArmId",
+          "title": "Foundry project ARM ID",
           "type": "string",
           "required": true,
-          "description": "Foundry project data-plane URL, e.g. https://<account>.services.ai.azure.com/api/projects/<project>."
+          "description": "ARM resource id for the project: /subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/.../projects/.... Data-plane URL is derived from this id."
         },
         {
           "name": "deploymentName",

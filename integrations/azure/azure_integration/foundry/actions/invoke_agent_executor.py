@@ -2,18 +2,17 @@ from typing import Any
 
 from loguru import logger
 from port_ocean.core.handlers.actions.utils import get_run_access_token
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
 
 from azure_integration.foundry.actions.abstract_action_input import (
-    AbstractFoundryActionInput,
+    AbstractFoundryInvokeInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.actions.responses_invoke_mixin import (
     ResponsesInvokeMixin,
 )
-from azure_integration.foundry.helpers.agent_api import build_agent_responses_invoke
 from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
@@ -25,7 +24,7 @@ from azure_integration.foundry.helpers.port_mcp import (
 )
 
 
-class InvokeAgentInputs(AbstractFoundryActionInput):
+class InvokeAgentInputs(AbstractFoundryInvokeInput):
     agentId: str = Field(min_length=1)
     input: str = Field(min_length=1)
     conversationId: str | None = None
@@ -37,21 +36,48 @@ class InvokeAgentInputs(AbstractFoundryActionInput):
     toolboxName: str | None = Field(default=None, min_length=1)
     extraBody: dict[str, Any] = Field(default_factory=dict)
 
+    def build_responses_invoke(
+        self, conversation_id: str | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        path = f"agents/{self.agentId}/endpoint/protocols/openai/responses"
+        body: dict[str, Any] = {"input": self.input, **self.extraBody}
+        if conversation_id:
+            body.setdefault("conversation", conversation_id)
+        return path, body
+
 
 class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     ACTION_NAME = "invoke_agent"
 
+    async def _get_partition_key(self, run: IntegrationRun) -> str | None:
+        # Serialize same-agent remints of Port/GitHub project connections + toolbox.
+        props = run.execution_properties
+        agent_id = props.get("agentId")
+        if not agent_id:
+            return None
+        project_arm_id = props.get("projectArmId")
+        if (
+            isinstance(project_arm_id, str)
+            and project_arm_id.strip()
+            and "{{" not in project_arm_id
+        ):
+            return f"{project_arm_id.strip()}:{agent_id}"
+        return str(agent_id)
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeAgentInputs.from_execution_properties(run.execution_properties)
+        project_endpoint = inputs.project_endpoint
         git_provider = sanitize_git_provider(inputs.gitProvider)
         port_token = get_run_access_token(run) if inputs.enablePortMcp else None
         want_mcp = inputs.enablePortMcp or bool(inputs.gitAccessToken)
         if want_mcp:
-            await self._ensure_mcp_before_invoke(run, inputs, port_token, git_provider)
+            await self._ensure_mcp_before_invoke(
+                run, inputs, port_token, git_provider, project_endpoint
+            )
         try:
             conversation_id = await resolve_conversation_for_invoke(
                 self.client,
-                project_endpoint=inputs.projectEndpoint,
+                project_endpoint=project_endpoint,
                 conversation_id=inputs.conversationId,
                 metadata=inputs.conversationMetadata,
                 agent_id=inputs.agentId,
@@ -60,23 +86,19 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             raise ActionExecutionError(
                 f"Failed to resolve conversation: {error}"
             ) from error
-        path, body = build_agent_responses_invoke(
-            agent_id=inputs.agentId,
-            user_input=inputs.input,
-            conversation_id=conversation_id,
-            extra_body=inputs.extraBody,
-        )
-        invoke_url = self.client.build_url(inputs.projectEndpoint, path)
+        path, body = inputs.build_responses_invoke(conversation_id)
+        invoke_url = self.client.build_url(project_endpoint, path)
+        bind_output: dict[str, Any] = {
+            "conversationId": conversation_id,
+            "projectArmId": inputs.projectArmId,
+        }
         await self.execute_responses_invoke(
             run,
             invoke_label=f"Invoking Foundry agent {inputs.agentId}",
             stream_key=f"{run.id}:{inputs.agentId}",
             invoke_url=invoke_url,
             body=body,
-            bind_output={
-                "agentId": inputs.agentId,
-                "conversationId": conversation_id,
-            },
+            bind_output=bind_output,
             report_invocation_status=inputs.reportInvocationStatus,
             early_complete_on_bind=not inputs.reportInvocationStatus,
         )
@@ -87,6 +109,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         inputs: InvokeAgentInputs,
         port_token: str | None,
         git_provider: str,
+        project_endpoint: str,
     ) -> None:
         if inputs.enablePortMcp and not port_token:
             logger.warning(
@@ -97,7 +120,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         try:
             agent = await self.client.send_api_request(
                 self.client.build_url(
-                    inputs.projectEndpoint, f"agents/{inputs.agentId}"
+                    project_endpoint, f"agents/{inputs.agentId}"
                 )
             )
         except Exception as error:
@@ -113,7 +136,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         try:
             toolbox_result = await ensure_port_mcp(
                 self.client,
-                project_endpoint=inputs.projectEndpoint,
+                project_endpoint=project_endpoint,
                 agent_id=inputs.agentId,
                 enable_port_mcp=inputs.enablePortMcp,
                 port_access_token=port_token,
@@ -123,6 +146,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 existing_tools=tools_from_agent_payload(agent_payload),
                 toolbox_name=inputs.toolboxName,
                 agent_kind=kind,
+                project_arm_id=inputs.projectArmId,
             )
         except Exception as error:
             if hosted:
@@ -141,6 +165,3 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 "Pass enablePortMcp with an execution identity and/or gitAccessToken, "
                 "and optionally toolboxName for a custom Foundry toolbox."
             )
-
-        if toolbox_result and isinstance(run, WorkflowNodeRun):
-            run.output["toolboxName"] = toolbox_result[0]

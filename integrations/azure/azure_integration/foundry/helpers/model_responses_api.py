@@ -6,7 +6,7 @@ from loguru import logger
 from pydantic import Field
 
 from azure_integration.foundry.actions.abstract_action_input import (
-    AbstractFoundryActionInput,
+    AbstractFoundryInvokeInput,
 )
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 
@@ -40,7 +40,7 @@ def build_model_responses_invoke(
     return "openai/v1/responses", body
 
 
-class InvokeModelInputs(AbstractFoundryActionInput):
+class InvokeModelInputs(AbstractFoundryInvokeInput):
     deploymentName: str = Field(min_length=1)
     input: str = Field(min_length=1)
     conversationId: str | None = None
