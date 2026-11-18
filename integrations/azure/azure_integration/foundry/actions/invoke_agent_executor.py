@@ -154,15 +154,9 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 project_arm_id=inputs.projectArmId,
             )
         except Exception as error:
-            if hosted:
-                raise ActionExecutionError(
-                    f"Failed to prepare toolbox for hosted agent "
-                    f"{inputs.agentId}: {error}"
-                ) from error
-            logger.warning(
-                f"Failed to remint Port MCP on agent {inputs.agentId}: {error}"
-            )
-            return
+            raise ActionExecutionError(
+                f"Failed to prepare toolbox for agent {inputs.agentId}: {error}"
+            ) from error
 
         if hosted and toolbox_result is None:
             raise ActionExecutionError(

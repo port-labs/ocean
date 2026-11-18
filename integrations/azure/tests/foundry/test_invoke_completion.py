@@ -133,7 +133,15 @@ async def test_complete_invoke_run_omits_entity_link_and_noise() -> None:
     run.config.integrationActionExecutionProperties = {
         "projectEndpoint": "https://x/api/projects/p",
     }
-    run.output = {"conversationId": "conv_keep", "toolboxName": "noise"}
+    arm_id = (
+        "/subscriptions/s/resourceGroups/rg/providers/"
+        "Microsoft.CognitiveServices/accounts/a/projects/p"
+    )
+    run.output = {
+        "conversationId": "conv_keep",
+        "toolboxName": "noise",
+        "projectArmId": arm_id,
+    }
 
     mock_ocean = MagicMock()
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
@@ -182,8 +190,10 @@ async def test_complete_invoke_run_omits_entity_link_and_noise() -> None:
         )
 
     assert run.output == {
-        "responseId": "resp_1",
         "conversationId": "conv_keep",
+        "toolboxName": "noise",
+        "projectArmId": arm_id,
+        "responseId": "resp_1",
         "answer": "hi",
     }
     mock_ocean.port_client.patch_wf_node_run.assert_not_called()

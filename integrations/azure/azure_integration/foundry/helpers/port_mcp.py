@@ -365,16 +365,13 @@ async def ensure_port_mcp(
     )
     tools = list(tools_context)
 
-    try:
-        await _update_agent_tools(
-            client,
-            project_endpoint=project_endpoint,
-            agent_id=agent_id,
-            tools=merge_toolbox_into_tools(tools, toolbox_url=toolbox_url),
-            agent=agent_payload,
-        )
-    except Exception as error:
-        logger.warning(f"Failed to attach Port toolbox on agent {agent_id}: {error}")
+    await _update_agent_tools(
+        client,
+        project_endpoint=project_endpoint,
+        agent_id=agent_id,
+        tools=merge_toolbox_into_tools(tools, toolbox_url=toolbox_url),
+        agent=agent_payload,
+    )
     return resolved_toolbox_name, toolbox_version
 
 
