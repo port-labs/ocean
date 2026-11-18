@@ -43,6 +43,9 @@
     "enabled": true,
     "liveEvents": {
       "enabled": false
+    },
+    "incrementalSync": {
+      "enabled": true
     }
   }
 }

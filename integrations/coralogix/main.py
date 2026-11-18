@@ -3,6 +3,7 @@ from typing import cast
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from coralogix.clients.client_factory import ClientFactory
@@ -52,12 +53,16 @@ async def resync_alert_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_incremental_resync(ObjectKind.CASE)
 @ocean.on_resync(ObjectKind.CASE)
 async def resync_cases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(CaseResourceConfig, event.resource_config).selector
     options = CaseOptions(days_back=selector.days_back, statuses=selector.statuses)
+    # None on a full resync. Incremental runs ask only for cases created since
+    # the cursor, and never further back than daysBack.
+    since = active_incremental_cursor()
     async for batch in CaseExporter(ClientFactory.get_client()).get_paginated_resources(
-        options
+        options, since=since
     ):
         logger.info(f"Yielding {len(batch)} Coralogix cases")
         yield batch

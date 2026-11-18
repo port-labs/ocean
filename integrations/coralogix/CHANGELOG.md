@@ -13,3 +13,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Initial Coralogix integration syncing APM services (RED metrics from span metrics), SLOs with compliance and error budget, alert definitions, and cases.
+- Incremental resync for cases, using the created-at filter and the Ocean cursor. Other kinds stay on the full resync.

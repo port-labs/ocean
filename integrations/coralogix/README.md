@@ -36,7 +36,7 @@ If a kind's permission is missing, that kind's resync fails and Port keeps the e
 | `service` | `metricsSource` | `auto` | `auto` detects, in order, `span_metrics` (`calls_total`), `compact_span_metrics` (`compact_calls_total`) and `otel_spanmetrics_connector` (`traces_span_metrics_calls_total`). |
 | `service` | `labelFilter` | empty | Comma-separated PromQL matchers, without braces, e.g. `k8s_cluster_name="prod"`. |
 | `slo` | `includeStatus` | `true` | One extra call per SLO for compliance and remaining error budget. |
-| `case` | `daysBack` | `30` | Cases created in the last N days. |
+| `case` | `daysBack` | `30` | Cases created in the last N days. Incremental runs use the same window, starting at the Ocean cursor when that is more recent. |
 | `case` | `statuses` | all | e.g. `["CASE_STATUS_ACTIVE", "CASE_STATUS_ACKNOWLEDGED"]`. |
 
 ## Notes
@@ -59,4 +59,8 @@ If a kind's permission is missing, that kind's resync fails and Port keeps the e
   Missing targets are not created as placeholder entities.
 - Coralogix documents no rate limit for these APIs. The client caps concurrent
   requests at 10 and relies on Ocean's HTTP retries for 429 and 5xx.
-- Live events are not implemented; data refreshes on each resync.
+- Live events are not implemented. Cases also refresh on the incremental
+  resync, which lists cases created since the last cursor and does not delete
+  cases missing from that shorter window. A case created before the cursor is
+  updated on the next full resync. Services, SLOs, and alert definitions
+  refresh on the full resync.

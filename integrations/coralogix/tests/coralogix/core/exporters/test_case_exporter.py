@@ -24,6 +24,29 @@ def test_build_case_filters_date_range_and_statuses() -> None:
     }
 
 
+def test_build_case_filters_uses_cursor_inside_the_lookback() -> None:
+    now = datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc)
+    since = datetime(2026, 11, 16, 11, 0, tzinfo=timezone.utc)
+    filters = build_case_filters(CaseOptions(days_back=30), now, since=since)
+    assert filters["dateRange"]["from"] == "2026-11-16T11:00:00.000Z"
+    assert filters["dateRange"]["to"] == "2026-11-16T12:00:00.000Z"
+
+
+def test_build_case_filters_does_not_look_further_than_days_back() -> None:
+    now = datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc)
+    since = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    filters = build_case_filters(CaseOptions(days_back=7), now, since=since)
+    assert filters["dateRange"]["from"] == "2026-11-09T12:00:00.000Z"
+
+
+def test_build_case_filters_clamps_a_future_cursor_to_now() -> None:
+    now = datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc)
+    since = datetime(2026, 11, 16, 13, 0, tzinfo=timezone.utc)
+    filters = build_case_filters(CaseOptions(days_back=7), now, since=since)
+    assert filters["dateRange"]["from"] == "2026-11-16T12:00:00.000Z"
+    assert filters["dateRange"]["to"] == "2026-11-16T12:00:00.000Z"
+
+
 def test_build_case_filters_omits_statuses_by_default() -> None:
     now = datetime(2026, 11, 16, tzinfo=timezone.utc)
     assert "statuses" not in build_case_filters(CaseOptions(days_back=30), now)

@@ -11,12 +11,33 @@ from coralogix.helpers.utils import MGMT_API_PREFIX
 CASES_ENDPOINT = f"{MGMT_API_PREFIX}/cases/cases/v1"
 
 
-def build_case_filters(options: CaseOptions, now: datetime) -> dict[str, Any]:
-    since = now - timedelta(days=options["days_back"])
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _case_timestamp(value: datetime) -> str:
+    return _as_utc(value).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def build_case_filters(
+    options: CaseOptions, now: datetime, since: datetime | None = None
+) -> dict[str, Any]:
+    """Cases created in the selector window.
+
+    A full resync uses ``days_back``. An incremental run passes the Ocean
+    cursor as ``since`` and still will not look further back than ``days_back``.
+    """
+    end = _as_utc(now)
+    window_start = end - timedelta(days=options["days_back"])
+    start = window_start
+    if since is not None:
+        start = min(max(_as_utc(since), window_start), end)
     filters: dict[str, Any] = {
         "dateRange": {
-            "from": since.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "from": _case_timestamp(start),
+            "to": _case_timestamp(end),
             "mode": "DATE_RANGE_MODE_CREATED_AT",
         }
     }
@@ -27,10 +48,14 @@ def build_case_filters(options: CaseOptions, now: datetime) -> dict[str, Any]:
 
 class CaseExporter(AbstractCoralogixExporter[CoralogixClient]):
     async def get_paginated_resources(
-        self, options: CaseOptions
+        self, options: CaseOptions, since: datetime | None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         team_url = await self.get_team_url()
-        body = {"filters": build_case_filters(options, datetime.now(timezone.utc))}
+        body = {
+            "filters": build_case_filters(
+                options, datetime.now(timezone.utc), since=since
+            )
+        }
         async for cases in self.client.send_paginated_request(
             CASES_ENDPOINT,
             data_key="cases",
