@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.48 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.6
+
+
+## 0.12.47 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.5
+
+
+## 0.12.46 (2026-11-16)
+
+
+### Bug Fixes
+
+- Fetch Linear issue project identity in issue GraphQL queries
+
+
+## 0.12.45 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
+## 0.12.44 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 0.12.43 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.2
+
+
 ## 0.12.42 (2026-11-12)
 
 

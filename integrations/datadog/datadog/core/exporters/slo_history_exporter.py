@@ -12,6 +12,7 @@ from port_ocean.utils.queue_utils import process_in_queue
 
 from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
 from datadog.core.exporters.slo_exporter import ListSloOptions, SloExporter
+from datadog.incremental import windows_ending_after
 from datadog.utils import (
     generate_time_windows_from_interval_days,
     get_start_of_the_day_in_seconds_x_day_back,
@@ -24,10 +25,13 @@ class ListSloHistoryOptions(ListOptions["SLOHistoryResourceConfig"]):
     concurrency: int
     period_of_time_in_months: int
     period_of_time_in_days: Optional[int] = None
+    incremental_cursor: Optional[datetime.datetime] = None
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "SLOHistoryResourceConfig"
+        cls,
+        resource_config: "SLOHistoryResourceConfig",
+        incremental_cursor: Optional[datetime.datetime] = None,
     ) -> "ListSloHistoryOptions":
         selector = resource_config.selector
         return cls(
@@ -35,6 +39,7 @@ class ListSloHistoryOptions(ListOptions["SLOHistoryResourceConfig"]):
             concurrency=selector.concurrency,
             period_of_time_in_months=selector.period_of_time_in_months,
             period_of_time_in_days=selector.period_of_time_in_days,
+            incremental_cursor=incremental_cursor,
         )
 
 
@@ -59,25 +64,31 @@ class SloHistoryExporter(PaginatedExporter[ListSloHistoryOptions]):
     async def get_paginated_resources(
         self, options: ListSloHistoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get SLO histories from Datadog, iterating over all SLOs and time windows."""
-        timeframe = options.timeframe
-        concurrency = options.concurrency
-        start_timestamp = _resolve_start_timestamp(options)
+        """Get SLO histories from Datadog, iterating over all SLOs and time windows.
 
-        timestamps = generate_time_windows_from_interval_days(
-            timeframe, start_timestamp
+        With ``incremental_cursor``, only the windows that end after it: the current
+        window, plus any window that closed since, so it gets its final values.
+        """
+        windows = generate_time_windows_from_interval_days(
+            options.timeframe, _resolve_start_timestamp(options)
         )
+        if options.incremental_cursor:
+            windows = windows_ending_after(windows, options.incremental_cursor)
+            logger.info(
+                f"Fetching SLO histories for {len(windows)} time windows "
+                f"ending after {options.incremental_cursor.isoformat()}"
+            )
 
         slo_exporter = SloExporter(self.client)
         async for slos in slo_exporter.get_paginated_resources(ListSloOptions()):
-            for from_ts, to_ts in timestamps:
+            for from_ts, to_ts in windows:
                 histories = await process_in_queue(
                     [slo["id"] for slo in slos],
                     self._get_slo_history,
-                    timeframe,
+                    options.timeframe,
                     from_ts,
                     to_ts,
-                    concurrency=concurrency,
+                    concurrency=options.concurrency,
                 )
                 yield [history for history in histories if history]
 

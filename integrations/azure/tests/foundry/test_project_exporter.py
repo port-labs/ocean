@@ -8,6 +8,7 @@ import pytest
 from azure.core.exceptions import HttpResponseError
 
 from azure_integration.foundry.core.exporters.project_exporter import (
+    FoundryProject,
     ProjectExporter,
     foundry_project_from_arm,
 )
@@ -129,6 +130,44 @@ async def test_project_exporter_yields_successes_then_raises_failed_subscription
     assert isinstance(exc_info.value.exceptions[0], HttpResponseError)
 
 
+@pytest.mark.asyncio
+async def test_project_exporter_filters_regions() -> None:
+    east = _arm_project(account="east-acct", name="east")
+    west = _arm_project(account="west-acct", name="west")
+    west["location"] = "westus"
+
+    async def fake_subs(
+        *_args: Any, **_kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        yield [{"subscription_id": "sub-1"}]
+
+    async def fake_ext(
+        *_args: Any, **_kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        yield [east, west]
+
+    cred, sub_client = _credential_and_sub_client()
+
+    with (
+        patch(f"{_MODULE}.DefaultAzureCredential", return_value=cred),
+        patch(f"{_MODULE}.SubscriptionClient", return_value=sub_client),
+        patch(f"{_MODULE}.batch_resources_iterator", fake_subs),
+        patch(f"{_MODULE}.resource_extention_kind_iterator", fake_ext),
+    ):
+        exporter = ProjectExporter()
+        east_only: list[dict[str, Any]] = []
+        async for batch in exporter.get_paginated_resources(
+            api_version="2024-10-01", regions=["EastUS"]
+        ):
+            east_only.extend(batch)
+        all_projects: list[dict[str, Any]] = []
+        async for batch in exporter.get_paginated_resources(api_version="2024-10-01"):
+            all_projects.extend(batch)
+
+    assert [p["name"] for p in east_only] == ["east"]
+    assert [p["name"] for p in all_projects] == ["east", "west"]
+
+
 def test_project_from_arm_builds_endpoint_from_arm_id() -> None:
     project = {
         "id": (
@@ -146,3 +185,40 @@ def test_project_from_arm_builds_endpoint_from_arm_id() -> None:
         == "https://omby-project-resource.services.ai.azure.com/api/projects/omby-project"
     )
     assert found.project_name == "omby-project"
+
+
+async def _find_by_endpoint_with_projects(
+    endpoint: str, projects: list[FoundryProject]
+) -> FoundryProject:
+    async def fake_pages(
+        *_args: Any, **_kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        yield [project.model_dump(by_alias=True) for project in projects]
+
+    exporter = ProjectExporter()
+    with patch.object(exporter, "get_paginated_resources", fake_pages):
+        return await exporter.find_by_endpoint(endpoint)
+
+
+@pytest.mark.asyncio
+async def test_find_by_endpoint_resolves_default_project_alias() -> None:
+    project = foundry_project_from_arm(_arm_project(account="acct", name="demo"))
+    assert project is not None
+    found = await _find_by_endpoint_with_projects(
+        "https://acct.services.ai.azure.com/api/projects/_project",
+        [project],
+    )
+    assert found.project_name == "demo"
+    assert found.account_name == "acct"
+
+
+@pytest.mark.asyncio
+async def test_find_by_endpoint_rejects_ambiguous_default_alias() -> None:
+    first = foundry_project_from_arm(_arm_project(account="acct", name="one"))
+    second = foundry_project_from_arm(_arm_project(account="acct", name="two"))
+    assert first is not None and second is not None
+    with pytest.raises(ValueError, match="ambiguous"):
+        await _find_by_endpoint_with_projects(
+            "https://acct.services.ai.azure.com/api/projects/_project",
+            [first, second],
+        )

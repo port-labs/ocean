@@ -26,6 +26,7 @@ from port_ocean.core.integrations.mixins.utils import (
     is_lakehouse_data_enabled,
     is_live_event_payload_logging_enabled,
     is_redis_live_events_enabled,
+    post_live_event_batch_to_lakehouse,
     resync_error_handling,
     resync_function_wrapper,
     resync_generator_wrapper,
@@ -34,7 +35,7 @@ from port_ocean.core.integrations.mixins.utils import (
     selector_query_from_resource,
 )
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.core.models import LakehouseOperation
+from port_ocean.core.models import LakehouseEventType, LakehouseOperation
 
 
 class TestCollectExportEnvVariables:
@@ -83,6 +84,70 @@ class TestBuildLakehouseDataEntry:
         )
 
         assert "environment_data" not in entry
+
+
+class TestPostLiveEventBatchToLakehouse:
+    @staticmethod
+    def _entry() -> dict[str, Any]:
+        return build_lakehouse_data_entry(
+            items=[{"id": "1"}],
+            metadata={
+                "operation": LakehouseOperation.UPSERT,
+                "resource_index": 0,
+                "extraction_timestamp": 123,
+            },
+            export_env_variables=[],
+        )
+
+    @pytest.mark.asyncio
+    async def test_omitted_event_id_generates_batch_uuid(self) -> None:
+        mock_batch = AsyncMock()
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean:
+            mock_ocean.port_client.post_integration_raw_data_batch = mock_batch
+            await post_live_event_batch_to_lakehouse(
+                sync_id="sync-1",
+                kind="service",
+                data_entries=[self._entry()],
+            )
+
+        mock_batch.assert_awaited_once()
+        sync_id, batch = mock_batch.call_args[0]
+        assert sync_id == "sync-1"
+        assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
+        assert isinstance(batch["event_id"], str)
+        assert batch["event_id"]
+
+    @pytest.mark.asyncio
+    async def test_explicit_none_event_id_preserved_on_batch(self) -> None:
+        mock_batch = AsyncMock()
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean:
+            mock_ocean.port_client.post_integration_raw_data_batch = mock_batch
+            await post_live_event_batch_to_lakehouse(
+                sync_id="sync-1",
+                kind="service",
+                data_entries=[self._entry()],
+                event_id=None,
+            )
+
+        mock_batch.assert_awaited_once()
+        _, batch = mock_batch.call_args[0]
+        assert batch["event_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_explicit_event_id_written_on_batch(self) -> None:
+        mock_batch = AsyncMock()
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean:
+            mock_ocean.port_client.post_integration_raw_data_batch = mock_batch
+            await post_live_event_batch_to_lakehouse(
+                sync_id="sync-1",
+                kind="service",
+                data_entries=[self._entry()],
+                event_id="trace-123",
+            )
+
+        mock_batch.assert_awaited_once()
+        _, batch = mock_batch.call_args[0]
+        assert batch["event_id"] == "trace-123"
 
 
 class TestSelectorHashHelpers:
@@ -150,9 +215,7 @@ class TestSelectorHashHelpers:
         )
 
         expected_selector_payload = (
-            resource.selector.dict(
-                by_alias=True, exclude_none=True, exclude_unset=True
-            )
+            resource.selector.dict(by_alias=True, exclude_none=True, exclude_unset=True)
             if resource.selector
             else {}
         )
@@ -280,9 +343,7 @@ class TestSelectorHashHelpers:
         )
 
         expected_selector_payload = (
-            resource.selector.dict(
-                by_alias=True, exclude_none=True, exclude_unset=True
-            )
+            resource.selector.dict(by_alias=True, exclude_none=True, exclude_unset=True)
             if resource.selector
             else {}
         )
@@ -1119,7 +1180,9 @@ class TestProcessingModes:
         ) as mock_ocean_context:
             mock_ocean_context.config.live_events.payload_logging_enabled = False
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
-                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED]
+                return_value=[
+                    IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED
+                ]
             )
 
             result = await is_live_event_payload_logging_enabled()
@@ -1153,7 +1216,9 @@ class TestProcessingModes:
         ) as mock_ocean_context:
             mock_ocean_context.config.live_events.payload_logging_enabled = True
             mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
-                return_value=[IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED]
+                return_value=[
+                    IntegrationFeatureFlag.LIVE_EVENTS_PAYLOAD_LOGGING_ENABLED
+                ]
             )
 
             result = await is_live_event_payload_logging_enabled()

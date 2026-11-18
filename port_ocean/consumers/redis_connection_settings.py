@@ -51,6 +51,21 @@ class RedisConnectionSettings(BaseOceanModel):
             "retry delays."
         ),
     )
+    socket_timeout_seconds: float = Field(
+        default=15.0,
+        gt=0,
+        description=(
+            "Maximum seconds a single Redis socket read or write may wait before "
+            "failing. Prevents calls from hanging forever on a dead connection. "
+            "The live-events stream consumer raises this above its XREADGROUP "
+            "block time."
+        ),
+    )
+    socket_connect_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        description="Maximum seconds to wait when opening a new Redis connection.",
+    )
 
     @model_validator(mode="after")
     def validate_tls_settings(self) -> Self:
