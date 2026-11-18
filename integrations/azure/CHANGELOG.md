@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (2026-11-18)
+
+
+### Features
+
+- Add Azure AI Foundry management actions to the Azure integration (create/update/delete agent, deploy/delete model deployment) with optional immediate catalog sync after mutations. Create/update agent and deploy model accept a Claude-style `config` jqObject for pass-through API fields (tools, metadata, ARM sku/properties extras).
+
+
 ## 0.4.2 (2026-11-17)
 
 
