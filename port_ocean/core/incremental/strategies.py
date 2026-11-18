@@ -74,6 +74,24 @@ class IncrementalStrategy(ABC):
         """Merge :meth:`build_params` into *base_params*."""
         return {**base_params, **self.build_params(cursor)}
 
+    def merge_params_replacing(
+        self,
+        base_params: dict[str, Any],
+        cursor: datetime | None,
+        replaced_keys: Iterable[str],
+    ) -> dict[str, Any]:
+        """Like :meth:`merge_params`, but first drop *replaced_keys* from *base_params*.
+
+        Use it when the cursor supersedes filters in *base_params*, such as a
+        user-configured ``updated_before`` window. The keys are only dropped
+        when *cursor* is set; without one, *base_params* is kept as-is.
+        """
+        if cursor is None:
+            return self.merge_params(base_params, cursor)
+        dropped = set(replaced_keys)
+        kept = {key: value for key, value in base_params.items() if key not in dropped}
+        return self.merge_params(kept, cursor)
+
     def filter_page(
         self, page: list[dict[str, Any]], cursor: datetime | None
     ) -> list[dict[str, Any]]:
@@ -99,9 +117,6 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
         date_format: Optional ``strftime`` format string.  Defaults to ISO 8601.
         value_prefix: Optional prefix prepended to the formatted value
                       (e.g. ``">="`` for GitHub workflow-run ``created`` param).
-        replaces: Keys dropped from the base params when a cursor is set,
-                  because the cursor supersedes them (e.g. a user-configured
-                  ``updated_before`` window).  Ignored when there is no cursor.
     """
 
     def __init__(
@@ -109,12 +124,10 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
         param_key: str,
         date_format: str | None = None,
         value_prefix: str = "",
-        replaces: Iterable[str] = (),
     ) -> None:
         self._param_key = param_key
         self._date_format = date_format
         self._value_prefix = value_prefix
-        self._replaces = frozenset(replaces)
 
     def build_params(self, cursor: datetime | None) -> dict[str, Any]:
         if cursor is None:
@@ -125,19 +138,6 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
             else cursor.isoformat()
         )
         return {self._param_key: f"{self._value_prefix}{value}"}
-
-    def merge_params(
-        self, base_params: dict[str, Any], cursor: datetime | None
-    ) -> dict[str, Any]:
-        """Merge the cursor param into *base_params*, dropping the ``replaces`` keys."""
-        if cursor is None:
-            return dict(base_params)
-        kept = {
-            key: value
-            for key, value in base_params.items()
-            if key not in self._replaces
-        }
-        return {**kept, **self.build_params(cursor)}
 
 
 class ClientSideCutoffStrategy(IncrementalStrategy):
