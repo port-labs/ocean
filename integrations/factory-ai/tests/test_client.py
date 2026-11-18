@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -7,12 +8,26 @@ import httpx
 import pytest
 
 from factory_ai.clients.exceptions import FactoryAIError
-from factory_ai.clients.factory_client import FactoryClient
+from factory_ai.clients.factory_client import (
+    FactoryClient,
+    create_factory_retry_config,
+)
 from factory_ai.config import DEFAULT_FACTORY_API_HOST
 from factory_ai.core.exporters.environment.models import (
     Environment,
     ListEnvironmentsResponse,
 )
+
+
+def test_factory_retry_config_skips_unauthorized() -> None:
+    config = create_factory_retry_config()
+
+    assert HTTPStatus.UNAUTHORIZED not in config.retry_status_codes
+    assert HTTPStatus.TOO_MANY_REQUESTS in config.retry_status_codes
+    assert HTTPStatus.BAD_GATEWAY in config.retry_status_codes
+    assert HTTPStatus.SERVICE_UNAVAILABLE in config.retry_status_codes
+    assert HTTPStatus.GATEWAY_TIMEOUT in config.retry_status_codes
+
 
 
 @pytest.fixture

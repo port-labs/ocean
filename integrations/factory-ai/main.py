@@ -1,10 +1,14 @@
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.helpers.retry import register_retry_config_callback
 
 from factory_ai.clients.client_factory import ClientFactory
+from factory_ai.clients.factory_client import create_factory_retry_config
 from factory_ai.exporter_factory import get_exporter_metadata
 from factory_ai.kinds import ObjectKind
+
+register_retry_config_callback(create_factory_retry_config)
 
 
 @ocean.on_resync()

@@ -1,15 +1,30 @@
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Any, TypeVar
 
 import httpx
 from loguru import logger
+from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils import http_async_client
 from pydantic.v1 import BaseModel, ValidationError
 
 from factory_ai.clients.exceptions import FactoryAIError
 
 TResponse = TypeVar("TResponse", bound=BaseModel)
+
+
+def create_factory_retry_config() -> RetryConfig:
+    """Retry transient Factory API failures, but not auth errors.
+
+    Ocean retries 401 by default so OAuth integrations can refresh tokens.
+    Factory auth is a static API key, so 401 is permanent and should fail fast.
+    """
+    config = RetryConfig()
+    config.retry_status_codes = config.retry_status_codes - {
+        HTTPStatus.UNAUTHORIZED,
+    }
+    return config
 
 
 class FactoryClient:
