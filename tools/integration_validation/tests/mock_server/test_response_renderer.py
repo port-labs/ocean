@@ -171,6 +171,29 @@ class TestSequences:
 
         assert renderer.render(match).status == 429
 
+    def test_sequence_does_not_advance_on_render_failure(self, tmp_path: Path) -> None:
+        renderer = ResponseRenderer(tmp_path)
+        match = _match(
+            "paged",
+            sequence=[
+                {"status": 200, "body_file": "missing_page.json"},
+                {"status": 200, "body": {"data": []}},
+            ],
+        )
+
+        with pytest.raises(ResponseRenderError, match="paged.*does not exist"):
+            renderer.render(match)
+
+        (tmp_path / "missing_page.json").write_text(
+            json.dumps({"data": ["item"]}),
+            encoding="utf-8",
+        )
+        first_success = renderer.render(match)
+        assert first_success.body == {"data": ["item"]}
+
+        second_success = renderer.render(match)
+        assert second_success.body == {"data": []}
+
 
 class TestMatchingAndRendering:
     def test_datadog_style_pagination_stops_on_empty_page(self, tmp_path: Path) -> None:

@@ -35,8 +35,9 @@ class ResponseRenderer:
 
     def render(self, match: RouteMatch) -> RenderedResponse:
         """Render the next response for a matched route."""
-        response = self._next_response(match.route)
+        response = self._response_for_current_sequence_step(match.route)
         body = self._load_body(match.route.id, response, match.path_params)
+        self._advance_sequence_step(match.route)
 
         return RenderedResponse(
             status=response.status,
@@ -48,15 +49,23 @@ class ResponseRenderer:
         """Reset all sequence counters, such as when loading a new scenario."""
         self._sequence_calls.clear()
 
-    def _next_response(self, route: MockRoute) -> MockRouteResponse:
+    def _response_for_current_sequence_step(
+        self, route: MockRoute
+    ) -> MockRouteResponse:
         if route.sequence is None:
             if route.response is None:
                 raise ResponseRenderError(route.id, "route has no response")
             return route.response
 
         call_index = self._sequence_calls.get(route.id, 0)
-        self._sequence_calls[route.id] = call_index + 1
         return route.sequence[min(call_index, len(route.sequence) - 1)]
+
+    def _advance_sequence_step(self, route: MockRoute) -> None:
+        if route.sequence is None:
+            return
+
+        call_index = self._sequence_calls.get(route.id, 0)
+        self._sequence_calls[route.id] = call_index + 1
 
     def _load_body(
         self,
