@@ -8,6 +8,7 @@ import pytest
 from azure.core.exceptions import HttpResponseError
 
 from azure_integration.foundry.core.exporters.project_exporter import (
+    FoundryProject,
     ProjectExporter,
     foundry_project_from_arm,
 )
@@ -184,3 +185,40 @@ def test_project_from_arm_builds_endpoint_from_arm_id() -> None:
         == "https://omby-project-resource.services.ai.azure.com/api/projects/omby-project"
     )
     assert found.project_name == "omby-project"
+
+
+async def _find_by_endpoint_with_projects(
+    endpoint: str, projects: list[FoundryProject]
+) -> FoundryProject:
+    async def fake_pages(
+        *_args: Any, **_kwargs: Any
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        yield [project.model_dump(by_alias=True) for project in projects]
+
+    exporter = ProjectExporter()
+    with patch.object(exporter, "get_paginated_resources", fake_pages):
+        return await exporter.find_by_endpoint(endpoint)
+
+
+@pytest.mark.asyncio
+async def test_find_by_endpoint_resolves_default_project_alias() -> None:
+    project = foundry_project_from_arm(_arm_project(account="acct", name="demo"))
+    assert project is not None
+    found = await _find_by_endpoint_with_projects(
+        "https://acct.services.ai.azure.com/api/projects/_project",
+        [project],
+    )
+    assert found.project_name == "demo"
+    assert found.account_name == "acct"
+
+
+@pytest.mark.asyncio
+async def test_find_by_endpoint_rejects_ambiguous_default_alias() -> None:
+    first = foundry_project_from_arm(_arm_project(account="acct", name="one"))
+    second = foundry_project_from_arm(_arm_project(account="acct", name="two"))
+    assert first is not None and second is not None
+    with pytest.raises(ValueError, match="ambiguous"):
+        await _find_by_endpoint_with_projects(
+            "https://acct.services.ai.azure.com/api/projects/_project",
+            [first, second],
+        )
