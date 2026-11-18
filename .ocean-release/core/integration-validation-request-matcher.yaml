@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Add a strict, journaled mock server for integration validation
