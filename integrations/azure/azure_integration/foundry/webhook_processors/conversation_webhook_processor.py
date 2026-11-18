@@ -76,7 +76,7 @@ class ConversationWebhookProcessor(AbstractWebhookProcessor):
 
         run = await find_in_progress_run_for_response(response_id)
         if run is None or not run.execution_properties.get(
-            "reportInvocationStatus", True
+            "reportInvocationStatus", False
         ):
             return _EMPTY
 

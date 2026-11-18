@@ -342,16 +342,7 @@ async def ensure_port_mcp(
         toolbox_tools.append(_port_toolbox_entry(agent_id))
 
     if not toolbox_tools:
-        if attach_to_prompt_agent and existing_tools is not None:
-            stripped = merge_toolbox_into_tools(existing_tools, toolbox_url=None)
-            if stripped != existing_tools:
-                await _update_agent_tools(
-                    client,
-                    project_endpoint=project_endpoint,
-                    agent_id=agent_id,
-                    tools=stripped,
-                    agent=agent_payload,
-                )
+        # Nothing to remint (e.g. enablePortMcp without a token). Leave agent tools alone.
         return None
 
     resolved_toolbox_name = resolve_toolbox_name(agent_id, toolbox_name)

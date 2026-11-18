@@ -9,6 +9,7 @@ from port_ocean.core.models import (
     WorkflowNodeRun,
     WorkflowNodeRunStatus,
 )
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.helpers.invoke_completion import (
     INVOCATION_SUBMITTED_STATUS_LABEL,
@@ -20,6 +21,7 @@ from azure_integration.foundry.helpers.responses_stream import ResponsesSseEvent
 from azure_integration.foundry.stream_manager import get_stream_manager
 
 INVOKE_RUNNING_STATUS_LABEL = "Agent working"
+MODEL_RUNNING_STATUS_LABEL = "Model thinking"
 INVOKE_STARTING_STATUS_LABEL = "Invoking"
 
 
@@ -37,6 +39,7 @@ class ResponsesInvokeMixin:
         invoke_url: str,
         body: dict[str, Any],
         bind_output: dict[str, Any],
+        running_status_label: str,
         params: dict[str, Any] | None = None,
         report_invocation_status: bool = False,
         early_complete_on_bind: bool = False,
@@ -55,6 +58,8 @@ class ResponsesInvokeMixin:
 
         invoke_body = dict(body)
         invoke_body["background"] = True
+        # Background Responses require store=true (Foundry/OpenAI docs).
+        invoke_body["store"] = True
 
         await self._execute_with_sse_completion(
             run,
@@ -65,6 +70,12 @@ class ResponsesInvokeMixin:
             bind_output=bind_output,
             early_complete_on_bind=early_complete_on_bind,
             complete_on_sse_terminal=complete_on_sse_terminal,
+            running_status_label=running_status_label,
+            # Fail post-bind only when SSE is the sole completion path (model).
+            # Agent+report: webhook can finish. Agent fire-and-forget: already closed.
+            fail_run_if_stream_errors_after_bind=(
+                complete_on_sse_terminal and not report_invocation_status
+            ),
         )
 
     async def _execute_with_sse_completion(
@@ -75,16 +86,21 @@ class ResponsesInvokeMixin:
         body: dict[str, Any],
         stream_key: str,
         bind_output: dict[str, Any],
+        running_status_label: str,
         params: dict[str, Any] | None = None,
         early_complete_on_bind: bool = False,
         complete_on_sse_terminal: bool = True,
+        fail_run_if_stream_errors_after_bind: bool = True,
     ) -> None:
         submitted_after_bind = False
 
         async def on_response_id(response_id: str) -> None:
             nonlocal submitted_after_bind
             await self._bind_run_to_response(
-                run, response_id=response_id, bind_output=bind_output
+                run,
+                response_id=response_id,
+                bind_output=bind_output,
+                running_status_label=running_status_label,
             )
             if not early_complete_on_bind or submitted_after_bind:
                 return
@@ -113,12 +129,14 @@ class ResponsesInvokeMixin:
             on_response_id=on_response_id,
             stop_on_terminal_sse=complete_on_sse_terminal,
             on_terminal_sse=on_terminal_sse if complete_on_sse_terminal else None,
+            fail_run_if_stream_errors_after_bind=fail_run_if_stream_errors_after_bind,
         )
         if started:
             return
 
-        logger.warning(
-            f"Responses stream already active for {stream_key}; not starting a second invoke"
+        raise ActionExecutionError(
+            f"Responses stream already active for {stream_key}; "
+            "not starting a second invoke"
         )
 
     async def _bind_run_to_response(
@@ -127,6 +145,7 @@ class ResponsesInvokeMixin:
         *,
         response_id: str,
         bind_output: dict[str, Any],
+        running_status_label: str,
     ) -> None:
         if not ocean.port_client.is_run_in_progress(run):
             logger.debug(
@@ -145,7 +164,7 @@ class ResponsesInvokeMixin:
                     "status": WorkflowNodeRunStatus.IN_PROGRESS,
                     "externalRunId": response_id,
                     "output": output,
-                    "statusLabel": {"text": INVOKE_RUNNING_STATUS_LABEL},
+                    "statusLabel": {"text": running_status_label},
                 },
             )
         else:
@@ -153,6 +172,6 @@ class ResponsesInvokeMixin:
                 run,
                 "",
                 response_id,
-                status_label=INVOKE_RUNNING_STATUS_LABEL,
+                status_label=running_status_label,
             )
         logger.info(f"Bound run {run.id} to Foundry response {response_id}")

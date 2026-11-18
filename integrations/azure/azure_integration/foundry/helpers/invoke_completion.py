@@ -6,7 +6,11 @@ from typing import Any
 from loguru import logger
 from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+from port_ocean.core.models import (
+    IntegrationRun,
+    WorkflowNodeRun,
+    WorkflowNodeRunStatus,
+)
 
 from azure_integration.foundry.core.exporters.project_exporter import (
     foundry_project_from_arm_id,
@@ -22,10 +26,7 @@ from azure_integration.foundry.helpers.responses_stream import (
     success_for_terminal_sse_event,
 )
 from azure_integration.foundry.helpers.utils import enrich_with_project
-from azure_integration.foundry.helpers.webhook_scope import (
-    extract_assistant_text_from_response,
-    usage_from_response,
-)
+from azure_integration.foundry.helpers.webhook_scope import FoundryResponseBody
 from azure_integration.foundry.kinds import ObjectKind
 
 COMPLETED_STATUS_LABEL = "Response completed"
@@ -50,6 +51,17 @@ def _remember_completed(run_id: str, response_id: str = "") -> None:
     if response_id:
         _completed_response_ids[response_id] = None
         _trim(_completed_response_ids)
+
+
+def _forget_completed(run_id: str, response_id: str = "") -> None:
+    _completed_invoke_run_ids.pop(run_id, None)
+    if response_id:
+        _completed_response_ids.pop(response_id, None)
+
+
+def _mark_local_run_completed(run: IntegrationRun) -> None:
+    if isinstance(run, WorkflowNodeRun):
+        run.status = WorkflowNodeRunStatus.COMPLETED
 
 
 def is_response_completion_claimed(response_id: str) -> bool:
@@ -224,12 +236,18 @@ async def complete_invoke_run_for_response(
             if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
                 return False
             _remember_completed(run.id, response_id)
-        await ocean.port_client.report_run_completed(
-            run,
-            False,
-            status_label=FAILED_STATUS_LABEL,
-            should_raise=False,
-        )
+        try:
+            await ocean.port_client.report_run_completed(
+                run,
+                False,
+                status_label=FAILED_STATUS_LABEL,
+                should_raise=True,
+            )
+            _mark_local_run_completed(run)
+        except Exception:
+            async with _completion_lock:
+                _forget_completed(run.id, response_id)
+            raise
         return True
 
     # Always prefer a GET so usage/model/conversation exist (webhook payload is id-only).
@@ -240,20 +258,16 @@ async def complete_invoke_run_for_response(
         if project_endpoint
         else response_body
     )
-    # Slim run output: ids + answer text + token usage only.
-    slim: dict[str, Any] = {"responseId": response_id}
-    if prior.get("conversationId"):
-        slim["conversationId"] = prior["conversationId"]
-    if isinstance(display_body, dict):
-        slim.update(usage_from_response(display_body))
-        text = extract_assistant_text_from_response(display_body)
-        if text:
-            slim["answer"] = text
-        conversation = display_body.get("conversation")
-        if isinstance(conversation, dict) and conversation.get("id"):
-            slim["conversationId"] = conversation["id"]
-        elif display_body.get("conversation_id"):
-            slim["conversationId"] = display_body["conversation_id"]
+    prior_conversation_id = (
+        str(prior["conversationId"]) if prior.get("conversationId") else None
+    )
+    slim, success_override = FoundryResponseBody.invoke_run_output(
+        response_id=response_id,
+        display_body=display_body if isinstance(display_body, dict) else None,
+        prior_conversation_id=prior_conversation_id,
+    )
+    if success_override is not None:
+        success = success_override
 
     if isinstance(run, WorkflowNodeRun):
         run.output = slim
@@ -263,39 +277,50 @@ async def complete_invoke_run_for_response(
             return False
         _remember_completed(run.id, response_id)
 
-    if register_catalog and isinstance(display_body, dict):
-        await register_catalog_response_from_body(
-            display_body,
-            run,
-            fallback_agent_id=agent_id or None,
-            fallback_model_deployment_id=deployment_name or None,
-        )
-        if success:
+    try:
+        # Gate on post-GET ``success`` (may differ from caller event-type guess).
+        if register_catalog and success and isinstance(display_body, dict):
+            await register_catalog_response_from_body(
+                display_body,
+                run,
+                fallback_agent_id=agent_id or None,
+                fallback_model_deployment_id=deployment_name or None,
+            )
             row = conversation_row_from_response(
                 display_body, agent_id=agent_id or None
             )
             if row:
-                await register_catalog_rows(ObjectKind.FOUNDRY_CONVERSATION, [row], run)
+                await register_catalog_rows(
+                    ObjectKind.FOUNDRY_CONVERSATION, [row], run
+                )
 
-    if not keep_stream:
-        from azure_integration.foundry.stream_manager import get_stream_manager
+        if not keep_stream:
+            from azure_integration.foundry.stream_manager import get_stream_manager
 
-        await get_stream_manager().untrack_for_run(run.id)
+            await get_stream_manager().untrack_for_run(run.id)
 
-    resolved_label = status_label
-    if resolved_label is None:
-        resolved_label = COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
+        resolved_label = status_label
+        if resolved_label is None:
+            resolved_label = (
+                COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
+            )
 
-    logger.info(
-        f"Completing run {run.id} from {source} "
-        f"(response {response_id}, success={success})"
-    )
-    await ocean.port_client.report_run_completed(
-        run,
-        success,
-        status_label=resolved_label,
-        should_raise=False,
-    )
+        logger.info(
+            f"Completing run {run.id} from {source} "
+            f"(response {response_id}, success={success})"
+        )
+        await ocean.port_client.report_run_completed(
+            run,
+            success,
+            status_label=resolved_label,
+            should_raise=True,
+        )
+        _mark_local_run_completed(run)
+    except Exception:
+        # Unclaim so webhook/SSE can retry closing the Port run.
+        async with _completion_lock:
+            _forget_completed(run.id, response_id)
+        raise
     return True
 
 

@@ -45,6 +45,7 @@ class ResponsesStreamManager:
         on_response_id: OnResponseIdCallback | None = None,
         stop_on_terminal_sse: bool = False,
         on_terminal_sse: OnTerminalSseCallback | None = None,
+        fail_run_if_stream_errors_after_bind: bool = True,
     ) -> bool:
         if stream_key in self._tasks:
             return False
@@ -63,6 +64,7 @@ class ResponsesStreamManager:
                 on_response_id=on_response_id,
                 stop_on_terminal_sse=stop_on_terminal_sse,
                 on_terminal_sse=on_terminal_sse,
+                fail_run_if_stream_errors_after_bind=fail_run_if_stream_errors_after_bind,
             ),
             name=f"foundry-stream-{stream_key}",
         )
@@ -103,6 +105,7 @@ class ResponsesStreamManager:
         on_response_id: OnResponseIdCallback | None = None,
         stop_on_terminal_sse: bool = False,
         on_terminal_sse: OnTerminalSseCallback | None = None,
+        fail_run_if_stream_errors_after_bind: bool = True,
     ) -> None:
         client = create_foundry_client()
         buffer: list[WorkflowNodeRunLog] = []
@@ -131,42 +134,36 @@ class ResponsesStreamManager:
                         result = on_response_id(response_id)
                         if asyncio.iscoroutine(result):
                             await result
+                message = format_responses_sse_log_message(parsed)
+                if message is not None:
+                    buffer.append(
+                        WorkflowNodeRunLog(
+                            message=message,
+                            level="INFO",
+                        )
+                    )
+                    if len(buffer) >= _LOG_FLUSH_BATCH_SIZE:
+                        await _flush_logs(run, buffer)
                 if (
                     stop_on_terminal_sse
                     and success_for_terminal_sse_event(parsed.type) is not None
                 ):
                     terminal_parsed = parsed
                     break
-                message = format_responses_sse_log_message(parsed)
-                if message is None:
-                    continue
-                buffer.append(
-                    WorkflowNodeRunLog(
-                        message=message,
-                        level="INFO",
-                    )
-                )
-                if len(buffer) >= _LOG_FLUSH_BATCH_SIZE:
-                    await _flush_logs(run, buffer)
             if buffer:
                 await _flush_logs(run, buffer)
             if terminal_parsed is not None and on_terminal_sse is not None:
                 result = on_terminal_sse(terminal_parsed)
                 if asyncio.iscoroutine(result):
                     await result
-        except asyncio.CancelledError:
-            if buffer:
-                await _flush_logs(run, buffer)
-            raise
-        except Exception as error:
-            # Fire-and-forget task: log + fail the Port run; do not re-raise
-            # (avoids "Task exception was never retrieved" / debugger stops).
-            logger.exception(f"Responses stream failed for {stream_key}: {error}")
-            if ocean.port_client.is_run_in_progress(run):
+            elif ocean.port_client.is_run_in_progress(run) and (
+                not response_id_reported or fail_run_if_stream_errors_after_bind
+            ):
+                # No terminal SSE: fail unless bound + webhook may still complete.
                 with contextlib.suppress(Exception):
                     await ocean.port_client.post_run_log(
                         run,
-                        f"Responses stream failed: {error}",
+                        "Responses stream ended without a terminal event",
                         level="ERROR",
                     )
                 with contextlib.suppress(Exception):
@@ -176,6 +173,39 @@ class ResponsesStreamManager:
                         status_label="Invoke failed",
                         should_raise=False,
                     )
+        except asyncio.CancelledError:
+            if buffer:
+                await _flush_logs(run, buffer)
+            raise
+        except Exception as error:
+            # Fire-and-forget task: do not re-raise (avoids "Task exception was
+            # never retrieved" / debugger stops).
+            logger.exception(f"Responses stream failed for {stream_key}: {error}")
+            if not ocean.port_client.is_run_in_progress(run):
+                return
+            # After bind, optional webhook completion may still close the run.
+            if response_id_reported and not fail_run_if_stream_errors_after_bind:
+                with contextlib.suppress(Exception):
+                    await ocean.port_client.post_run_log(
+                        run,
+                        f"Responses stream failed after bind "
+                        f"(waiting for completion): {error}",
+                        level="WARN",
+                    )
+                return
+            with contextlib.suppress(Exception):
+                await ocean.port_client.post_run_log(
+                    run,
+                    f"Responses stream failed: {error}",
+                    level="ERROR",
+                )
+            with contextlib.suppress(Exception):
+                await ocean.port_client.report_run_completed(
+                    run,
+                    False,
+                    status_label="Invoke failed",
+                    should_raise=False,
+                )
         finally:
             self._tasks.pop(stream_key, None)
             if response is not None:

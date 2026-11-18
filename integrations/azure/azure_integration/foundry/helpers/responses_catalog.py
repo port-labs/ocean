@@ -47,6 +47,19 @@ class FoundryUsage(BaseModel):
             fields["total_tokens"] = int(prompt) + int(completion)
         return fields
 
+    def run_output_fields(self) -> dict[str, int]:
+        """CamelCase token fields for Port run output."""
+        rename = {
+            "prompt_tokens": "inputTokens",
+            "completion_tokens": "outputTokens",
+            "total_tokens": "totalTokens",
+        }
+        return {
+            rename[key]: value
+            for key, value in self.row_fields().items()
+            if key in rename
+        }
+
 
 def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
     try:
