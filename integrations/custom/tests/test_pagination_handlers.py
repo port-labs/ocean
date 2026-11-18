@@ -860,6 +860,8 @@ class TestOffsetPagination:
             results.append(batch)
 
         assert len(results) == 2
+        assert captured_bodies[0] is not None
+        assert captured_bodies[1] is not None
         assert captured_bodies[0]["start_at_index"] == 1
         assert captured_bodies[1]["start_at_index"] == 101
 
