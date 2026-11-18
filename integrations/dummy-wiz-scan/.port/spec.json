@@ -1,0 +1,17 @@
+{
+  "title": "Dummy Wiz Scan",
+  "description": "Dummy integration used to trigger Ocean image CI and Wiz scans",
+  "icon": "Cookiecutter",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Under Development",
+      "resources": [
+        {
+          "kind": "dummy-kind"
+        }
+      ]
+    }
+  ],
+  "configurations": []
+}
