@@ -1,0 +1,12 @@
+resources:
+  - kind: dummy-kind
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"dummy-kind"'
+          properties:
+            name: .name

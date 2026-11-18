@@ -1,0 +1,14 @@
+[
+  {
+    "identifier": "dummy-kind",
+    "title": "Dummy Kind",
+    "icon": "Blueprint",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+]
