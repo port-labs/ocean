@@ -865,6 +865,73 @@ class TestOffsetPagination:
         assert captured_bodies[0]["start_at_index"] == 1
         assert captured_bodies[1]["start_at_index"] == 101
 
+    async def test_one_based_total_count_fetches_final_partial_page(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """1-based offset still requests the last page when total-1 is a page multiple"""
+        page1 = {
+            "status": "success",
+            "data": [{"id": str(i)} for i in range(1, 101)],
+            "total_items": 101,
+        }
+        page2 = {
+            "status": "success",
+            "data": [{"id": "101"}],
+            "total_items": 101,
+        }
+
+        responses = [page1, page2]
+        response_index = 0
+        captured_bodies: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            captured_bodies.append(body)
+            mock_response = MagicMock()
+            mock_response.json.return_value = responses[response_index]
+            response_index += 1
+            return mock_response
+
+        handler = OffsetPagination(
+            client=mock_client,
+            config={
+                "pagination_placement": "body",
+                "pagination_param": "start_at_index",
+                "size_param": "limit",
+                "initial_offset": 1,
+                "total_count_path": "total_items",
+                "page_size": 100,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/query",
+            method="POST",
+            params={},
+            headers={},
+            body={"query": "open alerts"},
+        ):
+            results.append(batch)
+
+        assert len(results) == 2
+        assert captured_bodies[0] is not None
+        assert captured_bodies[1] is not None
+        assert captured_bodies[0]["start_at_index"] == 1
+        assert captured_bodies[1]["start_at_index"] == 101
+
     async def test_stops_without_has_more_when_data_is_short(
         self,
         mock_client: MagicMock,

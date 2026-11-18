@@ -171,12 +171,15 @@ def _offset_dict_has_more(
     *,
     offset: int,
     page_size: int,
+    initial_offset: int,
 ) -> bool:
     """Decide whether offset pagination should request another page.
 
     Precedence:
     - has_more_path: truthy resolved value means continue (None falls through)
-    - total_count_path: continue while offset + page_size < total
+    - total_count_path: continue while the next offset is still in range
+      (``offset + page_size < total + initial_offset`` so 0-based and 1-based
+      starts both cover the last item)
     - has_more / hasMore keys when present
     - common list envelopes (data/items/results/content): continue on full page
     - otherwise stop (never default to True forever)
@@ -192,7 +195,7 @@ def _offset_dict_has_more(
         total = get_nested_value(response_data, total_count_path)
         if total is not None:
             try:
-                return offset + page_size < int(total)
+                return offset + page_size < int(total) + initial_offset
             except (TypeError, ValueError):
                 return False
 
@@ -232,7 +235,8 @@ class OffsetPagination(PaginationHandler):
         limit_param = self.config.get("size_param", "limit")
         placement = self.config.get("pagination_placement", "query")
         use_body_placement = placement == "body" and method.upper() != "GET"
-        offset = int(self.config.get("initial_offset", 0))
+        initial_offset = int(self.config.get("initial_offset", 0))
+        offset = initial_offset
 
         while True:
             current_params: Optional[Dict[str, Any]]
@@ -267,6 +271,7 @@ class OffsetPagination(PaginationHandler):
                     self.get_nested_value,
                     offset=offset,
                     page_size=self.page_size,
+                    initial_offset=initial_offset,
                 ):
                     break
             else:
