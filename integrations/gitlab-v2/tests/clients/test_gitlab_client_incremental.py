@@ -317,19 +317,24 @@ async def test_changed_paths_none_on_http_error(client: GitLabClient) -> None:
 async def test_changed_files_fall_back_to_tree_walk(client: GitLabClient) -> None:
     query = build_search_query("**/*.yaml")
     client.changed_paths_since = AsyncMock(return_value=ChangedPaths(paths=None))  # type: ignore[method-assign]
+    client._process_file_batch = AsyncMock(  # type: ignore[method-assign]
+        side_effect=lambda batch, repo, skip_parsing: batch
+    )
     full_walk_batch = [{"path": "full/a.yaml", "project_id": 1}]
 
     with patch.object(
         client,
-        "_search_files_in_repository",
+        "_match_files_with_repository_tree",
         side_effect=lambda *args, **kwargs: _gen([full_walk_batch]),
-    ) as search:
+    ) as tree_walk:
         batches = await _collect(
-            client._search_changed_files_in_project(PROJECT, query, SINCE)
+            client._search_files_in_repository(
+                PROJECT, "blobs", query, should_use_tree=True, since=SINCE
+            )
         )
 
     assert batches == [full_walk_batch]
-    assert search.call_args.kwargs["should_use_tree"] is True
+    tree_walk.assert_called_once_with(PROJECT, query)
 
 
 async def test_changed_files_filtered_by_pattern(client: GitLabClient) -> None:
@@ -340,14 +345,63 @@ async def test_changed_files_filtered_by_pattern(client: GitLabClient) -> None:
     client._process_file_batch = AsyncMock(  # type: ignore[method-assign]
         side_effect=lambda batch, repo, skip_parsing: batch
     )
+    client._match_files_with_repository_tree = MagicMock()  # type: ignore[method-assign]
 
     batches = await _collect(
-        client._search_changed_files_in_project(PROJECT, query, SINCE)
+        client._search_files_in_repository(
+            PROJECT, "blobs", query, should_use_tree=True, since=SINCE
+        )
     )
 
     assert [[file["path"] for file in batch] for batch in batches] == [["a/b/app.yaml"]]
     assert batches[0][0]["ref"] == "main"
     assert batches[0][0]["project_id"] == 1
+    client._match_files_with_repository_tree.assert_not_called()
+
+
+async def test_changed_files_none_matching_yields_nothing(
+    client: GitLabClient,
+) -> None:
+    query = build_search_query("**/*.yaml")
+    client.changed_paths_since = AsyncMock(  # type: ignore[method-assign]
+        return_value=ChangedPaths(paths=["README.md"])
+    )
+    client._process_file_batch = AsyncMock()  # type: ignore[method-assign]
+    client._match_files_with_repository_tree = MagicMock()  # type: ignore[method-assign]
+
+    batches = await _collect(
+        client._search_files_in_repository(
+            PROJECT, "blobs", query, should_use_tree=True, since=SINCE
+        )
+    )
+
+    assert batches == []
+    client._process_file_batch.assert_not_awaited()
+    client._match_files_with_repository_tree.assert_not_called()
+
+
+async def test_project_search_ignores_since(client: GitLabClient) -> None:
+    query = build_search_query("*.yaml")
+    client.changed_paths_since = AsyncMock()  # type: ignore[method-assign]
+    client._process_file_batch = AsyncMock(  # type: ignore[method-assign]
+        side_effect=lambda batch, repo, skip_parsing: batch
+    )
+    found = [{"path": "a.yaml", "project_id": 1}]
+
+    with patch.object(
+        client,
+        "_match_files_with_project_search",
+        side_effect=lambda *args, **kwargs: _gen([found]),
+    ) as project_search:
+        batches = await _collect(
+            client._search_files_in_repository(
+                PROJECT, "blobs", query, should_use_tree=False, since=SINCE
+            )
+        )
+
+    assert batches == [found]
+    project_search.assert_called_once_with("group/repo", "blobs", query)
+    client.changed_paths_since.assert_not_awaited()
 
 
 async def test_changed_folders_yield_only_changed_children(

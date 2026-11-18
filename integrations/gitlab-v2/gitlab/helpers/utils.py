@@ -183,6 +183,21 @@ def is_wildcard_path(path: str) -> bool:
     return any(c in path for c in "*?[]")
 
 
+def tree_match_pattern(query: SearchQuery) -> str:
+    """Return the glob matched against repository tree paths for a search query."""
+    return f"**/{query.filename}" if query.directory is None else query.path
+
+
+def changed_files(query: SearchQuery, changed_paths: list[str]) -> list[str]:
+    """Changed paths matched by the file selector *query*, like the full tree search."""
+    match_pattern = tree_match_pattern(query)
+    return [
+        path
+        for path in changed_paths
+        if glob.globmatch(path, match_pattern, flags=PATH_GLOB_FLAGS)
+    ]
+
+
 def changed_folders(path: str, changed_paths: list[str]) -> set[str]:
     """Folders matched by the folder selector *path* that contain a changed path.
 

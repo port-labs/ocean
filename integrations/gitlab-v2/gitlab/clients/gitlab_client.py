@@ -21,12 +21,14 @@ from gitlab.helpers.utils import (
     PATH_GLOB_FLAGS,
     ChangedPaths,
     build_search_query,
+    changed_files,
     changed_folders,
     is_wildcard_path,
     parse_file_content,
     SearchQuery,
     is_bot_member,
     is_branch_push_to,
+    tree_match_pattern,
 )
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
@@ -71,11 +73,6 @@ def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any]
 
 def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
-
-
-def _tree_match_pattern(query: SearchQuery) -> str:
-    """Return the glob matched against repository tree paths for a search query."""
-    return f"**/{query.filename}" if query.directory is None else query.path
 
 
 def _literal_tree_prefix(path: str) -> str:
@@ -868,17 +865,6 @@ class GitLabClient:
         """
         should_use_tree = strategy == "repositoryTree"
 
-        if should_use_tree and since is not None:
-            async for batch in self.search_changed_files_in_projects(
-                query,
-                since,
-                skip_parsing=skip_parsing,
-                repositories=repositories,
-                params=params,
-            ):
-                yield batch
-            return
-
         if strategy in ("projectSearch", "repositoryTree"):
             logger.info(
                 f"Using {'repository tree' if should_use_tree else 'project-level'} file search "
@@ -892,6 +878,7 @@ class GitLabClient:
                 params=params,
                 should_use_tree=should_use_tree,
                 max_concurrent=max_concurrent,
+                since=since,
             ):
                 yield batch
         else:
@@ -986,6 +973,8 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
         should_use_tree: bool = False,
         max_concurrent: int = 10,
+        *,
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files across accessible projects or specific repositories.
 
@@ -994,30 +983,35 @@ class GitLabClient:
                          searches across all accessible projects.
             params: Project filter parameters (only used when repositories is None).
             should_use_tree: Whether to use the repository tree API for searching.
+            since: With the tree API, only return files changed since this time.
+                Ignored by the Search API, which has no time filter.
         """
         logger.info(
             f"Starting project-level file search with path pattern: '{query.path}' using params: {params}"
         )
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
 
+        def _search_project(
+            repo: str | dict[str, Any],
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            return semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self._search_files_in_repository,
+                    repo,
+                    scope,
+                    query,
+                    skip_parsing,
+                    should_use_tree=should_use_tree,
+                    since=since,
+                ),
+            )
+
         if repositories:
             logger.info(
                 f"Searching for {query.path} across {len(repositories)} specific repositories"
             )
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    partial(
-                        self._search_files_in_repository,
-                        repo,
-                        scope,
-                        query,
-                        skip_parsing,
-                        should_use_tree=should_use_tree,
-                    ),
-                )
-                for repo in repositories
-            ]
+            tasks = [_search_project(repo) for repo in repositories]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
         else:
@@ -1032,112 +1026,9 @@ class GitLabClient:
                     self._log_skipped_projects_without_default_branch(skipped)
                     if not projects_to_search:
                         continue
-                tasks = [
-                    semaphore_async_iterator(
-                        semaphore,
-                        partial(
-                            self._search_files_in_repository,
-                            project["path_with_namespace"],
-                            scope,
-                            query,
-                            skip_parsing,
-                            should_use_tree=should_use_tree,
-                        ),
-                    )
-                    for project in projects_to_search
-                ]
+                tasks = [_search_project(project) for project in projects_to_search]
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
-
-    async def _search_changed_files_in_project(
-        self,
-        project: dict[str, Any],
-        query: SearchQuery,
-        since: datetime,
-        skip_parsing: bool = False,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        if not project:
-            return
-        project_path = project["path_with_namespace"]
-        ref = self._project_tree_ref(project)
-        if not ref:
-            return
-
-        changed = await self.changed_paths_since(project_path, since, ref)
-        if changed.paths is None:
-            async for batch in self._search_files_in_repository(
-                project_path, "blobs", query, skip_parsing, should_use_tree=True
-            ):
-                yield batch
-            return
-
-        match_pattern = _tree_match_pattern(query)
-        matching_paths = [
-            path
-            for path in changed.paths
-            if glob.globmatch(path, match_pattern, flags=PATH_GLOB_FLAGS)
-        ]
-        if not matching_paths:
-            logger.info(f"No changed files matching '{query.path}' in {project_path}")
-            return
-
-        logger.info(
-            f"Found {len(matching_paths)} changed files matching '{query.path}' in {project_path}"
-        )
-        for paths_batch in batched(matching_paths, CHANGED_FILES_BATCH_SIZE):
-            files_batch = [
-                {"path": path, "ref": ref, "project_id": project["id"]}
-                for path in paths_batch
-            ]
-            processed_batch = await self._process_file_batch(
-                files_batch, project_path, skip_parsing
-            )
-            if processed_batch:
-                yield processed_batch
-
-    async def search_changed_files_in_projects(
-        self,
-        query: SearchQuery,
-        since: datetime,
-        skip_parsing: bool = False,
-        repositories: list[str] | None = None,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Like ``search_files_in_projects`` with the tree strategy, for files changed since ``since``.
-
-        Projects whose diff cannot be trusted fall back to a full tree walk
-        (see ``changed_paths_since``).
-        """
-        logger.info(
-            f"Starting search for files changed in '{query.path}' since {since.isoformat()}"
-        )
-
-        async for projects_batch in self._iter_projects(repositories, params):
-            searchable, skipped = self._partition_projects_with_tree_ref(projects_batch)
-            self._log_skipped_projects_without_default_branch(skipped)
-            tasks = [
-                self._search_changed_files_in_project(
-                    project, query, since, skip_parsing
-                )
-                for project in searchable
-            ]
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-
-    async def _iter_projects(
-        self,
-        repositories: list[str] | None,
-        params: Optional[dict[str, Any]],
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Yield the projects to search: *repositories* when given, else every project matching *params*."""
-        if repositories:
-            projects = await asyncio.gather(
-                *(self.get_project(repo) for repo in repositories)
-            )
-            yield [project for project in projects if project]
-            return
-        async for projects_batch in self.get_projects(params=params):
-            yield projects_batch
 
     async def get_repository_tree(
         self,
@@ -1570,26 +1461,93 @@ class GitLabClient:
 
     async def _search_files_in_repository(
         self,
-        repo: str,
+        repo: str | dict[str, Any],
         scope: str,
         query: SearchQuery,
         skip_parsing: bool = False,
         should_use_tree: bool = False,
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for files in one repository.
+
+        With the tree API and ``since``, yields only files matching ``query`` that
+        changed since then, falling back to the full search when the diff cannot
+        be trusted. The Search API has no time filter and ignores ``since``.
+        """
+        repo_path = repo if isinstance(repo, str) else repo["path_with_namespace"]
         logger.debug(
-            f"Starting search in repository '{repo}' for query '{query.path}' with scope '{scope}'"
+            f"Starting search in repository '{repo_path}' for query '{query.path}' with scope '{scope}'"
         )
+
+        if should_use_tree and since is not None:
+            project = repo if isinstance(repo, dict) else await self.get_project(repo)
+            if not project:
+                return
+            branch = self._project_tree_ref(project)
+            if not branch:
+                return
+            changed_paths = await self._changed_files_since(
+                project, query, branch, since
+            )
+            if changed_paths is not None:
+                async for files_batch in self._get_files_by_path(
+                    project, changed_paths, branch, skip_parsing
+                ):
+                    yield files_batch
+                return
+            repo = project
 
         search_handler = (
             self._match_files_with_repository_tree(repo, query)
             if should_use_tree
-            else self._match_files_with_project_search(repo, scope, query)
+            else self._match_files_with_project_search(repo_path, scope, query)
         )
 
         async for file_batch in search_handler:
-            logger.debug(f"Found {len(file_batch)} files in '{repo}'")
+            logger.debug(f"Found {len(file_batch)} files in '{repo_path}'")
             processed_batch = await self._process_file_batch(
-                file_batch, repo, skip_parsing
+                file_batch, repo_path, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch
+
+    async def _changed_files_since(
+        self,
+        project: dict[str, Any],
+        query: SearchQuery,
+        branch: str,
+        since: datetime,
+    ) -> list[str] | None:
+        """Files matching ``query`` with a change since ``since``; ``None`` when the diff can't be trusted."""
+        repository = project["path_with_namespace"]
+        changed = await self.changed_paths_since(repository, since, branch)
+        if changed.paths is None:
+            return None
+        changed_paths = changed_files(query, changed.paths)
+        if not changed_paths:
+            logger.info(f"No changed files matching '{query.path}' in {repository}")
+            return changed_paths
+        logger.info(
+            f"Found {len(changed_paths)} changed files matching '{query.path}' in {repository}"
+        )
+        return changed_paths
+
+    async def _get_files_by_path(
+        self,
+        project: dict[str, Any],
+        file_paths: list[str],
+        branch: str,
+        skip_parsing: bool = False,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch *file_paths* from *branch*, in batches."""
+        repository = project["path_with_namespace"]
+        for paths_batch in batched(file_paths, CHANGED_FILES_BATCH_SIZE):
+            files_batch = [
+                {"path": path, "ref": branch, "project_id": project["id"]}
+                for path in paths_batch
+            ]
+            processed_batch = await self._process_file_batch(
+                files_batch, repository, skip_parsing
             )
             if processed_batch:
                 yield processed_batch
@@ -1615,7 +1573,7 @@ class GitLabClient:
             )
 
     async def _match_files_with_repository_tree(
-        self, repo: str, query: SearchQuery
+        self, repo: str | dict[str, Any], query: SearchQuery
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files in specified repository matching the given path pattern.
 
@@ -1662,7 +1620,7 @@ class GitLabClient:
         walks: set[tuple[str, bool]] = set()
         for path_pattern in path_patterns:
             query = build_search_query(path_pattern)
-            match_pattern = _tree_match_pattern(query)
+            match_pattern = tree_match_pattern(query)
             match_patterns.append(match_pattern)
             if is_wildcard_path(match_pattern):
                 walks.add((_literal_tree_prefix(match_pattern), True))
