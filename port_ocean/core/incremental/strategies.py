@@ -74,7 +74,7 @@ class IncrementalStrategy(ABC):
         """Merge :meth:`build_params` into *base_params*."""
         return {**base_params, **self.build_params(cursor)}
 
-    def merge_params_incremental(
+    def merge_params_replacing(
         self,
         base_params: dict[str, Any],
         cursor: datetime | None,
