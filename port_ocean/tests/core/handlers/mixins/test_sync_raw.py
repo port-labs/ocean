@@ -22,7 +22,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.mixins import SyncRawMixin
 from port_ocean.core.integrations.mixins.sync_raw import (
     _kind_failure_error_message,
-    _log_kind_fetch_failure,
 )
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
@@ -2527,13 +2526,14 @@ async def test_process_resource_dsp_notifies_kind_failed(
         event_id="resync-1",
         granularity=GranularityType.KIND,
         kind_identifier="service-0",
+        error_message="crash",
     )
     lifecycle_client.notify_finished.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("dsp_enabled", [True, False])
-async def test_process_resource_logs_kind_fetch_failure(
+async def test_process_resource_dsp_sends_kind_failure_error_message(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_resource_config: ResourceConfig,
     mock_ocean: Ocean,
@@ -2567,14 +2567,9 @@ async def test_process_resource_logs_kind_fetch_failure(
     lifecycle_client.notify_aborted = AsyncMock()
     mock_ocean.lifecycle_client = lifecycle_client
 
-    with (
-        patch(
-            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
-            AsyncMock(return_value=dsp_enabled),
-        ),
-        patch(
-            "port_ocean.core.integrations.mixins.sync_raw._log_kind_fetch_failure"
-        ) as log_fetch_failure,
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=dsp_enabled),
     ):
         async with event_context(
             EventType.RESYNC,
@@ -2588,33 +2583,14 @@ async def test_process_resource_logs_kind_fetch_failure(
             )
 
     if dsp_enabled:
-        log_fetch_failure.assert_called_once_with("service-0", [group])
+        lifecycle_client.notify_failed.assert_awaited_once_with(
+            event_id="resync-1",
+            granularity=GranularityType.KIND,
+            kind_identifier="service-0",
+            error_message="PagerDuty API 401 Unauthorized",
+        )
     else:
-        log_fetch_failure.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_log_kind_fetch_failure_emits_failed_entity_extract_log() -> None:
-    leaf = RuntimeError("PagerDuty API 401 Unauthorized")
-    abort = OceanAbortException(f"Failed to execute resync function, error: {leaf}")
-    abort.__cause__ = leaf
-    records: list[Any] = []
-    sink_id = logger.add(lambda message: records.append(message.record), level="ERROR")
-    try:
-        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
-            event_id = event.id
-            _log_kind_fetch_failure("service-0", [abort])
-    finally:
-        logger.remove(sink_id)
-
-    assert len(records) == 1
-    record = records[0]
-    assert record["level"].name == "ERROR"
-    assert record["message"] == "Fetch failed: PagerDuty API 401 Unauthorized"
-    assert record["extra"]["etl_phase"] == "extract"
-    assert record["extra"]["failed_entity"] is True
-    assert record["extra"]["kind_identifier"] == "service-0"
-    assert record["extra"]["event_id"] == event_id
+        lifecycle_client.notify_failed.assert_not_awaited()
 
 
 @pytest.mark.asyncio

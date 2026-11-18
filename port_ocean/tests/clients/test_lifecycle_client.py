@@ -9,7 +9,6 @@ import pytest_asyncio
 
 from port_ocean.clients.dsp.lifecycle import (
     GranularityType,
-    LifecycleCapabilities,
     LifecycleClient,
     SyncType,
 )
@@ -76,24 +75,6 @@ async def lifecycle_client(
     _patch_lifecycle_ingest_url(client)
     monkeypatch.setattr(client._lifecycle_http_client, "_raw_post", mock_post)
     return client
-
-
-class TestLifecycleCapabilities:
-    @pytest.mark.parametrize(
-        ("http_logging", "expected"),
-        [
-            ("true", {"x-port-lifecycle-capabilities": "FAILED_ENTITIES_LOGS"}),
-            ("false", {}),
-        ],
-    )
-    def test_failed_entities_logs_needs_http_logging(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        http_logging: str,
-        expected: dict[str, str],
-    ) -> None:
-        monkeypatch.setenv("APPLICATION__ENABLE_HTTP_LOGGING", http_logging)
-        assert LifecycleCapabilities().to_headers() == expected
 
 
 class TestResyncUrl:
@@ -374,10 +355,7 @@ class TestGetResyncStatus:
 
         status = await lifecycle_client.get_resync_status("r1")
         assert status == "aborted"
-        mock_get.assert_awaited_once_with(
-            f"{TEST_LIFECYCLE_INGEST_URL}/r1",
-            headers=LifecycleCapabilities().to_headers(),
-        )
+        mock_get.assert_awaited_once_with(f"{TEST_LIFECYCLE_INGEST_URL}/r1")
 
     @pytest.mark.asyncio
     async def test_returns_none_when_response_missing_status(
@@ -602,17 +580,28 @@ class TestNotifyGranularFailed:
         assert "kind_identifier" not in body
 
     @pytest.mark.asyncio
-    async def test_advertises_failed_entities_logs_capability(
+    async def test_error_message_included_when_provided(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         await lifecycle_client.notify_failed(
             event_id="e1",
             granularity=GranularityType.KIND,
             kind_identifier="project-0",
+            error_message="PagerDuty API 401 Unauthorized",
         )
-        # DSP matches this header and value literally.
-        headers = mock_post.call_args[1]["headers"]
-        assert headers["x-port-lifecycle-capabilities"] == "FAILED_ENTITIES_LOGS"
+        body = mock_post.call_args[1]["json"]
+        assert body["error_message"] == "PagerDuty API 401 Unauthorized"
+
+    @pytest.mark.asyncio
+    async def test_error_message_omitted_when_not_provided(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        await lifecycle_client.notify_failed(
+            event_id="e1",
+            granularity=GranularityType.KIND,
+        )
+        body = mock_post.call_args[1]["json"]
+        assert "error_message" not in body
 
     @pytest.mark.asyncio
     async def test_swallows_exception(

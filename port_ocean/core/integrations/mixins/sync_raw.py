@@ -101,21 +101,6 @@ def _kind_failure_error_message(errors: list[Exception]) -> str | None:
     return "; ".join(messages)
 
 
-def _log_kind_fetch_failure(kind_identifier: str, errors: list[Exception]) -> None:
-    """Report a failed kind's fetch error as a failed entity.
-
-    Integration-observer stores ERROR extract logs flagged ``failed_entity`` as failed
-    entities of the resync in the log's ``event_id``.
-    """
-    message = _kind_failure_error_message(errors) or "kind terminal failure"
-    with logger.contextualize(
-        etl_phase=ETLPhase.EXTRACT,
-        failed_entity=True,
-        kind_identifier=kind_identifier,
-    ):
-        logger.error(f"Fetch failed: {message}")
-
-
 class SyncRawMixin(HandlerMixin, EventsMixin):
     """Mixin class for synchronization of raw constructed entities.
 
@@ -956,11 +941,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if dsp_enabled and resync_id:
                 if ocean.metrics.sync_state == SyncState.FAILED:
-                    _log_kind_fetch_failure(resource_kind_id, kind_results[1])
                     await ocean.app.lifecycle_client.notify_failed(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
                         kind_identifier=resource_kind_id,
+                        error_message=_kind_failure_error_message(kind_results[1]),
                     )
                 else:
                     await ocean.app.lifecycle_client.notify_finished(

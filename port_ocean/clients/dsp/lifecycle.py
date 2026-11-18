@@ -1,12 +1,11 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Self, TypedDict
+from typing import Any, TypedDict
 
 from loguru import logger
 
 from port_ocean.clients.dsp.lifecycle_http import get_lifecycle_http_client
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.config.settings import ApplicationSettings
 from port_ocean.version import __integration_version__, __version__
 
 
@@ -26,47 +25,6 @@ class SyncType(Enum):
     INCREMENTAL_RESYNC = "incremental_resync"
 
 
-class LifecycleCapability(str):
-    """A lifecycle feature advertised to DSP only while its condition holds."""
-
-    condition: Callable[[], bool]
-
-    def __new__(cls, value: str, condition: Callable[[], bool] = lambda: True) -> Self:
-        capability = super().__new__(cls, value)
-        capability.condition = condition
-        return capability
-
-
-class LifecycleCapabilities:
-    # The failed-entity log reaches integration-observer only through the HTTP log handler.
-    FAILED_ENTITIES_LOGS = LifecycleCapability(
-        "FAILED_ENTITIES_LOGS",
-        condition=lambda: ApplicationSettings().enable_http_logging,
-    )
-
-    HEADER_NAME = "x-port-lifecycle-capabilities"
-
-    def _collect_capabilities(self) -> dict[str, LifecycleCapability]:
-        """Collect all LifecycleCapability attributes defined on the class."""
-        return {
-            name: value
-            for cls in reversed(type(self).__mro__)
-            for name, value in vars(cls).items()
-            if isinstance(value, LifecycleCapability)
-        }
-
-    def to_headers(self) -> dict[str, str]:
-        """Build request headers advertising the supported capabilities."""
-        capabilities = [
-            capability
-            for capability in self._collect_capabilities().values()
-            if capability.condition()
-        ]
-        if not capabilities:
-            return {}
-        return {self.HEADER_NAME: ",".join(sorted(capabilities))}
-
-
 class LifecycleClient:
     """Client for the integration-life-cycle service."""
 
@@ -74,12 +32,9 @@ class LifecycleClient:
         self._lifecycle_http_client = get_lifecycle_http_client(auth)
         self._lifecycle_attributes: LifecycleAttributes | None = None
         self._lifecycle_auth = auth
-        self._capabilities_headers = LifecycleCapabilities().to_headers()
 
     async def _post(self, url: str, body: dict[str, Any]) -> None:
-        await self._lifecycle_http_client.do_post(
-            url, json=body, headers=self._capabilities_headers
-        )
+        await self._lifecycle_http_client.do_post(url, json=body)
 
     async def _lifecycle_base_url(self) -> str:
         return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle"
@@ -155,7 +110,7 @@ class LifecycleClient:
     async def get_resync_status(self, resync_id: str) -> str | None:
         logger.debug(f"Polling lifecycle API resync status, resync_id={resync_id}")
         response = await self._lifecycle_http_client.do_get(
-            await self._resync_url(resync_id), headers=self._capabilities_headers
+            await self._resync_url(resync_id)
         )
         if response is None:
             return None
@@ -221,8 +176,12 @@ class LifecycleClient:
         event_id: str,
         granularity: GranularityType,
         kind_identifier: str | None = None,
+        error_message: str | None = None,
     ) -> None:
-        body = self._build_granular_body("failed", kind_identifier)
+        extra: dict[str, Any] = {}
+        if error_message:
+            extra["error_message"] = error_message
+        body = self._build_granular_body("failed", kind_identifier, **extra)
         logger.info(
             f"Notifying lifecycle API for status=failed granularity={granularity.value}"
         )
