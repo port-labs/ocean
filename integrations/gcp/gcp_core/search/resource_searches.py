@@ -178,6 +178,22 @@ async def search_all_iam_policies_per_project(
             )
 
 
+def _asset_aliases(result: Any) -> list[str]:
+    """Every identifier a feed event may use for this asset in place of the last segment of its name.
+
+    additionalAttributes is absent entirely for types that do not alias, such as buckets and topics.
+    Its `project` sibling holds the project number, which is how a feed names a project where
+    searchAllResources names it by id. Every asset reports that number, so it is only an alias for
+    the project itself: anywhere else it would match every asset of the type at once.
+    """
+    attributes = dict(result.additional_attributes or {})
+    aliases = [value for value in attributes.values() if isinstance(value, str)]
+    is_the_project = result.name.rsplit("/", 1)[-1] == attributes.get("projectId")
+    if is_the_project and result.project:
+        aliases.append(result.project.rsplit("/", 1)[-1])
+    return aliases
+
+
 async def search_asset_names_in_project(
     project_name: str,
     asset_type: str,
@@ -200,15 +216,7 @@ async def search_asset_names_in_project(
         return [
             {
                 "name": result.name,
-                # additionalAttributes is absent entirely for types that do not alias, such as
-                # buckets and topics. `project` is the number, which is how a feed names a project
-                # where searchAllResources names it by id, and it is in no other field.
-                "aliases": [
-                    value
-                    for value in dict(result.additional_attributes or {}).values()
-                    if isinstance(value, str)
-                ]
-                + ([result.project.rsplit("/", 1)[-1]] if result.project else []),
+                "aliases": _asset_aliases(result),
             }
             for result in response.results
         ]

@@ -715,3 +715,60 @@ class TestSearchRequest:
 
         assert captured["query"] == '"headless-shipping@sha256:5d26e"'
         assert "project" in captured["read_mask"]
+
+
+class TestAliasAmbiguity:
+    """Every asset reports the same project number. Treating it as a general alias made each asset
+    of a type answer to it, and the first in the list won: 35 of 148 real name forms in sendbox-go
+    resolved to the wrong asset."""
+
+    def test_the_project_number_is_an_alias_only_for_the_project(self) -> None:
+        from gcp_core.search.resource_searches import _asset_aliases
+
+        project = MagicMock()
+        project.name = "//cloudresourcemanager.googleapis.com/projects/sendbox-go"
+        project.project = "projects/385573848890"
+        project.additional_attributes = {"projectId": "sendbox-go"}
+
+        bucket = MagicMock()
+        bucket.name = "//storage.googleapis.com/sendbox-go-terraform"
+        bucket.project = "projects/385573848890"
+        bucket.additional_attributes = None
+
+        assert "385573848890" in _asset_aliases(project)
+        assert _asset_aliases(bucket) == []
+
+    def test_an_alias_shared_by_several_assets_resolves_to_none(self) -> None:
+        from gcp_core.feed_event import canonical_resource_name
+
+        shared = [
+            {
+                "name": "//iam.googleapis.com/projects/p/serviceAccounts/a@x.com",
+                "aliases": ["999"],
+            },
+            {
+                "name": "//iam.googleapis.com/projects/p/serviceAccounts/b@x.com",
+                "aliases": ["999"],
+            },
+        ]
+        feed = "//iam.googleapis.com/projects/p/serviceAccounts/999"
+        assert canonical_resource_name(feed, shared) is None
+
+    def test_an_alias_held_by_exactly_one_asset_still_resolves(self) -> None:
+        from gcp_core.feed_event import canonical_resource_name
+
+        assets = [
+            {
+                "name": "//iam.googleapis.com/projects/p/serviceAccounts/a@x.com",
+                "aliases": ["999"],
+            },
+            {
+                "name": "//iam.googleapis.com/projects/p/serviceAccounts/b@x.com",
+                "aliases": ["888"],
+            },
+        ]
+        feed = "//iam.googleapis.com/projects/p/serviceAccounts/999"
+        assert (
+            canonical_resource_name(feed, assets)
+            == "//iam.googleapis.com/projects/p/serviceAccounts/a@x.com"
+        )

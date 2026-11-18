@@ -2,6 +2,8 @@ import base64
 import json
 from typing import Any
 
+from loguru import logger
+
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
@@ -49,10 +51,25 @@ def canonical_resource_name(
     for asset in assets:
         if asset["name"] == feed_asset_name:
             return str(asset["name"])
+
     # An alias replaces the final segment of the name and nothing else, so rebuild the candidate and
     # compare whole strings: a free-text attribute cannot collide its way to a match.
-    for asset in assets:
-        prefix = str(asset["name"]).rsplit("/", 1)[0]
-        if any(f"{prefix}/{alias}" == feed_asset_name for alias in asset["aliases"]):
-            return str(asset["name"])
+    anchored = [
+        str(asset["name"])
+        for asset in assets
+        if any(
+            f"{str(asset['name']).rsplit('/', 1)[0]}/{alias}" == feed_asset_name
+            for alias in asset["aliases"]
+        )
+    ]
+    if len(anchored) == 1:
+        return anchored[0]
+
+    # Several assets share an alias (every asset reports the same project number), so the feed's
+    # name does not identify one. Refusing beats guessing: a wrong name is an entity no resync
+    # reconciles away, where no name only waits for the next resync.
+    if anchored:
+        logger.warning(
+            f"{feed_asset_name} matches {len(anchored)} assets by alias; refusing to guess"
+        )
     return None
