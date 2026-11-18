@@ -1,6 +1,6 @@
 bump: minor
 changelog-type: feature
 changelog: >-
-  Add IncrementalStrategy.merge_params_replacing, which merges the cursor params
+  Add IncrementalStrategy.merge_params_incremental, which merges the cursor params
   after dropping the given base params the cursor supersedes (e.g. a configured
   updated_before window). merge_params is unchanged.

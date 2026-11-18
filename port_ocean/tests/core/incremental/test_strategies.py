@@ -63,7 +63,7 @@ class TestServerSideTimestampStrategy:
         base = {"state": "open"}
         assert strategy.merge_params(base, None) == base
 
-    def test_merge_params_replacing_drops_keys_when_cursor_given(
+    def test_merge_params_incremental_drops_keys_when_cursor_given(
         self, cursor: datetime
     ) -> None:
         strategy = ServerSideTimestampStrategy(param_key="updated_after")
@@ -72,24 +72,24 @@ class TestServerSideTimestampStrategy:
             "updated_after": "2020-01-01T00:00:00Z",
             "updated_before": "2021-01-01T00:00:00Z",
         }
-        assert strategy.merge_params_replacing(
+        assert strategy.merge_params_incremental(
             base, cursor, {"updated_after", "updated_before"}
         ) == {
             "state": "open",
             "updated_after": "2026-06-01T12:00:00+00:00",
         }
 
-    def test_merge_params_replacing_keeps_keys_when_no_cursor(self) -> None:
+    def test_merge_params_incremental_keeps_keys_when_no_cursor(self) -> None:
         strategy = ServerSideTimestampStrategy(param_key="updated_after")
         base = {"state": "open", "updated_before": "2021-01-01T00:00:00Z"}
-        assert strategy.merge_params_replacing(base, None, {"updated_before"}) == base
+        assert strategy.merge_params_incremental(base, None, {"updated_before"}) == base
 
-    def test_merge_params_replacing_does_not_mutate_base(
+    def test_merge_params_incremental_does_not_mutate_base(
         self, cursor: datetime
     ) -> None:
         strategy = ServerSideTimestampStrategy(param_key="updated_after")
         base = {"state": "open", "updated_before": "2021-01-01T00:00:00Z"}
-        strategy.merge_params_replacing(base, cursor, {"updated_before"})
+        strategy.merge_params_incremental(base, cursor, {"updated_before"})
         assert base == {"state": "open", "updated_before": "2021-01-01T00:00:00Z"}
 
 
@@ -114,11 +114,11 @@ class TestClientSideCutoffStrategy:
     ) -> None:
         assert strategy.build_params(None) == {}
 
-    def test_merge_params_replacing_drops_keys_when_cursor_given(
+    def test_merge_params_incremental_drops_keys_when_cursor_given(
         self, strategy: ClientSideCutoffStrategy, cursor: datetime
     ) -> None:
         base = {"state": "all", "sort": "created", "since": "2020-01-01"}
-        assert strategy.merge_params_replacing(base, cursor, {"since"}) == {
+        assert strategy.merge_params_incremental(base, cursor, {"since"}) == {
             "state": "all",
             "sort": "updated",
             "direction": "desc",
