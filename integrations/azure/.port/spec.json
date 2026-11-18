@@ -158,8 +158,7 @@
     {
       "name": "create_agent",
       "icon": "Azure",
-      "description": "Create a Foundry agent in the configured project",
-      "allowedExecutionIdentities": ["actor", "service_account"],
+      "description": "Create a Foundry agent in the configured project. Port toolbox wiring happens on invoke_agent (enablePortMcp), not here.",
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -187,37 +186,6 @@
           "required": false
         },
         {
-          "name": "enablePortMcp",
-          "title": "Enable Port MCP",
-          "type": "boolean",
-          "required": false,
-          "default": true,
-          "description": "When true, upserts a per-agent Foundry CustomKeys connection + ootb toolbox with Port MCP (project_connection_id), and attaches that toolbox MCP endpoint on prompt agents. Requires a Service Account or Actor execution identity for the Bearer token. Hosted agents get the toolbox only (no definition.tools attach). Concurrent remints of the same agent can overwrite the shared connection token."
-        },
-        {
-          "name": "gitAccessToken",
-          "title": "Git access token",
-          "type": "string",
-          "required": false,
-          "sensitive": true,
-          "description": "Optional GitHub PAT. When set, adds GitHub MCP (https://api.githubcopilot.com/mcp) to the per-agent ootb toolbox via a CustomKeys connection. Omit to skip GitHub MCP."
-        },
-        {
-          "name": "gitProvider",
-          "title": "Git provider",
-          "type": "string",
-          "required": false,
-          "default": "github",
-          "description": "Git provider for gitAccessToken. Only github is supported."
-        },
-        {
-          "name": "toolboxName",
-          "title": "Toolbox name",
-          "type": "string",
-          "required": false,
-          "description": "Optional Foundry toolbox name for the ootb Port/GitHub MCP toolbox. Omit to use the default port-mcps-<hash> name derived from the agent id. Use a custom name to target an existing toolbox (common for hosted agents)."
-        },
-        {
           "name": "config",
           "title": "Additional configuration",
           "type": "jqObject",
@@ -229,8 +197,7 @@
     {
       "name": "update_agent",
       "icon": "Azure",
-      "description": "Update a Foundry agent",
-      "allowedExecutionIdentities": ["actor", "service_account"],
+      "description": "Update a Foundry agent. Port toolbox remint happens on invoke_agent, not here.",
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -256,36 +223,6 @@
           "title": "Instructions",
           "type": "string",
           "required": false
-        },
-        {
-          "name": "enablePortMcp",
-          "title": "Enable Port MCP",
-          "type": "boolean",
-          "required": false,
-          "description": "When true, ensures the per-agent Port MCP connection/toolbox and attaches the toolbox on prompt agents. When false, removes the ootb toolbox MCP tool from the agent (connections left in place). Omit to leave MCP tools unchanged unless gitAccessToken is set."
-        },
-        {
-          "name": "gitAccessToken",
-          "title": "Git access token",
-          "type": "string",
-          "required": false,
-          "sensitive": true,
-          "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP CustomKeys connection and includes GitHub MCP in the ootb toolbox."
-        },
-        {
-          "name": "gitProvider",
-          "title": "Git provider",
-          "type": "string",
-          "required": false,
-          "default": "github",
-          "description": "Git provider for gitAccessToken. Only github is supported."
-        },
-        {
-          "name": "toolboxName",
-          "title": "Toolbox name",
-          "type": "string",
-          "required": false,
-          "description": "Optional Foundry toolbox name for the ootb Port/GitHub MCP toolbox. Omit to use the default port-mcps-<hash> name derived from the agent id."
         },
         {
           "name": "config",
@@ -391,7 +328,7 @@
     {
       "name": "invoke_agent",
       "icon": "Azure",
-      "description": "Invoke a Foundry agent via the Responses API",
+      "description": "Invoke a Foundry agent via the Responses API. Optionally creates/remints the Port toolbox before the call (first invoke does full wiring).",
       "allowedExecutionIdentities": ["actor", "service_account"],
       "inputs": [
         {
@@ -433,7 +370,7 @@
           "type": "boolean",
           "required": false,
           "default": true,
-          "description": "When true and a Service Account or Actor execution identity is present, remints the per-agent Port MCP CustomKeys connection and ensures the ootb toolbox is attached (prompt) or available (hosted) before invoke. For hosted agents, invoke fails fast if the toolbox cannot be prepared. Concurrent remints of the same agent can overwrite the connection token."
+          "description": "When true and a Service Account or Actor execution identity is present, creates or remints the per-agent Port MCP CustomKeys connection and Port toolbox before invoke (first invoke does full wiring; later invokes remint). Attaches the toolbox on prompt agents; hosted agents get the toolbox only. Fails fast for hosted agents if toolbox prep fails. Concurrent remints of the same agent can overwrite the connection token."
         },
         {
           "name": "gitAccessToken",
@@ -441,7 +378,7 @@
           "type": "string",
           "required": false,
           "sensitive": true,
-          "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP connection and includes GitHub MCP in the ootb toolbox for this invoke. Omit to skip GitHub MCP."
+          "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP connection and includes GitHub MCP in the Port toolbox for this invoke. Omit to skip GitHub MCP."
         },
         {
           "name": "gitProvider",
@@ -456,7 +393,7 @@
           "title": "Toolbox name",
           "type": "string",
           "required": false,
-          "description": "Optional Foundry toolbox name for the ootb Port/GitHub MCP toolbox. Omit to use the default port-mcps-<hash> name derived from the agent id. Use a custom name to target an existing toolbox (common for hosted agents)."
+          "description": "Optional Foundry toolbox name for the Port toolbox. Omit to use the default port-mcps-<hash> name derived from the agent id. Use a custom name to target an existing toolbox (common for hosted agents that set TOOLBOX_NAME)."
         },
         {
           "name": "reportInvocationStatus",
