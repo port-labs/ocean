@@ -313,7 +313,6 @@ async def test_terminal_sse_logs_before_stop() -> None:
         task = manager._tasks["term"]
         await task
 
-    mock_ocean.port_client.post_run_logs.assert_awaited()
-    logged = mock_ocean.port_client.post_run_logs.await_args.args[1]
-    assert any("Response completed" in log.message for log in logged)
+    # response.completed is not logged; terminal callback still fires.
+    mock_ocean.port_client.post_run_logs.assert_not_called()
     on_terminal.assert_awaited_once()

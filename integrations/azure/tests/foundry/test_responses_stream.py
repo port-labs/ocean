@@ -47,18 +47,22 @@ def test_format_output_text_done() -> None:
     assert message == "Hey! How can I help you today?"
 
 
-def test_format_completed_usage() -> None:
-    message = format_responses_sse_log_message(
-        ResponsesSseEvent(
-            type="response.completed",
-            response={
-                "status": "completed",
-                "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
-            },
-        )
-    )
+def test_format_skips_completed() -> None:
     assert (
-        message == "Response completed (inputTokens=10, outputTokens=5, totalTokens=15)"
+        format_responses_sse_log_message(
+            ResponsesSseEvent(
+                type="response.completed",
+                response={
+                    "status": "completed",
+                    "usage": {
+                        "input_tokens": 10,
+                        "output_tokens": 5,
+                        "total_tokens": 15,
+                    },
+                },
+            )
+        )
+        is None
     )
 
 

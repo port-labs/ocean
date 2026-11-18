@@ -167,4 +167,15 @@ class ResponsesInvokeMixin:
                 response_id,
                 status_label=running_status_label,
             )
+        waiting = (
+            "Waiting for model response"
+            if running_status_label == MODEL_RUNNING_STATUS_LABEL
+            else "Waiting for agent response"
+        )
+        await ocean.port_client.post_run_log(
+            run,
+            waiting,
+            status_label=running_status_label,
+            should_raise=False,
+        )
         logger.info(f"Bound run {run.id} to Foundry response {response_id}")
