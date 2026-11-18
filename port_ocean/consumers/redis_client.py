@@ -35,8 +35,8 @@ async def create_redis_client(url: str, **kwargs: Any) -> RedisClient:
     try:
         return await _create_redis_client_once(url, **kwargs)
     except Exception as error:
-        logger.exception(
-            "Failed to connect to Redis",
+        logger.error(
+            "Failed to connect to Redis: {error}",
             error=str(error),
         )
         raise
@@ -56,15 +56,15 @@ async def create_redis_client_with_retry(
             return await _create_redis_client_once(url, **kwargs)
         except Exception as error:
             if attempt >= max_retries:
-                logger.exception(
-                    "Failed to connect to Redis after exhausting startup retries",
+                logger.error(
+                    "Failed to connect to Redis after exhausting startup retries: {error}",
                     error=str(error),
                     max_retries=max_retries,
                 )
                 raise
             delay_seconds = initial_backoff_seconds * (exponential_base**attempt)
             logger.warning(
-                f"Failed to connect to Redis at startup, retrying in {delay_seconds:.2f} seconds",
+                "Failed to connect to Redis at startup, retrying in {delay_seconds:.2f} seconds: {error}",
                 attempt=attempt + 1,
                 max_retries=max_retries,
                 delay_seconds=delay_seconds,
