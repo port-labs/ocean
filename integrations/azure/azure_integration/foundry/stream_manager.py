@@ -219,7 +219,7 @@ class ResponsesStreamManager:
 async def _complete_or_leave_after_sse_drop(run: IntegrationRun, *, note: str) -> None:
     """SSE dropped after bind: complete from Foundry GET if terminal, else leave open (webhook may still finish)."""
     with contextlib.suppress(Exception):
-        await ocean.port_client.post_run_log(run, note, level="WARN")
+        await ocean.port_client.post_run_log(run, note, level="WARNING")
 
     # Lazy imports: avoid circular import with invoke_completion ↔ stream_manager.
     from azure_integration.foundry.helpers.invoke_completion import (

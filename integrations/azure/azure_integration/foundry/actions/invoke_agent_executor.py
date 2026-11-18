@@ -18,6 +18,7 @@ from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
 from azure_integration.foundry.helpers.port_mcp import (
+    GitProvider,
     agent_definition_kind,
     ensure_port_mcp,
     sanitize_git_provider,
@@ -119,7 +120,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         run: IntegrationRun,
         inputs: InvokeAgentInputs,
         port_token: str | None,
-        git_provider: str,
+        git_provider: GitProvider,
         project_endpoint: str,
     ) -> None:
         try:

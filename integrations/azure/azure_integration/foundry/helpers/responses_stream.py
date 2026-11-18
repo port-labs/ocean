@@ -5,8 +5,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from azure_integration.foundry.helpers.webhook_scope import usage_from_response
-
 _TERMINAL_SSE_TYPES = {
     "response.completed": True,
     "response.failed": False,
@@ -68,14 +66,6 @@ def format_responses_sse_log_message(parsed: ResponsesSseEvent) -> str | None:
         if isinstance(parsed.text, str) and parsed.text.strip():
             return parsed.text
         return None
-
-    if parsed.type == "response.completed":
-        if parsed.response:
-            usage = usage_from_response(parsed.response)
-            if usage:
-                parts = ", ".join(f"{key}={value}" for key, value in usage.items())
-                return f"Response completed ({parts})"
-        return "Response completed"
 
     if parsed.type == "error":
         message = parsed.message or parsed.error

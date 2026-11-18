@@ -37,6 +37,7 @@ async def test_bind_run_patches_slim_output_and_status_label() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
     mock_ocean.port_client.patch_wf_node_run = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
 
     with patch(
         "azure_integration.foundry.actions.responses_invoke_mixin.ocean",
@@ -61,6 +62,12 @@ async def test_bind_run_patches_slim_output_and_status_label() -> None:
             "statusLabel": {"text": INVOKE_RUNNING_STATUS_LABEL},
         },
     )
+    mock_ocean.port_client.post_run_log.assert_awaited_once_with(
+        run,
+        "Waiting for agent response",
+        status_label=INVOKE_RUNNING_STATUS_LABEL,
+        should_raise=False,
+    )
     assert run.output == {
         "conversationId": "conv_1",
         "responseId": "resp_1",
@@ -78,6 +85,7 @@ async def test_bind_run_uses_custom_running_status_label() -> None:
     mock_ocean = MagicMock()
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
     mock_ocean.port_client.patch_wf_node_run = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
 
     with patch(
         "azure_integration.foundry.actions.responses_invoke_mixin.ocean",
@@ -92,6 +100,12 @@ async def test_bind_run_uses_custom_running_status_label() -> None:
 
     patch_body = mock_ocean.port_client.patch_wf_node_run.await_args.args[1]
     assert patch_body["statusLabel"] == {"text": MODEL_RUNNING_STATUS_LABEL}
+    mock_ocean.port_client.post_run_log.assert_awaited_once_with(
+        run,
+        "Waiting for model response",
+        status_label=MODEL_RUNNING_STATUS_LABEL,
+        should_raise=False,
+    )
 
 
 @pytest.mark.asyncio
