@@ -192,59 +192,37 @@ class TestSubsetMatching:
 
 
 class TestPrecedence:
-    def test_exact_path_beats_path_template(self) -> None:
-        routes = [
-            _route("template", path="/api/items/{item_id}"),
-            _route("exact", path="/api/items/special"),
-        ]
-
-        match = match_route(routes, method="GET", path="/api/items/special")
-
-        assert match is not None
-        assert match.route.id == "exact"
-
-    def test_more_subset_constraints_win_for_same_path(self) -> None:
-        routes = [
-            _route("generic"),
-            _route("first-page", query={"page": "1"}),
-            _route(
-                "first-json-page",
-                query={"page": "1"},
-                headers={"Accept": "application/json"},
-            ),
-        ]
-
-        match = match_route(
-            routes,
-            method="GET",
-            path="/api/items",
-            query={"page": "1"},
-            headers={"accept": "application/json"},
-        )
-
-        assert match is not None
-        assert match.route.id == "first-json-page"
-
-    def test_body_constraint_beats_unconstrained_route(self) -> None:
-        routes = [
-            _route("generic", method="POST"),
-            _route("empty-items", method="POST", body={"items": []}),
-        ]
-
-        match = match_route(
-            routes,
-            method="POST",
-            path="/api/items",
-            body={"items": []},
-        )
-
-        assert match is not None
-        assert match.route.id == "empty-items"
-
-    def test_later_route_wins_when_specificity_is_equal(self) -> None:
+    def test_last_matching_route_wins(self) -> None:
         routes = [_route("first"), _route("second")]
 
         match = match_route(routes, method="GET", path="/api/items")
 
         assert match is not None
         assert match.route.id == "second"
+
+    def test_later_specific_route_overrides_earlier_general_route(self) -> None:
+        routes = [
+            _route("template", path="/api/items/{item_id}"),
+            _route("exact", path="/api/items/special"),
+        ]
+
+        exact = match_route(routes, method="GET", path="/api/items/special")
+        other = match_route(routes, method="GET", path="/api/items/other")
+
+        assert exact is not None
+        assert exact.route.id == "exact"
+        assert other is not None
+        assert other.route.id == "template"
+
+    def test_later_route_wins_even_if_less_specific(self) -> None:
+        routes = [
+            _route("first-page", query={"page": "1"}),
+            _route("generic"),
+        ]
+
+        match = match_route(
+            routes, method="GET", path="/api/items", query={"page": "1"}
+        )
+
+        assert match is not None
+        assert match.route.id == "generic"
