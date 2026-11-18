@@ -841,9 +841,7 @@ async def resync_branches(
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     selector = cast(GithubBranchConfig, event.resource_config).selector
-    # Protection rule edits aren't pushes and have no timestamp, so they can't be
-    # filtered by pushed_at; fetch every repository for these mappings.
-    sync_cursor = None if selector.protection_rules else active_incremental_cursor()
+    sync_cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources():
         for org in organizations:
