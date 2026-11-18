@@ -6,7 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from coralogix.clients.client import CoralogixClient, PaginationStyle
 from coralogix.core.exporters.abstract_exporter import AbstractCoralogixExporter
 from coralogix.core.options import CaseOptions
-from coralogix.helpers.utils import MGMT_API_PREFIX, IgnoredError
+from coralogix.helpers.utils import MGMT_API_PREFIX
 
 CASES_ENDPOINT = f"{MGMT_API_PREFIX}/cases/cases/v1"
 
@@ -43,8 +43,5 @@ class CaseExporter(AbstractCoralogixExporter[CoralogixClient]):
     async def get_single_resource(
         self, resource_id: str, options: Any = None
     ) -> Optional[RAW_ITEM]:
-        response = await self.client.send_api_request(
-            f"{CASES_ENDPOINT}/{resource_id}",
-            ignored_errors=[IgnoredError(status=404, message="resource not found")],
-        )
+        response = await self.client.send_api_request(f"{CASES_ENDPOINT}/{resource_id}")
         return response.get("case") or None

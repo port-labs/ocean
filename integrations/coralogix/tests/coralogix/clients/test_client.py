@@ -6,7 +6,6 @@ import pytest
 
 from coralogix.clients.client import CoralogixClient, PaginationStyle
 from coralogix.helpers.exceptions import CoralogixApiError, CoralogixAuthenticationError
-from coralogix.helpers.utils import IgnoredError
 
 BASE = "https://api.eu2.coralogix.com"
 
@@ -43,17 +42,6 @@ async def test_send_api_request_fails_on_permission_and_missing(status: int) -> 
     client, _ = _client(_response(status, {"code": status}))
     with pytest.raises(CoralogixApiError):
         await client.send_api_request("mgmt/openapi/5/cases/cases/v1")
-
-
-async def test_send_api_request_can_ignore_a_missing_resource() -> None:
-    client, _ = _client(_response(404, {"code": 404}))
-    assert (
-        await client.send_api_request(
-            "mgmt/openapi/5/slo/slos/v1/missing",
-            ignored_errors=[IgnoredError(status=404, message="resource not found")],
-        )
-        == {}
-    )
 
 
 async def test_send_api_request_rejects_non_object_json() -> None:

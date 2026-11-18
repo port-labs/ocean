@@ -3,19 +3,16 @@ from enum import StrEnum
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
-from httpx import AsyncClient, HTTPStatusError
+from httpx import HTTPStatusError
 from loguru import logger
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils import http_async_client
 
 from coralogix.helpers.exceptions import (
     CoralogixApiError,
     CoralogixAuthenticationError,
 )
-from coralogix.helpers.utils import (
-    PERMISSIONS_DOCS_URL,
-    IgnoredError,
-    required_permission,
-)
+from coralogix.helpers.utils import PERMISSIONS_DOCS_URL, required_permission
 
 PAGE_SIZE = 100
 # A token that never ends, or an offset the API ignores, must not loop forever.
@@ -42,12 +39,15 @@ class CoralogixClient:
     Pass a path such as ``mgmt/openapi/5/slo/slos/v1``. The API key is sent as
     a Bearer token, which both APIs accept. Pagination style is chosen by the
     exporter for each endpoint.
+
+    Requests go through Ocean's shared ``OceanAsyncClient``, which retries
+    transient failures (429, 5xx, connection errors). HTTP errors are raised.
     """
 
     def __init__(self, base_url: str, api_key: str) -> None:
         self.base_url = base_url.rstrip("/")
         self._api_key = api_key
-        self.http_client: AsyncClient = http_async_client
+        self.http_client: OceanAsyncClient = http_async_client  # type: ignore[assignment]
         self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     def _headers(self) -> Dict[str, str]:
@@ -57,29 +57,12 @@ class CoralogixClient:
             "Content-Type": "application/json",
         }
 
-    def _should_ignore_error(
-        self,
-        error: HTTPStatusError,
-        endpoint: str,
-        ignored_errors: Optional[List[IgnoredError]] = None,
-    ) -> bool:
-        status = error.response.status_code
-        for ignored in ignored_errors or []:
-            if ignored.status != status:
-                continue
-            logger.warning(
-                f"Skipping '{endpoint}': {ignored.message or 'ignored'} (HTTP {status})."
-            )
-            return True
-        return False
-
     async def send_api_request(
         self,
         endpoint: str,
         method: str = "GET",
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
-        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Dict[str, Any]:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         try:
@@ -104,10 +87,9 @@ class CoralogixClient:
             if status == 401:
                 raise CoralogixAuthenticationError(
                     "Coralogix rejected the API key (HTTP 401). Check coralogixApiKey "
-                    "and that coralogixApiUrl points at the key's region."
+                    "and that coralogixApiUrl points at the key's region.",
+                    status_code=status,
                 ) from e
-            if self._should_ignore_error(e, endpoint, ignored_errors):
-                return {}
             if status == 403:
                 permission = required_permission(endpoint) or "a read permission"
                 message = (
@@ -116,11 +98,11 @@ class CoralogixClient:
                     f"See {PERMISSIONS_DOCS_URL}"
                 )
                 logger.error(message)
-                raise CoralogixApiError(message) from e
+                raise CoralogixApiError(message, status_code=status) from e
             if status == 404:
                 message = f"Coralogix resource '{endpoint}' was not found (HTTP 404)."
                 logger.error(message)
-                raise CoralogixApiError(message) from e
+                raise CoralogixApiError(message, status_code=status) from e
             logger.error(
                 f"Coralogix API error for {method} '{endpoint}': "
                 f"HTTP {status}, response: {e.response.text}"

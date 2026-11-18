@@ -9,7 +9,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 from coralogix.clients.client_factory import ClientFactory
 
-EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
+EXAMPLES_DIR = Path(__file__).parent.parent / ".port" / "examples"
 
 TEST_INTEGRATION_CONFIG: dict[str, Any] = {
     "coralogix_api_key": "cxup_test",

@@ -4,7 +4,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 from coralogix.clients.client import CoralogixClient, PaginationStyle
 from coralogix.core.exporters.abstract_exporter import AbstractCoralogixExporter
-from coralogix.helpers.utils import MGMT_API_PREFIX, IgnoredError
+from coralogix.helpers.utils import MGMT_API_PREFIX
 
 ALERTS_ENDPOINT = f"{MGMT_API_PREFIX}/alerts/alerts/v3"
 
@@ -23,7 +23,6 @@ class AlertDefinitionExporter(AbstractCoralogixExporter[CoralogixClient]):
         self, resource_id: str, options: Any = None
     ) -> Optional[RAW_ITEM]:
         response = await self.client.send_api_request(
-            f"{ALERTS_ENDPOINT}/{resource_id}",
-            ignored_errors=[IgnoredError(status=404, message="resource not found")],
+            f"{ALERTS_ENDPOINT}/{resource_id}"
         )
         return response.get("alertDef") or None

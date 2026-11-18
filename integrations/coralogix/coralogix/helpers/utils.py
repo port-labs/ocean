@@ -41,11 +41,6 @@ SPAN_METRIC_NAMES: dict[MetricsSource, SpanMetricNames] = {
 }
 
 
-class IgnoredError(NamedTuple):
-    status: int
-    message: Optional[str] = None
-
-
 # Endpoint prefix -> Coralogix permission needed to read it (permissions list docs).
 REQUIRED_PERMISSIONS: dict[str, str] = {
     f"{MGMT_API_PREFIX}/slo/": "SLO:READCONFIG",

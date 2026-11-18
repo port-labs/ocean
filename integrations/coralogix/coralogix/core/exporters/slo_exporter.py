@@ -7,25 +7,25 @@ from coralogix.clients.client import CoralogixClient
 from coralogix.core.exporters.abstract_exporter import AbstractCoralogixExporter
 from coralogix.core.options import SloOptions
 from coralogix.helpers.exceptions import CoralogixApiError
-from coralogix.helpers.utils import MGMT_API_PREFIX, IgnoredError
+from coralogix.helpers.utils import MGMT_API_PREFIX
 
 SLOS_ENDPOINT = f"{MGMT_API_PREFIX}/slo/slos/v1"
 STATUS_KEY = "__status"
-# Status is enrichment. A missing status keeps the SLO; a failed list does not.
-_STATUS_IGNORED_ERRORS = [
-    IgnoredError(status=403, message="SLO status is unavailable"),
-    IgnoredError(status=404, message="SLO status was not found"),
-]
-_MISSING_RESOURCE = [IgnoredError(status=404, message="resource not found")]
+# A single SLO can be listed without a compliance snapshot.
+_OPTIONAL_STATUS_CODES = {403, 404}
 
 
 class SloExporter(AbstractCoralogixExporter[CoralogixClient]):
     async def _with_status(self, slo: RAW_ITEM) -> RAW_ITEM:
-        # Ratios 0-1: lowestCompliance, lowestRemainingErrorBudget; empty on error.
-        status = await self.client.send_api_request(
-            f"{SLOS_ENDPOINT}/{slo['id']}/status",
-            ignored_errors=_STATUS_IGNORED_ERRORS,
-        )
+        # Ratios 0-1: lowestCompliance, lowestRemainingErrorBudget.
+        try:
+            status: dict[str, Any] | None = await self.client.send_api_request(
+                f"{SLOS_ENDPOINT}/{slo['id']}/status"
+            )
+        except CoralogixApiError as error:
+            if error.status_code not in _OPTIONAL_STATUS_CODES:
+                raise
+            status = None
         return {**slo, STATUS_KEY: status or None}
 
     async def get_paginated_resources(
@@ -45,8 +45,5 @@ class SloExporter(AbstractCoralogixExporter[CoralogixClient]):
     async def get_single_resource(
         self, resource_id: str, options: Any = None
     ) -> Optional[RAW_ITEM]:
-        response = await self.client.send_api_request(
-            f"{SLOS_ENDPOINT}/{resource_id}",
-            ignored_errors=_MISSING_RESOURCE,
-        )
+        response = await self.client.send_api_request(f"{SLOS_ENDPOINT}/{resource_id}")
         return response.get("slo") or None

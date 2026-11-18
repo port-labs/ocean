@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.cache import cache_coroutine_result
 
 from coralogix.clients.client import CoralogixClient
 from coralogix.helpers.exceptions import CoralogixApiError
@@ -24,6 +25,7 @@ class AbstractCoralogixExporter[T: CoralogixClient](ABC):
         self, resource_id: str, options: Any = None
     ) -> Optional[RAW_ITEM]: ...
 
+    @cache_coroutine_result()
     async def get_team_url(self) -> str:
         """Web app URL of the key's team, used to build links back to Coralogix."""
         identity = await self.client.send_api_request(
