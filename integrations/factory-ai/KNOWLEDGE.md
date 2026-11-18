@@ -18,3 +18,8 @@
 ### environment
 
 - List is **not paginated** (full `{ environments: [...] }` in one response; computers look the same)
+
+### computer
+
+- List is **not paginated** (`{ computers: [...] }`); newest first
+- Relation to environment when `computerSource.kind` is `environment` (`environmentId`) or legacy `template` (`templateId`)
