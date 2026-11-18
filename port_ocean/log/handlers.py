@@ -113,16 +113,20 @@ class HTTPMemoryHandler(MemoryHandler):
                     self._thread_pool.remove(thread)
 
         self.acquire()
-        logs = list(self._serialized_buffer)
-        if logs:
-            self.buffer.clear()
-            self._serialized_buffer.clear()
-            self.last_flush_time = time.time()
-            clear_thread_pool()
-            thread = threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs))
-            thread.start()
-            self._thread_pool.append(thread)
-        self.release()
+        try:
+            logs = list(self._serialized_buffer)
+            if logs:
+                self.buffer.clear()
+                self._serialized_buffer.clear()
+                self.last_flush_time = time.time()
+                clear_thread_pool()
+                thread = threading.Thread(
+                    target=_wrap_event_loop, args=(self.ocean, logs)
+                )
+                thread.start()
+                self._thread_pool.append(thread)
+        finally:
+            self.release()
 
     async def send_logs(
         self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]

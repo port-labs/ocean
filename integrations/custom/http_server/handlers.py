@@ -9,6 +9,8 @@ from collections.abc import AsyncGenerator as AsyncGenType
 
 import httpx
 
+from http_server.helpers.utils import resolve_next_link_url
+
 # ============================================================================
 # Pagination Handlers
 # ============================================================================
@@ -216,7 +218,16 @@ class OffsetPagination(PaginationHandler):
 
 
 class CursorPagination(PaginationHandler):
-    """Cursor-based pagination with configurable response paths"""
+    """Cursor-based pagination with configurable response paths.
+
+    ``pagination_placement`` controls where the cursor and page size are sent:
+    ``query`` (default) uses query parameters; ``body`` merges them into the
+    JSON request body for non-GET methods. GET requests always use query
+    parameters so servers that ignore bodies cannot loop forever. When using
+    body placement, the cursor field is omitted on the first page and set only
+    after a cursor is extracted. Pagination also stops if the next cursor
+    repeats the previous one.
+    """
 
     async def fetch_all(
         self,
@@ -230,17 +241,29 @@ class CursorPagination(PaginationHandler):
         limit_param = self.config.get("size_param", "limit")
         cursor_path = self.config.get("cursor_path", "")
         has_more_path = self.config.get("has_more_path", "")
+        placement = self.config.get("pagination_placement", "query")
+        use_body_placement = placement == "body" and method.upper() != "GET"
 
         cursor = None
 
         while True:
-            current_params = {**params, limit_param: self.page_size}
-
-            if cursor:
-                current_params[cursor_param] = cursor
+            current_params: Optional[Dict[str, Any]]
+            current_body: Optional[Dict[str, Any]]
+            if use_body_placement:
+                current_params = dict(params) if params else {}
+                body_payload = dict(body) if body is not None else {}
+                body_payload[limit_param] = self.page_size
+                if cursor:
+                    body_payload[cursor_param] = cursor
+                current_body = body_payload
+            else:
+                current_params = {**params, limit_param: self.page_size}
+                if cursor:
+                    current_params[cursor_param] = cursor
+                current_body = body
 
             response = await self.make_request(
-                url, method, current_params, headers, body
+                url, method, current_params, headers, current_body
             )
             response_data = response.json()
 
@@ -274,8 +297,8 @@ class CursorPagination(PaginationHandler):
                         ),
                     )
 
-                # Stop if no more pages
-                if not next_cursor or not has_more:
+                # Stop if no more pages or the cursor did not advance
+                if not next_cursor or not has_more or next_cursor == cursor:
                     break
 
                 # Update cursor for next iteration
@@ -286,9 +309,11 @@ class CursorPagination(PaginationHandler):
 
 
 class NextLinkPagination(PaginationHandler):
-    """URL-based pagination for APIs that return a full URL for the next page.
-    The next link URL is used directly for subsequent requests - all query
-    parameters are already embedded in the URL.
+    """URL-based pagination for APIs that return a next-page URL.
+
+    Absolute next links are requested as-is. Relative next links are resolved
+    against the integration base URL (not RFC urljoin against the current URL).
+    Query parameters for follow-up pages are embedded in the next link.
     """
 
     async def fetch_all(
@@ -300,6 +325,7 @@ class NextLinkPagination(PaginationHandler):
         body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         next_link_path = self.config.get("next_link_path", "@odata.nextLink")
+        base_url = self.config.get("base_url", "")
 
         current_url = url
         current_params: Optional[Dict[str, Any]] = params
@@ -322,7 +348,9 @@ class NextLinkPagination(PaginationHandler):
             if not next_url:
                 break
 
-            current_url = next_url
+            current_url = resolve_next_link_url(
+                next_url, base_url, current_url=current_url
+            )
             current_params = None
 
 
