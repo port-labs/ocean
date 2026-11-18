@@ -269,6 +269,7 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+    changed_since: NotRequired[Optional[datetime]]
 
 
 class ListSkillSearchOptions(TypedDict):
@@ -309,6 +310,8 @@ class ListFolderOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     folders: Required[List[FolderSearchOptions]]
+    # Only folders with a change on their branch since then.
+    changed_since: NotRequired[Optional[datetime]]
 
 
 class SingleCollaboratorOptions(RepositoryIdentifier):

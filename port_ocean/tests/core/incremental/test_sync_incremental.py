@@ -99,6 +99,7 @@ def _configure_ocean_for_incremental(
     mock_ocean.config.integration.identifier = "test-integration"
     mock_ocean.config.integration.type = "fake-integration"
     mock_ocean.metrics.clear_sync_context = MagicMock()
+    mock_ocean.app.cache_provider.clear = AsyncMock()
     if lifecycle_client is not None:
         mock_ocean.app.lifecycle_client = lifecycle_client
     return mock_ocean
@@ -139,9 +140,37 @@ def _configure_ocean_with_real_metrics(
     mock_ocean.config.integration.type = integration_type
     mock_ocean.metrics = metrics
     mock_ocean.metrics.clear_sync_context = MagicMock()
+    mock_ocean.app.cache_provider.clear = AsyncMock()
     if lifecycle_client is not None:
         mock_ocean.app.lifecycle_client = lifecycle_client
     return metrics
+
+
+class TestSyncIncrementalCache:
+    async def test_clears_cache_before_processing_kinds(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        """Cached results never expire, so a run must not reuse an earlier run's data."""
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, "issue")
+        calls: list[str] = []
+
+        async def clear() -> None:
+            calls.append("clear")
+
+        async def process_resource(
+            *args: Any, **kwargs: Any
+        ) -> tuple[list[Any], list[Any]]:
+            calls.append("process")
+            return [], []
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            _configure_ocean_for_incremental(mock_ocean, mock_port_client)
+            mock_ocean.app.cache_provider.clear.side_effect = clear
+            cast(AsyncMock, mock_mixin.process_resource).side_effect = process_resource
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        assert calls == ["clear", "process"]
 
 
 class TestSyncIncrementalNoHandlers:

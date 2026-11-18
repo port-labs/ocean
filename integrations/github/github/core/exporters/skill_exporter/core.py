@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import quote
 
@@ -18,6 +19,7 @@ from github.core.exporters.skill_exporter.utils import (
     build_skill_raw_item,
 )
 from github.core.options import ListSkillSearchOptions
+from github.helpers.changed_paths import changed_paths_since
 from github.helpers.utils import GithubClientType
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -66,6 +68,34 @@ class SkillExporter(RestFileExporter):
             skills = [skill for skill in results if skill is not None]
             if skills:
                 yield skills
+
+    async def _match_files(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+        changed_since: Optional[datetime] = None,
+    ) -> list[dict[str, Any]]:
+        """SKILL.md entries matching ``pattern``, limited to skills changed since ``changed_since``.
+
+        A skill counts as changed when any file in its folder changed, not only
+        its SKILL.md. When the changed paths are unknown, every skill is returned.
+        """
+        changed_paths = await changed_paths_since(
+            self.client, organization, repo_name, branch, changed_since
+        )
+        skills = await super()._match_files(organization, repo_name, branch, pattern)
+        if changed_paths is None:
+            return skills
+        return [
+            skill
+            for skill in skills
+            if any(
+                path.startswith(skill_dir_prefix(skill["path"]))
+                for path in changed_paths
+            )
+        ]
 
     async def build_skill_item(
         self,

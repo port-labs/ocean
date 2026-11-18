@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import (
@@ -22,7 +23,16 @@ class FolderPatternMappingBuilder:
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
-    async def build(self, folders: List[FolderSelector]) -> List[ListFolderOptions]:
+    async def build(
+        self,
+        folders: List[FolderSelector],
+        changed_since: Optional[datetime] = None,
+    ) -> List[ListFolderOptions]:
+        """Group folder patterns per repository.
+
+        With ``changed_since``, only repositories pushed since then are kept, and
+        each is limited to folders with a change since then.
+        """
         repo_map: Dict[Tuple[str, str], List[FolderSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
@@ -39,7 +49,11 @@ class FolderPatternMappingBuilder:
                         branch,
                         repo_obj,
                     ) in self.repo_selector.select_repos(
-                        folder_sel, self.repo_exporter, org_login, org_type
+                        folder_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org_type,
+                        pushed_since=changed_since,
                     ):
                         key = (org_login, repo_name)
                         repo_map[key].append(
@@ -56,6 +70,7 @@ class FolderPatternMappingBuilder:
                 organization=org,
                 repo_name=repo,
                 folders=items,
+                changed_since=changed_since,
             )
             for (org, repo), items in repo_map.items()
         ]

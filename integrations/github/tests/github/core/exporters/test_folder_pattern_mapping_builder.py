@@ -29,6 +29,11 @@ def github_main(mock_ocean_context: None) -> Any:
             "on_resync",
             side_effect=lambda function, _: function,
         ),
+        patch.object(
+            ocean.app.integration,
+            "on_incremental_resync",
+            side_effect=lambda function, _: function,
+        ),
     ):
         return importlib.import_module("main")
 
@@ -159,7 +164,7 @@ async def test_resync_folders_skips_inaccessible_organizations(
                 ]
 
     assert batches == [[{"id": "1"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_folder])
+    pattern_builder.build.assert_awaited_once_with([allowed_folder], changed_since=None)
 
 
 @pytest.mark.asyncio
@@ -203,7 +208,7 @@ async def test_resync_files_skips_inaccessible_organizations(
                 batches = [batch async for batch in github_main.resync_files("file")]
 
     assert batches == [[{"path": "a.yml"}]]
-    pattern_builder.build.assert_awaited_once_with([allowed_file])
+    pattern_builder.build.assert_awaited_once_with([allowed_file], changed_since=None)
 
 
 @pytest.mark.asyncio

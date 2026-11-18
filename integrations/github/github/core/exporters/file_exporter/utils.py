@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 from collections import defaultdict
+from datetime import datetime
 from enum import StrEnum
 import json
 from pathlib import Path
@@ -175,8 +176,15 @@ class FilePatternMappingBuilder:
         self.repo_exporter = repo_exporter
 
     async def build(
-        self, files: List["GithubFilePattern"]
+        self,
+        files: List["GithubFilePattern"],
+        changed_since: Optional[datetime] = None,
     ) -> List[ListFileSearchOptions]:
+        """Group file patterns per repository.
+
+        With ``changed_since``, only repositories pushed since then are kept, and
+        each is limited to files changed since then.
+        """
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
@@ -189,7 +197,11 @@ class FilePatternMappingBuilder:
                     org_login = org["login"]
                     org_type = org["type"]
                     async for repo_name, branch, _ in self.repo_selector.select_repos(
-                        file_sel, self.repo_exporter, org_login, org_type
+                        file_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org_type,
+                        pushed_since=changed_since,
                     ):
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
@@ -205,6 +217,7 @@ class FilePatternMappingBuilder:
                 organization=org,
                 repo_name=repo,
                 files=items,
+                changed_since=changed_since,
             )
             for (org, repo), items in repo_map.items()
         ]
