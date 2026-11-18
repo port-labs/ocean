@@ -214,7 +214,7 @@ async def complete_invoke_run_for_response(
             fallback_model_deployment_id=deployment_name or None,
         )
         if registered:
-            entity_link = _foundry_response_entity_page_url(response_id)
+            entity_link = foundry_response_entity_page_url(response_id)
             if entity_link:
                 extra_output["responseEntityLink"] = entity_link
                 if isinstance(run, WorkflowNodeRun):
@@ -306,7 +306,7 @@ async def complete_invoke_run_from_sse(
     )
 
 
-def _foundry_response_entity_page_url(response_id: str) -> str | None:
+def foundry_response_entity_page_url(response_id: str) -> str | None:
     if not response_id:
         return None
     configured = ocean.config.port.app_url

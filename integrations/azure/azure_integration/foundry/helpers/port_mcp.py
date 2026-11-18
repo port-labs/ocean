@@ -6,6 +6,10 @@ from typing import Any, Literal
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
+from azure_integration.foundry.helpers.agent_api import (
+    foundry_features_header,
+    latest_agent_definition,
+)
 from azure_integration.foundry.helpers.utils import deep_merge
 
 PORT_MCP_SERVER_LABEL = "port"
@@ -65,11 +69,6 @@ def toolbox_consumer_url(
     return (
         f"{base}/toolboxes/{toolbox_name}/versions/{version}/mcp?api-version=v1"
     )
-
-
-def _bearer_value(token: str) -> str:
-    token = token.strip()
-    return token if token.lower().startswith("bearer ") else f"Bearer {token}"
 
 
 def _mcp_toolbox_tool(
@@ -198,25 +197,22 @@ async def fetch_agent_tools(
 
 
 async def upsert_custom_keys_connection(
-    client: Any,
     *,
     project_endpoint: str,
     name: str,
     target: str,
     access_token: str,
 ) -> None:
-    await client.send_api_request(
-        client.build_url(project_endpoint, f"connections/{name}"),
-        method="PUT",
-        json_body={
-            "name": name,
-            "type": "CustomKeys",
-            "target": target,
-            "credentials": {
-                "type": "CustomKeys",
-                "Authorization": _bearer_value(access_token),
-            },
-        },
+    # Data-plane /connections is GET-only; remint must go through ARM.
+    from azure_integration.foundry.clients.client_factory import (
+        create_foundry_arm_client,
+    )
+
+    await create_foundry_arm_client().upsert_project_connection(
+        project_endpoint=project_endpoint,
+        name=name,
+        target=target,
+        access_token=access_token,
     )
 
 
@@ -239,17 +235,32 @@ async def upsert_port_toolbox(
     return _toolbox_version_from_response(response)
 
 
-async def _patch_agent_tools(
+async def _update_agent_tools(
     client: Any,
     *,
     project_endpoint: str,
     agent_id: str,
     tools: list[Any],
+    agent: dict[str, Any] | None = None,
 ) -> None:
+    # Foundry updates agent definitions via POST (new version). PATCH is only
+    # for endpoint config (version_selector / protocols) — 405 if misused here.
+    existing = (
+        agent
+        if isinstance(agent, dict) and agent
+        else await _load_agent(
+            client, project_endpoint=project_endpoint, agent_id=agent_id
+        )
+    )
+    definition = latest_agent_definition(existing) or {"kind": "prompt"}
+    definition = {**definition, "tools": tools}
+    kind = definition.get("kind") or "prompt"
+    definition["kind"] = kind
     await client.send_api_request(
         client.build_url(project_endpoint, f"agents/{agent_id}"),
-        method="PATCH",
-        json_body={"definition": {"tools": tools}},
+        method="POST",
+        json_body={"definition": definition},
+        extra_headers=foundry_features_header(kind),
     )
 
 
@@ -281,7 +292,6 @@ async def ensure_port_mcp(
             conn = port_connection_name(agent_id)
             port_url = required_port_mcp_url()
             await upsert_custom_keys_connection(
-                client,
                 project_endpoint=project_endpoint,
                 name=conn,
                 target=port_url,
@@ -298,7 +308,6 @@ async def ensure_port_mcp(
     if git_access_token:
         conn = github_connection_name(agent_id)
         await upsert_custom_keys_connection(
-            client,
             project_endpoint=project_endpoint,
             name=conn,
             target=GITHUB_MCP_URL,
@@ -331,11 +340,12 @@ async def ensure_port_mcp(
         if attach_to_prompt_agent and existing_tools is not None:
             stripped = merge_toolbox_into_tools(existing_tools, toolbox_url=None)
             if stripped != existing_tools:
-                await _patch_agent_tools(
+                await _update_agent_tools(
                     client,
                     project_endpoint=project_endpoint,
                     agent_id=agent_id,
                     tools=stripped,
+                    agent=agent_payload,
                 )
         return None
 
@@ -360,11 +370,12 @@ async def ensure_port_mcp(
     tools = list(tools_context)
 
     try:
-        await _patch_agent_tools(
+        await _update_agent_tools(
             client,
             project_endpoint=project_endpoint,
             agent_id=agent_id,
             tools=merge_toolbox_into_tools(tools, toolbox_url=toolbox_url),
+            agent=agent_payload,
         )
     except Exception as error:
         logger.warning(f"Failed to attach Port toolbox on agent {agent_id}: {error}")
