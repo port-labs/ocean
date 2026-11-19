@@ -55,7 +55,7 @@ def load_route_files(paths: Iterable[Path | str]) -> list[MockRoute]:
     end so file order (used for matching ties) reflects the latest definition.
     """
     merged: OrderedDict[str, MockRoute] = OrderedDict()
-
+    print(1)
     for path in paths:
         route_file = load_route_file(path)
         for route in route_file.routes:
