@@ -25,19 +25,18 @@ class FactoryModel(BaseModel):
 class FactoryListOptions(BaseModel):
     """Base for list-endpoint query options.
 
-    Declare optional params with camelCase ``Field(alias=...)``. ``None`` and
-    ``False`` are omitted; ``True`` becomes ``"true"``.
+    Declare optional params with camelCase ``Field(alias=...)``. Serialization
+    uses pydantic ``dict(by_alias=True, exclude_none=True)`` so aliases and
+    ``None`` omission come from the model config; booleans stay intentional
+    (``False`` → ``"false"``, ``True`` → ``"true"``).
     """
 
     class Config:
         allow_population_by_field_name = True
 
     def to_query_params(self) -> dict[str, str]:
-        params: dict[str, str] = {}
-        for name, field in self.__fields__.items():
-            value = getattr(self, name)
-            if value is None or value is False:
-                continue
-            key = field.alias or name
-            params[key] = "true" if value is True else str(value)
-        return params
+        raw = self.dict(by_alias=True, exclude_none=True)
+        return {
+            key: str(value).lower() if isinstance(value, bool) else str(value)
+            for key, value in raw.items()
+        }

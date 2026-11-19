@@ -13,14 +13,16 @@ from factory_ai.core.models import FactoryListOptions, FactoryModel
 class ListComputerOptions(FactoryListOptions):
     """Options for ``GET /api/v0/computers``.
 
-    Query params default off so OOTB syncs stay lean; set flags when callers
-    need provisioning detail or unlisted fleet members.
+    Bool flags default to ``None`` (omit from the query). Set ``True``/``False``
+    explicitly when callers need to force include/exclude behavior.
     """
 
     service_account_id: str | None = Field(None, alias="serviceAccountId")
     host_id: str | None = Field(None, alias="hostId")
-    include_provisioning_steps: bool = Field(False, alias="includeProvisioningSteps")
-    include_unlisted: bool = Field(False, alias="includeUnlisted")
+    include_provisioning_steps: bool | None = Field(
+        None, alias="includeProvisioningSteps"
+    )
+    include_unlisted: bool | None = Field(None, alias="includeUnlisted")
 
 
 class GetComputerOptions(BaseModel):
