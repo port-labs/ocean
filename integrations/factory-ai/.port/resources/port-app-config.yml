@@ -1,0 +1,67 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"factory_environment"'
+          properties:
+            status: .status
+            scope: .scope
+            isDefault: .isDefault
+            sourceName: .source.name
+            providerName: .source.provider.name
+            repositoryUrls: '[.repositories[]?.url | select(. != null and . != "")]'
+            latestBuildStatus: .latestBuild.status
+            createdAt: '(.createdAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            updatedAt: '(.updatedAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+  - kind: computer
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"factory_computer"'
+          properties:
+            status: .status
+            providerStatus: .providerStatus
+            providerType: .providerType
+            isListed: .isListed
+            diskBand: .disk.band
+            ownerPrincipalKind: .ownerPrincipalKind
+            lastSeenAt: '(.lastSeenAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))?'
+            createdAt: '(.createdAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+          relations:
+            # Prefer environmentId; legacy template sources used templateId as the environment id.
+            environment: >-
+              .computerSource
+              | if .kind == "environment" then .environmentId
+                elif .kind == "template" then .templateId
+                else empty end
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: >-
+            ([.firstName, .lastName] | map(select(. != null and . != "")) | join(" "))
+            as $name
+            | if $name == "" then .email else $name end
+          blueprint: '"factory_user"'
+          properties:
+            email: .email
+            firstName: .firstName
+            lastName: .lastName
+            role: .role
+            status: .status
+            lastSignInAt: .lastSignInAt
+            createdAt: .createdAt

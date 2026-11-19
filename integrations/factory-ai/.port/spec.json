@@ -1,0 +1,60 @@
+{
+  "title": "Factory.ai",
+  "description": "Factory.ai (Droid / Software Factory) integration for Port Ocean",
+  "icon": "DefaultBlueprint",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/",
+  "recommendedInstallationMethod": "Saas",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "AI Agents",
+      "resources": [
+        {
+          "kind": "environment"
+        },
+        {
+          "kind": "session"
+        },
+        {
+          "kind": "computer"
+        },
+        {
+          "kind": "user"
+        },
+        {
+          "kind": "automation"
+        },
+        {
+          "kind": "service-account"
+        },
+        {
+          "kind": "wiki"
+        }
+      ]
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    }
+  },
+  "configurations": [
+    {
+      "name": "factoryApiKey",
+      "type": "string",
+      "required": true,
+      "sensitive": true,
+      "description": "Factory API key used to authenticate with the Factory Public API. Create one at https://app.factory.ai/settings/api-keys."
+    },
+    {
+      "name": "factoryApiHost",
+      "type": "url",
+      "required": false,
+      "sensitive": false,
+      "default": "https://api.factory.ai",
+      "description": "Base URL for the Factory Public API. Defaults to https://api.factory.ai."
+    }
+  ]
+}
