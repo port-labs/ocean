@@ -31,7 +31,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         required=True,
         help=(
             "Root for mock scenario fixtures (route YAMLs and response bodies) "
-            "loaded via the admin API; typically <integration>/tests/validation/mock."
+            "loaded via the admin API; typically <integration>/validation/mock."
         ),
     )
     parser.add_argument("--port", type=int, default=9000)
