@@ -213,5 +213,92 @@
       "required": []
     },
     "relations": {}
+  },
+  {
+    "identifier": "factory_session",
+    "title": "Factory Session",
+    "icon": "AI",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["idle", "pending", "running"],
+          "enumColors": {
+            "idle": "lightGray",
+            "pending": "yellow",
+            "running": "blue"
+          }
+        },
+        "messageCount": {
+          "type": "number",
+          "title": "Message Count"
+        },
+        "factoryCredits": {
+          "type": "number",
+          "title": "Factory Credits"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "interactionMode": {
+          "type": "string",
+          "title": "Interaction Mode",
+          "enum": ["auto", "spec", "agi", "mission"],
+          "enumColors": {
+            "auto": "lightGray",
+            "spec": "blue",
+            "agi": "purple",
+            "mission": "green"
+          }
+        },
+        "autonomyLevel": {
+          "type": "string",
+          "title": "Autonomy Level",
+          "enum": ["off", "low", "medium", "high"],
+          "enumColors": {
+            "off": "lightGray",
+            "low": "yellow",
+            "medium": "blue",
+            "high": "green"
+          }
+        },
+        "repoRoot": {
+          "type": "string",
+          "title": "Repo Root"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Completed At"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "computer": {
+        "title": "Computer",
+        "target": "factory_computer",
+        "required": false,
+        "many": false
+      },
+      "parentSession": {
+        "title": "Parent Session",
+        "target": "factory_session",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

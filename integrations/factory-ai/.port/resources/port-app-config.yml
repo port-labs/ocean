@@ -65,3 +65,26 @@ resources:
             status: .status
             lastSignInAt: .lastSignInAt
             createdAt: .createdAt
+  - kind: session
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .sessionId
+          title: '.title // .sessionId'
+          blueprint: '"factory_session"'
+          properties:
+            status: .status
+            messageCount: .messageCount
+            factoryCredits: .factoryCredits
+            model: .sessionSettings.model
+            interactionMode: .sessionSettings.interactionMode
+            autonomyLevel: .sessionSettings.autonomyLevel
+            repoRoot: .sessionSettings.worktree.repoRoot
+            createdAt: '(.createdAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            updatedAt: '(.updatedAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            completedAt: '(.completedAt / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))?'
+          relations:
+            computer: .computerId
+            parentSession: .parent_session_id

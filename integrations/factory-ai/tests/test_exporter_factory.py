@@ -4,6 +4,8 @@ from factory_ai.core.exporters.computer import ComputerExporter
 from factory_ai.core.exporters.computer.models import ListComputerOptions
 from factory_ai.core.exporters.environment import EnvironmentExporter
 from factory_ai.core.exporters.environment.models import ListEnvironmentOptions
+from factory_ai.core.exporters.session import SessionExporter
+from factory_ai.core.exporters.session.models import ListSessionOptions
 from factory_ai.core.exporters.user import UserExporter
 from factory_ai.core.exporters.user.models import ListUserOptions
 from factory_ai.exporter_factory import get_exporter_metadata
@@ -28,6 +30,12 @@ def test_get_exporter_metadata_user() -> None:
     assert metadata.list_options_model is ListUserOptions
 
 
+def test_get_exporter_metadata_session() -> None:
+    metadata = get_exporter_metadata(ObjectKind.SESSION)
+    assert metadata.exporter is SessionExporter
+    assert metadata.list_options_model is ListSessionOptions
+
+
 def test_get_exporter_metadata_unimplemented_kind() -> None:
-    with pytest.raises(NotImplementedError, match="session"):
-        get_exporter_metadata(ObjectKind.SESSION)
+    with pytest.raises(NotImplementedError, match="automation"):
+        get_exporter_metadata(ObjectKind.AUTOMATION)
