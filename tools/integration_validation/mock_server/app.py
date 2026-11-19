@@ -27,9 +27,8 @@ def create_mock_server_app(fixture_root: Path | str) -> FastAPI:
     app = FastAPI(title="Ocean Integration Validation Mock Server")
     app.include_router(build_admin_router(state))
 
-    @app.api_route("/{request_path:path}", methods=MOCK_SERVER_METHODS)
-    async def handle_mock_request(request: Request, request_path: str) -> Response:
-        del request_path
+    @app.api_route("/{_request_path:path}", methods=MOCK_SERVER_METHODS)
+    async def handle_mock_request(request: Request, _request_path: str) -> Response:
         mock_request = await parse_mock_request(request)
         async with state.lock:
             return dispatch_mock_request(state, mock_request)
