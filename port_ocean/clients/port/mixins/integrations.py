@@ -508,8 +508,10 @@ class IntegrationClientMixin:
         if event["event_id"]:
             body["eventId"] = event["event_id"]
 
+        # Kind stays in the JSON body only — putting it in the path breaks kinds with
+        # "?" (ingest edge rejects encoded %3F in the URL path).
         response = await self.client.post(
-            f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
+            f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}",
             headers=headers,
             json=body,
             extensions={"retryable": True},
