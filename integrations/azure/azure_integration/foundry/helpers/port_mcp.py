@@ -6,10 +6,14 @@ from typing import Any, Literal
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
+from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
+from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
+from azure_integration.foundry.core.options import SingleAgentOptions
 from azure_integration.foundry.helpers.agent_api import (
     foundry_features_header,
     latest_agent_definition,
 )
+from azure_integration.foundry.helpers.utils import project_name_from_endpoint
 
 PORT_MCP_SERVER_LABEL = "port"
 GITHUB_MCP_SERVER_LABEL = "github"
@@ -188,10 +192,15 @@ async def ensure_toolbox_version(
     tools: list[dict[str, Any]],
 ) -> str:
     # ponytail: GET then subset-match; POST only when tools missing
-    existing = await client.send_api_request(
-        client.build_url(project_endpoint, f"toolboxes/{toolbox_name}"),
-        extra_headers=_TOOLBOXES_HEADER,
-    )
+    try:
+        existing = await client.send_api_request(
+            client.build_url(project_endpoint, f"toolboxes/{toolbox_name}"),
+            extra_headers=_TOOLBOXES_HEADER,
+        )
+    except FoundryApiError as error:
+        if error.status_code != 404:
+            raise
+        existing = None
     latest = _latest_toolbox(existing)
     if latest is not None:
         version, existing_tools = latest
@@ -283,10 +292,15 @@ async def ensure_port_mcp(
         tools_context = list(existing_tools)
     else:
         try:
-            loaded = await client.send_api_request(
-                client.build_url(project_endpoint, f"agents/{agent_id}")
+            loaded = await AgentsExporter(client).get_resource(
+                SingleAgentOptions(
+                    project_endpoint=project_endpoint,
+                    project_id=project_arm_id
+                    or project_name_from_endpoint(project_endpoint),
+                    agent_id=agent_id,
+                )
             )
-            agent_payload = loaded if isinstance(loaded, dict) else {}
+            agent_payload = loaded or {}
         except Exception as error:
             logger.warning(f"Could not load agent {agent_id}: {error}")
         tools_context = tools_from_agent_payload(agent_payload)

@@ -8,6 +8,7 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.kinds import ObjectKind
 
 
@@ -31,6 +32,12 @@ class DeleteAgentExecutor(AbstractFoundryExecutor):
                 ),
                 method="DELETE",
             )
+        except FoundryApiError as error:
+            if error.status_code != 404:
+                raise ActionExecutionError(
+                    f"Failed to delete agent: {error}",
+                    status_label=DELETE_FAILED_STATUS_LABEL,
+                ) from error
         except Exception as error:
             raise ActionExecutionError(
                 f"Failed to delete agent: {error}",

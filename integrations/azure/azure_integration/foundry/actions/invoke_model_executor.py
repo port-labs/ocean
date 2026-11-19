@@ -12,10 +12,10 @@ from azure_integration.foundry.actions.responses_invoke_mixin import (
     MODEL_RUNNING_STATUS_LABEL,
     ResponsesInvokeMixin,
 )
-from azure_integration.foundry.clients.http.foundry_client import (
-    FoundryApiError,
-    FoundryHttpClient,
+from azure_integration.foundry.core.exporters.model_deployments_exporter import (
+    ModelDeploymentsExporter,
 )
+from azure_integration.foundry.core.options import SingleModelDeploymentOptions
 from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
@@ -28,42 +28,11 @@ class InvokeModelInputs(AbstractFoundryInvokeInput):
     extraBody: dict[str, Any] = Field(default_factory=dict)
 
 
-def _chat_completion_enabled(capabilities: Any) -> bool:
-    if not isinstance(capabilities, dict):
+def _supports_chat(deployment: dict[str, Any]) -> bool:
+    caps = deployment.get("capabilities")
+    if not isinstance(caps, dict):
         return False
-    return str(capabilities.get("chat_completion", "")).lower() == "true"
-
-
-async def ensure_chat_model_deployment(
-    client: FoundryHttpClient,
-    *,
-    project_endpoint: str,
-    deployment_name: str,
-) -> None:
-    """Reject non-chat deploys (e.g. Decision/SystemOne) before Responses invoke."""
-    url = client.build_url(project_endpoint, f"deployments/{deployment_name}")
-    try:
-        payload = await client.send_api_request(url, method="GET")
-    except FoundryApiError as error:
-        if error.status_code == 404:
-            raise ActionExecutionError(
-                f"Model deployment '{deployment_name}' not found on this project"
-            ) from error
-        raise ActionExecutionError(
-            f"Failed to load model deployment '{deployment_name}': {error}"
-        ) from error
-    if not isinstance(payload, dict) or not payload.get("name"):
-        raise ActionExecutionError(
-            f"Model deployment '{deployment_name}' not found on this project"
-        )
-    if _chat_completion_enabled(payload.get("capabilities")):
-        return
-    raise ActionExecutionError(
-        f"Deployment '{deployment_name}' does not support chat "
-        f"(capabilities.chat_completion is not true). "
-        "invoke_model uses openai/v1/responses and only works with chat-capable "
-        "model deployments. Decision models use /providers/microsoft/v1/systemone."
-    )
+    return str(caps.get("chat_completion", "")).lower() == "true"
 
 
 class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
@@ -72,11 +41,24 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeModelInputs.from_execution_properties(run.execution_properties)
         project_endpoint = inputs.project_endpoint
-        await ensure_chat_model_deployment(
-            self.client,
-            project_endpoint=project_endpoint,
-            deployment_name=inputs.deploymentName,
+        deployment = await ModelDeploymentsExporter(self.client).get_resource(
+            SingleModelDeploymentOptions(
+                project_endpoint=project_endpoint,
+                project_id=inputs.projectArmId,
+                deployment_name=inputs.deploymentName,
+            )
         )
+        if deployment is None:
+            raise ActionExecutionError(
+                f"Model deployment '{inputs.deploymentName}' not found on this project"
+            )
+        if not _supports_chat(deployment):
+            raise ActionExecutionError(
+                f"Deployment '{inputs.deploymentName}' does not support chat "
+                f"(capabilities.chat_completion is not true). "
+                "invoke_model uses openai/v1/responses and only works with chat-capable "
+                "model deployments. Decision models use /providers/microsoft/v1/systemone."
+            )
         try:
             conversation_id = await resolve_conversation_for_invoke(
                 self.client,

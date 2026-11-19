@@ -4,7 +4,10 @@ from typing import Any
 
 from loguru import logger
 
-from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.clients.http.foundry_client import (
+    FoundryApiError,
+    FoundryHttpClient,
+)
 from azure_integration.foundry.helpers.utils import agent_openai_protocol_path
 
 
@@ -44,7 +47,12 @@ async def resolve_conversation_for_invoke(
         return await _create()
 
     url = client.build_url(project_endpoint, f"{base}/{conversation_id}")
-    existing = await client.send_api_request(url, method="GET")
+    try:
+        existing = await client.send_api_request(url, method="GET")
+    except FoundryApiError as error:
+        if error.status_code != 404:
+            raise
+        existing = None
     if not (isinstance(existing, dict) and existing.get("id")):
         logger.warning(
             f"Conversation {conversation_id} not found under {base}; creating a new one"

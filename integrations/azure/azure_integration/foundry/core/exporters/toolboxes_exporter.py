@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Never
 
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
@@ -8,6 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.cache import cache_iterator_result
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListToolboxesOptions
 from azure_integration.foundry.foundry_incremental import TOOLBOX_INCREMENTAL
@@ -64,7 +65,7 @@ class ConnectionPayload(BaseModel):
     target: str = ""
 
 
-class ToolboxesExporter(FoundryExporter[ListToolboxesOptions]):
+class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, Never]):
     @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListToolboxesOptions
@@ -112,10 +113,15 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions]):
         name = item.get("name") or item.get("id")
         if not name:
             return dict(item)
-        detail = await self.client.send_api_request(
-            build_foundry_url(project_endpoint, f"toolboxes/{name}"),
-            extra_headers=headers,
-        )
+        try:
+            detail = await self.client.send_api_request(
+                build_foundry_url(project_endpoint, f"toolboxes/{name}"),
+                extra_headers=headers,
+            )
+        except FoundryApiError as error:
+            if error.status_code == 404:
+                return dict(item)
+            raise
         if isinstance(detail, dict) and detail:
             return {**item, **detail}
         return dict(item)
@@ -152,10 +158,16 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions]):
     ) -> list[dict[str, Any]]:
         subagents: list[dict[str, Any]] = []
         for conn_name in a2a_connection_ids_from_tools(tools):
-            payload = await self.client.send_api_request(
-                build_foundry_url(project_endpoint, f"connections/{conn_name}"),
-                extra_headers=headers,
-            )
+            try:
+                payload = await self.client.send_api_request(
+                    build_foundry_url(project_endpoint, f"connections/{conn_name}"),
+                    extra_headers=headers,
+                )
+            except FoundryApiError as error:
+                if error.status_code == 404:
+                    subagents.append({"connectionName": conn_name})
+                    continue
+                raise
             if not isinstance(payload, dict) or not payload:
                 subagents.append({"connectionName": conn_name})
                 continue
