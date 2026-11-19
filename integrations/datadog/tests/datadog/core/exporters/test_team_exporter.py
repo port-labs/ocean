@@ -8,7 +8,11 @@ import pytest
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters import TeamExporter
-from datadog.core.exporters.team_exporter import GetTeamOptions, ListTeamOptions
+from datadog.core.exporters.team_exporter import (
+    CHANGED_TEAMS_FETCH_BATCH_SIZE,
+    GetTeamOptions,
+    ListTeamOptions,
+)
 from datadog.incremental import CHANGED_TEAMS_AUDIT_QUERY
 
 
@@ -204,6 +208,26 @@ async def test_get_changed_teams_follows_cursor_and_dedupes(
     assert mock_get_resource.await_count == 2
     second_body = mock_request.call_args_list[1].kwargs["json_data"]
     assert second_body["page"] == {"limit": MAX_PAGE_SIZE, "cursor": "next"}
+
+
+@pytest.mark.asyncio
+async def test_get_changed_teams_yields_one_batch_per_concurrent_fetch(
+    mock_datadog_client: DatadogClient,
+    team_audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, _ = team_audit_mocks
+    team_ids = [str(i) for i in range(CHANGED_TEAMS_FETCH_BATCH_SIZE + 1)]
+    mock_request.return_value = _audit_page(*(_audit_event(i) for i in team_ids))
+
+    batches = [
+        batch
+        async for batch in TeamExporter(mock_datadog_client).get_changed_teams(
+            ListTeamOptions(), incremental_cursor=SINCE
+        )
+    ]
+
+    assert [len(batch) for batch in batches] == [CHANGED_TEAMS_FETCH_BATCH_SIZE, 1]
+    assert [team for batch in batches for team in batch] == [_team(i) for i in team_ids]
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,6 @@
+import asyncio
 from datetime import datetime
+from itertools import batched
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -12,6 +14,7 @@ if TYPE_CHECKING:
     from datadog.overrides import CatalogEntityResourceConfig
 
 SCHEMA_ENRICHMENT_KEY = "__schema"
+CHANGED_ENTITIES_FETCH_BATCH_SIZE = 10
 
 
 class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
@@ -106,17 +109,27 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         if options.entity_kinds:
             params["filter[kind]"] = options.entity_kinds
 
-        entities: list[dict[str, Any]] = []
-        for ref in await self._changed_asset_ids(
+        refs = await self._changed_asset_ids(
             CHANGED_CATALOG_ENTITIES_AUDIT_QUERY, incremental_cursor
-        ):
-            # Datadog ignores unknown filters and returns every entity, so the filter
-            # name must be exactly `filter[ref]`
-            response = await self.client.send_api_request(
-                url, params={**params, "filter[ref]": ref}
-            )
-            if response.get("data"):
-                entities.extend(attach_schemas(response))
+        )
 
-        if entities:
-            yield entities
+        for batch in batched(refs, CHANGED_ENTITIES_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(self._get_changed_entities(url, params, ref) for ref in batch)
+            )
+            if entities := [entity for result in results for entity in result]:
+                yield entities
+
+    async def _get_changed_entities(
+        self, url: str, params: dict[str, Any], ref: str
+    ) -> list[dict[str, Any]]:
+        """Get the entities matching *ref*, found through audit events; empty if the
+        entity was deleted or its kind is filtered out."""
+        # Datadog ignores unknown filters and returns every entity, so the filter
+        # name must be exactly `filter[ref]`
+        response = await self.client.send_api_request(
+            url, params={**params, "filter[ref]": ref}
+        )
+        if not response.get("data"):
+            return []
+        return attach_schemas(response)

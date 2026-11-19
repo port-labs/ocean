@@ -8,6 +8,7 @@ from datadog.client import DatadogClient
 from datadog.core.exporters import CatalogEntityExporter
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters.catalog_entity_exporter import (
+    CHANGED_ENTITIES_FETCH_BATCH_SIZE,
     SCHEMA_ENRICHMENT_KEY,
     ListCatalogEntityOptions,
 )
@@ -307,6 +308,41 @@ async def test_get_changed_entities_fetches_each_ref_once_with_schema(
         assert mock_request.call_args_list[2].kwargs["params"]["filter[ref]"] == (
             "datastore:default/b"
         )
+
+
+@pytest.mark.asyncio
+async def test_get_changed_entities_yields_one_batch_per_concurrent_fetch(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    entity_ids = [str(i) for i in range(CHANGED_ENTITIES_FETCH_BATCH_SIZE + 1)]
+
+    async def respond(
+        url: str,
+        params: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        method: str = "GET",
+    ) -> dict[str, Any]:
+        if json_data is not None:
+            return _audit_page(
+                *(_audit_event(f"service:default/{i}") for i in entity_ids)
+            )
+        assert params is not None
+        return _entity_page(params["filter[ref]"].rpartition("/")[2])
+
+    with patch.object(
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = respond
+
+        batches = [
+            batch
+            async for batch in CatalogEntityExporter(
+                mock_datadog_client
+            ).get_changed_entities(ListCatalogEntityOptions(), incremental_cursor=SINCE)
+        ]
+
+    assert [len(batch) for batch in batches] == [CHANGED_ENTITIES_FETCH_BATCH_SIZE, 1]
+    assert [e["id"] for batch in batches for e in batch] == entity_ids
 
 
 @pytest.mark.asyncio

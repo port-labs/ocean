@@ -8,7 +8,11 @@ import pytest
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters import RoleExporter
-from datadog.core.exporters.role_exporter import GetRoleOptions, ListRoleOptions
+from datadog.core.exporters.role_exporter import (
+    CHANGED_ROLES_FETCH_BATCH_SIZE,
+    GetRoleOptions,
+    ListRoleOptions,
+)
 from datadog.incremental import (
     CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY,
     CHANGED_ROLES_AUDIT_QUERY,
@@ -331,6 +335,26 @@ async def test_get_changed_roles_follows_cursor_and_dedupes(
     assert mock_get_resource.await_count == 2
     second_body = mock_request.call_args_list[1].kwargs["json_data"]
     assert second_body["page"] == {"limit": MAX_PAGE_SIZE, "cursor": "next"}
+
+
+@pytest.mark.asyncio
+async def test_get_changed_roles_yields_one_batch_per_concurrent_fetch(
+    mock_datadog_client: DatadogClient,
+    role_audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, _ = role_audit_mocks
+    role_ids = [str(i) for i in range(CHANGED_ROLES_FETCH_BATCH_SIZE + 1)]
+    mock_request.return_value = _audit_page(*(_role_event(i) for i in role_ids))
+
+    batches = [
+        batch
+        async for batch in RoleExporter(mock_datadog_client).get_changed_roles(
+            ListRoleOptions(), incremental_cursor=SINCE
+        )
+    ]
+
+    assert [len(batch) for batch in batches] == [CHANGED_ROLES_FETCH_BATCH_SIZE, 1]
+    assert [role for batch in batches for role in batch] == [_role(i) for i in role_ids]
 
 
 @pytest.mark.asyncio

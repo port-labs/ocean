@@ -1,5 +1,7 @@
+import asyncio
 from datetime import datetime
 from http import HTTPStatus
+from itertools import batched
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -16,6 +18,8 @@ from datadog.core.exporters.base_exporter import (
     SingleResourceExporter,
 )
 from datadog.incremental import CHANGED_TEAMS_AUDIT_QUERY
+
+CHANGED_TEAMS_FETCH_BATCH_SIZE = 10
 
 
 class ListTeamOptions(ListOptions["TeamResourceConfig"]):
@@ -71,28 +75,35 @@ class TeamExporter(
         returned.
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
-        teams: list[dict[str, Any]] = []
-        for team_id in await self._changed_asset_ids(
+        team_ids = await self._changed_asset_ids(
             CHANGED_TEAMS_AUDIT_QUERY, incremental_cursor
-        ):
-            try:
-                team = await self.get_resource(
-                    GetTeamOptions(
-                        resource_id=team_id, include_members=options.include_members
-                    )
-                )
-            except HTTPStatusError as e:
-                if e.response.status_code != HTTPStatus.NOT_FOUND:
-                    raise
-                logger.warning(
-                    f"Skipping team '{team_id}' from audit events; it no longer exists in Datadog"
-                )
-                continue
-            if team:
-                teams.append(team)
+        )
 
-        if teams:
-            yield teams
+        for batch in batched(team_ids, CHANGED_TEAMS_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(
+                    self._get_changed_team(team_id, options.include_members)
+                    for team_id in batch
+                )
+            )
+            if teams := [team for team in results if team]:
+                yield teams
+
+    async def _get_changed_team(
+        self, team_id: str, include_members: bool
+    ) -> dict[str, Any] | None:
+        """Get a team found through audit events, or None if it was deleted since."""
+        try:
+            return await self.get_resource(
+                GetTeamOptions(resource_id=team_id, include_members=include_members)
+            )
+        except HTTPStatusError as e:
+            if e.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"Skipping team '{team_id}' from audit events; it no longer exists in Datadog"
+            )
+            return None
 
     async def _get_team_members(self, team_id: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get team memberships from Datadog.
