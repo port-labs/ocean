@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Reject non-positive concurrency in process_in_queue instead of hanging
