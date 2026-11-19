@@ -9,6 +9,12 @@
 #   0 — clean merge (or nothing to do); staged changes may be present
 #   1 — merge conflict on one or more spec files
 #   2 — usage / unexpected error
+#
+# Same-PR re-syncs: if the current (ours) blob already matches some version of
+# the file on the PR commit chain, that version is used as the merge base so a
+# later push of the same PR does not conflict with its own earlier sync to
+# `dev-specs`. Cross-PR divergent edits still conflict via the normal 3-way
+# merge against git merge-base(HEAD, PR).
 
 set -euo pipefail
 
@@ -23,6 +29,37 @@ BASE_SHA="$2"
 SPEC_PATHSPECS=(
   'integrations/*/.port/spec.json'
 )
+
+# Resolve the blob to use as the 3-way merge base for one file.
+# Prefer the newest commit on the PR lineage whose file content equals ours
+# (covers re-sync after a previous push of the same PR). Otherwise fall back
+# to merge-base(HEAD, PR_SHA) — the correct base for true cross-branch merges.
+resolve_merge_base_blob() {
+  local file="$1"
+  local ours_hash="$2"
+  local commit blob
+
+  # Newest-first walk of commits that touch this file on the PR side.
+  while IFS= read -r commit; do
+    [[ -z "${commit}" ]] && continue
+    if blob="$(git rev-parse "${commit}:${file}" 2>/dev/null)" \
+      && [[ "${blob}" == "${ours_hash}" ]]; then
+      echo "${commit}:${file}"
+      return 0
+    fi
+  done < <(git rev-list "${PR_SHA}" --not "${BASE_SHA}" -- "${file}")
+
+  # First sync often has ours == file at PR base (main tip when the PR opened).
+  if blob="$(git rev-parse "${BASE_SHA}:${file}" 2>/dev/null)" \
+    && [[ "${blob}" == "${ours_hash}" ]]; then
+    echo "${BASE_SHA}:${file}"
+    return 0
+  fi
+
+  local merge_base
+  merge_base="$(git merge-base HEAD "${PR_SHA}")"
+  echo "${merge_base}:${file}"
+}
 
 mapfile -t SPEC_FILES < <(
   git diff --name-only --diff-filter=ACMR "${BASE_SHA}...${PR_SHA}" -- "${SPEC_PATHSPECS[@]}"
@@ -40,8 +77,6 @@ CONFLICTS=()
 TOUCHED_FILES=()
 
 for file in "${SPEC_FILES[@]}"; do
-  merge_base="$(git merge-base HEAD "${PR_SHA}")"
-
   base_tmp="$(mktemp)"
   ours_tmp="$(mktemp)"
   theirs_tmp="$(mktemp)"
@@ -57,15 +92,16 @@ for file in "${SPEC_FILES[@]}"; do
     continue
   fi
 
-  if git show "${merge_base}:${file}" >"${base_tmp}" 2>/dev/null; then
-    :
-  else
-    : >"${base_tmp}"
-  fi
-
   mkdir -p "$(dirname "${file}")"
 
   if git show "HEAD:${file}" >"${ours_tmp}" 2>/dev/null; then
+    ours_hash="$(git hash-object "${ours_tmp}")"
+    base_ref="$(resolve_merge_base_blob "${file}" "${ours_hash}")"
+
+    if ! git show "${base_ref}" >"${base_tmp}" 2>/dev/null; then
+      : >"${base_tmp}"
+    fi
+
     # git merge-file writes the result into the first file argument.
     cp "${ours_tmp}" "${merged_tmp}"
     set +e
