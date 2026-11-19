@@ -5,7 +5,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+  packages: read
   pull-requests: write
 
 env:
@@ -160,6 +160,46 @@ jobs:
           echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
 
+      - name: Download Wiz CLI
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "${RUNNER_TEMP}/wizcli" https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          chmod +x "${RUNNER_TEMP}/wizcli"
+
+      - name: Run wiz-cli docker image scan
+        continue-on-error: true
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          IMAGE_URI: ${{ steps.image_info.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${WIZ_CLIENT_ID}" || -z "${WIZ_CLIENT_SECRET}" ]]; then
+            echo "::error::WIZ_CLIENT_ID and WIZ_CLIENT_SECRET must be set (org or repo secrets)."
+            exit 1
+          fi
+          policies=("Default vulnerabilities policy" "Default secrets policy" "Default malware policy" "Default sensitive data policy")
+          IFS=,
+          POLICIES="${policies[*]}"
+          unset IFS
+          "${RUNNER_TEMP}/wizcli" scan container-image "$IMAGE_URI" --policies "$POLICIES"
+
+      - name: Tag image in Wiz graph
+        continue-on-error: true
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          IMAGE_URI: ${{ steps.image_info.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          digest=$(docker inspect --format='{{.Id}}' "$IMAGE_URI" 2>/dev/null || true)
+          if [[ -z "$digest" ]]; then
+            echo "No image digest available, skipping wizcli tag"
+            exit 0
+          fi
+          "${RUNNER_TEMP}/wizcli" tag "$digest"
+
       - name: Calculate max allowed size
         id: calc_max_size
         run: |
@@ -291,13 +331,9 @@ jobs:
               body: output
             })
 
-  # Non-blocking Wiz scans via port-labs/infra-utils (wizcli.yml@f693e30).
-  # Image scan pulls published GHCR tags; this workflow does not push PR builds.
   wiz-cli-dir-scan:
     name: Wiz-cli code scan
-    # infra-utils is private; GitHub cannot resolve it on fork pull_request runs.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    uses: port-labs/infra-utils/.github/workflows/wizcli.yml@f693e30f50d07da38f5fc682257dd4526b09b673
+    uses: ./.github/workflows/wizcli.yml
     secrets: inherit
     with:
       enable_directory_scan: true
@@ -307,64 +343,4 @@ jobs:
       directory_iac_policy: Default IaC policy
       directory_sast_policy: Default SAST policy (Wiz CI/CD scan)
       directory_sensitive_data_policy: Default sensitive data policy
-      continue_on_error: true
-
-  prepare-wiz-images:
-    name: Prepare Wiz image URIs
-    needs: [prepare-matrix, build-integration]
-    if: >
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
-      needs.prepare-matrix.result == 'success' &&
-      needs.build-integration.result == 'success' &&
-      needs.prepare-matrix.outputs.matrix != '' &&
-      needs.prepare-matrix.outputs.matrix != '[]'
-    runs-on: ubuntu-latest
-    outputs:
-      images: ${{ steps.list.outputs.images }}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v7
-      - name: Map built integrations to GHCR URIs
-        id: list
-        env:
-          MATRIX: ${{ needs.prepare-matrix.outputs.matrix }}
-        run: |
-          set -euo pipefail
-          images='[]'
-          while IFS= read -r spec; do
-            [[ -z "$spec" || "$spec" == "null" ]] && continue
-            folder=$(dirname "$spec")
-            type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
-            version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
-            [[ -z "$type" ]] && continue
-            # PR builds are not pushed. Scan published :latest when release
-            # would have applied that tag (stable, post, beta). Otherwise use
-            # the version tag (dev/rc/alpha).
-            if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+[.-]post[0-9]+$ || "$version" =~ ^[0-9.]+-beta[0-9]*$ ]]; then
-              image_uri="ghcr.io/port-labs/port-ocean-${type}:latest"
-            else
-              image_uri="ghcr.io/port-labs/port-ocean-${type}:${version}"
-            fi
-            images=$(echo "$images" | jq -c --arg name "$type" --arg uri "$image_uri" \
-              '. + [{name: $name, image_uri: $uri}]')
-          done < <(echo "$MATRIX" | jq -r '.[]')
-          echo "images=$images" >> "$GITHUB_OUTPUT"
-
-  wiz-cli-image-scan:
-    name: Wiz-cli image scan
-    needs: prepare-wiz-images
-    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-wiz-images.result == 'success' && needs.prepare-wiz-images.outputs.images != '' && needs.prepare-wiz-images.outputs.images != '[]' }}
-    uses: port-labs/infra-utils/.github/workflows/wizcli.yml@f693e30f50d07da38f5fc682257dd4526b09b673
-    secrets: inherit
-    with:
-      enable_directory_scan: false
-      enable_image_scan: true
-      images: ${{ needs.prepare-wiz-images.outputs.images }}
-      image_vulnerabilities_policy: Default vulnerabilities policy
-      image_secrets_policy: Default secrets policy
-      image_malware_policy: Default malware policy
-      image_sensitive_data_policy: Default sensitive data policy
-      enable_ecr_login: false
-      docker_platform: linux/arm64
-      enable_wiz_graph_tag: true
       continue_on_error: true

@@ -1,0 +1,20 @@
+{
+  "serviceName": "order-worker",
+  "environments": [
+    "prod",
+    "staging"
+  ],
+  "clusters": [
+    "eu-prod",
+    "eu-staging"
+  ],
+  "namespaces": [
+    "orders"
+  ],
+  "requestsPerSecond": 0.0,
+  "errorRatePct": null,
+  "p95LatencyMs": null,
+  "window": "1h",
+  "metricsSource": "calls_total",
+  "__teamUrl": "https://getport.app.eu2.coralogix.com"
+}
