@@ -127,20 +127,6 @@ def _latest_toolbox(payload: Any) -> tuple[str, list[Any]] | None:
     return version, tools if isinstance(tools, list) else []
 
 
-def _points_at_toolbox(tools: list[Any] | None, *, toolbox_name: str) -> bool:
-    marker = f"/toolboxes/{toolbox_name}/"
-    for tool in tools or []:
-        if (
-            isinstance(tool, dict)
-            and tool.get("type") == "mcp"
-            and tool.get("server_label") == TOOLBOX_SERVER_LABEL
-            and isinstance(tool.get("server_url"), str)
-            and marker in tool["server_url"]
-        ):
-            return True
-    return False
-
-
 def tools_from_agent_payload(agent: Any) -> list[Any]:
     definition = agent.get("definition") if isinstance(agent, dict) else None
     tools = definition.get("tools") if isinstance(definition, dict) else None
@@ -218,21 +204,64 @@ async def ensure_toolbox_version(
     return _version_id(response) or "1"
 
 
-async def _update_agent_tools(
+async def _load_agent_tools(
     client: Any,
     *,
     project_endpoint: str,
     agent_id: str,
-    tools: list[Any],
+    project_arm_id: str | None,
+    existing_tools: list[Any] | None,
+) -> tuple[dict[str, Any], list[Any]]:
+    if existing_tools is not None:
+        return {}, list(existing_tools)
+    try:
+        loaded = await AgentsExporter(client).get_resource(
+            SingleAgentOptions(
+                project_endpoint=project_endpoint,
+                project_id=project_arm_id
+                or project_name_from_endpoint(project_endpoint),
+                agent_id=agent_id,
+            )
+        )
+        agent = loaded or {}
+    except Exception as error:
+        logger.warning(f"Could not load agent {agent_id}: {error}")
+        agent = {}
+    return agent, tools_from_agent_payload(agent)
+
+
+async def _attach_toolbox_to_prompt_agent(
+    client: Any,
+    *,
+    project_endpoint: str,
+    agent_id: str,
     agent: dict[str, Any],
+    tools_context: list[Any],
+    toolbox_name: str,
+    version: str,
 ) -> None:
-    # Foundry updates definitions via POST (new version). PATCH is endpoint-only.
+    marker = f"/toolboxes/{toolbox_name}/"
+    if any(
+        isinstance(t, dict)
+        and t.get("type") == "mcp"
+        and t.get("server_label") == TOOLBOX_SERVER_LABEL
+        and isinstance(t.get("server_url"), str)
+        and marker in t["server_url"]
+        for t in tools_context
+    ):
+        return
     definition = {
         **(latest_agent_definition(agent) or {"kind": "prompt"}),
-        "tools": tools,
+        "tools": merge_toolbox_into_tools(
+            tools_context,
+            toolbox_url=toolbox_consumer_url(
+                project_endpoint, toolbox_name, version=version
+            ),
+        ),
     }
     kind = definition.get("kind") or "prompt"
     definition["kind"] = kind
+    # Foundry updates definitions via POST (new version). PATCH is endpoint-only.
     await client.send_api_request(
         client.build_url(project_endpoint, f"agents/{agent_id}"),
         method="POST",
@@ -287,23 +316,13 @@ async def ensure_port_mcp(
         )
         toolbox_tools.append(_mcp_tool(GITHUB_MCP_SERVER_LABEL, GITHUB_MCP_URL, conn))
 
-    agent_payload: dict[str, Any] = {}
-    if existing_tools is not None:
-        tools_context = list(existing_tools)
-    else:
-        try:
-            loaded = await AgentsExporter(client).get_resource(
-                SingleAgentOptions(
-                    project_endpoint=project_endpoint,
-                    project_id=project_arm_id
-                    or project_name_from_endpoint(project_endpoint),
-                    agent_id=agent_id,
-                )
-            )
-            agent_payload = loaded or {}
-        except Exception as error:
-            logger.warning(f"Could not load agent {agent_id}: {error}")
-        tools_context = tools_from_agent_payload(agent_payload)
+    agent_payload, tools_context = await _load_agent_tools(
+        client,
+        project_endpoint=project_endpoint,
+        agent_id=agent_id,
+        project_arm_id=project_arm_id,
+        existing_tools=existing_tools,
+    )
 
     # Remint git without Port token: keep Port entry if agent already had toolbox.
     if (
@@ -335,23 +354,16 @@ async def ensure_port_mcp(
     )
 
     kind = agent_kind or agent_definition_kind(agent_payload)
-    if not attach_to_prompt_agent or kind != "prompt":
-        return resolved, version
-    if _points_at_toolbox(tools_context, toolbox_name=resolved):
-        return resolved, version
-
-    await _update_agent_tools(
-        client,
-        project_endpoint=project_endpoint,
-        agent_id=agent_id,
-        tools=merge_toolbox_into_tools(
-            tools_context,
-            toolbox_url=toolbox_consumer_url(
-                project_endpoint, resolved, version=version
-            ),
-        ),
-        agent=agent_payload,
-    )
+    if attach_to_prompt_agent and kind == "prompt":
+        await _attach_toolbox_to_prompt_agent(
+            client,
+            project_endpoint=project_endpoint,
+            agent_id=agent_id,
+            agent=agent_payload,
+            tools_context=tools_context,
+            toolbox_name=resolved,
+            version=version,
+        )
     return resolved, version
 
 

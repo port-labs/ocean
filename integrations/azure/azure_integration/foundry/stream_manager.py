@@ -53,7 +53,7 @@ class ResponsesStreamManager:
         if stream_key in self._tasks:
             return "duplicate"
         if len(self._tasks) >= _MAX_CONCURRENT_STREAMS:
-            # Over cap: caller submits non-SSE invoke and relies on webhooks.
+            # Over cap → caller POSTs without SSE and completes via webhook.
             return "capacity"
         task = asyncio.create_task(
             self._consume_stream(
@@ -68,6 +68,16 @@ class ResponsesStreamManager:
             ),
             name=f"foundry-stream-{stream_key}",
         )
+
+        def _log_unexpected_crash(done: asyncio.Task[None]) -> None:
+            # _consume_stream handles failures; this catches unexpected escapes.
+            if done.cancelled():
+                return
+            exc = done.exception()
+            if exc is not None:
+                logger.exception(f"Responses stream task {stream_key} crashed: {exc}")
+
+        task.add_done_callback(_log_unexpected_crash)
         self._tasks[stream_key] = task
         return "started"
 
@@ -133,7 +143,10 @@ class ResponsesStreamManager:
                     buffer.append(WorkflowNodeRunLog(message=message, level="INFO"))
                     if len(buffer) >= _LOG_FLUSH_BATCH_SIZE:
                         await _flush_logs(run, buffer)
-                if stop_on_terminal_sse and parsed.type in TERMINAL_SSE_TYPES:
+                if (
+                    stop_on_terminal_sse
+                    and TERMINAL_SSE_TYPES.get(parsed.type) is not None
+                ):
                     terminal_parsed = parsed
                     break
             if buffer:

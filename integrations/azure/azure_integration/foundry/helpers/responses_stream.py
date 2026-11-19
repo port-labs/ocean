@@ -5,7 +5,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-# call-sites: TERMINAL_SSE_TYPES.get(event_type)
 TERMINAL_SSE_TYPES = {
     "response.completed": True,
     "response.failed": False,
