@@ -7,7 +7,11 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
-from datadog.incremental import audit_event_asset_id, audit_events_search_body
+from datadog.incremental import (
+    audit_event_asset_id,
+    audit_event_path,
+    audit_events_search_body,
+)
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -167,9 +171,12 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             if not cursor:
                 break
 
-    async def _changed_asset_ids(self, query: str, since: datetime) -> list[str]:
+    async def _changed_asset_ids(
+        self, query: str, since: datetime, *, excluded_path_prefix: str | None = None
+    ) -> list[str]:
         """Return the IDs of the assets that audit events matching *query* since
-        *since* are about, deduplicated in order.
+        *since* are about, deduplicated in order. Events recorded on API paths
+        under *excluded_path_prefix* are skipped.
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
         url = f"{self.client.api_url}/api/v2/audit/events/search"
@@ -178,6 +185,10 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             url, audit_events_search_body(query, since)
         ):
             for event in events:
+                if excluded_path_prefix and audit_event_path(event).startswith(
+                    excluded_path_prefix
+                ):
+                    continue
                 if asset_id := audit_event_asset_id(event):
                     asset_ids[asset_id] = None
         return list(asset_ids)
