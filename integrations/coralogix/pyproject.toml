@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "coralogix"
-version = "0.1.0-beta"
+version = "0.1.1-beta"
 description = "Coralogix ocean integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = { version = "^0.61.6", extras = ["cli"] }
+port_ocean = {version = "^0.61.7", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
