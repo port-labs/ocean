@@ -18,7 +18,6 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from github.helpers.incremental import resolve_effective_datetime
-from github.helpers.repositories import iter_repositories
 from github.helpers.utils import resolve_org_filtered_repos
 from github.core.exporters.workflow_runs_exporter import WORKFLOW_RUN_INCREMENTAL
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -485,7 +484,9 @@ async def resync_workflows(
                 pushed_since=sync_cursor,
             )
 
-            async for repositories in iter_repositories(repo_exporter, repo_options):
+            async for repositories in repo_exporter.get_paginated_resources(
+                options=repo_options
+            ):
 
                 tasks = []
                 for repo in repositories:
@@ -808,8 +809,8 @@ async def resync_tags(
                 pushed_since=sync_cursor,
             )
 
-            async for repositories in iter_repositories(
-                repository_exporter, repo_options
+            async for repositories in repository_exporter.get_paginated_resources(
+                repo_options
             ):
                 tasks = []
                 for repo in repositories:
@@ -855,8 +856,8 @@ async def resync_branches(
                 pushed_since=sync_cursor,
             )
 
-            async for repositories in iter_repositories(
-                repository_exporter, repo_options
+            async for repositories in repository_exporter.get_paginated_resources(
+                repo_options
             ):
                 tasks = []
                 for repo in repositories:
