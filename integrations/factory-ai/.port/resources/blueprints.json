@@ -196,7 +196,8 @@
         },
         "status": {
           "type": "string",
-          "title": "Status"
+          "title": "Status",
+          "enum": ["invited", "already_member", "role_updated", "already_invited", "error"]
         },
         "lastSignInAt": {
           "type": "string",
