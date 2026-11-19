@@ -51,9 +51,11 @@ def _client_with_response(status_code: int) -> FoundryHttpClient:
 
 
 @pytest.mark.asyncio
-async def test_get_404_returns_empty() -> None:
+async def test_get_404_raises() -> None:
     client = _client_with_response(404)
-    assert await client.send_api_request("https://example/agents/x") == {}
+    with pytest.raises(FoundryApiError) as exc_info:
+        await client.send_api_request("https://example/agents/x")
+    assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio

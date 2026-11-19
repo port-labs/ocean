@@ -117,9 +117,6 @@ class FoundryHttpClient:
             json=json_body,
             headers=headers,
         )
-        # Missing resource: GET/DELETE are empty; mutations must fail.
-        if response.status_code == 404 and method.upper() in {"GET", "DELETE"}:
-            return {}
         if response.is_error:
             detail = (
                 response.text[:_ERROR_BODY_LIMIT]

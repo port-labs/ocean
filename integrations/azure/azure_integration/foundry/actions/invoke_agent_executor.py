@@ -14,6 +14,8 @@ from azure_integration.foundry.actions.responses_invoke_mixin import (
     INVOKE_RUNNING_STATUS_LABEL,
     ResponsesInvokeMixin,
 )
+from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
+from azure_integration.foundry.core.options import SingleAgentOptions
 from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
@@ -124,16 +126,23 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         project_endpoint: str,
     ) -> None:
         try:
-            agent = await self.client.send_api_request(
-                self.client.build_url(project_endpoint, f"agents/{inputs.agentId}")
+            agent_payload = await AgentsExporter(self.client).get_resource(
+                SingleAgentOptions(
+                    project_endpoint=project_endpoint,
+                    project_id=inputs.projectArmId,
+                    agent_id=inputs.agentId,
+                )
             )
         except Exception as error:
             # Kind unknown without the agent payload — do not guess prompt vs hosted.
             raise ActionExecutionError(
                 f"Could not load agent {inputs.agentId} before MCP remint: {error}"
             ) from error
+        if agent_payload is None:
+            raise ActionExecutionError(
+                f"Could not load agent {inputs.agentId} before MCP remint: not found"
+            )
 
-        agent_payload = agent if isinstance(agent, dict) else {}
         kind = agent_definition_kind(agent_payload)
         hosted = kind == "hosted"
 

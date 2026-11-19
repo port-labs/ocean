@@ -16,6 +16,10 @@ from azure_integration.foundry.clients.http.foundry_client import create_foundry
 from azure_integration.foundry.core.exporters.project_exporter import (
     foundry_project_from_arm_id,
 )
+from azure_integration.foundry.core.exporters.responses_exporter import (
+    ResponsesExporter,
+)
+from azure_integration.foundry.core.options import EndpointScope, SingleResponseOptions
 from azure_integration.foundry.helpers.responses_catalog import (
     catalog_agent_id,
     conversation_row_from_response,
@@ -26,8 +30,8 @@ from azure_integration.foundry.helpers.responses_stream import (
     ResponsesSseEvent,
 )
 from azure_integration.foundry.helpers.utils import (
-    agent_openai_protocol_path,
     enrich_with_project,
+    project_name_from_endpoint,
 )
 from azure_integration.foundry.helpers.webhook_scope import FoundryResponseBody
 from azure_integration.foundry.kinds import ObjectKind
@@ -98,29 +102,22 @@ async def fetch_foundry_response(
     *,
     project_endpoint: str,
     agent_id: str | None = None,
+    project_id: str | None = None,
+    endpoint_scope: EndpointScope | None = None,
 ) -> dict[str, Any] | None:
-    """GET stored Responses body. Agent invokes try agent protocol path first."""
-    client = create_foundry_client()
-    paths: list[str] = []
-    if agent_id and agent_id.strip():
-        paths.append(
-            f"{agent_openai_protocol_path(agent_id.strip(), 'responses')}/{response_id}"
+    """GET stored Responses body via ResponsesExporter.get_resource."""
+    scope = endpoint_scope or (
+        EndpointScope.AGENT if agent_id else EndpointScope.PROJECT
+    )
+    return await ResponsesExporter(create_foundry_client()).get_resource(
+        SingleResponseOptions(
+            project_endpoint=project_endpoint,
+            project_id=project_id or project_name_from_endpoint(project_endpoint),
+            resource_id=response_id,
+            endpoint_scope=scope,
+            agent_id=agent_id,
         )
-    paths.append(f"openai/v1/responses/{response_id}")
-    last_error: Exception | None = None
-    for path in paths:
-        try:
-            payload = await client.send_api_request(
-                client.build_url(project_endpoint, path), method="GET"
-            )
-        except Exception as error:
-            last_error = error
-            continue
-        if isinstance(payload, dict) and payload:
-            return payload
-    if last_error is not None:
-        logger.warning(f"Failed to GET Foundry response {response_id}: {last_error}")
-    return None
+    )
 
 
 async def register_catalog_rows(

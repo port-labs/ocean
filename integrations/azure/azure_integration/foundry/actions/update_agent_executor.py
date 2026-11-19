@@ -10,12 +10,18 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
+from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
+from azure_integration.foundry.core.options import SingleAgentOptions
 from azure_integration.foundry.helpers.agent_api import (
     definition_kind,
     foundry_features_header,
     latest_agent_definition,
 )
-from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
+from azure_integration.foundry.helpers.utils import (
+    deep_merge,
+    enrich_with_project,
+    project_name_from_endpoint,
+)
 from azure_integration.foundry.kinds import ObjectKind
 
 UPDATING_STATUS_LABEL = "Updating agent"
@@ -77,14 +83,20 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
             inputs.projectEndpoint, f"agents/{inputs.agentId}"
         )
         try:
-            existing = await self.client.send_api_request(agent_url)
+            existing = await AgentsExporter(self.client).get_resource(
+                SingleAgentOptions(
+                    project_endpoint=inputs.projectEndpoint,
+                    project_id=project_name_from_endpoint(inputs.projectEndpoint),
+                    agent_id=inputs.agentId,
+                )
+            )
         except Exception as error:
             raise ActionExecutionError(
                 f"Failed to update agent: {error}",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             ) from error
 
-        if not isinstance(existing, dict) or not existing:
+        if existing is None:
             raise ActionExecutionError(
                 f"Agent '{inputs.agentId}' not found",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
