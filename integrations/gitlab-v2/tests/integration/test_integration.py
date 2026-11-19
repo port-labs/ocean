@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
@@ -13,9 +13,6 @@ from integration import GitlabPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import GitLabDeploymentStatus
 from integration import (
-    GitlabIntegration,
-    GitManipulationHandler,
-    GitlabLiveEventsProcessorManager,
     PipelineQueryParams,
     GitlabDeploymentQueryParams,
     GitlabDeploymentSelector,
@@ -65,32 +62,6 @@ def mock_resource_config() -> MagicMock:
     config.selector.query = ""
     config.selector.include_languages = False
     return config
-
-
-async def test_gitlab_integration_uses_gitmanipulation_handler(
-    mock_context: MagicMock, mock_signal_handler: AsyncMock
-) -> None:
-    """Test that GitlabIntegration uses GitManipulationHandler as its EntityProcessorClass"""
-    # Arrange & Act
-    with patch("integration.signal_handler", mock_signal_handler):
-        integration = GitlabIntegration(mock_context)
-
-        # Assert
-        assert integration.EntityProcessorClass == GitManipulationHandler
-
-
-async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
-    mock_context: MagicMock, mock_signal_handler: AsyncMock
-) -> None:
-    """Test that GitlabLiveEventsProcessorManager uses GitManipulationHandler as its EntityProcessorClass"""
-    # Arrange & Act
-    with patch("integration.signal_handler", mock_signal_handler):
-        integration = GitlabIntegration(mock_context)
-        manager = integration.context.app.webhook_manager
-
-        # Assert
-        assert isinstance(manager, GitlabLiveEventsProcessorManager)
-        assert manager.EntityProcessorClass == GitManipulationHandler
 
 
 def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() -> None:

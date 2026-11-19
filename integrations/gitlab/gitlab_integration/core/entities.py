@@ -8,7 +8,6 @@ from port_ocean.core.models import Entity
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 
 FILE_PROPERTY_PREFIX = "file://"
-SEARCH_PROPERTY_PREFIX = "search://"
 JSON_SUFFIX = ".json"
 
 
