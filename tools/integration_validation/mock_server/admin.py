@@ -10,7 +10,7 @@ from tools.integration_validation.mock_server.loader import load_route_files
 from tools.integration_validation.mock_server.request_handler import (
     resolve_fixture_path,
 )
-from tools.integration_validation.mock_server.schemas import (
+from tools.integration_validation.mock_server.admin_schemas import (
     JournalEntry,
     JournalResponse,
     LoadScenarioRequest,

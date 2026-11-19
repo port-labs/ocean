@@ -15,7 +15,7 @@ from tools.integration_validation.mock_server.exceptions import ResponseRenderEr
 from tools.integration_validation.mock_server.matcher import RouteMatch, match_route
 from tools.integration_validation.mock_server.models import IncomingRequest
 from tools.integration_validation.mock_server.responder import RenderedResponse
-from tools.integration_validation.mock_server.schemas import JournalEntry
+from tools.integration_validation.mock_server.admin_schemas import JournalEntry
 from tools.integration_validation.mock_server.state import MockServerState
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from tools.integration_validation.mock_server.models import MockRoute
 from tools.integration_validation.mock_server.responder import ResponseRenderer
-from tools.integration_validation.mock_server.schemas import JournalEntry
+from tools.integration_validation.mock_server.admin_schemas import JournalEntry
 
 
 @dataclass

@@ -3,12 +3,10 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from tools.integration_validation.mock_server import server
-from tools.integration_validation.mock_server.server import (
-    MOCK_SERVER_HOST,
-    create_mock_server_app,
-    run_mock_server,
-)
+from tools.integration_validation.mock_server import cli
+from tools.integration_validation.mock_server.app import create_mock_server_app
+from tools.integration_validation.mock_server.cli import run_mock_server
+from tools.integration_validation.mock_server.constants import MOCK_SERVER_HOST
 
 
 def _write_routes(validation_root: Path) -> Path:
@@ -259,7 +257,7 @@ def test_run_mock_server_binds_to_loopback(tmp_path: Path, monkeypatch: Any) -> 
     def fake_run(app: Any, *, host: str, port: int) -> None:
         captured.update(app=app, host=host, port=port)
 
-    monkeypatch.setattr(server.uvicorn, "run", fake_run)
+    monkeypatch.setattr(cli.uvicorn, "run", fake_run)
 
     run_mock_server(tmp_path, 9123)
 
