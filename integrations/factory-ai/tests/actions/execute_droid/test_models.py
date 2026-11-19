@@ -21,15 +21,27 @@ class TestParseExecuteDroidInputs:
                 "environmentId": "env-1",
                 "model": "claude-sonnet",
                 "reasoningEffort": "medium",
+                "waitForCompletion": False,
             }
         )
         assert isinstance(inputs, ExecuteDroidEnvironmentInputs)
+        assert inputs.waitForCompletion is False
         assert inputs.to_request_body() == {
             "prompt": "Fix the flaky test",
             "target": {"kind": "environment", "environmentId": "env-1"},
             "model": "claude-sonnet",
             "reasoningEffort": "medium",
         }
+
+    def test_wait_for_completion_defaults_true(self) -> None:
+        inputs = parse_execute_droid_inputs(
+            {
+                "prompt": "hi",
+                "targetKind": "computer",
+                "computerId": "comp-1",
+            }
+        )
+        assert inputs.waitForCompletion is True
 
     def test_computer_target_builds_body(self) -> None:
         inputs = parse_execute_droid_inputs(

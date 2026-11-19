@@ -62,7 +62,7 @@
     {
       "name": "execute_droid",
       "icon": "DefaultBlueprint",
-      "description": "Start a headless Factory Droid turn via POST /api/v0/droid/execute. Target an environment (fresh computer + session), an existing computer (new session), or an existing session (follow-up). Returns 202 when the turn is accepted — not when the assistant finishes. Factory has no outbound webhooks, so the Port run completes after acceptance with sessionId, messageId, computerId, and app links. To detect turn completion, poll GET /api/v0/sessions/{sessionId} until status is idle (do not treat the first idle right after execute as done) and confirm GET /api/v0/sessions/{sessionId}/messages contains an assistant message after the returned messageId.",
+      "description": "Start a headless Factory Droid turn via POST /api/v0/droid/execute. Target an environment (fresh computer + session), an existing computer (new session), or an existing session (follow-up). Factory returns 202 when the turn is accepted. With waitForCompletion true (default), the Port run stays open and the integration polls until the session is idle and an assistant message exists after the returned messageId. With waitForCompletion false, the Port run completes immediately after the 202 with sessionId, messageId, computerId, and app links.",
       "inputs": [
         {
           "name": "prompt",
@@ -111,6 +111,14 @@
           "title": "Reasoning effort",
           "type": "string",
           "description": "Optional reasoning effort for a new session: none, dynamic, off, minimal, low, medium, high, xhigh, or max. Applies only when targetKind is environment or computer; ignored for session follow-ups.",
+          "required": false
+        },
+        {
+          "name": "waitForCompletion",
+          "title": "Wait for completion",
+          "type": "boolean",
+          "description": "When true (default), keep the Port run in progress and poll Factory until the turn finishes (session idle and an assistant message after messageId). When false, complete the Port run immediately after Factory accepts the turn (202).",
+          "default": true,
           "required": false
         }
       ]

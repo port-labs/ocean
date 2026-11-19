@@ -17,10 +17,18 @@ from factory_ai.actions.exceptions import (
 )
 from factory_ai.actions.execute_droid.executor import (
     TURN_ACCEPTED_STATUS_LABEL,
+    TURN_COMPLETED_STATUS_LABEL,
+    TURN_TIMED_OUT_STATUS_LABEL,
     ExecuteDroidExecutor,
 )
-from factory_ai.actions.execute_droid.models import ExecuteDroidResponse
+from factory_ai.actions.execute_droid.models import (
+    ExecuteDroidResponse,
+    ListSessionMessagesResponse,
+    SessionMessage,
+    has_assistant_message_after,
+)
 from factory_ai.clients.exceptions import FactoryAIError
+from factory_ai.core.exporters.session.models import Session
 
 EXECUTE_RESPONSE = ExecuteDroidResponse.model_validate(
     {
@@ -60,6 +68,7 @@ def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
 def client() -> MagicMock:
     mock = MagicMock()
     mock.post = AsyncMock(return_value=EXECUTE_RESPONSE)
+    mock.get = AsyncMock()
     return mock
 
 
@@ -79,9 +88,24 @@ def mock_port_client() -> MagicMock:
     return mock
 
 
+def test_has_assistant_message_after_newest_first() -> None:
+    messages = [
+        SessionMessage.model_validate({"id": "msg-2", "role": "assistant"}),
+        SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
+    ]
+    assert has_assistant_message_after(messages, "msg-1") is True
+
+
+def test_has_assistant_message_after_not_yet() -> None:
+    messages = [
+        SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
+    ]
+    assert has_assistant_message_after(messages, "msg-1") is False
+
+
 @pytest.mark.asyncio
 class TestExecuteDroidExecutor:
-    async def test_happy_path_environment(
+    async def test_happy_path_without_waiting(
         self,
         executor: ExecuteDroidExecutor,
         client: MagicMock,
@@ -92,6 +116,7 @@ class TestExecuteDroidExecutor:
                 "prompt": "Fix the flaky test",
                 "targetKind": "environment",
                 "environmentId": "env-1",
+                "waitForCompletion": False,
             }
         )
         with (
@@ -128,7 +153,7 @@ class TestExecuteDroidExecutor:
         assert run.output["sessionUrl"] == "https://app.factory.ai/sessions/sess-1"
         assert run.output["computerUrl"] == "https://app.factory.ai/computers/comp-1"
 
-    async def test_happy_path_session_follow_up(
+    async def test_happy_path_session_follow_up_without_waiting(
         self,
         executor: ExecuteDroidExecutor,
         client: MagicMock,
@@ -139,6 +164,7 @@ class TestExecuteDroidExecutor:
                 "prompt": "Also add tests",
                 "targetKind": "session",
                 "sessionId": "sess-1",
+                "waitForCompletion": False,
             }
         )
         with (
@@ -156,6 +182,102 @@ class TestExecuteDroidExecutor:
                 "target": {"kind": "session", "sessionId": "sess-1"},
             },
         )
+
+    async def test_waits_for_completion_by_default(
+        self,
+        executor: ExecuteDroidExecutor,
+        client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "prompt": "Fix the flaky test",
+                "targetKind": "environment",
+                "environmentId": "env-1",
+            }
+        )
+        with (
+            patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean,
+            patch.object(executor, "_reflect_session", new_callable=AsyncMock),
+            patch.object(
+                executor, "_wait_for_turn_completion", new_callable=AsyncMock
+            ) as wait,
+        ):
+            mock_ocean.port_client = mock_port_client
+            await executor.execute(run)
+
+        wait.assert_awaited_once_with("sess-1", "comp-1", "msg-1")
+        mock_port_client.update_run_started.assert_called_once()
+        mock_port_client.report_run_completed.assert_called_once()
+        _, kwargs = mock_port_client.report_run_completed.call_args
+        assert kwargs["status_label"] == TURN_COMPLETED_STATUS_LABEL
+
+    async def test_wait_for_turn_completion_polls_until_done(
+        self, executor: ExecuteDroidExecutor, client: MagicMock
+    ) -> None:
+        idle_session = Session.model_validate(
+            {
+                "sessionId": "sess-1",
+                "status": "idle",
+                "messageCount": 2,
+                "createdAt": 1,
+                "updatedAt": 2,
+                "computerId": "comp-1",
+            }
+        )
+        running_session = Session.model_validate(
+            {
+                "sessionId": "sess-1",
+                "status": "running",
+                "messageCount": 1,
+                "createdAt": 1,
+                "updatedAt": 2,
+                "computerId": "comp-1",
+            }
+        )
+        messages = ListSessionMessagesResponse.model_validate(
+            {
+                "messages": [
+                    {"id": "msg-2", "role": "assistant"},
+                    {"id": "msg-1", "role": "user"},
+                ],
+                "pagination": {"hasMore": False, "nextCursor": None},
+            }
+        )
+        client.get.side_effect = [
+            running_session,
+            idle_session,
+            messages,
+        ]
+
+        with patch(f"{_EXECUTOR_MODULE}.asyncio.sleep", new_callable=AsyncMock):
+            await executor._wait_for_turn_completion("sess-1", "comp-1", "msg-1")
+
+        assert client.get.await_count == 3
+
+    async def test_wait_for_turn_completion_times_out(
+        self, executor: ExecuteDroidExecutor, client: MagicMock
+    ) -> None:
+        running_session = Session.model_validate(
+            {
+                "sessionId": "sess-1",
+                "status": "running",
+                "messageCount": 1,
+                "createdAt": 1,
+                "updatedAt": 2,
+                "computerId": "comp-1",
+            }
+        )
+        client.get.return_value = running_session
+
+        with (
+            patch(f"{_EXECUTOR_MODULE}.asyncio.sleep", new_callable=AsyncMock),
+            patch(f"{_EXECUTOR_MODULE}.MAX_POLL_ATTEMPTS", 2),
+            pytest.raises(ExecuteDroidError, match="Timed out") as raised,
+        ):
+            await executor._wait_for_turn_completion("sess-1", "comp-1", "msg-1")
+
+        assert raised.value.status_label == TURN_TIMED_OUT_STATUS_LABEL
 
     async def test_missing_required_input(
         self,
@@ -195,6 +317,7 @@ class TestExecuteDroidExecutor:
                 "prompt": "hi",
                 "targetKind": "environment",
                 "environmentId": "env-1",
+                "waitForCompletion": False,
             }
         )
         with patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean:
@@ -218,6 +341,7 @@ class TestExecuteDroidExecutor:
                 "prompt": "hi",
                 "targetKind": "computer",
                 "computerId": "comp-1",
+                "waitForCompletion": False,
             }
         )
         with patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean:

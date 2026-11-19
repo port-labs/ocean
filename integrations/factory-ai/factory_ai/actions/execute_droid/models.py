@@ -6,11 +6,13 @@ from pydantic import Field, TypeAdapter, ValidationError
 
 from factory_ai.actions.abstract_action_input import AbstractFactoryActionInput
 from factory_ai.actions.exceptions import InvalidActionParametersError
-from factory_ai.core.models import FactoryModel
+from factory_ai.core.models import FactoryModel, FactoryPagination
 
 
 class _ExecuteDroidBase(AbstractFactoryActionInput):
     prompt: str = Field(min_length=1)
+    # Port-side only; never sent to Factory's execute body.
+    waitForCompletion: bool = True
 
 
 class _NewSessionExecuteDroidInputs(_ExecuteDroidBase):
@@ -111,3 +113,32 @@ class ExecuteDroidResponse(FactoryModel):
     session_id: str = Field(alias="sessionId", min_length=1)
     computer_id: str = Field(alias="computerId", min_length=1)
     message_id: str = Field(alias="messageId", min_length=1)
+
+
+class SessionMessage(FactoryModel):
+    """Minimal message fields needed to detect turn completion."""
+
+    id: str
+    role: str
+
+
+class ListSessionMessagesResponse(FactoryModel):
+    messages: list[SessionMessage]
+    pagination: FactoryPagination
+
+
+def has_assistant_message_after(
+    messages_newest_first: list[SessionMessage], user_message_id: str
+) -> bool:
+    """Whether an assistant message appears after ``user_message_id``.
+
+    Factory lists messages newest-first, so a newer assistant shows up before
+    the user message in the page. Reaching the user message first means no
+    newer assistant exists on this page yet.
+    """
+    for message in messages_newest_first:
+        if message.id == user_message_id:
+            return False
+        if message.role == "assistant":
+            return True
+    return False
