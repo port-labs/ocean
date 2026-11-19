@@ -304,3 +304,48 @@ class TestEnrichMergeRequests:
         assert "__commits" not in result[0]
         mock_commits.assert_not_called()
         mock_notes.assert_not_called()
+
+    async def test_fetch_single_merge_request_without_enrichment(
+        self, client: GitLabClient
+    ) -> None:
+        fetched = _merge_request()
+        with (
+            patch.object(
+                client, "get_merge_request", AsyncMock(return_value=fetched)
+            ) as mock_get,
+            patch.object(client, "enrich_merge_requests", AsyncMock()) as mock_enrich,
+        ):
+            result = await client.fetch_single_merge_request(123, 2)
+
+        assert result == fetched
+        mock_get.assert_awaited_once_with(123, 2)
+        mock_enrich.assert_not_called()
+
+    async def test_fetch_single_merge_request_applies_enrichment_flags(
+        self, client: GitLabClient
+    ) -> None:
+        fetched = _merge_request()
+        enriched = {**fetched, "__comments": []}
+        with (
+            patch.object(client, "get_merge_request", AsyncMock(return_value=fetched)),
+            patch.object(
+                client,
+                "enrich_merge_requests",
+                AsyncMock(return_value=[enriched]),
+            ) as mock_enrich,
+        ):
+            result = await client.fetch_single_merge_request(
+                123,
+                2,
+                include_comments=True,
+                enrich_with_review_discussion=True,
+            )
+
+        assert result == enriched
+        mock_enrich.assert_awaited_once_with(
+            [fetched],
+            enrich_with_commits=False,
+            enrich_with_review_discussion=True,
+            include_comments=True,
+            max_concurrent=1,
+        )
