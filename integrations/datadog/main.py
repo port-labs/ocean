@@ -104,6 +104,21 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
+@ocean.on_incremental_resync(ObjectKind.TEAM)
+async def on_incremental_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListTeamOptions.from_resource_config(
+        cast(TeamResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for teams in _resync_across_orgs(
+        lambda client: TeamExporter(client).get_changed_teams(
+            options, incremental_cursor=cursor
+        ),
+        context="Team exporter",
+    ):
+        yield teams
+
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users in _resync_across_orgs(
@@ -221,6 +236,23 @@ async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield entities
 
 
+@ocean.on_incremental_resync(ObjectKind.CATALOG_ENTITY)
+async def on_incremental_resync_catalog_entities(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListCatalogEntityOptions.from_resource_config(
+        cast(CatalogEntityResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for entities in _resync_across_orgs(
+        lambda client: CatalogEntityExporter(client).get_changed_entities(
+            options, incremental_cursor=cursor
+        ),
+        context="Catalog entity exporter",
+    ):
+        yield entities
+
+
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListServiceMetricOptions.from_resource_config(
@@ -254,6 +286,21 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for roles in _resync_across_orgs(
         lambda client: RoleExporter(client).get_paginated_resources(options),
+        context="Role exporter",
+    ):
+        yield roles
+
+
+@ocean.on_incremental_resync(ObjectKind.ROLE)
+async def on_incremental_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListRoleOptions.from_resource_config(
+        cast(RoleResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for roles in _resync_across_orgs(
+        lambda client: RoleExporter(client).get_changed_roles(
+            options, incremental_cursor=cursor
+        ),
         context="Role exporter",
     ):
         yield roles

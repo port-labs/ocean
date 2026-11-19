@@ -1,3 +1,6 @@
+import asyncio
+from datetime import datetime
+from itertools import batched
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -5,11 +8,13 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
+from datadog.incremental import CHANGED_CATALOG_ENTITIES_AUDIT_QUERY
 
 if TYPE_CHECKING:
     from datadog.overrides import CatalogEntityResourceConfig
 
 SCHEMA_ENRICHMENT_KEY = "__schema"
+CHANGED_ENTITIES_FETCH_BATCH_SIZE = 10
 
 
 class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
@@ -86,3 +91,45 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
                 f"No catalog entities returned for kinds {sorted(pending_kinds)}; Datadog "
                 "matches kind names exactly and returns an empty page for one it does not know"
             )
+
+    async def get_changed_entities(
+        self, options: ListCatalogEntityOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get catalog entities created or modified since ``incremental_cursor``, found
+        through audit events. Deleted entities, and entities of kinds outside
+        ``entity_kinds``, come back empty and are left out. Discovered entities have no
+        audit events, so only a full resync picks up newly discovered ones.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        url = f"{self.client.api_url}/api/v2/catalog/entity"
+        # Same parameters as the full resync, so entities keep one shape
+        params: dict[str, Any] = {"include": "schema"}
+        if options.include_discovered:
+            params["includeDiscovered"] = "true"
+        if options.entity_kinds:
+            params["filter[kind]"] = options.entity_kinds
+
+        refs = await self._changed_asset_ids(
+            CHANGED_CATALOG_ENTITIES_AUDIT_QUERY, incremental_cursor
+        )
+
+        for batch in batched(refs, CHANGED_ENTITIES_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(self._get_changed_entities(url, params, ref) for ref in batch)
+            )
+            if entities := [entity for result in results for entity in result]:
+                yield entities
+
+    async def _get_changed_entities(
+        self, url: str, params: dict[str, Any], ref: str
+    ) -> list[dict[str, Any]]:
+        """Get the entities matching *ref*, found through audit events; empty if the
+        entity was deleted or its kind is filtered out."""
+        # Datadog ignores unknown filters and returns every entity, so the filter
+        # name must be exactly `filter[ref]`
+        response = await self.client.send_api_request(
+            url, params={**params, "filter[ref]": ref}
+        )
+        if not response.get("data"):
+            return []
+        return attach_schemas(response)
