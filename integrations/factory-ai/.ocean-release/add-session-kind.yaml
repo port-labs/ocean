@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added session kind sync from the Factory Droid Sessions API
