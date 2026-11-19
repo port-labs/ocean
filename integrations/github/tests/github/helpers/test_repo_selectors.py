@@ -145,7 +145,20 @@ class TestPushedSinceSelection:
         options = repo_exporter.get_paginated_resources.call_args.args[0]
         assert options["pushed_since"] == PUSHED_SINCE
 
-    async def test_exact_selector_skips_repos_not_pushed_since(self) -> None:
+    @pytest.mark.parametrize(
+        "pushed_since, expected",
+        [
+            (PUSHED_SINCE, [("pushed", "release"), ("no-push-time", "main")]),
+            (
+                None,
+                [("pushed", "release"), ("idle", "main"), ("no-push-time", "main")],
+            ),
+        ],
+        ids=["incremental", "full-resync"],
+    )
+    async def test_exact_selector_skips_repos_not_pushed_since(
+        self, pushed_since: datetime | None, expected: list[tuple[str, str]]
+    ) -> None:
         selector = RepositorySourceModel.parse_obj(
             {
                 "repos": [
@@ -181,8 +194,8 @@ class TestPushedSinceSelection:
             results = [
                 (name, branch)
                 async for name, branch, _ in strategy.select_repos(
-                    selector, repo_exporter, "test-org", "Organization", PUSHED_SINCE
+                    selector, repo_exporter, "test-org", "Organization", pushed_since
                 )
             ]
 
-        assert results == [("pushed", "release"), ("no-push-time", "main")]
+        assert results == expected

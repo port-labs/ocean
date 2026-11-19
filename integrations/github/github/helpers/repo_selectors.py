@@ -33,7 +33,7 @@ class RepoListSelector(Protocol):
 def _pushed_since(repo_obj: Dict[str, Any], pushed_since: Optional[datetime]) -> bool:
     """True when there is no filter, or the repo was pushed since then (a missing `pushed_at` counts as pushed)."""
     pushed_at = repo_obj.get("pushed_at")
-    if not pushed_at:
+    if pushed_since is None or not pushed_at:
         return True
     return convert_str_to_utc_datetime(pushed_at) >= pushed_since
 
