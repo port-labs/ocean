@@ -28,9 +28,19 @@ class UserResourceConfig(ResourceConfig):
     )
 
 
+class SessionResourceConfig(ResourceConfig):
+    kind: Literal["session"] = Field(
+        description="Factory Droid session resource kind",
+        title="Session",
+    )
+
+
 class FactoryAIPortAppConfig(PortAppConfig):
     resources: list[
-        EnvironmentResourceConfig | ComputerResourceConfig | UserResourceConfig
+        EnvironmentResourceConfig
+        | ComputerResourceConfig
+        | UserResourceConfig
+        | SessionResourceConfig
     ] = Field(
         description="Resources for factory-ai",
         title="Resources",
