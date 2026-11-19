@@ -56,5 +56,64 @@
       "default": "https://api.factory.ai",
       "description": "Base URL for the Factory Public API. Defaults to https://api.factory.ai."
     }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "execute_droid",
+      "icon": "DefaultBlueprint",
+      "description": "Start a headless Factory Droid turn via POST /api/v0/droid/execute. Target an environment (fresh computer + session), an existing computer (new session), or an existing session (follow-up). Returns 202 when the turn is accepted — not when the assistant finishes. Factory has no outbound webhooks, so the Port run completes after acceptance with sessionId, messageId, computerId, and app links. To detect turn completion, poll GET /api/v0/sessions/{sessionId} until status is idle (do not treat the first idle right after execute as done) and confirm GET /api/v0/sessions/{sessionId}/messages contains an assistant message after the returned messageId.",
+      "inputs": [
+        {
+          "name": "prompt",
+          "title": "Prompt",
+          "type": "string",
+          "description": "User message / instructions for the Droid turn",
+          "required": true
+        },
+        {
+          "name": "targetKind",
+          "title": "Target kind",
+          "type": "string",
+          "description": "Where to run the turn: environment (provision a fresh computer from the environment's active build and start a session), computer (start a new session on an existing computer), or session (send a follow-up on an existing session).",
+          "required": true
+        },
+        {
+          "name": "environmentId",
+          "title": "Environment ID",
+          "type": "string",
+          "description": "Required when targetKind is environment. Ignored (must be omitted) for computer and session targets.",
+          "required": false
+        },
+        {
+          "name": "computerId",
+          "title": "Computer ID",
+          "type": "string",
+          "description": "Required when targetKind is computer. Ignored (must be omitted) for environment and session targets.",
+          "required": false
+        },
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "Required when targetKind is session. Ignored (must be omitted) for environment and computer targets. Concurrent execute_droid runs targeting the same sessionId are serialized.",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model",
+          "type": "string",
+          "description": "Optional model for a new session. Applies only when targetKind is environment or computer; ignored for session follow-ups.",
+          "required": false
+        },
+        {
+          "name": "reasoningEffort",
+          "title": "Reasoning effort",
+          "type": "string",
+          "description": "Optional reasoning effort for a new session: none, dynamic, off, minimal, low, medium, high, xhigh, or max. Applies only when targetKind is environment or computer; ignored for session follow-ups.",
+          "required": false
+        }
+      ]
+    }
   ]
 }
