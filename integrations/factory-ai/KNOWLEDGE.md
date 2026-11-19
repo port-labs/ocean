@@ -30,3 +30,13 @@
 - Page size: `limit` 1–100 (integration defaults to 100)
 - No get-by-id endpoint; `get_resource` scans list pages
 - List contract documents id/email/createdAt/metadata (+ optional names/lastSignInAt); role/status appear on invite responses and are retained when present
+
+### session
+
+- Selected-orgs feature (`403` when the org lacks Sessions API access)
+- List is **cursor-paginated** (`{ sessions: [...], pagination: { hasMore, nextCursor } }`) via `/api/v0/sessions`
+- Page size: `limit` 1–100 (integration defaults to 100); optional `computerId` filter
+- Get-by-id: `GET /api/v0/sessions/{sessionId}` (optional `computerId` query)
+- Identifier field is `sessionId` (not `id`); `parent_session_id` is snake_case in the OpenAPI contract
+- Relations available on the payload: `computerId` → computer, `parent_session_id` → parent session
+- No actor / environment fields on list or get — environment is only reachable via the related computer
