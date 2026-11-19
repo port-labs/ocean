@@ -60,6 +60,9 @@ async def process_in_queue(
     :param concurrency: An integer specifying the concurrent workers count
     :return: A list of result objects
     """
+    if concurrency < 1:
+        raise ValueError("concurrency must be at least 1")
+
     queue: Queue[Any | None] = Queue(maxsize=concurrency * 2)
     tasks: list[Task[Any]] = []
     processing_results: list[T] = []
