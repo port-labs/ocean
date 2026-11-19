@@ -1,0 +1,66 @@
+# =============================================================================
+# Example: link Sonatype applications to your existing Port "service" blueprint
+# =============================================================================
+#
+# This is NOT applied automatically. It is a copy-paste example because not
+# every Port account has a "service" blueprint, and the way you match a Sonatype
+# application to a service depends on your naming conventions.
+#
+# There are two parts: (1) a one-time blueprint change, (2) a mapping change.
+#
+# -----------------------------------------------------------------------------
+# PART 1 — add a "service" relation to the sonatypeApplication blueprint
+# -----------------------------------------------------------------------------
+# In Port: Builder -> Blueprints -> "Sonatype Application" -> New Relation, or
+# add this to the sonatypeApplication entry in .port/resources/blueprints.json:
+#
+#   "relations": {
+#     "organization": { ... existing ... },
+#     "service": {
+#       "title": "Service",
+#       "target": "service",     // <- your service blueprint identifier
+#       "required": false,
+#       "many": false
+#     }
+#   }
+#
+# -----------------------------------------------------------------------------
+# PART 2 — map the relation during sync
+# -----------------------------------------------------------------------------
+# Replace the "application" resource block in your data source mapping (Builder
+# -> Data Sources -> Sonatype Lifecycle) with the version below. It adds the
+# `service` relation. The default assumes your service identifier equals the
+# Sonatype application publicId — adjust the JQ on the last line to match how
+# your services are named.
+
+resources:
+  - kind: application
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sonatypeApplication"'
+          properties:
+            publicId: .publicId
+            contactUserName: .contactUserName
+            tags: '[.applicationTags[]?.tagId] + [.categories[]?.name] | map(select(. != null))'
+          relations:
+            organization: .organizationId
+            # --- Matching strategies (pick ONE and delete the others) ---
+            # 1) Service identifier IS the Sonatype publicId:
+            service: .publicId
+            # 2) Service identifier is a transformed publicId (example: strip a prefix):
+            # service: '.publicId | sub("^svc-"; "")'
+            # 3) publicId with a suffix your services use:
+            # service: '.publicId + "-service"'
+
+# -----------------------------------------------------------------------------
+# Reverse option: relate FROM your service TO the Sonatype application instead.
+# -----------------------------------------------------------------------------
+# If you would rather add the relation on your own "service" blueprint, add a
+# relation `sonatypeApplication` (target: sonatypeApplication) there and set it
+# from whichever data source owns your services (e.g. your Git/Backstage sync),
+# mapping to the Sonatype application's internal id (the `.id` field).
