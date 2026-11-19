@@ -2,45 +2,44 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FactoryModel(BaseModel):
     """Base for Factory Public API payloads.
 
-    ``extra = allow`` keeps unknown fields so Port mappings stay forward-compatible.
-    ``dict(by_alias=True, exclude_none=True)`` restores the API's camelCase
+    ``extra="allow"`` keeps unknown fields so Port mappings stay forward-compatible.
+    ``model_dump(by_alias=True, exclude_none=True)`` restores the API's camelCase
     shape and drops absent optional fields so JQ does not see invented nulls.
     """
 
-    class Config:
-        extra = "allow"
-        allow_population_by_field_name = True
-        frozen = True
+    model_config = ConfigDict(
+        extra="allow",
+        populate_by_name=True,
+        frozen=True,
+    )
 
     def to_raw_item(self) -> dict[str, Any]:
-        return self.dict(by_alias=True, exclude_none=True)
+        return self.model_dump(by_alias=True, exclude_none=True)
 
 
 class FactoryListOptions(BaseModel):
     """Base for list-endpoint query options.
 
-    Declare optional params with camelCase ``Field(alias=...)``. ``None`` and
-    ``False`` are omitted; ``True`` becomes ``"true"``.
+    Declare optional params with camelCase ``Field(alias=...)``. Serialization
+    uses pydantic ``model_dump(by_alias=True, exclude_none=True)`` so aliases and
+    ``None`` omission come from the model config; booleans stay intentional
+    (``False`` → ``"false"``, ``True`` → ``"true"``).
     """
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
     def to_query_params(self) -> dict[str, str]:
-        params: dict[str, str] = {}
-        for name, field in self.__fields__.items():
-            value = getattr(self, name)
-            if value is None or value is False:
-                continue
-            key = field.alias or name
-            params[key] = "true" if value is True else str(value)
-        return params
+        raw = self.model_dump(by_alias=True, exclude_none=True)
+        return {
+            key: str(value).lower() if isinstance(value, bool) else str(value)
+            for key, value in raw.items()
+        }
 
 
 class FactoryPagination(FactoryModel):

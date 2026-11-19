@@ -30,7 +30,7 @@ _MIN_COMPUTER = {
 @pytest.mark.asyncio
 async def test_computer_exporter_lists_via_typed_response() -> None:
     client_mock = MagicMock()
-    response = ListComputersResponse.parse_obj({"computers": [_MIN_COMPUTER]})
+    response = ListComputersResponse.model_validate({"computers": [_MIN_COMPUTER]})
     client_mock.get = AsyncMock(return_value=response)
     exporter = ComputerExporter(client_mock)
 
@@ -53,7 +53,7 @@ async def test_computer_exporter_lists_via_typed_response() -> None:
 async def test_computer_exporter_forwards_list_query_params() -> None:
     client_mock = MagicMock()
     client_mock.get = AsyncMock(
-        return_value=ListComputersResponse.parse_obj({"computers": []})
+        return_value=ListComputersResponse.model_validate({"computers": []})
     )
     exporter = ComputerExporter(client_mock)
     options = ListComputerOptions(
@@ -80,7 +80,9 @@ async def test_computer_exporter_forwards_list_query_params() -> None:
 @pytest.mark.asyncio
 async def test_computer_exporter_get_resource() -> None:
     client_mock = MagicMock()
-    client_mock.get_or_none = AsyncMock(return_value=Computer.parse_obj(_MIN_COMPUTER))
+    client_mock.get_or_none = AsyncMock(
+        return_value=Computer.model_validate(_MIN_COMPUTER)
+    )
     exporter = ComputerExporter(client_mock)
 
     result = await exporter.get_resource(GetComputerOptions(computer_id="comp-1"))

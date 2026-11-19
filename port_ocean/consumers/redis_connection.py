@@ -46,7 +46,8 @@ class RedisConnectionHelper:
         kwargs: dict[str, Any] = {
             "decode_responses": True,
             "legacy_responses": True,
-            "socket_timeout": None,
+            "socket_timeout": settings.socket_timeout_seconds,
+            "socket_connect_timeout": settings.socket_connect_timeout_seconds,
         }
         if settings.username:
             kwargs["username"] = settings.username
