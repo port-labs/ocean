@@ -8,7 +8,10 @@ import pytest
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters import UserExporter
-from datadog.core.exporters.user_exporter import GetUserOptions
+from datadog.core.exporters.user_exporter import (
+    CHANGED_USERS_FETCH_BATCH_SIZE,
+    GetUserOptions,
+)
 from datadog.incremental import CHANGED_USERS_AUDIT_QUERY
 
 
@@ -171,6 +174,26 @@ async def test_get_changed_users_follows_cursor_and_dedupes(
     assert mock_get_resource.await_count == 3
     second_body = mock_request.call_args_list[1].kwargs["json_data"]
     assert second_body["page"] == {"limit": MAX_PAGE_SIZE, "cursor": "next"}
+
+
+@pytest.mark.asyncio
+async def test_get_changed_users_yields_one_batch_per_concurrent_fetch(
+    mock_datadog_client: DatadogClient,
+    audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, _ = audit_mocks
+    user_ids = [str(i) for i in range(CHANGED_USERS_FETCH_BATCH_SIZE + 1)]
+    mock_request.return_value = _audit_page(*(_audit_event(i) for i in user_ids))
+
+    batches = [
+        batch
+        async for batch in UserExporter(mock_datadog_client).get_changed_users(
+            incremental_cursor=SINCE
+        )
+    ]
+
+    assert [len(batch) for batch in batches] == [CHANGED_USERS_FETCH_BATCH_SIZE, 1]
+    assert [user for batch in batches for user in batch] == [_user(i) for i in user_ids]
 
 
 @pytest.mark.asyncio

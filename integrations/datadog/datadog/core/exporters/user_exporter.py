@@ -1,5 +1,7 @@
+import asyncio
 from datetime import datetime
 from http import HTTPStatus
+from itertools import batched
 from typing import TYPE_CHECKING, Any
 
 from httpx import HTTPStatusError
@@ -18,6 +20,8 @@ from datadog.incremental import (
 
 if TYPE_CHECKING:
     from datadog.overrides import UserResourceConfig
+
+CHANGED_USERS_FETCH_BATCH_SIZE = 10
 
 
 class GetUserOptions(GetOptions["UserResourceConfig"]):
@@ -51,22 +55,24 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
             excluded_path_prefix=ROLES_API_PATH_PREFIX,
         )
 
-        users: list[dict[str, Any]] = []
-        for user_id in user_ids:
-            try:
-                user = await self.get_resource(GetUserOptions(resource_id=user_id))
-            except HTTPStatusError as e:
-                if e.response.status_code != HTTPStatus.NOT_FOUND:
-                    raise
-                logger.warning(
-                    f"Skipping user '{user_id}' from audit events; it no longer exists in Datadog"
-                )
-                continue
-            if user:
-                users.append(user)
+        for batch in batched(user_ids, CHANGED_USERS_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(self._get_changed_user(user_id) for user_id in batch)
+            )
+            if users := [user for user in results if user]:
+                yield users
 
-        if users:
-            yield users
+    async def _get_changed_user(self, user_id: str) -> dict[str, Any] | None:
+        """Get a user found through audit events, or None if it was deleted since."""
+        try:
+            return await self.get_resource(GetUserOptions(resource_id=user_id))
+        except HTTPStatusError as e:
+            if e.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"Skipping user '{user_id}' from audit events; it no longer exists in Datadog"
+            )
+            return None
 
     async def get_resource(self, options: GetUserOptions) -> dict[str, Any] | None:
         """Get a single user by ID.
