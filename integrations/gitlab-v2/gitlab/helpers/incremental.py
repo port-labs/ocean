@@ -59,11 +59,14 @@ LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
 )
 
 
-def build_incremental_projects_params(
+def build_project_list_params(
     include_only_active_projects: bool | None,
-    cursor: datetime,
+    cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects`` on an incremental run (``last_activity_after``)."""
+    """Query params for ``GET /projects``.
+
+    With a cursor, adds ``last_activity_after``; without one, the base params pass through.
+    """
     return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(
         build_project_params(include_only_active_projects=include_only_active_projects),
         cursor,

@@ -14,7 +14,7 @@ from gitlab.helpers.incremental import (
     build_incremental_merge_request_params,
     build_incremental_pipeline_params,
     build_incremental_project_updated_params,
-    build_incremental_projects_params,
+    build_project_list_params,
 )
 
 
@@ -40,13 +40,19 @@ def _options() -> IssueOptions:
 # --- Projects -----------------------------------------------------------------
 
 
-def test_incremental_projects_sets_last_activity_after(
+def test_project_list_params_sets_last_activity_after(
     no_visibility_params: None,
 ) -> None:
-    assert build_incremental_projects_params(True, CURSOR) == {
+    assert build_project_list_params(True, CURSOR) == {
         "active": True,
         "last_activity_after": CURSOR.isoformat(),
     }
+
+
+def test_project_list_params_without_cursor_is_base_params(
+    no_visibility_params: None,
+) -> None:
+    assert build_project_list_params(True, None) == {"active": True}
 
 
 def test_incremental_project_updated_sets_updated_after_and_order(

@@ -33,7 +33,7 @@ from gitlab.helpers.incremental import (
     build_incremental_merge_request_params,
     build_incremental_pipeline_params,
     build_incremental_project_updated_params,
-    build_incremental_projects_params,
+    build_project_list_params,
     resync_plugins_incremental,
     resync_skills_incremental,
 )
@@ -180,13 +180,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    params = (
-        build_incremental_projects_params(include_only_active_projects, sync_cursor)
-        if sync_cursor is not None
-        else build_project_params(
-            include_only_active_projects=include_only_active_projects
-        )
-    )
+    params = build_project_list_params(include_only_active_projects, sync_cursor)
     async for projects_batch in client.get_projects(
         params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
