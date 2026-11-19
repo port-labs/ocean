@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Keep resource kind in the lake-write request body instead of the URL path so kinds containing "?" are not rejected at the ingest edge.
