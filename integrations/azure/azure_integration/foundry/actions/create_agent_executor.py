@@ -78,8 +78,9 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
                 status_label=CREATE_FAILED_STATUS_LABEL,
             )
 
-        logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         agent_id = str(agent.get("id") or agent.get("name") or inputs.name)
+
+        logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         await self.register_entity(
             ObjectKind.FOUNDRY_AGENT,
             enrich_with_project(agent, project_endpoint=inputs.projectEndpoint),

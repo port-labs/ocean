@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 
 from azure_integration.foundry.actions.create_agent_executor import CreateAgentInputs
+from azure_integration.foundry.actions.invoke_agent_executor import InvokeAgentInputs
 from azure_integration.foundry.actions.update_agent_executor import UpdateAgentInputs
 from azure_integration.foundry.helpers.agent_api import (
     foundry_features_header,
@@ -160,3 +161,18 @@ def test_latest_agent_definition(
 )
 def test_foundry_features_header(kind: str, expected: dict[str, str] | None) -> None:
     assert foundry_features_header(kind) == expected
+
+
+def test_build_responses_invoke_uses_protocol_path() -> None:
+    inputs = InvokeAgentInputs(
+        projectArmId=(
+            "/subscriptions/s/resourceGroups/rg/providers/"
+            "Microsoft.CognitiveServices/accounts/acct/projects/p"
+        ),
+        agentId="Omby-agent",
+        input="hello",
+    )
+    path, body = inputs.build_responses_invoke("conv_123")
+    assert path == "agents/Omby-agent/endpoint/protocols/openai/responses"
+    assert body["input"] == "hello"
+    assert body["conversation"] == "conv_123"

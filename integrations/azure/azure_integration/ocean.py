@@ -30,8 +30,17 @@ from azure_integration.webhook.webhook_processors.resource_event_processor impor
     AzureResourceEventProcessor,
 )
 from azure_integration.foundry.actions.registry import register_action_executors
-from azure_integration.foundry.clients.client_factory import clear_client_cache
+from azure_integration.foundry.clients.client_factory import (
+    clear_client_cache,
+    create_webhook_client_for_account,
+)
+from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
+from azure_integration.foundry.kinds import DEFAULT_FOUNDRY_ARM_API_VERSION
 import azure_integration.foundry.resync  # noqa: F401
+from azure_integration.foundry.webhook_processors.conversation_webhook_processor import (
+    WEBHOOK_PATH,
+    ConversationWebhookProcessor,
+)
 from port_ocean.utils.signal import signal_handler
 
 
@@ -208,6 +217,18 @@ async def cloud_event_validation_middleware_handler(
     return await call_next(request)
 
 
+async def _discover_foundry_account_bases() -> set[str]:
+    hosts: set[str] = set()
+    async for batch in ProjectExporter().get_paginated_resources(
+        api_version=DEFAULT_FOUNDRY_ARM_API_VERSION
+    ):
+        for raw in batch:
+            host = raw.get("accountEndpointHost")
+            if host:
+                hosts.add(f"https://{host}")
+    return hosts
+
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Setting up credentials for Azure client")
@@ -227,5 +248,36 @@ async def on_start() -> None:
     register_action_executors()
     signal_handler.register(clear_client_cache)
 
+    async def _shutdown_foundry_streams() -> None:
+        from azure_integration.foundry.stream_manager import get_stream_manager
+
+        await get_stream_manager().shutdown()
+
+    signal_handler.register(_shutdown_foundry_streams)
+
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping Foundry webhook registration because webhooks are disabled"
+        )
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "Skipping Foundry webhook registration: set OCEAN__BASE_URL so Foundry "
+            "can deliver response.* events"
+        )
+        return
+
+    try:
+        hosts = await _discover_foundry_account_bases()
+    except Exception as error:
+        logger.warning(f"Foundry discovery failed at startup (continuing): {error}")
+        return
+
+    for account_base in hosts:
+        await create_webhook_client_for_account(account_base).upsert_webhook(base_url)
+
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, ConversationWebhookProcessor)

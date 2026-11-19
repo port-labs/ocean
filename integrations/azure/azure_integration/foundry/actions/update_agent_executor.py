@@ -51,7 +51,6 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = UpdateAgentInputs.from_execution_properties(run.execution_properties)
-        patch = inputs.to_api_body()
 
         if not any(
             (
@@ -64,6 +63,8 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                 "At least one field must be provided to update",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             )
+
+        patch = inputs.to_api_body()
 
         await ocean.port_client.post_run_log(
             run,

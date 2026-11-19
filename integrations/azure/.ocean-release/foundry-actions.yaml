@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add Azure AI Foundry invoke_agent and invoke_model with Port toolbox (Port/GitHub MCP) wired on invoke (CustomKeys + toolbox, enablePortMcp, optional gitAccessToken/gitProvider/toolboxName), webhooks, streaming, catalog enrichment, and reportInvocationStatus. create_agent/update_agent remain agent CRUD only.
