@@ -33,9 +33,6 @@ class LifecycleClient:
         self._lifecycle_attributes: LifecycleAttributes | None = None
         self._lifecycle_auth = auth
 
-    async def _post(self, url: str, body: dict[str, Any]) -> None:
-        await self._lifecycle_http_client.do_post(url, json=body)
-
     async def _lifecycle_base_url(self) -> str:
         return f"{self._lifecycle_auth.api_url.rstrip('/')}/lifecycle"
 
@@ -78,7 +75,9 @@ class LifecycleClient:
             body["kind_identifiers"] = kind_identifiers
 
         logger.info(f"Notifying lifecycle API resync started, resync_id={resync_id}")
-        await self._post(await self._resync_url(resync_id), body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def notify_resync_finished(
         self, resync_id: str, integration_id: str, integration_type: str
@@ -91,21 +90,27 @@ class LifecycleClient:
             ocean_version=__version__,
         )
         logger.info(f"Notifying lifecycle API resync finished, resync_id={resync_id}")
-        await self._post(await self._resync_url(resync_id), body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def notify_resync_failed(
         self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("failed")
         logger.info(f"Notifying lifecycle API resync failed, resync_id={resync_id}")
-        await self._post(await self._resync_url(resync_id), body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def notify_resync_aborted(
         self, resync_id: str, integration_id: str, integration_type: str
     ) -> None:
         body = self._build_body("aborted")
         logger.info(f"Notifying lifecycle API resync aborted, resync_id={resync_id}")
-        await self._post(await self._resync_url(resync_id), body)
+        await self._lifecycle_http_client.do_post(
+            await self._resync_url(resync_id), json=body
+        )
 
     async def get_resync_status(self, resync_id: str) -> str | None:
         logger.debug(f"Polling lifecycle API resync status, resync_id={resync_id}")
@@ -154,7 +159,9 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=started granularity={granularity.value}"
         )
-        await self._post(await self._granular_url(event_id, granularity), body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )
 
     async def notify_finished(
         self,
@@ -169,23 +176,23 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=finished granularity={granularity.value}"
         )
-        await self._post(await self._granular_url(event_id, granularity), body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )
 
     async def notify_failed(
         self,
         event_id: str,
         granularity: GranularityType,
         kind_identifier: str | None = None,
-        error_message: str | None = None,
     ) -> None:
-        extra: dict[str, Any] = {}
-        if error_message:
-            extra["error_message"] = error_message
-        body = self._build_granular_body("failed", kind_identifier, **extra)
+        body = self._build_granular_body("failed", kind_identifier)
         logger.info(
             f"Notifying lifecycle API for status=failed granularity={granularity.value}"
         )
-        await self._post(await self._granular_url(event_id, granularity), body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )
 
     async def notify_aborted(
         self,
@@ -197,4 +204,6 @@ class LifecycleClient:
         logger.info(
             f"Notifying lifecycle API for status=aborted granularity={granularity.value}"
         )
-        await self._post(await self._granular_url(event_id, granularity), body)
+        await self._lifecycle_http_client.do_post(
+            await self._granular_url(event_id, granularity), json=body
+        )

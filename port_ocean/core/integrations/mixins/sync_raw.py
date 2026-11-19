@@ -73,8 +73,8 @@ def _kind_failure_error_message(errors: list[Exception]) -> str | None:
     """Build a user-facing extract failure message for a failed kind.
 
     Resync generators wrap leaf failures in ExceptionGroup / OceanAbortException.
-    Prefer the leaf ``__cause__`` (the real extract error) so failed-entities UI
-    shows something actionable instead of the ExceptionGroup summary.
+    Prefer the leaf ``__cause__`` (the real extract error) so the Event Log and
+    Explain AI show something actionable instead of the ExceptionGroup summary.
     """
     if not errors:
         return None
@@ -99,6 +99,21 @@ def _kind_failure_error_message(errors: list[Exception]) -> str | None:
     if not messages:
         return str(errors[0])
     return "; ".join(messages)
+
+
+def _log_kind_fetch_failure(kind_identifier: str, errors: list[Exception]) -> None:
+    """Write the kind's extract error to the integration Event Log.
+
+    Fetch has no entities, so this ERROR extract log (with ``kind_identifier`` and
+    the resync id as ``event_id`` from the logger context) is the source for the
+    sync-status fetch failures UI and Explain AI. Do not flag ``failed_entity``.
+    """
+    message = _kind_failure_error_message(errors) or "kind terminal failure"
+    with logger.contextualize(
+        etl_phase=ETLPhase.EXTRACT,
+        kind_identifier=kind_identifier,
+    ):
+        logger.error(f"Fetch failed: {message}")
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
@@ -941,11 +956,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if dsp_enabled and resync_id:
                 if ocean.metrics.sync_state == SyncState.FAILED:
+                    _log_kind_fetch_failure(resource_kind_id, kind_results[1])
                     await ocean.app.lifecycle_client.notify_failed(
                         event_id=resync_id,
                         granularity=GranularityType.KIND,
                         kind_identifier=resource_kind_id,
-                        error_message=_kind_failure_error_message(kind_results[1]),
                     )
                 else:
                     await ocean.app.lifecycle_client.notify_finished(
