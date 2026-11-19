@@ -65,6 +65,12 @@ def _forget(run_id: str, response_id: str = "") -> None:
         _completed_response_ids.pop(response_id, None)
 
 
+def _is_claimed(run_id: str, response_id: str = "") -> bool:
+    return run_id in _completed_invoke_run_ids or (
+        bool(response_id) and response_id in _completed_response_ids
+    )
+
+
 def is_response_completion_claimed(response_id: str) -> bool:
     return bool(response_id) and response_id in _completed_response_ids
 
@@ -201,6 +207,28 @@ async def register_catalog_response_from_body(
     return await register_catalog_rows(ObjectKind.FOUNDRY_RESPONSE, [row], run)
 
 
+async def _fail_run_missing_endpoint(run: IntegrationRun, *, response_id: str) -> bool:
+    logger.error(
+        f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "
+        f"(response {response_id})"
+    )
+    async with _completion_lock:
+        if _is_claimed(run.id, response_id):
+            return False
+        _remember(run.id, response_id)
+    try:
+        await ocean.port_client.report_run_completed(
+            run, False, status_label=FAILED_STATUS_LABEL, should_raise=True
+        )
+        if isinstance(run, WorkflowNodeRun):
+            run.status = WorkflowNodeRunStatus.COMPLETED
+    except Exception:
+        async with _completion_lock:
+            _forget(run.id, response_id)
+        raise
+    return True
+
+
 async def complete_invoke_run_for_response(
     run: IntegrationRun,
     *,
@@ -215,10 +243,7 @@ async def complete_invoke_run_for_response(
 ) -> bool:
     """Attach usage/output and close the wf run. Returns False if already terminal."""
     async with _completion_lock:
-        if (
-            run.id in _completed_invoke_run_ids
-            or response_id in _completed_response_ids
-        ):
+        if _is_claimed(run.id, response_id):
             return False
         if not ocean.port_client.is_run_in_progress(run):
             _remember(run.id, response_id)
@@ -236,28 +261,7 @@ async def complete_invoke_run_for_response(
     project_endpoint = _project_endpoint_from_run(run)
 
     if response_body is None and not project_endpoint:
-        logger.error(
-            f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "
-            f"(response {response_id})"
-        )
-        async with _completion_lock:
-            if (
-                run.id in _completed_invoke_run_ids
-                or response_id in _completed_response_ids
-            ):
-                return False
-            _remember(run.id, response_id)
-        try:
-            await ocean.port_client.report_run_completed(
-                run, False, status_label=FAILED_STATUS_LABEL, should_raise=True
-            )
-            if isinstance(run, WorkflowNodeRun):
-                run.status = WorkflowNodeRunStatus.COMPLETED
-        except Exception:
-            async with _completion_lock:
-                _forget(run.id, response_id)
-            raise
-        return True
+        return await _fail_run_missing_endpoint(run, response_id=response_id)
 
     display_body = (
         await response_body_for_catalog(
@@ -288,10 +292,7 @@ async def complete_invoke_run_for_response(
         run.output = {**(prior if isinstance(prior, dict) else {}), **slim}
 
     async with _completion_lock:
-        if (
-            run.id in _completed_invoke_run_ids
-            or response_id in _completed_response_ids
-        ):
+        if _is_claimed(run.id, response_id):
             return False
         _remember(run.id, response_id)
 
@@ -345,14 +346,13 @@ async def complete_invoke_run_from_webhook(
 ) -> bool:
     if is_response_completion_claimed(response_id):
         return False
-    success = event_type == "response.completed"
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
         response_body=None,
-        success=success,
+        success=event_type == "response.completed",
         source=f"Foundry webhook {event_type}",
-        register_catalog=success,
+        register_catalog=event_type == "response.completed",
         post_answer_log=True,
     )
 
