@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.1 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.7
+
+
+## 0.8.0 (2026-11-18)
+
+
+### Features
+
+- Added incremental sync for Datadog SLO histories, refreshing the current time window (and the window that just closed) for all SLOs
+
+
 ## 0.7.18 (2026-11-17)
 
 
