@@ -170,9 +170,11 @@ jobs:
               . as $all |
               ($all | length) as $len |
               10 as $count |
-              ((($len + $count - 1) / $count) | floor) as $size |
-              ($shard * $size) as $start |
-              $all[$start:$start + $size][]
+              # Balanced partition: each shard gets floor(n/k) or ceil(n/k),
+              # so trailing shards are not left empty when n % k != 0.
+              ((($shard * $len) / $count) | floor) as $start |
+              (((($shard + 1) * $len) / $count) | floor) as $end |
+              $all[$start:$end][]
             '
           )
 
