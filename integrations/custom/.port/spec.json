@@ -226,9 +226,9 @@
     {
       "name": "initialOffset",
       "required": false,
-      "type": "number",
-      "default": 0,
-      "description": "Starting offset for offset-based pagination (e.g., 0 or 1). Defaults to 0. Use 1 for APIs that are 1-based (for example some Orca discovery samples that start at start_at_index=1).",
+      "type": "string",
+      "default": "0",
+      "description": "Starting offset for offset-based pagination (e.g., \"0\" or \"1\"). Defaults to \"0\". Use \"1\" for 1-based APIs. Typed as string like pageSize/startPage; Ocean config field types do not support number.",
       "dependencies": [
         {
           "on": "paginationType",
