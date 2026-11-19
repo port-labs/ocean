@@ -29,11 +29,9 @@ from gitlab.helpers.utils import (
 )
 from gitlab.helpers.incremental import (
     build_incremental_deployment_params,
-    build_incremental_issue_params,
-    build_incremental_merge_request_params,
-    build_incremental_pipeline_params,
     build_incremental_project_updated_params,
-    build_project_list_params,
+    LAST_ACTIVITY_AFTER_INCREMENTAL,
+    UPDATED_AFTER_INCREMENTAL,
     resync_plugins_incremental,
     resync_skills_incremental,
 )
@@ -180,7 +178,11 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
-    params = build_project_list_params(include_only_active_projects, sync_cursor)
+    params = build_project_params(
+        include_only_active_projects=include_only_active_projects
+    )
+    if sync_cursor is not None:
+        params = LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(params, sync_cursor)
     async for projects_batch in client.get_projects(
         params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
@@ -218,10 +220,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         non_archived=selector.non_archived,
         state=selector.state,
     )
-    if sync_cursor is None:
-        params = build_issue_params(options, selector.updated_after_datetime)
-    else:
-        params = build_incremental_issue_params(options, sync_cursor)
+    params = build_issue_params(options, selector.updated_after_datetime)
+    if sync_cursor is not None:
+        params = UPDATED_AFTER_INCREMENTAL.merge_params(params, sync_cursor)
 
     async for groups_batch in client.get_groups(
         params=build_group_params(
@@ -249,10 +250,9 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if selector.api_query_params
         else None
     )
-    if sync_cursor is None:
-        params = build_pipeline_params(api_query_params)
-    else:
-        params = build_incremental_pipeline_params(api_query_params, sync_cursor)
+    params = build_pipeline_params(api_query_params)
+    if sync_cursor is not None:
+        params = UPDATED_AFTER_INCREMENTAL.merge_params(params, sync_cursor)
 
     async for projects_batch in client.get_projects(
         params=build_project_params(
@@ -296,11 +296,11 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if selector.pipeline_query_params
         else None
     )
-    pipeline_params = (
-        build_incremental_pipeline_params(pipeline_query_params, sync_cursor)
-        if sync_cursor is not None
-        else build_pipeline_params(pipeline_query_params)
-    )
+    pipeline_params = build_pipeline_params(pipeline_query_params)
+    if sync_cursor is not None:
+        pipeline_params = UPDATED_AFTER_INCREMENTAL.merge_params(
+            pipeline_params, sync_cursor
+        )
     projects_params = (
         build_incremental_project_updated_params(
             include_only_active_projects, sync_cursor
@@ -342,10 +342,9 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         for state in states:
-            if sync_cursor is None:
-                params = build_merge_request_params(state, lookback_updated_after)
-            else:
-                params = build_incremental_merge_request_params(state, sync_cursor)
+            params = build_merge_request_params(state, lookback_updated_after)
+            if sync_cursor is not None:
+                params = UPDATED_AFTER_INCREMENTAL.merge_params(params, sync_cursor)
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
             )

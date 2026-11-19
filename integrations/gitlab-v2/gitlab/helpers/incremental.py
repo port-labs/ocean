@@ -1,9 +1,10 @@
 """Incremental-resync flows, used by ``main.py`` when a run has a cursor.
 
-Each ``build_incremental_*_params`` builds the query for a run that has a cursor:
-the cursor strategy's ``merge_params`` swaps the selector's ``TIMESTAMP_SELECTORS``
-for the cursor filter.
-The matching full-resync builders live in ``gitlab/clients/utils.py``.
+For most kinds, ``main.py`` builds the full-resync query (``gitlab/clients/utils.py``)
+and, when there is a cursor, merges it in with one of the strategies below:
+``merge_params`` swaps the selector's ``TIMESTAMP_SELECTORS`` for the cursor filter.
+``build_incremental_*_params`` cover the queries that change more than that on an
+incremental run (``order_by=updated_at``).
 
 Kinds the cursor can't be expressed for as a query param (skills, plugins) get
 their own ``resync_*_incremental`` flow here; the full flows live in
@@ -20,13 +21,7 @@ from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.clients.options import IssueOptions
-from gitlab.clients.utils import (
-    MergeRequestState,
-    build_issue_params,
-    build_pipeline_params,
-    build_project_params,
-)
+from gitlab.clients.utils import build_project_params
 from gitlab.helpers.skill_folder import find_owning_skill_md_paths
 from gitlab.helpers.utils import build_search_query, changed_files
 from gitlab.helpers.skill_plugin import (
@@ -59,20 +54,6 @@ LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
 )
 
 
-def build_project_list_params(
-    include_only_active_projects: bool | None,
-    cursor: datetime | None,
-) -> dict[str, Any]:
-    """Query params for ``GET /projects``.
-
-    With a cursor, adds ``last_activity_after``; without one, the base params pass through.
-    """
-    return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(
-        build_project_params(include_only_active_projects=include_only_active_projects),
-        cursor,
-    )
-
-
 def build_incremental_project_updated_params(
     include_only_active_projects: bool | None,
     cursor: datetime,
@@ -87,34 +68,6 @@ def build_incremental_project_updated_params(
     )
     params["order_by"] = "updated_at"
     return params
-
-
-def build_incremental_issue_params(
-    options: IssueOptions,
-    cursor: datetime,
-) -> dict[str, Any]:
-    """Query params for ``GET /groups/{id}/issues`` on an incremental run."""
-    return UPDATED_AFTER_INCREMENTAL.merge_params(
-        build_issue_params(options, updated_after=None), cursor
-    )
-
-
-def build_incremental_merge_request_params(
-    state: MergeRequestState,
-    cursor: datetime,
-) -> dict[str, Any]:
-    """Query params for ``GET /groups/{id}/merge_requests`` on an incremental run."""
-    return UPDATED_AFTER_INCREMENTAL.merge_params({"state": state}, cursor)
-
-
-def build_incremental_pipeline_params(
-    api_query_params: dict[str, Any] | None,
-    cursor: datetime,
-) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/pipelines`` on an incremental run."""
-    return UPDATED_AFTER_INCREMENTAL.merge_params(
-        build_pipeline_params(api_query_params), cursor
-    )
 
 
 def build_incremental_deployment_params(

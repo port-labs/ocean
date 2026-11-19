@@ -7,14 +7,13 @@ from gitlab.clients.utils import (
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
+    build_project_params,
 )
 from gitlab.helpers.incremental import (
+    LAST_ACTIVITY_AFTER_INCREMENTAL,
+    UPDATED_AFTER_INCREMENTAL,
     build_incremental_deployment_params,
-    build_incremental_issue_params,
-    build_incremental_merge_request_params,
-    build_incremental_pipeline_params,
     build_incremental_project_updated_params,
-    build_project_list_params,
 )
 
 
@@ -40,19 +39,15 @@ def _options() -> IssueOptions:
 # --- Projects -----------------------------------------------------------------
 
 
-def test_project_list_params_sets_last_activity_after(
+def test_projects_cursor_sets_last_activity_after(
     no_visibility_params: None,
 ) -> None:
-    assert build_project_list_params(True, CURSOR) == {
+    params = build_project_params(include_only_active_projects=True)
+
+    assert LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
         "active": True,
         "last_activity_after": CURSOR.isoformat(),
     }
-
-
-def test_project_list_params_without_cursor_is_base_params(
-    no_visibility_params: None,
-) -> None:
-    assert build_project_list_params(True, None) == {"active": True}
 
 
 def test_incremental_project_updated_sets_updated_after_and_order(
@@ -111,7 +106,9 @@ def test_full_resync_without_selector_date_fetches_all_issues() -> None:
 
 
 def test_incremental_cursor_sets_updated_after() -> None:
-    params = build_incremental_issue_params(_options(), CURSOR)
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(
+        build_issue_params(_options(), updated_after=None), CURSOR
+    )
 
     assert params["updated_after"] == CURSOR.isoformat()
     # Other selector filters still apply on incremental runs.
@@ -119,11 +116,10 @@ def test_incremental_cursor_sets_updated_after() -> None:
     assert params["issue_type"] == "issue"
 
 
-def test_incremental_issue_params_replace_options_updated_after() -> None:
-    options = _options()
-    options["updated_after"] = SELECTOR_UPDATED_AFTER.isoformat()
+def test_incremental_cursor_replaces_selector_updated_after() -> None:
+    params = build_issue_params(_options(), updated_after=SELECTOR_UPDATED_AFTER)
 
-    assert build_incremental_issue_params(options, CURSOR) == {
+    assert UPDATED_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
         "issue_type": "issue",
         "non_archived": True,
         "state": "opened",
@@ -161,20 +157,33 @@ def test_mr_full_resync_closed_uses_lookback() -> None:
 
 
 def test_mr_incremental_applies_cursor_to_opened() -> None:
-    assert build_incremental_merge_request_params("opened", CURSOR) == {
+    params = build_merge_request_params("opened", SELECTOR_UPDATED_AFTER)
+
+    assert UPDATED_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
         "state": "opened",
         "updated_after": CURSOR.isoformat(),
     }
 
 
-def test_mr_incremental_applies_cursor_to_merged() -> None:
-    assert build_incremental_merge_request_params("merged", CURSOR) == {
+def test_mr_incremental_cursor_replaces_lookback_for_merged() -> None:
+    params = build_merge_request_params("merged", SELECTOR_UPDATED_AFTER)
+
+    assert UPDATED_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
         "state": "merged",
         "updated_after": CURSOR.isoformat(),
     }
 
 
 # --- Pipelines ----------------------------------------------------------------
+
+
+def _incremental_pipeline_params(
+    api_query_params: dict[str, object], cursor: datetime
+) -> dict[str, object]:
+    """Same steps as the pipeline handler on an incremental run."""
+    return UPDATED_AFTER_INCREMENTAL.merge_params(
+        build_pipeline_params(api_query_params), cursor
+    )
 
 
 def test_pipeline_full_resync_keeps_selector_filters() -> None:
@@ -198,7 +207,7 @@ def test_pipeline_full_resync_without_time_filter() -> None:
 
 
 def test_pipeline_incremental_overrides_selector_updated_after() -> None:
-    params = build_incremental_pipeline_params(
+    params = _incremental_pipeline_params(
         {
             "scope": "finished",
             "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
@@ -213,7 +222,7 @@ def test_pipeline_incremental_overrides_selector_updated_after() -> None:
 
 
 def test_pipeline_incremental_drops_updated_before_and_keeps_created_filters() -> None:
-    params = build_incremental_pipeline_params(
+    params = _incremental_pipeline_params(
         {
             "status": "success",
             "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
@@ -231,7 +240,7 @@ def test_pipeline_incremental_drops_updated_before_and_keeps_created_filters() -
 
 
 def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> None:
-    assert build_incremental_pipeline_params({"status": "running"}, CURSOR) == {
+    assert _incremental_pipeline_params({"status": "running"}, CURSOR) == {
         "status": "running",
         "updated_after": CURSOR.isoformat(),
     }
