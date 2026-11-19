@@ -49,6 +49,15 @@ def windows_ending_after(
     return [(from_ts, to_ts) for from_ts, to_ts in windows if to_ts > cursor_ts]
 
 
+def windows_ending_after(
+    windows: list[tuple[int, int]], cursor: datetime
+) -> list[tuple[int, int]]:
+    """Keep the time windows that end after *cursor*: the current window, plus any
+    window that closed since *cursor*, so it gets its final values."""
+    cursor_ts = int(cursor.timestamp())
+    return [(from_ts, to_ts) for from_ts, to_ts in windows if to_ts > cursor_ts]
+
+
 def audit_events_search_body(query: str, cursor: datetime) -> dict[str, Any]:
     """Build an audit events search body for events matching *query* since *cursor*.
     Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events

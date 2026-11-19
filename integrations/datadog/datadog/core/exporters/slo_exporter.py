@@ -26,6 +26,7 @@ from datadog.incremental import (
 )
 
 SLO_ENRICHMENT_BATCH_SIZE = 10
+CHANGED_SLOS_FETCH_BATCH_SIZE = 10
 
 
 class ListSloOptions(ListOptions["SLOResourceConfig"]):
@@ -104,27 +105,34 @@ class SloExporter(
                 if slo_id := restricted_resource_id(asset_id, "slo"):
                     slo_ids[slo_id] = None
 
-        slos: list[dict[str, Any]] = []
-        for slo_id in slo_ids:
-            try:
-                slo = await self.get_resource(
-                    GetSloOptions(
-                        resource_id=slo_id,
-                        include_restriction_policy=options.include_restriction_policy,
-                    )
+        for batch in batched(slo_ids, CHANGED_SLOS_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(
+                    self._get_changed_slo(slo_id, options.include_restriction_policy)
+                    for slo_id in batch
                 )
-            except HTTPStatusError as e:
-                if e.response.status_code != HTTPStatus.NOT_FOUND:
-                    raise
-                logger.warning(
-                    f"Skipping SLO '{slo_id}' from audit events; it no longer exists in Datadog"
-                )
-                continue
-            if slo:
-                slos.append(slo)
+            )
+            if slos := [slo for slo in results if slo]:
+                yield slos
 
-        if slos:
-            yield slos
+    async def _get_changed_slo(
+        self, slo_id: str, include_restriction_policy: bool
+    ) -> dict[str, Any] | None:
+        """Get an SLO found through audit events, or None if it was deleted since."""
+        try:
+            return await self.get_resource(
+                GetSloOptions(
+                    resource_id=slo_id,
+                    include_restriction_policy=include_restriction_policy,
+                )
+            )
+        except HTTPStatusError as e:
+            if e.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"Skipping SLO '{slo_id}' from audit events; it no longer exists in Datadog"
+            )
+            return None
 
     async def get_resource(self, options: GetSloOptions) -> dict[str, Any] | None:
         """Get a single SLO by ID.
