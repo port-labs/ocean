@@ -71,6 +71,8 @@ class PlainClient:
         query: str,
         variables: dict[str, Any] | None = None,
         operation_name: str | None = None,
+        *,
+        skip_retry: bool = False,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {"query": query, "variables": variables or {}}
         if operation_name is not None:
@@ -79,6 +81,15 @@ class PlainClient:
         logger.debug(
             "Executing Plain GraphQL operation {}", operation_name or "anonymous"
         )
+
+        extensions: dict[str, Any] = {}
+        if skip_retry:
+            # Test connection/probe: fail fast on auth errors, don't retry
+            extensions["skip_retry"] = True
+        else:
+            # Normal operations: GraphQL is POST-only; Ocean RetryTransport skips POST unless opted in
+            extensions["retryable"] = True
+
         response = await self._http_client.post(
             self._api_url,
             json=body,
@@ -87,8 +98,7 @@ class PlainClient:
                 "Content-Type": "application/json",
                 "User-Agent": self._user_agent,
             },
-            # GraphQL is POST-only; Ocean RetryTransport skips POST unless opted in.
-            extensions={"retryable": True},
+            extensions=extensions,
         )
         if response.status_code >= 400:
             _abort_when_permission_is_missing(response.text)
@@ -120,9 +130,11 @@ class PlainClient:
             )
         return data
 
-    async def get_my_permissions(self) -> dict[str, bool]:
+    async def get_my_permissions(self, *, skip_retry: bool = False) -> dict[str, bool]:
         """Return the permissions granted to the current Plain API key."""
-        data = await self.execute(MY_PERMISSIONS, operation_name="MyPermissions")
+        data = await self.execute(
+            MY_PERMISSIONS, operation_name="MyPermissions", skip_retry=skip_retry
+        )
         my_permissions = data.get("myPermissions")
         if not isinstance(my_permissions, dict):
             raise PlainGraphQLError(

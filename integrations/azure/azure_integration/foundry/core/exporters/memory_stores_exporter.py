@@ -12,7 +12,7 @@ from azure_integration.foundry.helpers.utils import enrich_with_project
 _MEMORY_STORES_FEATURE = "MemoryStores=V1Preview"
 
 
-class MemoryStoresExporter(FoundryExporter):
+class MemoryStoresExporter(FoundryExporter[ListMemoryStoresOptions]):
     async def get_paginated_resources(
         self, options: ListMemoryStoresOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
