@@ -10,6 +10,8 @@ from factory_ai.core.exporters.computer import ComputerExporter
 from factory_ai.core.exporters.computer.models import ListComputerOptions
 from factory_ai.core.exporters.environment import EnvironmentExporter
 from factory_ai.core.exporters.environment.models import ListEnvironmentOptions
+from factory_ai.core.exporters.user import UserExporter
+from factory_ai.core.exporters.user.models import ListUserOptions
 from factory_ai.kinds import ObjectKind
 
 
@@ -27,6 +29,10 @@ kind_to_exporter_metadata: dict[ObjectKind, ExporterMetadata] = {
     ObjectKind.COMPUTER: ExporterMetadata(
         ComputerExporter,
         ListComputerOptions,
+    ),
+    ObjectKind.USER: ExporterMetadata(
+        UserExporter,
+        ListUserOptions,
     ),
 }
 

@@ -45,3 +45,23 @@ resources:
               | if .kind == "environment" then .environmentId
                 elif .kind == "template" then .templateId
                 else empty end
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: >-
+            ([.firstName, .lastName] | map(select(. != null and . != "")) | join(" "))
+            as $name
+            | if $name == "" then .email else $name end
+          blueprint: '"factory_user"'
+          properties:
+            email: .email
+            firstName: .firstName
+            lastName: .lastName
+            role: .role
+            status: .status
+            lastSignInAt: .lastSignInAt
+            createdAt: .createdAt
