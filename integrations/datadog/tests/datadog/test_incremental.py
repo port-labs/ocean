@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from datadog.incremental import (
     CHANGED_SERVICES_AUDIT_QUERY,
     audit_event_asset_id,
+    audit_event_path,
     audit_events_search_body,
-    changed_user_id,
     service_name_from_ref,
     windows_ending_after,
 )
@@ -48,16 +48,15 @@ def _event(asset_id: str, path: str) -> dict[str, object]:
     }
 
 
-def test_changed_user_id_returns_the_user_asset() -> None:
-    assert changed_user_id(_event("user-1", "/api/v2/users/user-1")) == "user-1"
+def test_audit_event_path_returns_the_request_path() -> None:
+    assert (
+        audit_event_path(_event("user-1", "/api/v2/roles/role-1/users"))
+        == "/api/v2/roles/role-1/users"
+    )
 
 
-def test_changed_user_id_skips_role_membership_events() -> None:
-    assert changed_user_id(_event("user-1", "/api/v2/roles/role-1/users")) is None
-
-
-def test_changed_user_id_without_asset_is_none() -> None:
-    assert changed_user_id({}) is None
+def test_audit_event_path_without_http_details_is_empty() -> None:
+    assert audit_event_path({}) == ""
 
 
 def test_changed_services_query_escapes_the_ref_colon() -> None:

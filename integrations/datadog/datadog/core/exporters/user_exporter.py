@@ -13,8 +13,7 @@ from datadog.core.exporters.base_exporter import (
 )
 from datadog.incremental import (
     CHANGED_USERS_AUDIT_QUERY,
-    audit_events_search_body,
-    changed_user_id,
+    ROLES_API_PATH_PREFIX,
 )
 
 if TYPE_CHECKING:
@@ -46,14 +45,11 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         """Get users created or modified since ``incremental_cursor``, found through audit events.
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
-        url = f"{self.client.api_url}/api/v2/audit/events/search"
-        body = audit_events_search_body(CHANGED_USERS_AUDIT_QUERY, incremental_cursor)
-
-        user_ids: dict[str, None] = {}
-        async for events in self._paginate_by_search_cursor(url, body):
-            for event in events:
-                if user_id := changed_user_id(event):
-                    user_ids[user_id] = None
+        user_ids = await self._changed_asset_ids(
+            CHANGED_USERS_AUDIT_QUERY,
+            incremental_cursor,
+            excluded_path_prefix=ROLES_API_PATH_PREFIX,
+        )
 
         users: list[dict[str, Any]] = []
         for user_id in user_ids:
