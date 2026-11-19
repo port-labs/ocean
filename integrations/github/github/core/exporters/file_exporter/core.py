@@ -1,8 +1,10 @@
-from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
+from datetime import datetime
+from typing import AsyncGenerator, Dict, List, Any, Optional, Sequence, Tuple, cast
 from urllib.parse import quote
 import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client_for_org
+from github.helpers.changed_paths import changed_paths_since
 from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
 from github.helpers.exceptions import GitHubTreeFetchError
 from port_ocean.exceptions.core import OceanAbortException
@@ -25,6 +27,7 @@ from github.core.exporters.file_exporter.utils import (
     decode_content,
     extract_file_index,
     extract_file_paths_and_metadata,
+    file_or_included_files_changed,
     filter_github_tree_entries_by_pattern,
     get_graphql_file_metadata,
 )
@@ -40,9 +43,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         IgnoredError(status=409, message="empty repository"),
     ]
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, included_files: Sequence[str] = (), **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.file_processor = FileProcessor(self)
+        # The selector's includedFiles: a file also counts as changed when one of them did.
+        self.included_files = list(included_files)
 
     async def get_resource[ExporterOptionsT: FileContentOptions](
         self, options: ExporterOptionsT
@@ -87,7 +94,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Search for files across repositories and fetch their content."""
+        """Search for files across repositories and fetch their content.
+
+        A repository's ``changed_since`` limits it to files changed since then.
+        """
 
         graphql_files = []
         rest_files = []
@@ -103,7 +113,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
             try:
-                gql, rest = await self.collect_matched_files(repo_name, files)
+                gql, rest = await self.collect_matched_files(
+                    repo_name, files, repo_options.get("changed_since")
+                )
                 graphql_files.extend(gql)
                 rest_files.extend(rest)
             except GitHubTreeFetchError as e:
@@ -126,7 +138,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             ) from fetch_errors[0]
 
     async def collect_matched_files(
-        self, repo_name: str, file_patterns: List[FileSearchOptions]
+        self,
+        repo_name: str,
+        file_patterns: List[FileSearchOptions],
+        changed_since: Optional[datetime] = None,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         graphql_files = []
         rest_files = []
@@ -150,9 +165,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.debug(
                 f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
-
-            matched = filter_github_tree_entries_by_pattern(tree, pattern)
+            matched = await self._match_files(
+                organization, repo_name, branch, pattern, changed_since
+            )
 
             logger.info(
                 f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
@@ -181,6 +196,39 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     rest_files.append(file_info)
 
         return graphql_files, rest_files
+
+    async def _match_files(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+        changed_since: Optional[datetime] = None,
+    ) -> List[Dict[str, Any]]:
+        """Tree entries matching ``pattern``, limited to files changed since ``changed_since``.
+
+        A file counts as changed when its own path changed or one of its
+        ``included_files`` did.
+
+        When the changed paths are unknown (no ``changed_since``, or changes that
+        can't be trusted), every matching file in the tree is returned.
+        """
+        changed_paths = await changed_paths_since(
+            self.client, organization, repo_name, branch, changed_since
+        )
+        # The tree gives each file's size (fetch method) and sha.
+        tree, _ = await self.get_tree_recursive(organization, repo_name, branch)
+        matched = filter_github_tree_entries_by_pattern(tree, pattern)
+        if changed_paths is None:
+            return matched
+        changed = set(changed_paths)
+        return [
+            match
+            for match in matched
+            if file_or_included_files_changed(
+                match["path"], self.included_files, changed
+            )
+        ]
 
     async def process_rest_api_files(
         self, files: List[Dict[str, Any]]

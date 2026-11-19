@@ -3,9 +3,10 @@ from __future__ import annotations
 import base64
 import binascii
 from collections import defaultdict
+from datetime import datetime
 from enum import StrEnum
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 from typing import (
     Any,
@@ -19,6 +20,7 @@ from typing import (
     Union,
 )
 
+from port_ocean.core.utils.included_files import resolve_included_file_path
 from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
@@ -175,8 +177,15 @@ class FilePatternMappingBuilder:
         self.repo_exporter = repo_exporter
 
     async def build(
-        self, files: List["GithubFilePattern"]
+        self,
+        files: List["GithubFilePattern"],
+        changed_since: Optional[datetime] = None,
     ) -> List[ListFileSearchOptions]:
+        """Group file patterns per repository.
+
+        With ``changed_since``, only repositories pushed since then are kept, and
+        each is limited to files changed since then.
+        """
         repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
         logger.info(f"Building path mapping for {len(files)} file selectors...")
@@ -189,7 +198,11 @@ class FilePatternMappingBuilder:
                     org_login = org["login"]
                     org_type = org["type"]
                     async for repo_name, branch, _ in self.repo_selector.select_repos(
-                        file_sel, self.repo_exporter, org_login, org_type
+                        file_sel,
+                        self.repo_exporter,
+                        org_login,
+                        org_type,
+                        pushed_since=changed_since,
                     ):
                         repo_map[(org_login, repo_name)].append(
                             FileSearchOptions(
@@ -205,9 +218,26 @@ class FilePatternMappingBuilder:
                 organization=org,
                 repo_name=repo,
                 files=items,
+                changed_since=changed_since,
             )
             for (org, repo), items in repo_map.items()
         ]
+
+
+def file_or_included_files_changed(
+    path: str, included_files: List[str], changed_paths: set[str]
+) -> bool:
+    """Whether the file at ``path`` or one of its ``included_files`` is in ``changed_paths``.
+
+    Included files are resolved next to the file, as the includedFiles enrichment does.
+    """
+    if path in changed_paths:
+        return True
+    base_path = str(PurePosixPath(path).parent)
+    return any(
+        resolve_included_file_path(included, base_path) in changed_paths
+        for included in included_files
+    )
 
 
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
