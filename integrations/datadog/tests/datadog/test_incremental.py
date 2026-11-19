@@ -5,6 +5,7 @@ from datadog.incremental import (
     audit_event_asset_id,
     audit_event_path,
     audit_events_search_body,
+    restricted_resource_id,
     service_name_from_ref,
     windows_ending_after,
 )
@@ -78,3 +79,9 @@ def test_service_name_from_ref() -> None:
     assert service_name_from_ref("service:payments/checkout") == "checkout"
     assert service_name_from_ref("datastore:default/orders-db") is None
     assert service_name_from_ref("service:no-namespace") is None
+
+
+def test_restricted_resource_id_matches_resource_type() -> None:
+    assert restricted_resource_id("slo:abc", "slo") == "abc"
+    assert restricted_resource_id("monitor:123", "slo") is None
+    assert restricted_resource_id("no-type", "slo") is None
