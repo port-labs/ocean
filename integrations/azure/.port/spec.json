@@ -409,7 +409,7 @@
     {
       "name": "invoke_model",
       "icon": "Azure",
-      "description": "Invoke a model deployment via the project openai/v1/responses API",
+      "description": "Invoke a chat-capable model deployment via the project openai/v1/responses API. Requires capabilities.chat_completion=true (Decision/SystemOne and other non-chat deployments are rejected).",
       "inputs": [
         {
           "name": "projectArmId",
@@ -422,13 +422,15 @@
           "name": "deploymentName",
           "title": "Deployment name",
           "type": "string",
-          "required": true
+          "required": true,
+          "description": "Foundry model deployment name with capabilities.chat_completion=true. Non-chat deployments (e.g. Microsoft-Decision-1) are rejected."
         },
         {
           "name": "input",
           "title": "Input",
           "type": "string",
-          "required": true
+          "required": true,
+          "description": "Plain-text user prompt for the Responses API input field."
         },
         {
           "name": "conversationId",

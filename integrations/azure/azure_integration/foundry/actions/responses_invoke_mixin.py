@@ -16,7 +16,6 @@ from azure_integration.foundry.helpers.invoke_completion import (
     complete_invoke_run_for_response,
     complete_invoke_run_from_sse,
 )
-from azure_integration.foundry.helpers.invoke_mode import invoke_agent_completion_mode
 from azure_integration.foundry.helpers.responses_stream import ResponsesSseEvent
 from azure_integration.foundry.stream_manager import get_stream_manager
 
@@ -52,40 +51,13 @@ class ResponsesInvokeMixin:
             should_raise=False,
         )
         if complete_on_sse_terminal is None:
-            complete_on_sse_terminal = invoke_agent_completion_mode(
-                report_invocation_status=report_invocation_status
-            )
+            complete_on_sse_terminal = report_invocation_status
 
         invoke_body = dict(body)
         invoke_body["background"] = True
         # Background Responses require store=true (Foundry/OpenAI docs).
         invoke_body["store"] = True
 
-        await self._execute_with_sse_completion(
-            run,
-            invoke_url=invoke_url,
-            params=params,
-            body=invoke_body,
-            stream_key=stream_key,
-            bind_output=bind_output,
-            early_complete_on_bind=early_complete_on_bind,
-            complete_on_sse_terminal=complete_on_sse_terminal,
-            running_status_label=running_status_label,
-        )
-
-    async def _execute_with_sse_completion(
-        self,
-        run: IntegrationRun,
-        *,
-        invoke_url: str,
-        body: dict[str, Any],
-        stream_key: str,
-        bind_output: dict[str, Any],
-        running_status_label: str,
-        params: dict[str, Any] | None = None,
-        early_complete_on_bind: bool = False,
-        complete_on_sse_terminal: bool = True,
-    ) -> None:
         submitted_after_bind = False
 
         async def on_response_id(response_id: str) -> None:
@@ -114,23 +86,57 @@ class ResponsesInvokeMixin:
                 await complete_invoke_run_from_sse(run, parsed)
 
         manager = get_stream_manager()
-        started = await manager.track(
+        result = await manager.track(
             stream_key=stream_key,
             invoke_url=invoke_url,
             params=params,
-            response_body=body,
+            response_body=invoke_body,
             run=run,
             on_response_id=on_response_id,
             stop_on_terminal_sse=complete_on_sse_terminal,
             on_terminal_sse=on_terminal_sse if complete_on_sse_terminal else None,
         )
-        if started:
+        if result == "started":
             return
+        if result == "duplicate":
+            raise ActionExecutionError(
+                f"Responses stream already active for {stream_key}; "
+                "not starting a second invoke"
+            )
 
-        raise ActionExecutionError(
-            f"Responses stream already active for {stream_key}; "
-            "not starting a second invoke"
+        # At stream capacity: non-SSE background POST; webhook/SSE-free completion.
+        logger.warning(
+            f"Foundry stream capacity reached; submitting {stream_key} without SSE "
+            "(webhook completion if reportInvocationStatus)"
         )
+        payload = await self.client.send_api_request(
+            invoke_url,
+            method="POST",
+            params=params,
+            json_body={**invoke_body, "stream": False},
+        )
+        response_id = (
+            str(payload.get("id"))
+            if isinstance(payload, dict) and payload.get("id")
+            else ""
+        )
+        if not response_id:
+            raise ActionExecutionError(
+                f"Foundry invoke returned no response id for {stream_key}"
+            )
+        await on_response_id(response_id)
+        if complete_on_sse_terminal and isinstance(payload, dict):
+            # Best-effort: if body already terminal, complete now; else webhook.
+            status = payload.get("status")
+            if status in {"completed", "failed", "cancelled", "incomplete"}:
+                await complete_invoke_run_for_response(
+                    run,
+                    response_id=response_id,
+                    response_body=payload,
+                    success=status == "completed",
+                    source="non-SSE invoke (stream capacity)",
+                    register_catalog=status == "completed",
+                )
 
     async def _bind_run_to_response(
         self,
@@ -146,8 +152,6 @@ class ResponsesInvokeMixin:
                 f"(response {response_id})"
             )
             return
-        # Bind after remote accept: external id for webhook lookup + slim output.
-        # Patch directly so we do not get core's workflowRunUrl/links noise.
         output = {**bind_output, "responseId": response_id}
         if isinstance(run, WorkflowNodeRun):
             run.output = output
@@ -162,10 +166,7 @@ class ResponsesInvokeMixin:
             )
         else:
             await ocean.port_client.update_run_started(
-                run,
-                "",
-                response_id,
-                status_label=running_status_label,
+                run, "", response_id, status_label=running_status_label
             )
         waiting = (
             "Waiting for model response"
@@ -173,9 +174,6 @@ class ResponsesInvokeMixin:
             else "Waiting for agent response"
         )
         await ocean.port_client.post_run_log(
-            run,
-            waiting,
-            status_label=running_status_label,
-            should_raise=False,
+            run, waiting, status_label=running_status_label, should_raise=False
         )
         logger.info(f"Bound run {run.id} to Foundry response {response_id}")

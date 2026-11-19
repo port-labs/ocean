@@ -5,7 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-_TERMINAL_SSE_TYPES = {
+# call-sites: TERMINAL_SSE_TYPES.get(event_type)
+TERMINAL_SSE_TYPES = {
     "response.completed": True,
     "response.failed": False,
     "response.cancelled": False,
@@ -20,7 +21,7 @@ _RESPONSE_ID_EVENT_TYPES = {
 
 
 class ResponsesSseEvent(BaseModel):
-    """SSE event envelope. Nested ``response`` stays a dict — payload is large/variable."""
+    """SSE envelope. Nested ``response`` stays a dict — payload is large/variable."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -48,34 +49,23 @@ def response_id_from_sse_event(parsed: ResponsesSseEvent) -> str | None:
     if parsed.type not in _RESPONSE_ID_EVENT_TYPES:
         return None
     response = parsed.response
-    if response and response.get("id"):
-        return str(response["id"])
-    return None
-
-
-def success_for_terminal_sse_event(event_type: str) -> bool | None:
-    return _TERMINAL_SSE_TYPES.get(event_type)
+    return str(response["id"]) if response and response.get("id") else None
 
 
 def format_responses_sse_log_message(parsed: ResponsesSseEvent) -> str | None:
-    """Human-readable Port run log line for a Responses SSE event, or None to skip."""
     if parsed.type == "response.output_text.delta":
         return None
-
     if parsed.type == "response.output_text.done":
-        if isinstance(parsed.text, str) and parsed.text.strip():
-            return parsed.text
-        return None
-
+        return (
+            parsed.text
+            if isinstance(parsed.text, str) and parsed.text.strip()
+            else None
+        )
     if parsed.type == "error":
         message = parsed.message or parsed.error
-        if message:
-            return f"Error: {message}"
-
+        return f"Error: {message}" if message else None
     if parsed.response and isinstance(parsed.response.get("error"), dict):
         error = parsed.response["error"]
         msg = error.get("message") or error.get("code")
-        if msg:
-            return f"Error: {msg}"
-
+        return f"Error: {msg}" if msg else None
     return None
