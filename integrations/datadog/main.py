@@ -128,6 +128,19 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users
 
 
+@ocean.on_incremental_resync(ObjectKind.USER)
+async def on_incremental_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    # Ocean sets the cursor before calling incremental handlers
+    cursor = cast(datetime, active_incremental_cursor())
+    async for users in _resync_across_orgs(
+        lambda client: UserExporter(client).get_changed_users(
+            incremental_cursor=cursor
+        ),
+        context="User exporter",
+    ):
+        yield users
+
+
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for hosts in _resync_across_orgs(
@@ -194,6 +207,18 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for services in _resync_across_orgs(
         lambda client: ServiceExporter(client).get_paginated_resources(),
+        context="Service exporter",
+    ):
+        yield services
+
+
+@ocean.on_incremental_resync(ObjectKind.SERVICE)
+async def on_incremental_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    cursor = cast(datetime, active_incremental_cursor())
+    async for services in _resync_across_orgs(
+        lambda client: ServiceExporter(client).get_changed_services(
+            incremental_cursor=cursor
+        ),
         context="Service exporter",
     ):
         yield services
