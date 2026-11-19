@@ -490,3 +490,114 @@ class TestEventsMixinIncrementalRegistration:
         result = mixin.on_incremental_resync(None, kind="issue")
         assert result is None
         assert len(mixin.event_strategy.incremental["issue"]) == 0
+
+
+def _with_resource_id(resource: ResourceConfig, resource_id: str) -> ResourceConfig:
+    return resource.copy(update={"resource_id": resource_id})
+
+
+class TestSyncIncrementalResourceGrouping:
+    async def test_started_sends_the_mapping(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        config = configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        lifecycle_client = _make_lifecycle_client()
+
+        with (
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+        ):
+            _configure_ocean_for_incremental(
+                mock_ocean, mock_port_client, lifecycle_client
+            )
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        started_kwargs = lifecycle_client.notify_resync_started.await_args.kwargs
+        assert started_kwargs["mapping"] == config.to_dsp_lifecycle_mapping()
+
+    async def test_grouped_resource_syncs_once_under_its_head_with_the_heads_cursor(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        issue_title = _with_resource_id(make_resource_config("issue"), "res_issue")
+        pull_request = make_resource_config("pull-request")
+        issue_author = _with_resource_id(make_resource_config("issue"), "res_issue")
+        config = PortAppConfig(resources=[issue_title, pull_request, issue_author])
+        cast(
+            MagicMock, mock_mixin._port_app_config_handler
+        ).get_port_app_config.return_value = config
+        register_incremental_handler(mock_mixin, kind="issue")
+        register_incremental_handler(mock_mixin, kind="pull-request")
+        lifecycle_client = _make_lifecycle_client()
+
+        with (
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=True),
+            ),
+        ):
+            _configure_ocean_for_incremental(
+                mock_ocean, mock_port_client, lifecycle_client
+            )
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        started_kwargs = lifecycle_client.notify_resync_started.await_args.kwargs
+        assert started_kwargs["kind_identifiers"] == ["issue-0", "pull-request-1"]
+        sent_ids = [
+            resource.get("resourceId")
+            for resource in started_kwargs["mapping"]["resources"]
+        ]
+        assert sent_ids == ["res_issue", None, "res_issue"]
+
+        process_calls = mock_mixin.process_resource.await_args_list  # type: ignore[attr-defined]
+        assert [call.args[:2] for call in process_calls] == [
+            (issue_title, 0),
+            (pull_request, 1),
+        ]
+        assert [call.kwargs.get("grouped", False) for call in process_calls] == [
+            True,
+            False,
+        ]
+
+        assert [
+            call.args
+            for call in mock_port_client.get_integration_cursor.await_args_list
+        ] == [("issue", 0), ("pull-request", 1)]
+        assert [
+            call.args[:2]
+            for call in mock_port_client.upsert_integration_cursor.await_args_list
+        ] == [("issue", 0), ("pull-request", 1)]
+
+    async def test_ids_are_ignored_outside_dsp_mode(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        config = PortAppConfig(
+            resources=[
+                _with_resource_id(make_resource_config("issue"), "res_issue"),
+                _with_resource_id(make_resource_config("issue"), "res_issue"),
+            ]
+        )
+        cast(
+            MagicMock, mock_mixin._port_app_config_handler
+        ).get_port_app_config.return_value = config
+        register_incremental_handler(mock_mixin, kind="issue")
+
+        with (
+            patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean,
+            patch(
+                "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+                AsyncMock(return_value=False),
+            ),
+        ):
+            _configure_ocean_for_incremental(mock_ocean, mock_port_client)
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        process_calls = mock_mixin.process_resource.await_args_list  # type: ignore[attr-defined]
+        assert [(call.args[1], call.kwargs) for call in process_calls] == [
+            (0, {}),
+            (1, {}),
+        ]

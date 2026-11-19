@@ -352,6 +352,9 @@ class LakehouseDataEntryMetadata(TypedDict):
     resource_index: int
     extraction_timestamp: int
     selector_hash: NotRequired[str | None]
+    # Set only when one fetch served every block of the resource: the DSP then maps
+    # the entry through each of them.
+    resource_id: NotRequired[str | None]
 
 
 class LakehouseDataEntry(TypedDict):
