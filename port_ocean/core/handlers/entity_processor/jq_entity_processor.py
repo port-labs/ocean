@@ -3,7 +3,6 @@ from asyncio.tasks import Task
 from functools import lru_cache
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
-import re
 from typing import Any, cast
 
 import jq  # type: ignore
@@ -255,22 +254,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     @staticmethod
     def _format_filter(filter: str) -> str:
-        """
-        Convert single quotes to double quotes in JQ expressions.
-        Only replaces single quotes that are opening or closing string delimiters,
-        not single quotes that are part of string content.
-        """
-        # Escape single quotes only if they are opening or closing a string
-        # Pattern matches:
-        # - Single quote at start of string or after whitespace (opening quote)
-        # - Single quote before whitespace or end of string (closing quote)
-        # Uses negative lookahead/lookbehind to avoid replacing quotes inside strings
-        # \1 and \2 will be empty for the alternative that didn't match, so \1"\2 works for both cases
-        # This matches the TypeScript pattern: /(^|\s)'(?!\s|")|(?<!\s|")'(\s|$)/g
-        formatted_filter = re.sub(
-            r'(^|\s)\'(?!\s|")|(?<!\s|")\'(\s|$)', r'\1"\2', filter
-        )
-        return formatted_filter
+        return JQEntityProcessorSync._format_filter(filter)
 
     @lru_cache
     def _compile(self, pattern: str) -> Any:
