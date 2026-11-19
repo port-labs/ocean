@@ -12,11 +12,11 @@ from typing import (
 )
 
 from loguru import logger
-from port_ocean.utils.time import convert_str_to_utc_datetime
 
 
 from github.core.options import ListRepositoryOptions
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.core.exporters.repository_exporter import REPOSITORY_PUSHED_INCREMENTAL
 from github.helpers.utils import get_repository_metadata
 
 if TYPE_CHECKING:
@@ -28,14 +28,6 @@ class RepoListSelector(Protocol):
 
     repos: Optional[List["RepositoryBranchMapping"]]
     exclude_archived: bool
-
-
-def _pushed_since(repo_obj: Dict[str, Any], pushed_since: Optional[datetime]) -> bool:
-    """True when there is no filter, or the repo was pushed since then (a missing `pushed_at` counts as pushed)."""
-    pushed_at = repo_obj.get("pushed_at")
-    if pushed_since is None or not pushed_at:
-        return True
-    return convert_str_to_utc_datetime(pushed_at) >= pushed_since
 
 
 class RepositorySelectorStrategy(ABC):
@@ -121,7 +113,9 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
             if not repo_obj:
                 logger.warning(f"Repository {repo_sel.name} not found in {org_login}")
                 continue
-            if not _pushed_since(repo_obj, pushed_since):
+            # The same pushed_at rule the repository listing applies: no
+            # pushed_since keeps every repository, as does a missing pushed_at.
+            if REPOSITORY_PUSHED_INCREMENTAL.should_stop(repo_obj, pushed_since):
                 continue
 
             branch = repo_sel.branch or repo_obj["default_branch"]
