@@ -19,6 +19,13 @@ class GCPCloudResourceSelector(Selector):
 
 
 class GCPCloudResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = (
+        "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
+        "Cloud Asset API is enabled on each container is not verified."
+    )
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllResources",
+    )
     kind: Literal["cloudResource"] = Field(
         title="GCP Cloud Resource",
         description="GCP cloud resource kind.",
@@ -71,6 +78,7 @@ class GCPResourceSelector(Selector):
 
 
 class GCPTopicResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("pubsub.topics.list",)
     kind: Literal["pubsub.googleapis.com/Topic"] = Field(
         title="GCP PubSub Topic",
         description="GCP PubSub Topic resource kind.",
@@ -82,6 +90,7 @@ class GCPTopicResourceConfig(ResourceConfig):
 
 
 class GCPSubscriptionResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("pubsub.subscriptions.list",)
     kind: Literal["pubsub.googleapis.com/Subscription"] = Field(
         title="GCP PubSub Subscription",
         description="GCP PubSub Subscription resource kind.",
@@ -93,6 +102,7 @@ class GCPSubscriptionResourceConfig(ResourceConfig):
 
 
 class GCPProjectResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("resourcemanager.projects.get",)
     kind: Literal["cloudresourcemanager.googleapis.com/Project"] = Field(
         title="GCP Project",
         description="GCP Project resource kind.",
@@ -104,6 +114,9 @@ class GCPProjectResourceConfig(ResourceConfig):
 
 
 class GCPOrganizationResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "resourcemanager.organizations.get",
+    )
     kind: Literal["cloudresourcemanager.googleapis.com/Organization"] = Field(
         title="GCP Organization",
         description="GCP Organization resource kind.",
@@ -115,6 +128,7 @@ class GCPOrganizationResourceConfig(ResourceConfig):
 
 
 class GCPFolderResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("resourcemanager.folders.get",)
     kind: Literal["cloudresourcemanager.googleapis.com/Folder"] = Field(
         title="GCP Folder",
         description="GCP Folder resource kind.",
@@ -126,6 +140,13 @@ class GCPFolderResourceConfig(ResourceConfig):
 
 
 class GCPResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = (
+        "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
+        "Cloud Asset API is enabled on each container is not verified."
+    )
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllResources",
+    )
     kind: str = Field(
         title="Custom Kind",
         description="Use this to map GCP resources supported by the <a target='_blank' href='https://docs.cloud.google.com/asset-inventory/docs/asset-types'>GCP Asset Inventory API</a> by setting the kind name to the full resource type.\n\nExample: compute.googleapis.com/Instance",
@@ -149,6 +170,9 @@ class GCPCloudFunctionSelector(Selector):
 
 
 class GCPCloudFunctionResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = (
+        "Test connection does not verify access to the configured function URL."
+    )
     kind: Literal["gcpCloudFunction"] = Field(
         title="GCP Cloud Function",
         description="GCP cloud-function sync protocol resource kind.",
