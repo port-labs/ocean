@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 
 from tools.integration_validation.mock_server.matcher import match_route
-from tools.integration_validation.mock_server.models import MockRoute
+from tools.integration_validation.mock_server.models import IncomingRequest, MockRoute
 
 
 def _route(
@@ -35,7 +35,7 @@ class TestMethodAndPathMatching:
     def test_matches_method_case_insensitively(self) -> None:
         route = _route("items")
 
-        match = match_route([route], method="get", path="/api/items")
+        match = match_route([route], IncomingRequest(method="get", path="/api/items"))
 
         assert match is not None
         assert match.route.id == "items"
@@ -45,7 +45,10 @@ class TestMethodAndPathMatching:
         [("POST", "/api/items"), ("GET", "/api/other")],
     )
     def test_rejects_method_or_path_mismatch(self, method: str, path: str) -> None:
-        assert match_route([_route("items")], method=method, path=path) is None
+        assert (
+            match_route([_route("items")], IncomingRequest(method=method, path=path))
+            is None
+        )
 
     def test_captures_path_template_parameters(self) -> None:
         route = _route(
@@ -55,8 +58,9 @@ class TestMethodAndPathMatching:
 
         match = match_route(
             [route],
-            method="GET",
-            path="/api/v2/team/team-1/memberships/member-2",
+            IncomingRequest(
+                method="GET", path="/api/v2/team/team-1/memberships/member-2"
+            ),
         )
 
         assert match is not None
@@ -71,8 +75,7 @@ class TestMethodAndPathMatching:
         assert (
             match_route(
                 [route],
-                method="GET",
-                path="/api/teams/platform/members",
+                IncomingRequest(method="GET", path="/api/teams/platform/members"),
             )
             is None
         )
@@ -84,9 +87,11 @@ class TestSubsetMatching:
 
         match = match_route(
             [route],
-            method="GET",
-            path="/api/items",
-            query={"page[number]": "0", "page[size]": "100"},
+            IncomingRequest(
+                method="GET",
+                path="/api/items",
+                query={"page[number]": "0", "page[size]": "100"},
+            ),
         )
 
         assert match is not None
@@ -98,9 +103,9 @@ class TestSubsetMatching:
         assert (
             match_route(
                 [route],
-                method="GET",
-                path="/api/items",
-                query={"page[number]": "1"},
+                IncomingRequest(
+                    method="GET", path="/api/items", query={"page[number]": "1"}
+                ),
             )
             is None
         )
@@ -110,12 +115,14 @@ class TestSubsetMatching:
 
         match = match_route(
             [route],
-            method="GET",
-            path="/api/items",
-            headers={
-                "content-type": "application/json",
-                "authorization": "Bearer fake",
-            },
+            IncomingRequest(
+                method="GET",
+                path="/api/items",
+                headers={
+                    "content-type": "application/json",
+                    "authorization": "Bearer fake",
+                },
+            ),
         )
 
         assert match is not None
@@ -134,16 +141,18 @@ class TestSubsetMatching:
 
         match = match_route(
             [route],
-            method="POST",
-            path="/api/items",
-            body={
-                "data": {
-                    "id": "team-1",
-                    "type": "team",
-                    "attributes": {"active": True, "name": "Platform"},
+            IncomingRequest(
+                method="POST",
+                path="/api/items",
+                body={
+                    "data": {
+                        "id": "team-1",
+                        "type": "team",
+                        "attributes": {"active": True, "name": "Platform"},
+                    },
+                    "meta": {"source": "test"},
                 },
-                "meta": {"source": "test"},
-            },
+            ),
         )
 
         assert match is not None
@@ -158,9 +167,11 @@ class TestSubsetMatching:
         assert (
             match_route(
                 [route],
-                method="POST",
-                path="/api/items",
-                body={"data": {"attributes": {"active": False}}},
+                IncomingRequest(
+                    method="POST",
+                    path="/api/items",
+                    body={"data": {"attributes": {"active": False}}},
+                ),
             )
             is None
         )
@@ -174,18 +185,22 @@ class TestSubsetMatching:
 
         match = match_route(
             [route],
-            method="POST",
-            path="/api/items",
-            body={"items": [{"id": "one", "name": "First"}]},
+            IncomingRequest(
+                method="POST",
+                path="/api/items",
+                body={"items": [{"id": "one", "name": "First"}]},
+            ),
         )
 
         assert match is not None
         assert (
             match_route(
                 [route],
-                method="POST",
-                path="/api/items",
-                body={"items": [{"id": "one"}, {"id": "two"}]},
+                IncomingRequest(
+                    method="POST",
+                    path="/api/items",
+                    body={"items": [{"id": "one"}, {"id": "two"}]},
+                ),
             )
             is None
         )
@@ -195,7 +210,7 @@ class TestPrecedence:
     def test_last_matching_route_wins(self) -> None:
         routes = [_route("first"), _route("second")]
 
-        match = match_route(routes, method="GET", path="/api/items")
+        match = match_route(routes, IncomingRequest(method="GET", path="/api/items"))
 
         assert match is not None
         assert match.route.id == "second"
@@ -206,8 +221,12 @@ class TestPrecedence:
             _route("exact", path="/api/items/special"),
         ]
 
-        exact = match_route(routes, method="GET", path="/api/items/special")
-        other = match_route(routes, method="GET", path="/api/items/other")
+        exact = match_route(
+            routes, IncomingRequest(method="GET", path="/api/items/special")
+        )
+        other = match_route(
+            routes, IncomingRequest(method="GET", path="/api/items/other")
+        )
 
         assert exact is not None
         assert exact.route.id == "exact"
@@ -221,7 +240,8 @@ class TestPrecedence:
         ]
 
         match = match_route(
-            routes, method="GET", path="/api/items", query={"page": "1"}
+            routes,
+            IncomingRequest(method="GET", path="/api/items", query={"page": "1"}),
         )
 
         assert match is not None

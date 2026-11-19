@@ -1,7 +1,8 @@
-"""Pydantic models for mock-server route YAML files (design §5.2)."""
+"""Route configuration models (design §5.2) and the runtime request they match against."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -112,3 +113,14 @@ class MockRouteFile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     routes: list[MockRoute] = Field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class IncomingRequest:
+    """An HTTP request received by the mock server, matched against ``MockRouteRequest``."""
+
+    method: str
+    path: str
+    query: dict[str, str] = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
+    body: Any = None

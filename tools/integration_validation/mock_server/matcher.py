@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from tools.integration_validation.mock_server.models import MockRoute
+from tools.integration_validation.mock_server.models import IncomingRequest, MockRoute
 
 
 @dataclass(frozen=True)
@@ -16,36 +16,30 @@ class RouteMatch:
     path_params: dict[str, str]
 
 
-def match_route(
-    routes: list[MockRoute],
-    *,
-    method: str,
-    path: str,
-    query: Mapping[str, str] | None = None,
-    headers: Mapping[str, str] | None = None,
-    body: Any = None,
-) -> RouteMatch | None:
+def match_route(routes: list[MockRoute], request: IncomingRequest) -> RouteMatch | None:
     """Return the last route in ``routes`` matching an HTTP request.
 
     Query parameters, headers, and JSON objects use subset matching: only
     values declared by a route are required. List more specific routes after
     general ones so they take precedence.
     """
-    request_query = query or {}
-    request_headers = {key.lower(): value for key, value in (headers or {}).items()}
+    method = request.method.upper()
+    request_headers = _lower_keys(request.headers) or {}
 
     for route in reversed(routes):
         expected = route.request
-        if expected.method != method.upper():
+        if expected.method != method:
             continue
-        path_params = _match_path(expected.path, path)
+        path_params = _match_path(expected.path, request.path)
         if path_params is None:
             continue
-        if not _mapping_is_subset(expected.query, request_query):
+        if not _mapping_is_subset(expected.query, request.query):
             continue
         if not _mapping_is_subset(_lower_keys(expected.headers), request_headers):
             continue
-        if expected.body is not None and not _json_is_subset(expected.body, body):
+        if expected.body is not None and not _json_is_subset(
+            expected.body, request.body
+        ):
             continue
         return RouteMatch(route=route, path_params=path_params)
 

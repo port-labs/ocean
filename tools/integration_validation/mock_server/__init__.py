@@ -8,6 +8,7 @@ from tools.integration_validation.mock_server.loader import (
 )
 from tools.integration_validation.mock_server.matcher import RouteMatch, match_route
 from tools.integration_validation.mock_server.models import (
+    IncomingRequest,
     MockRoute,
     MockRouteFile,
     MockRouteRequest,
@@ -19,6 +20,7 @@ from tools.integration_validation.mock_server.responder import (
 )
 
 __all__ = [
+    "IncomingRequest",
     "MockRoute",
     "MockRouteFile",
     "MockRouteRequest",

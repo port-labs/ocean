@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,8 @@ from fastapi.responses import JSONResponse, Response
 
 from tools.integration_validation.mock_server.constants import UNMATCHED_RESPONSE_STATUS
 from tools.integration_validation.mock_server.exceptions import ResponseRenderError
-from tools.integration_validation.mock_server.matcher import match_route
+from tools.integration_validation.mock_server.matcher import RouteMatch, match_route
+from tools.integration_validation.mock_server.models import IncomingRequest
 from tools.integration_validation.mock_server.responder import RenderedResponse
 from tools.integration_validation.mock_server.schemas import JournalEntry
 from tools.integration_validation.mock_server.state import MockServerState
@@ -38,41 +40,26 @@ async def read_request_body(request: Request) -> Any:
         return raw_body.decode("utf-8", errors="replace")
 
 
-def journal_entry(
-    *,
-    request: Request,
-    query: dict[str, str],
-    headers: dict[str, str],
-    body: Any,
-    matched_route_id: str | None,
-    response_status: int,
-) -> JournalEntry:
-    return JournalEntry(
+async def parse_mock_request(request: Request) -> IncomingRequest:
+    return IncomingRequest(
         method=request.method,
         path=request.url.path,
-        query=query,
-        headers=headers,
-        body=body,
-        matched_route_id=matched_route_id,
-        response_status=response_status,
+        query=dict(request.query_params),
+        headers=dict(request.headers),
+        body=await read_request_body(request),
     )
 
 
-def _unmatched_json_response(
-    request: Request,
-    query: dict[str, str],
-) -> JSONResponse:
+def _unmatched_json_response(request: IncomingRequest) -> JSONResponse:
     return JSONResponse(
         status_code=UNMATCHED_RESPONSE_STATUS,
         content={
             "error": "unmatched_request",
-            "message": (
-                f"No mock route matched " f"{request.method} {request.url.path}"
-            ),
+            "message": f"No mock route matched {request.method} {request.path}",
             "request": {
                 "method": request.method,
-                "path": request.url.path,
-                "query": query,
+                "path": request.path,
+                "query": request.query,
             },
         },
     )
@@ -91,51 +78,19 @@ def _as_http_response(rendered: RenderedResponse) -> Response:
     )
 
 
-def dispatch_mock_request(
+def _respond(
     state: MockServerState,
-    request: Request,
-    *,
-    query: dict[str, str],
-    headers: dict[str, str],
-    body: Any,
+    request: IncomingRequest,
+    route_match: RouteMatch | None,
 ) -> Response:
-    """Match, journal, and render. Caller must hold ``state.lock``."""
-    route_match = match_route(
-        state.routes,
-        method=request.method,
-        path=request.url.path,
-        query=query,
-        headers=headers,
-        body=body,
-    )
     if route_match is None:
-        state.journal.append(
-            journal_entry(
-                request=request,
-                query=query,
-                headers=headers,
-                body=body,
-                matched_route_id=None,
-                response_status=UNMATCHED_RESPONSE_STATUS,
-            )
-        )
-        return _unmatched_json_response(request, query)
+        return _unmatched_json_response(request)
 
     route_id = route_match.route.id
     state.route_call_counts[route_id] = state.route_call_counts.get(route_id, 0) + 1
     try:
         rendered = state.renderer.render(route_match)
     except ResponseRenderError as exc:
-        state.journal.append(
-            journal_entry(
-                request=request,
-                query=query,
-                headers=headers,
-                body=body,
-                matched_route_id=route_id,
-                response_status=500,
-            )
-        )
         return JSONResponse(
             status_code=500,
             content={
@@ -144,15 +99,18 @@ def dispatch_mock_request(
                 "route_id": route_id,
             },
         )
+    return _as_http_response(rendered)
 
+
+def dispatch_mock_request(state: MockServerState, request: IncomingRequest) -> Response:
+    """Match, journal, and render. Caller must hold ``state.lock``."""
+    route_match = match_route(state.routes, request)
+    response = _respond(state, request, route_match)
     state.journal.append(
-        journal_entry(
-            request=request,
-            query=query,
-            headers=headers,
-            body=body,
-            matched_route_id=route_id,
-            response_status=rendered.status,
+        JournalEntry(
+            **asdict(request),
+            matched_route_id=route_match.route.id if route_match else None,
+            response_status=response.status_code,
         )
     )
-    return _as_http_response(rendered)
+    return response

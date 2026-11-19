@@ -6,7 +6,7 @@ import pytest
 
 from tools.integration_validation.mock_server.exceptions import ResponseRenderError
 from tools.integration_validation.mock_server.matcher import RouteMatch, match_route
-from tools.integration_validation.mock_server.models import MockRoute
+from tools.integration_validation.mock_server.models import IncomingRequest, MockRoute
 from tools.integration_validation.mock_server.responder import ResponseRenderer
 
 
@@ -236,15 +236,19 @@ class TestMatchingAndRendering:
 
         first_match = match_route(
             routes,
-            method="GET",
-            path="/api/v2/team",
-            query={"page[number]": "0", "page[size]": "100"},
+            IncomingRequest(
+                method="GET",
+                path="/api/v2/team",
+                query={"page[number]": "0", "page[size]": "100"},
+            ),
         )
         second_match = match_route(
             routes,
-            method="GET",
-            path="/api/v2/team",
-            query={"page[number]": "1", "page[size]": "100"},
+            IncomingRequest(
+                method="GET",
+                path="/api/v2/team",
+                query={"page[number]": "1", "page[size]": "100"},
+            ),
         )
 
         assert first_match is not None
