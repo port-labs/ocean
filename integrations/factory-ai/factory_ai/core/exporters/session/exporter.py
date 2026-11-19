@@ -34,9 +34,9 @@ class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOpti
             )
             yield [session.to_raw_item() for session in response.sessions]
 
-            if not response.pagination.has_more or not response.pagination.next_cursor:
-                break
             cursor = response.pagination.next_cursor
+            if not cursor:
+                break
 
     async def get_resource(self, options: GetSessionOptions) -> RAW_ITEM | None:
         params: dict[str, str] | None = None
