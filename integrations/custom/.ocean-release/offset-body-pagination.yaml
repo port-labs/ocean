@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: feature
+changelog: Add paginationPlacement (query|body), initialOffset, and totalCountPath for offset pagination so APIs like Orca Serving Layer can page via start_at_index + limit in the POST body and stop on total_items.
