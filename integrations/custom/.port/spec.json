@@ -167,7 +167,7 @@
       "name": "paginationParam",
       "required": false,
       "type": "string",
-      "description": "Query parameter name for the main pagination value. For cursor: 'cursor', 'page[after]', 'after'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip'. Defaults vary by paginationType.",
+      "description": "Parameter or body field name for the main pagination value (query or body depending on paginationPlacement). For cursor: 'cursor', 'page[after]', 'after', 'next_page_token'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip', 'start_at_index'. Defaults vary by paginationType.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -188,7 +188,7 @@
       "name": "sizeParam",
       "required": false,
       "type": "string",
-      "description": "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType.",
+      "description": "Parameter or body field name for page size/limit (query or body depending on paginationPlacement). Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -224,6 +224,24 @@
       ]
     },
     {
+      "name": "initialOffset",
+      "required": false,
+      "type": "string",
+      "default": "0",
+      "description": "Starting offset for offset-based pagination (e.g., \"0\" or \"1\"). Defaults to \"0\". Use \"1\" for 1-based APIs. Typed as string like pageSize/startPage; Ocean config field types do not support number.",
+      "dependencies": [
+        {
+          "on": "paginationType",
+          "when": {
+            "equals": "offset"
+          },
+          "then": {
+            "required": false
+          }
+        }
+      ]
+    },
+    {
       "name": "cursorPath",
       "required": false,
       "type": "string",
@@ -241,10 +259,35 @@
       ]
     },
     {
+      "name": "paginationPlacement",
+      "required": false,
+      "type": "string",
+      "default": "query",
+      "description": "Where to send the pagination value and page size for cursor or offset pagination: 'query' (URL query parameters, default) or 'body' (JSON request body for non-GET methods only; GET always uses query params). Use body for APIs that expect offset/cursor fields in the POST payload.",
+      "enum": [
+        "query",
+        "body"
+      ],
+      "dependencies": [
+        {
+          "on": "paginationType",
+          "when": {
+            "in": [
+              "cursor",
+              "offset"
+            ]
+          },
+          "then": {
+            "required": false
+          }
+        }
+      ]
+    },
+    {
       "name": "hasMorePath",
       "required": false,
       "type": "string",
-      "description": "Dot-notation path to check if more pages exist (e.g., 'meta.has_more', 'pagination.hasMore'). Works with all pagination types. Defaults to common patterns if not specified.",
+      "description": "Dot-notation path to check if more pages exist (e.g., 'meta.has_more', 'pagination.hasMore'). Works with all pagination types. For offset without hasMorePath/totalCountPath, paging only continues when a top-level list envelope is present under data/items/results/content and is a full page, or when has_more/hasMore is present; otherwise offset stops after the current page (prefer configuring hasMorePath or totalCountPath).",
       "dependencies": [
         {
           "on": "paginationType",
@@ -254,6 +297,23 @@
               "page",
               "cursor"
             ]
+          },
+          "then": {
+            "required": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "totalCountPath",
+      "required": false,
+      "type": "string",
+      "description": "Dot-notation path to a total item count in the response for offset pagination (e.g., 'total_items'). When set, paging continues while offset + pageSize < total + initialOffset (so 0-based and 1-based starts both cover the last item). Prefer this or hasMorePath over relying on the data/items/results/content short-page heuristic.",
+      "dependencies": [
+        {
+          "on": "paginationType",
+          "when": {
+            "equals": "offset"
           },
           "then": {
             "required": false
@@ -283,7 +343,7 @@
       "required": false,
       "type": "string",
       "default": "@odata.nextLink",
-      "description": "Path to the next page URL in the response (e.g., '@odata.nextLink', 'links.next', 'nextRecordsUrl'). Used with next_link pagination type.",
+      "description": "Path to the next page URL in the response (e.g., '@odata.nextLink', 'links.next', 'nextRecordsUrl'). Absolute URLs are used as-is; relative paths are resolved against the integration base URL. Used with next_link pagination type.",
       "dependencies": [
         {
           "on": "paginationType",
@@ -380,8 +440,11 @@
           "paginationParam",
           "sizeParam",
           "startPage",
+          "initialOffset",
           "cursorPath",
+          "paginationPlacement",
           "hasMorePath",
+          "totalCountPath",
           "lastPagePath",
           "nextLinkPath",
           "headerLinkRel",

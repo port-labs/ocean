@@ -8,6 +8,7 @@ from azure.identity.aio import DefaultAzureCredential
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
+from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 from azure_integration.foundry.clients.http.retry_transport import (
     FOUNDRY_RETRY_AFTER_HEADERS,
     FoundryRetryTransport,
@@ -47,12 +48,17 @@ class FoundryHttpClient:
     ) -> None:
         self._api_version = api_version
         self._page_size = page_size
+        self.rate_limiter = FoundryRateLimiter()
         self._credential: DefaultAzureCredential | None = None
         self._http = OceanAsyncClient(
             FoundryRetryTransport,
             retry_config=RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS),
             timeout=httpx.Timeout(60.0),
+            event_hooks={"response": [self._on_response]},
         )
+
+    async def _on_response(self, response: httpx.Response) -> None:
+        self.rate_limiter.observe(response)
 
     async def _authorization_headers(self) -> dict[str, str]:
         if self._credential is None:
@@ -65,6 +71,10 @@ class FoundryHttpClient:
         if self._credential is not None:
             await self._credential.close()
             self._credential = None
+
+    @staticmethod
+    def build_url(project_endpoint: str, path: str) -> str:
+        return build_foundry_url(project_endpoint, path)
 
     @staticmethod
     def uses_openai_compatible_routes(endpoint: str) -> bool:
@@ -113,6 +123,37 @@ class FoundryHttpClient:
         if isinstance(payload, (list, dict)):
             return payload
         return {}
+
+    async def send_bytes_request(
+        self,
+        endpoint: str,
+        *,
+        params: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> bytes:
+        """GET binary payloads (e.g. skill content ZIP). 404 → empty bytes."""
+        query_params = dict(params or {})
+        if not self.uses_openai_compatible_routes(endpoint):
+            query_params.setdefault("api-version", self._api_version)
+        response = await self._http.request(
+            "GET",
+            endpoint,
+            params=query_params or None,
+            headers={
+                **await self._authorization_headers(),
+                **(extra_headers or {}),
+            },
+        )
+        if response.status_code == 404:
+            return b""
+        if response.is_error:
+            detail = (
+                response.text[:_ERROR_BODY_LIMIT]
+                if response.text
+                else response.reason_phrase
+            )
+            raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
+        return response.content or b""
 
     @staticmethod
     def items_from_payload(payload: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:

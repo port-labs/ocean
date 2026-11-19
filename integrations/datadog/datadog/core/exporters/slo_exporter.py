@@ -1,10 +1,14 @@
 import asyncio
+from datetime import datetime
+from http import HTTPStatus
 from itertools import batched
-
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
+
+from httpx import HTTPStatusError
+from loguru import logger
 
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
@@ -15,8 +19,14 @@ from datadog.core.exporters.base_exporter import (
     PaginatedExporter,
     SingleResourceExporter,
 )
+from datadog.incremental import (
+    CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY,
+    CHANGED_SLOS_AUDIT_QUERY,
+    restricted_resource_id,
+)
 
 SLO_ENRICHMENT_BATCH_SIZE = 10
+CHANGED_SLOS_FETCH_BATCH_SIZE = 10
 
 
 class ListSloOptions(ListOptions["SLOResourceConfig"]):
@@ -76,6 +86,53 @@ class SloExporter(
                     ]
                 )
                 yield enriched_slos
+
+    async def get_changed_slos(
+        self, options: ListSloOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get SLOs created or modified since ``incremental_cursor``, found through audit
+        events. With restriction policies on, SLOs whose restriction policy changed are
+        included.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        slo_ids = dict.fromkeys(
+            await self._changed_asset_ids(CHANGED_SLOS_AUDIT_QUERY, incremental_cursor)
+        )
+        if options.include_restriction_policy:
+            for asset_id in await self._changed_asset_ids(
+                CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY, incremental_cursor
+            ):
+                if slo_id := restricted_resource_id(asset_id, "slo"):
+                    slo_ids[slo_id] = None
+
+        for batch in batched(slo_ids, CHANGED_SLOS_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(
+                    self._get_changed_slo(slo_id, options.include_restriction_policy)
+                    for slo_id in batch
+                )
+            )
+            if slos := [slo for slo in results if slo]:
+                yield slos
+
+    async def _get_changed_slo(
+        self, slo_id: str, include_restriction_policy: bool
+    ) -> dict[str, Any] | None:
+        """Get an SLO found through audit events, or None if it was deleted since."""
+        try:
+            return await self.get_resource(
+                GetSloOptions(
+                    resource_id=slo_id,
+                    include_restriction_policy=include_restriction_policy,
+                )
+            )
+        except HTTPStatusError as e:
+            if e.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"Skipping SLO '{slo_id}' from audit events; it no longer exists in Datadog"
+            )
+            return None
 
     async def get_resource(self, options: GetSloOptions) -> dict[str, Any] | None:
         """Get a single SLO by ID.
