@@ -29,7 +29,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--fixture-root",
         type=Path,
         required=True,
-        help="Path to the integration's tests/validation/mock directory.",
+        help=(
+            "Root for mock scenario fixtures (route YAMLs and response bodies) "
+            "loaded via the admin API; typically <integration>/tests/validation/mock."
+        ),
     )
     parser.add_argument("--port", type=int, default=9000)
     args = parser.parse_args(argv)
