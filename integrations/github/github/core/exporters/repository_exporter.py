@@ -47,8 +47,6 @@ if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
 
 ENRICHMENT_BATCH_SIZE = 10
-# Repositories checked against the search query in one search request.
-REPOSITORIES_PER_SEARCH = 50
 
 ARCHIVED_QUALIFIER_PATTERN = re.compile(
     r"(?<!\S)archived:(?:true|false)(?!\S)", re.IGNORECASE
@@ -223,13 +221,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Repositories pushed since ``pushed_since`` that match the search query.
 
-        The search index updates a repository's push time late (a tag push did not
-        update it after 10 minutes), so a ``pushed:`` qualifier misses recent pushes.
-        The pushed repositories come from the live list instead, and search only
-        checks which of them match the query. The list is not limited to the
-        repository type: as on a full resync, the query decides that.
+        Search's push time lags (over 20 minutes in testing), so the pushed
+        repositories come from the live list, and one search per page checks which
+        of them match the query. The list covers every repository type: as on a
+        full resync, the query decides that.
         """
-        query = search_params.query.strip() if search_params else ""
+        query = search_params.query if search_params else ""
+        url = f"{self.client.base_url}/search/repositories"
         async for pushed in self._list_strategy(
             organization,
             organization_type,
@@ -237,32 +235,20 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             None,
             pushed_since=pushed_since,
         ):
-            matching = await self._repositories_matching_query(
-                organization, query, [repo["name"] for repo in pushed]
+            # repo: qualifiers without org:, which search would OR with them.
+            repo_qualifiers = " ".join(
+                f"repo:{organization}/{repo['name']}" for repo in pushed
             )
+            matching = {
+                item["name"]
+                async for items in self._search_result_items(
+                    url, {"q": f"{query} {repo_qualifiers}".strip()}
+                )
+                for item in items
+            }
             repos = [repo for repo in pushed if repo["name"] in matching]
             if repos:
                 yield repos
-
-    async def _repositories_matching_query(
-        self, organization: str, query: str, names: list[str]
-    ) -> set[str]:
-        """The repositories among ``names`` that match the search ``query``.
-
-        They are named with ``repo:`` qualifiers and no ``org:``: search combines
-        ``org:`` and ``repo:`` with OR, which would match the whole organization.
-        """
-        url = f"{self.client.base_url}/search/repositories"
-        matching: set[str] = set()
-        for names_batch in batched(names, REPOSITORIES_PER_SEARCH):
-            repo_qualifiers = " ".join(
-                f"repo:{organization}/{name}" for name in names_batch
-            )
-            async for items in self._search_result_items(
-                url, {"q": f"{query} {repo_qualifiers}".strip()}
-            ):
-                matching.update(item["name"] for item in items)
-        return matching
 
     async def _search_strategy(
         self,
