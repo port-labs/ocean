@@ -1,4 +1,5 @@
 from datetime import datetime
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
 from httpx import HTTPStatusError
@@ -58,9 +59,11 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         for user_id in user_ids:
             try:
                 user = await self.get_resource(GetUserOptions(resource_id=user_id))
-            except HTTPStatusError:
+            except HTTPStatusError as e:
+                if e.response.status_code != HTTPStatus.NOT_FOUND:
+                    raise
                 logger.warning(
-                    f"Skipping user '{user_id}' from audit events; Datadog user fetch failed"
+                    f"Skipping user '{user_id}' from audit events; it no longer exists in Datadog"
                 )
                 continue
             if user:
