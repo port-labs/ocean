@@ -7,6 +7,49 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.62.0 (2026-11-19)
+
+
+### Features
+
+- >-
+    Add IncrementalStrategy.merge_params_replacing, which merges the cursor params
+    after dropping the given base params the cursor supersedes (e.g. a configured
+    updated_before window). merge_params is unchanged.
+
+
+## 0.61.8 (2026-11-19)
+
+
+### Bug Fixes
+
+- Keep resource kind in the lake-write request body instead of the URL path so kinds containing "?" are not rejected at the ingest edge.
+
+
+## 0.61.7 (2026-11-19)
+
+
+### Improvements
+
+- Include tools/integration_validation tests in the default pytest suite
+
+
+## 0.61.6 (2026-11-17)
+
+
+### Bug Fixes
+
+- Set Redis socket and connect timeouts (previously unbounded) so a dead Redis connection can no longer hang the live-events consumer or the centralized rate limiter, which silently stalled the integration
+
+
+## 0.61.5 (2026-11-17)
+
+
+### Bug Fixes
+
+- Add Plain API (*.plain.com) to trusted subdomains list so its hostname is not rewritten to IP in SaaS mode, preventing TLS/certificate issues
+
+
 ## 0.61.4 (2026-11-15)
 
 
