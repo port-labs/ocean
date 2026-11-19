@@ -125,9 +125,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     ) -> None:
         try:
             agent = await self.client.send_api_request(
-                self.client.build_url(
-                    project_endpoint, f"agents/{inputs.agentId}"
-                )
+                self.client.build_url(project_endpoint, f"agents/{inputs.agentId}")
             )
         except Exception as error:
             # Kind unknown without the agent payload — do not guess prompt vs hosted.

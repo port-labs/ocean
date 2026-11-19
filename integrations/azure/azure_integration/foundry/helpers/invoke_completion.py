@@ -109,7 +109,9 @@ def _project_endpoint_from_run(run: IntegrationRun) -> str | None:
     sources.append(run.execution_properties or {})
     for src in sources:
         endpoint = src.get("projectEndpoint")
-        if isinstance(endpoint, str) and _looks_like_resolved_project_endpoint(endpoint):
+        if isinstance(endpoint, str) and _looks_like_resolved_project_endpoint(
+            endpoint
+        ):
             return endpoint.rstrip("/")
         resolved = _endpoint_from_arm_id(src.get("projectArmId"))
         if resolved:
@@ -213,7 +215,10 @@ async def complete_invoke_run_for_response(
 ) -> bool:
     """Attach usage/output and close the wf run. Returns False if already terminal."""
     async with _completion_lock:
-        if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
+        if (
+            run.id in _completed_invoke_run_ids
+            or response_id in _completed_response_ids
+        ):
             return False
         if not ocean.port_client.is_run_in_progress(run):
             _remember_completed(run.id, response_id)
@@ -235,7 +240,10 @@ async def complete_invoke_run_for_response(
             f"(response {response_id})"
         )
         async with _completion_lock:
-            if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
+            if (
+                run.id in _completed_invoke_run_ids
+                or response_id in _completed_response_ids
+            ):
                 return False
             _remember_completed(run.id, response_id)
         try:
@@ -284,7 +292,10 @@ async def complete_invoke_run_for_response(
         run.output = {**(prior if isinstance(prior, dict) else {}), **slim}
 
     async with _completion_lock:
-        if run.id in _completed_invoke_run_ids or response_id in _completed_response_ids:
+        if (
+            run.id in _completed_invoke_run_ids
+            or response_id in _completed_response_ids
+        ):
             return False
         _remember_completed(run.id, response_id)
 
@@ -301,17 +312,13 @@ async def complete_invoke_run_for_response(
                 display_body, agent_id=agent_id or None
             )
             if row:
-                await register_catalog_rows(
-                    ObjectKind.FOUNDRY_CONVERSATION, [row], run
-                )
+                await register_catalog_rows(ObjectKind.FOUNDRY_CONVERSATION, [row], run)
 
         # Webhook often beats SSE: post answer here so UI still gets the text log.
         if post_answer_log:
             answer = slim.get("answer")
             if isinstance(answer, str) and answer.strip():
-                await ocean.port_client.post_run_log(
-                    run, answer, should_raise=False
-                )
+                await ocean.port_client.post_run_log(run, answer, should_raise=False)
 
         if not keep_stream:
             from azure_integration.foundry.stream_manager import get_stream_manager
@@ -321,9 +328,7 @@ async def complete_invoke_run_for_response(
 
         resolved_label = status_label
         if resolved_label is None:
-            resolved_label = (
-                COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
-            )
+            resolved_label = COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
 
         logger.info(
             f"Completing run {run.id} from {source} "

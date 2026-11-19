@@ -379,6 +379,7 @@ async def test_ensure_port_mcp_passes_project_arm_id_to_connection_upsert() -> N
             attach_to_prompt_agent=False,
             project_arm_id=arm_id,
         )
+    assert conn.await_args is not None
     assert conn.await_args.kwargs["project_arm_id"] == arm_id
 
 

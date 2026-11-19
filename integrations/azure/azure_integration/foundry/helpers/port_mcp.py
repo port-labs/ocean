@@ -66,9 +66,7 @@ def toolbox_consumer_url(
     project_endpoint: str, toolbox_name: str, *, version: str | int
 ) -> str:
     base = project_endpoint.rstrip("/")
-    return (
-        f"{base}/toolboxes/{toolbox_name}/versions/{version}/mcp?api-version=v1"
-    )
+    return f"{base}/toolboxes/{toolbox_name}/versions/{version}/mcp?api-version=v1"
 
 
 def _mcp_toolbox_tool(
@@ -110,9 +108,7 @@ def _port_toolbox_entry(agent_id: str) -> dict[str, Any]:
 
 
 def _port_in_toolbox_entries(toolbox_tools: list[dict[str, Any]]) -> bool:
-    return any(
-        t.get("server_label") == PORT_MCP_SERVER_LABEL for t in toolbox_tools
-    )
+    return any(t.get("server_label") == PORT_MCP_SERVER_LABEL for t in toolbox_tools)
 
 
 def _toolbox_version_from_response(payload: Any) -> str:
@@ -153,9 +149,7 @@ def _toolbox_tools_satisfied(
         return True
     if not isinstance(existing, list):
         return False
-    have = {
-        _toolbox_tool_key(tool) for tool in existing if isinstance(tool, dict)
-    }
+    have = {_toolbox_tool_key(tool) for tool in existing if isinstance(tool, dict)}
     return all(_toolbox_tool_key(tool) in have for tool in desired)
 
 
@@ -177,9 +171,7 @@ def _latest_toolbox_version(payload: Any) -> tuple[str, list[Any]] | None:
     return version, tools if isinstance(tools, list) else []
 
 
-def _agent_points_at_toolbox(
-    tools: list[Any] | None, *, toolbox_name: str
-) -> bool:
+def _agent_points_at_toolbox(tools: list[Any] | None, *, toolbox_name: str) -> bool:
     marker = f"/toolboxes/{toolbox_name}/"
     if not tools:
         return False
@@ -434,8 +426,13 @@ async def ensure_port_mcp(
         )
         tools_context = tools_from_agent_payload(agent_payload)
     should_preserve_port = (
-        include_existing_port_in_toolbox or (enable_port_mcp and not port_access_token)
-    ) and toolbox_tools and _agent_had_port_toolbox(tools_context)
+        (
+            include_existing_port_in_toolbox
+            or (enable_port_mcp and not port_access_token)
+        )
+        and toolbox_tools
+        and _agent_had_port_toolbox(tools_context)
+    )
 
     if should_preserve_port and not _port_in_toolbox_entries(toolbox_tools):
         toolbox_tools.append(_port_toolbox_entry(agent_id))

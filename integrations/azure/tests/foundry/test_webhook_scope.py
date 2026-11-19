@@ -27,9 +27,7 @@ def test_usage_from_response() -> None:
 
 
 def test_usage_from_response_sums_when_total_missing() -> None:
-    usage = usage_from_response(
-        {"usage": {"input_tokens": 3, "output_tokens": 5}}
-    )
+    usage = usage_from_response({"usage": {"input_tokens": 3, "output_tokens": 5}})
     assert usage["totalTokens"] == 8
 
 

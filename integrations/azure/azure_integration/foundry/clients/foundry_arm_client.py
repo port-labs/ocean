@@ -51,9 +51,7 @@ class FoundryArmClient:
         *,
         project_arm_id: str | None = None,
     ) -> str:
-        project = await self._project(
-            project_endpoint, project_arm_id=project_arm_id
-        )
+        project = await self._project(project_endpoint, project_arm_id=project_arm_id)
         return (
             "https://management.azure.com/subscriptions/"
             f"{project.subscription_id}/resourceGroups/{project.resource_group_name}"
@@ -75,9 +73,7 @@ class FoundryArmClient:
 
         Data-plane ``/connections`` is read-only; create/update is ARM only.
         """
-        project = await self._project(
-            project_endpoint, project_arm_id=project_arm_id
-        )
+        project = await self._project(project_endpoint, project_arm_id=project_arm_id)
         token = access_token.strip()
         if not token.lower().startswith("bearer "):
             token = f"Bearer {token}"
