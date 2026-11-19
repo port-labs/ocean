@@ -242,8 +242,21 @@ class OffsetPagination(PaginationHandler):
         offset_param = self.config.get("pagination_param", "offset")
         limit_param = self.config.get("size_param", "limit")
         placement = self.config.get("pagination_placement", "query")
-        use_body_placement = placement == "body" and method.upper() != "GET"
-        initial_offset = int(self.config.get("initial_offset", 0))
+        # Body placement needs a JSON object to merge into; arrays/scalars fall
+        # back to query params so dict(body) cannot crash.
+        use_body_placement = (
+            placement == "body"
+            and method.upper() != "GET"
+            and (body is None or isinstance(body, dict))
+        )
+        try:
+            initial_offset = int(self.config.get("initial_offset", 0))
+        except (TypeError, ValueError):
+            logger.warning(
+                "Invalid initial_offset "
+                f"({self.config.get('initial_offset')!r}); defaulting to 0"
+            )
+            initial_offset = 0
         offset = initial_offset
 
         while True:
@@ -251,7 +264,7 @@ class OffsetPagination(PaginationHandler):
             current_body: Optional[Dict[str, Any]]
             if use_body_placement:
                 current_params = dict(params) if params else {}
-                body_payload = dict(body) if body is not None else {}
+                body_payload = dict(body) if isinstance(body, dict) else {}
                 body_payload[offset_param] = offset
                 body_payload[limit_param] = self.page_size
                 current_body = body_payload
@@ -332,7 +345,11 @@ class CursorPagination(PaginationHandler):
         cursor_path = self.config.get("cursor_path", "")
         has_more_path = self.config.get("has_more_path", "")
         placement = self.config.get("pagination_placement", "query")
-        use_body_placement = placement == "body" and method.upper() != "GET"
+        use_body_placement = (
+            placement == "body"
+            and method.upper() != "GET"
+            and (body is None or isinstance(body, dict))
+        )
 
         cursor = None
 
@@ -341,7 +358,7 @@ class CursorPagination(PaginationHandler):
             current_body: Optional[Dict[str, Any]]
             if use_body_placement:
                 current_params = dict(params) if params else {}
-                body_payload = dict(body) if body is not None else {}
+                body_payload = dict(body) if isinstance(body, dict) else {}
                 body_payload[limit_param] = self.page_size
                 if cursor:
                     body_payload[cursor_param] = cursor

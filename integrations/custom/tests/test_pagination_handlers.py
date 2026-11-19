@@ -1,6 +1,6 @@
 """Tests for pagination handlers"""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from unittest.mock import MagicMock, patch
 import pytest
 
@@ -676,6 +676,106 @@ class TestOffsetPagination:
         }
         assert "start_at_index" not in (captured_params[0] or {})
         assert "limit" not in (captured_params[0] or {})
+
+    async def test_body_placement_with_list_body_falls_back_to_query(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Non-object JSON bodies cannot merge offset fields; use query params"""
+        page1 = {"data": [{"id": "1"}] * 10, "has_more": False}
+
+        captured_params: List[Optional[Dict[str, Any]]] = []
+        captured_bodies: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            captured_params.append(params)
+            captured_bodies.append(body)
+            mock_response = MagicMock()
+            mock_response.json.return_value = page1
+            return mock_response
+
+        handler = OffsetPagination(
+            client=mock_client,
+            config={
+                "pagination_placement": "body",
+                "pagination_param": "offset",
+                "size_param": "limit",
+                "page_size": 10,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        list_body = [{"filter": "active"}]
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/items",
+            method="POST",
+            params={},
+            headers={},
+            body=cast(Any, list_body),
+        ):
+            results.append(batch)
+
+        assert len(results) == 1
+        assert captured_params[0] == {"offset": 0, "limit": 10}
+        assert captured_bodies[0] is list_body
+
+    async def test_invalid_initial_offset_defaults_to_zero(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Non-numeric initial_offset falls back to 0 instead of raising"""
+        page1 = {"data": [{"id": "1"}], "has_more": False}
+        captured_params: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            captured_params.append(params)
+            mock_response = MagicMock()
+            mock_response.json.return_value = page1
+            return mock_response
+
+        handler = OffsetPagination(
+            client=mock_client,
+            config={
+                "pagination_param": "offset",
+                "size_param": "limit",
+                "initial_offset": "abc",
+                "page_size": 10,
+            },
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/items",
+            method="GET",
+            params={},
+            headers={},
+        ):
+            results.append(batch)
+
+        assert len(results) == 1
+        assert captured_params[0] == {"offset": 0, "limit": 10}
 
     async def test_query_placement_keeps_offset_in_params(
         self,

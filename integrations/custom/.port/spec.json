@@ -226,8 +226,8 @@
     {
       "name": "initialOffset",
       "required": false,
-      "type": "string",
-      "default": "0",
+      "type": "number",
+      "default": 0,
       "description": "Starting offset for offset-based pagination (e.g., 0 or 1). Defaults to 0. Use 1 for APIs that are 1-based (for example some Orca discovery samples that start at start_at_index=1).",
       "dependencies": [
         {
