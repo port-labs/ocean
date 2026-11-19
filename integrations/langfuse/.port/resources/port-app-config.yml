@@ -1,0 +1,84 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"langfuseProject"'
+          properties:
+            organizationId: .organization.id
+            organizationName: .organization.name
+            retentionDays: .retentionDays
+
+  - kind: prompt
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"langfusePrompt"'
+          properties:
+            type: .type
+            versions: .versions
+            labels: .labels
+            tags: .tags
+            lastUpdatedAt: .lastUpdatedAt
+
+  - kind: dataset
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"langfuseDataset"'
+          properties:
+            description: .description
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            project: .projectId
+
+  - kind: model
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .modelName
+          blueprint: '"langfuseModel"'
+          properties:
+            modelName: .modelName
+            matchPattern: .matchPattern
+            isLangfuseManaged: .isLangfuseManaged
+            createdAt: .createdAt
+
+  - kind: session
+    selector:
+      query: 'true'
+      lookback_days: 7
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"langfuseSession"'
+          properties:
+            environment: .environment
+            userId: .userId
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            # Match when Langfuse session id == Foundry conversation id (e.g. conv_…)
+            foundryConversation: .id
+            project: .projectId
