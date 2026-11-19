@@ -102,6 +102,24 @@ class FactoryClient:
             logger.error(message)
             raise FactoryAIError(message) from error
 
+    async def post(
+        self,
+        path: str,
+        response_model: type[TResponse],
+        json_body: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> TResponse:
+        """POST ``path`` and validate the JSON body as ``response_model``."""
+        payload = await self.send_api_request(
+            "POST", path, params=params, json_body=json_body
+        )
+        try:
+            return response_model.model_validate(payload)
+        except ValidationError as error:
+            message = f"Invalid Factory response for POST {path}: {error}"
+            logger.error(message)
+            raise FactoryAIError(message) from error
+
     async def get_or_none(
         self,
         path: str,
