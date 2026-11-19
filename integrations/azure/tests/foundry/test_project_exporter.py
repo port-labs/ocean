@@ -198,8 +198,7 @@ def test_foundry_project_from_arm_id() -> None:
     assert project.subscription_id == "sub-1"
     assert project.project_name == "proj-1"
     assert (
-        project.endpoint
-        == "https://acct-1.services.ai.azure.com/api/projects/proj-1"
+        project.endpoint == "https://acct-1.services.ai.azure.com/api/projects/proj-1"
     )
     assert foundry_project_from_arm_id("not-an-arm-id") is None
 

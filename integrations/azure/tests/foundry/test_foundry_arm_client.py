@@ -16,7 +16,7 @@ async def test_upsert_project_connection_uses_arm_id_without_discovery() -> None
     client = FoundryArmClient()
     response = MagicMock()
     response.raise_for_status = MagicMock()
-    client._http.put = AsyncMock(return_value=response)
+    client._http.put = AsyncMock(return_value=response)  # type: ignore[method-assign]
 
     with (
         patch.object(ProjectExporter, "find_by_endpoint", AsyncMock()) as find_ep,
@@ -34,5 +34,6 @@ async def test_upsert_project_connection_uses_arm_id_without_discovery() -> None
         )
         find_ep.assert_not_awaited()
 
+    assert client._http.put.await_args is not None
     put_url = client._http.put.await_args.args[0]
     assert "acct-1/projects/proj-1/connections/port-conn" in put_url

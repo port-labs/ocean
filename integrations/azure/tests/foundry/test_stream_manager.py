@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -128,7 +129,7 @@ async def test_stream_error_after_bind_waits_when_webhook_can_complete() -> None
     ]
 
     class _FakeResponse:
-        async def aiter_lines(self):
+        async def aiter_lines(self) -> AsyncIterator[str]:
             for line in lines:
                 yield line
             raise RuntimeError("disconnect")
@@ -180,7 +181,7 @@ async def test_stream_error_after_bind_tries_foundry_get() -> None:
     ]
 
     class _FakeResponse:
-        async def aiter_lines(self):
+        async def aiter_lines(self) -> AsyncIterator[str]:
             for line in lines:
                 yield line
             raise RuntimeError("disconnect")
@@ -231,7 +232,7 @@ async def test_clean_exit_after_bind_tries_foundry_get() -> None:
     ]
 
     class _FakeResponse:
-        async def aiter_lines(self):
+        async def aiter_lines(self) -> AsyncIterator[str]:
             for line in lines:
                 yield line
 
@@ -281,7 +282,7 @@ async def test_terminal_sse_logs_before_stop() -> None:
     ]
 
     class _FakeResponse:
-        async def aiter_lines(self):
+        async def aiter_lines(self) -> AsyncIterator[str]:
             for line in lines:
                 yield line
 

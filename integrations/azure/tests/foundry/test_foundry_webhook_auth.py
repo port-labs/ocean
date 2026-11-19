@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,7 +14,7 @@ from azure_integration.foundry.webhook_processors.conversation_webhook_processor
 
 
 def _run(*, report: bool | None) -> WorkflowNodeRun:
-    props: dict = {}
+    props: dict[str, Any] = {}
     if report is not None:
         props["reportInvocationStatus"] = report
     return WorkflowNodeRun(

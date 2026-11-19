@@ -40,6 +40,7 @@ def _clear_completion_caches() -> None:
 async def test_complete_unclaims_when_port_report_fails() -> None:
     _clear_completion_caches()
     run = _workflow_run("run_fail_report")
+    assert run.config is not None
     run.config.integrationActionExecutionProperties = {
         "projectEndpoint": "https://x/api/projects/p",
     }
@@ -130,6 +131,7 @@ async def test_complete_invoke_run_is_idempotent() -> None:
 async def test_complete_invoke_run_omits_entity_link_and_noise() -> None:
     _clear_completion_caches()
     run = _workflow_run("run_2")
+    assert run.config is not None
     run.config.integrationActionExecutionProperties = {
         "projectEndpoint": "https://x/api/projects/p",
     }
@@ -203,6 +205,7 @@ async def test_complete_invoke_run_omits_entity_link_and_noise() -> None:
 async def test_sse_success_registers_catalog_and_usage() -> None:
     _clear_completion_caches()
     run = _workflow_run("run_3")
+    assert run.config is not None
     run.config.integrationActionExecutionProperties = {
         "projectEndpoint": "https://x/api/projects/p",
     }
@@ -266,6 +269,7 @@ async def test_sse_success_registers_catalog_and_usage() -> None:
 async def test_webhook_posts_answer_log_before_complete() -> None:
     _clear_completion_caches()
     run = _workflow_run("run_webhook_answer")
+    assert run.config is not None
     run.config.integrationActionExecutionProperties = {
         "projectEndpoint": "https://x/api/projects/p",
         "agentId": "agent-1",
@@ -319,6 +323,7 @@ async def test_webhook_posts_answer_log_before_complete() -> None:
             run, event_type="response.completed", response_id="resp_wh"
         )
     fetch.assert_awaited_once()
+    assert fetch.await_args is not None
     assert fetch.await_args.kwargs.get("agent_id") == "agent-1"
     mock_ocean.port_client.post_run_log.assert_awaited_once_with(
         run, "webhook answer", should_raise=False
@@ -361,6 +366,7 @@ async def test_complete_invoke_uses_bound_project_arm_id_over_jq_props() -> None
         "/subscriptions/s/resourceGroups/rg/providers/"
         "Microsoft.CognitiveServices/accounts/acct/projects/p"
     )
+    assert run.config is not None
     run.config.integrationActionExecutionProperties = {
         "projectArmId": "{{ .outputs.fetch_agent.projectId }}",
     }
@@ -399,6 +405,7 @@ async def test_complete_invoke_uses_bound_project_arm_id_over_jq_props() -> None
         mock_manager.return_value.untrack_for_run.assert_awaited_once_with(run.id)
 
     fetch.assert_awaited_once()
+    assert fetch.await_args is not None
     assert (
         fetch.await_args.kwargs["project_endpoint"]
         == "https://acct.services.ai.azure.com/api/projects/p"

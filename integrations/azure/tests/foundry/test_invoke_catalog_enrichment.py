@@ -19,9 +19,7 @@ async def test_response_body_for_catalog_fetches_when_usage_missing() -> None:
         body = await response_body_for_catalog(
             "resp_1", {"id": "resp_1"}, project_endpoint=_ENDPOINT
         )
-    fetch.assert_awaited_once_with(
-        "resp_1", project_endpoint=_ENDPOINT, agent_id=None
-    )
+    fetch.assert_awaited_once_with("resp_1", project_endpoint=_ENDPOINT, agent_id=None)
     assert body == {"id": "resp_1", "usage": {"input_tokens": 1}}
 
 
