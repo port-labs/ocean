@@ -17,8 +17,6 @@ _TOOL_CALL_TYPES = {
 
 
 class FoundryUsage(BaseModel):
-    """Stable token-usage shape (OpenAI + Responses aliases)."""
-
     model_config = ConfigDict(extra="ignore")
 
     prompt_tokens: int | None = None
@@ -48,17 +46,12 @@ class FoundryUsage(BaseModel):
         return fields
 
     def run_output_fields(self) -> dict[str, int]:
-        """CamelCase token fields for Port run output."""
         rename = {
             "prompt_tokens": "inputTokens",
             "completion_tokens": "outputTokens",
             "total_tokens": "totalTokens",
         }
-        return {
-            rename[key]: value
-            for key, value in self.row_fields().items()
-            if key in rename
-        }
+        return {rename[k]: v for k, v in self.row_fields().items() if k in rename}
 
 
 def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
@@ -69,7 +62,6 @@ def merge_usage_into_row(row: dict[str, Any], usage: dict[str, Any]) -> None:
 
 
 def count_tool_calls_in_response(response: dict[str, Any]) -> int:
-    # output[] items vary widely by tool — keep as plain dicts.
     output = response.get("output")
     if not isinstance(output, list):
         return 0
@@ -93,18 +85,19 @@ def conversation_id_from_response(response: dict[str, Any]) -> str | None:
     return None
 
 
+def catalog_agent_id(raw: str) -> str:
+    return raw.split(":", 1)[0] if ":" in raw else raw
+
+
 def conversation_row_from_response(
-    response: dict[str, Any],
-    *,
-    agent_id: str | None = None,
+    response: dict[str, Any], *, agent_id: str | None = None
 ) -> dict[str, Any] | None:
     conversation_id = conversation_id_from_response(response)
     if not conversation_id:
         return None
     row: dict[str, Any] = {"id": conversation_id}
     if agent_id:
-        catalog_id = agent_id.split(":", 1)[0] if ":" in agent_id else agent_id
-        row["participant_agent_ids"] = [catalog_id]
+        row["participant_agent_ids"] = [catalog_agent_id(agent_id)]
     usage = response.get("usage")
     if isinstance(usage, dict):
         merge_usage_into_row(row, usage)
@@ -112,12 +105,6 @@ def conversation_row_from_response(
     if tool_calls:
         row["tool_call_count"] = tool_calls
     return row
-
-
-def catalog_agent_id(raw: str) -> str:
-    if ":" in raw:
-        return raw.split(":", 1)[0]
-    return raw
 
 
 def agent_id_from_response(response: dict[str, Any]) -> str | None:
@@ -145,13 +132,10 @@ def model_deployment_id_from_response(response: dict[str, Any]) -> str | None:
     if isinstance(direct, str) and direct.strip():
         return direct.strip()
     model = response.get("model")
-    if isinstance(model, str) and model.strip():
-        return model.strip()
-    return None
+    return model.strip() if isinstance(model, str) and model.strip() else None
 
 
 def normalize_foundry_response(source: dict[str, Any]) -> dict[str, Any] | None:
-    # Full Foundry response body stays a dict — shape is large and unstable.
     response_id = source.get("id")
     if not response_id:
         return None

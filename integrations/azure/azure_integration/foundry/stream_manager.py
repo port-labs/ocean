@@ -5,25 +5,25 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun, WorkflowNodeRunLog
-from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.helpers.responses_stream import (
+    TERMINAL_SSE_TYPES,
     ResponsesSseEvent,
     format_responses_sse_log_message,
     parse_responses_sse_payload,
     response_id_from_sse_event,
-    success_for_terminal_sse_event,
 )
 
 OnResponseIdCallback = Callable[[str], Awaitable[None] | None]
 OnTerminalSseCallback = Callable[[ResponsesSseEvent], Awaitable[None] | None]
+TrackResult = Literal["started", "duplicate", "capacity"]
 
 # Same default as CMA stream manager; not user-configurable.
 _MAX_CONCURRENT_STREAMS = 10
@@ -33,6 +33,10 @@ _LOG_FLUSH_BATCH_SIZE = 10
 class ResponsesStreamManager:
     def __init__(self) -> None:
         self._tasks: dict[str, asyncio.Task[None]] = {}
+
+    @property
+    def active_count(self) -> int:
+        return len(self._tasks)
 
     async def track(
         self,
@@ -45,14 +49,12 @@ class ResponsesStreamManager:
         on_response_id: OnResponseIdCallback | None = None,
         stop_on_terminal_sse: bool = False,
         on_terminal_sse: OnTerminalSseCallback | None = None,
-    ) -> bool:
+    ) -> TrackResult:
         if stream_key in self._tasks:
-            return False
+            return "duplicate"
         if len(self._tasks) >= _MAX_CONCURRENT_STREAMS:
-            raise ActionExecutionError(
-                f"Too many concurrent Foundry response streams "
-                f"(max {_MAX_CONCURRENT_STREAMS}); retry later"
-            )
+            # Over cap: caller submits non-SSE invoke and relies on webhooks.
+            return "capacity"
         task = asyncio.create_task(
             self._consume_stream(
                 stream_key,
@@ -67,15 +69,11 @@ class ResponsesStreamManager:
             name=f"foundry-stream-{stream_key}",
         )
         self._tasks[stream_key] = task
-        return True
+        return "started"
 
     async def untrack(self, stream_key: str) -> None:
         task = self._tasks.pop(stream_key, None)
-        if task is None:
-            return
-        # SSE completion may untrack from inside the stream task; do not
-        # cancel/await self (deadlock). finally already pops the entry.
-        if task is asyncio.current_task():
+        if task is None or task is asyncio.current_task():
             return
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -88,7 +86,6 @@ class ResponsesStreamManager:
                 await self.untrack(key)
 
     async def shutdown(self) -> None:
-        """Cancel all live streams (process exit)."""
         for key in list(self._tasks):
             await self.untrack(key)
 
@@ -133,18 +130,10 @@ class ResponsesStreamManager:
                             await result
                 message = format_responses_sse_log_message(parsed)
                 if message is not None:
-                    buffer.append(
-                        WorkflowNodeRunLog(
-                            message=message,
-                            level="INFO",
-                        )
-                    )
+                    buffer.append(WorkflowNodeRunLog(message=message, level="INFO"))
                     if len(buffer) >= _LOG_FLUSH_BATCH_SIZE:
                         await _flush_logs(run, buffer)
-                if (
-                    stop_on_terminal_sse
-                    and success_for_terminal_sse_event(parsed.type) is not None
-                ):
+                if stop_on_terminal_sse and parsed.type in TERMINAL_SSE_TYPES:
                     terminal_parsed = parsed
                     break
             if buffer:
@@ -163,7 +152,6 @@ class ResponsesStreamManager:
                         ),
                     )
                 else:
-                    # No terminal SSE and never bound: fail the Port run.
                     with contextlib.suppress(Exception):
                         await ocean.port_client.post_run_log(
                             run,
@@ -182,8 +170,6 @@ class ResponsesStreamManager:
                 await _flush_logs(run, buffer)
             raise
         except Exception as error:
-            # Fire-and-forget task: do not re-raise (avoids "Task exception was
-            # never retrieved" / debugger stops).
             logger.exception(f"Responses stream failed for {stream_key}: {error}")
             if not ocean.port_client.is_run_in_progress(run):
                 return
@@ -198,16 +184,11 @@ class ResponsesStreamManager:
                 return
             with contextlib.suppress(Exception):
                 await ocean.port_client.post_run_log(
-                    run,
-                    f"Responses stream failed: {error}",
-                    level="ERROR",
+                    run, f"Responses stream failed: {error}", level="ERROR"
                 )
             with contextlib.suppress(Exception):
                 await ocean.port_client.report_run_completed(
-                    run,
-                    False,
-                    status_label="Invoke failed",
-                    should_raise=False,
+                    run, False, status_label="Invoke failed", should_raise=False
                 )
         finally:
             self._tasks.pop(stream_key, None)
@@ -217,11 +198,9 @@ class ResponsesStreamManager:
 
 
 async def _complete_or_leave_after_sse_drop(run: IntegrationRun, *, note: str) -> None:
-    """SSE dropped after bind: complete from Foundry GET if terminal, else leave open (webhook may still finish)."""
     with contextlib.suppress(Exception):
         await ocean.port_client.post_run_log(run, note, level="WARNING")
 
-    # Lazy imports: avoid circular import with invoke_completion ↔ stream_manager.
     from azure_integration.foundry.helpers.invoke_completion import (
         _project_endpoint_from_run,
         complete_invoke_run_for_response,
@@ -236,11 +215,9 @@ async def _complete_or_leave_after_sse_drop(run: IntegrationRun, *, note: str) -
             response_id = rid
     if not response_id:
         return
-
     endpoint = _project_endpoint_from_run(run)
     if not endpoint:
         return
-
     try:
         body = await response_body_for_catalog(
             response_id, None, project_endpoint=endpoint
@@ -249,14 +226,12 @@ async def _complete_or_leave_after_sse_drop(run: IntegrationRun, *, note: str) -
         return
     if not isinstance(body, dict):
         return
-
     try:
         override = FoundryResponseBody.model_validate(body).success_override()
     except Exception:
         return
     if override is None:
         return
-
     await complete_invoke_run_for_response(
         run,
         response_id=response_id,
@@ -272,7 +247,6 @@ async def _flush_logs(run: IntegrationRun, buffer: list[WorkflowNodeRunLog]) -> 
         return
     logs = list(buffer)
     buffer.clear()
-    # Skip once Port run is terminal (avoids 409 noise after webhook wins).
     if not ocean.port_client.is_run_in_progress(run):
         return
     with contextlib.suppress(Exception):

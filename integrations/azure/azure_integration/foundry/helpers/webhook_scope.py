@@ -99,13 +99,3 @@ class FoundryResponseBody(BaseModel):
             ),
             body.success_override(),
         )
-
-
-def usage_from_response(response: dict[str, Any]) -> dict[str, int]:
-    usage = response.get("usage")
-    if not isinstance(usage, dict):
-        return {}
-    try:
-        return FoundryUsage.model_validate(usage).run_output_fields()
-    except ValidationError:
-        return {}

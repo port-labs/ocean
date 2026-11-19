@@ -12,20 +12,23 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
+from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.core.exporters.project_exporter import (
     foundry_project_from_arm_id,
 )
-from azure_integration.foundry.helpers.model_responses_api import fetch_foundry_response
 from azure_integration.foundry.helpers.responses_catalog import (
     catalog_agent_id,
     conversation_row_from_response,
     normalize_foundry_response,
 )
 from azure_integration.foundry.helpers.responses_stream import (
+    TERMINAL_SSE_TYPES,
     ResponsesSseEvent,
-    success_for_terminal_sse_event,
 )
-from azure_integration.foundry.helpers.utils import enrich_with_project
+from azure_integration.foundry.helpers.utils import (
+    agent_openai_protocol_path,
+    enrich_with_project,
+)
 from azure_integration.foundry.helpers.webhook_scope import FoundryResponseBody
 from azure_integration.foundry.kinds import ObjectKind
 
@@ -35,7 +38,6 @@ INVOCATION_SUBMITTED_STATUS_LABEL = "Invoke submitted"
 
 _completion_lock = asyncio.Lock()
 _MAX_COMPLETED = 1024
-# Claimed completions: webhook/SSE race — skip second path (incl. Foundry GET).
 _completed_invoke_run_ids: dict[str, None] = {}
 _completed_response_ids: dict[str, None] = {}
 
@@ -45,7 +47,7 @@ def _trim(cache: dict[str, None]) -> None:
         cache.pop(next(iter(cache)))
 
 
-def _remember_completed(run_id: str, response_id: str = "") -> None:
+def _remember(run_id: str, response_id: str = "") -> None:
     _completed_invoke_run_ids[run_id] = None
     _trim(_completed_invoke_run_ids)
     if response_id:
@@ -53,69 +55,71 @@ def _remember_completed(run_id: str, response_id: str = "") -> None:
         _trim(_completed_response_ids)
 
 
-def _forget_completed(run_id: str, response_id: str = "") -> None:
+def _forget(run_id: str, response_id: str = "") -> None:
     _completed_invoke_run_ids.pop(run_id, None)
     if response_id:
         _completed_response_ids.pop(response_id, None)
-
-
-def _mark_local_run_completed(run: IntegrationRun) -> None:
-    if isinstance(run, WorkflowNodeRun):
-        run.status = WorkflowNodeRunStatus.COMPLETED
 
 
 def is_response_completion_claimed(response_id: str) -> bool:
     return bool(response_id) and response_id in _completed_response_ids
 
 
-def response_body_from_sse_event(
-    parsed: ResponsesSseEvent,
-) -> dict[str, Any] | None:
-    return parsed.response
-
-
-def _is_unresolved_template(value: str) -> bool:
-    return "{{" in value
-
-
-def _looks_like_resolved_project_endpoint(value: str) -> bool:
-    endpoint = value.strip()
-    if not endpoint or _is_unresolved_template(endpoint):
-        return False
-    lower = endpoint.casefold()
-    return lower.startswith("http://") or lower.startswith("https://")
-
-
-def _endpoint_from_arm_id(arm_id: str | None) -> str | None:
-    if (
-        not isinstance(arm_id, str)
-        or not arm_id.strip()
-        or _is_unresolved_template(arm_id)
-    ):
+def _endpoint_from_arm_id(arm_id: Any) -> str | None:
+    if not isinstance(arm_id, str) or not arm_id.strip() or "{{" in arm_id:
         return None
     project = foundry_project_from_arm_id(arm_id.strip())
-    if project is None:
-        return None
-    return project.endpoint.rstrip("/")
+    return project.endpoint.rstrip("/") if project else None
 
 
 def _project_endpoint_from_run(run: IntegrationRun) -> str | None:
-    # Prefer bound run.output (resolved ids) over execution_properties (may still
-    # hold unresolved JQ like "{{ .outputs... }}").
+    # Prefer bound run.output (resolved) over execution_properties (may be JQ).
     sources: list[Any] = []
-    prior = run.output if isinstance(run, WorkflowNodeRun) else None
-    if isinstance(prior, dict):
-        sources.append(prior)
+    if isinstance(run, WorkflowNodeRun) and isinstance(run.output, dict):
+        sources.append(run.output)
     sources.append(run.execution_properties or {})
     for src in sources:
         endpoint = src.get("projectEndpoint")
-        if isinstance(endpoint, str) and _looks_like_resolved_project_endpoint(
-            endpoint
+        if (
+            isinstance(endpoint, str)
+            and endpoint.strip()
+            and "{{" not in endpoint
+            and endpoint.casefold().startswith(("http://", "https://"))
         ):
             return endpoint.rstrip("/")
         resolved = _endpoint_from_arm_id(src.get("projectArmId"))
         if resolved:
             return resolved
+    return None
+
+
+async def fetch_foundry_response(
+    response_id: str,
+    *,
+    project_endpoint: str,
+    agent_id: str | None = None,
+) -> dict[str, Any] | None:
+    """GET stored Responses body. Agent invokes try agent protocol path first."""
+    client = create_foundry_client()
+    paths: list[str] = []
+    if agent_id and agent_id.strip():
+        paths.append(
+            f"{agent_openai_protocol_path(agent_id.strip(), 'responses')}/{response_id}"
+        )
+    paths.append(f"openai/v1/responses/{response_id}")
+    last_error: Exception | None = None
+    for path in paths:
+        try:
+            payload = await client.send_api_request(
+                client.build_url(project_endpoint, path), method="GET"
+            )
+        except Exception as error:
+            last_error = error
+            continue
+        if isinstance(payload, dict) and payload:
+            return payload
+    if last_error is not None:
+        logger.warning(f"Failed to GET Foundry response {response_id}: {last_error}")
     return None
 
 
@@ -166,17 +170,16 @@ async def response_body_for_catalog(
     project_endpoint: str,
     agent_id: str | None = None,
 ) -> dict[str, Any] | None:
-    """Prefer a GET response payload so usage/model/conversation fields exist for mapping."""
-    if response_body is None:
-        return await fetch_foundry_response(
-            response_id, project_endpoint=project_endpoint, agent_id=agent_id
+    """Prefer GET so usage/model/conversation exist for mapping."""
+    if (
+        response_body is not None
+        and response_body.get("usage")
+        and (
+            response_body.get("model")
+            or response_body.get("conversation")
+            or response_body.get("conversation_id")
         )
-    needs_fetch = not response_body.get("usage") or not (
-        response_body.get("model")
-        or response_body.get("conversation")
-        or response_body.get("conversation_id")
-    )
-    if not needs_fetch:
+    ):
         return response_body
     fetched = await fetch_foundry_response(
         response_id, project_endpoint=project_endpoint, agent_id=agent_id
@@ -221,7 +224,7 @@ async def complete_invoke_run_for_response(
         ):
             return False
         if not ocean.port_client.is_run_in_progress(run):
-            _remember_completed(run.id, response_id)
+            _remember(run.id, response_id)
             return False
 
     prior = run.output if isinstance(run, WorkflowNodeRun) else {}
@@ -234,6 +237,7 @@ async def complete_invoke_run_for_response(
         or ""
     ).strip()
     project_endpoint = _project_endpoint_from_run(run)
+
     if response_body is None and not project_endpoint:
         logger.error(
             f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "
@@ -245,22 +249,19 @@ async def complete_invoke_run_for_response(
                 or response_id in _completed_response_ids
             ):
                 return False
-            _remember_completed(run.id, response_id)
+            _remember(run.id, response_id)
         try:
             await ocean.port_client.report_run_completed(
-                run,
-                False,
-                status_label=FAILED_STATUS_LABEL,
-                should_raise=True,
+                run, False, status_label=FAILED_STATUS_LABEL, should_raise=True
             )
-            _mark_local_run_completed(run)
+            if isinstance(run, WorkflowNodeRun):
+                run.status = WorkflowNodeRunStatus.COMPLETED
         except Exception:
             async with _completion_lock:
-                _forget_completed(run.id, response_id)
+                _forget(run.id, response_id)
             raise
         return True
 
-    # Always prefer a GET so usage/model/conversation exist (webhook payload is id-only).
     display_body = (
         await response_body_for_catalog(
             response_id,
@@ -276,19 +277,17 @@ async def complete_invoke_run_for_response(
             f"Foundry GET returned no body for response {response_id} "
             f"(run {run.id}); completing without answer/usage"
         )
-    prior_conversation_id = (
-        str(prior["conversationId"]) if prior.get("conversationId") else None
-    )
+
     slim, success_override = FoundryResponseBody.invoke_run_output(
         response_id=response_id,
         display_body=display_body if isinstance(display_body, dict) else None,
-        prior_conversation_id=prior_conversation_id,
+        prior_conversation_id=(
+            str(prior["conversationId"]) if prior.get("conversationId") else None
+        ),
     )
     if success_override is not None:
         success = success_override
-
     if isinstance(run, WorkflowNodeRun):
-        # Keep bind-time fields (projectArmId, deploymentName, …); slim wins on overlap.
         run.output = {**(prior if isinstance(prior, dict) else {}), **slim}
 
     async with _completion_lock:
@@ -297,10 +296,9 @@ async def complete_invoke_run_for_response(
             or response_id in _completed_response_ids
         ):
             return False
-        _remember_completed(run.id, response_id)
+        _remember(run.id, response_id)
 
     try:
-        # Gate on post-GET ``success`` (may differ from caller event-type guess).
         if register_catalog and success and isinstance(display_body, dict):
             await register_catalog_response_from_body(
                 display_body,
@@ -308,13 +306,14 @@ async def complete_invoke_run_for_response(
                 fallback_agent_id=agent_id or None,
                 fallback_model_deployment_id=deployment_name or None,
             )
-            row = conversation_row_from_response(
+            conv = conversation_row_from_response(
                 display_body, agent_id=agent_id or None
             )
-            if row:
-                await register_catalog_rows(ObjectKind.FOUNDRY_CONVERSATION, [row], run)
+            if conv:
+                await register_catalog_rows(
+                    ObjectKind.FOUNDRY_CONVERSATION, [conv], run
+                )
 
-        # Webhook often beats SSE: post answer here so UI still gets the text log.
         if post_answer_log:
             answer = slim.get("answer")
             if isinstance(answer, str) and answer.strip():
@@ -323,49 +322,37 @@ async def complete_invoke_run_for_response(
         if not keep_stream:
             from azure_integration.foundry.stream_manager import get_stream_manager
 
-            # Untrack after answer log so cancel-flush cannot race the post.
             await get_stream_manager().untrack_for_run(run.id)
 
-        resolved_label = status_label
-        if resolved_label is None:
-            resolved_label = COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
-
+        label = status_label or (
+            COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL
+        )
         logger.info(
             f"Completing run {run.id} from {source} "
             f"(response {response_id}, success={success})"
         )
         await ocean.port_client.report_run_completed(
-            run,
-            success,
-            status_label=resolved_label,
-            should_raise=True,
+            run, success, status_label=label, should_raise=True
         )
-        _mark_local_run_completed(run)
+        if isinstance(run, WorkflowNodeRun):
+            run.status = WorkflowNodeRunStatus.COMPLETED
     except Exception:
-        # Unclaim so webhook/SSE can retry closing the Port run.
         async with _completion_lock:
-            _forget_completed(run.id, response_id)
+            _forget(run.id, response_id)
         raise
     return True
 
 
 async def complete_invoke_run_from_webhook(
-    run: IntegrationRun,
-    *,
-    event_type: str,
-    response_id: str,
+    run: IntegrationRun, *, event_type: str, response_id: str
 ) -> bool:
     if is_response_completion_claimed(response_id):
-        logger.debug(
-            f"Skipping Foundry webhook {event_type} for {response_id}; "
-            "already completed (SSE or prior webhook)"
-        )
         return False
     success = event_type == "response.completed"
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
-        response_body=None,  # force GET via response_body_for_catalog
+        response_body=None,
         success=success,
         source=f"Foundry webhook {event_type}",
         register_catalog=success,
@@ -376,17 +363,13 @@ async def complete_invoke_run_from_webhook(
 async def complete_invoke_run_from_sse(
     run: IntegrationRun, parsed: ResponsesSseEvent
 ) -> bool:
-    success = success_for_terminal_sse_event(parsed.type)
+    success = TERMINAL_SSE_TYPES.get(parsed.type)
     if success is None:
         return False
-    response_body = response_body_from_sse_event(parsed)
-    bound_response_id = (
-        run.output.get("responseId") if isinstance(run, WorkflowNodeRun) else None
-    )
-    response_id = str((response_body or {}).get("id") or bound_response_id or "")
-    if not response_id:
-        return False
-    if is_response_completion_claimed(response_id):
+    response_body = parsed.response
+    bound = run.output.get("responseId") if isinstance(run, WorkflowNodeRun) else None
+    response_id = str((response_body or {}).get("id") or bound or "")
+    if not response_id or is_response_completion_claimed(response_id):
         return False
     return await complete_invoke_run_for_response(
         run,

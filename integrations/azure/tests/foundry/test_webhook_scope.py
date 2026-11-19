@@ -1,10 +1,8 @@
-from azure_integration.foundry.helpers.webhook_scope import (
-    FoundryResponseBody,
-    usage_from_response,
-)
+from azure_integration.foundry.helpers.responses_catalog import FoundryUsage
+from azure_integration.foundry.helpers.webhook_scope import FoundryResponseBody
 
 
-def test_assistant_text() -> None:
+def test_assistant_text_and_usage() -> None:
     body = FoundryResponseBody.model_validate(
         {
             "output": [
@@ -16,19 +14,17 @@ def test_assistant_text() -> None:
         }
     )
     assert body.assistant_text() == "Hello"
-
-
-def test_usage_from_response() -> None:
-    usage = usage_from_response(
-        {"usage": {"input_tokens": 3, "output_tokens": 5, "total_tokens": 8}}
-    )
+    usage = FoundryUsage.model_validate(
+        {"input_tokens": 3, "output_tokens": 5, "total_tokens": 8}
+    ).run_output_fields()
     assert usage["inputTokens"] == 3
     assert usage["totalTokens"] == 8
-
-
-def test_usage_from_response_sums_when_total_missing() -> None:
-    usage = usage_from_response({"usage": {"input_tokens": 3, "output_tokens": 5}})
-    assert usage["totalTokens"] == 8
+    assert (
+        FoundryUsage.model_validate(
+            {"input_tokens": 3, "output_tokens": 5}
+        ).run_output_fields()["totalTokens"]
+        == 8
+    )
 
 
 def test_invoke_run_output_prefers_body_status_and_conversation() -> None:
