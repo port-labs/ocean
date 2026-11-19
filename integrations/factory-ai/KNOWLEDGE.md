@@ -34,6 +34,7 @@
 ### session
 
 - Selected-orgs feature (`403` when the org lacks Sessions API access)
+- Exporter soft-fails on `403` (log + yield nothing) so other kinds still reconcile
 - List is **cursor-paginated** (`{ sessions: [...], pagination: { hasMore, nextCursor } }`) via `/api/v0/sessions`
 - Page size: `limit` 1–100 (integration defaults to 100); optional `computerId` filter
 - Get-by-id: `GET /api/v0/sessions/{sessionId}` (optional `computerId` query)

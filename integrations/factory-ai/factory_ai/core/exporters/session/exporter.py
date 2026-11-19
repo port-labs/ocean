@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from http import HTTPStatus
+
+import httpx
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
@@ -14,7 +17,20 @@ from factory_ai.core.exporters.session.models import (
 _SESSIONS_PATH = "/api/v0/sessions"
 
 
+def _is_forbidden(error: httpx.HTTPStatusError) -> bool:
+    return (
+        error.response is not None
+        and error.response.status_code == HTTPStatus.FORBIDDEN
+    )
+
+
 class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOptions]):
+    """Sync Factory Droid sessions.
+
+    Soft-fails (yields nothing / returns ``None``) on HTTP 403 when the org
+    lacks Sessions API access, so the rest of the resync can still reconcile.
+    """
+
     async def get_paginated_resources(
         self, options: ListSessionOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -24,11 +40,21 @@ class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOpti
             if cursor:
                 params["cursor"] = cursor
 
-            response = await self.client.get(
-                _SESSIONS_PATH,
-                ListSessionsResponse,
-                params=params or None,
-            )
+            try:
+                response = await self.client.get(
+                    _SESSIONS_PATH,
+                    ListSessionsResponse,
+                    params=params or None,
+                )
+            except httpx.HTTPStatusError as error:
+                if _is_forbidden(error):
+                    logger.warning(
+                        "Factory Sessions API returned 403; org likely lacks "
+                        "access. Skipping session sync."
+                    )
+                    return
+                raise
+
             logger.debug(
                 f"Fetched Factory sessions batch with {len(response.sessions)} records"
             )
@@ -43,9 +69,18 @@ class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOpti
         if options.computer_id:
             params = {"computerId": options.computer_id}
 
-        session = await self.client.get_or_none(
-            f"{_SESSIONS_PATH}/{options.session_id}",
-            Session,
-            params=params,
-        )
+        try:
+            session = await self.client.get_or_none(
+                f"{_SESSIONS_PATH}/{options.session_id}",
+                Session,
+                params=params,
+            )
+        except httpx.HTTPStatusError as error:
+            if _is_forbidden(error):
+                logger.warning(
+                    "Factory Sessions API returned 403; org likely lacks "
+                    "access. Skipping session lookup."
+                )
+                return None
+            raise
         return session.to_raw_item() if session else None
