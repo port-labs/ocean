@@ -642,6 +642,15 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "queue check that stays pending. Only used with includeRequiredChecksStatus."
         ),
     )
+    include_comments: bool = Field(
+        title="Include Comments",
+        alias="includeComments",
+        default=False,
+        description=(
+            "When true, attach each pull request's comments under `__comments` so "
+            "they can be mapped with itemsToParse."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:

@@ -180,6 +180,7 @@ class TestPullRequestWebhookProcessor:
                         exclude_graphql_fields=[],
                         include_required_checks_status=False,
                         excluded_required_checks=[],
+                        include_comments=False,
                     )
                 )
             elif expected_delete:
@@ -260,3 +261,32 @@ class TestPullRequestWebhookProcessor:
 
         assert result.updated_raw_results == [fetched_pr]
         assert result.deleted_raw_results == []
+
+    async def test_handle_event_attaches_comments_on_pull_request_webhook(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+    ) -> None:
+        resource_config.selector.include_comments = True
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "open"}
+        payload = {
+            "action": "synchronize",
+            "pull_request": pr_data,
+            "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
+        }
+        updated_pr_data = {
+            **pr_data,
+            "__repository": "test-repo",
+            "__comments": [{"id": 9, "__commentType": "comment"}],
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.base_pull_request_webhook_processor.fetch_single_pull_request",
+            new=AsyncMock(return_value=updated_pr_data),
+        ):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert result.updated_raw_results[0]["__comments"] == updated_pr_data["__comments"]

@@ -47,6 +47,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     exclude_graphql_fields: NotRequired[list[str]]
     include_required_checks_status: NotRequired[bool]
     excluded_required_checks: NotRequired[list[str]]
+    include_comments: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -65,6 +66,21 @@ class ListPullRequestOptions(RepositoryIdentifier):
     exclude_graphql_fields: NotRequired[list[str]]
     include_required_checks_status: NotRequired[bool]
     excluded_required_checks: NotRequired[list[str]]
+    include_comments: NotRequired[bool]
+
+
+class ListPullRequestCommentOptions(RepositoryIdentifier):
+    """Options for listing comments on one pull request."""
+
+    pr_number: Required[int]
+    pull_request_id: Required[int]
+
+
+class SinglePullRequestCommentOptions(ListPullRequestCommentOptions):
+    """Options for fetching one pull request comment or review."""
+
+    comment_id: Required[int]
+    comment_type: Required[str]
 
 
 class PullRequestGraphQLOptions(BaseModel):
