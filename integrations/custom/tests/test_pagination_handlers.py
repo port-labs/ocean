@@ -1106,9 +1106,7 @@ class TestOffsetPagination:
             nonlocal request_count
             request_count += 1
             if request_count > 3:
-                raise AssertionError(
-                    "pagination did not stop on unrecognized envelope"
-                )
+                raise AssertionError("pagination did not stop on unrecognized envelope")
             mock_response = MagicMock()
             mock_response.json.return_value = stuck_page
             return mock_response
