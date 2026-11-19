@@ -31,10 +31,10 @@ class TestUserExporter:
             side_effect=[
                 _page(
                     [{"accountId": "1", "displayName": "Ada"}],
-                    total=150,
+                    total=USER_PAGE_SIZE,
                     start_size=USER_PAGE_SIZE,
                 ),
-                _page([{"accountId": "2", "displayName": "Grace"}], total=150),
+                _page([{"accountId": "2", "displayName": "Grace"}], total=1),
             ]
         )
         exporter = UserExporter(client)

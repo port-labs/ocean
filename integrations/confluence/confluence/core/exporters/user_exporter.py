@@ -15,7 +15,8 @@ class UserExporter(AbstractConfluenceExporter[ConfluenceClient]):
 
     ``cql=type=user`` is the documented query for listing users. Confluence
     returns at most 10,000 users for that query. Pagination uses ``start``
-    and ``limit``.
+    and ``limit``. ``totalSize`` is the current page size, not the match
+    count, so a short page is the only signal that the list is finished.
     """
 
     async def get_paginated_resources(
@@ -46,12 +47,9 @@ class UserExporter(AbstractConfluenceExporter[ConfluenceClient]):
                 yield users
 
             size = payload.get("size")
-            total = payload.get("totalSize")
             page_size = size if isinstance(size, int) else len(results)
             start += page_size
-            if page_size < USER_PAGE_SIZE or (
-                isinstance(total, int) and start >= total
-            ):
+            if page_size < USER_PAGE_SIZE:
                 break
 
     async def get_single_resource(self, resource_id: str) -> RAW_ITEM | None:

@@ -5,6 +5,7 @@ from port_ocean.core.ocean_types import RAW_ITEM
 from confluence.clients.client import ConfluenceClient
 from confluence.core.exporters.abstract_exporter import AbstractConfluenceExporter
 from confluence.core.options import PageExportOptions
+from confluence.helpers.exceptions import ConfluenceApiError
 from confluence.helpers.utils import attach_web_url
 
 METADATA_PAGE_SIZE = 250
@@ -17,6 +18,8 @@ PARENT_ENDPOINTS = {
 }
 # Pages come from the list call. Embed has no get-by-id, so it stays an id in the path.
 FETCHED_PARENT_TYPES = {"folder", "whiteboard", "database"}
+# A missing ancestor is not the synced page. Keep its id in the path instead of failing the sync.
+OPTIONAL_PARENT_STATUS_CODES = (404,)
 
 
 class PageExporter(AbstractConfluenceExporter[ConfluenceClient]):
@@ -43,11 +46,10 @@ class PageExporter(AbstractConfluenceExporter[ConfluenceClient]):
                 ]
 
     async def get_single_resource(self, resource_id: str) -> RAW_ITEM | None:
-        payload = await self.client.send_api_request(
-            f"pages/{resource_id}", missing_ok=True
-        )
-        if not payload or not payload.get("id"):
-            return None
+        # A 404 here must fail. Returning nothing makes Ocean delete the page.
+        payload = await self.client.send_api_request(f"pages/{resource_id}")
+        if not payload.get("id"):
+            raise ConfluenceApiError(f"Confluence did not return page {resource_id}")
         # Webhooks have no preloaded map, so fetch only this page's ancestors.
         nodes: dict[str, dict[str, Any]] = {}
         await self._fill_ancestors(payload, nodes)
@@ -99,7 +101,8 @@ class PageExporter(AbstractConfluenceExporter[ConfluenceClient]):
             if parent_id in nodes:
                 continue
             payload = await self.client.send_api_request(
-                f"{PARENT_ENDPOINTS[parent_type]}/{parent_id}", missing_ok=True
+                f"{PARENT_ENDPOINTS[parent_type]}/{parent_id}",
+                ignore_status_codes=OPTIONAL_PARENT_STATUS_CODES,
             )
             if not payload or not payload.get("id"):
                 continue  # _enrich keeps the raw ID for this level
@@ -146,7 +149,8 @@ class PageExporter(AbstractConfluenceExporter[ConfluenceClient]):
                 if not endpoint:
                     break
                 payload = await self.client.send_api_request(
-                    f"{endpoint}/{parent_id}", missing_ok=True
+                    f"{endpoint}/{parent_id}",
+                    ignore_status_codes=OPTIONAL_PARENT_STATUS_CODES,
                 )
                 if not payload or not payload.get("id"):
                     break

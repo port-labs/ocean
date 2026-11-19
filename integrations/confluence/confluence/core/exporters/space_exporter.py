@@ -5,6 +5,7 @@ from port_ocean.core.ocean_types import RAW_ITEM
 from confluence.clients.client import ConfluenceClient
 from confluence.core.exporters.abstract_exporter import AbstractConfluenceExporter
 from confluence.core.options import SpaceExportOptions
+from confluence.helpers.exceptions import ConfluenceApiError
 from confluence.helpers.utils import attach_web_url
 
 
@@ -31,12 +32,14 @@ class SpaceExporter(AbstractConfluenceExporter[ConfluenceClient]):
             yield [self._enrich(item) for item in batch]
 
     async def get_single_resource(self, resource_id: str) -> RAW_ITEM | None:
+        # A 404 here must fail. Returning nothing makes Ocean delete the space.
         payload = await self.client.send_api_request(
             f"spaces/{resource_id}",
             params={"description-format": "plain"},
-            missing_ok=True,
         )
-        return self._enrich(payload) if payload.get("id") else None
+        if not payload.get("id"):
+            raise ConfluenceApiError(f"Confluence did not return space {resource_id}")
+        return self._enrich(payload)
 
     def _enrich(self, item: dict[str, Any]) -> dict[str, Any]:
         return attach_web_url(self.client.site_url, item)

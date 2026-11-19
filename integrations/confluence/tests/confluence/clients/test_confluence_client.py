@@ -31,35 +31,39 @@ class TestConfluenceClient:
     async def test_send_api_request_success(self) -> None:
         client = _client()
         url = "https://example.atlassian.net/wiki/api/v2/spaces/123"
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(200, {"id": "123", "key": "DOCS"}, url)
         )
 
         result = await client.send_api_request("spaces/123")
 
         assert result == {"id": "123", "key": "DOCS"}
-        request_kwargs = client.http_client.request.await_args.kwargs
+        request_kwargs = client._http_client.request.await_args.kwargs
         assert request_kwargs["url"] == url
         assert request_kwargs["headers"]["Authorization"].startswith("Basic ")
 
-    async def test_send_api_request_404_returns_empty_object(self) -> None:
+    async def test_send_api_request_404_can_be_ignored_for_an_optional_lookup(
+        self,
+    ) -> None:
         client = _client()
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(
                 404,
                 {"message": "Not found"},
-                "https://example.atlassian.net/wiki/api/v2/pages/1",
+                "https://example.atlassian.net/wiki/api/v2/folders/1",
             )
         )
 
-        assert await client.send_api_request("pages/1", missing_ok=True) == {}
+        assert (
+            await client.send_api_request("folders/1", ignore_status_codes=(404,)) == {}
+        )
 
     async def test_send_api_request_404_raises_for_lists(self) -> None:
         client = _client()
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(
                 404,
                 {"message": "Not found"},
@@ -72,8 +76,8 @@ class TestConfluenceClient:
 
     async def test_send_api_request_401_raises(self) -> None:
         client = _client()
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(
                 401,
                 {"message": "Client must be authenticated"},
@@ -86,8 +90,8 @@ class TestConfluenceClient:
 
     async def test_send_api_request_403_names_required_access(self) -> None:
         client = _client()
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(
                 403,
                 {
@@ -104,8 +108,8 @@ class TestConfluenceClient:
 
     async def test_send_api_request_500_raises(self) -> None:
         client = _client()
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(
                 500,
                 {"message": "unavailable"},
@@ -119,8 +123,8 @@ class TestConfluenceClient:
     async def test_absolute_path_uses_the_site_url(self) -> None:
         client = _client()
         url = "https://example.atlassian.net/wiki/rest/api/search/user"
-        client.http_client = MagicMock()
-        client.http_client.request = AsyncMock(
+        client._http_client = MagicMock()
+        client._http_client.request = AsyncMock(
             return_value=_response(200, {"results": []}, url)
         )
 
@@ -128,7 +132,7 @@ class TestConfluenceClient:
             "/wiki/rest/api/search/user", params={"cql": "type=user"}
         )
 
-        assert client.http_client.request.await_args.kwargs["url"] == url
+        assert client._http_client.request.await_args.kwargs["url"] == url
 
     async def test_send_paginated_request_follows_next_link(self) -> None:
         client = _client()

@@ -1,8 +1,10 @@
 import base64
+from collections.abc import Collection
 from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils import http_async_client
 
 from confluence.helpers.exceptions import (
@@ -32,19 +34,26 @@ class ConfluenceClient:
         self.base_url = f"{self.site_url}/wiki/api/v2"
         self._email = email
         self._api_token = api_token
-        self.http_client = http_async_client
+        # Shared Ocean client: retries transient failures. Do not construct another one.
+        self._http_client: OceanAsyncClient = http_async_client  # type: ignore[assignment]
 
     async def send_api_request(
         self,
         endpoint: str,
         method: str = "GET",
         params: dict[str, Any] | None = None,
-        missing_ok: bool = False,
+        ignore_status_codes: Collection[int] | None = None,
     ) -> dict[str, Any]:
-        """Send one request. A 404 returns an empty object only when ``missing_ok`` is set."""
+        """Send one request.
+
+        ``ignore_status_codes`` is for an optional lookup, such as an ancestor
+        that may have been deleted. Leave it unset when fetching a resource the
+        integration syncs. Swallowing a 404 there looks like the resource is
+        gone, and Ocean deletes it during reconciliation.
+        """
         logged_endpoint = endpoint.split("?", 1)[0]
         try:
-            response = await self.http_client.request(
+            response = await self._http_client.request(
                 method=method,
                 url=self._url(endpoint),
                 params=params,
@@ -53,8 +62,11 @@ class ConfluenceClient:
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as error:
-            if missing_ok and error.response.status_code == 404:
-                logger.info(f"Confluence resource was not found at {logged_endpoint}")
+            status_code = error.response.status_code
+            if ignore_status_codes and status_code in ignore_status_codes:
+                logger.info(
+                    f"Ignoring Confluence HTTP {status_code} for optional request to {logged_endpoint}"
+                )
                 return {}
             self._raise_for_status(error, logged_endpoint)
         except httpx.HTTPError as error:

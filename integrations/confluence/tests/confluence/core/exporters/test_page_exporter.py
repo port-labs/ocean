@@ -6,9 +6,11 @@ import pytest
 from confluence.core.exporters.page_exporter import (
     BODY_PAGE_SIZE,
     METADATA_PAGE_SIZE,
+    OPTIONAL_PARENT_STATUS_CODES,
     PageExporter,
 )
 from confluence.core.options import PageExportOptions
+from confluence.helpers.exceptions import ConfluenceApiError
 
 
 def _pages(
@@ -162,9 +164,14 @@ class TestPageExporter:
             "whiteboards/wb-1",
             "folders/folder-1",
         }
+        assert all(
+            call.kwargs["ignore_status_codes"] == OPTIONAL_PARENT_STATUS_CODES
+            for call in client.send_api_request.await_args_list
+        )
 
-    async def test_get_single_resource_not_found(self) -> None:
+    async def test_get_single_resource_not_found_fails(self) -> None:
         client, _calls = _client()
         exporter = PageExporter(client)
 
-        assert await exporter.get_single_resource("15") is None
+        with pytest.raises(ConfluenceApiError, match="15"):
+            await exporter.get_single_resource("15")

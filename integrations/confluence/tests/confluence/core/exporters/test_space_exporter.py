@@ -5,6 +5,7 @@ import pytest
 
 from confluence.core.exporters.space_exporter import SpaceExporter
 from confluence.core.options import SpaceExportOptions
+from confluence.helpers.exceptions import ConfluenceApiError
 
 
 def _client() -> tuple[MagicMock, list[dict[str, Any]]]:
@@ -79,11 +80,11 @@ class TestSpaceExporter:
         client.send_api_request.assert_awaited_once_with(
             "spaces/123",
             params={"description-format": "plain"},
-            missing_ok=True,
         )
 
-    async def test_get_single_resource_not_found(self) -> None:
+    async def test_get_single_resource_not_found_fails(self) -> None:
         client, _calls = _client()
         exporter = SpaceExporter(client)
 
-        assert await exporter.get_single_resource("404") is None
+        with pytest.raises(ConfluenceApiError, match="404"):
+            await exporter.get_single_resource("404")
