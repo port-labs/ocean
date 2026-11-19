@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from factory_ai.core.exporters.abstract_exporter import AbstractFactoryExporter
 from factory_ai.core.exporters.computer import ComputerExporter

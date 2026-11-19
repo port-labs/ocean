@@ -7,7 +7,7 @@ import httpx
 from loguru import logger
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils import http_async_client
-from pydantic.v1 import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from factory_ai.clients.exceptions import FactoryAIError
 
@@ -96,7 +96,7 @@ class FactoryClient:
         """GET ``path`` and validate the JSON body as ``response_model``."""
         payload = await self.send_api_request("GET", path, params=params)
         try:
-            return response_model.parse_obj(payload)
+            return response_model.model_validate(payload)
         except ValidationError as error:
             message = f"Invalid Factory response for GET {path}: {error}"
             logger.error(message)

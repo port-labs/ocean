@@ -33,7 +33,9 @@ _MIN_ENVIRONMENT = {
 @pytest.mark.asyncio
 async def test_environment_exporter_lists_via_typed_response() -> None:
     client_mock = MagicMock()
-    response = ListEnvironmentsResponse.parse_obj({"environments": [_MIN_ENVIRONMENT]})
+    response = ListEnvironmentsResponse.model_validate(
+        {"environments": [_MIN_ENVIRONMENT]}
+    )
     client_mock.get = AsyncMock(return_value=response)
     exporter = EnvironmentExporter(client_mock)
 
@@ -57,7 +59,7 @@ async def test_environment_exporter_lists_via_typed_response() -> None:
 async def test_environment_exporter_forwards_service_account_id() -> None:
     client_mock = MagicMock()
     client_mock.get = AsyncMock(
-        return_value=ListEnvironmentsResponse.parse_obj({"environments": []})
+        return_value=ListEnvironmentsResponse.model_validate({"environments": []})
     )
     exporter = EnvironmentExporter(client_mock)
     options = ListEnvironmentOptions(service_account_id="sa-9")
@@ -75,7 +77,7 @@ async def test_environment_exporter_forwards_service_account_id() -> None:
 async def test_environment_exporter_get_resource() -> None:
     client_mock = MagicMock()
     client_mock.get_or_none = AsyncMock(
-        return_value=Environment.parse_obj(_MIN_ENVIRONMENT)
+        return_value=Environment.model_validate(_MIN_ENVIRONMENT)
     )
     exporter = EnvironmentExporter(client_mock)
 

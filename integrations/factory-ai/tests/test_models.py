@@ -1,4 +1,4 @@
-from pydantic.v1 import Field
+from pydantic import Field
 
 from factory_ai.core.exporters.computer.models import Computer, ListComputerOptions
 from factory_ai.core.models import FactoryListOptions
@@ -36,7 +36,7 @@ def test_list_computer_options_uses_aliases_and_keeps_false() -> None:
 
 
 def test_to_raw_item_excludes_none_keeps_false() -> None:
-    computer = Computer.parse_obj(
+    computer = Computer.model_validate(
         {
             "id": "comp-1",
             "name": "basic",
