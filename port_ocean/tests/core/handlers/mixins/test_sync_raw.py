@@ -2490,7 +2490,9 @@ def test_log_kind_fetch_failure_writes_error_extract_log() -> None:
 
     handler_id = logger.add(sink, level="ERROR")
     try:
-        _log_kind_fetch_failure("service-0", [RuntimeError("boom")])
+        # Resync binds the sync id as event_id on the logger (event_context).
+        with logger.contextualize(event_id="resync-1"):
+            _log_kind_fetch_failure("service-0", [RuntimeError("boom")])
     finally:
         logger.remove(handler_id)
 
@@ -2498,9 +2500,10 @@ def test_log_kind_fetch_failure_writes_error_extract_log() -> None:
         r["message"] == "Fetch failed: boom"
         and r["extra"].get("etl_phase") == ETLPhase.EXTRACT
         and r["extra"].get("kind_identifier") == "service-0"
+        and r["extra"].get("event_id") == "resync-1"
         and "failed_entity" not in r["extra"]
         for r in records
-    ), f"expected ERROR extract log without failed_entity, got {records!r}"
+    ), f"expected ERROR extract log with event_id from logger context, got {records!r}"
 
 
 @pytest.mark.asyncio
