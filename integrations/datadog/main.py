@@ -159,6 +159,21 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield slos
 
 
+@ocean.on_incremental_resync(ObjectKind.SLO)
+async def on_incremental_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListSloOptions.from_resource_config(
+        cast(SLOResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for slos in _resync_across_orgs(
+        lambda client: SloExporter(client).get_changed_slos(
+            options, incremental_cursor=cursor
+        ),
+        context="SLO exporter",
+    ):
+        yield slos
+
+
 @ocean.on_incremental_resync(ObjectKind.SLO_HISTORY)
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
