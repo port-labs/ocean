@@ -7,7 +7,13 @@ from enum import StrEnum
 from typing import Any, Optional, Union
 
 from loguru import logger
+from wcmatch import glob
 from yaml import YAMLError, safe_load
+
+# matches dotfiles Matching is case-sensitive, like git paths.
+PATH_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB
+# Same, ignoring case; used to discover files whose casing varies (e.g. SKILL.md).
+CASE_INSENSITIVE_PATH_GLOB_FLAGS = PATH_GLOB_FLAGS | glob.IGNORECASE
 
 # GitLab project/group access-token bots have system-generated usernames like
 # "project_<id>_bot_<hex>" or "group_<id>_bot_<hex>".  The members/all API
@@ -105,6 +111,13 @@ def parse_file_content(
         return content
 
 
+@dataclass(frozen=True)
+class ChangedPaths:
+    """Changed paths since a cursor. ``paths`` is None when a full listing is needed."""
+
+    paths: list[str] | None
+
+
 @dataclass
 class SearchQuery:
     """Parsed components of a file search path pattern.
@@ -157,6 +170,60 @@ def build_search_query(search_path: str) -> SearchQuery:
     return SearchQuery(
         path=search_path, keyword=keyword, filename=filename, directory=directory
     )
+
+
+def ancestor_dirs(path: str) -> set[str]:
+    """Return every directory containing ``path``: ``a/b/c.txt`` -> ``{"a", "a/b"}``."""
+    parts = path.split("/")[:-1]
+    return {"/".join(parts[:depth]) for depth in range(1, len(parts) + 1)}
+
+
+def is_wildcard_path(path: str) -> bool:
+    """Check if a path contains glob wildcard characters."""
+    return any(c in path for c in "*?[]")
+
+
+def tree_match_pattern(query: SearchQuery) -> str:
+    """Return the glob matched against repository tree paths for a search query."""
+    return f"**/{query.filename}" if query.directory is None else query.path
+
+
+def changed_files(query: SearchQuery, changed_paths: list[str]) -> list[str]:
+    """Changed paths matched by the file selector *query*, like the full tree search."""
+    match_pattern = tree_match_pattern(query)
+    return [
+        path
+        for path in changed_paths
+        if glob.globmatch(path, match_pattern, flags=PATH_GLOB_FLAGS)
+    ]
+
+
+def changed_folders(path: str, changed_paths: list[str]) -> set[str]:
+    """Folders matched by the folder selector *path* that contain a changed path.
+
+    A wildcard *path* is matched as a glob; a concrete *path* matches its direct
+    child folders, like the full folder listing.
+    """
+    prefix = path.rstrip("/")
+    is_wildcard = is_wildcard_path(path)
+
+    def is_match(folder: str) -> bool:
+        if is_wildcard:
+            return glob.globmatch(folder, path, flags=PATH_GLOB_FLAGS)
+        return folder.rpartition("/")[0] == prefix
+
+    return {
+        folder
+        for changed_path in changed_paths
+        for folder in ancestor_dirs(changed_path)
+        if is_match(folder)
+    }
+
+
+def is_branch_push_to(event: dict[str, Any], ref: str) -> bool:
+    """True when a project event is a push to branch ``ref``."""
+    push = event.get("push_data") or {}
+    return push.get("ref_type") == "branch" and push.get("ref") == ref
 
 
 def enrich_resources_with_project(

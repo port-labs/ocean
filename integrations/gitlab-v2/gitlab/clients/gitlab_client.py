@@ -1,5 +1,7 @@
 import asyncio
+from datetime import datetime
 from functools import partial
+from itertools import batched
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Sequence, Union
 
 import anyio
@@ -11,14 +13,22 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.time import convert_str_to_utc_datetime
 from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import (
+    PATH_GLOB_FLAGS,
+    ChangedPaths,
     build_search_query,
+    changed_files,
+    changed_folders,
+    is_wildcard_path,
     parse_file_content,
     SearchQuery,
     is_bot_member,
+    is_branch_push_to,
+    tree_match_pattern,
 )
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
@@ -29,6 +39,10 @@ class AwardEmoji(BaseModel):
     id: int
     name: str
 
+
+# Same batch size as a full resync, whose repository tree pages use the default page size.
+CHANGED_FILES_BATCH_SIZE = RestClient.DEFAULT_PAGE_SIZE
+GIT_NULL_SHA = "0" * 40
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
@@ -61,11 +75,6 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
 
 
-def _is_wildcard_path(path: str) -> bool:
-    """Check if a path contains glob wildcard characters."""
-    return any(c in path for c in "*?[]")
-
-
 def _literal_tree_prefix(path: str) -> str:
     """Return the fixed directory prefix before the first glob segment.
 
@@ -76,7 +85,7 @@ def _literal_tree_prefix(path: str) -> str:
     """
     parts: list[str] = []
     for part in path.strip("/").split("/"):
-        if _is_wildcard_path(part):
+        if is_wildcard_path(part):
             break
         if part:
             parts.append(part)
@@ -89,7 +98,7 @@ def _repository_tree_params(path: str) -> tuple[str, bool]:
     Wildcard patterns recurse under their literal prefix instead of always walking
     the whole repository. Concrete paths list that directory non-recursively.
     """
-    if not _is_wildcard_path(path):
+    if not is_wildcard_path(path):
         return path, False
     return _literal_tree_prefix(path), True
 
@@ -165,10 +174,118 @@ class GitLabClient:
             params={"from": from_sha, "to": to_sha},
         )
 
-    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
-        return await self.rest.send_api_request(
-            "GET", f"projects/{project_id}/releases/{tag_name}"
+    async def changed_paths_since(
+        self, project_path: str, since: datetime, ref: str
+    ) -> ChangedPaths:
+        """Paths changed on ``ref`` since ``since``; ``paths`` is None when a full listing is needed.
+
+        The base is the branch tip before the first push to ``ref`` after ``since``, taken
+        from the push event. No push to ``ref`` after ``since`` means nothing changed. A full
+        listing is needed when the push feed does not reach back to ``since``, the base is a
+        root commit or unreadable, GitLab reports a compare timeout or overflow, or an API
+        call fails.
+        """
+        try:
+            events = await self._push_events_since(project_path, since)
+            if events is None:
+                return ChangedPaths(paths=None)
+            ref_pushes = [event for event in events if is_branch_push_to(event, ref)]
+            if not ref_pushes:
+                return ChangedPaths(paths=[])
+            # Events come newest first, so the last one is the first push after ``since``.
+            base_sha = await self._push_base_sha(project_path, ref_pushes[-1], ref)
+            if base_sha is None:
+                return ChangedPaths(paths=None)
+            compare = await self.compare_repository(project_path, base_sha, ref)
+        except httpx.HTTPError as err:
+            logger.warning(
+                f"Failed to compare '{ref}' in {project_path} since {since.isoformat()}, "
+                f"full listing needed: {err}"
+            )
+            return ChangedPaths(paths=None)
+
+        # A 403/404 on a GET comes back as {} (see base_client), which has no diffs.
+        # Treat that as an untrusted compare, not as "nothing changed".
+        if "diffs" not in compare:
+            logger.warning(
+                f"Compare for {project_path} returned no diffs (not readable or not found), full listing needed"
+            )
+            return ChangedPaths(paths=None)
+        if compare.get("compare_timeout") or compare.get("overflow"):
+            logger.warning(
+                f"Compare incomplete for {project_path} (timeout or overflow), full listing needed"
+            )
+            return ChangedPaths(paths=None)
+
+        paths = [
+            diff["new_path"]
+            for diff in compare["diffs"]
+            if not diff.get("deleted_file")
+        ]
+        logger.info(f"Found {len(paths)} changed paths in {project_path}")
+        return ChangedPaths(paths=paths)
+
+    async def _push_base_sha(
+        self, project_path: str, push: dict[str, Any], ref: str
+    ) -> str | None:
+        """The commit the branch had before ``push``, or None when it cannot be a diff base."""
+        base_sha = push["push_data"].get("commit_from")
+        if not base_sha or base_sha == GIT_NULL_SHA:
+            logger.info(
+                f"Branch '{ref}' in {project_path} was created after the compared time, full listing needed"
+            )
+            return None
+        base = await self.rest.send_api_request(
+            "GET",
+            f"projects/{quote(project_path, safe='')}/repository/commits/{base_sha}",
         )
+        if not base:
+            logger.warning(
+                f"Base commit {base_sha} in {project_path} is not readable, full listing needed"
+            )
+            return None
+        if not base.get("parent_ids"):
+            logger.info(
+                f"Base commit {base_sha} in {project_path} is a root commit, full listing needed"
+            )
+            return None
+        return base_sha
+
+    async def _push_events_since(
+        self, project_path: str, since: datetime
+    ) -> list[dict[str, Any]] | None:
+        """Push events newer than ``since``, newest first, for every branch and tag.
+
+        Pages through the events feed until an event at or before ``since`` shows up.
+        Returns None, with a warning, when the feed cannot be read (a 403/404 comes back
+        as ``{}``) or ends before reaching ``since``: pushes after ``since`` may then be
+        missing, so the caller needs a full listing.
+        """
+        encoded_path = quote(project_path, safe="")
+        page_size = RestClient.DEFAULT_PAGE_SIZE
+        newer: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            events = await self.rest.send_api_request(
+                "GET",
+                f"projects/{encoded_path}/events",
+                params={"action": "pushed", "per_page": page_size, "page": page},
+            )
+            if not isinstance(events, list):
+                logger.warning(
+                    f"Push events for {project_path} are not readable, full listing needed"
+                )
+                return None
+            for event in events:
+                if convert_str_to_utc_datetime(event["created_at"]) <= since:
+                    return newer
+                newer.append(event)
+            if len(events) < page_size:
+                logger.warning(
+                    f"Push events for {project_path} end before {since.isoformat()}, full listing needed"
+                )
+                return None
+            page += 1
 
     async def get_project(
         self,
@@ -398,6 +515,11 @@ class GitLabClient:
         ):
             logger.info(f"Received batch with {len(tags_batch)} tags")
             yield tags_batch
+
+    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/releases/{tag_name}"
+        )
 
     async def get_releases(
         self,
@@ -734,6 +856,7 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
         strategy: str = "repositoryTree",
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files based on the specified strategy.
 
@@ -744,6 +867,9 @@ class GitLabClient:
                 - repositoryTree: Search across all accessible projects using tree API
                 - projectSearch: Search across all accessible projects via Search API
                 - groupSearch: Search across groups (with fallback to projectSearch if no results)
+            since: Only return files changed since this time. Applies to
+                repositoryTree only: the Search API has no time filter, so
+                projectSearch and groupSearch ignore it.
 
             GitLab's Search API (groupSearch / projectSearch) does not guarantee complete
             results; see https://docs.gitlab.com/user/search/advanced_search/#known-issues
@@ -763,6 +889,7 @@ class GitLabClient:
                 params=params,
                 should_use_tree=should_use_tree,
                 max_concurrent=max_concurrent,
+                since=since,
             ):
                 yield batch
         else:
@@ -852,12 +979,13 @@ class GitLabClient:
         self,
         scope: str,
         query: SearchQuery,
-        *,
         skip_parsing: bool = False,
         repositories: list[str] | None = None,
         params: Optional[dict[str, Any]] = None,
         should_use_tree: bool = False,
         max_concurrent: int = 10,
+        *,
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files across accessible projects or specific repositories.
 
@@ -866,30 +994,35 @@ class GitLabClient:
                          searches across all accessible projects.
             params: Project filter parameters (only used when repositories is None).
             should_use_tree: Whether to use the repository tree API for searching.
+            since: With the tree API, only return files changed since this time.
+                Ignored by the Search API, which has no time filter.
         """
         logger.info(
             f"Starting project-level file search with path pattern: '{query.path}' using params: {params}"
         )
         semaphore = asyncio.BoundedSemaphore(max_concurrent)
 
+        def _search_project(
+            repo: str | dict[str, Any],
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            return semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self._search_files_in_repository,
+                    repo,
+                    scope,
+                    query,
+                    skip_parsing,
+                    should_use_tree=should_use_tree,
+                    since=since,
+                ),
+            )
+
         if repositories:
             logger.info(
                 f"Searching for {query.path} across {len(repositories)} specific repositories"
             )
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    partial(
-                        self._search_files_in_repository,
-                        repo,
-                        scope,
-                        query,
-                        skip_parsing,
-                        should_use_tree=should_use_tree,
-                    ),
-                )
-                for repo in repositories
-            ]
+            tasks = [_search_project(repo) for repo in repositories]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
         else:
@@ -904,20 +1037,7 @@ class GitLabClient:
                     self._log_skipped_projects_without_default_branch(skipped)
                     if not projects_to_search:
                         continue
-                tasks = [
-                    semaphore_async_iterator(
-                        semaphore,
-                        partial(
-                            self._search_files_in_repository,
-                            project["path_with_namespace"],
-                            scope,
-                            query,
-                            skip_parsing,
-                            should_use_tree=should_use_tree,
-                        ),
-                    )
-                    for project in projects_to_search
-                ]
+                tasks = [_search_project(project) for project in projects_to_search]
                 async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
 
@@ -955,9 +1075,18 @@ class GitLabClient:
                 yield batch
 
     async def get_repository_folders(
-        self, path: str, repository: str, branch: Optional[str] = None
+        self,
+        path: str,
+        repository: str,
+        branch: Optional[str] = None,
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Search for folders in specified repositories only."""
+        """Search for folders in specified repositories only.
+
+        With ``since``, yields only folders under ``path`` that contain a path
+        changed since then, falling back to the full listing when the diff
+        cannot be trusted.
+        """
         project = await self.get_project(repository)
         if not project:
             return
@@ -966,7 +1095,18 @@ class GitLabClient:
         if not effective_branch:
             return
 
-        is_wildcard = _is_wildcard_path(path)
+        if since is not None:
+            changed_dirs = await self._changed_folders_since(
+                project, path, effective_branch, since
+            )
+            if changed_dirs is not None:
+                async for folders_batch in self._get_folders_by_path(
+                    project, changed_dirs, effective_branch
+                ):
+                    yield folders_batch
+                return
+
+        is_wildcard = is_wildcard_path(path)
         async for items_batch in self.get_repository_tree(
             project, path, effective_branch
         ):
@@ -976,13 +1116,51 @@ class GitLabClient:
                 if item["type"] == "tree"
                 and (
                     not is_wildcard
-                    or glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
+                    or glob.globmatch(item["path"], path, flags=PATH_GLOB_FLAGS)
                 )
             ]
             if folders_batch:
                 yield folders_batch
+
+    async def _changed_folders_since(
+        self,
+        project: dict[str, Any],
+        path: str,
+        branch: str,
+        since: datetime,
+    ) -> set[str] | None:
+        """Folders under ``path`` with a change since ``since``; ``None`` when the diff can't be trusted."""
+        repository = project["path_with_namespace"]
+        changed = await self.changed_paths_since(repository, since, branch)
+        if changed.paths is None:
+            return None
+        changed_dirs = changed_folders(path, changed.paths)
+        if not changed_dirs:
+            logger.info(f"No changed folders under '{path}' in {repository}")
+            return changed_dirs
+        logger.info(
+            f"Found {len(changed_dirs)} changed folders under '{path}' in {repository}"
+        )
+        return changed_dirs
+
+    async def _get_folders_by_path(
+        self,
+        project: dict[str, Any],
+        folder_paths: set[str],
+        branch: str,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch the tree entries of *folder_paths*, listing each parent directory once."""
+        for parent in sorted({folder.rpartition("/")[0] for folder in folder_paths}):
+            async for items_batch in self.get_repository_tree(
+                project, parent, branch, recursive=False
+            ):
+                folders_batch = [
+                    {"folder": item, "repo": project, "__branch": branch}
+                    for item in items_batch
+                    if item["type"] == "tree" and item["path"] in folder_paths
+                ]
+                if folders_batch:
+                    yield folders_batch
 
     async def enrich_merge_requests(
         self,
@@ -1294,26 +1472,93 @@ class GitLabClient:
 
     async def _search_files_in_repository(
         self,
-        repo: str,
+        repo: str | dict[str, Any],
         scope: str,
         query: SearchQuery,
         skip_parsing: bool = False,
         should_use_tree: bool = False,
+        since: datetime | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for files in one repository.
+
+        With the tree API and ``since``, yields only files matching ``query`` that
+        changed since then, falling back to the full search when the diff cannot
+        be trusted. The Search API has no time filter and ignores ``since``.
+        """
+        repo_path = repo if isinstance(repo, str) else repo["path_with_namespace"]
         logger.debug(
-            f"Starting search in repository '{repo}' for query '{query.path}' with scope '{scope}'"
+            f"Starting search in repository '{repo_path}' for query '{query.path}' with scope '{scope}'"
         )
+
+        if should_use_tree and since is not None:
+            project = repo if isinstance(repo, dict) else await self.get_project(repo)
+            if not project:
+                return
+            branch = self._project_tree_ref(project)
+            if not branch:
+                return
+            changed_paths = await self._changed_files_since(
+                project, query, branch, since
+            )
+            if changed_paths is not None:
+                async for files_batch in self._get_files_by_path(
+                    project, changed_paths, branch, skip_parsing
+                ):
+                    yield files_batch
+                return
+            repo = project
 
         search_handler = (
             self._match_files_with_repository_tree(repo, query)
             if should_use_tree
-            else self._match_files_with_project_search(repo, scope, query)
+            else self._match_files_with_project_search(repo_path, scope, query)
         )
 
         async for file_batch in search_handler:
-            logger.debug(f"Found {len(file_batch)} files in '{repo}'")
+            logger.debug(f"Found {len(file_batch)} files in '{repo_path}'")
             processed_batch = await self._process_file_batch(
-                file_batch, repo, skip_parsing
+                file_batch, repo_path, skip_parsing
+            )
+            if processed_batch:
+                yield processed_batch
+
+    async def _changed_files_since(
+        self,
+        project: dict[str, Any],
+        query: SearchQuery,
+        branch: str,
+        since: datetime,
+    ) -> list[str] | None:
+        """Files matching ``query`` with a change since ``since``; ``None`` when the diff can't be trusted."""
+        repository = project["path_with_namespace"]
+        changed = await self.changed_paths_since(repository, since, branch)
+        if changed.paths is None:
+            return None
+        changed_paths = changed_files(query, changed.paths)
+        if not changed_paths:
+            logger.info(f"No changed files matching '{query.path}' in {repository}")
+            return changed_paths
+        logger.info(
+            f"Found {len(changed_paths)} changed files matching '{query.path}' in {repository}"
+        )
+        return changed_paths
+
+    async def _get_files_by_path(
+        self,
+        project: dict[str, Any],
+        file_paths: list[str],
+        branch: str,
+        skip_parsing: bool = False,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch *file_paths* from *branch*, in batches."""
+        repository = project["path_with_namespace"]
+        for paths_batch in batched(file_paths, CHANGED_FILES_BATCH_SIZE):
+            files_batch = [
+                {"path": path, "ref": branch, "project_id": project["id"]}
+                for path in paths_batch
+            ]
+            processed_batch = await self._process_file_batch(
+                files_batch, repository, skip_parsing
             )
             if processed_batch:
                 yield processed_batch
@@ -1339,7 +1584,7 @@ class GitLabClient:
             )
 
     async def _match_files_with_repository_tree(
-        self, repo: str, query: SearchQuery
+        self, repo: str | dict[str, Any], query: SearchQuery
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files in specified repository matching the given path pattern.
 
@@ -1386,11 +1631,9 @@ class GitLabClient:
         walks: set[tuple[str, bool]] = set()
         for path_pattern in path_patterns:
             query = build_search_query(path_pattern)
-            match_pattern = (
-                f"**/{query.filename}" if query.directory is None else query.path
-            )
+            match_pattern = tree_match_pattern(query)
             match_patterns.append(match_pattern)
-            if _is_wildcard_path(match_pattern):
+            if is_wildcard_path(match_pattern):
                 walks.add((_literal_tree_prefix(match_pattern), True))
             else:
                 walks.add((query.directory or "", False))
@@ -1432,7 +1675,7 @@ class GitLabClient:
                         glob.globmatch(
                             item["path"],
                             match_pattern,
-                            flags=glob.GLOBSTAR | glob.DOTGLOB,
+                            flags=PATH_GLOB_FLAGS,
                         )
                         for match_pattern in match_patterns
                     )

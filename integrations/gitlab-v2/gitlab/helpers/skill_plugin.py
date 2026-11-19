@@ -7,6 +7,8 @@ from loguru import logger
 from wcmatch import glob
 from yaml import safe_load
 
+from gitlab.helpers.utils import CASE_INSENSITIVE_PATH_GLOB_FLAGS
+
 PluginProvider = Literal[
     "claude",
     "cursor",
@@ -94,9 +96,6 @@ class _ResolvedProvider(NamedTuple):
     is_directory_only: bool
 
 
-_GLOB_FLAGS = glob.GLOBSTAR | glob.DOTGLOB | glob.IGNORECASE
-
-
 def _glob_root(pattern: str) -> str:
     """Strip the SKILL.md suffix from a glob to get the configured root prefix."""
     cleaned = pattern.strip("/")
@@ -118,7 +117,9 @@ def matches_skill_path(path: str, path_globs: list[str]) -> bool:
     if Path(normalized).name.lower() != SKILL_MD_FILENAME.lower():
         return False
     return any(
-        glob.globmatch(normalized, pattern.strip("/"), flags=_GLOB_FLAGS)
+        glob.globmatch(
+            normalized, pattern.strip("/"), flags=CASE_INSENSITIVE_PATH_GLOB_FLAGS
+        )
         for pattern in path_globs
     )
 
@@ -127,7 +128,9 @@ def infer_skill_root(skill_md_path: str, path_globs: list[str]) -> str:
     """Root that matched this SKILL.md, for mapping filters."""
     normalized = skill_md_path.strip("/")
     for pattern in path_globs:
-        if glob.globmatch(normalized, pattern.strip("/"), flags=_GLOB_FLAGS):
+        if glob.globmatch(
+            normalized, pattern.strip("/"), flags=CASE_INSENSITIVE_PATH_GLOB_FLAGS
+        ):
             root = _glob_root(pattern)
             if root:
                 return root

@@ -1,15 +1,27 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from gitlab.clients.options import IssueOptions
-from gitlab.helpers.incremental import (
-    build_cursor_updated_after_params,
-    build_incremental_project_params,
+from gitlab.clients.utils import (
     build_issue_params,
     build_merge_request_params,
     build_pipeline_params,
-    build_project_list_params,
-    resolve_effective_datetime,
+    build_project_params,
 )
+from gitlab.helpers.incremental import (
+    LAST_ACTIVITY_AFTER_INCREMENTAL,
+    UPDATED_AFTER_INCREMENTAL,
+    build_incremental_deployment_params,
+    build_incremental_project_updated_params,
+)
+
+
+@pytest.fixture
+def no_visibility_params(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Visibility config needs a Port event context; these tests don't use it."""
+    monkeypatch.setattr("gitlab.clients.utils.build_visibility_params", lambda: {})
+
 
 CURSOR = datetime(2026, 10, 18, 9, 0, tzinfo=timezone.utc)
 SELECTOR_UPDATED_AFTER = datetime(2026, 9, 18, 9, 0, tzinfo=timezone.utc)
@@ -24,35 +36,60 @@ def _options() -> IssueOptions:
     )
 
 
-def test_project_full_resync_keeps_visibility_params() -> None:
-    assert build_project_list_params(
-        {"min_access_level": 30, "active": True}, cursor=None
-    ) == {"min_access_level": 30, "active": True}
+# --- Projects -----------------------------------------------------------------
 
 
-def test_project_incremental_sets_last_activity_after() -> None:
-    assert build_project_list_params(
-        {"min_access_level": 30, "active": True}, cursor=CURSOR
-    ) == {
-        "min_access_level": 30,
+def test_projects_cursor_sets_last_activity_after(
+    no_visibility_params: None,
+) -> None:
+    params = build_project_params(include_only_active_projects=True)
+
+    assert LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
         "active": True,
         "last_activity_after": CURSOR.isoformat(),
     }
 
 
-def test_resolve_effective_datetime_prefers_cursor() -> None:
-    assert resolve_effective_datetime(CURSOR, SELECTOR_UPDATED_AFTER) == CURSOR
+def test_incremental_project_updated_sets_updated_after_and_order(
+    no_visibility_params: None,
+) -> None:
+    assert build_incremental_project_updated_params(True, CURSOR) == {
+        "active": True,
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
+    }
 
 
-def test_resolve_effective_datetime_falls_back_to_selector() -> None:
-    assert (
-        resolve_effective_datetime(None, SELECTOR_UPDATED_AFTER)
-        == SELECTOR_UPDATED_AFTER
+def test_incremental_project_updated_without_active_filter(
+    no_visibility_params: None,
+) -> None:
+    assert build_incremental_project_updated_params(None, CURSOR) == {
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
+    }
+
+
+def test_cursor_params_keep_base_and_replace_selector_timestamps() -> None:
+    params = build_incremental_deployment_params(
+        {
+            "min_access_level": 30,
+            "active": True,
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "updated_before": "2024-12-01T00:00:00Z",
+            "order_by": "last_activity_at",
+        },
+        CURSOR,
     )
 
+    assert params == {
+        "min_access_level": 30,
+        "active": True,
+        "updated_after": CURSOR.isoformat(),
+        "order_by": "updated_at",
+    }
 
-def test_resolve_effective_datetime_none_when_both_missing() -> None:
-    assert resolve_effective_datetime(None, None) is None
+
+# --- Issues -------------------------------------------------------------------
 
 
 def test_full_resync_keeps_selector_filters_and_drops_unset_ones() -> None:
@@ -69,7 +106,9 @@ def test_full_resync_without_selector_date_fetches_all_issues() -> None:
 
 
 def test_incremental_cursor_sets_updated_after() -> None:
-    params = build_issue_params(_options(), updated_after=CURSOR)
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(
+        build_issue_params(_options(), updated_after=None), CURSOR
+    )
 
     assert params["updated_after"] == CURSOR.isoformat()
     # Other selector filters still apply on incremental runs.
@@ -77,8 +116,19 @@ def test_incremental_cursor_sets_updated_after() -> None:
     assert params["issue_type"] == "issue"
 
 
+def test_incremental_cursor_replaces_selector_updated_after() -> None:
+    params = build_issue_params(_options(), updated_after=SELECTOR_UPDATED_AFTER)
+
+    assert UPDATED_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
+        "issue_type": "issue",
+        "non_archived": True,
+        "state": "opened",
+        "updated_after": CURSOR.isoformat(),
+    }
+
+
 def test_build_issue_params_ignores_options_updated_after_field() -> None:
-    """Time window must come from resolve_effective_datetime, not options."""
+    """The time window comes from the updated_after argument, not from options."""
     options = IssueOptions(
         issue_type="issue",
         non_archived=True,
@@ -90,39 +140,50 @@ def test_build_issue_params_ignores_options_updated_after_field() -> None:
     assert params["updated_after"] == CURSOR.isoformat()
 
 
-def test_mr_full_resync_opened_has_no_time_filter() -> None:
-    params = build_merge_request_params(
-        "opened", cursor=None, lookback_updated_after=SELECTOR_UPDATED_AFTER
-    )
+# --- Merge requests -----------------------------------------------------------
 
-    assert params == {"state": "opened"}
+
+def test_mr_full_resync_opened_has_no_time_filter() -> None:
+    assert build_merge_request_params("opened", SELECTOR_UPDATED_AFTER) == {
+        "state": "opened"
+    }
 
 
 def test_mr_full_resync_closed_uses_lookback() -> None:
-    params = build_merge_request_params(
-        "closed", cursor=None, lookback_updated_after=SELECTOR_UPDATED_AFTER
-    )
-
-    assert params == {
+    assert build_merge_request_params("closed", SELECTOR_UPDATED_AFTER) == {
         "state": "closed",
         "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
     }
 
 
 def test_mr_incremental_applies_cursor_to_opened() -> None:
-    params = build_merge_request_params(
-        "opened", cursor=CURSOR, lookback_updated_after=SELECTOR_UPDATED_AFTER
+    params = build_merge_request_params("opened", SELECTOR_UPDATED_AFTER)
+
+    assert UPDATED_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
+        "state": "opened",
+        "updated_after": CURSOR.isoformat(),
+    }
+
+
+def test_mr_incremental_cursor_replaces_lookback_for_merged() -> None:
+    params = build_merge_request_params("merged", SELECTOR_UPDATED_AFTER)
+
+    assert UPDATED_AFTER_INCREMENTAL.merge_params(params, CURSOR) == {
+        "state": "merged",
+        "updated_after": CURSOR.isoformat(),
+    }
+
+
+# --- Pipelines ----------------------------------------------------------------
+
+
+def _incremental_pipeline_params(
+    api_query_params: dict[str, object], cursor: datetime
+) -> dict[str, object]:
+    """Same steps as the pipeline handler on an incremental run."""
+    return UPDATED_AFTER_INCREMENTAL.merge_params(
+        build_pipeline_params(api_query_params), cursor
     )
-
-    assert params == {"state": "opened", "updated_after": CURSOR.isoformat()}
-
-
-def test_mr_incremental_applies_cursor_to_merged_over_lookback() -> None:
-    params = build_merge_request_params(
-        "merged", cursor=CURSOR, lookback_updated_after=SELECTOR_UPDATED_AFTER
-    )
-
-    assert params == {"state": "merged", "updated_after": CURSOR.isoformat()}
 
 
 def test_pipeline_full_resync_keeps_selector_filters() -> None:
@@ -132,7 +193,6 @@ def test_pipeline_full_resync_keeps_selector_filters() -> None:
             "ref": "main",
             "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
         },
-        cursor=None,
     )
 
     assert params == {
@@ -143,18 +203,16 @@ def test_pipeline_full_resync_keeps_selector_filters() -> None:
 
 
 def test_pipeline_full_resync_without_time_filter() -> None:
-    assert build_pipeline_params({"status": "failed"}, cursor=None) == {
-        "status": "failed"
-    }
+    assert build_pipeline_params({"status": "failed"}) == {"status": "failed"}
 
 
 def test_pipeline_incremental_overrides_selector_updated_after() -> None:
-    params = build_pipeline_params(
+    params = _incremental_pipeline_params(
         {
             "scope": "finished",
             "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
         },
-        cursor=CURSOR,
+        CURSOR,
     )
 
     assert params == {
@@ -163,64 +221,38 @@ def test_pipeline_incremental_overrides_selector_updated_after() -> None:
     }
 
 
-def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> None:
-    params = build_pipeline_params({"status": "running"}, cursor=CURSOR)
+def test_pipeline_incremental_drops_updated_before_and_keeps_created_filters() -> None:
+    params = _incremental_pipeline_params(
+        {
+            "status": "success",
+            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
+            "updated_before": "2024-12-01T00:00:00Z",
+            "created_after": "2024-01-01T00:00:00Z",
+        },
+        CURSOR,
+    )
 
     assert params == {
+        "status": "success",
+        "created_after": "2024-01-01T00:00:00Z",
+        "updated_after": CURSOR.isoformat(),
+    }
+
+
+def test_pipeline_incremental_sets_updated_after_when_selector_has_none() -> None:
+    assert _incremental_pipeline_params({"status": "running"}, CURSOR) == {
         "status": "running",
         "updated_after": CURSOR.isoformat(),
     }
 
 
-def test_incremental_project_params_keep_base_params_without_cursor() -> None:
-    assert build_incremental_project_params(
-        {"min_access_level": 30, "active": True}, cursor=None
-    ) == {"min_access_level": 30, "active": True}
-
-
-def test_incremental_project_params_replace_selector_timestamps() -> None:
-    params = build_incremental_project_params(
-        {
-            "min_access_level": 30,
-            "active": True,
-            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
-            "order_by": "last_activity_at",
-        },
-        cursor=CURSOR,
-    )
-
-    assert params == {
-        "min_access_level": 30,
-        "active": True,
-        "updated_after": CURSOR.isoformat(),
-        "order_by": "updated_at",
-    }
-
-
-def test_cursor_params_replace_selector_timestamps() -> None:
-    params = build_cursor_updated_after_params(
-        {
-            "min_access_level": 30,
-            "active": True,
-            "updated_after": SELECTOR_UPDATED_AFTER.isoformat(),
-            "updated_before": "2024-12-01T00:00:00Z",
-            "order_by": "last_activity_at",
-        },
-        cursor=CURSOR,
-    )
-
-    assert params == {
-        "min_access_level": 30,
-        "active": True,
-        "updated_after": CURSOR.isoformat(),
-        "order_by": "updated_at",
-    }
+# --- Deployments (cursor-updated params) --------------------------------------
 
 
 def test_deployment_incremental_overrides_selector_updated_after() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {"updated_after": SELECTOR_UPDATED_AFTER.isoformat()},
-        cursor=CURSOR,
+        CURSOR,
     )
 
     assert params == {
@@ -230,9 +262,9 @@ def test_deployment_incremental_overrides_selector_updated_after() -> None:
 
 
 def test_deployment_incremental_drops_finished_order_by() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {"status": "success", "order_by": "finished_at"},
-        cursor=CURSOR,
+        CURSOR,
     )
 
     assert params == {
@@ -243,7 +275,7 @@ def test_deployment_incremental_drops_finished_order_by() -> None:
 
 
 def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() -> None:
-    params = build_cursor_updated_after_params(
+    params = build_incremental_deployment_params(
         {
             "environment": "production",
             "status": "success",
@@ -253,7 +285,7 @@ def test_deployment_incremental_ignores_timestamp_selectors_and_keeps_filters() 
             "finished_before": "2024-06-01T00:00:00Z",
             "order_by": "finished_at",
         },
-        cursor=CURSOR,
+        CURSOR,
     )
 
     assert params == {

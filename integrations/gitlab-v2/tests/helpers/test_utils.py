@@ -1,4 +1,7 @@
+import pytest
+
 from gitlab.helpers.utils import (
+    ancestor_dirs,
     build_search_query,
     enrich_resources_with_project,
 )
@@ -111,3 +114,15 @@ class TestBuildSearchQuery:
             build_search_query(".cursor/skills/*/SKILL.md").to_query_string()
             == "SKILL.md path:.cursor/skills/* filename:SKILL.md"
         )
+
+
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        ("c.txt", set()),
+        ("a/c.txt", {"a"}),
+        ("a/b/c.txt", {"a", "a/b"}),
+    ],
+)
+def test_ancestor_dirs(path: str, expected: set[str]) -> None:
+    assert ancestor_dirs(path) == expected

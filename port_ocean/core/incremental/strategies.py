@@ -117,6 +117,9 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
         date_format: Optional ``strftime`` format string.  Defaults to ISO 8601.
         value_prefix: Optional prefix prepended to the formatted value
                       (e.g. ``">="`` for GitHub workflow-run ``created`` param).
+        replaces: Keys dropped from the base params when a cursor is set,
+                  because the cursor supersedes them (e.g. a user-configured
+                  ``updated_before`` window).  Ignored when there is no cursor.
     """
 
     def __init__(
@@ -124,10 +127,12 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
         param_key: str,
         date_format: str | None = None,
         value_prefix: str = "",
+        replaces: Iterable[str] = (),
     ) -> None:
         self._param_key = param_key
         self._date_format = date_format
         self._value_prefix = value_prefix
+        self._replaces = frozenset(replaces)
 
     def build_params(self, cursor: datetime | None) -> dict[str, Any]:
         if cursor is None:
@@ -138,6 +143,19 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
             else cursor.isoformat()
         )
         return {self._param_key: f"{self._value_prefix}{value}"}
+
+    def merge_params(
+        self, base_params: dict[str, Any], cursor: datetime | None
+    ) -> dict[str, Any]:
+        """Merge the cursor param into *base_params*, dropping the ``replaces`` keys."""
+        if cursor is None:
+            return dict(base_params)
+        kept = {
+            key: value
+            for key, value in base_params.items()
+            if key not in self._replaces
+        }
+        return {**kept, **self.build_params(cursor)}
 
 
 class ClientSideCutoffStrategy(IncrementalStrategy):

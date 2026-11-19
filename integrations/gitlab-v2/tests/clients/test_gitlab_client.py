@@ -1,3 +1,5 @@
+import asyncio
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -794,7 +796,78 @@ class TestGitLabClient:
                     query,
                     False,
                     should_use_tree=True,
+                    since=None,
                 )
+
+    async def test_search_files_passes_since_to_each_repository(
+        self, client: GitLabClient
+    ) -> None:
+        since = datetime(2026, 10, 18, tzinfo=timezone.utc)
+        query = build_search_query("**/*.json")
+        changed = [{"path": "a.json", "project_id": "123"}]
+        with patch.object(
+            client,
+            "_search_files_in_repository",
+            side_effect=lambda *args, **kwargs: async_mock_generator([changed]),
+        ) as mock_search:
+            results = [
+                batch
+                async for batch in client.search_files(
+                    "blobs",
+                    query,
+                    repositories=["group/a", "group/b"],
+                    strategy="repositoryTree",
+                    since=since,
+                )
+            ]
+
+        assert results == [changed, changed]
+        assert mock_search.call_args_list == [
+            call("group/a", "blobs", query, False, should_use_tree=True, since=since),
+            call("group/b", "blobs", query, False, should_use_tree=True, since=since),
+        ]
+
+    async def test_changed_files_search_respects_max_concurrent(
+        self, client: GitLabClient
+    ) -> None:
+        since = datetime(2026, 10, 18, tzinfo=timezone.utc)
+        query = build_search_query("**/*.json")
+        projects = [
+            {"id": i, "path_with_namespace": f"group/p{i}", "default_branch": "main"}
+            for i in range(5)
+        ]
+        running = 0
+        peak = 0
+
+        async def _search(*args: Any, **kwargs: Any) -> AsyncGenerator[Any, None]:
+            nonlocal running, peak
+            running += 1
+            peak = max(peak, running)
+            await asyncio.sleep(0.01)
+            running -= 1
+            yield [{"path": "a.json"}]
+
+        with (
+            patch.object(
+                client,
+                "get_projects",
+                side_effect=lambda *args, **kwargs: async_mock_generator([projects]),
+            ),
+            patch.object(client, "_search_files_in_repository", side_effect=_search),
+        ):
+            results = [
+                batch
+                async for batch in client.search_files_in_projects(
+                    "blobs",
+                    query,
+                    should_use_tree=True,
+                    max_concurrent=2,
+                    since=since,
+                )
+            ]
+
+        assert len(results) == 5
+        assert peak <= 2
 
     @pytest.mark.parametrize(
         "status_code,response_text",
