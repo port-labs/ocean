@@ -8,6 +8,7 @@ import pytest
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
 from datadog.core.exporters.slo_exporter import (
+    CHANGED_SLOS_FETCH_BATCH_SIZE,
     GetSloOptions,
     ListSloOptions,
     SloExporter,
@@ -133,6 +134,26 @@ async def test_get_changed_slos_follows_cursor_and_dedupes(
     assert mock_get_resource.await_count == 3
     second_body = mock_request.call_args_list[1].kwargs["json_data"]
     assert second_body["page"] == {"limit": MAX_PAGE_SIZE, "cursor": "next"}
+
+
+@pytest.mark.asyncio
+async def test_get_changed_slos_yields_one_batch_per_concurrent_fetch(
+    mock_datadog_client: DatadogClient,
+    audit_mocks: tuple[AsyncMock, AsyncMock],
+) -> None:
+    mock_request, _ = audit_mocks
+    slo_ids = [str(i) for i in range(CHANGED_SLOS_FETCH_BATCH_SIZE + 1)]
+    mock_request.return_value = _audit_page(*(_audit_event(i) for i in slo_ids))
+
+    batches = [
+        batch
+        async for batch in SloExporter(mock_datadog_client).get_changed_slos(
+            ListSloOptions(), incremental_cursor=SINCE
+        )
+    ]
+
+    assert [len(batch) for batch in batches] == [CHANGED_SLOS_FETCH_BATCH_SIZE, 1]
+    assert [slo for batch in batches for slo in batch] == [_slo(i) for i in slo_ids]
 
 
 @pytest.mark.asyncio
