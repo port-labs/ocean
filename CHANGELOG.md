@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.61.8 (2026-11-19)
+
+
+### Bug Fixes
+
+- Keep resource kind in the lake-write request body instead of the URL path so kinds containing "?" are not rejected at the ingest edge.
+
+
 ## 0.61.7 (2026-11-19)
 
 
