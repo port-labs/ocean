@@ -2,7 +2,7 @@ import asyncio
 import copy
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from typing import Any, Callable, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
@@ -47,6 +47,8 @@ if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
 
 ENRICHMENT_BATCH_SIZE = 10
+# Repositories checked against the search query in one search request.
+REPOSITORIES_PER_SEARCH = 50
 
 ARCHIVED_QUALIFIER_PATTERN = re.compile(
     r"(?<!\S)archived:(?:true|false)(?!\S)", re.IGNORECASE
@@ -150,10 +152,16 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             self.client.authenticator, GitHubAppInstallationAuthenticator
         )
 
-        use_search_api = search_params is not None or (
+        can_list_repositories = not (
             is_github_app_authenticated and is_personal_account
         )
-        strategy = self._search_strategy if use_search_api else self._list_strategy
+        strategy: Callable[..., ASYNC_GENERATOR_RESYNC_TYPE]
+        if search_params is not None and pushed_since and can_list_repositories:
+            strategy = self._pushed_search_strategy
+        elif search_params is not None or not can_list_repositories:
+            strategy = self._search_strategy
+        else:
+            strategy = self._list_strategy
 
         async for batch in strategy(
             organization,
@@ -201,6 +209,60 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(repos)} repositories from organization {organization}"
             )
             yield repos
+
+    async def _pushed_search_strategy(
+        self,
+        organization: str,
+        organization_type: str,
+        params: dict[str, Any],
+        search_params: Optional[RepoSearchParams],
+        *,
+        incremental_cursor: datetime | None = None,
+        pushed_since: datetime | None = None,
+        exclude_archived: bool = False,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Repositories pushed since ``pushed_since`` that match the search query.
+
+        The search index updates a repository's push time late (a tag push did not
+        update it after 10 minutes), so a ``pushed:`` qualifier misses recent pushes.
+        The pushed repositories come from the live list instead, and search only
+        checks which of them match the query. The list is not limited to the
+        repository type: as on a full resync, the query decides that.
+        """
+        query = search_params.query.strip() if search_params else ""
+        async for pushed in self._list_strategy(
+            organization,
+            organization_type,
+            {**params, "type": "all"},
+            None,
+            pushed_since=pushed_since,
+        ):
+            matching = await self._repositories_matching_query(
+                organization, query, [repo["name"] for repo in pushed]
+            )
+            repos = [repo for repo in pushed if repo["name"] in matching]
+            if repos:
+                yield repos
+
+    async def _repositories_matching_query(
+        self, organization: str, query: str, names: list[str]
+    ) -> set[str]:
+        """The repositories among ``names`` that match the search ``query``.
+
+        They are named with ``repo:`` qualifiers and no ``org:``: search combines
+        ``org:`` and ``repo:`` with OR, which would match the whole organization.
+        """
+        url = f"{self.client.base_url}/search/repositories"
+        matching: set[str] = set()
+        for names_batch in batched(names, REPOSITORIES_PER_SEARCH):
+            repo_qualifiers = " ".join(
+                f"repo:{organization}/{name}" for name in names_batch
+            )
+            async for items in self._search_result_items(
+                url, {"q": f"{query} {repo_qualifiers}".strip()}
+            ):
+                matching.update(item["name"] for item in items)
+        return matching
 
     async def _search_strategy(
         self,
