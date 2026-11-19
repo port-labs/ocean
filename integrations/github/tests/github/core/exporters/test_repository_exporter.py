@@ -695,8 +695,7 @@ class TestRestRepositoryExporter:
                 assert repos == [TEST_REPOS]
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/search/repositories",
-                    # The cursor minus SEARCH_INDEX_LAG (10 minutes).
-                    {"q": "org:test-org code in:name pushed:>=2026-06-01T11:50:00Z"},
+                    {"q": "org:test-org code in:name pushed:>=2026-06-01T12:00:00Z"},
                 )
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(

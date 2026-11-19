@@ -1,7 +1,7 @@
 import asyncio
 import copy
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -37,12 +37,6 @@ REPOSITORY_SEARCH_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="updated_at",
     query_params={"sort": "updated", "order": "desc"},
 )
-
-# The search index shows a push a few minutes after it happens. The pushed:
-# qualifier reaches back this far before the cursor, so a push the index didn't
-# show yet on one run is found on the next; repositories pushed within the
-# margin are processed again, which is a harmless re-sync.
-SEARCH_INDEX_LAG = timedelta(minutes=10)
 
 REPOSITORY_PUSHED_INCREMENTAL = ClientSideCutoffStrategy(
     stop_field="pushed_at",
@@ -237,10 +231,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 raw_q = f"{raw_q} archived:false".strip() if raw_q else "archived:false"
 
         if pushed_since:
-            # Search has no "pushed" sort, so filter server-side with a qualifier
-            # instead, reaching back over the search index lag.
-            pushed_from = self._format_search_datetime(pushed_since - SEARCH_INDEX_LAG)
-            raw_q = f"{raw_q} pushed:>={pushed_from}".strip()
+            # Search has no "pushed" sort, so filter server-side with a qualifier instead.
+            raw_q = (
+                f"{raw_q} pushed:>={self._format_search_datetime(pushed_since)}".strip()
+            )
             incremental_cursor = None
 
         query_params = {
