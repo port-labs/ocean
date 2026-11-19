@@ -5,7 +5,7 @@ See https://docs.factory.com/api-reference/organization
 
 from __future__ import annotations
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from factory_ai.core.models import FactoryListOptions, FactoryModel, FactoryPagination
 
