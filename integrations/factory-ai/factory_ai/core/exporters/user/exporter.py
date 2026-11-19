@@ -33,9 +33,9 @@ class UserExporter(AbstractFactoryExporter[ListUserOptions, GetUserOptions]):
             )
             yield [user.to_raw_item() for user in response.users]
 
-            if not response.pagination.has_more or not response.pagination.next_cursor:
-                break
             cursor = response.pagination.next_cursor
+            if not cursor:
+                break
 
     async def get_resource(self, options: GetUserOptions) -> RAW_ITEM | None:
         # Organization users have no get-by-id endpoint; scan list pages.
