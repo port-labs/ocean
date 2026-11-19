@@ -1,0 +1,12 @@
+{
+  "note_id": "note-REDACTED",
+  "name": "Deploy checklist for staging",
+  "body": "Run integration tests, verify feature flags, then promote the container image.",
+  "trigger": "manual",
+  "folder_path": "/platform/runbooks",
+  "pinned_repo": "org-REDACTED/monorepo",
+  "is_enabled": true,
+  "access_type": "org",
+  "created_at": 1761000000,
+  "updated_at": 1761200000
+}

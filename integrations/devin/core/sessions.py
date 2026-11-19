@@ -1,0 +1,99 @@
+from collections.abc import AsyncGenerator
+from typing import Any
+
+from clients import endpoints
+from clients.devin_client import DevinClient
+from clients.models import SessionMessage, SessionResponse
+from clients.parsing import (
+    parse_session_message_best_effort,
+    parse_session_response_best_effort,
+    require_session_response,
+)
+
+
+class DevinSessions:
+    """Session operations shared by the action executors and the session tracker.
+
+    Kept apart from `DevinClient` so the client stays a generic transport and
+    the resource-specific paths and payload shapes live in one place.
+    """
+
+    def __init__(self, client: DevinClient) -> None:
+        self.client = client
+
+    async def create(self, body: dict[str, Any]) -> SessionResponse:
+        data = await self.client.send_api_request(
+            "POST", endpoints.SESSIONS, json_body=body
+        )
+        return require_session_response(data)
+
+    async def get(self, session_id: str) -> SessionResponse:
+        data = await self.client.send_api_request("GET", endpoints.session(session_id))
+        return require_session_response(data)
+
+    async def list_by_tag(
+        self, tag: str
+    ) -> AsyncGenerator[list[SessionResponse], None]:
+        async for page in self.client.paginate(
+            endpoints.SESSIONS, params={"tags": [tag]}
+        ):
+            page_sessions: list[SessionResponse] = []
+            for item in page:
+                if session := parse_session_response_best_effort(item):
+                    page_sessions.append(session)
+            if page_sessions:
+                yield page_sessions
+
+    async def send_message(
+        self, session_id: str, body: dict[str, Any]
+    ) -> SessionResponse:
+        data = await self.client.send_api_request(
+            "POST", endpoints.session_messages(session_id), json_body=body
+        )
+        return require_session_response(data)
+
+    async def list_messages_after(
+        self, session_id: str, after: str | None
+    ) -> tuple[list[SessionMessage], str | None]:
+        """Return every message after `after` (all messages when it is `None`)
+        and the cursor to resume from next time.
+
+        The returned cursor is `after` itself when no new page was produced, so
+        a caller can always store it without losing its place.
+        """
+        messages: list[SessionMessage] = []
+        cursor = after
+        while True:
+            payload = await self.client._fetch_page(
+                endpoints.session_messages(session_id), after=cursor
+            )
+            for item in payload.get("items") or []:
+                if message := parse_session_message_best_effort(item):
+                    messages.append(message)
+            cursor = payload.get("end_cursor") or cursor
+            if not payload.get("has_next_page") or not payload.get("end_cursor"):
+                return messages, cursor
+
+    async def append_tags(self, session_id: str, tags: list[str]) -> list[str]:
+        data = await self.client.send_api_request(
+            "POST", endpoints.session_tags(session_id), json_body={"tags": tags}
+        )
+        return list(data.get("tags") or [])
+
+    async def replace_tags(self, session_id: str, tags: list[str]) -> list[str]:
+        data = await self.client.send_api_request(
+            "PUT", endpoints.session_tags(session_id), json_body={"tags": tags}
+        )
+        return list(data.get("tags") or [])
+
+    async def terminate(self, session_id: str, archive: bool) -> SessionResponse:
+        data = await self.client.send_api_request(
+            "DELETE", endpoints.session(session_id), params={"archive": archive}
+        )
+        return require_session_response(data)
+
+    async def archive(self, session_id: str) -> SessionResponse:
+        data = await self.client.send_api_request(
+            "POST", endpoints.session_archive(session_id)
+        )
+        return require_session_response(data)

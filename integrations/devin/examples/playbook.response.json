@@ -1,0 +1,10 @@
+{
+  "playbook_id": "playbook-372d8afe44ae40ba84601385404e5cfa",
+  "title": "Onboarding: first Devin session",
+  "body": "You help engineers explore this repository and open a small documentation PR.",
+  "macro": "onboarding-v1",
+  "access_type": "org",
+  "created_by": "user-REDACTED",
+  "created_at": 1761500000,
+  "updated_at": 1761800000
+}
