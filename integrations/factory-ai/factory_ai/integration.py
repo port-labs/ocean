@@ -14,8 +14,15 @@ class EnvironmentResourceConfig(ResourceConfig):
     )
 
 
+class ComputerResourceConfig(ResourceConfig):
+    kind: Literal["computer"] = Field(
+        description="Factory computer resource kind",
+        title="Computer",
+    )
+
+
 class FactoryAIPortAppConfig(PortAppConfig):
-    resources: list[EnvironmentResourceConfig] = Field(
+    resources: list[EnvironmentResourceConfig | ComputerResourceConfig] = Field(
         description="Resources for factory-ai",
         title="Resources",
         default_factory=list,

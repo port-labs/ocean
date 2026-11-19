@@ -5,23 +5,18 @@ See https://docs.factory.com/api-reference/environments
 
 from __future__ import annotations
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
-from factory_ai.core.models import FactoryModel
+from factory_ai.core.models import FactoryListOptions, FactoryModel
 
 
-class ListEnvironmentOptions(BaseModel):
+class ListEnvironmentOptions(FactoryListOptions):
     """Options for ``GET /api/v0/environments``.
 
     ``service_account_id`` maps to the optional ``serviceAccountId`` query param.
     """
 
-    service_account_id: str | None = None
-
-    def to_query_params(self) -> dict[str, str]:
-        if not self.service_account_id:
-            return {}
-        return {"serviceAccountId": self.service_account_id}
+    service_account_id: str | None = Field(None, alias="serviceAccountId")
 
 
 class GetEnvironmentOptions(BaseModel):
