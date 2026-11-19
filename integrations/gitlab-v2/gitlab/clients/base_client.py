@@ -7,24 +7,47 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
 from gitlab.clients.auth_client import AuthClient
-from gitlab.clients.rate_limiter import GitLabRateLimiter, GitLabRateLimiterConfig
+from gitlab.clients.rate_limiter import (
+    GitLabRateLimiter,
+    GitLabRateLimiterConfig,
+    GitLabRateLimitWrapper,
+    get_rate_limit_pool_name,
+)
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 1800
 
 
 class HTTPBaseClient:
-    def __init__(self, base_url: str, token: str, endpoint: str):
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        endpoint: str,
+        *,
+        centralized_rate_limit: bool = True,
+    ):
         self.token = token
+        self._rate_limiter = GitLabRateLimitWrapper(
+            GitLabRateLimiter(GitLabRateLimiterConfig()),
+            pool=get_rate_limit_pool_name(base_url),
+            redis_enabled=centralized_rate_limit,
+        )
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 max_backoff_wait=MAX_BACKOFF_WAIT_IN_SECONDS,
                 additional_retry_status_codes=[500],
+                rate_limiter=self._rate_limiter,
             ),
             timeout=ocean.config.client_timeout,
         )
         self.base_url = f"{base_url}/{endpoint.strip('/')}"
         self._auth_client = AuthClient(self.token)
-        self._rate_limiter = GitLabRateLimiter(GitLabRateLimiterConfig())
+
+    def is_close_to_rate_limit(self) -> bool:
+        return self._rate_limiter.is_close_to_rate_limit()
+
+    def seconds_until_rate_limit_reset(self) -> float:
+        return self._rate_limiter.seconds_until_rate_limit_reset()
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -77,7 +100,9 @@ class HTTPBaseClient:
                 raise
             finally:
                 if response is not None:
-                    self._rate_limiter.update_rate_limits(response.headers, url)
+                    await self._rate_limiter.record_rate_limit_response(
+                        response, context=url
+                    )
 
     async def _handle_status_code_error(
         self,

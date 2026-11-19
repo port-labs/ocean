@@ -36,6 +36,7 @@ class ObjectKind(StrEnum):
     DYNAMODB_TABLE = "AWS::DynamoDB::Table"
     SES_CONFIGURATION_SET = "AWS::SES::ConfigurationSet"
     SNS_TOPIC = "AWS::SNS::Topic"
+    EKS_NODEGROUP = "AWS::EKS::Nodegroup"
 
 
 SupportedServices = Literal[
@@ -57,4 +58,5 @@ SupportedServices = Literal[
     "sesv2",
     "dynamodb",
     "sns",
+    "cloudcontrol",
 ]

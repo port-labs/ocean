@@ -7,6 +7,166 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.5.5 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.0
+
+
+## 3.5.4 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.8
+
+
+## 3.5.3 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.7
+
+
+## 3.5.2 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.6
+
+
+## 3.5.1 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.5
+
+
+## 3.5.0 (2026-11-16)
+
+
+### Features
+
+- Add support for syncing AWS EKS Nodegroups (`AWS::EKS::Nodegroup`), including CloudTrail live events
+
+
+## 3.4.2 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
+## 3.4.1 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 3.4.0 (2026-11-15)
+
+
+### Features
+
+- Expose Cloud Control custom resource kinds in port-app-config so any AWS Cloud Control supported type (for example AWS::IAM::Role) can be synced without a first-class integration kind
+
+
+## 3.3.2 (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.2
+
+
+## 3.3.1 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.1
+
+
+## 3.3.0 (2026-11-12)
+
+
+### Features
+
+- Support live events from customer EventBridge rules that use an input transformer to send the resource type and identifier, enabling live events for custom Cloud Control kinds
+
+
+## 3.2.10 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
+## 3.2.9 (2026-11-12)
+
+
+### Improvements
+
+- Add a test connection probe description to the Cloud Control custom kind explaining that per-type service permissions are not verified
+
+
+## 3.2.8 (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.60.0
+
+
+## 3.2.7 (2026-11-11)
+
+
+### Improvements
+
+- Declare Cloud Control probe permissions (`cloudformation:ListResources`, `cloudformation:GetResource`) for custom kinds, so test connection can verify them once custom kinds are enabled
+
+
+## 3.2.6 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.59.0
+
+
+## 3.2.5 (2026-11-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.4
+
+
+## 3.2.4 (2026-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.58.3
+
+
+## 3.2.3 (2026-11-09)
+
+
+### Improvements
+
+- Add Cloud Control exporter and resync dispatch for custom AWS resource kinds (ListResources / GetResource, regional/global scope)
+
+
 ## 3.2.2 (2026-11-08)
 
 

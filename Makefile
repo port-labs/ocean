@@ -149,6 +149,20 @@ smoke/clean:
 smoke/clean-all:
 	./scripts/smoke-integration.sh clean-all
 
+# Local Redis for live events + centralized rate limiter (local only).
+# Then: eval "$$(./scripts/local-redis.sh env)"
+redis/up:
+	./scripts/local-redis.sh up
+
+redis/down:
+	./scripts/local-redis.sh down
+
+redis/status:
+	./scripts/local-redis.sh status
+
+redis/env:
+	@./scripts/local-redis.sh env
+
 test/watch:
 	$(ACTIVATE) && \
 		pytest \

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.58.2"
+version = "0.62.0"
 description = "Port Ocean is a Python framework for building integrations that ingest data into Port, the platform for building your AI software factory."
 readme = "README.md"
 homepage = "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/ocean-framework/overview/"
@@ -218,7 +218,7 @@ exclude = '''
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/*' ./port_ocean/tests"
+addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/*' ./port_ocean/tests ./tools/integration_validation/tests"
 markers = [
     "smoke: Smoke tests (deselect with '-m \"not smoke\"')",
     "smoke_configset(name): Smoke configset this test runs under (see port_ocean/tests/smoke/configsets/)",

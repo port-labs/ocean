@@ -276,3 +276,66 @@ async def test_a_disabled_integration_is_never_consulted_for_a_plain_run(
 ) -> None:
     assert await resolve_user_token(generate_action_run()) is None
     mock_vault.read.assert_not_called()
+
+
+async def test_port_vault_type_skips_provider_and_uses_integration_type_as_target(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_vault: MagicMock,
+) -> None:
+    """When vault.type is ``port``, the target comes from integration.type, not from
+    a registered OAuth provider."""
+    from port_ocean.config.settings import VaultType
+
+    mock_vault.read.return_value = TokenRecord(
+        access_token="gho_exchanged", expires_at=VALID_UNTIL
+    )
+
+    verifier = MagicMock()
+    verifier.verify = AsyncMock(return_value=CLAIMS)
+
+    mock_ocean = MagicMock()
+    mock_ocean.config.identity_propagation.enabled = True
+    mock_ocean.config.identity_propagation.vault.type = VaultType.port
+    mock_ocean.config.integration.type = "github"
+    mock_ocean.app.vault_client = mock_vault
+    mock_ocean.app.identity_verifier = verifier
+    mock_ocean.app.oauth_provider = None
+
+    monkeypatch.setattr(exchanger, "ocean", mock_ocean)
+    exchanger._refresh_locks.clear()
+
+    token = await resolve_user_token(generate_identity_run())
+    assert token == "gho_exchanged"
+    # Verifier was called with integration type as target (not provider.target)
+    verifier.verify.assert_awaited_once_with("identity.jwt.token", "github")
+
+
+async def test_port_vault_type_expired_token_skips_local_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_vault: MagicMock,
+) -> None:
+    """For the ``port`` vault, access-token expiry must not force user reauth or
+    a local OAuth refresh — Port refreshes server-side on exchange."""
+    from port_ocean.config.settings import VaultType
+
+    mock_vault.read.return_value = TokenRecord(
+        access_token="gho_from_exchange", expires_at=EXPIRED_AT
+    )
+
+    verifier = MagicMock()
+    verifier.verify = AsyncMock(return_value=CLAIMS)
+
+    mock_ocean = MagicMock()
+    mock_ocean.config.identity_propagation.enabled = True
+    mock_ocean.config.identity_propagation.vault.type = VaultType.port
+    mock_ocean.config.integration.type = "github"
+    mock_ocean.app.vault_client = mock_vault
+    mock_ocean.app.identity_verifier = verifier
+    mock_ocean.app.oauth_provider = None
+
+    monkeypatch.setattr(exchanger, "ocean", mock_ocean)
+    exchanger._refresh_locks.clear()
+
+    token = await resolve_user_token(generate_identity_run())
+    assert token == "gho_from_exchange"
+    mock_vault.write.assert_not_called()
