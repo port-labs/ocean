@@ -8,6 +8,8 @@ from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
+    get_service_account_project_id,
+    search_all_resources_qpm_per_project,
     AssetData,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
@@ -176,6 +178,82 @@ async def search_all_iam_policies_per_project(
             logger.info(
                 f"Successfully searched all IAM policies within project {project_name}"
             )
+
+
+def _asset_aliases(result: Any) -> list[str]:
+    """Every identifier a feed event may use for this asset in place of the last segment of its name.
+
+    additionalAttributes is absent entirely for types that do not alias, such as buckets and topics.
+    Its `project` sibling holds the project number, which is how a feed names a project where
+    searchAllResources names it by id. Every asset reports that number, so it is only an alias for
+    the project itself: anywhere else it would match every asset of the type at once.
+    """
+    attributes = dict(result.additional_attributes or {})
+    aliases = [value for value in attributes.values() if isinstance(value, str)]
+    is_the_project = result.name.rsplit("/", 1)[-1] == attributes.get("projectId")
+    if is_the_project and result.project:
+        aliases.append(result.project.rsplit("/", 1)[-1])
+    return aliases
+
+
+async def search_asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+    search_term: str | None,
+) -> list[dict[str, Any]]:
+    """The name `searchAllResources` holds for every asset of one type, with the aliases it also answers to.
+
+    An IAM_POLICY feed event names a service account by its numeric `uniqueId` while
+    `searchAllIamPolicies` names it by email, so a grant ingested from a feed event lands under a
+    different identifier than the resync's unless the feed's name is translated through this.
+
+    Failures are deliberately not swallowed: they propagate out of the webhook processor and are
+    logged there as a failed event, because an empty list is indistinguishable from "the project has
+    no assets of this type" and would quietly ingest nothing.
+    """
+
+    def parse_names(response: Any) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": result.name,
+                "aliases": _asset_aliases(result),
+            }
+            for result in response.results
+        ]
+
+    # Not resolve_request_controllers: that dispatches on the asset type, which is right where the
+    # caller then hits that type's own API. This always calls searchAllResources on cloudasset, so
+    # an asset type of Project or Topic would otherwise gate it on a quota for an API it never
+    # touches, leaving the cloudasset limiter blind to this traffic.
+    quota_project = get_service_account_project_id()
+    rate_limiter = await search_all_resources_qpm_per_project.limiter(quota_project)
+    semaphore = await search_all_resources_qpm_per_project.semaphore(quota_project)
+
+    async with semaphore:
+        logger.info(
+            f"Searching {asset_type} names matching {search_term or 'anything'!r} "
+            f"in project {project_name}"
+        )
+        assets: list[dict[str, Any]] = []
+        async for batch in paginated_query(
+            get_asset_client(),
+            "search_all_resources",
+            {
+                "scope": project_name,
+                "asset_types": [asset_type],
+                "read_mask": "name,additionalAttributes,project",
+                # Free text, not `name=`: the feed's identifier is matched against every indexed
+                # field, where `name=` only matches the canonical name and so never an alias.
+                # Quoted, because a resource name's last segment may hold a `:` (a container image
+                # digest, say), which is query syntax and 400s the request unquoted. Omitted
+                # entirely when the caller wants the whole type listed.
+                **({"query": f'"{search_term}"'} if search_term else {}),
+            },
+            parse_names,
+            rate_limiter,
+        ):
+            assets.extend(batch)
+        return assets
 
 
 async def list_all_topics_per_project(

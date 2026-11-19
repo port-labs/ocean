@@ -1,12 +1,9 @@
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 
-from gcp_core.errors import (
-    AssetHasNoProjectAncestorError,
-    GotFeedCreatedSuccessfullyMessageError,
-)
-from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
+from gcp_core.errors import AssetHasNoProjectAncestorError
+from gcp_core.feed_event import get_project_name_from_ancestors, is_iam_policy_event
 from gcp_core.overrides import GCPPortAppConfig, ProtoConfig
 from gcp_core.search.resource_searches import feed_event_to_resource
 from gcp_core.utils import resolve_request_controllers
@@ -24,35 +21,16 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class AssetFeedProcessor(BaseWebhookProcessor):
-    _cached_asset_data: dict[str, Any] | None = None
-
-    async def _get_parsed_event(self, payload: EventPayload) -> dict[str, Any] | None:
-        if self._cached_asset_data is not None:
-            return self._cached_asset_data
-
-        if (
-            not isinstance(payload.get("message"), dict)
-            or "data" not in payload["message"]
-        ):
-            return None
-
-        try:
-            parsed_data = await parse_asset_data(payload["message"]["data"])
-            self._cached_asset_data = parsed_data
-            return parsed_data
-        except GotFeedCreatedSuccessfullyMessageError:
-            logger.info("Assets Feed created successfully")
-            return None
-        except Exception as e:
-            logger.warning(f"Failed to process asset feed event: {e}")
-            return None
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if ocean.event_listener_type == "ONCE":
             return False
 
         asset_data = await self._get_parsed_event(event.payload)
-        return asset_data is not None
+        if asset_data is None:
+            return False
+
+        # feed_event_to_resource reads `asset.resource`/`priorAsset.resource`, which an iam-policy event has not got.
+        return not is_iam_policy_event(asset_data)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         asset_data = await self._get_parsed_event(event.payload)

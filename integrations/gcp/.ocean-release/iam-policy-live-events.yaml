@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added live events for the iamPolicy kind, so grants reach Port as they change rather than at the next resync. Requires a second Cloud Asset Inventory feed created with --content-type=iam-policy, since a feed carries one content type; installations without one are unchanged and stay resync-only.
