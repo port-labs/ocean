@@ -7,6 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
+from jira.comments import attach_comments_to_issues
 from jira.overrides import (
     JiraEpicAPIQueryParams,
     JiraWorklogAPIQueryParams,
@@ -29,6 +30,12 @@ WORKLOG_WEBHOOK_EVENTS = [
     "worklog_created",
     "worklog_updated",
     "worklog_deleted",
+]
+
+COMMENT_WEBHOOK_EVENTS = [
+    "comment_created",
+    "comment_updated",
+    "comment_deleted",
 ]
 
 SPRINT_DELETED_EVENT = "sprint_deleted"
@@ -65,6 +72,7 @@ WEBHOOK_EVENTS = [
     "board_updated",
     "board_deleted",
     *WORKLOG_WEBHOOK_EVENTS,
+    *COMMENT_WEBHOOK_EVENTS,
     *SPRINT_WEBHOOK_EVENTS,
 ]
 
@@ -82,6 +90,7 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_updated",
     "board_deleted",
     *WORKLOG_WEBHOOK_EVENTS,
+    *COMMENT_WEBHOOK_EVENTS,
     *SPRINT_WEBHOOK_EVENTS,
 ]
 
@@ -726,6 +735,7 @@ class JiraClient(OAuthClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
+        include_comments = bool(params.get("includeComments"))
         logger.info(f"Using JQL filter: {params['jql']}")
         url = f"{self.api_url}/search/jql"
 
@@ -739,6 +749,8 @@ class JiraClient(OAuthClient):
         async for issues in self._get_paginated_data_using_next_page_token(
             url, body, "issues"
         ):
+            if include_comments:
+                issues = await attach_comments_to_issues(self, issues)
             yield issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:

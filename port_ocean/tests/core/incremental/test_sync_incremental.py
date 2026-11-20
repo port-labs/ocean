@@ -279,7 +279,7 @@ class TestSyncIncrementalDspLifecycle:
     async def test_notifies_started_and_finished_with_incremental_sync_type(
         self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
     ) -> None:
-        configure_app_config(mock_mixin, ["issue", "pull-request"])
+        app_config = configure_app_config(mock_mixin, ["issue", "pull-request"])
         register_incremental_handler(mock_mixin, kind="issue")
         register_incremental_handler(mock_mixin, kind="pull-request")
         lifecycle_client = _make_lifecycle_client()
@@ -302,6 +302,7 @@ class TestSyncIncrementalDspLifecycle:
         assert started_kwargs["integration_id"] == "test-integration"
         assert started_kwargs["integration_type"] == "fake-integration"
         assert started_kwargs["kind_identifiers"] == ["issue-0", "pull-request-1"]
+        assert started_kwargs["mapping"] == app_config.to_dsp_lifecycle_mapping()
 
         lifecycle_client.notify_resync_finished.assert_awaited_once()
         finished_kwargs = lifecycle_client.notify_resync_finished.await_args.kwargs

@@ -170,9 +170,11 @@ jobs:
               . as $all |
               ($all | length) as $len |
               10 as $count |
-              ((($len + $count - 1) / $count) | floor) as $size |
-              ($shard * $size) as $start |
-              $all[$start:$start + $size][]
+              # Balanced partition: each shard gets floor(n/k) or ceil(n/k),
+              # so trailing shards are not left empty when n % k != 0.
+              ((($shard * $len) / $count) | floor) as $start |
+              (((($shard + 1) * $len) / $count) | floor) as $end |
+              $all[$start:$end][]
             '
           )
 
@@ -224,6 +226,8 @@ jobs:
     needs: [test, test-integrations]
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.test.result == 'success' && (needs.test-integrations.result == 'success' || needs.test-integrations.result == 'skipped') }}
+    env:
+      SAME_REPO: ${{ github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v7
@@ -281,26 +285,33 @@ jobs:
           stmts=$(jq '.totals.percent_covered | . * 100 | round | . / 100' coverage.json)
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
-      - name: Comment PR with code coverage summary
+      - name: Report code coverage summary
         if: ${{ steps.pr-number.outputs.PR_NUMBER != 0 }}
         uses: actions/github-script@v9
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
+          SAME_REPO: ${{ env.SAME_REPO }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `#### Code Coverage Artifact 📈: ${{ env.CODE_COVERAGE_ARTIFACT_URL }}
             #### Code Coverage Total Percentage: \`${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}%\``;
 
-            github.rest.issues.createComment({
-              issue_number: ${{ env.PR_NUMBER }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
+            if (process.env.SAME_REPO === 'true') {
+              await github.rest.issues.createComment({
+                issue_number: ${{ env.PR_NUMBER }},
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            } else {
+              core.info(output);
+            }
 
       - name: Get current repo coverage percentage from Port
+        if: ${{ env.SAME_REPO == 'true' }}
+        continue-on-error: true
         uses: port-labs/port-github-action@v1
         id: get-current-coverage
         with:
@@ -315,37 +326,54 @@ jobs:
         id: set-current-coverage
         env:
           PORT_ENTITY: ${{ steps.get-current-coverage.outputs.entity }}
+          PORT_OUTCOME: ${{ steps.get-current-coverage.outcome }}
         run: |
-          echo "CURRENT_COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent')" >> $GITHUB_OUTPUT
+          FALLBACK=90
+          COVERAGE=""
+          if [ "${{ env.SAME_REPO }}" = "true" ] && [ "$PORT_OUTCOME" = "success" ] && [ -n "$PORT_ENTITY" ]; then
+            COVERAGE=$(echo "$PORT_ENTITY" | jq -r '.properties.coverage_percent // empty')
+          fi
+          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "null" ]; then
+            echo "Port coverage unavailable; using fallback baseline ${FALLBACK}%"
+            COVERAGE=$FALLBACK
+          fi
+          echo "CURRENT_COVERAGE=$COVERAGE" >> $GITHUB_OUTPUT
 
-      - name: Comment if Coverage Regression
+      - name: Report on coverage regression
         if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
         uses: actions/github-script@v9
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
           CURRENT_COVERAGE: ${{ steps.set-current-coverage.outputs.CURRENT_COVERAGE }}
           NEW_COVERAGE: ${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
+          SAME_REPO: ${{ env.SAME_REPO }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `🚨 The new code coverage percentage is lower than the current one. Current coverage: \`${{ env.CURRENT_COVERAGE }}\`\n While the new one is: \`${{ env.NEW_COVERAGE }}\``;
 
-            github.rest.issues.createComment({
-              issue_number: ${{ env.PR_NUMBER }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
+            if (process.env.SAME_REPO === 'true') {
+              await github.rest.issues.createComment({
+                issue_number: ${{ env.PR_NUMBER }},
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            } else {
+              core.info(output);
+            }
 
       - name: Calculate minimum required coverage with tolerance
+        env:
+          THRESHOLD_DELTA: ${{ vars.COVERAGE_THRESHOLD_DELTA }}
         run: |
           STMT_COVERAGE=${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
-          THRESHOLD_DELTA=${{ vars.COVERAGE_THRESHOLD_DELTA }}
+          THRESHOLD_DELTA=${THRESHOLD_DELTA:-0}
           MIN_REQUIRED=$(echo "$STMT_COVERAGE + $THRESHOLD_DELTA" | bc)
           echo "MIN_REQUIRED_COVERAGE=$MIN_REQUIRED" >> $GITHUB_ENV
 
       - name: Fail PR if current code coverage percentage is higher than the new one
-        if: ${{ (fromJson(env.MIN_REQUIRED_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
+        if: ${{ (fromJson(env.MIN_REQUIRED_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true' || env.SAME_REPO != 'true') }}
         run: exit 1
 
       - name: Update service code coverage percentage in Port
