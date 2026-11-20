@@ -1,0 +1,81 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: false
+resources:
+  - kind: user
+    selector:
+      query: 'true'
+      includeInactive: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"incidentIoUser"'
+          properties:
+            email: .email
+            role: .base_role.name
+            isActive: .is_active
+            slackUserId: .slack_user_id
+            onCallSeat: .seats.on_call
+            responseSeat: .seats.response
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"incidentIoTeam"'
+          properties:
+            externalId: .catalog_entry.external_id
+            memberCount: '(.members // []) | length'
+          relations:
+            members: '[.members[]?.id // empty]'
+  - kind: schedule
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"incidentIoSchedule"'
+          properties:
+            timezone: .timezone
+            currentOnCall: '[.current_shifts[]?.user.name // empty] | unique'
+            currentShiftEndsAt: '[.current_shifts[]?.end_at // empty] | sort | .[0]'
+            link: .permalink
+          relations:
+            teams: '.team_ids // []'
+            onCall: '[.current_shifts[]?.user.id // empty] | unique'
+  - kind: incident
+    selector:
+      query: 'true'
+      daysBack: 180
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .reference + " " + .name
+          blueprint: '"incidentIoIncident"'
+          properties:
+            reference: .reference
+            summary: .summary
+            status: .incident_status.name
+            statusCategory: .incident_status.category
+            severity: .severity.name
+            mode: .mode
+            visibility: .visibility
+            incidentType: .incident_type.name
+            createdAt: .created_at
+            updatedAt: .updated_at
+            lastActivityAt: .last_activity_at
+            slackChannel: .slack_channel_name
+            workloadMinutes: .workload_minutes_total
+            link: .permalink
+            postmortemUrl: .postmortem_document_url
+          relations:
+            teams: '.team_ids // []'
+            lead: '[.incident_role_assignments[]? | select(.role.role_type == "lead") | .assignee.id // empty][0]'
+            creator: .creator.user.id
