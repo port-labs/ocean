@@ -256,7 +256,9 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": ["new"]
+      "args": [
+        "new"
+      ]
     },
     {
       "console": "integratedTerminal",
@@ -541,6 +543,17 @@
       "name": "Run cursor-cloud-agents integration",
       "program": "${workspaceFolder}/integrations/cursor-cloud-agents/debug.py",
       "python": "${workspaceFolder}/integrations/cursor-cloud-agents/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/incident-io",
+      "envFile": "${workspaceFolder}/integrations/incident-io/.env",
+      "justMyCode": true,
+      "name": "Run incident-io integration",
+      "program": "${workspaceFolder}/integrations/incident-io/debug.py",
+      "python": "${workspaceFolder}/integrations/incident-io/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }
