@@ -106,13 +106,13 @@ def test_missing_quota_headers_are_not_published() -> None:
     assert wrapper._parse_centralized_state(response, context="/issue") is None
 
 
-def test_near_limit_publishes_empty_remaining() -> None:
+def test_near_limit_publishes_the_real_remaining() -> None:
     wrapper = _wrapper()
     state = wrapper._parse_centralized_state(
-        _response(remaining="80", near_limit=True), context="/issue"
+        _response(remaining="15", near_limit=True), context="/issue"
     )
     assert state is not None
-    assert state.remaining == 0
+    assert state.remaining == 15
 
 
 @pytest.mark.asyncio
