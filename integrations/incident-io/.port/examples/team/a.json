@@ -1,0 +1,17 @@
+{
+  "id": "01JPQA75EPNEES4479P16P4XAB",
+  "name": "Platform",
+  "catalog_entry": {
+    "id": "01JPQA75EPNEES4479P16P4XAB",
+    "name": "Platform",
+    "external_id": "platform"
+  },
+  "members": [
+    {
+      "id": "01FCNDV6P870EA6S7TK1DSYDG0",
+      "name": "Lisa Karlin Curtis",
+      "email": "lisa@example.com",
+      "slack_user_id": "U02AYNF2XJM"
+    }
+  ]
+}

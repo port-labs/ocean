@@ -1,0 +1,55 @@
+{
+  "title": "incident.io",
+  "description": "incident.io integration for Port Ocean",
+  "icon": "Alert",
+  "docs": "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/available-integrations/incident-management/incident-io",
+  "features": [
+    {
+      "type": "exporter",
+      "section": "Incident Management",
+      "resources": [
+        {
+          "kind": "incident"
+        },
+        {
+          "kind": "user"
+        },
+        {
+          "kind": "team"
+        },
+        {
+          "kind": "schedule"
+        },
+        {
+          "kind": "alert"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "incidentIoApiKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "incident.io API key with access to view incidents, plus the users.view, alerts.view, catalog_entries.view, and schedules.view scopes. See <a href=\"https://app.incident.io/settings/api-keys\" target=\"_blank\">API keys</a>."
+    },
+    {
+      "name": "incidentIoApiUrl",
+      "required": false,
+      "type": "url",
+      "default": "https://api.incident.io",
+      "description": "incident.io API origin. The public API is hosted at https://api.incident.io.",
+      "example": "https://api.incident.io"
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    },
+    "incrementalSync": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,292 @@
+[
+  {
+    "identifier": "incidentIoUser",
+    "title": "incident.io User",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "user",
+          "title": "Email"
+        },
+        "role": {
+          "type": "string",
+          "title": "Role"
+        },
+        "isActive": {
+          "type": "boolean",
+          "title": "Active"
+        },
+        "slackUserId": {
+          "type": "string",
+          "title": "Slack user ID"
+        },
+        "onCallSeat": {
+          "type": "string",
+          "title": "On-call seat"
+        },
+        "responseSeat": {
+          "type": "string",
+          "title": "Response seat"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "incidentIoTeam",
+    "title": "incident.io Team",
+    "icon": "Team",
+    "schema": {
+      "properties": {
+        "externalId": {
+          "type": "string",
+          "title": "External ID"
+        },
+        "memberCount": {
+          "type": "number",
+          "title": "Members"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "members": {
+        "title": "Members",
+        "target": "incidentIoUser",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "incidentIoSchedule",
+    "title": "incident.io Schedule",
+    "icon": "Clock",
+    "schema": {
+      "properties": {
+        "timezone": {
+          "type": "string",
+          "title": "Timezone"
+        },
+        "currentOnCall": {
+          "type": "array",
+          "title": "On call now",
+          "items": {
+            "type": "string"
+          }
+        },
+        "currentShiftEndsAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Current shift ends"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "incident.io link"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "teams": {
+        "title": "Teams",
+        "target": "incidentIoTeam",
+        "required": false,
+        "many": true
+      },
+      "onCall": {
+        "title": "On call",
+        "target": "incidentIoUser",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "incidentIoAlert",
+    "title": "incident.io Alert",
+    "icon": "Alert",
+    "description": "A fired or resolved alert in incident.io",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["firing", "resolved"],
+          "enumColors": {
+            "firing": "red",
+            "resolved": "green"
+          }
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "format": "url",
+          "title": "Source URL"
+        },
+        "deduplicationKey": {
+          "type": "string",
+          "title": "Deduplication key"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created at"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated at"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "incidentIoIncident",
+    "title": "incident.io Incident",
+    "icon": "Alert",
+    "schema": {
+      "properties": {
+        "reference": {
+          "type": "string",
+          "title": "Reference"
+        },
+        "summary": {
+          "type": "string",
+          "title": "Summary"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status"
+        },
+        "statusCategory": {
+          "type": "string",
+          "title": "Status category",
+          "enum": [
+            "triage",
+            "live",
+            "learning",
+            "paused",
+            "closed",
+            "declined",
+            "canceled",
+            "merged"
+          ],
+          "enumColors": {
+            "triage": "yellow",
+            "live": "red",
+            "learning": "purple",
+            "paused": "blue",
+            "closed": "green",
+            "declined": "lightGray",
+            "canceled": "lightGray",
+            "merged": "darkGray"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity"
+        },
+        "mode": {
+          "type": "string",
+          "title": "Mode",
+          "enum": [
+            "standard",
+            "retrospective",
+            "test",
+            "tutorial"
+          ],
+          "enumColors": {
+            "standard": "red",
+            "retrospective": "blue",
+            "test": "yellow",
+            "tutorial": "lightGray"
+          }
+        },
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "enum": [
+            "public",
+            "private"
+          ],
+          "enumColors": {
+            "public": "green",
+            "private": "purple"
+          }
+        },
+        "incidentType": {
+          "type": "string",
+          "title": "Type"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created at"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated at"
+        },
+        "lastActivityAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last activity"
+        },
+        "slackChannel": {
+          "type": "string",
+          "title": "Slack channel"
+        },
+        "workloadMinutes": {
+          "type": "number",
+          "title": "Workload (minutes)"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "incident.io link"
+        },
+        "postmortemUrl": {
+          "type": "string",
+          "format": "url",
+          "title": "Postmortem"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "teams": {
+        "title": "Teams",
+        "target": "incidentIoTeam",
+        "required": false,
+        "many": true
+      },
+      "lead": {
+        "title": "Incident lead",
+        "target": "incidentIoUser",
+        "required": false,
+        "many": false
+      },
+      "creator": {
+        "title": "Creator",
+        "target": "incidentIoUser",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
