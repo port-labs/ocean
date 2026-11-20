@@ -49,6 +49,24 @@ resources:
           relations:
             teams: '.team_ids // []'
             onCall: '[.current_shifts[]?.user.id // empty] | unique'
+  - kind: alert
+    selector:
+      query: 'true'
+      daysBack: 180
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"incidentIoAlert"'
+          properties:
+            description: .description
+            status: .status
+            priority: '[.attributes[]? | select((.attribute.name // "") | ascii_downcase == "priority") | .value.label // .value.literal // empty][0]'
+            sourceUrl: .source_url
+            deduplicationKey: .deduplication_key
+            createdAt: .created_at
+            updatedAt: .updated_at
   - kind: incident
     selector:
       query: 'true'

@@ -107,6 +107,54 @@
     }
   },
   {
+    "identifier": "incidentIoAlert",
+    "title": "incident.io Alert",
+    "icon": "Alert",
+    "description": "A fired or resolved alert in incident.io",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["firing", "resolved"],
+          "enumColors": {
+            "firing": "red",
+            "resolved": "green"
+          }
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "format": "url",
+          "title": "Source URL"
+        },
+        "deduplicationKey": {
+          "type": "string",
+          "title": "Deduplication key"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created at"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated at"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
     "identifier": "incidentIoIncident",
     "title": "incident.io Incident",
     "icon": "Alert",

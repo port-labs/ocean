@@ -22,6 +22,7 @@ STATUS_CATEGORIES = (
     "canceled",
     "merged",
 )
+ALERT_STATUSES = ("firing", "resolved")
 
 
 class UserSelector(Selector):
@@ -55,6 +56,49 @@ class ScheduleResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.SCHEDULE] = Field(
         title="incident.io Schedule",
         description="On-call schedules, including who is on call now.",
+    )
+
+
+class AlertSelector(Selector):
+    days_back: int = Field(
+        default=30,
+        alias="daysBack",
+        ge=1,
+        le=3650,
+        title="Days back",
+        description=(
+            "Sync alerts created in the last N days. Default is 30. "
+            "Incremental runs stay inside this window and only refresh alerts "
+            "updated since the cursor."
+        ),
+    )
+    statuses: Optional[list[str]] = Field(
+        default=None,
+        title="Statuses",
+        description=(
+            "Only sync alerts in these statuses. Default: firing and resolved. "
+            f"Allowed: {', '.join(ALERT_STATUSES)}."
+        ),
+    )
+
+    @validator("statuses")
+    def _check_statuses(cls, value: Optional[list[str]]) -> Optional[list[str]]:
+        if not value:
+            return None
+        invalid = [item for item in value if item not in ALERT_STATUSES]
+        if invalid:
+            raise ValueError(f"Unknown alert statuses: {invalid}")
+        return value
+
+
+class AlertResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ALERT] = Field(
+        title="incident.io Alert",
+        description="Fired and resolved alerts from alert sources.",
+    )
+    selector: AlertSelector = Field(
+        title="Alert Selector",
+        description="Time window and which alert statuses to sync.",
     )
 
 
@@ -131,6 +175,7 @@ class IncidentIoPortAppConfig(PortAppConfig):
         UserResourceConfig
         | TeamResourceConfig
         | ScheduleResourceConfig
+        | AlertResourceConfig
         | IncidentResourceConfig
     ] = Field(
         default_factory=list

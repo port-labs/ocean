@@ -10,3 +10,8 @@ class IncidentOptions(TypedDict):
 
 class UserOptions(TypedDict):
     include_inactive: bool
+
+
+class AlertOptions(TypedDict):
+    days_back: int
+    statuses: NotRequired[Optional[list[str]]]

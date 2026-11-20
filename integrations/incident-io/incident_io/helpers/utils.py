@@ -8,6 +8,7 @@ PERMISSIONS_DOCS_URL = "https://docs.incident.io/api-reference"
 # not name a scope; a 403 on that path still points at the API key settings.
 REQUIRED_SCOPES: dict[str, str] = {
     "v2/users": "users.view",
+    "v2/alerts": "alerts.view",
     "v3/teams": "catalog_entries.view",
     "v2/schedules": "schedules.view",
 }
@@ -18,6 +19,7 @@ class ObjectKind(StrEnum):
     USER = "user"
     TEAM = "team"
     SCHEDULE = "schedule"
+    ALERT = "alert"
 
 
 def required_permission(endpoint: str) -> str | None:

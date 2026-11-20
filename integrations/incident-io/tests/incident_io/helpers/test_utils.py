@@ -12,6 +12,8 @@ def test_required_permission_matches_known_prefixes() -> None:
     assert required_permission("/v2/users/abc") == "users.view"
     assert required_permission("v3/teams") == "catalog_entries.view"
     assert required_permission("v2/schedules/abc") == "schedules.view"
+    assert required_permission("v2/alerts") == "alerts.view"
+    assert required_permission("v2/alerts/abc") == "alerts.view"
     assert required_permission("v2/incidents") is None
 
 

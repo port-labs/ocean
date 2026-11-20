@@ -8,14 +8,15 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from incident_io.clients.client_factory import ClientFactory
 from incident_io.core.exporters import (
+    AlertExporter,
     IncidentExporter,
     ScheduleExporter,
     TeamExporter,
     UserExporter,
 )
-from incident_io.core.options import IncidentOptions, UserOptions
+from incident_io.core.options import AlertOptions, IncidentOptions, UserOptions
 from incident_io.helpers.utils import ObjectKind
-from integration import IncidentResourceConfig, UserResourceConfig
+from integration import AlertResourceConfig, IncidentResourceConfig, UserResourceConfig
 
 
 @ocean.on_resync(ObjectKind.USER)
@@ -43,6 +44,19 @@ async def resync_schedules(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = ScheduleExporter(ClientFactory.get_client())
     async for batch in exporter.get_paginated_resources():
         logger.info(f"Yielding {len(batch)} incident.io schedules")
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.ALERT)
+@ocean.on_resync(ObjectKind.ALERT)
+async def resync_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(AlertResourceConfig, event.resource_config).selector
+    options = AlertOptions(days_back=selector.days_back, statuses=selector.statuses)
+    since = active_incremental_cursor()
+    async for batch in AlertExporter(
+        ClientFactory.get_client()
+    ).get_paginated_resources(options, since=since):
+        logger.info(f"Yielding {len(batch)} incident.io alerts")
         yield batch
 
 

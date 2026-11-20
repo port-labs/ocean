@@ -6,6 +6,7 @@ from pydantic.v1 import ValidationError
 
 from incident_io.helpers.utils import ObjectKind
 from integration import (
+    AlertSelector,
     IncidentIoPortAppConfig,
     IncidentSelector,
     UserSelector,
@@ -72,5 +73,20 @@ def test_default_port_app_config_parses() -> None:
         ObjectKind.USER,
         ObjectKind.TEAM,
         ObjectKind.SCHEDULE,
+        ObjectKind.ALERT,
         ObjectKind.INCIDENT,
     ]
+
+
+def test_alert_selector_defaults_and_rejects_unknown_status() -> None:
+    selector = AlertSelector(query="true")
+    assert selector.days_back == 30
+    assert selector.statuses is None
+    chosen = AlertSelector.parse_obj(
+        {"query": "true", "daysBack": 7, "statuses": ["firing"]}
+    )
+    assert chosen.days_back == 7
+    assert chosen.statuses == ["firing"]
+    assert AlertSelector(query="true", statuses=[]).statuses is None
+    with pytest.raises(ValidationError):
+        AlertSelector(query="true", statuses=["open"])
