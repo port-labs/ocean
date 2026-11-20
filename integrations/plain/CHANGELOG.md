@@ -7,6 +7,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.5-beta (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.0
+
+
+## 0.3.4-beta (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.8
+
+
+## 0.3.3-beta (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.7
+
+
+## 0.3.2-beta (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.6
+
+
+## 0.3.1-beta (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.5
+
+
+## 0.3.0-beta (2026-11-17)
+
+
+### Improvements
+
+- |
+    Improved error handling for test connection and webhook setup:
+- Test connection now fails immediately on HTTP 401 (Unauthorized) with exactly one request instead of retrying ~10 times
+- Test connection detects SSL/TLS certificate errors and provides clear messaging about secure connection issues
+- Blocked IP addresses (from network security policy) are treated as test connection failures with clear messaging, not internal errors
+- Webhook registration now logs a warning instead of crashing when Plain API cannot be reached
+- Note: Resync and webhook calls continue to use normal retry behavior including for SSL errors
+
+
+## 0.2.16-beta (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.4
+
+
+## 0.2.15-beta (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.3
+
+
+## 0.2.14-beta (2026-11-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.2
+
+
+## 0.2.13-beta (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.1
+
+
+## 0.2.12-beta (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.0
+
+
+## 0.2.11-beta (2026-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.60.0
+
+
 ## 0.2.10-beta (2026-11-11)
 
 

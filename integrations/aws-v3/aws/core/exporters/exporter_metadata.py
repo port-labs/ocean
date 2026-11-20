@@ -74,6 +74,8 @@ from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitio
 from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
 from aws.core.exporters.eks.cluster.live_events import EKS_CLUSTER_LIVE_EVENTS
 from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
+from aws.core.exporters.eks import EksNodegroupExporter, PaginatedEksNodegroupRequest
+from aws.core.exporters.eks.nodegroup.live_events import EKS_NODEGROUP_LIVE_EVENTS
 from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.live_events import (
     ELASTICACHE_CLUSTER_LIVE_EVENTS,
@@ -142,6 +144,11 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         EksClusterExporter,
         PaginatedEksClusterRequest,
         live_events=EKS_CLUSTER_LIVE_EVENTS,
+    ),
+    ObjectKind.EKS_NODEGROUP: ExporterMetadata(
+        EksNodegroupExporter,
+        PaginatedEksNodegroupRequest,
+        live_events=EKS_NODEGROUP_LIVE_EVENTS,
     ),
     ObjectKind.RDS_DB_INSTANCE: ExporterMetadata(
         RdsDbInstanceExporter,

@@ -1022,7 +1022,11 @@ class GithubBranchSelector(RepoSearchSelector):
         title="Protection Rules",
         default=False,
         alias="protectionRules",
-        description="Whether to include branch protection rules for each branch.",
+        description=(
+            "Whether to include branch protection rules for each branch. "
+            "Protection rule changes are not git pushes, so incremental sync does not "
+            "pick them up; they are updated on the next full resync."
+        ),
     )
     branch_names: List[str] = Field(
         title="Branch Names",

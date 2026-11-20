@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
@@ -6,6 +7,11 @@ from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
+from datadog.incremental import (
+    audit_event_asset_id,
+    audit_event_path,
+    audit_events_search_body,
+)
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -136,6 +142,56 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
 
             yield result
             offset += page_size
+
+    async def _paginate_by_search_cursor(
+        self,
+        url: str,
+        body: dict[str, Any],
+        *,
+        data_key: str = "data",
+        page_size: int = MAX_PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Cursor-based pagination for POST search endpoints. Sends the previous
+        response's meta.page.after as page.cursor until empty or no next cursor."""
+        cursor: str | None = None
+        while True:
+            page: dict[str, Any] = {"limit": page_size}
+            if cursor:
+                page["cursor"] = cursor
+            result = await self.client.send_api_request(
+                url, json_data={**body, "page": page}, method="POST"
+            )
+
+            items = result.get(data_key, [])
+            if not items:
+                break
+
+            yield items
+            cursor = result.get("meta", {}).get("page", {}).get("after")
+            if not cursor:
+                break
+
+    async def _changed_asset_ids(
+        self, query: str, since: datetime, *, excluded_path_prefix: str | None = None
+    ) -> list[str]:
+        """Return the IDs of the assets that audit events matching *query* since
+        *since* are about, deduplicated in order. Events recorded on API paths
+        under *excluded_path_prefix* are skipped.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        url = f"{self.client.api_url}/api/v2/audit/events/search"
+        asset_ids: dict[str, None] = {}
+        async for events in self._paginate_by_search_cursor(
+            url, audit_events_search_body(query, since)
+        ):
+            for event in events:
+                if excluded_path_prefix and audit_event_path(event).startswith(
+                    excluded_path_prefix
+                ):
+                    continue
+                if asset_id := audit_event_asset_id(event):
+                    asset_ids[asset_id] = None
+        return list(asset_ids)
 
 
 class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
