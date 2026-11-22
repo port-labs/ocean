@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added environment kind sync from the Factory Environments API

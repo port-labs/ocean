@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added an execute_droid action that starts a headless Droid turn, waits for completion, and returns the assistant reply plus session metadata on the Port run
