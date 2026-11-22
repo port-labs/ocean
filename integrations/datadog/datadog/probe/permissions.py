@@ -40,16 +40,10 @@ def authentication_failure_message(
 
 
 def permissions_lookup_failure_message(status_code: int) -> str:
-    message = (
-        f"Datadog returned HTTP {status_code} while reading the permissions "
-        "of the application key's owner."
+    return (
+        f"Datadog returned HTTP {status_code} while fetching user permissions. "
+        f"Required scope(s): {PERMISSIONS_LOOKUP_REQUIRED_SCOPE}."
     )
-    if status_code in ACCESS_DENIED_STATUS_CODES:
-        message += (
-            " If the application key is scoped, add the "
-            f"{PERMISSIONS_LOOKUP_REQUIRED_SCOPE} scope to it."
-        )
-    return message
 
 
 class DatadogKindPermissionVerdict(KindPermissionVerdict):
@@ -62,10 +56,3 @@ class DatadogKindPermissionVerdict(KindPermissionVerdict):
 
     def granted_message(self, granted: tuple[str, ...]) -> str:
         return f"Datadog access verified: {', '.join(granted)}"
-
-    def denied_message(self, denied: tuple[str, ...]) -> str:
-        return (
-            super().denied_message(denied)
-            + ". Grant them to the role of the application key's owner, "
-            "and to the key's scopes if it is scoped."
-        )

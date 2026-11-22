@@ -113,8 +113,15 @@ class DatadogPermissionProbe:
     async def _resolve_checks(
         self, client: DatadogClient, user_id: str, checks: list[ProbeCheck]
     ) -> None:
+        required = {
+            permission
+            for check in checks
+            for permission in self.permission_verdict.kind_permissions.get(
+                check.kind, ()
+            )
+        }
         try:
-            permissions = await self._effective_permissions(client, user_id)
+            permissions = await self._effective_permissions(client, user_id, required)
         except HTTPStatusError as error:
             await self._fail_checks(
                 checks, permissions_lookup_failure_message(error.response.status_code)
@@ -123,7 +130,7 @@ class DatadogPermissionProbe:
         except RequestError as error:
             await self._fail_checks(
                 checks,
-                f"Datadog could not be reached while reading permissions: {error}",
+                f"Datadog could not be reached while fetching user permissions: {error}",
             )
             return
 
@@ -134,13 +141,16 @@ class DatadogPermissionProbe:
         await self.context.update_progress()
 
     async def _effective_permissions(
-        self, client: DatadogClient, user_id: str
+        self, client: DatadogClient, user_id: str, required: set[str]
     ) -> dict[str, bool]:
+        """Return the *required* permissions the credentials hold. Datadog can't
+        be asked about specific permissions, so the owner's full list is fetched
+        and narrowed to the ones the selected kinds need."""
         role_permissions, scopes = await asyncio.gather(
             client.get_user_permissions(user_id),
             self._application_key_scopes(client),
         )
-        granted = role_permissions | IMPLICIT_PERMISSIONS
+        granted = (role_permissions | IMPLICIT_PERMISSIONS) & required
         if scopes is not None:
             granted &= set(scopes)
         return {permission: True for permission in granted}

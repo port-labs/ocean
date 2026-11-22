@@ -21,7 +21,7 @@ def test_kind_needs_all_of_its_permissions() -> None:
     status, message = verdict.verdict("serviceMetric", {"timeseries_query": True})
 
     assert status is ProbeCheckStatus.FAILURE
-    assert message.startswith("Missing permission(s): apm_service_catalog_read.")
+    assert message == "Missing permission(s): apm_service_catalog_read"
 
 
 def test_granted_kind_lists_its_permissions() -> None:

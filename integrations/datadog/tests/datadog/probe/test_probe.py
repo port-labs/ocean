@@ -43,7 +43,7 @@ async def test_resolves_kinds_from_owner_permissions_in_three_calls(
     }
     slo_check = next(c for c in probe_context.checks if c.kind == "slo")
     assert slo_check.message is not None
-    assert slo_check.message.startswith("Missing permission(s): slos_read.")
+    assert slo_check.message == "Missing permission(s): slos_read"
     metric_check = next(c for c in probe_context.checks if c.kind == "serviceMetric")
     assert metric_check.message is not None
     assert "timeseries_query" in metric_check.message
@@ -195,9 +195,8 @@ async def test_failed_permission_lookup_fails_every_check(
         "team": ProbeCheckStatus.FAILURE,
     }
     assert probe_context.checks[0].message == (
-        "Datadog returned HTTP 403 while reading the permissions of the "
-        "application key's owner. If the application key is scoped, add the "
-        "user_access_read scope to it."
+        "Datadog returned HTTP 403 while fetching user permissions. "
+        "Required scope(s): user_access_read."
     )
 
 
@@ -230,8 +229,7 @@ async def test_multi_org_reports_checks_per_org_and_isolates_bad_credentials(
         ),
         f"#3 ({BASE_URL})": (
             ProbeCheckStatus.FAILURE,
-            "Missing permission(s): monitors_read. Grant them to the role of the "
-            "application key's owner, and to the key's scopes if it is scoped.",
+            "Missing permission(s): monitors_read",
         ),
     }
     bad.get_user_permissions.assert_not_awaited()
@@ -251,3 +249,16 @@ async def test_missing_credential_map_fails_probe(
 
     assert probe_context.status is ProbeStatus.FAILED
     assert probe_context.message == "Invalid datadogCredentialMap"
+
+
+@pytest.mark.asyncio
+async def test_effective_permissions_keep_only_those_selected_kinds_need(
+    probe_context: ProbeContext,
+) -> None:
+    client = make_client(role_permissions={"monitors_read", "slos_read", "hosts_read"})
+
+    permissions = await DatadogPermissionProbe(probe_context)._effective_permissions(
+        client, USER_ID, {"monitors_read", "teams_read", "apm_read"}
+    )
+
+    assert permissions == {"monitors_read": True, "teams_read": True}
