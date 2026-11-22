@@ -17,13 +17,6 @@ from factory_ai.core.exporters.session.models import (
 _SESSIONS_PATH = "/api/v0/sessions"
 
 
-def _is_forbidden(error: httpx.HTTPStatusError) -> bool:
-    return (
-        error.response is not None
-        and error.response.status_code == HTTPStatus.FORBIDDEN
-    )
-
-
 class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOptions]):
     """Sync Factory Droid sessions.
 
@@ -47,7 +40,7 @@ class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOpti
                     params=params or None,
                 )
             except httpx.HTTPStatusError as error:
-                if _is_forbidden(error):
+                if error.response.status_code == HTTPStatus.FORBIDDEN:
                     logger.warning(
                         "Factory Sessions API returned 403; org likely lacks "
                         "access. Skipping session sync."
@@ -76,7 +69,7 @@ class SessionExporter(AbstractFactoryExporter[ListSessionOptions, GetSessionOpti
                 params=params,
             )
         except httpx.HTTPStatusError as error:
-            if _is_forbidden(error):
+            if error.response.status_code == HTTPStatus.FORBIDDEN:
                 logger.warning(
                     "Factory Sessions API returned 403; org likely lacks "
                     "access. Skipping session lookup."
