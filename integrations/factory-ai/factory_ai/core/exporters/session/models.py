@@ -7,19 +7,19 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from factory_ai.core.models import FactoryListOptions, FactoryModel, FactoryPagination
+from factory_ai.core.models import (
+    FactoryModel,
+    FactoryPaginatedListOptions,
+    FactoryPagination,
+)
 
-# OpenAPI allows 1–100; use the max page size for lean resyncs.
-_DEFAULT_LIST_LIMIT = 100
 
-
-class ListSessionOptions(FactoryListOptions):
+class ListSessionOptions(FactoryPaginatedListOptions):
     """Options for ``GET /api/v0/sessions``.
 
     ``cursor`` is owned by the exporter's pagination loop, not OOTB selectors.
     """
 
-    limit: int | None = Field(_DEFAULT_LIST_LIMIT, alias="limit")
     computer_id: str | None = Field(None, alias="computerId")
 
 

@@ -42,6 +42,16 @@ class FactoryListOptions(BaseModel):
         }
 
 
+# OpenAPI allows 1–100; use the max page size for lean resyncs.
+DEFAULT_LIST_LIMIT = 100
+
+
+class FactoryPaginatedListOptions(FactoryListOptions):
+    """List options for cursor-paginated Factory endpoints with a ``limit`` query param."""
+
+    limit: int | None = Field(DEFAULT_LIST_LIMIT, alias="limit")
+
+
 class FactoryPagination(FactoryModel):
     """Cursor page info shared by Factory list endpoints that paginate."""
 
