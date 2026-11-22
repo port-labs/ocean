@@ -31,6 +31,17 @@ class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
         )
 
 
+def _entity_params(options: ListCatalogEntityOptions) -> dict[str, Any]:
+    """Query parameters shared by the full and the incremental resync, so entities
+    keep one shape."""
+    params: dict[str, Any] = {"include": "schema"}
+    if options.include_discovered:
+        params["includeDiscovered"] = "true"
+    if options.entity_kinds:
+        params["filter[kind]"] = options.entity_kinds
+    return params
+
+
 def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
     """An entity's spec — tier, lifecycle, languages and its declared relations — is not
     on the entity itself but in the sibling `included` array, keyed by the id under the
@@ -59,6 +70,10 @@ def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
+    @property
+    def _entities_url(self) -> str:
+        return f"{self.client.api_url}/api/v2/catalog/entity"
+
     async def get_paginated_resources(
         self, options: ListCatalogEntityOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -66,20 +81,12 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         kind — service, datastore, queue, api, system and the rest — is returned.
         Docs: https://docs.datadoghq.com/api/latest/software-catalog/#get-a-list-of-entities
         """
-        url = f"{self.client.api_url}/api/v2/catalog/entity"
-        # `include` takes exactly one value: "schema,relation" returns includeCount 0
-        params: dict[str, Any] = {"include": "schema"}
-        if options.include_discovered:
-            params["includeDiscovered"] = "true"
-        if options.entity_kinds:
-            params["filter[kind]"] = options.entity_kinds
-
         pending_kinds = set(options.entity_kinds)
         async for response in self._paginate_responses_by_offset(
-            url,
+            self._entities_url,
             offset_param="page[offset]",
             size_param="page[limit]",
-            extra_params=params,
+            extra_params=_entity_params(options),
         ):
             entities = attach_schemas(response)
             if pending_kinds:
@@ -97,39 +104,33 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get catalog entities created or modified since ``incremental_cursor``, found
         through audit events. Deleted entities, and entities of kinds outside
-        ``entity_kinds``, come back empty and are left out. Discovered entities have no
-        audit events, so only a full resync picks up newly discovered ones.
+        ``entity_kinds``, are not returned. Discovered entities have no audit events,
+        so only a full resync picks up newly discovered ones.
         Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
         """
-        url = f"{self.client.api_url}/api/v2/catalog/entity"
-        # Same parameters as the full resync, so entities keep one shape
-        params: dict[str, Any] = {"include": "schema"}
-        if options.include_discovered:
-            params["includeDiscovered"] = "true"
-        if options.entity_kinds:
-            params["filter[kind]"] = options.entity_kinds
-
         refs = await self._changed_asset_ids(
             CHANGED_CATALOG_ENTITIES_AUDIT_QUERY, incremental_cursor
         )
 
         for batch in batched(refs, CHANGED_ENTITIES_FETCH_BATCH_SIZE):
             results = await asyncio.gather(
-                *(self._get_changed_entities(url, params, ref) for ref in batch)
+                *(self._get_changed_entity(ref, options) for ref in batch)
             )
-            if entities := [entity for result in results for entity in result]:
+            if entities := [entity for entity in results if entity]:
                 yield entities
 
-    async def _get_changed_entities(
-        self, url: str, params: dict[str, Any], ref: str
-    ) -> list[dict[str, Any]]:
-        """Get the entities matching *ref*, found through audit events; empty if the
-        entity was deleted or its kind is filtered out."""
-        # Datadog ignores unknown filters and returns every entity, so the filter
-        # name must be exactly `filter[ref]`
+    async def _get_changed_entity(
+        self, ref: str, options: ListCatalogEntityOptions
+    ) -> dict[str, Any] | None:
+        """Get an entity found through audit events, or None if it was deleted since
+        or its kind is filtered out."""
         response = await self.client.send_api_request(
-            url, params={**params, "filter[ref]": ref}
+            self._entities_url,
+            params={**_entity_params(options), "filter[ref]": ref},
         )
         if not response.get("data"):
-            return []
-        return attach_schemas(response)
+            logger.warning(
+                f"Skipping catalog entity '{ref}' from audit events; it no longer exists in Datadog"
+            )
+            return None
+        return attach_schemas(response)[0]
