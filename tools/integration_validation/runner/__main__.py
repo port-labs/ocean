@@ -1,3 +1,3 @@
-from tools.integration_validation.runner.cli import main
+from tools.integration_validation.runner.main import main
 
 main()

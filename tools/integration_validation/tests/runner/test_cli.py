@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.integration_validation.runner.cli import main
+from tools.integration_validation.runner.main import main
 
 
 @pytest.fixture

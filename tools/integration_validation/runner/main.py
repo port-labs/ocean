@@ -1,4 +1,4 @@
-"""CLI for the integration validation runner (preflight today; full runs later)."""
+"""Command-line entry for the integration validation runner."""
 
 from __future__ import annotations
 
