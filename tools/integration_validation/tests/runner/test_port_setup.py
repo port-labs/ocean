@@ -10,6 +10,7 @@ from tools.integration_validation.runner.errors import (
 )
 from tools.integration_validation.runner.port_setup import (
     ScenarioPortPlan,
+    ValidationPortClient,
     prepare_scenario_port,
     teardown_scenario_port,
 )
@@ -23,7 +24,7 @@ def _http_error(method: str, path: str, status_code: int) -> httpx.HTTPStatusErr
     return httpx.HTTPStatusError("failed", request=request, response=response)
 
 
-class FakePortClient:
+class FakePortClient(ValidationPortClient):
     def __init__(
         self,
         fail_on: tuple[str, str] | None = None,
@@ -39,7 +40,9 @@ class FakePortClient:
         if self._fail_on == (operation, target):
             raise _http_error(method, path, self._status_code)
 
-    async def create_blueprint(self, raw_blueprint: dict[str, Any]) -> dict[str, Any]:
+    async def create_blueprint(
+        self, raw_blueprint: dict[str, Any], *args: Any, **kwargs: Any
+    ) -> dict[str, Any]:
         identifier = raw_blueprint["identifier"]
         self.calls.append(("create_blueprint", raw_blueprint))
         self._maybe_fail("create_blueprint", identifier, "POST", "/blueprints")
@@ -47,7 +50,7 @@ class FakePortClient:
         return raw_blueprint
 
     async def patch_blueprint(
-        self, identifier: str, raw_blueprint: dict[str, Any]
+        self, identifier: str, raw_blueprint: dict[str, Any], *args: Any, **kwargs: Any
     ) -> None:
         self.calls.append(("patch_blueprint", raw_blueprint))
         self._maybe_fail(
@@ -113,6 +116,7 @@ def plan() -> ScenarioPortPlan:
         ],
         blueprint_renames={"user": "user-a1b2", "team": "team-a1b2"},
         port_app_config=PORT_APP_CONFIG,
+        kinds=[],
     )
 
 

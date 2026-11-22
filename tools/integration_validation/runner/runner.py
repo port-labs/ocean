@@ -36,7 +36,10 @@ from tools.integration_validation.runner.port_setup import (
     prepare_scenario_port,
     teardown_scenario_port,
 )
-from tools.integration_validation.runner.preflight import run_preflight
+from tools.integration_validation.runner.preflight import (
+    run_preflight,
+    select_scenario_names,
+)
 
 
 @dataclass(frozen=True)
@@ -58,24 +61,16 @@ class ScenarioRun:
 @dataclass(frozen=True)
 class ValidateResult:
     paths: ValidationPaths
-    scenarios: ScenariosDocument
-    scenario_names: list[str]
+    options: ValidateOptions
     scenario_runs: list[ScenarioRun]
-    update_expected: bool
-    skip_cleanup: bool
-    report_path: Path | None
 
 
 def run_validate(options: ValidateOptions) -> ValidateResult:
     paths = resolve_validation_paths(options.integration_path)
     scenarios = load_scenarios_document(paths.scenarios_file)
-    run_preflight(paths, scenarios, options.scenario_names)
+    run_preflight(paths)
 
-    if options.scenario_names:
-        scenario_names = options.scenario_names
-    else:
-        scenario_names = list(scenarios.scenarios.keys())
-
+    scenario_names = select_scenario_names(scenarios, options.scenario_names)
     integration_type = load_integration_type(paths)
     plans = _plan_scenarios(paths, scenarios, scenario_names)
 
@@ -85,19 +80,9 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
         _run_scenarios(plans, integration_type, options.skip_cleanup)
     )
 
-    result = ValidateResult(
-        paths=paths,
-        scenarios=scenarios,
-        scenario_names=scenario_names,
-        scenario_runs=scenario_runs,
-        update_expected=options.update_expected,
-        skip_cleanup=options.skip_cleanup,
-        report_path=options.report_path,
-    )
-
+    result = ValidateResult(paths=paths, options=options, scenario_runs=scenario_runs)
     if options.report_path is not None:
-        _write_report(result)
-
+        _write_report(result, options.report_path)
     return result
 
 
@@ -129,6 +114,7 @@ def _plan_scenarios(
                 ),
                 blueprints=suffixed_blueprints,
                 blueprint_renames=renames,
+                kinds=scenario.kinds,
                 port_app_config=port_app_config,
             )
         )
@@ -162,20 +148,17 @@ async def _run_scenarios(
     return runs
 
 
-def _write_report(result: ValidateResult) -> None:
+def _write_report(result: ValidateResult, report_path: Path) -> None:
     # Placeholder report until full report.json schema is implemented.
     payload = {
         "integration": result.paths.integration_name,
         "status": "port_prepared",
-        "scenarios": [_scenario_report(result, run) for run in result.scenario_runs],
+        "scenarios": [_scenario_report(run) for run in result.scenario_runs],
         "options": {
-            "update_expected": result.update_expected,
-            "skip_cleanup": result.skip_cleanup,
+            "update_expected": result.options.update_expected,
+            "skip_cleanup": result.options.skip_cleanup,
         },
     }
-    report_path = result.report_path
-    if report_path is None:
-        return
     try:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -185,11 +168,11 @@ def _write_report(result: ValidateResult) -> None:
         ) from exc
 
 
-def _scenario_report(result: ValidateResult, run: ScenarioRun) -> dict[str, Any]:
+def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
     return {
         "name": run.plan.scenario_name,
         "status": "not_run",
-        "kinds": result.scenarios.scenarios[run.plan.scenario_name].kinds,
+        "kinds": run.plan.kinds,
         "port": {
             "integration_identifier": run.plan.integration_identifier,
             "blueprints": run.plan.blueprint_renames,

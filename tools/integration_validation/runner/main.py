@@ -65,10 +65,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(error.exit_code) from error
 
     integration_name = result.paths.integration_name
-    print(f"Loaded {len(result.scenario_names)} scenario(s) for {integration_name}.")
+    print(f"Loaded {len(result.scenario_runs)} scenario(s) for {integration_name}.")
     for run in result.scenario_runs:
         name = run.plan.scenario_name
-        kinds = result.scenarios.scenarios[name].kinds
+        kinds = run.plan.kinds
         kinds_label = ", ".join(kinds) if kinds else "all configured kinds"
         print(f"  • {name} ({kinds_label})")
         print(f"    integration: {run.plan.integration_identifier}")

@@ -3,14 +3,14 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 import httpx
 from loguru import logger
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import CreatePortResourcesOrigin, Migration
+from port_ocean.core.models import CreatePortResourcesOrigin
 from port_ocean.tests.helpers.port_client import (
     ensure_ocean_context_for_standalone_port_client,
 )
@@ -35,31 +35,8 @@ class ScenarioPortPlan:
     integration_identifier: str
     blueprints: list[dict[str, Any]]
     blueprint_renames: dict[str, str]
+    kinds: list[str]
     port_app_config: dict[str, Any]
-
-
-class ScenarioPortClient(Protocol):
-    async def create_blueprint(
-        self, raw_blueprint: dict[str, Any]
-    ) -> dict[str, Any]: ...
-
-    async def patch_blueprint(
-        self, identifier: str, raw_blueprint: dict[str, Any]
-    ) -> None: ...
-
-    async def delete_blueprint_with_entities(self, identifier: str) -> str | None: ...
-
-    async def wait_for_migration_to_complete(
-        self, migration_id: str, interval: int = 5
-    ) -> Migration: ...
-
-    async def create_validation_integration(
-        self, port_app_config: dict[str, Any]
-    ) -> dict[str, Any]: ...
-
-    async def mark_port_resources_initialized(self) -> None: ...
-
-    async def delete_validation_integration(self) -> None: ...
 
 
 class ValidationPortClient(PortClient):
@@ -134,7 +111,7 @@ class ValidationPortClient(PortClient):
 
 def create_port_client(
     integration_identifier: str, integration_type: str
-) -> ScenarioPortClient:
+) -> ValidationPortClient:
     ensure_ocean_context_for_standalone_port_client()
     return ValidationPortClient(
         base_url=os.environ["OCEAN__PORT__BASE_URL"].rstrip("/"),
@@ -146,7 +123,7 @@ def create_port_client(
 
 
 async def prepare_scenario_port(
-    client: ScenarioPortClient, plan: ScenarioPortPlan
+    client: ValidationPortClient, plan: ScenarioPortPlan
 ) -> None:
     """Create the run's blueprints, then the integration with the scenario mapping.
 
@@ -171,7 +148,7 @@ async def prepare_scenario_port(
 
 
 async def teardown_scenario_port(
-    client: ScenarioPortClient, plan: ScenarioPortPlan
+    client: ValidationPortClient, plan: ScenarioPortPlan
 ) -> list[str]:
     """Delete the scenario's integration and blueprints (with their entities)
     when they exist.
@@ -203,7 +180,7 @@ async def teardown_scenario_port(
 
 
 async def _create_blueprints(
-    client: ScenarioPortClient, blueprints: list[dict[str, Any]]
+    client: ValidationPortClient, blueprints: list[dict[str, Any]]
 ) -> None:
     bare, *patch_stages = blueprint_creation_stages(blueprints)
     # Wait for every create before raising, so rollback cannot race one in flight.
@@ -224,7 +201,7 @@ async def _create_blueprints(
 
 
 async def _delete_blueprint_with_entities(
-    client: ScenarioPortClient, identifier: str
+    client: ValidationPortClient, identifier: str
 ) -> bool:
     try:
         migration_id = await client.delete_blueprint_with_entities(identifier)
