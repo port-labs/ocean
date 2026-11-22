@@ -21,7 +21,7 @@ class ValidateOptions:
     integration_path: Path
     scenario_names: list[str] | None
     update_expected: bool
-    keep: bool
+    skip_cleanup: bool
     report_path: Path | None
 
 
@@ -31,7 +31,7 @@ class ValidateResult:
     scenarios: ScenariosDocument
     scenario_names: list[str]
     update_expected: bool
-    keep: bool
+    skip_cleanup: bool
     report_path: Path | None
 
 
@@ -51,7 +51,7 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
         scenarios=scenarios,
         scenario_names=scenario_names,
         update_expected=options.update_expected,
-        keep=options.keep,
+        skip_cleanup=options.skip_cleanup,
         report_path=options.report_path,
     )
 
@@ -76,7 +76,7 @@ def _write_preflight_report(result: ValidateResult) -> None:
         ],
         "options": {
             "update_expected": result.update_expected,
-            "keep": result.keep,
+            "skip_cleanup": result.skip_cleanup,
         },
     }
     report_path = result.report_path

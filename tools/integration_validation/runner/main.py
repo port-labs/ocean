@@ -41,7 +41,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Write actual Port entities to expected/ when diffs are intended.",
     )
     parser.add_argument(
-        "--keep",
+        "--skip-cleanup",
         action="store_true",
         help="Leave Port resources from the run in place (skip cleanup).",
     )
@@ -60,7 +60,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 integration_path=args.path,
                 scenario_names=args.scenario_names,
                 update_expected=args.update_expected,
-                keep=args.keep,
+                skip_cleanup=args.skip_cleanup,
                 report_path=args.report_path,
             )
         )

@@ -14,6 +14,6 @@ python -m tools.integration_validation.runner integrations/datadog \
   --report /tmp/validate-report.json
 ```
 
-Options: `--scenario NAME` (repeatable), `--update-expected`, `--keep`, `--report PATH`.
+Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`.
 
 Exit codes: `0` pass, `1` validation failed, `2` setup/preflight error.

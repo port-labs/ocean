@@ -56,7 +56,7 @@ def test_validate_help_lists_options(capsys: pytest.CaptureFixture[str]) -> None
     output = capsys.readouterr().out
     assert "--scenario" in output
     assert "--update-expected" in output
-    assert "--keep" in output
+    assert "--skip-cleanup" in output
     assert "--report" in output
 
 
