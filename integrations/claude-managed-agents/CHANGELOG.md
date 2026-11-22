@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.17.14 (2026-11-22)
+
+
+### Bug Fixes
+
+- Serialize Port MCP vault credential remint per vault and retry Anthropic 409 concurrent-modification errors so parallel trigger_agent runs sharing a service-account vault do not fail
+
+
 ## 0.17.13 (2026-11-19)
 
 
