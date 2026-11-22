@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
+from factory_ai.actions.execute_droid.models import ExecuteDroidResponse
 from factory_ai.clients.exceptions import FactoryAIError
 from factory_ai.clients.factory_client import (
     FactoryClient,
@@ -153,6 +154,55 @@ async def test_get_invalid_payload_raises_factory_error(client: FactoryClient) -
 
     with pytest.raises(FactoryAIError, match="Invalid Factory response"):
         await client.get("/api/v0/environments", ListEnvironmentsResponse)
+
+
+@pytest.mark.asyncio
+async def test_post_parses_response_model(client: FactoryClient) -> None:
+    inner: Any = client._client
+    request = httpx.Request("POST", "https://api.factory.ai/api/v0/droid/execute")
+    payload = {
+        "sessionId": "sess-1",
+        "computerId": "comp-1",
+        "messageId": "msg-1",
+    }
+    inner.request = AsyncMock(
+        return_value=httpx.Response(202, json=payload, request=request)
+    )
+
+    result = await client.post(
+        "/api/v0/droid/execute",
+        ExecuteDroidResponse,
+        json_body={
+            "prompt": "hi",
+            "target": {"kind": "environment", "environmentId": "env-1"},
+        },
+    )
+
+    assert isinstance(result, ExecuteDroidResponse)
+    assert result.session_id == "sess-1"
+    assert result.computer_id == "comp-1"
+    assert result.message_id == "msg-1"
+    assert inner.request.await_args.kwargs["method"] == "POST"
+    assert inner.request.await_args.kwargs["json"] == {
+        "prompt": "hi",
+        "target": {"kind": "environment", "environmentId": "env-1"},
+    }
+
+
+@pytest.mark.asyncio
+async def test_post_invalid_payload_raises_factory_error(client: FactoryClient) -> None:
+    inner: Any = client._client
+    request = httpx.Request("POST", "https://api.factory.ai/api/v0/droid/execute")
+    inner.request = AsyncMock(
+        return_value=httpx.Response(202, json={"sessionId": "sess-1"}, request=request)
+    )
+
+    with pytest.raises(FactoryAIError, match="Invalid Factory response for POST"):
+        await client.post(
+            "/api/v0/droid/execute",
+            ExecuteDroidResponse,
+            json_body={"prompt": "hi", "target": {"kind": "session", "sessionId": "s"}},
+        )
 
 
 @pytest.mark.asyncio
