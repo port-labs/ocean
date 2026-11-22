@@ -1,1 +1,1 @@
-"""Integration validation tooling: mock 3rd-party APIs and compare Port entities."""
+"""Integration validation tooling: mock APIs, scenario runner, Port entity comparison."""
