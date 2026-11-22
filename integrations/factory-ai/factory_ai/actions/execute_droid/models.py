@@ -136,7 +136,8 @@ class SessionMessage(FactoryModel):
     content: list[MessageContentBlock] | None = None
     model_id: str | None = Field(None, alias="modelId")
     is_error: bool | None = Field(None, alias="isError")
-    created_at: str | None = Field(None, alias="createdAt")
+    created_at: int | None = Field(None, alias="createdAt")
+    updated_at: int | None = Field(None, alias="updatedAt")
 
     @property
     def text(self) -> str:
