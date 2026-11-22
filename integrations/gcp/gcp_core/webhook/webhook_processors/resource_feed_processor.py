@@ -1,14 +1,10 @@
-from typing import cast
-
 from loguru import logger
 
 from gcp_core.errors import AssetHasNoProjectAncestorError
-from gcp_core.feed_event import get_project_name_from_ancestors, is_iam_policy_event
-from gcp_core.overrides import GCPPortAppConfig, ProtoConfig
+from gcp_core.feed_event import FeedContent, get_project_name_from_ancestors
+from gcp_core.overrides import ProtoConfig
 from gcp_core.search.resource_searches import feed_event_to_resource
 from gcp_core.utils import resolve_request_controllers
-from port_ocean.context.event import event as port_event
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gcp_core.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
@@ -20,48 +16,32 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class AssetFeedProcessor(BaseWebhookProcessor):
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        if ocean.event_listener_type == "ONCE":
-            return False
-
-        asset_data = await self._get_parsed_event(event.payload)
-        if asset_data is None:
-            return False
-
-        # feed_event_to_resource reads `asset.resource`/`priorAsset.resource`, which an iam-policy event has not got.
-        return not is_iam_policy_event(asset_data)
+class ResourceFeedProcessor(BaseWebhookProcessor):
+    feed_content = FeedContent.RESOURCE
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        asset_data = await self._get_parsed_event(event.payload)
-        if not asset_data:
+        feed_event = await self._get_feed_event(event.payload)
+        if feed_event is None:
             return []
 
-        asset_type = asset_data["asset"]["assetType"]
-        resource_configs = cast(GCPPortAppConfig, port_event.port_app_config).resources
-
-        return [config.kind for config in resource_configs if config.kind == asset_type]
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        asset_data = await self._get_parsed_event(payload)
-        return asset_data is not None
+        # The manager pairs each kind returned here with every resource of that kind in the
+        # mapping, so narrowing it against the mapping again would repeat the event per resource.
+        return [feed_event.asset.asset_type]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        asset_data = await self._get_parsed_event(payload)
-        if not asset_data:
+        feed_event = await self._get_feed_event(payload)
+        if feed_event is None:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        asset_type = asset_data["asset"]["assetType"]
-        asset_name = asset_data["asset"]["name"]
+        asset_type = feed_event.asset.asset_type
+        asset_name = feed_event.asset.name
 
         try:
-            asset_project = get_project_name_from_ancestors(
-                asset_data["asset"]["ancestors"]
-            )
+            asset_project = get_project_name_from_ancestors(feed_event.asset.ancestors)
         except AssetHasNoProjectAncestorError:
             logger.warning(
                 f"Couldn't find project ancestor for asset {asset_name}. "
@@ -86,13 +66,13 @@ class AssetFeedProcessor(BaseWebhookProcessor):
             asset_type,
             asset_name,
             asset_project,
-            asset_data,
+            feed_event,
             rate_limiter,
             semaphore,
             config,
         )
 
-        if asset_data.get("deleted") is True:
+        if feed_event.deleted:
             logger.info(f"Resource {asset_type}: {asset_name} deleted in GCP")
             return WebhookEventRawResults(
                 updated_raw_results=[],

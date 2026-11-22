@@ -183,6 +183,7 @@ async def test_feed_to_resource(
     mock_resource_config.selector = MagicMock(preserve_api_response_case_style=False)
     get_current_resource_config_mock.return_value = mock_resource_config
 
+    from gcp_core.feed_event import FeedEvent
     from gcp_core.search.resource_searches import feed_event_to_resource
 
     # Mock resolve_request_controllers
@@ -191,14 +192,14 @@ async def test_feed_to_resource(
     mock_asset_name = "projects/project_name/topics/topic_name"
     mock_asset_type = "pubsub.googleapis.com/Topic"
     mock_asset_project_name = "project_name"
-    mock_asset_data = {
-        "asset": {
-            "name": mock_asset_name,
-            "asset_type": mock_asset_type,
-        },
-        "event": "google.cloud.audit.log.v1.written",
-        "project": "project_name",
-    }
+    mock_feed_event = FeedEvent.parse_obj(
+        {
+            "asset": {
+                "name": mock_asset_name,
+                "assetType": mock_asset_type,
+            },
+        }
+    )
 
     expected_resource = {
         "__project": {
@@ -229,13 +230,64 @@ async def test_feed_to_resource(
             asset_name=mock_asset_name,
             project_rate_limiter=mock_rate_limiter,
             project_id=mock_asset_project_name,
-            asset_data=mock_asset_data,
+            feed_event=mock_feed_event,
             config=config,
             project_semaphore=AsyncMock(),
         )
 
     # Assert
     assert actual_resource == expected_resource
+
+
+@pytest.mark.asyncio
+@patch("gcp_core.utils.get_current_resource_config")
+async def test_feed_to_resource_reads_a_delete_from_the_prior_asset(
+    get_current_resource_config_mock: MagicMock,
+    monkeypatch: Any,
+) -> None:
+    """A delete carries the resource only on priorAsset: the live asset is already gone."""
+    from gcp_core.feed_event import FeedEvent
+    from gcp_core.search.resource_searches import feed_event_to_resource
+
+    mock_projects_client = AsyncMock()
+    mock_projects_client.get_project = AsyncMock(
+        return_value=Project({"name": "project_name"})
+    )
+    monkeypatch.setitem(clients._instances, "ProjectsAsyncClient", mock_projects_client)
+
+    mock_resource_config = MagicMock()
+    mock_resource_config.selector = MagicMock(preserve_api_response_case_style=False)
+    get_current_resource_config_mock.return_value = mock_resource_config
+
+    feed_event = FeedEvent.parse_obj(
+        {
+            "asset": {
+                "name": "//compute.googleapis.com/projects/p/instances/gone",
+                "assetType": "compute.googleapis.com/Instance",
+            },
+            "priorAsset": {
+                "name": "//compute.googleapis.com/projects/p/instances/gone",
+                "assetType": "compute.googleapis.com/Instance",
+                "resource": {"data": {"name": "gone", "status": "TERMINATED"}},
+            },
+            "deleted": True,
+        }
+    )
+
+    async with event_context("test_event"):
+        resource = await feed_event_to_resource(
+            asset_type="compute.googleapis.com/Instance",
+            asset_name="//compute.googleapis.com/projects/p/instances/gone",
+            project_id="project_name",
+            feed_event=feed_event,
+            project_rate_limiter=AsyncMock(),
+            project_semaphore=AsyncMock(),
+            config=ProtoConfig(preserving_proto_field_name=False),
+        )
+
+    assert resource["name"] == "gone"
+    assert resource["status"] == "TERMINATED"
+    assert resource["__project"]["name"] == "project_name"
 
 
 @pytest.mark.asyncio

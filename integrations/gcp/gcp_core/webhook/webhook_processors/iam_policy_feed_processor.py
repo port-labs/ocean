@@ -7,18 +7,19 @@ from loguru import logger
 
 from gcp_core.errors import AssetHasNoProjectAncestorError
 from gcp_core.feed_event import (
+    FeedContent,
     canonical_resource_name,
     get_project_name_from_ancestors,
-    is_iam_policy_event,
 )
-from gcp_core.search.resource_searches import search_asset_names_in_project
-from gcp_core.overrides import GCPIamPolicySelector, GCPPortAppConfig, ProtoConfig
+from gcp_core.search.resource_searches import (
+    list_asset_names_in_project,
+    search_asset_names_in_project,
+)
+from gcp_core.overrides import GCPIamPolicySelector, ProtoConfig
 from gcp_core.utils import AssetTypesWithSpecialHandling, parse_protobuf_message
 from gcp_core.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
-from port_ocean.context.event import event as port_event
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -28,64 +29,24 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class IamPolicyFeedProcessor(BaseWebhookProcessor):
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        if ocean.event_listener_type == "ONCE":
-            return False
-
-        asset_data = await self._get_parsed_event(event.payload)
-        if asset_data is None:
-            return False
-
-        return is_iam_policy_event(asset_data)
+    feed_content = FeedContent.IAM_POLICY
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        resource_configs = cast(GCPPortAppConfig, port_event.port_app_config).resources
-        # Per-config assetTypes and policyQuery are checked in handle_event: this hook cannot
-        # see which of several iamPolicy resources it is answering for.
-        if any(
-            config.kind == AssetTypesWithSpecialHandling.IAM_POLICY
-            for config in resource_configs
-        ):
-            return [AssetTypesWithSpecialHandling.IAM_POLICY]
-
-        logger.debug(
-            "Declining an IAM policy feed event: no iamPolicy resource in the mapping. "
-            "The feed is delivering events the integration is not configured to ingest."
-        )
-        return []
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        asset_data = await self._get_parsed_event(payload)
-        if not asset_data:
-            return False
-
-        asset = asset_data.get("asset") or {}
-        # handle_event indexes these directly, and an empty `ancestors` is as unusable as a missing one.
-        missing = [
-            field
-            for field in ("name", "assetType", "ancestors")
-            if not asset.get(field)
-        ]
-        if missing:
-            logger.warning(
-                f"Skipping IAM policy feed event: asset is missing {', '.join(missing)}"
-            )
-            return False
-        return True
+        return [AssetTypesWithSpecialHandling.IAM_POLICY]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        asset_data = await self._get_parsed_event(payload)
-        if not asset_data:
+        feed_event = await self._get_feed_event(payload)
+        if feed_event is None:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         selector = cast(GCPIamPolicySelector, resource_config.selector)
-        asset = asset_data["asset"]
-        asset_type = asset["assetType"]
-        asset_name = asset["name"]
+        asset = feed_event.asset
+        asset_type = asset.asset_type
+        asset_name = asset.name
 
         if selector.policy_query:
             logger.info(
@@ -105,7 +66,7 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        ancestors = asset["ancestors"]
+        ancestors = asset.ancestors
         asset_folders = [
             ancestor for ancestor in ancestors if ancestor.startswith("folders/")
         ]
@@ -140,12 +101,9 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
             resource_name is None
             and asset_type == AssetTypesWithSpecialHandling.PROJECT
         ):
-            # A project is the one asset the free-text index does not hold under the number the
-            # feed names it with, and a project scope holds exactly one project. Listing any other
-            # type could be thousands of assets paged 100 at a time inside one webhook event.
-            assets = await search_asset_names_in_project(
-                asset_project, asset_type, None
-            )
+            # A project is the one asset the free-text index does not hold under the number
+            # the feed names it with, and a project scope holds exactly one project.
+            assets = await list_asset_names_in_project(asset_project, asset_type)
             resource_name = canonical_resource_name(asset_name, assets)
 
         if resource_name is None:
@@ -183,12 +141,10 @@ class IamPolicyFeedProcessor(BaseWebhookProcessor):
         )
         # The prior policy expands to the grants that existed before, and the live-events mixin
         # removes every one the new policy no longer yields.
-        prior_policy = (asset_data.get("priorAsset") or {}).get("iamPolicy")
+        prior_policy = feed_event.prior_asset.iam_policy
         return WebhookEventRawResults(
             updated_raw_results=(
-                []
-                if asset_data.get("deleted") is True
-                else [to_raw_item(asset.get("iamPolicy") or {})]
+                [] if feed_event.deleted else [to_raw_item(asset.iam_policy or {})]
             ),
             deleted_raw_results=[to_raw_item(prior_policy)] if prior_policy else [],
         )

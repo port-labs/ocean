@@ -6,6 +6,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
+from gcp_core.feed_event import FeedEvent
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
     get_service_account_project_id,
@@ -199,13 +200,41 @@ def _asset_aliases(result: Any) -> list[str]:
 async def search_asset_names_in_project(
     project_name: str,
     asset_type: str,
-    search_term: str | None,
+    search_term: str,
 ) -> list[dict[str, Any]]:
-    """The name `searchAllResources` holds for every asset of one type, with the aliases it also answers to.
+    """The assets of one type in a project whose indexed fields hold `search_term`.
 
     An IAM_POLICY feed event names a service account by its numeric `uniqueId` while
     `searchAllIamPolicies` names it by email, so a grant ingested from a feed event lands under a
     different identifier than the resync's unless the feed's name is translated through this.
+    """
+    # Free text, not `name=`: the feed's identifier is matched against every indexed field, where
+    # `name=` only matches the canonical name and so never an alias. Quoted, because a resource
+    # name's last segment may hold a `:` (a container image digest, say), which is query syntax
+    # and 400s the request unquoted.
+    return await _asset_names_in_project(
+        project_name, asset_type, {"query": f'"{search_term}"'}
+    )
+
+
+async def list_asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+) -> list[dict[str, Any]]:
+    """Every asset of one type in a project, however many that is.
+
+    Only for types whose population is bounded by the scope: a project scope holds exactly one
+    project, where listing any other type could be thousands of assets paged 100 at a time.
+    """
+    return await _asset_names_in_project(project_name, asset_type, {})
+
+
+async def _asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+    query: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """The name `searchAllResources` holds for each matching asset, with the aliases it answers to.
 
     Failures are deliberately not swallowed: they propagate out of the webhook processor and are
     logged there as a failed event, because an empty list is indistinguishable from "the project has
@@ -231,7 +260,7 @@ async def search_asset_names_in_project(
 
     async with semaphore:
         logger.info(
-            f"Searching {asset_type} names matching {search_term or 'anything'!r} "
+            f"Searching {asset_type} names matching {query.get('query', 'anything')!r} "
             f"in project {project_name}"
         )
         assets: list[dict[str, Any]] = []
@@ -242,12 +271,7 @@ async def search_asset_names_in_project(
                 "scope": project_name,
                 "asset_types": [asset_type],
                 "read_mask": "name,additionalAttributes,project",
-                # Free text, not `name=`: the feed's identifier is matched against every indexed
-                # field, where `name=` only matches the canonical name and so never an alias.
-                # Quoted, because a resource name's last segment may hold a `:` (a container image
-                # digest, say), which is query syntax and 400s the request unquoted. Omitted
-                # entirely when the caller wants the whole type listed.
-                **({"query": f'"{search_term}"'} if search_term else {}),
+                **query,
             },
             parse_names,
             rate_limiter,
@@ -466,14 +490,14 @@ async def feed_event_to_resource(
     asset_type: str,
     asset_name: str,
     project_id: str,
-    asset_data: dict[str, Any],
+    feed_event: FeedEvent,
     project_rate_limiter: FixedWindowLimiter,
     project_semaphore: BoundedSemaphore,
     config: ProtoConfig,
 ) -> RAW_ITEM:
     resource = None
-    if asset_data.get("deleted") is True:
-        resource = asset_data["priorAsset"]["resource"]["data"]
+    if feed_event.deleted:
+        resource = feed_event.prior_asset.resource_data
         resource[EXTRA_PROJECT_FIELD] = await get_single_project(
             project_id, project_rate_limiter, project_semaphore, config
         )
@@ -506,7 +530,7 @@ async def feed_event_to_resource(
                     project_id, project_rate_limiter, project_semaphore, config
                 )
             case _:
-                resource = asset_data["asset"]["resource"]["data"]
+                resource = feed_event.asset.resource_data
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
                     project_id, project_rate_limiter, project_semaphore, config
                 )

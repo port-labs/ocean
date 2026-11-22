@@ -1,6 +1,6 @@
 import base64
 import json
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from typing import Any, AsyncIterator, Generator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -141,146 +141,24 @@ def resource_config(mock_ocean_context: None) -> MagicMock:
 
 
 @contextmanager
-def _patch_parsed(
-    asset_data: dict[str, Any], assets: list[dict[str, Any]] | None = None
-) -> Iterator[None]:
+def _patch_asset_search(assets: list[dict[str, Any]] | None = None) -> Iterator[None]:
     """`search_asset_names_in_project` hits the Cloud Asset API. The default says the feed's own
     name is already the one searchAllIamPolicies returns, which is true for buckets and topics.
     """
     module = "gcp_core.webhook.webhook_processors.iam_policy_feed_processor"
     if assets is None:
         assets = [{"name": ASSET_NAME, "aliases": []}]
-    with ExitStack() as stack:
-        for target, mock in (
-            (
-                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
-                AsyncMock(return_value=asset_data),
-            ),
-            (
-                f"{module}.search_asset_names_in_project",
-                AsyncMock(return_value=assets),
-            ),
-        ):
-            stack.enter_context(patch(target, new=mock))
+    with patch(
+        f"{module}.search_asset_names_in_project", new=AsyncMock(return_value=assets)
+    ):
         yield
 
 
-class TestShouldProcessEvent:
-    async def test_accepts_an_iam_policy_event(
-        self, processor: Any, asset_payload: dict[str, Any]
-    ) -> None:
-        event = WebhookEvent(
-            trace_id="t", headers={}, payload=_pubsub_payload(asset_payload)
-        )
-        with _patch_parsed(asset_payload):
-            assert await processor.should_process_event(event) is True
-
-    async def test_accepts_a_delete_carrying_the_policy_only_on_prior_asset(
-        self, processor: Any, asset_payload: dict[str, Any]
-    ) -> None:
-        deleted_payload = {
-            "asset": {
-                "assetType": ASSET_TYPE,
-                "name": ASSET_NAME,
-                "ancestors": [ASSET_PROJECT],
-            },
-            "priorAsset": {"iamPolicy": PRIOR_POLICY},
-            "deleted": True,
-        }
-        event = WebhookEvent(
-            trace_id="t", headers={}, payload=_pubsub_payload(deleted_payload)
-        )
-        with _patch_parsed(deleted_payload):
-            assert await processor.should_process_event(event) is True
-
-    async def test_declines_a_resource_event(self, processor: Any) -> None:
-        resource_payload = {
-            "asset": {
-                "assetType": "storage.googleapis.com/Bucket",
-                "name": "//storage.googleapis.com/b",
-                "ancestors": [ASSET_PROJECT],
-                "resource": {"data": {"name": "b"}},
-            },
-            "deleted": False,
-        }
-        event = WebhookEvent(
-            trace_id="t", headers={}, payload=_pubsub_payload(resource_payload)
-        )
-        with _patch_parsed(resource_payload):
-            assert await processor.should_process_event(event) is False
-
-
 class TestGetMatchingKinds:
-    @staticmethod
-    def _patch_resources(kinds: list[str]) -> Any:
-        mock_event = MagicMock()
-        mock_event.port_app_config.resources = [
-            MagicMock(**{"kind": kind}) for kind in kinds
-        ]
-        return patch(
-            "gcp_core.webhook.webhook_processors.iam_policy_feed_processor.port_event",
-            new=mock_event,
-        )
-
-    async def test_returns_the_iam_policy_kind_when_configured(
-        self, processor: Any
-    ) -> None:
-        with self._patch_resources([ASSET_TYPE, IAM_POLICY_KIND]):
-            assert await processor.get_matching_kinds(processor.event) == [
-                IAM_POLICY_KIND
-            ]
-
-    async def test_returns_nothing_when_the_kind_is_not_configured(
-        self, processor: Any
-    ) -> None:
-        with self._patch_resources([ASSET_TYPE]):
-            assert await processor.get_matching_kinds(processor.event) == []
-
-    async def test_returns_the_kind_once_for_several_iam_policy_resources(
-        self, processor: Any
-    ) -> None:
-        # The manager pairs every returned kind with every resource of that kind, so a repeated
-        # kind would run handle_event n-squared times.
-        with self._patch_resources([IAM_POLICY_KIND, IAM_POLICY_KIND]):
-            assert await processor.get_matching_kinds(processor.event) == [
-                IAM_POLICY_KIND
-            ]
-
-
-class TestValidatePayload:
-    @pytest.mark.parametrize(
-        ("asset", "expected"),
-        [
-            pytest.param(
-                {"name": ASSET_NAME, "assetType": ASSET_TYPE, "ancestors": ["p/1"]},
-                True,
-                id="complete",
-            ),
-            pytest.param(
-                {"name": ASSET_NAME, "assetType": ASSET_TYPE},
-                False,
-                id="missing_ancestors",
-            ),
-            pytest.param(
-                {"name": ASSET_NAME, "assetType": ASSET_TYPE, "ancestors": []},
-                False,
-                id="empty_ancestors",
-            ),
-            pytest.param(
-                {"assetType": ASSET_TYPE, "ancestors": ["p/1"]},
-                False,
-                id="missing_name",
-            ),
-        ],
-    )
-    async def test_validate_payload(
-        self, processor: Any, asset: dict[str, Any], expected: bool
-    ) -> None:
-        payload = {"asset": asset, "deleted": False}
-        with _patch_parsed(payload):
-            assert (
-                await processor.validate_payload(_pubsub_payload(payload)) is expected
-            )
+    async def test_always_returns_the_iam_policy_kind(self, processor: Any) -> None:
+        # The manager drops the event when the kind is absent from the mapping, and pairs the
+        # kind with every iamPolicy resource in it, so neither check belongs here.
+        assert await processor.get_matching_kinds(processor.event) == [IAM_POLICY_KIND]
 
 
 class TestHandleEvent:
@@ -290,7 +168,7 @@ class TestHandleEvent:
         asset_payload: dict[str, Any],
         resource_config: MagicMock,
     ) -> None:
-        with _patch_parsed(asset_payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(asset_payload), resource_config
             )
@@ -318,7 +196,7 @@ class TestHandleEvent:
             "priorAsset": {"iamPolicy": PRIOR_POLICY},
             "deleted": True,
         }
-        with _patch_parsed(deleted_payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(deleted_payload), resource_config
             )
@@ -331,7 +209,7 @@ class TestHandleEvent:
     ) -> None:
         payload = {k: v for k, v in asset_payload.items() if k != "priorAsset"}
         payload["priorAssetState"] = "DOES_NOT_EXIST"
-        with _patch_parsed(payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(payload), resource_config
             )
@@ -344,13 +222,42 @@ class TestHandleEvent:
     ) -> None:
         payload = json.loads(json.dumps(asset_payload))
         del payload["asset"]["iamPolicy"]
-        with _patch_parsed(payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(payload), resource_config
             )
 
         assert result.updated_raw_results[0]["policy"]["bindings"] == []
         assert len(result.deleted_raw_results) == 1
+
+    @pytest.mark.parametrize(
+        "ancestors",
+        [
+            pytest.param(["organizations/123"], id="no_project_ancestor"),
+            pytest.param([], id="empty_ancestors"),
+            pytest.param(None, id="ancestors_absent"),
+        ],
+    )
+    async def test_returns_empty_results_without_a_project_ancestor(
+        self,
+        processor: Any,
+        asset_payload: dict[str, Any],
+        resource_config: MagicMock,
+        ancestors: list[str] | None,
+    ) -> None:
+        payload = json.loads(json.dumps(asset_payload))
+        if ancestors is None:
+            del payload["asset"]["ancestors"]
+        else:
+            payload["asset"]["ancestors"] = ancestors
+
+        with _patch_asset_search():
+            result = await processor.handle_event(
+                _pubsub_payload(payload), resource_config
+            )
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
 
     async def test_skips_an_asset_type_outside_this_resources_asset_types(
         self, processor: Any, asset_payload: dict[str, Any]
@@ -361,7 +268,7 @@ class TestHandleEvent:
         config.selector = GCPIamPolicySelector(
             query="true", assetTypes=["storage.googleapis.com/Bucket"]
         )
-        with _patch_parsed(asset_payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(asset_payload), config
             )
@@ -380,7 +287,7 @@ class TestHandleEvent:
             assetTypes=[ASSET_TYPE],
             policyQuery="memberTypes:serviceAccount",
         )
-        with _patch_parsed(asset_payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(asset_payload), config
             )
@@ -404,7 +311,7 @@ class TestHandleEvent:
         binding.condition.expression = CONDITION["expression"]
         binding.condition.title = CONDITION["title"]
 
-        with _patch_parsed(asset_payload):
+        with _patch_asset_search():
             result = await processor.handle_event(
                 _pubsub_payload(asset_payload), resource_config
             )
@@ -497,7 +404,7 @@ class TestRealFeedEvent:
         """The feed names a service account by uniqueId and searchAllIamPolicies by email. Using
         the feed's name verbatim mints a second entity for a grant the resync already owns.
         """
-        with _patch_parsed(REAL_FEED_EVENT, REAL_ALIASES):
+        with _patch_asset_search(REAL_ALIASES):
             result = await processor.handle_event(
                 _pubsub_payload(REAL_FEED_EVENT), sa_config
             )
@@ -512,7 +419,7 @@ class TestRealFeedEvent:
     async def test_revoked_grant_is_the_only_difference(
         self, processor: Any, sa_config: MagicMock
     ) -> None:
-        with _patch_parsed(REAL_FEED_EVENT, REAL_ALIASES):
+        with _patch_asset_search(REAL_ALIASES):
             result = await processor.handle_event(
                 _pubsub_payload(REAL_FEED_EVENT), sa_config
             )
@@ -537,7 +444,7 @@ class TestRealFeedEvent:
     async def test_project_is_read_from_ancestors_not_the_name(
         self, processor: Any, sa_config: MagicMock
     ) -> None:
-        with _patch_parsed(REAL_FEED_EVENT, REAL_ALIASES):
+        with _patch_asset_search(REAL_ALIASES):
             result = await processor.handle_event(
                 _pubsub_payload(REAL_FEED_EVENT), sa_config
             )
@@ -550,7 +457,7 @@ class TestRealFeedEvent:
         """searchAllIamPolicies returns organization and folders alongside project. Nothing ships a
         default iamPolicy mapping, so every mapping is hand-written and may read either.
         """
-        with _patch_parsed(REAL_FEED_EVENT, REAL_ALIASES):
+        with _patch_asset_search(REAL_ALIASES):
             result = await processor.handle_event(
                 _pubsub_payload(REAL_FEED_EVENT), sa_config
             )
@@ -565,7 +472,7 @@ class TestRealFeedEvent:
     ) -> None:
         """Declining loses the change until the next resync; guessing creates an entity no resync
         ever reconciles away."""
-        with _patch_parsed(REAL_FEED_EVENT, [{"name": "//x/y", "aliases": ["nope"]}]):
+        with _patch_asset_search([{"name": "//x/y", "aliases": ["nope"]}]):
             result = await processor.handle_event(
                 _pubsub_payload(REAL_FEED_EVENT), sa_config
             )
@@ -598,7 +505,7 @@ class TestAliasMatching:
         config.selector = GCPIamPolicySelector(
             query="true", assetTypes=["storage.googleapis.com/Bucket"]
         )
-        with _patch_parsed(payload, [{"name": bucket, "aliases": []}]):
+        with _patch_asset_search([{"name": bucket, "aliases": []}]):
             result = await processor.handle_event(_pubsub_payload(payload), config)
 
         assert [r["resource"] for r in result.updated_raw_results] == [bucket]
@@ -611,7 +518,7 @@ class TestAliasMatching:
             "name": "//iam.googleapis.com/projects/other-project/serviceAccounts/decoy@x.com",
             "aliases": [ASSET_NAME.rsplit("/", 1)[-1]],
         }
-        with _patch_parsed(asset_payload, [decoy]):
+        with _patch_asset_search([decoy]):
             result = await processor.handle_event(
                 _pubsub_payload(asset_payload), resource_config
             )
@@ -657,13 +564,11 @@ class TestProjectAssetResolution:
         listed = [
             {"name": PROJECT_CANONICAL, "aliases": ["sendbox-go", "385573848890"]}
         ]
-        lookup = AsyncMock(side_effect=[[], listed])
+        search = AsyncMock(return_value=[])
+        listing = AsyncMock(return_value=listed)
         with (
-            patch(
-                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
-                new=AsyncMock(return_value=project_payload),
-            ),
-            patch(f"{module}.search_asset_names_in_project", new=lookup),
+            patch(f"{module}.search_asset_names_in_project", new=search),
+            patch(f"{module}.list_asset_names_in_project", new=listing),
         ):
             result = await processor.handle_event(
                 _pubsub_payload(project_payload), project_config
@@ -672,9 +577,9 @@ class TestProjectAssetResolution:
         assert [r["resource"] for r in result.updated_raw_results] == [
             PROJECT_CANONICAL
         ]
-        # The narrowed call first, then the same lookup with no search term.
-        assert lookup.await_args_list[0].args[2] == "385573848890"
-        assert lookup.await_args_list[1].args[2] is None
+        # The narrowed search first, then the unfiltered listing.
+        assert search.await_args_list[0].args[2] == "385573848890"
+        assert listing.await_count == 1
 
     async def test_a_non_project_type_does_not_fall_back_to_listing(
         self, processor: Any, asset_payload: dict[str, Any], resource_config: MagicMock
@@ -683,19 +588,18 @@ class TestProjectAssetResolution:
         project. One sandbox project holds 4,751 container images, which would be 48 paged calls
         inside a single webhook event."""
         module = "gcp_core.webhook.webhook_processors.iam_policy_feed_processor"
-        lookup = AsyncMock(side_effect=[[], [{"name": ASSET_NAME, "aliases": []}]])
+        search = AsyncMock(return_value=[])
+        listing = AsyncMock(return_value=[{"name": ASSET_NAME, "aliases": []}])
         with (
-            patch(
-                "gcp_core.webhook.webhook_processors.base_webhook_processor.parse_asset_data",
-                new=AsyncMock(return_value=asset_payload),
-            ),
-            patch(f"{module}.search_asset_names_in_project", new=lookup),
+            patch(f"{module}.search_asset_names_in_project", new=search),
+            patch(f"{module}.list_asset_names_in_project", new=listing),
         ):
             result = await processor.handle_event(
                 _pubsub_payload(asset_payload), resource_config
             )
 
-        assert lookup.await_count == 1
+        assert listing.await_count == 0
+        assert search.await_count == 1
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
 
