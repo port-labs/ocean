@@ -7,6 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.62.0 (2026-11-19)
+
+
+### Features
+
+- >-
+    Add IncrementalStrategy.merge_params_replacing, which merges the cursor params
+    after dropping the given base params the cursor supersedes (e.g. a configured
+    updated_before window). merge_params is unchanged.
+
+
 ## 0.61.8 (2026-11-19)
 
 

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.26.0 (2026-11-19)
+
+
+### Features
+
+- Added incremental sync for GitHub tags, branches and plugins. An incremental run only processes repositories pushed since the last cursor (creating, updating or deleting a tag or branch updates the repository's pushed_at) and fetches everything in them exactly as a full resync does. With repoSearch, the pushed repositories come from the live repository list, since the search index updates push times late, and one search per page of them checks which match the query. Branch protection rule changes are not pushes, so they are updated on the next full resync.
+
+
+## 6.25.16 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.0
+
+
 ## 6.25.15 (2026-11-19)
 
 
