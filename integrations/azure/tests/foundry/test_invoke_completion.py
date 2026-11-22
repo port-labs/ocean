@@ -1,6 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 from port_ocean.core.models import (
     WorkflowIntegrationActionConfig,
@@ -38,19 +37,10 @@ def _ocean() -> MagicMock:
     return mock
 
 
-def _http_status_error(status_code: int) -> httpx.HTTPStatusError:
-    request = httpx.Request("PATCH", "https://api.getport.io/v1/workflows/nodes/runs/x")
-    response = httpx.Response(status_code, request=request)
-    return httpx.HTTPStatusError("conflict", request=request, response=response)
-
-
 @pytest.mark.asyncio
 async def test_complete_treats_409_as_already_done() -> None:
     run = _run("run_1")
     mock_ocean = _ocean()
-    mock_ocean.port_client.report_run_completed = AsyncMock(
-        side_effect=_http_status_error(409)
-    )
     with (
         patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
         patch(
@@ -66,8 +56,12 @@ async def test_complete_treats_409_as_already_done() -> None:
                 success=True,
                 source="test",
             )
-            is False
+            is True
         )
+    assert (
+        mock_ocean.port_client.report_run_completed.await_args.kwargs["should_raise"]
+        is False
+    )
 
     mock_ocean = _ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock(

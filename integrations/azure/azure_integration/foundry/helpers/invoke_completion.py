@@ -4,9 +4,6 @@ import asyncio
 from typing import Any
 
 from loguru import logger
-from azure_integration.foundry.core.exporters.project_exporter import (
-    foundry_project_from_arm_id,
-)
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     IntegrationRun,
@@ -14,6 +11,9 @@ from port_ocean.core.models import (
 )
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
+from azure_integration.foundry.core.exporters.project_exporter import (
+    foundry_project_from_arm_id,
+)
 from azure_integration.foundry.core.exporters.responses_exporter import (
     ResponsesExporter,
 )
@@ -66,6 +66,7 @@ async def complete_invoke_run_for_response(
         success,
         status_label=status_label
         or (COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL),
+        should_raise=False,
         should_log=False,
     )
     return True
@@ -77,12 +78,14 @@ async def complete_invoke_run_from_webhook(
     # Let in-flight SSE log flushes reach Port before we mark the run terminal.
     await asyncio.sleep(3)
 
-    project_arm_id = (
-        run.output.get("projectArmId")
-        if isinstance(run, WorkflowNodeRun)
-        else run.execution_properties.get("projectArmId")
+    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
+    arm_id = props.get("projectArmId")
+    project = foundry_project_from_arm_id(arm_id) if isinstance(arm_id, str) else None
+    project_endpoint = (
+        (project.endpoint if project else None)
+        or props.get("projectEndpoint")
+        or run.execution_properties.get("projectEndpoint")
     )
-    project_endpoint = foundry_project_from_arm_id(project_arm_id).endpoint
     if not project_endpoint:
         logger.error(
             f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "
