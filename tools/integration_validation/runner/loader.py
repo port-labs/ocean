@@ -47,14 +47,14 @@ def load_scenarios_document(scenarios_file: Path) -> ScenariosDocument:
 
     if not isinstance(raw, dict):
         raise ValidationSetupError(
-            f"scenarios.yaml must be a mapping, got {type(raw).__name__}"
+            f"{scenarios_file} must be a mapping, got {type(raw).__name__}"
         )
 
     try:
         return ScenariosDocument.model_validate(raw)
     except ValidationError as exc:
         raise ValidationSetupError(
-            _format_pydantic_error("scenarios.yaml", exc)
+            _format_pydantic_error(f"{scenarios_file}", exc)
         ) from exc
 
 
