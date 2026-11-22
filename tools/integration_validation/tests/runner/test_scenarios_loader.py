@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from port_ocean.validation.runner.errors import ValidationSetupError
-from port_ocean.validation.runner.loader import load_scenarios_document
+from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.loader import load_scenarios_document
 
 
 def test_load_scenarios_document_rejects_invalid_yaml(tmp_path: Path) -> None:

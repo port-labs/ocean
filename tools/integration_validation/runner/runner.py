@@ -4,13 +4,16 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from port_ocean.validation.runner.errors import ValidationSetupError
-from port_ocean.validation.runner.loader import (
+from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.loader import (
     load_scenarios_document,
     resolve_validation_paths,
 )
-from port_ocean.validation.runner.models import ScenariosDocument, ValidationPaths
-from port_ocean.validation.runner.preflight import run_preflight
+from tools.integration_validation.runner.models import (
+    ScenariosDocument,
+    ValidationPaths,
+)
+from tools.integration_validation.runner.preflight import run_preflight
 
 
 @dataclass(frozen=True)
@@ -59,7 +62,7 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
 
 
 def _write_preflight_report(result: ValidateResult) -> None:
-    # Placeholder report until RUN-6+ implements the full report.json schema.
+    # Placeholder report until full report.json schema is implemented.
     payload = {
         "integration": result.paths.integration_name,
         "status": "preflight_passed",

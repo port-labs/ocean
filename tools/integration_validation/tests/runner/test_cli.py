@@ -1,11 +1,10 @@
-"""Tests for the validate CLI command."""
+"""Tests for the integration validation runner CLI."""
 
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
-from port_ocean.cli.commands.validate import validate
+from tools.integration_validation.runner.cli import main
 
 
 @pytest.fixture
@@ -46,14 +45,15 @@ scenarios:
     return integration_root
 
 
-def test_validate_help_lists_options() -> None:
-    runner = CliRunner()
-    result = runner.invoke(validate, ["--help"])
-    assert result.exit_code == 0
-    assert "--scenario" in result.output
-    assert "--update-expected" in result.output
-    assert "--keep" in result.output
-    assert "--report" in result.output
+def test_validate_help_lists_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+    assert exc_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "--scenario" in output
+    assert "--update-expected" in output
+    assert "--keep" in output
+    assert "--report" in output
 
 
 def test_validate_malformed_scenarios_yaml_exits_2(tmp_path: Path) -> None:
@@ -71,28 +71,51 @@ scenarios:
         encoding="utf-8",
     )
 
-    runner = CliRunner()
-    result = runner.invoke(validate, [str(integration_root)])
+    with pytest.raises(SystemExit) as exc_info:
+        main([str(integration_root)])
 
-    assert result.exit_code == 2
-    assert "Setup error" in result.output
-    assert "scenarios.yaml" in result.output
+    assert exc_info.value.code == 2
+
+
+def test_validate_malformed_scenarios_yaml_message(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    integration_root = tmp_path / "broken"
+    validation_root = integration_root / "validation"
+    validation_root.mkdir(parents=True)
+    (validation_root / "scenarios.yaml").write_text(
+        """
+defaults:
+  port_app_config: missing.yaml
+scenarios:
+  happy_path:
+    routes: []
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit):
+        main([str(integration_root)])
+
+    err = capsys.readouterr().err
+    assert "Setup error" in err
+    assert "scenarios.yaml" in err
 
 
 def test_validate_preflight_passes_for_minimal_suite(
     validation_integration: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    runner = CliRunner()
-    result = runner.invoke(validate, [str(validation_integration)])
-
-    assert result.exit_code == 0
-    assert "happy_path" in result.output
-    assert "preflight checks passed" in result.output
+    main([str(validation_integration)])
+    out = capsys.readouterr()
+    assert "happy_path" in out.out
+    assert "preflight checks passed" in out.err
 
 
 def test_validate_missing_port_credentials_exits_2(
     validation_integration: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     for key in (
         "OCEAN__PORT__CLIENT_ID",
@@ -102,8 +125,8 @@ def test_validate_missing_port_credentials_exits_2(
         monkeypatch.delenv(key, raising=False)
     (validation_integration / ".env").unlink()
 
-    runner = CliRunner()
-    result = runner.invoke(validate, [str(validation_integration)])
+    with pytest.raises(SystemExit) as exc_info:
+        main([str(validation_integration)])
 
-    assert result.exit_code == 2
-    assert "Missing Port credentials" in result.output
+    assert exc_info.value.code == 2
+    assert "Missing Port credentials" in capsys.readouterr().err

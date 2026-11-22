@@ -3,7 +3,6 @@ from .main import cli_start
 from .new import new
 from .port_app_config import port_app_config
 from .probe import probe
-from .validate import validate
 from .pull import pull
 from .sail import sail
 from .version import version
@@ -16,7 +15,6 @@ __all__ = [
     "new",
     "port_app_config",
     "probe",
-    "validate",
     "pull",
     "sail",
     "version",

@@ -8,9 +8,12 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from port_ocean.config.settings import PortSettings
-from port_ocean.validation.runner.errors import ValidationSetupError
-from port_ocean.validation.runner.loader import resolve_port_app_config_path
-from port_ocean.validation.runner.models import ScenariosDocument, ValidationPaths
+from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.loader import resolve_port_app_config_path
+from tools.integration_validation.runner.models import (
+    ScenariosDocument,
+    ValidationPaths,
+)
 
 _PORT_CREDENTIAL_HINT = (
     "Set OCEAN__PORT__CLIENT_ID, OCEAN__PORT__CLIENT_SECRET, and "

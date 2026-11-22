@@ -5,8 +5,11 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from port_ocean.validation.runner.errors import ValidationSetupError
-from port_ocean.validation.runner.models import ScenariosDocument, ValidationPaths
+from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.models import (
+    ScenariosDocument,
+    ValidationPaths,
+)
 
 
 def resolve_validation_paths(integration_path: Path) -> ValidationPaths:
