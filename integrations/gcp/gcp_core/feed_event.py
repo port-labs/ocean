@@ -13,15 +13,7 @@ from gcp_core.errors import (
 
 
 class FeedContent(enum.StrEnum):
-    """The `--content-type` of the Cloud Asset Inventory feed an event came from.
-
-    An event carries its payload under the field named after the content type, so the field that
-    is present is what identifies the feed. Only the two the integration consumes are listed; a
-    feed created with any of the other four (orgPolicy, accessPolicy, osInventory, relationship)
-    is left unclaimed rather than silently handled as one of these: core then logs
-    `Unknown webhook event type received` and raises WebhookEventNotSupportedError, one warning
-    and one traceback per event, which is the signal that a feed is publishing what we do not read.
-    """
+    """What a feed publishes, of the six content types GCP defines. Each processor claims one."""
 
     RESOURCE = "resource"
     IAM_POLICY = "iamPolicy"
@@ -68,13 +60,8 @@ class FeedEvent(BaseModel):
 
     @property
     def content(self) -> FeedContent | None:
-        """Which feed produced this. A delete carries its content only on `priorAsset`.
-
-        Unclassified when neither side carries a content field. A policy cleared of every binding
-        reaches us through `priorAsset`, except where `priorAssetState` is INVALID or UNSPECIFIED
-        (TemporalAsset.PriorAssetState: "Failed to set prior_asset" / "not applicable"), which
-        leaves nothing to key on and the change waits for the next resync.
-        """
+        """Which feed produced this; None when neither side carries a content field, which a
+        cleared policy can hit when `priorAssetState` is INVALID or UNSPECIFIED."""
         return self.asset.content or self.prior_asset.content
 
 
@@ -107,8 +94,6 @@ def canonical_resource_name(
         if asset["name"] == feed_asset_name:
             return str(asset["name"])
 
-    # An alias replaces the final segment of the name and nothing else, so rebuild the candidate and
-    # compare whole strings: a free-text attribute cannot collide its way to a match.
     anchored = [
         str(asset["name"])
         for asset in assets
@@ -120,9 +105,6 @@ def canonical_resource_name(
     if len(anchored) == 1:
         return anchored[0]
 
-    # Several assets share an alias (every asset reports the same project number), so the feed's
-    # name does not identify one. Refusing beats guessing: a wrong name is an entity no resync
-    # reconciles away, where no name only waits for the next resync.
     if anchored:
         logger.warning(
             f"{feed_asset_name} matches {len(anchored)} assets by alias; refusing to guess"
