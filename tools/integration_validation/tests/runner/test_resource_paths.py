@@ -4,6 +4,7 @@ import pytest
 
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.loader import (
+    load_integration_type,
     load_scenarios_document,
     resolve_scenario_blueprints_path,
 )
@@ -101,3 +102,21 @@ scenarios:
         resolve_scenario_blueprints_path(
             _validation_paths(integration_root), document.defaults, scenario
         )
+
+
+def test_load_integration_type_reads_spec(tmp_path: Path) -> None:
+    integration_root = tmp_path / "sample"
+    (integration_root / ".port").mkdir(parents=True)
+    (integration_root / ".port" / "spec.yaml").write_text(
+        "type: sample\n", encoding="utf-8"
+    )
+
+    assert load_integration_type(_validation_paths(integration_root)) == "sample"
+
+
+def test_load_integration_type_requires_spec(tmp_path: Path) -> None:
+    integration_root = tmp_path / "sample"
+    integration_root.mkdir()
+
+    with pytest.raises(ValidationSetupError, match="integration type"):
+        load_integration_type(_validation_paths(integration_root))

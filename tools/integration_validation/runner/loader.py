@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import ValidationError
 
+from port_ocean.exceptions.spec import SpecFileError
+from port_ocean.utils.misc import get_spec_file
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.models import (
     ScenarioDefinition,
@@ -84,6 +88,48 @@ def resolve_scenario_blueprints_path(
         scenario.blueprints if scenario.blueprints is not None else defaults.blueprints
     )
     return resolve_integration_resource_path(validation_paths, relative, "blueprints")
+
+
+def load_blueprints_file(blueprints_file: Path) -> list[dict[str, Any]]:
+    try:
+        raw = json.loads(blueprints_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValidationSetupError(
+            f"Could not load blueprints from {blueprints_file}: {exc}"
+        ) from exc
+
+    if not isinstance(raw, list):
+        raise ValidationSetupError(f"{blueprints_file} must contain a JSON array")
+    return raw
+
+
+def load_port_app_config_file(port_app_config_file: Path) -> dict[str, Any]:
+    try:
+        raw = yaml.safe_load(port_app_config_file.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        raise ValidationSetupError(
+            f"Could not load port_app_config from {port_app_config_file}: {exc}"
+        ) from exc
+
+    if not isinstance(raw, dict) or not isinstance(raw.get("resources", []), list):
+        raise ValidationSetupError(
+            f"{port_app_config_file} must be a mapping with a 'resources' list"
+        )
+    return raw
+
+
+def load_integration_type(validation_paths: ValidationPaths) -> str:
+    root = validation_paths.integration_root
+    try:
+        spec = get_spec_file(root)
+    except SpecFileError as exc:
+        raise ValidationSetupError(str(exc)) from exc
+    integration_type = spec.get("type") if spec else None
+    if not isinstance(integration_type, str) or not integration_type:
+        raise ValidationSetupError(
+            f"Could not read the integration type from {root / '.port'}/spec.(json|yaml)"
+        )
+    return integration_type
 
 
 def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:
