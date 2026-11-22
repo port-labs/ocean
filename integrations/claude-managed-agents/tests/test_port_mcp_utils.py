@@ -6,6 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from anthropic import APIStatusError
+import httpx
+
 from claude_managed_agents.actions.port_mcp_utils import (
     PORT_MCP_SERVER_NAME,
     PortMcpBinding,
@@ -13,6 +16,7 @@ from claude_managed_agents.actions.port_mcp_utils import (
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_credential,
     get_or_create_mcp_vault,
+    remint_port_mcp_credential,
     _agent_has_mcp_url,
 )
 
@@ -426,3 +430,60 @@ async def test_ensure_port_mcp_binding_creates_virtual_credentials() -> None:
         ),
     ]
     assert client.beta.vaults.credentials.create.await_count == 2
+
+
+def _api_status_error(status: int) -> APIStatusError:
+    request = httpx.Request(
+        "POST", "https://api.anthropic.com/v1/vaults/v/credentials/c"
+    )
+    return APIStatusError(
+        "conflict",
+        response=httpx.Response(status, request=request),
+        body=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_remint_retries_on_409_then_succeeds() -> None:
+    client = MagicMock()
+    client.beta.vaults.credentials.update = AsyncMock(
+        side_effect=[_api_status_error(409), None]
+    )
+    binding = PortMcpBinding(
+        mcp_server_url="https://mcp.getport.io/v1",
+        vault_id="vault_1",
+        credential_id="cred_1",
+    )
+
+    with patch(
+        "claude_managed_agents.actions.port_mcp_utils.get_run_access_token",
+        return_value="tok_abc",
+    ):
+        await remint_port_mcp_credential(client, workflow_run_with_port_mcp(), binding)
+
+    assert client.beta.vaults.credentials.update.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_remint_raises_after_exhausted_409_retries() -> None:
+    client = MagicMock()
+    client.beta.vaults.credentials.update = AsyncMock(
+        side_effect=_api_status_error(409)
+    )
+    binding = PortMcpBinding(
+        mcp_server_url="https://mcp.getport.io/v1",
+        vault_id="vault_1",
+        credential_id="cred_1",
+    )
+
+    with (
+        patch(
+            "claude_managed_agents.actions.port_mcp_utils.get_run_access_token",
+            return_value="tok_abc",
+        ),
+        pytest.raises(APIStatusError) as raised,
+    ):
+        await remint_port_mcp_credential(client, workflow_run_with_port_mcp(), binding)
+
+    assert raised.value.status_code == 409
+    assert client.beta.vaults.credentials.update.await_count == 3
