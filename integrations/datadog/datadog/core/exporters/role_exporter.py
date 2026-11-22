@@ -1,10 +1,7 @@
 import asyncio
 from datetime import datetime
-from http import HTTPStatus
-from itertools import batched
 from typing import TYPE_CHECKING, Any
 
-from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -21,8 +18,6 @@ from datadog.incremental import (
 
 if TYPE_CHECKING:
     from datadog.overrides import RoleResourceConfig
-
-CHANGED_ROLES_FETCH_BATCH_SIZE = 10
 
 
 class ListRoleOptions(ListOptions["RoleResourceConfig"]):
@@ -95,31 +90,13 @@ class RoleExporter(
                 )
             )
 
-        for batch in batched(role_ids, CHANGED_ROLES_FETCH_BATCH_SIZE):
-            results = await asyncio.gather(
-                *(
-                    self._get_changed_role(role_id, options.enrich_with_users)
-                    for role_id in batch
-                )
+        async for roles in self._get_existing_resources(
+            GetRoleOptions(
+                resource_id=role_id, enrich_with_users=options.enrich_with_users
             )
-            if roles := [role for role in results if role]:
-                yield roles
-
-    async def _get_changed_role(
-        self, role_id: str, enrich_with_users: bool
-    ) -> dict[str, Any] | None:
-        """Get a role found through audit events, or None if it was deleted since."""
-        try:
-            return await self.get_resource(
-                GetRoleOptions(resource_id=role_id, enrich_with_users=enrich_with_users)
-            )
-        except HTTPStatusError as e:
-            if e.response.status_code != HTTPStatus.NOT_FOUND:
-                raise
-            logger.warning(
-                f"Skipping role '{role_id}' from audit events; it no longer exists in Datadog"
-            )
-            return None
+            for role_id in role_ids
+        ):
+            yield roles
 
     async def enrich_role_with_users(
         self, role_batch: list[dict[str, Any]]

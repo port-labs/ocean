@@ -6,10 +6,12 @@ import httpx
 import pytest
 
 from datadog.client import DatadogClient
-from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
+from datadog.core.exporters.base_exporter import (
+    CHANGED_RESOURCES_FETCH_BATCH_SIZE,
+    MAX_PAGE_SIZE,
+)
 from datadog.core.exporters import RoleExporter
 from datadog.core.exporters.role_exporter import (
-    CHANGED_ROLES_FETCH_BATCH_SIZE,
     GetRoleOptions,
     ListRoleOptions,
 )
@@ -343,7 +345,7 @@ async def test_get_changed_roles_yields_one_batch_per_concurrent_fetch(
     role_audit_mocks: tuple[AsyncMock, AsyncMock],
 ) -> None:
     mock_request, _ = role_audit_mocks
-    role_ids = [str(i) for i in range(CHANGED_ROLES_FETCH_BATCH_SIZE + 1)]
+    role_ids = [str(i) for i in range(CHANGED_RESOURCES_FETCH_BATCH_SIZE + 1)]
     mock_request.return_value = _audit_page(*(_role_event(i) for i in role_ids))
 
     batches = [
@@ -353,7 +355,7 @@ async def test_get_changed_roles_yields_one_batch_per_concurrent_fetch(
         )
     ]
 
-    assert [len(batch) for batch in batches] == [CHANGED_ROLES_FETCH_BATCH_SIZE, 1]
+    assert [len(batch) for batch in batches] == [CHANGED_RESOURCES_FETCH_BATCH_SIZE, 1]
     assert [role for batch in batches for role in batch] == [_role(i) for i in role_ids]
 
 

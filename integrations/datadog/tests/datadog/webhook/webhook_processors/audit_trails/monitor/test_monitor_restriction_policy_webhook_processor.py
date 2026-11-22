@@ -86,7 +86,8 @@ async def test_handle_single_event_refetches_monitor(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _restriction_policy_event("modified", "m-99"), resource_config  # type: ignore[arg-type]
+            _restriction_policy_event("modified", "m-99"),
+            resource_config,  # type: ignore[arg-type]
         )
 
     exporter.get_resource.assert_awaited_once_with(
@@ -110,7 +111,8 @@ async def test_handle_single_event_deleted_restriction_policy_refetches_monitor(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _restriction_policy_event("deleted", "m-99"), resource_config  # type: ignore[arg-type]
+            _restriction_policy_event("deleted", "m-99"),
+            resource_config,  # type: ignore[arg-type]
         )
 
     assert result.updated_raw_results == [{"id": "m-99"}]

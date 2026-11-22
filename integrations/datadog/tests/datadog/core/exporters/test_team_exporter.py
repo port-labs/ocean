@@ -6,10 +6,12 @@ import httpx
 import pytest
 
 from datadog.client import DatadogClient
-from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
+from datadog.core.exporters.base_exporter import (
+    CHANGED_RESOURCES_FETCH_BATCH_SIZE,
+    MAX_PAGE_SIZE,
+)
 from datadog.core.exporters import TeamExporter
 from datadog.core.exporters.team_exporter import (
-    CHANGED_TEAMS_FETCH_BATCH_SIZE,
     GetTeamOptions,
     ListTeamOptions,
 )
@@ -216,7 +218,7 @@ async def test_get_changed_teams_yields_one_batch_per_concurrent_fetch(
     team_audit_mocks: tuple[AsyncMock, AsyncMock],
 ) -> None:
     mock_request, _ = team_audit_mocks
-    team_ids = [str(i) for i in range(CHANGED_TEAMS_FETCH_BATCH_SIZE + 1)]
+    team_ids = [str(i) for i in range(CHANGED_RESOURCES_FETCH_BATCH_SIZE + 1)]
     mock_request.return_value = _audit_page(*(_audit_event(i) for i in team_ids))
 
     batches = [
@@ -226,7 +228,7 @@ async def test_get_changed_teams_yields_one_batch_per_concurrent_fetch(
         )
     ]
 
-    assert [len(batch) for batch in batches] == [CHANGED_TEAMS_FETCH_BATCH_SIZE, 1]
+    assert [len(batch) for batch in batches] == [CHANGED_RESOURCES_FETCH_BATCH_SIZE, 1]
     assert [team for batch in batches for team in batch] == [_team(i) for i in team_ids]
 
 

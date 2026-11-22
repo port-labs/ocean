@@ -6,9 +6,11 @@ import pytest
 
 from datadog.client import DatadogClient
 from datadog.core.exporters import CatalogEntityExporter
-from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
+from datadog.core.exporters.base_exporter import (
+    CHANGED_RESOURCES_FETCH_BATCH_SIZE,
+    MAX_PAGE_SIZE,
+)
 from datadog.core.exporters.catalog_entity_exporter import (
-    CHANGED_ENTITIES_FETCH_BATCH_SIZE,
     SCHEMA_ENRICHMENT_KEY,
     ListCatalogEntityOptions,
 )
@@ -314,7 +316,7 @@ async def test_get_changed_entities_fetches_each_ref_once_with_schema(
 async def test_get_changed_entities_yields_one_batch_per_concurrent_fetch(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    entity_ids = [str(i) for i in range(CHANGED_ENTITIES_FETCH_BATCH_SIZE + 1)]
+    entity_ids = [str(i) for i in range(CHANGED_RESOURCES_FETCH_BATCH_SIZE + 1)]
 
     async def respond(
         url: str,
@@ -341,7 +343,7 @@ async def test_get_changed_entities_yields_one_batch_per_concurrent_fetch(
             ).get_changed_entities(ListCatalogEntityOptions(), incremental_cursor=SINCE)
         ]
 
-    assert [len(batch) for batch in batches] == [CHANGED_ENTITIES_FETCH_BATCH_SIZE, 1]
+    assert [len(batch) for batch in batches] == [CHANGED_RESOURCES_FETCH_BATCH_SIZE, 1]
     assert [e["id"] for batch in batches for e in batch] == entity_ids
 
 

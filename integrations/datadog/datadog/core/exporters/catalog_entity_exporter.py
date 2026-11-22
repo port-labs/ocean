@@ -1,20 +1,22 @@
-import asyncio
 from datetime import datetime
-from itertools import batched
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
+from datadog.core.exporters.base_exporter import (
+    GetOptions,
+    ListOptions,
+    PaginatedExporter,
+    SingleResourceExporter,
+)
 from datadog.incremental import CHANGED_CATALOG_ENTITIES_AUDIT_QUERY
 
 if TYPE_CHECKING:
     from datadog.overrides import CatalogEntityResourceConfig
 
 SCHEMA_ENRICHMENT_KEY = "__schema"
-CHANGED_ENTITIES_FETCH_BATCH_SIZE = 10
 
 
 class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
@@ -31,7 +33,24 @@ class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
         )
 
 
-def _entity_params(options: ListCatalogEntityOptions) -> dict[str, Any]:
+class GetCatalogEntityOptions(GetOptions["CatalogEntityResourceConfig"]):
+    include_discovered: bool = False
+    entity_kinds: list[str] = []
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "CatalogEntityResourceConfig", *, resource_id: str
+    ) -> "GetCatalogEntityOptions":
+        return cls(
+            resource_id=resource_id,
+            include_discovered=resource_config.selector.include_discovered,
+            entity_kinds=resource_config.selector.entity_kinds,
+        )
+
+
+def _entity_params(
+    options: ListCatalogEntityOptions | GetCatalogEntityOptions,
+) -> dict[str, Any]:
     """Query parameters shared by the full and the incremental resync, so entities
     keep one shape."""
     params: dict[str, Any] = {"include": "schema"}
@@ -69,7 +88,10 @@ def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
     return entities
 
 
-class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
+class CatalogEntityExporter(
+    PaginatedExporter[ListCatalogEntityOptions],
+    SingleResourceExporter[GetCatalogEntityOptions],
+):
     @property
     def _entities_url(self) -> str:
         return f"{self.client.api_url}/api/v2/catalog/entity"
@@ -112,25 +134,30 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
             CHANGED_CATALOG_ENTITIES_AUDIT_QUERY, incremental_cursor
         )
 
-        for batch in batched(refs, CHANGED_ENTITIES_FETCH_BATCH_SIZE):
-            results = await asyncio.gather(
-                *(self._get_changed_entity(ref, options) for ref in batch)
+        async for entities in self._get_existing_resources(
+            GetCatalogEntityOptions(
+                resource_id=ref,
+                include_discovered=options.include_discovered,
+                entity_kinds=options.entity_kinds,
             )
-            if entities := [entity for entity in results if entity]:
-                yield entities
+            for ref in refs
+        ):
+            yield entities
 
-    async def _get_changed_entity(
-        self, ref: str, options: ListCatalogEntityOptions
+    async def get_resource(
+        self, options: GetCatalogEntityOptions
     ) -> dict[str, Any] | None:
-        """Get an entity found through audit events, or None if it was deleted since
-        or its kind is filtered out."""
+        """Get a single entity by its reference (``<kind>:<namespace>/<name>``), or
+        None if it doesn't exist or its kind is filtered out.
+        Docs: https://docs.datadoghq.com/api/latest/software-catalog/#get-a-list-of-entities
+        """
         response = await self.client.send_api_request(
             self._entities_url,
-            params={**_entity_params(options), "filter[ref]": ref},
+            params={**_entity_params(options), "filter[ref]": options.resource_id},
         )
         if not response.get("data"):
             logger.warning(
-                f"Skipping catalog entity '{ref}' from audit events; it no longer exists in Datadog"
+                f"Skipping catalog entity '{options.resource_id}'; it no longer exists in Datadog"
             )
             return None
         return attach_schemas(response)[0]
