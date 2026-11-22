@@ -2,7 +2,7 @@
   {
     "identifier": "factory_environment",
     "title": "Factory Environment",
-    "icon": "Environment",
+    "icon": "FactoryAi",
     "schema": {
       "properties": {
         "status": {
@@ -82,7 +82,7 @@
   {
     "identifier": "factory_computer",
     "title": "Factory Computer",
-    "icon": "Cluster",
+    "icon": "FactoryAi",
     "schema": {
       "properties": {
         "status": {
@@ -168,7 +168,7 @@
   {
     "identifier": "factory_user",
     "title": "Factory User",
-    "icon": "User",
+    "icon": "FactoryAi",
     "schema": {
       "properties": {
         "email": {
@@ -217,7 +217,7 @@
   {
     "identifier": "factory_session",
     "title": "Factory Session",
-    "icon": "AI",
+    "icon": "FactoryAi",
     "schema": {
       "properties": {
         "status": {
