@@ -222,7 +222,7 @@ async def test_multi_org_reports_checks_per_org_and_isolates_bad_credentials(
         for check in probe_context.checks
     }
     assert results == {
-        "prod": (ProbeCheckStatus.SUCCESS, "Permission(s) granted: monitors_read"),
+        "prod": (ProbeCheckStatus.SUCCESS, "Datadog access verified: monitors_read"),
         "def": (
             ProbeCheckStatus.FAILURE,
             "Failed to verify Datadog authentication. "

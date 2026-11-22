@@ -60,6 +60,9 @@ class DatadogKindPermissionVerdict(KindPermissionVerdict):
     def combination(self) -> PermissionCombination:
         return PermissionCombination.AND
 
+    def granted_message(self, granted: tuple[str, ...]) -> str:
+        return f"Datadog access verified: {', '.join(granted)}"
+
     def denied_message(self, denied: tuple[str, ...]) -> str:
         return (
             super().denied_message(denied)

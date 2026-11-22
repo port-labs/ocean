@@ -34,5 +34,5 @@ def test_granted_kind_lists_its_permissions() -> None:
 
     assert status is ProbeCheckStatus.SUCCESS
     assert message == (
-        "Permission(s) granted: apm_service_catalog_read, timeseries_query"
+        "Datadog access verified: apm_service_catalog_read, timeseries_query"
     )
