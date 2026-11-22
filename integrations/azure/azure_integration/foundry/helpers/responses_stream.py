@@ -5,12 +5,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-TERMINAL_SSE_TYPES = {
-    "response.completed": True,
-    "response.failed": False,
-    "response.cancelled": False,
-    "response.incomplete": False,
-}
+from azure_integration.foundry.models.responses import TERMINAL_EVENTS
+
+# Re-export for stream_manager / tests.
+TERMINAL_SSE_TYPES = TERMINAL_EVENTS
 
 _RESPONSE_ID_EVENT_TYPES = {
     "response.created",

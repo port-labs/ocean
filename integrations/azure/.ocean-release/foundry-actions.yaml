@@ -1,3 +1,3 @@
 bump: minor
 changelog-type: feature
-changelog: Add Azure AI Foundry invoke_agent and invoke_model with Port toolbox (Port/GitHub MCP) wired on invoke (CustomKeys + toolbox, enablePortMcp, optional gitAccessToken/gitProvider/toolboxName), webhooks, streaming, catalog enrichment, and reportInvocationStatus. create_agent/update_agent remain agent CRUD only.
+changelog: Add Azure AI Foundry invoke_agent and invoke_model with Port toolbox (Port/GitHub MCP) wired on invoke. Prompt agents use useExistingToolbox (default false) — Port-owned port-mcps-<hash> create/reuse, or skip MCP with a warning when a foreign toolbox is present; opt in to merge into that toolbox. Hosted agents use toolboxName to upsert an existing toolbox (must exist) or omit to prepare port-mcps-<hash>. Also CustomKeys remint, optional gitAccessToken/gitProvider, opt-in createFoundryWebhooks, streaming, catalog enrichment, and reportInvocationStatus.

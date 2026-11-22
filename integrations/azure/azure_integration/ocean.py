@@ -255,6 +255,12 @@ async def on_start() -> None:
 
     signal_handler.register(_shutdown_foundry_streams)
 
+    if not ocean.integration_config.get("create_foundry_webhooks"):
+        logger.info(
+            "Skipping Foundry webhook registration (createFoundryWebhooks is false)"
+        )
+        return
+
     if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
             "Skipping Foundry webhook registration because webhooks are disabled"
@@ -276,7 +282,8 @@ async def on_start() -> None:
         return
 
     for account_base in hosts:
-        await create_webhook_client_for_account(account_base).upsert_webhook(base_url)
+        async with create_webhook_client_for_account(account_base) as client:
+            await client.upsert_webhook(base_url)
 
 
 ocean.add_webhook_processor("/events", AzureResourceEventProcessor)

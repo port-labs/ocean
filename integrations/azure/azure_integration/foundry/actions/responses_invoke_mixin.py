@@ -135,7 +135,6 @@ class ResponsesInvokeMixin:
                     response_body=payload,
                     success=status == "completed",
                     source="non-SSE invoke (stream capacity)",
-                    register_catalog=status == "completed",
                 )
 
     async def _bind_run_to_response(

@@ -10,7 +10,7 @@ from typing import Any, Literal
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationRun, WorkflowNodeRun, WorkflowNodeRunLog
+from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
 from azure_integration.foundry.helpers.responses_stream import (
@@ -157,13 +157,14 @@ class ResponsesStreamManager:
                     await result
             elif ocean.port_client.is_run_in_progress(run):
                 if response_id_reported:
-                    await _complete_or_leave_after_sse_drop(
-                        run,
-                        note=(
+                    # ponytail: webhook owns GET + close; only warn here
+                    with contextlib.suppress(Exception):
+                        await ocean.port_client.post_run_log(
+                            run,
                             "Responses stream ended without a terminal event; "
-                            "completing from Foundry GET if terminal"
-                        ),
-                    )
+                            "waiting for webhook",
+                            level="WARNING",
+                        )
                 else:
                     with contextlib.suppress(Exception):
                         await ocean.port_client.post_run_log(
@@ -187,13 +188,13 @@ class ResponsesStreamManager:
             if not ocean.port_client.is_run_in_progress(run):
                 return
             if response_id_reported:
-                await _complete_or_leave_after_sse_drop(
-                    run,
-                    note=(
+                with contextlib.suppress(Exception):
+                    await ocean.port_client.post_run_log(
+                        run,
                         f"Responses stream failed after bind; "
-                        f"completing from Foundry GET if terminal: {error}"
-                    ),
-                )
+                        f"waiting for webhook: {error}",
+                        level="WARNING",
+                    )
                 return
             with contextlib.suppress(Exception):
                 await ocean.port_client.post_run_log(
@@ -208,51 +209,6 @@ class ResponsesStreamManager:
             if response is not None:
                 with contextlib.suppress(Exception):
                     await response.aclose()
-
-
-async def _complete_or_leave_after_sse_drop(run: IntegrationRun, *, note: str) -> None:
-    with contextlib.suppress(Exception):
-        await ocean.port_client.post_run_log(run, note, level="WARNING")
-
-    from azure_integration.foundry.helpers.invoke_completion import (
-        _project_endpoint_from_run,
-        complete_invoke_run_for_response,
-        response_body_for_catalog,
-    )
-    from azure_integration.foundry.helpers.webhook_scope import FoundryResponseBody
-
-    response_id: str | None = None
-    if isinstance(run, WorkflowNodeRun) and isinstance(run.output, dict):
-        rid = run.output.get("responseId")
-        if isinstance(rid, str) and rid:
-            response_id = rid
-    if not response_id:
-        return
-    endpoint = _project_endpoint_from_run(run)
-    if not endpoint:
-        return
-    try:
-        body = await response_body_for_catalog(
-            response_id, None, project_endpoint=endpoint
-        )
-    except Exception:
-        return
-    if not isinstance(body, dict):
-        return
-    try:
-        override = FoundryResponseBody.model_validate(body).success_override()
-    except Exception:
-        return
-    if override is None:
-        return
-    await complete_invoke_run_for_response(
-        run,
-        response_id=response_id,
-        response_body=body,
-        success=override,
-        register_catalog=override,
-        source=note,
-    )
 
 
 async def _flush_logs(run: IntegrationRun, buffer: list[WorkflowNodeRunLog]) -> None:

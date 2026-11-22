@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from loguru import logger
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -15,18 +16,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from azure_integration.foundry.helpers.invoke_completion import (
     complete_invoke_run_from_webhook,
-    find_in_progress_run_for_response,
-    is_response_completion_claimed,
 )
+from azure_integration.foundry.models.responses import TERMINAL_EVENTS
 
 WEBHOOK_PATH = "/webhook"
-
-_RESPONSE_TERMINAL_EVENTS = {
-    "response.completed",
-    "response.failed",
-    "response.cancelled",
-    "response.incomplete",
-}
 
 _EMPTY = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
@@ -49,7 +42,7 @@ class ConversationWebhookProcessor(AbstractWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload.get("type")
-        return isinstance(event_type, str) and event_type in _RESPONSE_TERMINAL_EVENTS
+        return isinstance(event_type, str) and event_type in TERMINAL_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return []
@@ -66,14 +59,8 @@ class ConversationWebhookProcessor(AbstractWebhookProcessor):
                 f"Ignoring Foundry webhook without response id ({event_type})"
             )
             return _EMPTY
-        if is_response_completion_claimed(response_id):
-            logger.debug(
-                f"Ignoring Foundry webhook {event_type} for {response_id}; "
-                "run already completed"
-            )
-            return _EMPTY
 
-        run = await find_in_progress_run_for_response(response_id)
+        run = await ocean.port_client.find_run_by_external_id(response_id)
         if run is None or not run.execution_properties.get(
             "reportInvocationStatus", False
         ):

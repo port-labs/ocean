@@ -86,6 +86,7 @@ class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             bind_output={
                 "conversationId": conversation_id,
                 "projectArmId": inputs.projectArmId,
+                "projectEndpoint": project_endpoint,
             },
             complete_on_sse_terminal=True,
             running_status_label=MODEL_RUNNING_STATUS_LABEL,

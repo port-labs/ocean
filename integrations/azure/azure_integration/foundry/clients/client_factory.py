@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import httpx
 from azure.identity.aio import DefaultAzureCredential
-from port_ocean.helpers.async_client import OceanAsyncClient
 
 from azure_integration.foundry.clients.http.foundry_client import clear_foundry_client
 from azure_integration.foundry.clients.webhook_client import FoundryWebhookClient
@@ -44,10 +42,7 @@ def create_foundry_arm_client() -> FoundryArmClient:
 
 
 def create_webhook_client_for_account(account_base_url: str) -> FoundryWebhookClient:
-    return FoundryWebhookClient(
-        http=OceanAsyncClient(timeout=httpx.Timeout(60.0)),
-        account_base_url=account_base_url,
-    )
+    return FoundryWebhookClient(account_base_url=account_base_url)
 
 
 async def clear_client_cache() -> None:

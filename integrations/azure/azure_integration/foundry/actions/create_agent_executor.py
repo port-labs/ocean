@@ -10,12 +10,9 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.helpers.agent_api import (
-    definition_kind,
-    foundry_features_header,
-)
 from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
+from azure_integration.foundry.models.agent import parse_agent_definition
 
 CREATING_STATUS_LABEL = "Creating agent"
 CREATE_FAILED_STATUS_LABEL = "Creation failed"
@@ -64,7 +61,9 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
                 self.client.build_url(inputs.projectEndpoint, "agents"),
                 method="POST",
                 json_body=body,
-                extra_headers=foundry_features_header(definition_kind(body)),
+                extra_headers=parse_agent_definition(
+                    body["definition"]
+                ).features_header,
             )
         except Exception as error:
             raise ActionExecutionError(

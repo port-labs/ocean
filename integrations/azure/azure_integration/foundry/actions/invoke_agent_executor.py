@@ -4,7 +4,7 @@ from loguru import logger
 from port_ocean.core.handlers.actions.utils import get_run_access_token
 from port_ocean.core.models import IntegrationRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryInvokeInput,
@@ -20,12 +20,10 @@ from azure_integration.foundry.helpers.conversation_api import (
     resolve_conversation_for_invoke,
 )
 from azure_integration.foundry.helpers.port_mcp import (
-    GitProvider,
-    agent_definition_kind,
     ensure_port_mcp,
     sanitize_git_provider,
-    tools_from_agent_payload,
 )
+from azure_integration.foundry.models.agent import Agent, PromptAgentDefinition
 
 
 class InvokeAgentInputs(AbstractFoundryInvokeInput):
@@ -37,8 +35,14 @@ class InvokeAgentInputs(AbstractFoundryInvokeInput):
     enablePortMcp: bool = Field(default=True)
     gitAccessToken: str | None = Field(default=None, min_length=1)
     gitProvider: str = Field(default="github")
+    useExistingToolbox: bool = Field(default=False)
     toolboxName: str | None = Field(default=None, min_length=1)
     extraBody: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("gitProvider")
+    @classmethod
+    def _git_provider(cls, value: str) -> str:
+        return sanitize_git_provider(value)
 
     def build_responses_invoke(
         self, conversation_id: str | None = None
@@ -71,7 +75,6 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeAgentInputs.from_execution_properties(run.execution_properties)
         project_endpoint = inputs.project_endpoint
-        git_provider = sanitize_git_provider(inputs.gitProvider)
         port_token = get_run_access_token(run) if inputs.enablePortMcp else None
         # Remint only when credentials exist; bare enablePortMcp without a token
         # must not strip existing toolboxes or fail hosted invokes.
@@ -85,7 +88,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             )
         if want_mcp:
             await self._ensure_mcp_before_invoke(
-                run, inputs, port_token, git_provider, project_endpoint
+                inputs, port_token, project_endpoint
             )
         try:
             conversation_id = await resolve_conversation_for_invoke(
@@ -119,10 +122,8 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
 
     async def _ensure_mcp_before_invoke(
         self,
-        run: IntegrationRun,
         inputs: InvokeAgentInputs,
         port_token: str | None,
-        git_provider: GitProvider,
         project_endpoint: str,
     ) -> None:
         try:
@@ -143,9 +144,15 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 f"Could not load agent {inputs.agentId} before MCP remint: not found"
             )
 
-        kind = agent_definition_kind(agent_payload)
-        hosted = kind == "hosted"
-
+        agent = Agent.model_validate(agent_payload)
+        hosted = agent.kind == "hosted"
+        definition = agent.latest_definition
+        tools = (
+            definition.tools
+            if isinstance(definition, PromptAgentDefinition)
+            else []
+        )
+        # Prompt uses useExistingToolbox only; hosted uses toolboxName only.
         try:
             toolbox_result = await ensure_port_mcp(
                 self.client,
@@ -154,11 +161,13 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 enable_port_mcp=inputs.enablePortMcp,
                 port_access_token=port_token,
                 git_access_token=inputs.gitAccessToken,
-                git_provider=git_provider,
-                attach_to_prompt_agent=True,
-                existing_tools=tools_from_agent_payload(agent_payload),
-                toolbox_name=inputs.toolboxName,
-                agent_kind=kind,
+                existing_agent=agent_payload,
+                existing_tools=tools,
+                toolbox_name=inputs.toolboxName if hosted else None,
+                use_existing_toolbox=(
+                    inputs.useExistingToolbox if not hosted else False
+                ),
+                agent_kind=agent.kind,
                 project_arm_id=inputs.projectArmId,
             )
         except Exception as error:
@@ -169,6 +178,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         if hosted and toolbox_result is None:
             raise ActionExecutionError(
                 f"Hosted agent {inputs.agentId} has no toolbox ready for invoke. "
-                "Pass enablePortMcp with an execution identity and/or gitAccessToken, "
-                "and optionally toolboxName for a custom Foundry toolbox."
+                "Pass enablePortMcp with an execution identity and/or gitAccessToken. "
+                "Optionally pass toolboxName for an existing Foundry toolbox "
+                "(must already exist; consent to edit)."
             )

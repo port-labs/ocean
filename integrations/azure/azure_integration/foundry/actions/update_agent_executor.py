@@ -12,17 +12,13 @@ from azure_integration.foundry.actions.abstract_action_input import (
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 from azure_integration.foundry.core.options import SingleAgentOptions
-from azure_integration.foundry.helpers.agent_api import (
-    definition_kind,
-    foundry_features_header,
-    latest_agent_definition,
-)
 from azure_integration.foundry.helpers.utils import (
     deep_merge,
     enrich_with_project,
     project_name_from_endpoint,
 )
 from azure_integration.foundry.kinds import ObjectKind
+from azure_integration.foundry.models.agent import Agent, parse_agent_definition
 
 UPDATING_STATUS_LABEL = "Updating agent"
 UPDATE_FAILED_STATUS_LABEL = "Update failed"
@@ -102,8 +98,9 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             )
 
+        base = Agent.model_validate(existing).latest_definition.model_dump()
         body = deep_merge(
-            {"definition": latest_agent_definition(existing) or {"kind": "prompt"}},
+            {"definition": base or {"kind": "prompt"}},
             patch,
         )
         definition = body.get("definition")
@@ -115,7 +112,9 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                 agent_url,
                 method="POST",
                 json_body=body,
-                extra_headers=foundry_features_header(definition_kind(body)),
+                extra_headers=parse_agent_definition(
+                    body["definition"]
+                ).features_header,
             )
         except Exception as error:
             raise ActionExecutionError(

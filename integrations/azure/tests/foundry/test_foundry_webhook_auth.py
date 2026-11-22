@@ -54,12 +54,7 @@ async def test_handle_event_respects_report_invocation_status_default(
     with (
         patch(
             "azure_integration.foundry.webhook_processors.conversation_webhook_processor."
-            "is_response_completion_claimed",
-            return_value=False,
-        ),
-        patch(
-            "azure_integration.foundry.webhook_processors.conversation_webhook_processor."
-            "find_in_progress_run_for_response",
+            "ocean.port_client.find_run_by_external_id",
             new_callable=AsyncMock,
             return_value=run,
         ),

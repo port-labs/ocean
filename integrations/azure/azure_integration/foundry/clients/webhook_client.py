@@ -7,32 +7,35 @@ from azure.identity.aio import DefaultAzureCredential
 from loguru import logger
 from port_ocean.helpers.async_client import OceanAsyncClient
 
-from azure_integration.foundry.helpers.webhook_scope import (
-    dashboard_webhook_endpoints_url,
-)
+from azure_integration.foundry.models.responses import TERMINAL_EVENTS
 
 _WEBHOOK_NAME = "Port Ocean Azure AI Foundry"
 _FOUNDRY_SCOPE = "https://ai.azure.com/.default"
-_RESPONSE_WEBHOOK_EVENTS = [
-    "response.completed",
-    "response.failed",
-    "response.cancelled",
-    "response.incomplete",
-]
+_RESPONSE_WEBHOOK_EVENTS = list(TERMINAL_EVENTS)
 
 
 class FoundryWebhookClient:
-    def __init__(
-        self,
-        *,
-        http: OceanAsyncClient,
-        account_base_url: str,
-    ) -> None:
-        self._http = http
+    def __init__(self, *, account_base_url: str) -> None:
+        self._http = OceanAsyncClient(timeout=httpx.Timeout(60.0))
         self._account_base_url = account_base_url.rstrip("/")
         host = self._account_base_url.removeprefix("https://").removeprefix("http://")
         self._account_host = host.split("/")[0]
         self._credential: DefaultAzureCredential | None = None
+        self._endpoints_url = (
+            f"{self._account_base_url}/openai/v1/dashboard/webhook_endpoints"
+        )
+
+    async def __aenter__(self) -> FoundryWebhookClient:
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        await self._http.aclose()
+        if self._credential is not None:
+            await self._credential.close()
+            self._credential = None
 
     async def _auth_headers(self) -> dict[str, str]:
         if self._credential is None:
@@ -41,9 +44,8 @@ class FoundryWebhookClient:
         return {"Authorization": f"Bearer {token.token}"}
 
     async def list_webhook_endpoints(self) -> list[dict[str, Any]]:
-        url = dashboard_webhook_endpoints_url(self._account_base_url)
         headers = await self._auth_headers()
-        response = await self._http.get(url, headers=headers)
+        response = await self._http.get(self._endpoints_url, headers=headers)
         response.raise_for_status()
         payload = response.json()
         data = payload.get("data") if isinstance(payload, dict) else payload
@@ -54,10 +56,9 @@ class FoundryWebhookClient:
     async def create_webhook_endpoint(
         self, *, webhook_url: str, event_types: list[str]
     ) -> dict[str, Any]:
-        url = dashboard_webhook_endpoints_url(self._account_base_url)
         headers = await self._auth_headers()
         response = await self._http.post(
-            url,
+            self._endpoints_url,
             headers=headers,
             json={
                 "name": _WEBHOOK_NAME,
@@ -74,10 +75,7 @@ class FoundryWebhookClient:
     async def update_webhook_endpoint(
         self, endpoint_id: str, *, event_types: list[str]
     ) -> None:
-        url = (
-            f"{dashboard_webhook_endpoints_url(self._account_base_url)}/"
-            f"{endpoint_id}"
-        )
+        url = f"{self._endpoints_url}/{endpoint_id}"
         headers = await self._auth_headers()
         response = await self._http.post(
             url,
