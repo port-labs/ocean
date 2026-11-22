@@ -3,11 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
-from azure_integration.foundry.models.agent import (
-    Agent,
-    PromptAgentDefinition,
-    features_header_for_kind,
-)
+from azure_integration.foundry.models.agent import features_header_for_kind
 from azure_integration.foundry.models.toolbox import (
     TOOLBOX_SERVER_LABEL,
     Tool,
@@ -69,9 +65,7 @@ async def ensure_toolbox_version(
     if latest is not None and latest.contains_all(tools):
         return latest.version
     body_tools = (
-        latest.merge(tools)
-        if latest is not None
-        else [t.model_dump() for t in tools]
+        latest.merge(tools) if latest is not None else [t.model_dump() for t in tools]
     )
     response = await client.send_api_request(
         client.build_url(project_endpoint, f"toolboxes/{toolbox_name}/versions"),
@@ -95,15 +89,12 @@ async def attach_toolbox_to_prompt_agent(
     toolbox_name: str,
     version: str,
 ) -> None:
-    marker = f"/toolboxes/{toolbox_name}/"
-    if any(t.server_url and marker in t.server_url for t in _tools(tools_context)):
+    # Skip only when already pinned to this version (not an older one).
+    version_path = f"/toolboxes/{toolbox_name}/versions/{version}/"
+    if any(
+        t.server_url and version_path in t.server_url for t in _tools(tools_context)
+    ):
         return
-    base = Agent.model_validate(agent).latest_definition
-    if not isinstance(base, PromptAgentDefinition) or not base.model:
-        raise ValueError(
-            f"Cannot attach toolbox to agent {agent_id}: latest definition "
-            "missing required 'model'"
-        )
     url = (
         f"{project_endpoint.rstrip('/')}/toolboxes/{toolbox_name}"
         f"/versions/{version}/mcp?api-version=v1"
@@ -113,8 +104,8 @@ async def attach_toolbox_to_prompt_agent(
         method="POST",
         json_body={
             "definition": {
-                **base.model_dump(),
-                "kind": "prompt",
+                # Keep latest definition as-is; only rewrite tools to attach the toolbox.
+                **agent["versions"]["latest"]["definition"],
                 "tools": merge_toolbox_into_tools(tools_context, toolbox_url=url),
             }
         },

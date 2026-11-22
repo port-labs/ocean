@@ -219,7 +219,9 @@ async def _flush_logs(run: IntegrationRun, buffer: list[WorkflowNodeRunLog]) -> 
     if not ocean.port_client.is_run_in_progress(run):
         return
     with contextlib.suppress(Exception):
-        await ocean.port_client.post_run_logs(run, logs)
+        await ocean.port_client.post_run_logs(
+            run, logs, should_raise=False, should_log=False
+        )
 
 
 _stream_manager: ResponsesStreamManager | None = None

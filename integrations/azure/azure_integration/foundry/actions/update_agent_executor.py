@@ -98,7 +98,7 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             )
 
-        base = Agent.model_validate(existing).latest_definition.model_dump()
+        base = Agent.model_validate(existing).latest_version.definition.model_dump()
         body = deep_merge(
             {"definition": base or {"kind": "prompt"}},
             patch,

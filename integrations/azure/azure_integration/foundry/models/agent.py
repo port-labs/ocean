@@ -72,9 +72,9 @@ class Agent(FoundryModel):
     versions: AgentVersions
 
     @property
-    def latest_definition(self) -> AgentDefinition:
-        return self.versions.latest.definition
+    def latest_version(self) -> AgentVersion:
+        return self.versions.latest
 
     @property
     def kind(self) -> str:
-        return self.latest_definition.kind
+        return self.latest_version.definition.kind

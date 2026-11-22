@@ -109,6 +109,10 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
     with (
         patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
         patch(
+            "azure_integration.foundry.helpers.invoke_completion.asyncio.sleep",
+            AsyncMock(),
+        ),
+        patch(
             "azure_integration.foundry.helpers.invoke_completion.ResponsesExporter"
         ) as exporter_cls,
         patch(
@@ -143,6 +147,10 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
     )
     with (
         patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.asyncio.sleep",
+            AsyncMock(),
+        ),
         patch(
             "azure_integration.foundry.helpers.invoke_completion.ResponsesExporter"
         ) as exporter_cls,

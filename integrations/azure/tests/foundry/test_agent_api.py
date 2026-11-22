@@ -146,10 +146,10 @@ def test_prompt_agent_from_foundry_get() -> None:
         }
     )
     assert agent.kind == "prompt"
-    assert isinstance(agent.latest_definition, PromptAgentDefinition)
-    assert agent.latest_definition.model == "gpt-4o-mini"
-    assert len(agent.latest_definition.tools) == 1
-    assert agent.latest_definition.tools[0]["server_label"] == "tb"
+    assert isinstance(agent.latest_version.definition, PromptAgentDefinition)
+    assert agent.latest_version.definition.model == "gpt-4o-mini"
+    assert len(agent.latest_version.definition.tools) == 1
+    assert agent.latest_version.definition.tools[0]["server_label"] == "tb"
 
 
 def test_hosted_agent_from_foundry_get() -> None:
@@ -171,8 +171,8 @@ def test_hosted_agent_from_foundry_get() -> None:
         }
     )
     assert agent.kind == "hosted"
-    assert isinstance(agent.latest_definition, HostedAgentDefinition)
-    dumped = agent.latest_definition.model_dump()
+    assert isinstance(agent.latest_version.definition, HostedAgentDefinition)
+    dumped = agent.latest_version.definition.model_dump()
     assert dumped["cpu"] == "0.5"
     assert dumped["memory"] == "1Gi"
     assert "tools" not in dumped

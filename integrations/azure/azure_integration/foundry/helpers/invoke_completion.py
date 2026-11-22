@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
-import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     IntegrationRun,
     WorkflowNodeRun,
-    WorkflowNodeRunStatus,
 )
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
@@ -100,6 +99,8 @@ async def complete_invoke_run_for_response(
 async def complete_invoke_run_from_webhook(
     run: IntegrationRun, *, event_type: str, response_id: str
 ) -> bool:
+    # Let in-flight SSE log flushes reach Port before we mark the run terminal.
+    await asyncio.sleep(3)
     project_endpoint = _project_endpoint_from_run(run)
     if not project_endpoint:
         logger.error(
@@ -114,22 +115,13 @@ async def complete_invoke_run_from_webhook(
         )
         return False
 
-    prior = run.output if isinstance(run, WorkflowNodeRun) else {}
-    agent_id = (
-        str(
-            run.execution_properties.get("agentId")
-            or (prior.get("agentId") if isinstance(prior, dict) else None)
-            or ""
-        )
-        or None
-    )
     body = await ResponsesExporter(create_foundry_client()).get_resource(
         SingleResponseOptions(
             project_endpoint=project_endpoint,
             project_id=project_name_from_endpoint(project_endpoint),
             resource_id=response_id,
-            endpoint_scope=(EndpointScope.AGENT if agent_id else EndpointScope.PROJECT),
-            agent_id=agent_id,
+            endpoint_scope=EndpointScope.AGENT,
+            agent_id=run.execution_properties.get("agentId"),
         )
     )
     if body is None:

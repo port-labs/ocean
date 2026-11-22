@@ -88,7 +88,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
             )
         if want_mcp:
             await self._ensure_mcp_before_invoke(
-                inputs, port_token, project_endpoint
+                inputs, port_token, project_endpoint, run
             )
         try:
             conversation_id = await resolve_conversation_for_invoke(
@@ -125,6 +125,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         inputs: InvokeAgentInputs,
         port_token: str | None,
         project_endpoint: str,
+        run: IntegrationRun,
     ) -> None:
         try:
             agent_payload = await AgentsExporter(self.client).get_resource(
@@ -146,7 +147,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
 
         agent = Agent.model_validate(agent_payload)
         hosted = agent.kind == "hosted"
-        definition = agent.latest_definition
+        definition = agent.latest_version.definition
         tools = (
             definition.tools
             if isinstance(definition, PromptAgentDefinition)
@@ -169,6 +170,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
                 ),
                 agent_kind=agent.kind,
                 project_arm_id=inputs.projectArmId,
+                run=run,
             )
         except Exception as error:
             raise ActionExecutionError(

@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import IntegrationRun
 
 from azure_integration.foundry.helpers.toolbox import (
     attach_toolbox_to_prompt_agent,
@@ -54,7 +55,7 @@ def agent_definition_kind(agent: dict[str, Any] | None) -> str:
 def tools_from_agent_payload(agent: Any) -> list[Any]:
     if not isinstance(agent, dict) or "versions" not in agent:
         return []
-    definition = Agent.model_validate(agent).latest_definition
+    definition = Agent.model_validate(agent).latest_version.definition
     return (
         definition.tools if isinstance(definition, PromptAgentDefinition) else []
     )
@@ -98,22 +99,26 @@ def _resolve_target(
     existing_tb: str | None,
     toolbox_name: str | None,
     use_existing_toolbox: bool,
-) -> tuple[str | None, bool, bool]:
-    """(toolbox, create_if_missing, attach). None toolbox => skip MCP."""
+) -> tuple[str | None, bool, bool, str | None]:
+    """(toolbox, create_if_missing, attach, skip_warning). None toolbox => skip MCP."""
     generated = port_toolbox_name(agent_id)
     if kind == "hosted":
         explicit = (toolbox_name or "").strip() or None
-        return (explicit, False, False) if explicit else (generated, True, False)
+        if explicit:
+            return explicit, False, False, None
+        return generated, True, False, None
     if existing_tb is None or existing_tb == generated:
-        return generated, True, existing_tb is None
+        # Always (re)attach so agent tools pin the current toolbox version URL.
+        return generated, True, True, None
     if use_existing_toolbox:
-        return existing_tb, True, False
-    logger.warning(
+        return existing_tb, True, False, None
+    skip_warning = (
         f"Prompt agent {agent_id} already has toolbox '{existing_tb}'. "
         "Skipping Port/GitHub MCP (set useExistingToolbox=true to merge). "
         "Invoke continues without MCP remint."
     )
-    return None, False, False
+    logger.warning(skip_warning)
+    return None, False, False, skip_warning
 
 
 async def _collect_mcp_tools(
@@ -171,6 +176,7 @@ async def ensure_port_mcp(
     use_existing_toolbox: bool = False,
     agent_kind: str | None = None,
     project_arm_id: str | None = None,
+    run: IntegrationRun | None = None,
 ) -> tuple[str, str] | None:
     agent = existing_agent or {}
     tools_context = (
@@ -179,7 +185,7 @@ async def ensure_port_mcp(
         else tools_from_agent_payload(agent)
     )
     kind = agent_kind or agent_definition_kind(agent)
-    target, create_if_missing, should_attach = _resolve_target(
+    target, create_if_missing, should_attach, skip_warning = _resolve_target(
         agent_id=agent_id,
         kind=kind,
         existing_tb=toolbox_name_from_agent_tools(tools_context),
@@ -187,6 +193,10 @@ async def ensure_port_mcp(
         use_existing_toolbox=use_existing_toolbox,
     )
     if target is None:
+        if skip_warning and run is not None:
+            await ocean.port_client.post_run_log(
+                run, skip_warning, level="WARNING", should_raise=False
+            )
         return None
 
     toolbox_tools = await _collect_mcp_tools(

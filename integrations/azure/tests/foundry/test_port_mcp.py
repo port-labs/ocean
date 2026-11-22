@@ -163,6 +163,8 @@ async def test_prompt_foreign_toolbox_skips_without_opt_in() -> None:
     agent_id = "reuse-agent"
     tb = "foreign-box"
     conn = AsyncMock()
+    run = MagicMock()
+    post_run_log = AsyncMock()
     with (
         patch(
             "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
@@ -171,6 +173,10 @@ async def test_prompt_foreign_toolbox_skips_without_opt_in() -> None:
         patch(
             "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
             conn,
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.ocean.port_client.post_run_log",
+            post_run_log,
         ),
     ):
         assert (
@@ -183,10 +189,15 @@ async def test_prompt_foreign_toolbox_skips_without_opt_in() -> None:
                 existing_tools=_foreign_tools(tb),
                 agent_kind="prompt",
                 use_existing_toolbox=False,
+                run=run,
             )
             is None
         )
     conn.assert_not_awaited()
+    post_run_log.assert_awaited_once()
+    assert post_run_log.await_args.args[0] is run
+    assert tb in post_run_log.await_args.args[1]
+    assert post_run_log.await_args.kwargs["level"] == "WARNING"
 
 
 @pytest.mark.asyncio
@@ -280,14 +291,84 @@ async def test_existing_generated_toolbox_reuses_without_opt_in() -> None:
             existing_tools=[
                 {
                     "type": "mcp",
-                    "server_label": "other",
+                    "server_label": TOOLBOX_SERVER_LABEL,
                     "server_url": f"https://proj/toolboxes/{tb}/versions/2/mcp",
                 }
             ],
             agent_kind="prompt",
             use_existing_toolbox=False,
         ) == (tb, "2")
+    # Same version already pinned → GET toolbox only, no agent POST.
     assert reuse.send_api_request.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_prompt_reattaches_when_toolbox_version_bumps() -> None:
+    agent_id = "cursor-test-agent"
+    tb = port_toolbox_name(agent_id)
+    port_url = "https://mcp.example/v1"
+    client = _client(
+        [
+            {
+                "versions": {
+                    "latest": {
+                        "version": "2",
+                        "tools": [
+                            {
+                                "type": "mcp",
+                                "server_label": PORT_MCP_SERVER_LABEL,
+                                "server_url": port_url,
+                                "project_connection_id": port_connection_name(agent_id),
+                            },
+                        ],
+                    }
+                }
+            },
+            {"version": "3"},
+            {},
+        ]
+    )
+    with (
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.required_port_mcp_url",
+            return_value=port_url,
+        ),
+        patch(
+            "azure_integration.foundry.helpers.port_mcp.upsert_custom_keys_connection",
+            AsyncMock(),
+        ),
+    ):
+        assert await ensure_port_mcp(
+            client,
+            project_endpoint="https://proj",
+            agent_id=agent_id,
+            enable_port_mcp=True,
+            port_access_token="fresh",
+            git_access_token="ghp_x",
+            existing_agent={
+                "versions": {
+                    "latest": {
+                        "definition": {
+                            "kind": "prompt",
+                            "model": "gpt-4o",
+                            "tools": [],
+                        }
+                    }
+                }
+            },
+            existing_tools=[
+                {
+                    "type": "mcp",
+                    "server_label": TOOLBOX_SERVER_LABEL,
+                    "server_url": f"https://proj/toolboxes/{tb}/versions/2/mcp",
+                }
+            ],
+            agent_kind="prompt",
+        ) == (tb, "3")
+    attach_url = client.send_api_request.await_args_list[2].kwargs["json_body"][
+        "definition"
+    ]["tools"][-1]["server_url"]
+    assert f"/toolboxes/{tb}/versions/3/" in attach_url
 
 
 @pytest.mark.asyncio
