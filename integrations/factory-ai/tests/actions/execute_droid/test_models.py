@@ -57,6 +57,22 @@ class TestParseExecuteDroidInputs:
             "target": {"kind": "computer", "computerId": "comp-1"},
         }
 
+    def test_blank_optional_model_and_reasoning_effort_are_omitted(self) -> None:
+        inputs = parse_execute_droid_inputs(
+            {
+                "prompt": "Ship it",
+                "targetKind": "environment",
+                "environmentId": "env-1",
+                "model": "",
+                "reasoningEffort": "",
+            }
+        )
+        assert isinstance(inputs, ExecuteDroidEnvironmentInputs)
+        assert inputs.to_request_body() == {
+            "prompt": "Ship it",
+            "target": {"kind": "environment", "environmentId": "env-1"},
+        }
+
     def test_session_target_builds_body(self) -> None:
         inputs = parse_execute_droid_inputs(
             {

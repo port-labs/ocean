@@ -18,9 +18,10 @@ class _ExecuteDroidBase(AbstractFactoryActionInput):
 class _NewSessionExecuteDroidInputs(_ExecuteDroidBase):
     """Shared options for targets that create a new session."""
 
-    model: str | None = Field(default=None, min_length=1)
+    model: str | None = None
     reasoningEffort: (
         Literal[
+            "",
             "none",
             "dynamic",
             "off",
