@@ -117,8 +117,8 @@ async def test_should_process_event_false_when_payload_is_list(
         await processor.should_process_event(
             WebhookEvent(
                 trace_id="t",
-                payload=[_raw("Stub", "created", "stub")],
-                headers={},  # type: ignore[arg-type]
+                payload=[_raw("Stub", "created", "stub")],  # type: ignore[arg-type]
+                headers={},
             )
         )
         is False
