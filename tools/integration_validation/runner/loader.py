@@ -7,6 +7,8 @@ from pydantic import ValidationError
 
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.models import (
+    ScenarioDefinition,
+    ScenariosDefaults,
     ScenariosDocument,
     ValidationPaths,
 )
@@ -56,19 +58,44 @@ def load_scenarios_document(scenarios_file: Path) -> ScenariosDocument:
         ) from exc
 
 
-def resolve_port_app_config_path(
-    validation_paths: ValidationPaths, defaults_port_app_config: str
+def resolve_integration_resource_path(
+    validation_paths: ValidationPaths, relative_path: str, resource_label: str
 ) -> Path:
-    candidate = Path(defaults_port_app_config)
+    candidate = Path(relative_path)
     if candidate.is_absolute():
-        return candidate
+        if candidate.is_file():
+            return candidate
+        raise ValidationSetupError(f"{resource_label} not found: {relative_path}")
     integration_relative = validation_paths.integration_root / candidate
     if integration_relative.is_file():
         return integration_relative
     raise ValidationSetupError(
-        f"port_app_config not found: {defaults_port_app_config} "
+        f"{resource_label} not found: {relative_path} "
         f"(looked under {validation_paths.integration_root})"
     )
+
+
+def resolve_port_app_config_path(
+    validation_paths: ValidationPaths, port_app_config: str
+) -> Path:
+    return resolve_integration_resource_path(
+        validation_paths, port_app_config, "port_app_config"
+    )
+
+
+def resolve_blueprints_path(validation_paths: ValidationPaths, blueprints: str) -> Path:
+    return resolve_integration_resource_path(validation_paths, blueprints, "blueprints")
+
+
+def resolve_scenario_blueprints_path(
+    validation_paths: ValidationPaths,
+    defaults: ScenariosDefaults,
+    scenario: ScenarioDefinition,
+) -> Path:
+    relative = (
+        scenario.blueprints if scenario.blueprints is not None else defaults.blueprints
+    )
+    return resolve_blueprints_path(validation_paths, relative)
 
 
 def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:

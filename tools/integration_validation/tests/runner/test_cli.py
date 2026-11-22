@@ -18,6 +18,10 @@ def validation_integration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> P
         "resources: []\n",
         encoding="utf-8",
     )
+    (integration_root / ".port" / "resources" / "blueprints.json").write_text(
+        "[]\n",
+        encoding="utf-8",
+    )
     (validation_root / "scenarios.yaml").write_text(
         """
 defaults:

@@ -31,12 +31,14 @@ defaults:
   integration_config:
     exampleBaseUrl: "{{mock_base_url}}"
   port_app_config: .port/resources/port-app-config.yaml
+  blueprints: .port/resources/blueprints.json
   ignore_fields: [createdAt]
 scenarios:
   happy_path:
     description: Basic resync
     kinds: [team]
     routes: [routes/team.yaml]
+    blueprints: validation/fixtures/blueprints.json
     expect:
       entities: expected/happy_path/
       unmatched_requests: none
@@ -48,3 +50,8 @@ scenarios:
 
     assert document.defaults.integration_config["exampleBaseUrl"] == "{{mock_base_url}}"
     assert document.scenarios["happy_path"].kinds == ["team"]
+    assert document.defaults.blueprints == ".port/resources/blueprints.json"
+    assert (
+        document.scenarios["happy_path"].blueprints
+        == "validation/fixtures/blueprints.json"
+    )

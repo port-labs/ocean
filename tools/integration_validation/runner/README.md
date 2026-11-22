@@ -1,6 +1,8 @@
 # Integration validation runner
 
-Loads `<integration>/validation/scenarios.yaml`, runs preflight (layout, Port credentials, `port_app_config`), and will orchestrate mock + `ocean sail` + entity diff in follow-up work.
+Loads `<integration>/validation/scenarios.yaml`, runs preflight (layout, Port credentials, `port_app_config`, per-scenario `blueprints`), and will orchestrate mock + `ocean sail` + entity diff in follow-up work.
+
+`defaults.blueprints` defaults to `.port/resources/blueprints.json`. A scenario may override with its own path (for example `validation/fixtures/blueprints.json` when the default file is missing kinds under test).
 
 ## Run locally
 
