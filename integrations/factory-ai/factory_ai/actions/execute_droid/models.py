@@ -115,30 +115,91 @@ class ExecuteDroidResponse(FactoryModel):
     message_id: str = Field(alias="messageId", min_length=1)
 
 
+class MessageContentBlock(FactoryModel):
+    """One content block on a session message.
+
+    Known ``type`` values include ``text``, ``image``, ``thinking``,
+    ``redacted_thinking``, ``tool_use``, ``tool_result``, and ``document``.
+    Unknown fields are retained via ``FactoryModel``.
+    """
+
+    type: str
+    text: str | None = None
+    name: str | None = None
+
+
 class SessionMessage(FactoryModel):
-    """Minimal message fields needed to detect turn completion."""
+    """Session message used for turn-completion detection and reply extraction."""
 
     id: str
     role: str
+    content: list[MessageContentBlock] | None = None
+    model_id: str | None = Field(None, alias="modelId")
+    is_error: bool | None = Field(None, alias="isError")
+    created_at: str | None = Field(None, alias="createdAt")
+
+    @property
+    def text(self) -> str:
+        """Join ``text`` content blocks from this message."""
+        if not self.content:
+            return ""
+        parts = [
+            block.text for block in self.content if block.type == "text" and block.text
+        ]
+        return "\n".join(parts)
+
+    @property
+    def tool_names(self) -> list[str]:
+        """Names of ``tool_use`` blocks on this message, in order."""
+        if not self.content:
+            return []
+        return [
+            block.name
+            for block in self.content
+            if block.type == "tool_use" and block.name
+        ]
 
 
 class ListSessionMessagesResponse(FactoryModel):
+    """Page of session messages (Factory lists newest-first)."""
+
     messages: list[SessionMessage]
     pagination: FactoryPagination
 
+    def assistant_messages_after(self, user_message_id: str) -> list[SessionMessage]:
+        """Assistant messages newer than ``user_message_id``, oldest first.
 
-def has_assistant_message_after(
-    messages_newest_first: list[SessionMessage], user_message_id: str
-) -> bool:
-    """Whether an assistant message appears after ``user_message_id``.
+        Factory lists newest-first; we collect until the user message, then
+        reverse so joined text reads chronologically.
+        """
+        collected: list[SessionMessage] = []
+        for message in self.messages:
+            if message.id == user_message_id:
+                break
+            if message.role == "assistant":
+                collected.append(message)
+        collected.reverse()
+        return collected
 
-    Factory lists messages newest-first, so a newer assistant shows up before
-    the user message in the page. Reaching the user message first means no
-    newer assistant exists on this page yet.
-    """
-    for message in messages_newest_first:
-        if message.id == user_message_id:
-            return False
-        if message.role == "assistant":
-            return True
-    return False
+    def assistant_reply_after(self, user_message_id: str) -> dict[str, Any]:
+        """Port-facing reply fields from messages after ``user_message_id``.
+
+        Empty dict means no assistant reply yet (turn still in progress).
+        """
+        assistants = self.assistant_messages_after(user_message_id)
+        if not assistants:
+            return {}
+
+        text_parts = [text for msg in assistants if (text := msg.text)]
+        # Dedupe tool names while preserving order.
+        tool_names = list(
+            dict.fromkeys(name for msg in assistants for name in msg.tool_names)
+        )
+        return {
+            "assistantMessageIds": [msg.id for msg in assistants],
+            "assistantMessageId": assistants[-1].id,
+            "assistantText": "\n\n".join(text_parts),
+            "toolNames": tool_names,
+            "modelId": assistants[-1].model_id,
+            "assistantIsError": any(msg.is_error for msg in assistants),
+        }
