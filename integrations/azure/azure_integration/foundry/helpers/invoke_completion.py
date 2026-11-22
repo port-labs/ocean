@@ -4,6 +4,9 @@ import asyncio
 from typing import Any
 
 from loguru import logger
+from azure_integration.foundry.core.exporters.project_exporter import (
+    foundry_project_from_arm_id,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     IntegrationRun,
@@ -11,9 +14,6 @@ from port_ocean.core.models import (
 )
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
-from azure_integration.foundry.core.exporters.project_exporter import (
-    foundry_project_from_arm_id,
-)
 from azure_integration.foundry.core.exporters.responses_exporter import (
     ResponsesExporter,
 )
@@ -28,34 +28,6 @@ from azure_integration.foundry.models.responses import (
 COMPLETED_STATUS_LABEL = "Response completed"
 FAILED_STATUS_LABEL = "Response failed"
 INVOCATION_SUBMITTED_STATUS_LABEL = "Invoke submitted"
-
-
-def _endpoint_from_arm_id(arm_id: Any) -> str | None:
-    if not isinstance(arm_id, str) or not arm_id.strip() or "{{" in arm_id:
-        return None
-    project = foundry_project_from_arm_id(arm_id.strip())
-    return project.endpoint.rstrip("/") if project else None
-
-
-def _project_endpoint_from_run(run: IntegrationRun) -> str | None:
-    # Prefer bound run.output (resolved) over execution_properties (may be JQ).
-    sources: list[Any] = []
-    if isinstance(run, WorkflowNodeRun) and isinstance(run.output, dict):
-        sources.append(run.output)
-    sources.append(run.execution_properties or {})
-    for src in sources:
-        endpoint = src.get("projectEndpoint")
-        if (
-            isinstance(endpoint, str)
-            and endpoint.strip()
-            and "{{" not in endpoint
-            and endpoint.casefold().startswith(("http://", "https://"))
-        ):
-            return endpoint.rstrip("/")
-        resolved = _endpoint_from_arm_id(src.get("projectArmId"))
-        if resolved:
-            return resolved
-    return None
 
 
 async def complete_invoke_run_for_response(
@@ -104,7 +76,13 @@ async def complete_invoke_run_from_webhook(
 ) -> bool:
     # Let in-flight SSE log flushes reach Port before we mark the run terminal.
     await asyncio.sleep(3)
-    project_endpoint = _project_endpoint_from_run(run)
+
+    project_arm_id = (
+        run.output.get("projectArmId")
+        if isinstance(run, WorkflowNodeRun)
+        else run.execution_properties.get("projectArmId")
+    )
+    project_endpoint = foundry_project_from_arm_id(project_arm_id).endpoint
     if not project_endpoint:
         logger.error(
             f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "

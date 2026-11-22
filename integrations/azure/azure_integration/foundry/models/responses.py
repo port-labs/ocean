@@ -21,24 +21,39 @@ class Usage(FoundryModel):
     total_tokens: int | None = Field(default=None, alias="totalTokens")
     input_tokens: int | None = Field(default=None, alias="inputTokens")
     output_tokens: int | None = Field(default=None, alias="outputTokens")
+    input_tokens_details: Any = Field(default=None, alias="inputTokensDetails")
+    output_tokens_details: Any = Field(default=None, alias="outputTokensDetails")
 
 
 class Response(FoundryModel):
     """Foundry Responses API resource (GET /responses/{id}, SSE terminal payload)."""
 
-    # Only fields we read. status/output/etc. stay via extra="allow".
     id: str | None = None
     usage: Usage | None = None
     conversation_id: str | None = Field(default=None, alias="conversationId")
+    output: Any = None
     error: Any = None
 
     def run_output(self, *, response_id: str) -> dict[str, Any]:
-        # Flatten usage onto the run output (Port expects top-level *Tokens).
-        return {
-            "responseId": response_id,
-            **self.model_dump(exclude={"error", "id", "usage"}),
-            **(self.usage.model_dump() if self.usage else {}),
-        }
+        result: dict[str, Any] = {"responseId": response_id}
+        if self.conversation_id:
+            result["conversationId"] = self.conversation_id
+        if self.usage:
+            result.update(self.usage.model_dump())
+        if answer := self._answer():
+            result["answer"] = answer
+        return result
+
+    def _answer(self) -> str:
+        texts: list[str] = []
+        for item in self.output or []:
+            if not isinstance(item, dict):
+                continue
+            for part in item.get("content") or []:
+                if isinstance(part, dict) and part.get("type") == "output_text":
+                    if text := part.get("text"):
+                        texts.append(text)
+        return "\n".join(texts)
 
 
 class ResponsesSseEvent(BaseModel):
