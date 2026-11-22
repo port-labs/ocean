@@ -6,10 +6,12 @@ import httpx
 import pytest
 
 from datadog.client import DatadogClient
-from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
+from datadog.core.exporters.base_exporter import (
+    CHANGED_RESOURCES_FETCH_BATCH_SIZE,
+    MAX_PAGE_SIZE,
+)
 from datadog.core.exporters import UserExporter
 from datadog.core.exporters.user_exporter import (
-    CHANGED_USERS_FETCH_BATCH_SIZE,
     GetUserOptions,
 )
 from datadog.incremental import CHANGED_USERS_AUDIT_QUERY
@@ -182,7 +184,7 @@ async def test_get_changed_users_yields_one_batch_per_concurrent_fetch(
     audit_mocks: tuple[AsyncMock, AsyncMock],
 ) -> None:
     mock_request, _ = audit_mocks
-    user_ids = [str(i) for i in range(CHANGED_USERS_FETCH_BATCH_SIZE + 1)]
+    user_ids = [str(i) for i in range(CHANGED_RESOURCES_FETCH_BATCH_SIZE + 1)]
     mock_request.return_value = _audit_page(*(_audit_event(i) for i in user_ids))
 
     batches = [
@@ -192,7 +194,7 @@ async def test_get_changed_users_yields_one_batch_per_concurrent_fetch(
         )
     ]
 
-    assert [len(batch) for batch in batches] == [CHANGED_USERS_FETCH_BATCH_SIZE, 1]
+    assert [len(batch) for batch in batches] == [CHANGED_RESOURCES_FETCH_BATCH_SIZE, 1]
     assert [user for batch in batches for user in batch] == [_user(i) for i in user_ids]
 
 
