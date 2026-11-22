@@ -1,7 +1,9 @@
 from pydantic import Field
 
 from factory_ai.core.exporters.computer.models import Computer, ListComputerOptions
-from factory_ai.core.models import FactoryListOptions
+from factory_ai.core.exporters.session.models import ListSessionOptions
+from factory_ai.core.exporters.user.models import ListUserOptions
+from factory_ai.core.models import DEFAULT_LIST_LIMIT, FactoryListOptions
 
 
 class _SampleListOptions(FactoryListOptions):
@@ -32,6 +34,15 @@ def test_list_computer_options_uses_aliases_and_keeps_false() -> None:
         "serviceAccountId": "sa-9",
         "includeProvisioningSteps": "false",
         "includeUnlisted": "true",
+    }
+
+
+def test_paginated_list_options_share_default_limit() -> None:
+    assert ListUserOptions().to_query_params() == {"limit": str(DEFAULT_LIST_LIMIT)}
+    assert ListSessionOptions().to_query_params() == {"limit": str(DEFAULT_LIST_LIMIT)}
+    assert ListSessionOptions(computer_id="comp-1").to_query_params() == {
+        "limit": str(DEFAULT_LIST_LIMIT),
+        "computerId": "comp-1",
     }
 
 
