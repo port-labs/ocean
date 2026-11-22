@@ -20,12 +20,12 @@ from factory_ai.actions.execute_droid.executor import (
     TURN_COMPLETED_STATUS_LABEL,
     TURN_TIMED_OUT_STATUS_LABEL,
     ExecuteDroidExecutor,
+    TurnCompletion,
 )
 from factory_ai.actions.execute_droid.models import (
     ExecuteDroidResponse,
     ListSessionMessagesResponse,
     SessionMessage,
-    has_assistant_message_after,
 )
 from factory_ai.clients.exceptions import FactoryAIError
 from factory_ai.core.exporters.session.models import Session
@@ -88,19 +88,81 @@ def mock_port_client() -> MagicMock:
     return mock
 
 
-def test_has_assistant_message_after_newest_first() -> None:
-    messages = [
-        SessionMessage.model_validate({"id": "msg-2", "role": "assistant"}),
-        SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
-    ]
-    assert has_assistant_message_after(messages, "msg-1") is True
+def _messages_response(
+    messages: list[SessionMessage],
+) -> ListSessionMessagesResponse:
+    return ListSessionMessagesResponse.model_validate(
+        {"messages": messages, "pagination": {"hasMore": False}}
+    )
 
 
-def test_has_assistant_message_after_not_yet() -> None:
-    messages = [
-        SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
-    ]
-    assert has_assistant_message_after(messages, "msg-1") is False
+def test_assistant_reply_after_empty_when_no_assistant_yet() -> None:
+    response = _messages_response(
+        [
+            SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
+        ]
+    )
+    assert response.assistant_reply_after("msg-1") == {}
+
+
+def test_assistant_reply_after_joins_text_chronologically() -> None:
+    response = _messages_response(
+        [
+            SessionMessage.model_validate(
+                {
+                    "id": "msg-3",
+                    "role": "assistant",
+                    "modelId": "claude-sonnet",
+                    "content": [{"type": "text", "text": "second"}],
+                }
+            ),
+            SessionMessage.model_validate(
+                {
+                    "id": "msg-2",
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "bash",
+                            "id": "tool-1",
+                            "input": {},
+                        },
+                        {"type": "text", "text": "first"},
+                    ],
+                }
+            ),
+            SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
+        ]
+    )
+    reply = response.assistant_reply_after("msg-1")
+    assert reply == {
+        "assistantMessageIds": ["msg-2", "msg-3"],
+        "assistantMessageId": "msg-3",
+        "assistantText": "first\n\nsecond",
+        "toolNames": ["bash"],
+        "modelId": "claude-sonnet",
+        "assistantIsError": False,
+    }
+
+
+def test_assistant_reply_after_includes_empty_fields() -> None:
+    response = _messages_response(
+        [
+            SessionMessage.model_validate(
+                {"id": "msg-2", "role": "assistant", "content": []}
+            ),
+            SessionMessage.model_validate({"id": "msg-1", "role": "user"}),
+        ]
+    )
+    reply = response.assistant_reply_after("msg-1")
+    assert reply == {
+        "assistantMessageIds": ["msg-2"],
+        "assistantMessageId": "msg-2",
+        "assistantText": "",
+        "toolNames": [],
+        "modelId": None,
+        "assistantIsError": False,
+    }
 
 
 @pytest.mark.asyncio
@@ -196,11 +258,45 @@ class TestExecuteDroidExecutor:
                 "environmentId": "env-1",
             }
         )
+        completion = TurnCompletion(
+            session=Session.model_validate(
+                {
+                    "sessionId": "sess-1",
+                    "title": "Fix the flaky test",
+                    "status": "idle",
+                    "messageCount": 2,
+                    "createdAt": 1,
+                    "updatedAt": 2,
+                    "computerId": "comp-1",
+                    "factoryCredits": 1.25,
+                    "sessionSettings": {"model": "claude-sonnet"},
+                    "artifacts": [
+                        {
+                            "id": "art-1",
+                            "url": "https://github.com/org/repo/pull/1",
+                            "provider": "github",
+                            "kind": "pull_request",
+                            "source": "tool",
+                            "createdAt": "2024-01-01T00:00:00.000Z",
+                        }
+                    ],
+                }
+            ),
+            reply={
+                "assistantText": "Done — PR opened.",
+                "assistantMessageId": "msg-2",
+                "assistantMessageIds": ["msg-2"],
+            },
+            user_message_id="msg-1",
+        )
         with (
             patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean,
             patch.object(executor, "_reflect_session", new_callable=AsyncMock),
             patch.object(
-                executor, "_wait_for_turn_completion", new_callable=AsyncMock
+                executor,
+                "_wait_for_turn_completion",
+                new_callable=AsyncMock,
+                return_value=completion,
             ) as wait,
         ):
             mock_ocean.port_client = mock_port_client
@@ -209,8 +305,16 @@ class TestExecuteDroidExecutor:
         wait.assert_awaited_once_with("sess-1", "comp-1", "msg-1")
         mock_port_client.update_run_started.assert_called_once()
         mock_port_client.report_run_completed.assert_called_once()
-        _, kwargs = mock_port_client.report_run_completed.call_args
+        args, kwargs = mock_port_client.report_run_completed.call_args
         assert kwargs["status_label"] == TURN_COMPLETED_STATUS_LABEL
+        assert "Done — PR opened." in args[2]
+        assert run.output["assistantText"] == "Done — PR opened."
+        assert run.output["assistantMessageId"] == "msg-2"
+        assert run.output["title"] == "Fix the flaky test"
+        assert run.output["status"] == "idle"
+        assert run.output["factoryCredits"] == 1.25
+        assert run.output["sessionSettings"]["model"] == "claude-sonnet"
+        assert run.output["artifacts"][0]["kind"] == "pull_request"
 
     async def test_wait_for_turn_completion_polls_until_done(
         self, executor: ExecuteDroidExecutor, client: MagicMock
@@ -223,6 +327,7 @@ class TestExecuteDroidExecutor:
                 "createdAt": 1,
                 "updatedAt": 2,
                 "computerId": "comp-1",
+                "title": "Ship it",
             }
         )
         running_session = Session.model_validate(
@@ -238,7 +343,11 @@ class TestExecuteDroidExecutor:
         messages = ListSessionMessagesResponse.model_validate(
             {
                 "messages": [
-                    {"id": "msg-2", "role": "assistant"},
+                    {
+                        "id": "msg-2",
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "All green."}],
+                    },
                     {"id": "msg-1", "role": "user"},
                 ],
                 "pagination": {"hasMore": False, "nextCursor": None},
@@ -251,9 +360,14 @@ class TestExecuteDroidExecutor:
         ]
 
         with patch(f"{_EXECUTOR_MODULE}.asyncio.sleep", new_callable=AsyncMock):
-            await executor._wait_for_turn_completion("sess-1", "comp-1", "msg-1")
+            completion = await executor._wait_for_turn_completion(
+                "sess-1", "comp-1", "msg-1"
+            )
 
         assert client.get.await_count == 3
+        assert completion.session.title == "Ship it"
+        assert completion.reply["assistantText"] == "All green."
+        assert completion.reply["assistantMessageId"] == "msg-2"
 
     async def test_wait_for_turn_completion_times_out(
         self, executor: ExecuteDroidExecutor, client: MagicMock

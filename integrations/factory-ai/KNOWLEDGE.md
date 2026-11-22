@@ -23,8 +23,8 @@
 - Optional `model` / `reasoningEffort` apply only to **new** sessions (environment/computer)
 - 202 body: `{ sessionId, computerId, messageId }` (all required)
 - `waitForCompletion` (Port-side, default `true`):
-  - `true` — keep the Port run open and poll until turn complete: session `status` is `idle` **and** messages include an assistant reply after `messageId` (idle alone is not enough right after execute)
-  - `false` — complete the Port run immediately after the 202 with ids + app links
+  - `true` — keep the Port run open and poll until turn complete: session `status` is `idle` **and** messages include an assistant reply after `messageId` (idle alone is not enough right after execute). On success, Port run output includes the Factory session payload as-is plus assistant reply fields (`assistantText`, `assistantMessageId`, …)
+  - `false` — complete the Port run immediately after the 202 with ids + app links (no reply text yet)
 - Partition key: `sessionId` when continuing a session (serialize follow-ups); otherwise parallel
 
 ## Kind notes

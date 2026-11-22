@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -12,7 +14,6 @@ from factory_ai.actions.exceptions import ExecuteDroidError
 from factory_ai.actions.execute_droid.models import (
     ExecuteDroidResponse,
     ListSessionMessagesResponse,
-    has_assistant_message_after,
     parse_execute_droid_inputs,
 )
 from factory_ai.clients.exceptions import FactoryAIError
@@ -32,6 +33,30 @@ TURN_TIMED_OUT_STATUS_LABEL = "Timed out"
 POLL_INTERVAL_SECONDS = 5.0
 MAX_POLL_ATTEMPTS = 120  # 10 minutes at the default interval
 MESSAGES_PAGE_LIMIT = 50
+# Keep completion logs readable in Port; full text still goes on run.output.
+_ASSISTANT_LOG_TEXT_LIMIT = 2000
+
+
+@dataclass(frozen=True)
+class TurnCompletion:
+    """Result of waiting for a Droid turn to finish."""
+
+    session: Session
+    reply: dict[str, Any]
+    user_message_id: str
+
+    def completion_message(self) -> str:
+        session_url = f"{DEFAULT_FACTORY_APP_HOST}/sessions/{self.session.session_id}"
+        message = (
+            f"Droid turn completed. sessionId={self.session.session_id}, "
+            f"messageId={self.user_message_id}. Session: {session_url}."
+        )
+        assistant_text = self.reply.get("assistantText")
+        if isinstance(assistant_text, str) and assistant_text:
+            if len(assistant_text) > _ASSISTANT_LOG_TEXT_LIMIT:
+                assistant_text = assistant_text[:_ASSISTANT_LOG_TEXT_LIMIT] + "…"
+            message = f"{message}\n\nAssistant reply:\n{assistant_text}"
+        return message
 
 
 class ExecuteDroidExecutor(AbstractFactoryExecutor):
@@ -141,32 +166,39 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             should_raise=False,
         )
 
-        await self._wait_for_turn_completion(
+        completion = await self._wait_for_turn_completion(
             response.session_id, response.computer_id, response.message_id
         )
         await self._reflect_session(response.session_id, response.computer_id, run)
 
+        completion_output = {
+            **completion.session.to_raw_item(),
+            **completion.reply,
+        }
+        if isinstance(run, WorkflowNodeRun):
+            run.output.update(completion_output)
+
         await ocean.port_client.report_run_completed(
             run,
             True,
-            (
-                f"Droid turn completed. sessionId={response.session_id}, "
-                f"messageId={response.message_id}. Session: {session_url}."
-            ),
+            completion.completion_message(),
             status_label=TURN_COMPLETED_STATUS_LABEL,
         )
 
     async def _wait_for_turn_completion(
         self, session_id: str, computer_id: str, user_message_id: str
-    ) -> None:
+    ) -> TurnCompletion:
         """Poll until session is idle and an assistant message follows ``user_message_id``."""
         for attempt in range(1, MAX_POLL_ATTEMPTS + 1):
-            if await self._is_turn_complete(session_id, computer_id, user_message_id):
+            completion = await self._poll_turn_completion(
+                session_id, computer_id, user_message_id
+            )
+            if completion is not None:
                 logger.info(
                     f"Droid turn complete for session {session_id} "
                     f"after {attempt} poll(s)"
                 )
-                return
+                return completion
 
             if attempt < MAX_POLL_ATTEMPTS:
                 await asyncio.sleep(POLL_INTERVAL_SECONDS)
@@ -180,9 +212,9 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             status_label=TURN_TIMED_OUT_STATUS_LABEL,
         )
 
-    async def _is_turn_complete(
+    async def _poll_turn_completion(
         self, session_id: str, computer_id: str, user_message_id: str
-    ) -> bool:
+    ) -> TurnCompletion | None:
         try:
             session = await self.client.get(
                 f"/api/v0/sessions/{session_id}",
@@ -193,10 +225,10 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             logger.warning(
                 f"Failed to poll session {session_id} while waiting for completion: {error}"
             )
-            return False
+            return None
 
         if session.status != "idle":
-            return False
+            return None
 
         try:
             messages_response = await self.client.get(
@@ -209,9 +241,14 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
                 f"Failed to poll messages for session {session_id} "
                 f"while waiting for completion: {error}"
             )
-            return False
+            return None
 
-        return has_assistant_message_after(messages_response.messages, user_message_id)
+        reply = messages_response.assistant_reply_after(user_message_id)
+        if not reply:
+            return None
+        return TurnCompletion(
+            session=session, reply=reply, user_message_id=user_message_id
+        )
 
     async def _reflect_session(
         self, session_id: str, computer_id: str, run: IntegrationRun
