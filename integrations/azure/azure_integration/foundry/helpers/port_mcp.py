@@ -56,9 +56,7 @@ def tools_from_agent_payload(agent: Any) -> list[Any]:
     if not isinstance(agent, dict) or "versions" not in agent:
         return []
     definition = Agent.model_validate(agent).latest_version.definition
-    return (
-        definition.tools if isinstance(definition, PromptAgentDefinition) else []
-    )
+    return definition.tools if isinstance(definition, PromptAgentDefinition) else []
 
 
 async def upsert_custom_keys_connection(
@@ -157,7 +155,9 @@ async def _collect_mcp_tools(
             project_arm_id=project_arm_id,
         )
         tools.append(
-            _mcp_tool(label=GITHUB_MCP_SERVER_LABEL, url=GITHUB_MCP_URL, connection=conn)
+            _mcp_tool(
+                label=GITHUB_MCP_SERVER_LABEL, url=GITHUB_MCP_URL, connection=conn
+            )
         )
     return tools
 

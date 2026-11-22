@@ -5,9 +5,7 @@ import pytest
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.helpers.port_mcp import (
-    GITHUB_MCP_SERVER_LABEL,
     GITHUB_MCP_URL,
-    PORT_MCP_SERVER_LABEL,
     agent_definition_kind,
     ensure_port_mcp,
     port_connection_name,
@@ -18,7 +16,11 @@ from azure_integration.foundry.helpers.toolbox import (
     merge_toolbox_into_tools,
     toolbox_name_from_agent_tools,
 )
-from azure_integration.foundry.models.toolbox import TOOLBOX_SERVER_LABEL
+from azure_integration.foundry.models.toolbox import (
+    GITHUB_MCP_SERVER_LABEL,
+    PORT_MCP_SERVER_LABEL,
+    TOOLBOX_SERVER_LABEL,
+)
 
 
 def _client(side_effect: list[Any] | Any) -> MagicMock:
@@ -195,6 +197,7 @@ async def test_prompt_foreign_toolbox_skips_without_opt_in() -> None:
         )
     conn.assert_not_awaited()
     post_run_log.assert_awaited_once()
+    assert post_run_log.await_args is not None
     assert post_run_log.await_args.args[0] is run
     assert tb in post_run_log.await_args.args[1]
     assert post_run_log.await_args.kwargs["level"] == "WARNING"

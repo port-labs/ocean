@@ -38,6 +38,10 @@ def _supports_chat(deployment: dict[str, Any]) -> bool:
 class InvokeModelExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     ACTION_NAME = "invoke_model"
 
+    def __init__(self) -> None:
+        super().__init__()
+        ResponsesInvokeMixin.__init__(self, self.client)
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = InvokeModelInputs.from_execution_properties(run.execution_properties)
         project_endpoint = inputs.project_endpoint

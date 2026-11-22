@@ -11,12 +11,13 @@ from port_ocean.core.models import (
 )
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
+from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.helpers.invoke_completion import (
     INVOCATION_SUBMITTED_STATUS_LABEL,
     complete_invoke_run_for_response,
     complete_invoke_run_from_sse,
 )
-from azure_integration.foundry.helpers.responses_stream import ResponsesSseEvent
+from azure_integration.foundry.models.responses import ResponsesSseEvent
 from azure_integration.foundry.stream_manager import get_stream_manager
 
 INVOKE_RUNNING_STATUS_LABEL = "Agent working"
@@ -27,7 +28,8 @@ INVOKE_STARTING_STATUS_LABEL = "Invoking"
 class ResponsesInvokeMixin:
     """Shared Responses API invoke + SSE streaming for agent and model actions."""
 
-    client: Any
+    def __init__(self, client: FoundryHttpClient) -> None:
+        self.client = client
 
     async def execute_responses_invoke(
         self,

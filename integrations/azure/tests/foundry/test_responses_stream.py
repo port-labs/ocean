@@ -1,32 +1,28 @@
-from azure_integration.foundry.helpers.responses_stream import (
-    TERMINAL_SSE_TYPES,
+from azure_integration.foundry.models.responses import (
+    TERMINAL_EVENTS,
     ResponsesSseEvent,
-    format_responses_sse_log_message,
-    parse_responses_sse_payload,
-    response_id_from_sse_event,
 )
 
 
 def test_parse_and_format() -> None:
-    assert parse_responses_sse_payload("not-json") is None
-    assert parse_responses_sse_payload("{}") is None
-    event = parse_responses_sse_payload(
+    assert ResponsesSseEvent.parse_payload("not-json") is None
+    assert ResponsesSseEvent.parse_payload("{}") is None
+    event = ResponsesSseEvent.parse_payload(
         '{"type":"response.created","response":{"id":"resp_1"}}'
     )
     assert event is not None
-    assert response_id_from_sse_event(event) == "resp_1"
+    assert event.response_id == "resp_1"
     assert (
-        format_responses_sse_log_message(
-            ResponsesSseEvent(type="response.output_text.delta", text="Hi")
-        )
+        ResponsesSseEvent(type="response.output_text.delta", text="Hi").log_message()
         is None
     )
     assert (
-        format_responses_sse_log_message(
-            ResponsesSseEvent(type="response.output_text.done", text="Hey!")
-        )
+        ResponsesSseEvent(type="response.output_text.done", text="Hey!").log_message()
         == "Hey!"
     )
-    assert TERMINAL_SSE_TYPES.get("response.completed") is True
-    assert TERMINAL_SSE_TYPES.get("response.failed") is False
-    assert TERMINAL_SSE_TYPES.get("response.created") is None
+    assert ResponsesSseEvent(type="response.completed").is_terminal is True
+    assert ResponsesSseEvent(type="response.failed").is_terminal is True
+    assert ResponsesSseEvent(type="response.created").is_terminal is False
+    assert TERMINAL_EVENTS.get("response.completed") is True
+    assert TERMINAL_EVENTS.get("response.failed") is False
+    assert TERMINAL_EVENTS.get("response.created") is None

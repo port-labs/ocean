@@ -18,9 +18,12 @@ from azure_integration.foundry.core.exporters.responses_exporter import (
     ResponsesExporter,
 )
 from azure_integration.foundry.core.options import EndpointScope, SingleResponseOptions
-from azure_integration.foundry.helpers.responses_stream import ResponsesSseEvent
 from azure_integration.foundry.helpers.utils import project_name_from_endpoint
-from azure_integration.foundry.models.responses import TERMINAL_EVENTS, Response
+from azure_integration.foundry.models.responses import (
+    TERMINAL_EVENTS,
+    Response,
+    ResponsesSseEvent,
+)
 
 COMPLETED_STATUS_LABEL = "Response completed"
 FAILED_STATUS_LABEL = "Response failed"
@@ -72,7 +75,7 @@ async def complete_invoke_run_for_response(
     if isinstance(run, WorkflowNodeRun):
         run.output = {
             **run.output,
-            **Response.model_validate(response_body).run_output(
+            **Response.model_validate(response_body or {}).run_output(
                 response_id=response_id
             ),
         }
@@ -145,15 +148,16 @@ async def complete_invoke_run_from_sse(
     success = TERMINAL_EVENTS.get(parsed.type)
     if success is None:
         return False
-    response_body = parsed.response
     bound = run.output.get("responseId") if isinstance(run, WorkflowNodeRun) else None
-    response_id = str((response_body or {}).get("id") or bound or "")
+    response_id = parsed.response_id or (str(bound) if bound else "")
     if not response_id:
         return False
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
-        response_body=response_body,
+        response_body=(
+            parsed.response.model_dump() if parsed.response is not None else None
+        ),
         success=success,
         source=f"Responses SSE {parsed.type}",
     )

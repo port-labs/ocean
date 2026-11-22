@@ -1,5 +1,3 @@
-from typing import Any
-
 import pytest
 
 from azure_integration.foundry.actions.create_agent_executor import CreateAgentInputs

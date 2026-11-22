@@ -59,7 +59,7 @@ class ToolboxLatest(FoundryModel):
         ]
 
 
-def parse_toolbox_latest(payload: dict) -> ToolboxLatest | None:
+def parse_toolbox_latest(payload: dict[str, Any]) -> ToolboxLatest | None:
     versions = payload.get("versions")
     latest = versions.get("latest") if isinstance(versions, dict) else None
     if not isinstance(latest, dict):

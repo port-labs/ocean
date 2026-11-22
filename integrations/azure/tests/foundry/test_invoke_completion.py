@@ -169,6 +169,5 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
     assert get_resource.await_args is not None
     options = get_resource.await_args.args[0]
     assert (
-        options.project_endpoint
-        == "https://acct.services.ai.azure.com/api/projects/p"
+        options.project_endpoint == "https://acct.services.ai.azure.com/api/projects/p"
     )

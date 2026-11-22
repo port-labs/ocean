@@ -57,6 +57,10 @@ class InvokeAgentInputs(AbstractFoundryInvokeInput):
 class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
     ACTION_NAME = "invoke_agent"
 
+    def __init__(self) -> None:
+        super().__init__()
+        ResponsesInvokeMixin.__init__(self, self.client)
+
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         # Serialize same-agent remints of Port/GitHub project connections + toolbox.
         props = run.execution_properties
@@ -149,9 +153,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
         hosted = agent.kind == "hosted"
         definition = agent.latest_version.definition
         tools = (
-            definition.tools
-            if isinstance(definition, PromptAgentDefinition)
-            else []
+            definition.tools if isinstance(definition, PromptAgentDefinition) else []
         )
         # Prompt uses useExistingToolbox only; hosted uses toolboxName only.
         try:

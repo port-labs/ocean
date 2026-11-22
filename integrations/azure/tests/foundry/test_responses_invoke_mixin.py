@@ -32,7 +32,7 @@ def _run() -> WorkflowNodeRun:
 @pytest.mark.asyncio
 async def test_bind_and_capacity_fallback() -> None:
     run = _run()
-    mixin = ResponsesInvokeMixin()
+    mixin = ResponsesInvokeMixin(MagicMock())
     mock_ocean = MagicMock()
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
     mock_ocean.port_client.patch_wf_node_run = AsyncMock()

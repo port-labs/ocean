@@ -13,13 +13,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRunLog
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
-from azure_integration.foundry.helpers.responses_stream import (
-    TERMINAL_SSE_TYPES,
-    ResponsesSseEvent,
-    format_responses_sse_log_message,
-    parse_responses_sse_payload,
-    response_id_from_sse_event,
-)
+from azure_integration.foundry.models.responses import ResponsesSseEvent
 
 OnResponseIdCallback = Callable[[str], Awaitable[None] | None]
 OnTerminalSseCallback = Callable[[ResponsesSseEvent], Awaitable[None] | None]
@@ -128,25 +122,22 @@ class ResponsesStreamManager:
                     continue
                 if payload == "[DONE]":
                     break
-                parsed = parse_responses_sse_payload(payload)
+                parsed = ResponsesSseEvent.parse_payload(payload)
                 if parsed is None:
                     continue
                 if on_response_id is not None and not response_id_reported:
-                    response_id = response_id_from_sse_event(parsed)
+                    response_id = parsed.response_id
                     if response_id:
                         response_id_reported = True
                         result = on_response_id(response_id)
                         if asyncio.iscoroutine(result):
                             await result
-                message = format_responses_sse_log_message(parsed)
+                message = parsed.log_message()
                 if message is not None:
                     buffer.append(WorkflowNodeRunLog(message=message, level="INFO"))
                     if len(buffer) >= _LOG_FLUSH_BATCH_SIZE:
                         await _flush_logs(run, buffer)
-                if (
-                    stop_on_terminal_sse
-                    and TERMINAL_SSE_TYPES.get(parsed.type) is not None
-                ):
+                if stop_on_terminal_sse and parsed.is_terminal:
                     terminal_parsed = parsed
                     break
             if buffer:
