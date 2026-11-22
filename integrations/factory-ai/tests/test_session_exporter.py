@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from factory_ai.core.exporters.session import SessionExporter
@@ -11,6 +12,15 @@ from factory_ai.core.exporters.session.models import (
     ListSessionsResponse,
     Session,
 )
+
+
+def _http_status_error(status_code: int) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", "https://api.factory.ai/api/v0/sessions")
+    response = httpx.Response(status_code, request=request)
+    return httpx.HTTPStatusError(
+        f"HTTP {status_code}", request=request, response=response
+    )
+
 
 _MIN_SESSION = {
     "sessionId": "sess-1",
@@ -171,5 +181,46 @@ async def test_session_exporter_get_resource_not_found() -> None:
     exporter = SessionExporter(client_mock)
 
     result = await exporter.get_resource(GetSessionOptions(session_id="missing"))
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_session_exporter_lists_soft_fails_on_403() -> None:
+    client_mock = MagicMock()
+    client_mock.get = AsyncMock(side_effect=_http_status_error(403))
+    exporter = SessionExporter(client_mock)
+
+    batches = [
+        batch async for batch in exporter.get_paginated_resources(ListSessionOptions())
+    ]
+
+    assert batches == []
+    client_mock.get.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_session_exporter_lists_rethrows_non_403() -> None:
+    client_mock = MagicMock()
+    client_mock.get = AsyncMock(side_effect=_http_status_error(500))
+    exporter = SessionExporter(client_mock)
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        [
+            batch
+            async for batch in exporter.get_paginated_resources(ListSessionOptions())
+        ]
+
+    assert exc_info.value.response is not None
+    assert exc_info.value.response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_session_exporter_get_resource_soft_fails_on_403() -> None:
+    client_mock = MagicMock()
+    client_mock.get_or_none = AsyncMock(side_effect=_http_status_error(403))
+    exporter = SessionExporter(client_mock)
+
+    result = await exporter.get_resource(GetSessionOptions(session_id="sess-1"))
 
     assert result is None
