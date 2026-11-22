@@ -32,6 +32,7 @@ from claude_managed_agents.actions.port_mcp_utils import (
     attach_port_mcp_settings_to_agent_config,
     ensure_port_mcp_credential,
     get_or_create_mcp_vault,
+    lock_for_vault,
     port_family_mcp_urls_on_agent,
     port_mcp_binding_cache_key,
     remint_port_mcp_credential,
@@ -177,35 +178,40 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         agent: BetaManagedAgentsAgent,
     ) -> str:
         vault_name = port_mcp.vault_name or port_mcp.execution_identity.identifier
-        mcp_urls = port_family_mcp_urls_on_agent(agent.mcp_servers or [])
-        vault_id: str | None = None
-        urls_to_resolve: set[str] = set(mcp_urls)
+        # Serialize remint/get-or-create per vault so parallel trigger_agent runs
+        # sharing a service-account vault do not 409 on Anthropic credentials.update.
+        async with await lock_for_vault(vault_name):
+            mcp_urls = port_family_mcp_urls_on_agent(agent.mcp_servers or [])
+            vault_id: str | None = None
+            urls_to_resolve: set[str] = set(mcp_urls)
 
-        for url in mcp_urls:
-            cached = self._port_mcp_cache.get(
-                port_mcp_binding_cache_key(vault_name, url)
-            )
-            if cached is None:
-                continue
-            vault_id = vault_id or cached.vault_id
-            await remint_port_mcp_credential(self.client, port_mcp.workflow_run, cached)
-            urls_to_resolve.discard(url)
+            for url in mcp_urls:
+                cached = self._port_mcp_cache.get(
+                    port_mcp_binding_cache_key(vault_name, url)
+                )
+                if cached is None:
+                    continue
+                vault_id = vault_id or cached.vault_id
+                await remint_port_mcp_credential(
+                    self.client, port_mcp.workflow_run, cached
+                )
+                urls_to_resolve.discard(url)
 
-        if vault_id is None:
-            vault_id = (await get_or_create_mcp_vault(self.client, vault_name)).id
+            if vault_id is None:
+                vault_id = (await get_or_create_mcp_vault(self.client, vault_name)).id
 
-        for url in urls_to_resolve:
-            binding = await ensure_port_mcp_credential(
-                self.client,
-                port_mcp.workflow_run,
-                vault_id,
-                url,
-            )
-            self._port_mcp_cache.set(
-                port_mcp_binding_cache_key(vault_name, url), binding
-            )
+            for url in urls_to_resolve:
+                binding = await ensure_port_mcp_credential(
+                    self.client,
+                    port_mcp.workflow_run,
+                    vault_id,
+                    url,
+                )
+                self._port_mcp_cache.set(
+                    port_mcp_binding_cache_key(vault_name, url), binding
+                )
 
-        return vault_id
+            return vault_id
 
     async def _ensure_session_continuable(
         self, session_id: str, run: IntegrationRun

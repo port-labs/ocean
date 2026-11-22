@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 from typing import Any, cast
 
+from anthropic import APIStatusError
 from anthropic.types.beta import (
     BetaManagedAgentsAgent,
 )
@@ -24,6 +26,20 @@ from port_ocean.core.models import WorkflowNodeRun
 
 PORT_MCP_SERVER_NAME = "port"
 PORT_MCP_CREDENTIAL_NAME = "port-mcp"
+# ponytail: in-process only; 409 retry covers multi-pod races
+_REMINT_ATTEMPTS = 3
+_vault_locks: dict[str, asyncio.Lock] = {}
+_vault_locks_guard = asyncio.Lock()
+
+
+async def lock_for_vault(vault_key: str) -> asyncio.Lock:
+    """Per-vault lock for get-or-create + credential remint serialization."""
+    async with _vault_locks_guard:
+        lock = _vault_locks.get(vault_key)
+        if lock is None:
+            lock = asyncio.Lock()
+            _vault_locks[vault_key] = lock
+        return lock
 
 
 class PortMcpBinding(BaseModel):
@@ -280,11 +296,20 @@ async def remint_port_mcp_credential(
         raise RuntimeError(
             "portAccessToken is required to remint Port-family MCP vault credentials"
         )
-    await client.beta.vaults.credentials.update(
-        binding.credential_id,
-        vault_id=binding.vault_id,
-        auth={
-            "type": "static_bearer",
-            "token": access_token,
-        },
-    )
+    auth = {"type": "static_bearer", "token": access_token}
+    for attempt in range(1, _REMINT_ATTEMPTS + 1):
+        try:
+            await client.beta.vaults.credentials.update(
+                binding.credential_id,
+                vault_id=binding.vault_id,
+                auth=auth,
+            )
+            return
+        except APIStatusError as error:
+            if error.status_code != 409 or attempt == _REMINT_ATTEMPTS:
+                raise
+            logger.warning(
+                f"Concurrent remint of vault credential {binding.credential_id} "
+                f"(409); retry {attempt}/{_REMINT_ATTEMPTS}"
+            )
+            await asyncio.sleep(0)
