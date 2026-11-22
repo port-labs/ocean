@@ -1,7 +1,7 @@
 {
   "title": "Factory.ai",
   "description": "Factory.ai (Droid / Software Factory) integration for Port Ocean",
-  "icon": "DefaultBlueprint",
+  "icon": "FactoryAi",
   "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/",
   "recommendedInstallationMethod": "Saas",
   "formMappingEnabled": true,
@@ -61,7 +61,7 @@
   "actions": [
     {
       "name": "execute_droid",
-      "icon": "DefaultBlueprint",
+      "icon": "FactoryAi",
       "description": "Start a headless Factory Droid turn via POST /api/v0/droid/execute. Target an environment (fresh computer + session), an existing computer (new session), or an existing session (follow-up). Factory returns 202 when the turn is accepted. With waitForCompletion true (default), the Port run stays open and the integration polls until the session is idle and an assistant message exists after the returned messageId. With waitForCompletion false, the Port run completes immediately after the 202 with sessionId, messageId, computerId, and app links.",
       "inputs": [
         {
