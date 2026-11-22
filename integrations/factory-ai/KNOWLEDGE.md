@@ -9,9 +9,23 @@
 ## Integration-wide
 
 - Base URL: `https://api.factory.ai` (paths like `/api/v0/...`)
+- App host (links): `https://app.factory.ai` (e.g. `/sessions/{sessionId}`)
 - Auth: `Authorization: Bearer <FACTORY_API_KEY>` (`fk-…`; `401` if missing/invalid)
 - No outbound webhooks → resync-only; `saas.liveEvents.enabled` stays `false`
 - Errors use a shared `FactoryApiError` envelope (`detail`, `status`, `title`, optional `metadata`)
+
+## Actions
+
+### execute_droid
+
+- `POST /api/v0/droid/execute` — starts a headless turn; response is **202 Accepted**
+- Targets (exactly one): `environment` (+ `environmentId`), `computer` (+ `computerId`), `session` (+ `sessionId`)
+- Optional `model` / `reasoningEffort` apply only to **new** sessions (environment/computer)
+- 202 body: `{ sessionId, computerId, messageId }` (all required)
+- `waitForCompletion` (Port-side, default `true`):
+  - `true` — keep the Port run open and poll until turn complete: session `status` is `idle` **and** messages include an assistant reply after `messageId` (idle alone is not enough right after execute). On success, Port run output includes the Factory session payload as-is plus assistant reply fields (`assistantText`, `assistantMessageId`, …)
+  - `false` — complete the Port run immediately after the 202 with ids + app links (no reply text yet)
+- Partition key: `sessionId` when continuing a session (serialize follow-ups); otherwise parallel
 
 ## Kind notes
 
