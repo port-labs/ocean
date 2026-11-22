@@ -48,6 +48,24 @@ def main(argv: Sequence[str] | None = None) -> None:
         metavar="PATH",
         help="Write a machine-readable JSON report to this file.",
     )
+    parser.add_argument(
+        "--mock-base-url",
+        dest="mock_base_url",
+        required=True,
+        metavar="URL",
+        help=(
+            "Base URL of a mock server already running and loaded with the scenario. "
+            "Runs `ocean sail -O` after Port preparation."
+        ),
+    )
+    parser.add_argument(
+        "--integration-timeout",
+        type=float,
+        default=180.0,
+        dest="integration_timeout_seconds",
+        metavar="SECONDS",
+        help="Max seconds to wait for the integration subprocess (default: 180).",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -58,6 +76,8 @@ def main(argv: Sequence[str] | None = None) -> None:
                 update_expected=args.update_expected,
                 skip_cleanup=args.skip_cleanup,
                 report_path=args.report_path,
+                mock_base_url=args.mock_base_url,
+                integration_timeout_seconds=args.integration_timeout_seconds,
             )
         )
     except ValidationCliError as error:
@@ -73,6 +93,15 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"  • {name} ({kinds_label})")
         print(f"    integration: {run.plan.integration_identifier}")
         print(f"    blueprints: {', '.join(run.plan.blueprint_renames.values())}")
+        if run.integration.timed_out:
+            print("    Integration subprocess timed out", file=sys.stderr)
+        elif run.integration.returncode != 0:
+            print(
+                f"    Integration subprocess failed (exit {run.integration.returncode})",
+                file=sys.stderr,
+            )
+        else:
+            print("    Integration subprocess completed")
         if run.cleaned_up:
             print("    Port resources cleaned up")
         elif run.cleanup_leftovers:
@@ -83,8 +112,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         else:
             print("    Port resources kept (--skip-cleanup)")
 
-    print(
-        "Mock and integration run are not implemented yet; "
-        "Port resources were prepared for each scenario.",
-        file=sys.stderr,
-    )
+    if result.scenario_runs and all(
+        not run.integration.timed_out and run.integration.returncode == 0
+        for run in result.scenario_runs
+    ):
+        print("All scenarios completed integration subprocess.", file=sys.stderr)
+    else:
+        raise SystemExit(1)

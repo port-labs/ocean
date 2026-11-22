@@ -31,9 +31,17 @@ from tools.integration_validation.runner.port_app_config import (
 )
 from tools.integration_validation.runner.port_setup import (
     ScenarioPortPlan,
+    ValidationPortClient,
     create_port_client,
     prepare_scenario_port,
     teardown_scenario_port,
+)
+from tools.integration_validation.runner.integration_config_env import (
+    merge_scenario_integration_config,
+)
+from tools.integration_validation.runner.integration_process import (
+    IntegrationRunResult,
+    run_ocean_sail_once,
 )
 from tools.integration_validation.runner.preflight import (
     load_integration_type,
@@ -49,6 +57,8 @@ class ValidateOptions:
     update_expected: bool
     skip_cleanup: bool
     report_path: Path | None
+    mock_base_url: str
+    integration_timeout_seconds: float
 
 
 @dataclass(frozen=True)
@@ -56,6 +66,7 @@ class ScenarioRun:
     plan: ScenarioPortPlan
     cleanup_leftovers: list[str]
     cleaned_up: bool
+    integration: IntegrationRunResult
 
 
 @dataclass(frozen=True)
@@ -74,10 +85,14 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
     integration_type = load_integration_type()
     plans = _plan_scenarios(paths, scenarios, scenario_names)
 
-    # TODO(follow-up PRs): start the mock and `ocean sail` between prepare and
-    # teardown, then collect, diff and report.
     scenario_runs = asyncio.run(
-        _run_scenarios(plans, integration_type, options.skip_cleanup)
+        _run_scenarios(
+            paths,
+            scenarios,
+            plans,
+            integration_type,
+            options,
+        )
     )
 
     result = ValidateResult(paths=paths, options=options, scenario_runs=scenario_runs)
@@ -123,37 +138,91 @@ def _plan_scenarios(
 
 
 async def _run_scenarios(
+    paths: ValidationPaths,
+    scenarios: ScenariosDocument,
     plans: list[ScenarioPortPlan],
     integration_type: str,
-    skip_cleanup: bool,
+    options: ValidateOptions,
 ) -> list[ScenarioRun]:
     runs: list[ScenarioRun] = []
     for plan in plans:
-        client = create_port_client(plan.integration_identifier, integration_type)
-        logger.info(
-            f"Preparing Port for scenario '{plan.scenario_name}' "
-            f"(integration {plan.integration_identifier})"
-        )
-        await prepare_scenario_port(client, plan)
-
-        leftovers: list[str] = []
-        if not skip_cleanup:
-            leftovers = await teardown_scenario_port(client, plan)
         runs.append(
-            ScenarioRun(
-                plan=plan,
-                cleanup_leftovers=leftovers,
-                cleaned_up=not skip_cleanup and not leftovers,
+            await _run_scenario(
+                paths,
+                scenarios,
+                plan,
+                integration_type,
+                options,
             )
         )
     return runs
+
+
+async def _run_scenario(
+    paths: ValidationPaths,
+    scenarios: ScenariosDocument,
+    plan: ScenarioPortPlan,
+    integration_type: str,
+    options: ValidateOptions,
+) -> ScenarioRun:
+    client = create_port_client(plan.integration_identifier, integration_type)
+    logger.info(
+        f"Preparing Port for scenario '{plan.scenario_name}' "
+        f"(integration {plan.integration_identifier})"
+    )
+
+    leftovers: list[str] = []
+    prepared = False
+
+    try:
+        await prepare_scenario_port(client, plan)
+        prepared = True
+
+        scenario = scenarios.scenarios[plan.scenario_name]
+        integration_config = merge_scenario_integration_config(
+            scenarios.defaults.integration_config,
+            scenario.integration_config,
+        )
+        integration_result = await run_ocean_sail_once(
+            paths.integration_root,
+            integration_identifier=plan.integration_identifier,
+            integration_config=integration_config,
+            mock_base_url=options.mock_base_url,
+            timeout_seconds=options.integration_timeout_seconds,
+        )
+    finally:
+        if prepared:
+            leftovers = await _teardown_scenario(client, plan, options)
+
+    return ScenarioRun(
+        plan=plan,
+        cleanup_leftovers=leftovers,
+        cleaned_up=prepared and not options.skip_cleanup and not leftovers,
+        integration=integration_result,
+    )
+
+
+async def _teardown_scenario(
+    client: ValidationPortClient,
+    plan: ScenarioPortPlan,
+    options: ValidateOptions,
+) -> list[str]:
+    if options.skip_cleanup:
+        return []
+    leftovers = await teardown_scenario_port(client, plan)
+    if leftovers:
+        logger.warning(
+            f"Scenario '{plan.scenario_name}' cleanup left behind: "
+            f"{', '.join(leftovers)}"
+        )
+    return leftovers
 
 
 def _write_report(result: ValidateResult, report_path: Path) -> None:
     # Placeholder report until full report.json schema is implemented.
     payload = {
         "integration": result.paths.integration_name,
-        "status": "port_prepared",
+        "status": _aggregate_status(result),
         "scenarios": [_scenario_report(run) for run in result.scenario_runs],
         "options": {
             "update_expected": result.options.update_expected,
@@ -172,7 +241,7 @@ def _write_report(result: ValidateResult, report_path: Path) -> None:
 def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
     return {
         "name": run.plan.scenario_name,
-        "status": "not_run",
+        "status": _scenario_status(run),
         "kinds": run.plan.kinds,
         "port": {
             "integration_identifier": run.plan.integration_identifier,
@@ -180,4 +249,40 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleaned_up": run.cleaned_up,
             "cleanup_leftovers": run.cleanup_leftovers,
         },
+        "integration": _integration_report(run.integration),
     }
+
+
+def _integration_report(integration: IntegrationRunResult) -> dict[str, Any]:
+    return {
+        "returncode": integration.returncode,
+        "timed_out": integration.timed_out,
+        "stderr_tail": _tail(integration.stderr),
+        "stdout_tail": _tail(integration.stdout),
+    }
+
+
+def _tail(text: str, *, limit: int = 2000) -> str:
+    if len(text) <= limit:
+        return text
+    return text[-limit:]
+
+
+def _scenario_status(run: ScenarioRun) -> str:
+    if run.integration.timed_out:
+        return "integration_timeout"
+    if run.integration.returncode != 0:
+        return "integration_failed"
+    return "integration_completed"
+
+
+def _aggregate_status(result: ValidateResult) -> str:
+    statuses = {_scenario_status(run) for run in result.scenario_runs}
+    if any(
+        status.endswith("failed") or status == "integration_timeout"
+        for status in statuses
+    ):
+        return "failed"
+    if statuses == {"integration_completed"}:
+        return "passed"
+    return "partial"

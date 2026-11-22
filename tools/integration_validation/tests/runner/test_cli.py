@@ -6,8 +6,28 @@ from pathlib import Path
 import pytest
 
 from tools.integration_validation.runner import runner as runner_module
+from tools.integration_validation.runner.integration_process import IntegrationRunResult
 from tools.integration_validation.runner.main import main
 from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
+
+MOCK_BASE_URL = "http://127.0.0.1:9000"
+
+
+@pytest.fixture(autouse=True)
+def fake_ocean_sail(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_sail(*_args: object, **_kwargs: object) -> IntegrationRunResult:
+        return IntegrationRunResult(
+            returncode=0,
+            stdout="",
+            stderr="",
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(runner_module, "run_ocean_sail_once", fake_sail)
+
+
+def _cli_args(integration_root: Path, *extra: str) -> list[str]:
+    return [str(integration_root), "--mock-base-url", MOCK_BASE_URL, *extra]
 
 
 @pytest.fixture
@@ -71,10 +91,10 @@ scenarios:
     (integration_root / ".env").write_text(
         "\n".join(
             [
+                "OCEAN__INTEGRATION__TYPE=sample",
                 "OCEAN__PORT__CLIENT_ID=test-client",
                 "OCEAN__PORT__CLIENT_SECRET=test-secret",
                 "OCEAN__PORT__BASE_URL=https://api.getport.io",
-                "OCEAN__INTEGRATION__TYPE=sample",
             ]
         ),
         encoding="utf-8",
@@ -92,6 +112,8 @@ def test_validate_help_lists_options(capsys: pytest.CaptureFixture[str]) -> None
     assert "--update-expected" in output
     assert "--skip-cleanup" in output
     assert "--report" in output
+    assert "--mock-base-url" in output
+    assert "--integration-timeout" in output
 
 
 def test_validate_malformed_scenarios_yaml_exits_2(tmp_path: Path) -> None:
@@ -110,7 +132,7 @@ scenarios:
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(integration_root)])
+        main(_cli_args(integration_root))
 
     assert exc_info.value.code == 2
 
@@ -133,7 +155,7 @@ scenarios:
     )
 
     with pytest.raises(SystemExit):
-        main([str(integration_root)])
+        main(_cli_args(integration_root))
 
     err = capsys.readouterr().err
     assert "Setup error" in err
@@ -145,7 +167,7 @@ def test_validate_prepares_and_cleans_up_port_for_each_scenario(
     fake_port_clients: dict[str, FakePortClient],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main([str(validation_integration)])
+    main(_cli_args(validation_integration))
 
     out = capsys.readouterr()
     assert "happy_path" in out.out
@@ -174,7 +196,11 @@ def test_validate_skip_cleanup_keeps_port_resources_and_reports_them(
 ) -> None:
     report_path = tmp_path / "report.json"
 
-    main([str(validation_integration), "--skip-cleanup", "--report", str(report_path)])
+    main(
+        _cli_args(
+            validation_integration, "--skip-cleanup", "--report", str(report_path)
+        )
+    )
 
     assert "Port resources kept" in capsys.readouterr().out
     (client,) = fake_port_clients.values()
@@ -196,11 +222,73 @@ def test_validate_rejects_mapping_to_unknown_blueprint_before_touching_port(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(validation_integration)])
+        main(_cli_args(validation_integration))
 
     assert exc_info.value.code == 2
     assert "sampleTeam" in capsys.readouterr().err
     assert fake_port_clients == {}
+
+
+def test_validate_cleans_up_when_integration_step_raises(
+    validation_integration: Path,
+    fake_port_clients: dict[str, FakePortClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def boom(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("sail blew up")
+
+    monkeypatch.setattr(runner_module, "run_ocean_sail_once", boom)
+
+    with pytest.raises(RuntimeError, match="sail blew up"):
+        runner_module.run_validate(
+            runner_module.ValidateOptions(
+                integration_path=validation_integration,
+                scenario_names=None,
+                update_expected=False,
+                skip_cleanup=False,
+                report_path=None,
+                mock_base_url=MOCK_BASE_URL,
+                integration_timeout_seconds=30,
+            )
+        )
+
+    (client,) = fake_port_clients.values()
+    assert "delete_integration" in client.names()
+    assert "delete_blueprint" in client.names()
+
+
+def test_validate_with_mock_base_url_runs_sail_after_port_prep(
+    validation_integration: Path,
+    fake_port_clients: dict[str, FakePortClient],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sail_calls: list[str] = []
+
+    async def fake_sail(
+        integration_root: Path,
+        *,
+        integration_identifier: str,
+        **kwargs: object,
+    ) -> object:
+        sail_calls.append(integration_identifier)
+        from tools.integration_validation.runner.integration_process import (
+            IntegrationRunResult,
+        )
+
+        return IntegrationRunResult(
+            returncode=0,
+            stdout="",
+            stderr="",
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(runner_module, "run_ocean_sail_once", fake_sail)
+
+    main(_cli_args(validation_integration))
+
+    assert sail_calls == ["validate-sample-happy-path"]
+    assert "All scenarios completed integration subprocess." in capsys.readouterr().err
 
 
 def test_validate_missing_port_credentials_exits_2(
@@ -217,7 +305,7 @@ def test_validate_missing_port_credentials_exits_2(
     (validation_integration / ".env").unlink()
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(validation_integration)])
+        main(_cli_args(validation_integration))
 
     assert exc_info.value.code == 2
     assert "Missing Port credentials" in capsys.readouterr().err
@@ -241,7 +329,7 @@ def test_validate_missing_integration_type_exits_2(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(validation_integration)])
+        main(_cli_args(validation_integration))
 
     assert exc_info.value.code == 2
     assert "OCEAN__INTEGRATION__TYPE" in capsys.readouterr().err
