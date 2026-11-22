@@ -26,20 +26,14 @@ from port_ocean.core.models import WorkflowNodeRun
 
 PORT_MCP_SERVER_NAME = "port"
 PORT_MCP_CREDENTIAL_NAME = "port-mcp"
-# ponytail: in-process only; 409 retry covers multi-pod races
 _REMINT_ATTEMPTS = 3
 _vault_locks: dict[str, asyncio.Lock] = {}
 _vault_locks_guard = asyncio.Lock()
 
 
 async def lock_for_vault(vault_key: str) -> asyncio.Lock:
-    """Per-vault lock for get-or-create + credential remint serialization."""
     async with _vault_locks_guard:
-        lock = _vault_locks.get(vault_key)
-        if lock is None:
-            lock = asyncio.Lock()
-            _vault_locks[vault_key] = lock
-        return lock
+        return _vault_locks.setdefault(vault_key, asyncio.Lock())
 
 
 class PortMcpBinding(BaseModel):
@@ -296,13 +290,15 @@ async def remint_port_mcp_credential(
         raise RuntimeError(
             "portAccessToken is required to remint Port-family MCP vault credentials"
         )
-    auth = {"type": "static_bearer", "token": access_token}
     for attempt in range(1, _REMINT_ATTEMPTS + 1):
         try:
             await client.beta.vaults.credentials.update(
                 binding.credential_id,
                 vault_id=binding.vault_id,
-                auth=auth,
+                auth={
+                    "type": "static_bearer",
+                    "token": access_token,
+                },
             )
             return
         except APIStatusError as error:
@@ -312,4 +308,3 @@ async def remint_port_mcp_credential(
                 f"Concurrent remint of vault credential {binding.credential_id} "
                 f"(409); retry {attempt}/{_REMINT_ATTEMPTS}"
             )
-            await asyncio.sleep(0)

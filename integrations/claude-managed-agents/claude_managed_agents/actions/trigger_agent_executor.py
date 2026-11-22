@@ -178,8 +178,6 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         agent: BetaManagedAgentsAgent,
     ) -> str:
         vault_name = port_mcp.vault_name or port_mcp.execution_identity.identifier
-        # Serialize remint/get-or-create per vault so parallel trigger_agent runs
-        # sharing a service-account vault do not 409 on Anthropic credentials.update.
         async with await lock_for_vault(vault_name):
             mcp_urls = port_family_mcp_urls_on_agent(agent.mcp_servers or [])
             vault_id: str | None = None
