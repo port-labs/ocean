@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.0 (2026-11-22)
+
+
+### Features
+
+- Added incremental sync for Datadog teams, roles and catalog entities, loading those created or modified since the last cursor from audit events (including team and role membership changes)
+
+
 ## 0.10.0 (2026-11-19)
 
 
