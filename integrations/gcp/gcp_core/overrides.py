@@ -8,6 +8,11 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from pydantic.v1 import Field, BaseModel
 
+_CLOUD_ASSET_CAVEAT = (
+    "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
+    "Cloud Asset API is enabled on each container is not verified."
+)
+
 
 class GCPCloudResourceSelector(Selector):
     resource_kinds: list[str] = Field(
@@ -19,10 +24,7 @@ class GCPCloudResourceSelector(Selector):
 
 
 class GCPCloudResourceConfig(ResourceConfig):
-    probe_description: ClassVar[str] = (
-        "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
-        "Cloud Asset API is enabled on each container is not verified."
-    )
+    probe_description: ClassVar[str] = _CLOUD_ASSET_CAVEAT
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "cloudasset.assets.searchAllResources",
     )
@@ -52,6 +54,10 @@ class GCPIamPolicySelector(Selector):
 
 
 class GCPIamPolicyResourceConfig(ResourceConfig):
+    probe_description: ClassVar[str] = _CLOUD_ASSET_CAVEAT
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllIamPolicies",
+    )
     kind: Literal["iamPolicy"] = Field(
         title="GCP IAM Policy",
         description="GCP IAM allow-policy bindings kind.",
@@ -140,10 +146,7 @@ class GCPFolderResourceConfig(ResourceConfig):
 
 
 class GCPResourceConfig(ResourceConfig):
-    probe_description: ClassVar[str] = (
-        "Test connection verifies IAM access to Cloud Asset Inventory. Whether the "
-        "Cloud Asset API is enabled on each container is not verified."
-    )
+    probe_description: ClassVar[str] = _CLOUD_ASSET_CAVEAT
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "cloudasset.assets.searchAllResources",
     )
