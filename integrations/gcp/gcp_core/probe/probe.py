@@ -1,15 +1,10 @@
 import asyncio
 from asyncio import BoundedSemaphore
 from collections import defaultdict
-from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from google.api_core.exceptions import (
-    GoogleAPICallError,
-    PermissionDenied,
-    RetryError,
-)
+from google.api_core.exceptions import GoogleAPICallError, PermissionDenied
 from google.auth.exceptions import GoogleAuthError
 from loguru import logger
 
@@ -212,13 +207,13 @@ class GcpPermissionProbe:
                 level.implied_permission
             }
             (needs_testing if remaining else answered_by_discovery).append(check)
-            unanswered |= remaining
+            unanswered.update(remaining)
 
         try:
             if needs_testing:
-                containers = await self._list_containers(level)
+                containers = await self._discover(level)
             else:
-                containers = await self._first_container(level)
+                containers = await self._discover(level, limit=1)
         except PermissionDenied as error:
             await self._resolve_all(
                 level_checks,
@@ -226,7 +221,7 @@ class GcpPermissionProbe:
                 f"Not allowed to list GCP {level.label}s: {error}",
             )
             return
-        except (GoogleAPICallError, RetryError) as error:
+        except GoogleAPICallError as error:
             # the search filters by permission rather than refusing, so anything else
             # reaching here is a call that did not complete, not a grant that is absent
             await self._resolve_all(
@@ -272,28 +267,25 @@ class GcpPermissionProbe:
                 check.status, check.message = self._combine(level, check.kind, outcomes)
         await self.context.update_progress()
 
-    async def _search(
-        self, level: _ContainerLevel, page_size: int
-    ) -> AsyncIterable[Any]:
-        return await getattr(level.get_client(), level.search_method)(
-            request={"page_size": page_size},
+    async def _discover(
+        self, level: _ContainerLevel, *, limit: int | None = None
+    ) -> list[str]:
+        """Every container at this level, or just the first `limit` of them.
+
+        The page size and the early stop both come from `limit`: the pager fetches
+        each further page on demand, so either on its own would walk the whole org.
+        """
+        pager = await getattr(level.get_client(), level.search_method)(
+            request={"page_size": min(limit, PAGE_SIZE) if limit else PAGE_SIZE},
             retry=None,
             timeout=DEFAULT_REQUEST_TIMEOUT,
         )
-
-    async def _list_containers(self, level: _ContainerLevel) -> list[str]:
-        pager = await self._search(level, PAGE_SIZE)
-        return [container.name async for container in pager]
-
-    async def _first_container(self, level: _ContainerLevel) -> list[str]:
-        """At most one container, enough to show the level is reachable.
-
-        The pager fetches each further page on demand, so the page size and the early
-        return have to agree - either on its own would walk the whole org.
-        """
-        async for container in await self._search(level, 1):
-            return [container.name]
-        return []
+        containers: list[str] = []
+        async for container in pager:
+            containers.append(container.name)
+            if limit and len(containers) >= limit:
+                break
+        return containers
 
     async def _test_container(
         self,
@@ -308,12 +300,10 @@ class GcpPermissionProbe:
                     retry=None,
                     timeout=DEFAULT_REQUEST_TIMEOUT,
                 )
-            except (GoogleAPICallError, RetryError) as error:
+            except GoogleAPICallError as error:
                 # including PermissionDenied: this call needs no permission of its
                 # own, so a denial means the container is unreachable, not that the
                 # grant is absent. An absent grant comes back in the response.
-                # RetryError is unreachable while retry is disabled, and is caught so
-                # that re-enabling one cannot turn a slow container into a dead probe.
                 logger.warning(
                     f"Failed to test IAM permissions on {container}: {error}"
                 )

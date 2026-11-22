@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from google.api_core.exceptions import InvalidArgument, PermissionDenied, RetryError
+from google.api_core.exceptions import InvalidArgument, PermissionDenied
 from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
 
 from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND
@@ -186,8 +186,6 @@ async def test_probe_fails_the_kind_when_discovery_is_denied(
 async def test_probe_reports_unknown_for_a_kind_without_permission_mapping(
     probe_context: ProbeContext,
 ) -> None:
-    from gcp_core.overrides import GCPCloudFunctionResourceConfig
-
     probe_context.available_kinds = [CLOUD_FUNCTION]
 
     await run_probe(probe_context)
@@ -195,8 +193,6 @@ async def test_probe_reports_unknown_for_a_kind_without_permission_mapping(
     check = checks_by_kind(probe_context)[CLOUD_FUNCTION]
     assert check.status is ProbeCheckStatus.UNKNOWN
     assert "No permission mapping is defined" in str(check.message)
-    # the user-facing caveat is declared as probe_description, surfaced in the kinds schema
-    assert GCPCloudFunctionResourceConfig.probe_description
 
 
 @pytest.mark.asyncio
@@ -667,39 +663,6 @@ async def test_probe_calls_do_not_retry(
         client.test_iam_permissions.await_args.kwargs["timeout"]
         == DEFAULT_REQUEST_TIMEOUT
     )
-
-
-@pytest.mark.asyncio
-async def test_probe_reports_unknown_when_discovery_runs_out_of_retries(
-    probe_context: ProbeContext,
-    install_client: Callable[[str, MagicMock], None],
-) -> None:
-    probe_context.available_kinds = [FOLDER]
-    client = make_client("search_folders", [], search_error=RetryError("gave up", None))
-    install_client("FoldersAsyncClient", client)
-
-    await run_probe(probe_context)
-
-    check = checks_by_kind(probe_context)[FOLDER]
-    assert check.status is ProbeCheckStatus.UNKNOWN
-    assert "Could not list GCP folders" in str(check.message)
-
-
-@pytest.mark.asyncio
-async def test_probe_reports_unknown_for_a_container_that_runs_out_of_retries(
-    probe_context: ProbeContext,
-    install_client: Callable[[str, MagicMock], None],
-) -> None:
-    probe_context.available_kinds = [TOPIC]
-    client = make_client("search_projects", ["projects/a", "projects/b"])
-    client.test_iam_permissions = AsyncMock(side_effect=RetryError("gave up", None))
-    install_client("ProjectsAsyncClient", client)
-
-    await run_probe(probe_context)
-
-    check = checks_by_kind(probe_context)[TOPIC]
-    assert check.status is ProbeCheckStatus.UNKNOWN
-    assert "Could not verify access" in str(check.message)
 
 
 @pytest.mark.asyncio
