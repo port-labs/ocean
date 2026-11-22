@@ -84,6 +84,14 @@
       "type": "string",
       "sensitive": true,
       "description": "Azure Tenant ID. For more information on how to create and manage credentials, see the <a href=\"https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal\" target=\"_blank\">Azure documentation</a>"
+    },
+    {
+      "name": "createFoundryWebhooks",
+      "title": "Create Foundry webhooks",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, registers Foundry account webhooks on startup so invoke runs can complete via response.* events. Leave false unless you use Foundry invoke actions with reportInvocationStatus."
     }
   ],
   "deploymentMethodRequirements": [
@@ -370,7 +378,7 @@
           "type": "boolean",
           "required": false,
           "default": true,
-          "description": "When true and a Service Account execution identity is present, creates or remints the per-agent Port MCP CustomKeys connection and Port toolbox before invoke (first invoke does full wiring; later invokes remint). Attaches the toolbox on prompt agents; hosted agents get the toolbox only. Fails fast for hosted agents if toolbox prep fails. Same-agent invokes are serialized so remints do not race."
+          "description": "When true and a Service Account execution identity is present, remints Port MCP CustomKeys and ensures Port tools are in a Foundry toolbox before invoke. Prompt agents: Port-owned port-mcps-<hash> is created/reused by default; a foreign toolbox is left alone unless useExistingToolbox is true. Hosted agents: omit toolboxName to prepare port-mcps-<hash>, or pass toolboxName to upsert into an existing toolbox. Same-agent invokes are serialized so remints do not race."
         },
         {
           "name": "gitProvider",
@@ -390,11 +398,19 @@
           "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP connection and includes GitHub MCP in the Port toolbox for this invoke. Omit to skip GitHub MCP."
         },
         {
+          "name": "useExistingToolbox",
+          "title": "Use existing toolbox",
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Prompt agents only (ignored for hosted). When false (default), a foreign/custom toolbox on the agent causes Port/GitHub MCP setup to be skipped with a warning so shared toolboxes are not mutated; Port-owned port-mcps-<hash> is still created or reused. When true, Port tools are merged into the agent's existing toolbox (attach skipped). Shared toolboxes affect every agent that uses them."
+        },
+        {
           "name": "toolboxName",
           "title": "Toolbox name",
           "type": "string",
           "required": false,
-          "description": "Optional Foundry toolbox name for the Port toolbox. Omit to use the default port-mcps-<hash> name derived from the agent id. Use a custom name to target an existing toolbox (common for hosted agents that set TOOLBOX_NAME)."
+          "description": "Hosted agents only (ignored for prompt). Existing Foundry toolbox to upsert Port/GitHub MCP into; the toolbox must already exist or the action fails. Passing this name is consent to edit that toolbox. Omit to prepare the Port-owned port-mcps-<hash> toolbox (set TOOLBOX_NAME in the hosted agent to the same name)."
         },
         {
           "name": "reportInvocationStatus",
