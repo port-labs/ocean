@@ -3,7 +3,7 @@ import json
 from typing import ClassVar
 
 from loguru import logger
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from gcp_core.errors import GotFeedCreatedSuccessfullyMessageError
 from gcp_core.feed_event import FeedContent, FeedEvent, parse_feed_event

@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from loguru import logger
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
@@ -29,8 +29,7 @@ class FeedAsset(BaseModel):
     resource: dict[str, Any] | None = None
     iam_policy: dict[str, Any] | None = Field(None, alias="iamPolicy")
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
     @property
     def content(self) -> FeedContent | None:
@@ -55,8 +54,7 @@ class FeedEvent(BaseModel):
     prior_asset: FeedAsset = Field(default_factory=FeedAsset, alias="priorAsset")
     deleted: bool = False
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
     @property
     def content(self) -> FeedContent | None:
@@ -83,7 +81,7 @@ async def parse_feed_event(encoded_data: str) -> FeedEvent:
             # Couldn't create a valid data structure, raising error
             raise GotFeedCreatedSuccessfullyMessageError()
         raise e
-    return FeedEvent.parse_obj(asset_data)
+    return FeedEvent.model_validate(asset_data)
 
 
 def canonical_resource_name(

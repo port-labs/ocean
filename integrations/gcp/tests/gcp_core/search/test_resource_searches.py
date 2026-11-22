@@ -192,7 +192,7 @@ async def test_feed_to_resource(
     mock_asset_name = "projects/project_name/topics/topic_name"
     mock_asset_type = "pubsub.googleapis.com/Topic"
     mock_asset_project_name = "project_name"
-    mock_feed_event = FeedEvent.parse_obj(
+    mock_feed_event = FeedEvent.model_validate(
         {
             "asset": {
                 "name": mock_asset_name,
@@ -259,7 +259,7 @@ async def test_feed_to_resource_reads_a_delete_from_the_prior_asset(
     mock_resource_config.selector = MagicMock(preserve_api_response_case_style=False)
     get_current_resource_config_mock.return_value = mock_resource_config
 
-    feed_event = FeedEvent.parse_obj(
+    feed_event = FeedEvent.model_validate(
         {
             "asset": {
                 "name": "//compute.googleapis.com/projects/p/instances/gone",
