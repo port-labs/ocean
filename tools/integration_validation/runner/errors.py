@@ -7,17 +7,26 @@ class ValidationExitCode(IntEnum):
     SETUP_ERROR = 2
 
 
-class ValidationSetupError(Exception):
+class ValidationCliError(Exception):
+    """Base for CLI-facing validation errors with a prefix and exit code."""
+
+    exit_code: ValidationExitCode
+    prefix: str
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class ValidationSetupError(ValidationCliError):
     """Invalid configuration or missing prerequisites before a validation run."""
 
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
+    exit_code = ValidationExitCode.SETUP_ERROR
+    prefix = "Setup error"
 
 
-class ValidationFailedError(Exception):
+class ValidationFailedError(ValidationCliError):
     """Scenario execution or comparison failed."""
 
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
+    exit_code = ValidationExitCode.VALIDATION_FAILED
+    prefix = "Validation failed"

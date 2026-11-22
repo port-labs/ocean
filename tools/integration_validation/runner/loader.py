@@ -43,7 +43,7 @@ def load_scenarios_document(scenarios_file: Path) -> ScenariosDocument:
         raise ValidationSetupError(f"Malformed scenarios.yaml: {exc}") from exc
 
     if raw is None:
-        raise ValidationSetupError("scenarios.yaml is empty")
+        raise ValidationSetupError(f"{scenarios_file} is empty")
 
     if not isinstance(raw, dict):
         raise ValidationSetupError(
@@ -75,18 +75,6 @@ def resolve_integration_resource_path(
     )
 
 
-def resolve_port_app_config_path(
-    validation_paths: ValidationPaths, port_app_config: str
-) -> Path:
-    return resolve_integration_resource_path(
-        validation_paths, port_app_config, "port_app_config"
-    )
-
-
-def resolve_blueprints_path(validation_paths: ValidationPaths, blueprints: str) -> Path:
-    return resolve_integration_resource_path(validation_paths, blueprints, "blueprints")
-
-
 def resolve_scenario_blueprints_path(
     validation_paths: ValidationPaths,
     defaults: ScenariosDefaults,
@@ -95,7 +83,7 @@ def resolve_scenario_blueprints_path(
     relative = (
         scenario.blueprints if scenario.blueprints is not None else defaults.blueprints
     )
-    return resolve_blueprints_path(validation_paths, relative)
+    return resolve_integration_resource_path(validation_paths, relative, "blueprints")
 
 
 def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:
@@ -107,4 +95,4 @@ def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:
             parts.append(f"{prefix}: {loc}: {msg}")
         else:
             parts.append(f"{prefix}: {msg}")
-    return "; ".join(parts) if parts else f"{prefix}: invalid configuration"
+    return ";\n".join(parts) if parts else f"{prefix}: invalid configuration"

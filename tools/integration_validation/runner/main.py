@@ -7,11 +7,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from tools.integration_validation.runner.errors import (
-    ValidationExitCode,
-    ValidationFailedError,
-    ValidationSetupError,
-)
+from tools.integration_validation.runner.errors import ValidationCliError
 from tools.integration_validation.runner.runner import ValidateOptions, run_validate
 
 
@@ -64,12 +60,9 @@ def main(argv: Sequence[str] | None = None) -> None:
                 report_path=args.report_path,
             )
         )
-    except ValidationSetupError as error:
-        print(f"Setup error: {error.message}", file=sys.stderr)
-        raise SystemExit(ValidationExitCode.SETUP_ERROR) from error
-    except ValidationFailedError as error:
-        print(f"Validation failed: {error.message}", file=sys.stderr)
-        raise SystemExit(ValidationExitCode.VALIDATION_FAILED) from error
+    except ValidationCliError as error:
+        print(f"{error.prefix}: {error.message}", file=sys.stderr)
+        raise SystemExit(error.exit_code) from error
 
     integration_name = result.paths.integration_name
     print(f"Loaded {len(result.scenario_names)} scenario(s) for {integration_name}.")

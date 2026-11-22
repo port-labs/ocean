@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from port_ocean.config.settings import PortSettings
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.loader import (
-    resolve_port_app_config_path,
+    resolve_integration_resource_path,
     resolve_scenario_blueprints_path,
 )
 from tools.integration_validation.runner.models import (
@@ -31,7 +31,11 @@ def run_preflight(
 ) -> None:
     _ensure_validation_directory(validation_paths)
     _load_port_credentials(validation_paths.integration_root)
-    resolve_port_app_config_path(validation_paths, scenarios.defaults.port_app_config)
+    resolve_integration_resource_path(
+        validation_paths,
+        scenarios.defaults.port_app_config,
+        "port_app_config",
+    )
     _ensure_scenario_blueprints(validation_paths, scenarios, selected_scenarios)
 
 
