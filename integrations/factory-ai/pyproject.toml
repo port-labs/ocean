@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "factory-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "Factory.ai (Droid) integration for Port Ocean"
 authors = ["Amit Einny <amite@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.62.0", extras = ["cli"]}
+port_ocean = {version = "^0.62.1", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
