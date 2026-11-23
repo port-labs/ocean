@@ -31,8 +31,7 @@ async def on_resync_sessions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         "only_managed_by_port": selector.only_managed_by_port,
     }
     async for page in exporter.get_paginated_resources(options):
-        if page:
-            yield page
+        yield page
 
 
 @ocean.on_resync(ObjectKind.PLAYBOOK)
@@ -43,24 +42,21 @@ async def on_resync_playbooks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_enterprise=selector.include_enterprise,
     )
     async for page in exporter.get_paginated_resources(options):
-        if page:
-            yield page
+        yield page
 
 
 @ocean.on_resync(ObjectKind.KNOWLEDGE_NOTE)
 async def on_resync_knowledge_notes(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = KnowledgeNotesExporter(create_devin_client())
     async for page in exporter.get_paginated_resources():
-        if page:
-            yield page
+        yield page
 
 
 @ocean.on_resync(ObjectKind.SECRET)
 async def on_resync_secrets(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = SecretsExporter(create_devin_client())
     async for page in exporter.get_paginated_resources():
-        if page:
-            yield page
+        yield page
 
 
 @ocean.on_start()
