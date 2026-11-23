@@ -24,7 +24,6 @@ from tools.integration_validation.runner.errors import (
     ValidationSetupError,
 )
 
-MIGRATION_POLL_INTERVAL_SECONDS = 1
 # `ocean sail` patches the real version onto the integration at startup.
 PLACEHOLDER_INTEGRATION_VERSION = "0.0.0"
 
@@ -87,20 +86,18 @@ class ValidationPortClient(PortClient):
         """Make Ocean skip its default-resources setup entirely on startup."""
         await self.patch_integration(are_port_resources_initialized=True)
 
-    async def delete_blueprint_with_entities(self, identifier: str) -> str | None:
-        """Start deleting the blueprint and its entities.
+    async def delete_blueprint_with_entities(self, identifier: str) -> None:
+        """Fire the blueprint-and-entities deletion without waiting for it.
 
-        Returns the migration id, or None when the blueprint does not exist.
+        A missing blueprint counts as deleted.
         """
         response = await self.client.delete(
             f"{self.auth.api_url}/blueprints/{identifier}/all-entities",
             headers=await self.auth.headers(),
             params={"delete_blueprint": "true"},
         )
-        if response.status_code == 404:
-            return None
-        handle_port_status_code(response)
-        return response.json().get("migrationId") or None
+        if response.status_code != 404:
+            handle_port_status_code(response)
 
     async def delete_validation_integration(self) -> None:
         """Delete the integration; a missing integration counts as deleted."""
@@ -204,16 +201,7 @@ async def _delete_blueprint_with_entities(
     client: ValidationPortClient, identifier: str
 ) -> bool:
     try:
-        migration_id = await client.delete_blueprint_with_entities(identifier)
-        if migration_id:
-            migration = await client.wait_for_migration_to_complete(
-                migration_id, interval=MIGRATION_POLL_INTERVAL_SECONDS
-            )
-            if "FAIL" in migration.status.upper():
-                logger.warning(
-                    f"Deleting blueprint {identifier} ended with {migration.status}"
-                )
-                return False
+        await client.delete_blueprint_with_entities(identifier)
     except httpx.HTTPError as exc:
         logger.warning(f"Could not delete blueprint {identifier}: {exc}")
         return False

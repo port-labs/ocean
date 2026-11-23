@@ -163,11 +163,7 @@ def test_validate_prepares_and_cleans_up_port_for_each_scenario(
         "blueprint"
     ]
     assert blueprint == json.dumps(created["identifier"])
-    assert client.names()[-3:] == [
-        "delete_integration",
-        "delete_blueprint",
-        "wait_for_migration",
-    ]
+    assert client.names()[-2:] == ["delete_integration", "delete_blueprint"]
 
 
 def test_validate_skip_cleanup_keeps_port_resources_and_reports_them(

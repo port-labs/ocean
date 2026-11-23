@@ -3,7 +3,6 @@ from typing import Any
 import httpx
 import pytest
 
-from port_ocean.core.models import Migration
 from tools.integration_validation.runner.errors import (
     ValidationFailedError,
     ValidationSetupError,
@@ -57,27 +56,12 @@ class FakePortClient(ValidationPortClient):
             "patch_blueprint", identifier, "PATCH", f"/blueprints/{identifier}"
         )
 
-    async def delete_blueprint_with_entities(self, identifier: str) -> str | None:
+    async def delete_blueprint_with_entities(self, identifier: str) -> None:
         self.calls.append(("delete_blueprint", identifier))
         self._maybe_fail(
             "delete_blueprint", identifier, "DELETE", f"/blueprints/{identifier}"
         )
-        if identifier not in self.blueprints:
-            return None
-        self.blueprints.remove(identifier)
-        return f"migration-{identifier}"
-
-    async def wait_for_migration_to_complete(
-        self, migration_id: str, interval: int = 5
-    ) -> Migration:
-        self.calls.append(("wait_for_migration", migration_id))
-        return Migration(
-            id=migration_id,
-            actor="test",
-            sourceBlueprint="",
-            mapping={},
-            status="COMPLETED",
-        )
+        self.blueprints.discard(identifier)
 
     async def create_validation_integration(
         self, port_app_config: dict[str, Any]
@@ -155,7 +139,7 @@ async def test_prepare_first_removes_resources_left_by_a_previous_run(
 
     await prepare_scenario_port(client, plan)
 
-    assert client.names()[:4] == [*PRE_RUN_CLEANUP, "wait_for_migration"]
+    assert client.names()[:3] == PRE_RUN_CLEANUP
     assert client.blueprints == {"user-a1b2", "team-a1b2"}
 
 
@@ -201,12 +185,10 @@ async def test_prepare_deletes_integration_when_marking_initialized_fails(
     with pytest.raises(ValidationFailedError):
         await prepare_scenario_port(client, plan)
 
-    assert client.names()[-5:] == [
+    assert client.names()[-3:] == [
         "delete_integration",
         "delete_blueprint",
-        "wait_for_migration",
         "delete_blueprint",
-        "wait_for_migration",
     ]
     assert client.blueprints == set()
 
