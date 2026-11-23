@@ -104,9 +104,9 @@ def _plan_scenarios(
         ).as_mappings()
         suffixed_blueprints, renames = suffix_blueprints(blueprints, name)
         port_app_config = rewrite_mapping_blueprints(
-            build_scenario_port_app_config(base_config, name, scenario).as_mapping(),
+            build_scenario_port_app_config(base_config, name, scenario),
             renames,
-        )
+        ).as_mapping()
         plans.append(
             ScenarioPortPlan(
                 scenario_name=name,

@@ -9,6 +9,7 @@ from tools.integration_validation.runner.blueprint_rewrite import (
     suffix_blueprints,
 )
 from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.models import PortAppConfigDocument
 
 BLUEPRINTS: list[dict[str, Any]] = [
     {"identifier": "user", "title": "User", "schema": {"properties": {}}},
@@ -72,7 +73,9 @@ def test_suffix_blueprints_does_not_mutate_input() -> None:
 
 
 def test_rewrite_mapping_blueprints_rewrites_string_literals() -> None:
-    config = {"resources": [_mapping('"team"'), _mapping(' "user" ', kind="user")]}
+    config = PortAppConfigDocument.model_validate(
+        {"resources": [_mapping('"team"'), _mapping(' "user" ', kind="user")]}
+    )
 
     rewritten = rewrite_mapping_blueprints(
         config, {"team": "team-a1b2", "user": "user-a1b2"}
@@ -80,10 +83,13 @@ def test_rewrite_mapping_blueprints_rewrites_string_literals() -> None:
 
     blueprints = [
         resource["port"]["entity"]["mappings"]["blueprint"]
-        for resource in rewritten["resources"]
+        for resource in rewritten.as_mapping()["resources"]
     ]
     assert blueprints == ['"team-a1b2"', '"user-a1b2"']
-    assert config["resources"][0]["port"]["entity"]["mappings"]["blueprint"] == '"team"'
+    assert (
+        config.as_mapping()["resources"][0]["port"]["entity"]["mappings"]["blueprint"]
+        == '"team"'
+    )
 
 
 def test_rewrite_mapping_blueprints_handles_mapping_lists() -> None:
@@ -92,22 +98,27 @@ def test_rewrite_mapping_blueprints_handles_mapping_lists() -> None:
     resource["port"]["entity"]["mappings"] = [mapping, {**mapping}]
 
     rewritten = rewrite_mapping_blueprints(
-        {"resources": [resource]}, {"team": "team-a1b2"}
+        PortAppConfigDocument.model_validate({"resources": [resource]}),
+        {"team": "team-a1b2"},
     )
 
-    mappings = rewritten["resources"][0]["port"]["entity"]["mappings"]
+    mappings = rewritten.as_mapping()["resources"][0]["port"]["entity"]["mappings"]
     assert [m["blueprint"] for m in mappings] == ['"team-a1b2"'] * 2
 
 
 def test_rewrite_mapping_blueprints_rejects_dynamic_expressions() -> None:
-    config = {"resources": [_mapping('if .x then "a" else "b" end')]}
+    config = PortAppConfigDocument.model_validate(
+        {"resources": [_mapping('if .x then "a" else "b" end')]}
+    )
 
     with pytest.raises(ValidationSetupError, match="Only string literals"):
         rewrite_mapping_blueprints(config, {"team": "team-a1b2"})
 
 
 def test_rewrite_mapping_blueprints_rejects_blueprints_outside_the_set() -> None:
-    config = {"resources": [_mapping('"service"')]}
+    config = PortAppConfigDocument.model_validate(
+        {"resources": [_mapping('"service"')]}
+    )
 
     with pytest.raises(ValidationSetupError, match="'service'"):
         rewrite_mapping_blueprints(config, {"team": "team-a1b2"})

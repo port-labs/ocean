@@ -21,10 +21,10 @@ def build_scenario_port_app_config(
     mappings merge key by key, while lists and scalar values are replaced.
     """
     config = copy.deepcopy(base_config.as_mapping())
-    resources: list[dict[str, Any]] = config.get("resources") or []
+    resources: list[dict[str, Any]] = config["resources"]
 
     if scenario.kinds:
-        configured_kinds = {resource.get("kind") for resource in resources}
+        configured_kinds = {resource["kind"] for resource in resources}
         missing = [kind for kind in scenario.kinds if kind not in configured_kinds]
         if missing:
             raise ValidationSetupError(
@@ -32,20 +32,16 @@ def build_scenario_port_app_config(
                 "in port_app_config."
             )
         resources = [
-            resource for resource in resources if resource.get("kind") in scenario.kinds
+            resource for resource in resources if resource["kind"] in scenario.kinds
         ]
 
     for override in scenario.port_app_config_overrides or []:
-        kind = override.get("kind")
-        if not isinstance(kind, str) or not kind:
-            raise ValidationSetupError(
-                f"Scenario '{scenario_name}': every port_app_config_overrides "
-                "entry needs a 'kind'."
-            )
+        kind = override.kind
         matched = False
+        override_mapping = override.model_dump(mode="python")
         for index, resource in enumerate(resources):
-            if resource.get("kind") == kind:
-                resources[index] = _deep_merge(resource, override)
+            if resource["kind"] == kind:
+                resources[index] = _deep_merge(resource, override_mapping)
                 matched = True
         if not matched:
             raise ValidationSetupError(

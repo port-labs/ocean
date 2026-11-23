@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.models import (
@@ -96,7 +97,5 @@ def test_override_for_filtered_out_kind_is_rejected() -> None:
 
 
 def test_override_without_kind_is_rejected() -> None:
-    scenario = _scenario(port_app_config_overrides=[{"selector": {"query": "false"}}])
-
-    with pytest.raises(ValidationSetupError, match="needs a 'kind'"):
-        build_scenario_port_app_config(BASE_CONFIG, "broken", scenario)
+    with pytest.raises(ValidationError):
+        _scenario(port_app_config_overrides=[{"selector": {"query": "false"}}])

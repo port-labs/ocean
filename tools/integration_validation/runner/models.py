@@ -14,6 +14,14 @@ class ScenarioExpect(BaseModel):
     resync_status: str | None = None
 
 
+class PortAppConfigOverride(BaseModel):
+    """Scenario overlay merged into a ``port_app_config`` resource of the same ``kind``."""
+
+    model_config = ConfigDict(extra="allow")
+
+    kind: str = Field(min_length=1)
+
+
 class ScenarioDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -21,7 +29,7 @@ class ScenarioDefinition(BaseModel):
     kinds: list[str] = Field(default_factory=list)
     routes: list[str] = Field(min_length=1)
     blueprints: str | None = None
-    port_app_config_overrides: list[dict[str, Any]] | None = None
+    port_app_config_overrides: list[PortAppConfigOverride] | None = None
     expect: ScenarioExpect | None = None
 
 

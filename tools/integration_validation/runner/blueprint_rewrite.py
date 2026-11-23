@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.models import PortAppConfigDocument
 from tools.integration_validation.runner.naming import suffix_identifier
 
 
@@ -34,17 +35,17 @@ def suffix_blueprints(
 
 
 def rewrite_mapping_blueprints(
-    port_app_config: dict[str, Any], renames: dict[str, str]
-) -> dict[str, Any]:
+    port_app_config: PortAppConfigDocument, renames: dict[str, str]
+) -> PortAppConfigDocument:
     """Point every resource mapping at the suffixed blueprint identifiers.
 
     Only JQ string literals (``'"datadogTeam"'``) can be rewritten. Dynamic
     expressions or blueprints missing from the set would write outside the
     run's isolated blueprints, so they are rejected.
     """
-    rewritten = copy.deepcopy(port_app_config)
-    for resource in rewritten.get("resources") or []:
-        kind = resource.get("kind", "<unknown>")
+    rewritten = copy.deepcopy(port_app_config.as_mapping())
+    for resource in rewritten["resources"]:
+        kind = resource["kind"]
         mappings = resource.get("port", {}).get("entity", {}).get("mappings")
         mapping_list = mappings if isinstance(mappings, list) else [mappings]
         for mapping in mapping_list:
@@ -55,7 +56,7 @@ def rewrite_mapping_blueprints(
             mapping["blueprint"] = _rewrite_blueprint_expression(
                 mapping.get("blueprint"), kind, renames
             )
-    return rewritten
+    return PortAppConfigDocument.model_validate(rewritten)
 
 
 def blueprint_deletion_layers(blueprints: list[dict[str, Any]]) -> list[list[str]]:
