@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+import httpx
 from httpx import AsyncClient, HTTPStatusError
 from typing import Any, Generator
 from client import LaunchDarklyClient
@@ -280,41 +281,92 @@ async def test_get_feature_flag(mock_client: LaunchDarklyClient) -> None:
 
 
 @pytest.mark.parametrize(
-    "next_href,expected_production_count",
+    "next_hrefs,selector_params",
     [
-        ("/api/v2/flags/project-1?offset=100", 1),
-        ("/api/v2/flags/project-1?offset=100&summary=0&env=production", 1),
+        # Default selector - no extra params
+        (
+            [
+                "/api/v2/flags/project-1?offset=100",
+                "/api/v2/flags/project-1?offset=200",
+            ],
+            [],
+        ),
+        # Configured selector with summary and env
+        (
+            [
+                "/api/v2/flags/project-1?offset=100",
+                "/api/v2/flags/project-1?offset=200",
+            ],
+            [("summary", "0"), ("env", "production")],
+        ),
     ],
 )
 @pytest.mark.asyncio
 async def test_pagination_preserves_params(
     mock_client: LaunchDarklyClient,
-    next_href: str,
-    expected_production_count: int,
+    next_hrefs: list[str],
+    selector_params: list[tuple[str, str]],
 ) -> None:
-    """Test that pagination merges extra_params without duplicating."""
-    page1 = {"items": [{"key": "flag-1"}], "_links": {"next": {"href": next_href}}}
-    page2 = {"items": [{"key": "flag-2"}], "totalCount": 2}
+    """Test that pagination preserves params without duplicating across 3 pages."""
+    page1 = {"items": [{"key": "flag-1"}], "_links": {"next": {"href": next_hrefs[0]}}}
+    page2 = {"items": [{"key": "flag-2"}], "_links": {"next": {"href": next_hrefs[1]}}}
+    page3 = {"items": [{"key": "flag-3"}], "totalCount": 3}
 
     with patch.object(
         mock_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [page1, page2]
+        mock_request.side_effect = [page1, page2, page3]
 
         batches = []
         async for batch in mock_client.get_paginated_resource(
             "flag",
             resource_path="project-1",
-            extra_params=[("summary", "0"), ("env", "production")],
+            extra_params=selector_params if selector_params else None,
         ):
             batches.extend(batch)
 
-        assert len(batches) == 2
+        assert len(batches) == 3
 
-        page2_params = mock_request.call_args_list[1][1]["query_params"]
-        summary_count = sum(1 for k, v in page2_params if k == "summary" and v == "0")
-        production_count = sum(
-            1 for k, v in page2_params if k == "env" and v == "production"
-        )
-        assert summary_count == 1
-        assert production_count == expected_production_count
+        # Check page 2 URL params - build URL from actual href + params sent
+        page2_call = mock_request.call_args_list[1]
+        page2_endpoint = page2_call[1]["endpoint"]
+        page2_params = page2_call[1]["query_params"]
+
+        # Build URL to check final result - endpoint is the full href from LaunchDarkly
+        # which includes offset, and params are the extra ones we add
+        page2_url = httpx.URL(f"https://api.launchdarkly.com{page2_endpoint}")
+        final_page2_params = dict(page2_url.params)
+        for k, v in page2_params:
+            if k not in final_page2_params:
+                final_page2_params[k] = v
+
+        # Each key should appear exactly once
+        assert final_page2_params.get("offset") == "100"
+        assert final_page2_params.get("limit") == "100"
+        if selector_params:
+            assert final_page2_params.get("summary") == "0"
+            assert final_page2_params.get("env") == "production"
+        else:
+            assert "summary" not in final_page2_params
+            assert "env" not in final_page2_params
+
+        # Check page 3 URL params
+        page3_call = mock_request.call_args_list[2]
+        page3_endpoint = page3_call[1]["endpoint"]
+        page3_params = page3_call[1]["query_params"]
+
+        page3_url = httpx.URL(f"https://api.launchdarkly.com{page3_endpoint}")
+        final_page3_params = dict(page3_url.params)
+        for k, v in page3_params:
+            if k not in final_page3_params:
+                final_page3_params[k] = v
+
+        # Each key should appear exactly once with new offset
+        assert final_page3_params.get("offset") == "200"
+        assert final_page3_params.get("limit") == "100"
+        if selector_params:
+            assert final_page3_params.get("summary") == "0"
+            assert final_page3_params.get("env") == "production"
+        else:
+            assert "summary" not in final_page3_params
+            assert "env" not in final_page3_params

@@ -67,9 +67,11 @@ class LaunchDarklyClient:
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
 
-        params: list[tuple[str, str]] = [("limit", str(page_size))]
+        base_params: list[tuple[str, str]] = [("limit", str(page_size))]
         if extra_params:
-            params.extend(extra_params)
+            base_params.extend(extra_params)
+
+        params = base_params
 
         while url:
             try:
@@ -88,14 +90,7 @@ class LaunchDarklyClient:
                     logger.debug(f"Fetching next page of {kind}: {url}")
 
                     next_url = httpx.URL(url)
-                    existing_params = set(next_url.params.multi_items())
-
-                    merged_params = list(existing_params)
-                    for param in params:
-                        if param not in existing_params:
-                            merged_params.append(param)
-
-                    params = merged_params
+                    params = [p for p in base_params if p[0] not in next_url.params]
                 else:
                     total_count = response.get("totalCount", len(items))
                     logger.info(
