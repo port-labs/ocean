@@ -659,6 +659,7 @@ class TestExecutionManager:
             unregistered_run,
             success=False,
             message="No executor registered for action type 'unregistered_action'",
+            status_label=None,
             should_raise=False,
         )
 

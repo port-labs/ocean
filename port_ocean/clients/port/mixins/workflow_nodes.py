@@ -64,26 +64,32 @@ class WorkflowNodesClientMixin:
         run_id: str,
         payload: dict[str, Any],
         should_raise: bool = True,
+        should_log: bool = True,
     ) -> None:
         response = await self.client.patch(
             f"{self.auth.api_url}/workflows/nodes/runs/{run_id}",
             headers=await self.auth.headers(),
             json=payload,
         )
-        handle_port_status_code(response, should_raise=should_raise)
+        handle_port_status_code(
+            response, should_raise=should_raise, should_log=should_log
+        )
 
     async def post_wf_node_run_logs(
         self,
         run_id: str,
         logs: list[WorkflowNodeRunLog],
         should_raise: bool = False,
+        should_log: bool = True,
     ) -> None:
         response = await self.client.post(
             f"{self.auth.api_url}/workflows/nodes/runs/{run_id}/logs",
             headers=await self.auth.headers(),
             json={"logs": [log.dict() for log in logs]},
         )
-        handle_port_status_code(response, should_raise=should_raise)
+        handle_port_status_code(
+            response, should_raise=should_raise, should_log=should_log
+        )
 
     async def get_wf_node_run_by_external_id(
         self, external_id: str

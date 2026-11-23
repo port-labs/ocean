@@ -6,8 +6,11 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
+from gcp_core.feed_event import FeedEvent
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
+    get_service_account_project_id,
+    search_all_resources_qpm_per_project,
     AssetData,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
@@ -176,6 +179,105 @@ async def search_all_iam_policies_per_project(
             logger.info(
                 f"Successfully searched all IAM policies within project {project_name}"
             )
+
+
+def _asset_aliases(result: Any) -> list[str]:
+    """Every identifier a feed event may use for this asset in place of the last segment of its name.
+
+    additionalAttributes is absent entirely for types that do not alias, such as buckets and topics.
+    Its `project` sibling holds the project number, which is how a feed names a project where
+    searchAllResources names it by id. Every asset reports that number, so it is only an alias for
+    the project itself: anywhere else it would match every asset of the type at once.
+    """
+    attributes = dict(result.additional_attributes or {})
+    aliases = [value for value in attributes.values() if isinstance(value, str)]
+    is_the_project = result.name.rsplit("/", 1)[-1] == attributes.get("projectId")
+    if is_the_project and result.project:
+        aliases.append(result.project.rsplit("/", 1)[-1])
+    return aliases
+
+
+async def search_asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+    search_term: str,
+) -> list[dict[str, Any]]:
+    """The assets of one type in a project whose indexed fields hold `search_term`.
+
+    An IAM_POLICY feed event names a service account by its numeric `uniqueId` while
+    `searchAllIamPolicies` names it by email, so a grant ingested from a feed event lands under a
+    different identifier than the resync's unless the feed's name is translated through this.
+    """
+    # Free text, not `name=`: the feed's identifier is matched against every indexed field, where
+    # `name=` only matches the canonical name and so never an alias. Quoted, because a resource
+    # name's last segment may hold a `:` (a container image digest, say), which is query syntax
+    # and 400s the request unquoted.
+    return await _asset_names_in_project(
+        project_name, asset_type, {"query": f'"{search_term}"'}
+    )
+
+
+async def list_asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+) -> list[dict[str, Any]]:
+    """Every asset of one type in a project, however many that is.
+
+    Only for types whose population is bounded by the scope: a project scope holds exactly one
+    project, where listing any other type could be thousands of assets paged 100 at a time.
+    """
+    return await _asset_names_in_project(project_name, asset_type, {})
+
+
+async def _asset_names_in_project(
+    project_name: str,
+    asset_type: str,
+    query: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """The name `searchAllResources` holds for each matching asset, with the aliases it answers to.
+
+    Failures are deliberately not swallowed: they propagate out of the webhook processor and are
+    logged there as a failed event, because an empty list is indistinguishable from "the project has
+    no assets of this type" and would quietly ingest nothing.
+    """
+
+    def parse_names(response: Any) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": result.name,
+                "aliases": _asset_aliases(result),
+            }
+            for result in response.results
+        ]
+
+    # Not resolve_request_controllers: that dispatches on the asset type, which is right where the
+    # caller then hits that type's own API. This always calls searchAllResources on cloudasset, so
+    # an asset type of Project or Topic would otherwise gate it on a quota for an API it never
+    # touches, leaving the cloudasset limiter blind to this traffic.
+    quota_project = get_service_account_project_id()
+    rate_limiter = await search_all_resources_qpm_per_project.limiter(quota_project)
+    semaphore = await search_all_resources_qpm_per_project.semaphore(quota_project)
+
+    async with semaphore:
+        logger.info(
+            f"Searching {asset_type} names matching {query.get('query', 'anything')!r} "
+            f"in project {project_name}"
+        )
+        assets: list[dict[str, Any]] = []
+        async for batch in paginated_query(
+            get_asset_client(),
+            "search_all_resources",
+            {
+                "scope": project_name,
+                "asset_types": [asset_type],
+                "read_mask": "name,additionalAttributes,project",
+                **query,
+            },
+            parse_names,
+            rate_limiter,
+        ):
+            assets.extend(batch)
+        return assets
 
 
 async def list_all_topics_per_project(
@@ -388,14 +490,14 @@ async def feed_event_to_resource(
     asset_type: str,
     asset_name: str,
     project_id: str,
-    asset_data: dict[str, Any],
+    feed_event: FeedEvent,
     project_rate_limiter: FixedWindowLimiter,
     project_semaphore: BoundedSemaphore,
     config: ProtoConfig,
 ) -> RAW_ITEM:
     resource = None
-    if asset_data.get("deleted") is True:
-        resource = asset_data["priorAsset"]["resource"]["data"]
+    if feed_event.deleted:
+        resource = feed_event.prior_asset.resource_data
         resource[EXTRA_PROJECT_FIELD] = await get_single_project(
             project_id, project_rate_limiter, project_semaphore, config
         )
@@ -428,7 +530,7 @@ async def feed_event_to_resource(
                     project_id, project_rate_limiter, project_semaphore, config
                 )
             case _:
-                resource = asset_data["asset"]["resource"]["data"]
+                resource = feed_event.asset.resource_data
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
                     project_id, project_rate_limiter, project_semaphore, config
                 )
