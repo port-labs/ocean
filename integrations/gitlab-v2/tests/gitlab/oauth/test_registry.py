@@ -36,7 +36,6 @@ def test_register_warns_when_ip_enabled_but_identity_oauth_missing(
     mock_ocean.register_oauth_provider.assert_not_called()
 
 
-
 def test_register_builds_gitlab_provider(mock_ocean: MagicMock) -> None:
     mock_ocean.integration_config = {
         "gitlab_host": "https://gitlab.example.com",
