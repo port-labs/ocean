@@ -45,7 +45,7 @@ Third-party rate limits are usually the bottleneck, so always flag avoidable req
 
 ## Structure (apply to code the PR adds or changes)
 
-- `main.py` only wires `@ocean.on_resync`, `@ocean.on_start`, and webhook registration. It holds no business logic or direct API calls.
+- `main.py` only wires the Ocean hooks (`@ocean.on_resync`, `@ocean.on_incremental_resync`, `@ocean.on_start`, and webhook registration). It holds no business logic or direct API calls. The same applies to any module that registers these hooks.
 - The client layer is generic (authentication, `send_api_request`, `send_paginated_request`, rate limiting, errors). Resource-specific fetching belongs in per-kind exporters. Flag new `get_<resource>()` methods being added to a generic client.
 - Model structured data (API options, params, parsed responses, config) with Pydantic models, not raw dicts. See the root file's "Typed models" rule, which applies here in full.
 - A new helper or abstraction that is standalone (nothing specific to this third-party system) should be recommended for core instead. See the root file's "Reuse in core" rule.

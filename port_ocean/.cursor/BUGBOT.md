@@ -6,7 +6,7 @@ Every integration runs on this code. Treat a small framework change as a change 
 
 Flag any change that can break an existing integration without that integration being edited:
 
-- Changed, renamed, or removed public APIs: the `ocean` context, `ocean.on_resync`/`on_start`/webhook registration, integration base classes, `AbstractWebhookProcessor`, `PortAppConfig`, `ResourceConfig`, `Selector`, and exported helpers in `port_ocean/utils/`.
+- Changed, renamed, or removed public APIs: the `ocean` context, `ocean.on_resync`/`on_incremental_resync`/`on_start`/webhook registration, integration base classes, `AbstractWebhookProcessor`, `PortAppConfig`, `ResourceConfig`, `Selector`, and exported helpers in `port_ocean/utils/`.
 - New abstract methods, new required constructor arguments, or new required config on classes integrations subclass or instantiate.
 - Changed defaults or semantics of existing settings, or renamed settings and environment variables.
 - Changes to what is sent to or expected from Port's API that are not compatible with the deployed Port API schema.

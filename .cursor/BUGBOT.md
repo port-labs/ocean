@@ -36,7 +36,7 @@ Recommend concretely: name the model, list its fields, and say where to parse (p
 
 Narrow exceptions (do not flag these):
 
-- Raw items yielded from `@ocean.on_resync` handlers and webhook results are `RAW_ITEM` dicts by framework contract, because JQ mappings run on them. Models are still welcome for everything that happens before the item is yielded.
+- Raw items yielded from `@ocean.on_resync` and `@ocean.on_incremental_resync` handlers and webhook results are `RAW_ITEM` dicts by framework contract, because JQ mappings run on them. Models are still welcome for everything that happens before the item is yielded.
 - Genuinely free-form third-party payloads that are passed through untouched, with no code reading specific keys.
 - Test fixtures and mock payloads.
 
