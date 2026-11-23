@@ -15,7 +15,7 @@ from integration import (
 
 def test_selector_defaults() -> None:
     incident = IncidentSelector(query="true")
-    assert incident.days_back == 180
+    assert incident.days_back == 90
     assert incident.status_categories is None
     assert incident.severities is None
     assert incident.include_test is False
@@ -42,7 +42,7 @@ def test_selector_aliases() -> None:
 
 def test_empty_status_categories_mean_all() -> None:
     selector = IncidentSelector(query="true", statusCategories=[])
-    assert selector.status_categories is None
+    assert selector.status_categories == []
 
 
 def test_blank_severity_is_rejected() -> None:
@@ -52,14 +52,16 @@ def test_blank_severity_is_rejected() -> None:
 
 def test_unknown_status_category_is_rejected() -> None:
     with pytest.raises(ValidationError):
-        IncidentSelector(query="true", statusCategories=["active"])
+        IncidentSelector.parse_obj({"query": "true", "statusCategories": ["active"]})
 
 
 def test_days_back_bounds() -> None:
-    with pytest.raises(ValidationError):
-        IncidentSelector(query="true", daysBack=0)
-    with pytest.raises(ValidationError):
-        IncidentSelector(query="true", daysBack=4000)
+    for selector in (IncidentSelector, AlertSelector):
+        with pytest.raises(ValidationError):
+            selector(query="true", daysBack=0)
+        with pytest.raises(ValidationError):
+            selector(query="true", daysBack=1826)
+        assert selector(query="true", daysBack=1825).days_back == 1825
 
 
 def test_default_port_app_config_parses() -> None:
@@ -76,17 +78,29 @@ def test_default_port_app_config_parses() -> None:
         ObjectKind.ALERT,
         ObjectKind.INCIDENT,
     ]
+    alert = next(
+        resource for resource in config.resources if resource.kind == ObjectKind.ALERT
+    )
+    assert isinstance(alert.selector, AlertSelector)
+    assert alert.selector.days_back == 90
+    incident = next(
+        resource
+        for resource in config.resources
+        if resource.kind == ObjectKind.INCIDENT
+    )
+    assert isinstance(incident.selector, IncidentSelector)
+    assert incident.selector.days_back == 90
 
 
 def test_alert_selector_defaults_and_rejects_unknown_status() -> None:
     selector = AlertSelector(query="true")
-    assert selector.days_back == 30
+    assert selector.days_back == 90
     assert selector.statuses is None
     chosen = AlertSelector.parse_obj(
         {"query": "true", "daysBack": 7, "statuses": ["firing"]}
     )
     assert chosen.days_back == 7
     assert chosen.statuses == ["firing"]
-    assert AlertSelector(query="true", statuses=[]).statuses is None
+    assert AlertSelector(query="true", statuses=[]).statuses == []
     with pytest.raises(ValidationError):
-        AlertSelector(query="true", statuses=["open"])
+        AlertSelector.parse_obj({"query": "true", "statuses": ["open"]})

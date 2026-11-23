@@ -9,20 +9,11 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.v1 import Field, validator
 
+from incident_io.core.options import AlertStatus, IncidentStatusCategory
 from incident_io.helpers.utils import ObjectKind
 
-# API values. The dashboard shows "live" as Active and "learning" as Post-incident.
-STATUS_CATEGORIES = (
-    "triage",
-    "live",
-    "learning",
-    "paused",
-    "closed",
-    "declined",
-    "canceled",
-    "merged",
-)
-ALERT_STATUSES = ("firing", "resolved")
+# Five calendar years of 365 days. A longer window pulls too much history for large accounts.
+MAX_DAYS_BACK = 5 * 365
 
 
 class UserSelector(Selector):
@@ -61,34 +52,25 @@ class ScheduleResourceConfig(ResourceConfig):
 
 class AlertSelector(Selector):
     days_back: int = Field(
-        default=30,
+        default=90,
         alias="daysBack",
         ge=1,
-        le=3650,
+        le=MAX_DAYS_BACK,
         title="Days back",
         description=(
-            "Sync alerts created in the last N days. Default is 30. "
+            "Sync alerts created in the last N days. Default is 90. "
+            f"The maximum is {MAX_DAYS_BACK} days, about 5 years. "
             "Incremental runs stay inside this window and only refresh alerts "
             "updated since the cursor."
         ),
     )
-    statuses: Optional[list[str]] = Field(
+    statuses: Optional[list[AlertStatus]] = Field(
         default=None,
         title="Statuses",
         description=(
-            "Only sync alerts in these statuses. Default: firing and resolved. "
-            f"Allowed: {', '.join(ALERT_STATUSES)}."
+            "Only sync alerts in these statuses. Leave empty to sync firing and resolved alerts."
         ),
     )
-
-    @validator("statuses")
-    def _check_statuses(cls, value: Optional[list[str]]) -> Optional[list[str]]:
-        if not value:
-            return None
-        invalid = [item for item in value if item not in ALERT_STATUSES]
-        if invalid:
-            raise ValueError(f"Unknown alert statuses: {invalid}")
-        return value
 
 
 class AlertResourceConfig(ResourceConfig):
@@ -104,21 +86,24 @@ class AlertResourceConfig(ResourceConfig):
 
 class IncidentSelector(Selector):
     days_back: int = Field(
-        default=180,
+        default=90,
         alias="daysBack",
         ge=1,
-        le=3650,
+        le=MAX_DAYS_BACK,
         title="Days back",
-        description="Sync incidents created in the last N days. Default is 180 (about 6 months). Incremental runs stay inside this window and only refresh incidents updated since the cursor.",
+        description=(
+            "Sync incidents created in the last N days. Default is 90 (about 3 months). "
+            f"The maximum is {MAX_DAYS_BACK} days, about 5 years. "
+            "Incremental runs stay inside this window and only refresh incidents updated since the cursor."
+        ),
     )
-    status_categories: Optional[list[str]] = Field(
+    status_categories: Optional[list[IncidentStatusCategory]] = Field(
         default=None,
         alias="statusCategories",
         title="Status categories",
         description=(
-            "Only sync incidents in these status categories. Default: all. "
-            f"Allowed: {', '.join(STATUS_CATEGORIES)}. "
-            "The dashboard name Active is 'live', and Post-incident is 'learning'."
+            "Only sync incidents in these status categories. Leave empty to sync every category. "
+            "The dashboard name Active is live, and Post-incident is learning."
         ),
     )
     severities: Optional[list[str]] = Field(
@@ -146,17 +131,6 @@ class IncidentSelector(Selector):
                 raise ValueError("severities must be severity names or ids")
             cleaned.append(item.strip())
         return cleaned
-
-    @validator("status_categories")
-    def _check_status_categories(
-        cls, value: Optional[list[str]]
-    ) -> Optional[list[str]]:
-        if not value:
-            return None
-        invalid = [item for item in value if item not in STATUS_CATEGORIES]
-        if invalid:
-            raise ValueError(f"Unknown incident status categories: {invalid}")
-        return value
 
 
 class IncidentResourceConfig(ResourceConfig):

@@ -5,7 +5,7 @@ from incident_io.core.exporters.alert_exporter import (
     AlertExporter,
     build_alert_params,
 )
-from incident_io.core.options import AlertOptions
+from incident_io.core.options import AlertOptions, AlertStatus
 from tests.incident_io.core.exporters.helpers import collect, mock_client
 
 ALERT = {
@@ -39,7 +39,9 @@ def test_build_alert_params_clamps_the_cursor_to_the_window() -> None:
 
 def test_build_alert_params_adds_statuses() -> None:
     now = datetime(2026, 11, 19, tzinfo=timezone.utc)
-    params = build_alert_params(AlertOptions(days_back=30, statuses=["firing"]), now)
+    params = build_alert_params(
+        AlertOptions(days_back=30, statuses=[AlertStatus.FIRING]), now
+    )
     assert params["status[one_of]"] == ["firing"]
 
 

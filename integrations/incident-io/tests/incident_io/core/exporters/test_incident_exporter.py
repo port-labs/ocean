@@ -8,7 +8,7 @@ from incident_io.core.exporters.incident_exporter import (
     build_incident_params,
 )
 from incident_io.helpers.exceptions import IncidentIoApiError
-from incident_io.core.options import IncidentOptions
+from incident_io.core.options import IncidentOptions, IncidentStatusCategory
 from tests.incident_io.core.exporters.helpers import collect, mock_client
 
 INCIDENT = {
@@ -52,7 +52,10 @@ def test_build_incident_params_adds_categories_and_test_modes() -> None:
     params = build_incident_params(
         IncidentOptions(
             days_back=30,
-            status_categories=["live", "closed"],
+            status_categories=[
+                IncidentStatusCategory.LIVE,
+                IncidentStatusCategory.CLOSED,
+            ],
             include_test=True,
         ),
         now,

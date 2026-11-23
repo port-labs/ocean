@@ -32,11 +32,11 @@ If a kind's permission is missing, that kind's resync fails and Port keeps the e
 | Kind | Selector | Default | Effect |
 |---|---|---|---|
 | `user` | `includeInactive` | `false` | Also sync deactivated and not-yet-active users. |
-| `incident` | `daysBack` | `180` | Incidents created in the last N days. 180 is about 6 months. Allowed range is 1 to 3650. |
+| `incident` | `daysBack` | `90` | Incidents created in the last N days. 90 is about 3 months. Allowed range is 1 to 1825 (about 5 years). |
 | `incident` | `statusCategories` | all | e.g. `["live", "learning"]`. Active in the dashboard is `live`. Post-incident is `learning`. |
 | `incident` | `severities` | all | Severity names or ids, e.g. `["Critical", "Major"]`. Sent as `severity[one_of]` after names are resolved with `GET /v1/severities`. |
 | `incident` | `includeTest` | `false` | Also sync test and tutorial incidents. Default is standard and retrospective, which is the API default. |
-| `alert` | `daysBack` | `180` | Alerts created in the last N days. Allowed range is 1 to 3650. |
+| `alert` | `daysBack` | `90` | Alerts created in the last N days. 90 is about 3 months. Allowed range is 1 to 1825 (about 5 years). |
 | `alert` | `statuses` | firing and resolved | e.g. `["firing"]`. |
 
 ## Notes

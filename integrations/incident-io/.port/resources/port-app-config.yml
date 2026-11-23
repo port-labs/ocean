@@ -52,7 +52,7 @@ resources:
   - kind: alert
     selector:
       query: 'true'
-      daysBack: 180
+      daysBack: 90
     port:
       entity:
         mappings:
@@ -70,7 +70,7 @@ resources:
   - kind: incident
     selector:
       query: 'true'
-      daysBack: 180
+      daysBack: 90
     port:
       entity:
         mappings:
