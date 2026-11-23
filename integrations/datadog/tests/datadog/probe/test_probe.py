@@ -6,11 +6,13 @@ from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 from datadog.client import DatadogClient
 from datadog.exceptions import IntegrationMissingConfigError
+from datadog.probe.permissions import unverified_scopes_message
 from datadog.probe.probe import DatadogPermissionProbe
 from tests.datadog.probe.conftest import (
     BASE_URL,
     USER_ID,
     application_key,
+    current_user,
     http_status_error,
     make_client,
     request_error,
@@ -35,6 +37,7 @@ async def test_resolves_kinds_from_owner_permissions_in_three_calls(
     client.get_user_permissions.assert_awaited_once_with(USER_ID)
     client.get_current_user_application_keys.assert_awaited_once()
     client.validate_api_key.assert_not_awaited()
+    assert probe_context.message is None
     assert statuses(probe_context) == {
         "monitor": ProbeCheckStatus.SUCCESS,
         "slo": ProbeCheckStatus.FAILURE,
@@ -91,6 +94,7 @@ async def test_unreadable_key_scopes_fall_back_to_role_permissions(
     await DatadogPermissionProbe(probe_context).run()
 
     assert statuses(probe_context) == {"slo": ProbeCheckStatus.SUCCESS}
+    assert probe_context.message == unverified_scopes_message()
 
 
 @pytest.mark.parametrize(
@@ -98,7 +102,8 @@ async def test_unreadable_key_scopes_fall_back_to_role_permissions(
     [
         (
             http_status_error(403, "/api/v1/validate"),
-            "Failed to verify Datadog authentication. Ensure the API key is valid.",
+            "Failed to verify Datadog authentication. Ensure the API key is valid "
+            "and the Datadog base URL matches your Datadog site.",
         ),
         (
             None,
@@ -175,10 +180,11 @@ async def test_oauth_token_skips_key_scopes_and_validation(
 
     client.get_current_user_application_keys.assert_not_awaited()
     assert statuses(probe_context) == {"host": ProbeCheckStatus.SUCCESS}
+    assert probe_context.message == unverified_scopes_message()
 
 
 @pytest.mark.asyncio
-async def test_failed_permission_lookup_fails_every_check(
+async def test_unreadable_permissions_mark_every_check_unknown(
     probe_context: ProbeContext, set_clients: Any
 ) -> None:
     client = make_client(
@@ -192,9 +198,10 @@ async def test_failed_permission_lookup_fails_every_check(
     await DatadogPermissionProbe(probe_context).run()
 
     assert statuses(probe_context) == {
-        "monitor": ProbeCheckStatus.FAILURE,
-        "team": ProbeCheckStatus.FAILURE,
+        "monitor": ProbeCheckStatus.UNKNOWN,
+        "team": ProbeCheckStatus.UNKNOWN,
     }
+    assert probe_context.status is not ProbeStatus.FAILED
     assert probe_context.checks[0].message == (
         "Datadog returned HTTP 403 while fetching user permissions. "
         "Required scope(s): user_access_read."
@@ -206,7 +213,8 @@ async def test_multi_org_reports_checks_per_org_and_isolates_bad_credentials(
     probe_context: ProbeContext, set_clients: Any
 ) -> None:
     good = make_client(
-        org_name="prod", org_id="abc", role_permissions={"monitors_read"}
+        role_permissions={"monitors_read"},
+        get_current_user=AsyncMock(return_value=current_user("prod", "abc")),
     )
     bad = make_client(
         org_id="def", get_current_user=AsyncMock(side_effect=http_status_error(403))
@@ -222,13 +230,16 @@ async def test_multi_org_reports_checks_per_org_and_isolates_bad_credentials(
         for check in probe_context.checks
     }
     assert results == {
-        "prod": (ProbeCheckStatus.SUCCESS, "Datadog access verified: monitors_read"),
+        "prod (abc)": (
+            ProbeCheckStatus.SUCCESS,
+            "Datadog access verified: monitors_read",
+        ),
         "def": (
             ProbeCheckStatus.FAILURE,
             "Failed to verify Datadog authentication. "
             "Ensure the application key is valid.",
         ),
-        f"#3 ({BASE_URL})": (
+        f"{BASE_URL} (#3)": (
             ProbeCheckStatus.FAILURE,
             "Missing permission(s): monitors_read",
         ),
@@ -258,10 +269,153 @@ async def test_effective_permissions_keep_only_those_selected_kinds_need(
 ) -> None:
     client = make_client(role_permissions={"monitors_read", "slos_read", "hosts_read"})
 
-    permissions = await DatadogPermissionProbe(probe_context)._effective_permissions(
+    probe = DatadogPermissionProbe(probe_context)
+    permissions = await probe._effective_permissions(
         cast(DatadogClient, client),
         USER_ID,
         {"monitors_read", "teams_read", "apm_read"},
+        "prod",
     )
 
     assert permissions == {"monitors_read": True, "teams_read": True}
+    assert probe._unverified_scope_orgs == []
+
+
+@pytest.mark.asyncio
+async def test_single_org_checks_are_scoped_by_the_org_datadog_reports(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients(
+        [
+            make_client(
+                role_permissions={"monitors_read"},
+                get_current_user=AsyncMock(
+                    return_value=current_user("mashevich", "pub-1")
+                ),
+            )
+        ]
+    )
+    probe_context.available_kinds = ["monitor", "slo"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert [check.scopes for check in probe_context.checks] == [
+        {"org": "mashevich (pub-1)"},
+        {"org": "mashevich (pub-1)"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_org_scope_falls_back_to_a_unique_configured_label(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients(
+        [
+            make_client(org_name="prod", org_id="abc"),
+            make_client(org_name="prod", org_id="xyz"),
+            make_client(org_name="prod"),
+            make_client(org_name="prod"),
+            make_client(),
+        ],
+        multi_org=True,
+    )
+    probe_context.available_kinds = ["monitor"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert [check.scopes["org"] for check in probe_context.checks] == [
+        "prod (abc)",
+        "prod (xyz)",
+        "prod (#3)",
+        "prod (#4)",
+        f"{BASE_URL} (#5)",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_org_reported_by_datadog_takes_precedence_over_configuration(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients(
+        [
+            make_client(
+                org_name="old name",
+                org_id="abc",
+                get_current_user=AsyncMock(return_value=current_user("prod", "abc")),
+            ),
+            make_client(
+                get_current_user=AsyncMock(return_value=current_user("eu", "xyz"))
+            ),
+        ],
+        multi_org=True,
+    )
+    probe_context.available_kinds = ["monitor"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert [check.scopes["org"] for check in probe_context.checks] == [
+        "prod (abc)",
+        "eu (xyz)",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_unverified_scopes_note_names_the_affected_orgs_in_multi_org(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients(
+        [
+            make_client(
+                get_current_user=AsyncMock(return_value=current_user("prod", "abc"))
+            ),
+            make_client(
+                get_current_user=AsyncMock(return_value=current_user("eu", "xyz")),
+                get_current_user_application_keys=AsyncMock(return_value=[]),
+            ),
+        ],
+        multi_org=True,
+    )
+    probe_context.available_kinds = ["monitor"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert probe_context.message == unverified_scopes_message(["eu (xyz)"])
+    assert probe_context.message.endswith("Affected org(s): eu (xyz).")
+
+
+@pytest.mark.asyncio
+async def test_failed_probe_keeps_its_failure_message(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients(
+        [
+            make_client(
+                access_token="token",
+                get_current_user=AsyncMock(side_effect=http_status_error(401)),
+            )
+        ]
+    )
+    probe_context.available_kinds = ["monitor"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert probe_context.status is ProbeStatus.FAILED
+    assert probe_context.message == (
+        "Failed to verify Datadog authentication. "
+        "Ensure the Datadog access token is valid and the Datadog base URL "
+        "matches your Datadog site."
+    )
+
+
+@pytest.mark.asyncio
+async def test_empty_credential_map_fails_probe(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients([], multi_org=True)
+    probe_context.available_kinds = ["monitor"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert probe_context.status is ProbeStatus.FAILED
+    assert probe_context.message == "No Datadog organizations were accessible."
+    assert probe_context.checks == []

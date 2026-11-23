@@ -33,6 +33,25 @@ def application_key(last4: str, scopes: list[str] | None) -> dict[str, Any]:
     return {"attributes": {"last4": last4, "scopes": scopes}}
 
 
+def current_user(
+    org_name: str | None = None, org_public_id: str | None = None
+) -> dict[str, Any]:
+    """A /api/v2/current_user response; with *org_public_id* it names the org."""
+    response: dict[str, Any] = {"data": {"id": USER_ID}, "included": []}
+    if org_public_id:
+        response["data"]["relationships"] = {
+            "org": {"data": {"type": "orgs", "id": org_public_id}}
+        }
+        response["included"].append(
+            {
+                "type": "orgs",
+                "id": org_public_id,
+                "attributes": {"name": org_name, "public_id": org_public_id},
+            }
+        )
+    return response
+
+
 def make_client(**overrides: Any) -> SimpleNamespace:
     """A DatadogClient stand-in: valid keys, owner holds *role_permissions*,
     configured application key is unscoped."""
@@ -43,7 +62,7 @@ def make_client(**overrides: Any) -> SimpleNamespace:
         "access_token": None,
         "org_name": None,
         "org_id": None,
-        "get_current_user": AsyncMock(return_value={"id": USER_ID}),
+        "get_current_user": AsyncMock(return_value=current_user()),
         "get_user_permissions": AsyncMock(return_value=role_permissions),
         "get_current_user_application_keys": AsyncMock(
             return_value=[application_key("abcd", None)]

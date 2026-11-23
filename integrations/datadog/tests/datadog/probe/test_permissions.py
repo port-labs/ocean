@@ -36,3 +36,29 @@ def test_granted_kind_lists_its_permissions() -> None:
     assert message == (
         "Datadog access verified: apm_service_catalog_read, timeseries_query"
     )
+
+
+# Datadog permissions the kinds rely on, checked against Datadog's permission
+# catalog (/api/v2/permissions). Datadog can't flag an unknown name: it just never
+# appears in a user's permissions, so a typo would fail that kind in production.
+KNOWN_DATADOG_PERMISSIONS = {
+    "apm_read",
+    "apm_service_catalog_read",
+    "hosts_read",
+    "monitors_read",
+    "org_management",
+    "slos_read",
+    "teams_read",
+    "timeseries_query",
+    "user_access_read",
+}
+
+
+def test_probe_permissions_are_known_datadog_permissions() -> None:
+    declared = {
+        permission
+        for permissions in DatadogKindPermissionVerdict().kind_permissions.values()
+        for permission in permissions
+    }
+
+    assert declared - KNOWN_DATADOG_PERMISSIONS == set()

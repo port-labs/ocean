@@ -86,13 +86,14 @@ class DatadogClient:
         await self.send_api_request(f"{self.api_url}/api/v1/validate", skip_retry=True)
 
     async def get_current_user(self) -> dict[str, Any]:
-        """Return the user that owns the credentials; needs no permission.
+        """Return the /api/v2/current_user response: the user that owns the
+        credentials (``data``) and its org and roles (``included``). Needs no
+        permission.
         Docs: https://docs.datadoghq.com/api/latest/users/#get-current-user
         """
-        response = await self.send_api_request(
+        return await self.send_api_request(
             f"{self.api_url}/api/v2/current_user", skip_retry=True
         )
-        return response["data"]
 
     async def get_user_permissions(self, user_id: str) -> set[str]:
         """Return the names of the permissions *user_id* gets from their roles.

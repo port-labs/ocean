@@ -47,6 +47,8 @@ class SLOHistorySelector(Selector):
 
 
 class SLOHistoryResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v1/slo/{slo_id}/history requires slos_read: https://docs.datadoghq.com/api/latest/service-level-objectives/
     probe_permissions: ClassVar[tuple[str, ...]] = ("slos_read",)
     kind: Literal["sloHistory"] = Field(
         title="Datadog SLO History",
@@ -106,6 +108,9 @@ class ServiceMetricResourceSelector(Selector):
 
 
 class ServiceMetricResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v2/services/definitions requires apm_service_catalog_read: https://docs.datadoghq.com/api/latest/service-definition/
+    # GET /api/v1/query requires timeseries_query: https://docs.datadoghq.com/api/latest/metrics/
     probe_permissions: ClassVar[tuple[str, ...]] = (
         "apm_service_catalog_read",
         "timeseries_query",
@@ -130,6 +135,8 @@ class TeamSelector(Selector):
 
 
 class TeamResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v2/team requires teams_read: https://docs.datadoghq.com/api/latest/teams/
     probe_permissions: ClassVar[tuple[str, ...]] = ("teams_read",)
     kind: Literal["team"] = Field(
         title="Datadog Team",
@@ -157,6 +164,9 @@ class DatadogServiceDependencySelector(Selector):
 
 
 class ServiceDependencyResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v1/service_dependencies: the docs state no permission (https://docs.datadoghq.com/api/latest/service-dependencies/);
+    # apm_read is the catalog's APM read permission (/api/v2/permissions).
     probe_permissions: ClassVar[tuple[str, ...]] = ("apm_read",)
     kind: Literal["serviceDependency"] = Field(
         title="Datadog Service Dependency",
@@ -169,6 +179,8 @@ class ServiceDependencyResourceConfig(ResourceConfig):
 
 
 class HostResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v1/hosts requires hosts_read: https://docs.datadoghq.com/api/latest/hosts/
     probe_permissions: ClassVar[tuple[str, ...]] = ("hosts_read",)
     kind: Literal["host"] = Field(
         title="Datadog Host",
@@ -186,6 +198,8 @@ class MonitorSelector(Selector):
 
 
 class MonitorResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v1/monitor requires monitors_read: https://docs.datadoghq.com/api/latest/monitors/
     probe_permissions: ClassVar[tuple[str, ...]] = ("monitors_read",)
     kind: Literal["monitor"] = Field(
         title="Datadog Monitor",
@@ -207,6 +221,8 @@ class SLOSelector(Selector):
 
 
 class SLOResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v1/slo requires slos_read: https://docs.datadoghq.com/api/latest/service-level-objectives/
     probe_permissions: ClassVar[tuple[str, ...]] = ("slos_read",)
     kind: Literal["slo"] = Field(
         title="Datadog SLO",
@@ -219,6 +235,8 @@ class SLOResourceConfig(ResourceConfig):
 
 
 class ServiceResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v2/services/definitions requires apm_service_catalog_read: https://docs.datadoghq.com/api/latest/service-definition/
     probe_permissions: ClassVar[tuple[str, ...]] = ("apm_service_catalog_read",)
     kind: Literal["service"] = Field(
         title="Datadog Service",
@@ -242,6 +260,8 @@ class CatalogEntitySelector(Selector):
 
 
 class CatalogEntityResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v2/catalog/entity requires apm_service_catalog_read: https://docs.datadoghq.com/api/latest/software-catalog/
     probe_permissions: ClassVar[tuple[str, ...]] = ("apm_service_catalog_read",)
     kind: Literal["catalogEntity"] = Field(
         title="Datadog Catalog Entity",
@@ -254,6 +274,8 @@ class CatalogEntityResourceConfig(ResourceConfig):
 
 
 class UserResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v2/users requires user_access_read: https://docs.datadoghq.com/api/latest/users/
     probe_permissions: ClassVar[tuple[str, ...]] = ("user_access_read",)
     kind: Literal["user"] = Field(
         title="Datadog User",
@@ -271,6 +293,8 @@ class RoleSelector(Selector):
 
 
 class RoleResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v2/roles requires user_access_read: https://docs.datadoghq.com/api/latest/roles/
     probe_permissions: ClassVar[tuple[str, ...]] = ("user_access_read",)
     kind: Literal["role"] = Field(
         title="Datadog Role",
@@ -282,6 +306,8 @@ class RoleResourceConfig(ResourceConfig):
 
 
 class OrgResourceConfig(ResourceConfig):
+    # Test connection: the permission(s) the exporter's endpoint requires.
+    # GET /api/v1/org requires org_management: https://docs.datadoghq.com/api/latest/organizations/
     probe_permissions: ClassVar[tuple[str, ...]] = ("org_management",)
     kind: Literal["organization"] = Field(
         title="Datadog Organization",
