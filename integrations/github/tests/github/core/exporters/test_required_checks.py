@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 import pytest
 from github.core.exporters.pull_request_exporter.required_checks import (
+    CheckOutcome,
     ObservedCheck,
     check_run_outcome,
     status_context_outcome,
@@ -18,13 +19,11 @@ LATER = "2026-11-08T11:00:00Z"
 
 def _required(
     name: str,
-    outcome: str,
+    outcome: CheckOutcome,
     started_at: Optional[str] = EARLIER,
     completed_at: Optional[str] = None,
 ) -> ObservedCheck:
-    return ObservedCheck(  # type: ignore[arg-type]
-        name, outcome, True, started_at, completed_at
-    )
+    return ObservedCheck(name, outcome, True, started_at, completed_at)
 
 
 def _optional(name: str, outcome: str) -> ObservedCheck:
@@ -258,7 +257,7 @@ class TestFailedAt:
         assert summary.failed_at == EARLIER
 
     @pytest.mark.parametrize("outcome", ["success", "pending"])
-    def test_is_none_without_a_failure(self, outcome: str) -> None:
+    def test_is_none_without_a_failure(self, outcome: CheckOutcome) -> None:
         summary = _summarize([GATE], [_required(GATE, outcome, EARLIER, LATER)])
 
         assert summary.failed_at is None
