@@ -233,6 +233,7 @@ class TestWorkflowNodeRunOutputPreservation:
                 "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
             },
             should_raise=False,
+            should_log=True,
         )
 
     async def test_report_run_completed_failure_adds_error_to_output(
@@ -261,6 +262,7 @@ class TestWorkflowNodeRunOutputPreservation:
                 },
             },
             should_raise=False,
+            should_log=True,
         )
         assert run.output == {
             "workflowRunUrl": "https://gitlab.example/pipelines/99",
@@ -285,6 +287,7 @@ class TestWorkflowNodeRunOutputPreservation:
                 "output": {"workflowRunUrl": "https://gitlab.example/pipelines/99"},
             },
             should_raise=False,
+            should_log=True,
         )
 
 
@@ -387,6 +390,7 @@ class TestActionRunStatusLabel:
             run.id,
             {"status": RunStatus.FAILURE, "statusLabel": "Pipeline failed"},
             should_raise=False,
+            should_log=True,
         )
 
     async def test_report_run_completed_omits_absent_status_label(
@@ -400,7 +404,10 @@ class TestActionRunStatusLabel:
             await actions_client.report_run_completed(run, success=True)
 
         mock_patch.assert_awaited_once_with(
-            run.id, {"status": RunStatus.SUCCESS}, should_raise=False
+            run.id,
+            {"status": RunStatus.SUCCESS},
+            should_raise=False,
+            should_log=True,
         )
 
 
@@ -435,6 +442,7 @@ class TestWorkflowNodeRunStatusLabel:
             run.id,
             {"statusLabel": {"text": "Triggering pipeline"}},
             should_raise=False,
+            should_log=True,
         )
 
     async def test_post_run_log_skips_patch_without_status_label(
@@ -500,4 +508,5 @@ class TestWorkflowNodeRunStatusLabel:
                 "statusLabel": {"text": "Pipeline succeeded"},
             },
             should_raise=False,
+            should_log=True,
         )
