@@ -65,13 +65,26 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(error.exit_code) from error
 
     integration_name = result.paths.integration_name
-    print(f"Loaded {len(result.scenario_names)} scenario(s) for {integration_name}.")
-    for name in result.scenario_names:
-        kinds = result.scenarios.scenarios[name].kinds
+    print(f"Loaded {len(result.scenario_runs)} scenario(s) for {integration_name}.")
+    for run in result.scenario_runs:
+        name = run.plan.scenario_name
+        kinds = run.plan.kinds
         kinds_label = ", ".join(kinds) if kinds else "all configured kinds"
         print(f"  • {name} ({kinds_label})")
+        print(f"    integration: {run.plan.integration_identifier}")
+        print(f"    blueprints: {', '.join(run.plan.blueprint_renames.values())}")
+        if run.cleaned_up:
+            print("    Port resources cleaned up")
+        elif run.cleanup_leftovers:
+            print(
+                f"    Cleanup left behind: {', '.join(run.cleanup_leftovers)}",
+                file=sys.stderr,
+            )
+        else:
+            print("    Port resources kept (--skip-cleanup)")
 
     print(
-        "Scenario execution is not implemented yet; preflight checks passed.",
+        "Mock and integration run are not implemented yet; "
+        "Port resources were prepared for each scenario.",
         file=sys.stderr,
     )
