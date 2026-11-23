@@ -254,6 +254,10 @@ class FoundryHttpClient:
             json=stream_body,
             headers=headers,
         )
+        # POST not in Ocean defaults; mark retryable so ConnectError on stream
+        # open is retried. send(stream=True) only waits for headers — body
+        # consume is outside the transport, so mid-SSE fails stay unretried.
+        request.extensions["retryable"] = True
         response = await self._stream_http.send(request, stream=True)
         if response.is_error:
             with contextlib.suppress(Exception):

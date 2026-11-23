@@ -97,6 +97,7 @@ async def test_open_responses_stream_uses_stream_http_client() -> None:
     response.is_error = False
     response.status_code = 200
     built = MagicMock(name="request")
+    built.extensions = {}
     client._stream_http.build_request = MagicMock(return_value=built)  # type: ignore[method-assign]
     client._stream_http.send = AsyncMock(return_value=response)  # type: ignore[method-assign]
     client._http.send = AsyncMock()  # type: ignore[method-assign]
@@ -107,6 +108,7 @@ async def test_open_responses_stream_uses_stream_http_client() -> None:
     )
 
     assert got is response
+    assert built.extensions["retryable"] is True
     build_kwargs = client._stream_http.build_request.call_args.kwargs
     assert build_kwargs["json"]["stream"] is True
     client._stream_http.send.assert_awaited_once_with(built, stream=True)
