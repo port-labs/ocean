@@ -1,7 +1,9 @@
 from typing import TypedDict
 
+from pydantic import BaseModel
 
-class ListPlaybooksOptions(TypedDict):
+
+class PlaybooksExportOptions(BaseModel):
     include_enterprise: bool
 
 

@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from clients import endpoints
-from clients.devin_client import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, DevinClient
+from clients.devin_client import DevinClient
 from clients.models import SessionMessage, SessionResponse
 from clients.parsing import (
     parse_session_message_best_effort,
@@ -63,23 +63,17 @@ class DevinSessions:
         """
         messages: list[SessionMessage] = []
         cursor = after
-        while True:
-            page_params: dict[str, Any] = {
-                "first": min(DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
-            }
-            if cursor:
-                page_params["after"] = cursor
-            payload = await self.client.send_api_request(
-                "GET",
-                endpoints.session_messages(session_id),
-                params=page_params,
-            )
+        params = {"after": after} if after else None
+        async for payload in self.client.paginate(
+            endpoints.session_messages(session_id),
+            params=params,
+            envelopes=True,
+        ):
             for item in payload.get("items") or []:
                 if message := parse_session_message_best_effort(item):
                     messages.append(message)
             cursor = payload.get("end_cursor") or cursor
-            if not payload.get("has_next_page") or not payload.get("end_cursor"):
-                return messages, cursor
+        return messages, cursor
 
     async def append_tags(self, session_id: str, tags: list[str]) -> list[str]:
         data = await self.client.send_api_request(

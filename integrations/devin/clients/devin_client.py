@@ -8,10 +8,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 from clients.exceptions import DevinPaginationError
-from utils.http import drop_none
-
-DEFAULT_PAGE_SIZE = 100
-MAX_PAGE_SIZE = 200
+from utils.http import DEFAULT_PAGE_SIZE, build_list_page_params, drop_none
 
 
 class DevinClient:
@@ -68,8 +65,13 @@ class DevinClient:
         path: str,
         params: dict[str, Any] | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        *,
+        envelopes: bool = False,
+    ) -> AsyncGenerator[Any, None]:
         """Walk every page of a Devin list endpoint.
+
+        Yields each page's ``items`` by default. Pass ``envelopes=True`` to yield the
+        raw API page (items, end_cursor, has_next_page) instead.
 
         A page that still fails after Ocean's RetryTransport has exhausted its
         retries is logged and pagination stops early so the pages already fetched
@@ -77,20 +79,19 @@ class DevinClient:
         makes Ocean skip its delete phase so entities behind the unreachable
         remainder survive until the next resync.
         """
-
-        async def fetch_page(after: str | None) -> dict[str, Any]:
-            page_params = dict(params or {})
-            page_params["first"] = min(page_size, MAX_PAGE_SIZE)
-            if after:
-                page_params["after"] = after
-            return await self.send_api_request("GET", path, params=page_params)
-
-        after: str | None = None
+        base_params = dict(params or {})
+        after: str | None = base_params.pop("after", None)
         page_count = 0
         failed = False
         while True:
             try:
-                payload = await fetch_page(after)
+                payload = await self.send_api_request(
+                    "GET",
+                    path,
+                    params=build_list_page_params(
+                        base_params, after=after, page_size=page_size
+                    ),
+                )
             except httpx.HTTPError as exc:
                 failed = True
                 logger.error(
@@ -103,7 +104,7 @@ class DevinClient:
             logger.debug(
                 f"Devin pagination {path}: fetched page {page_count} ({len(items)} items)"
             )
-            yield items
+            yield payload if envelopes else items
             after = payload.get("end_cursor")
             if not payload.get("has_next_page") or not after:
                 break

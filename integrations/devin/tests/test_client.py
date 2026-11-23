@@ -141,31 +141,49 @@ async def test_paginate_yields_fetched_pages_then_raises(client: DevinClient) ->
 async def test_list_messages_after_walks_pages_and_returns_last_cursor(
     client: DevinClient,
 ) -> None:
-    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
-        side_effect=[
-            {
-                "items": [_message("e1")],
-                "end_cursor": "c1",
-                "has_next_page": True,
-            },
-            {"items": [_message("e2")], "end_cursor": "c2", "has_next_page": False},
-        ]
-    )
+    pages = [
+        {
+            "items": [_message("e1")],
+            "end_cursor": "c1",
+            "has_next_page": True,
+        },
+        {"items": [_message("e2")], "end_cursor": "c2", "has_next_page": False},
+    ]
+
+    async def paginate(
+        path: str,
+        params: dict[str, Any] | None = None,
+        page_size: int = 100,
+        *,
+        envelopes: bool = False,
+    ) -> Any:
+        assert envelopes
+        for page in pages:
+            yield page
+
+    client.paginate = paginate  # type: ignore[method-assign]
 
     messages, cursor = await DevinSessions(client).list_messages_after("devin-1", None)
 
     assert [m.event_id for m in messages] == ["e1", "e2"]
     assert cursor == "c2"
-    second_params = client.send_api_request.await_args_list[1].kwargs["params"]
-    assert second_params == {"first": 100, "after": "c1"}
 
 
 async def test_list_messages_after_keeps_cursor_when_nothing_new(
     client: DevinClient,
 ) -> None:
-    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
-        return_value={"items": [], "end_cursor": None, "has_next_page": False}
-    )
+    async def paginate(
+        path: str,
+        params: dict[str, Any] | None = None,
+        page_size: int = 100,
+        *,
+        envelopes: bool = False,
+    ) -> Any:
+        assert envelopes
+        assert params == {"after": "c9"}
+        yield {"items": [], "end_cursor": None, "has_next_page": False}
+
+    client.paginate = paginate  # type: ignore[method-assign]
 
     messages, cursor = await DevinSessions(client).list_messages_after("devin-1", "c9")
 
@@ -178,12 +196,20 @@ def _message(event_id: str) -> dict[str, Any]:
 
 
 async def test_list_messages_after_skips_invalid_rows(client: DevinClient) -> None:
-    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
-        return_value={
+    async def paginate(
+        path: str,
+        params: dict[str, Any] | None = None,
+        page_size: int = 100,
+        *,
+        envelopes: bool = False,
+    ) -> Any:
+        assert envelopes
+        yield {
             "items": [_message("e1"), {"event_id": "bad"}, _message("e2")],
             "has_next_page": False,
         }
-    )
+
+    client.paginate = paginate  # type: ignore[method-assign]
 
     messages, _ = await DevinSessions(client).list_messages_after("devin-1", None)
 

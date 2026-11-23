@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import yaml  # type: ignore[import-untyped]
 
 from core.exporters.knowledge_notes_exporter import KnowledgeNotesExporter
+from core.exporters.options import PlaybooksExportOptions
 from core.exporters.playbooks_exporter import PlaybooksExporter
 from core.exporters.sessions_exporter import SessionsExporter, build_sessions_query
 from integration import DevinPortAppConfig, SessionResourceConfig
@@ -71,7 +72,7 @@ async def test_playbooks_exporter_include_enterprise() -> None:
     pages = [
         page
         async for page in PlaybooksExporter(client).get_paginated_resources(
-            {"include_enterprise": True}
+            PlaybooksExportOptions(include_enterprise=True)
         )
     ]
 

@@ -33,6 +33,22 @@ class CreateSessionInputs(AbstractDevinActionInput):
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
+    def to_api_body(self, *, tags: list[str]) -> dict[str, Any]:
+        return merge_config(
+            self.config,
+            {
+                "prompt": self.prompt,
+                "playbook_id": self.playbookId,
+                "repos": self.repos,
+                "knowledge_ids": self.knowledgeIds,
+                "secret_ids": self.secretIds,
+                "max_acu_limit": self.maxAcuLimit,
+                "structured_output_schema": self.structuredOutputSchema,
+                "create_as_user_id": self.createAsUserId,
+                "tags": tags,
+            },
+        )
+
 
 class CreateSessionExecutor(AbstractDevinExecutor):
     """Executor for the `create_session` action.
@@ -67,23 +83,8 @@ class CreateSessionExecutor(AbstractDevinExecutor):
                 tracking_tags(ocean.config.integration.identifier, external_id, sent_at)
             )
 
-        body = merge_config(
-            inputs.config,
-            {
-                "prompt": inputs.prompt,
-                "playbook_id": inputs.playbookId,
-                "repos": inputs.repos,
-                "knowledge_ids": inputs.knowledgeIds,
-                "secret_ids": inputs.secretIds,
-                "max_acu_limit": inputs.maxAcuLimit,
-                "structured_output_schema": inputs.structuredOutputSchema,
-                "create_as_user_id": inputs.createAsUserId,
-                "tags": tags,
-            },
-        )
-
         try:
-            session = await self.sessions.create(body)
+            session = await self.sessions.create(inputs.to_api_body(tags=tags))
         except httpx.HTTPError as error:
             raise DevinApiError.from_http_error(
                 error, "Failed to create the Devin session"

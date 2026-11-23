@@ -37,6 +37,15 @@ class SendMessageInputs(AbstractDevinActionInput):
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
+    def to_api_body(self) -> dict[str, Any]:
+        return merge_config(
+            self.config,
+            {
+                "message": self.message,
+                "message_as_user_id": self.messageAsUserId,
+            },
+        )
+
 
 class SendMessageExecutor(AbstractDevinExecutor):
     """Executor for the `send_message` action.
@@ -102,15 +111,8 @@ class SendMessageExecutor(AbstractDevinExecutor):
                     "the message was not sent",
                 ) from error
 
-        body = merge_config(
-            inputs.config,
-            {
-                "message": inputs.message,
-                "message_as_user_id": inputs.messageAsUserId,
-            },
-        )
         try:
-            session = await self.sessions.send_message(session_id, body)
+            session = await self.sessions.send_message(session_id, inputs.to_api_body())
         except httpx.HTTPError as error:
             if inputs.reportCompletion:
                 await self._untrack(session_id)

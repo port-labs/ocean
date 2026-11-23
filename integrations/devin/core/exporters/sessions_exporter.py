@@ -4,7 +4,7 @@ from typing import Any
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients import endpoints
-from core.exporters.abstract_exporter import AbstractDevinExporter
+from clients.devin_client import DevinClient
 from core.exporters.options import SessionsExportOptions
 from core.tracking.tags import MANAGED_TAG
 
@@ -32,8 +32,11 @@ def build_sessions_query(
     return params
 
 
-class SessionsExporter(AbstractDevinExporter):
-    async def get_paginated_resources(  # type: ignore[override]
+class SessionsExporter:
+    def __init__(self, client: DevinClient) -> None:
+        self.client = client
+
+    async def get_paginated_resources(
         self, options: SessionsExportOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params = build_sessions_query(
