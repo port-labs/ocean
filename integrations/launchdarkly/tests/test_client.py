@@ -206,3 +206,115 @@ async def test_create_launchdarkly_webhook_existing(
             method="PATCH",
             json_data=[{"op": "replace", "path": "/secret", "value": "test_secret"}],
         )
+
+
+@pytest.mark.asyncio
+async def test_fetch_feature_flags_default_selector(
+    mock_client: LaunchDarklyClient,
+) -> None:
+    """Test fetching feature flags with default selector (summary=true)."""
+    flags_response = {
+        "items": [{"key": "flag-1", "name": "Test Flag"}],
+        "totalCount": 1,
+    }
+
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = flags_response
+
+        result = await mock_client.fetch_feature_flags_for_project({"key": "project-1"})
+
+        assert len(result) == 1
+        assert result[0]["key"] == "flag-1"
+        assert result[0]["__projectKey"] == "project-1"
+
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        assert call_args[1]["query_params"] == {"limit": 100}
+
+
+@pytest.mark.asyncio
+async def test_fetch_feature_flags_with_environments(
+    mock_client: LaunchDarklyClient,
+) -> None:
+    """Test fetching feature flags with summary=false and environments."""
+    flags_response = {
+        "items": [
+            {
+                "key": "flag-1",
+                "name": "Test Flag",
+                "environments": {
+                    "production": {"on": True, "rules": []},
+                    "staging": {"on": False, "targets": []},
+                },
+            }
+        ],
+        "totalCount": 1,
+    }
+
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = flags_response
+
+        result = await mock_client.fetch_feature_flags_for_project(
+            {"key": "project-1"},
+            summary=False,
+            environments=["production", "staging"],
+        )
+
+        assert len(result) == 1
+        assert result[0]["key"] == "flag-1"
+        assert "environments" in result[0]
+
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        params = call_args[1]["query_params"]
+        assert isinstance(params, list)
+        assert ("limit", 100) in params
+        assert ("summary", "0") in params
+        assert ("env", "production") in params
+        assert ("env", "staging") in params
+
+
+@pytest.mark.asyncio
+async def test_pagination_preserves_params(
+    mock_client: LaunchDarklyClient,
+) -> None:
+    """Test that pagination preserves summary and env parameters."""
+    page1 = {
+        "items": [{"key": "flag-1"}],
+        "_links": {"next": {"href": "/api/v2/flags/project-1?offset=100"}},
+    }
+    page2 = {"items": [{"key": "flag-2"}], "totalCount": 2}
+
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page1, page2]
+
+        batches = []
+        async for batch in mock_client.get_paginated_resource(
+            "flag",
+            resource_path="project-1",
+            summary=False,
+            environments=["production"],
+        ):
+            batches.extend(batch)
+
+        assert len(batches) == 2
+        assert batches[0]["key"] == "flag-1"
+        assert batches[1]["key"] == "flag-2"
+
+        calls = mock_request.call_args_list
+        page1_call = calls[0]
+        params = page1_call[1]["query_params"]
+        assert isinstance(params, list)
+        assert ("summary", "0") in params
+        assert ("env", "production") in params
+
+        page2_call = calls[1]
+        endpoint = page2_call[1]["endpoint"]
+        assert "summary=0" in endpoint
+        assert "env=production" in endpoint

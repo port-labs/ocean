@@ -198,3 +198,52 @@ class TestFeatureFlagWebhookProcessor:
                 assert all(
                     "__environmentKey" in item for item in result.deleted_raw_results
                 )
+
+    async def test_handle_event_with_environment_filter(
+        self,
+        feature_flag_processor: FeatureFlagWebhookProcessor,
+        mock_client: AsyncMock,
+        valid_feature_flag_payload: Dict[str, Any],
+    ) -> None:
+        """Test that webhook processor passes environment filter when re-fetching a flag."""
+        from integration import FeatureFlagSelector
+
+        resource_config = ResourceConfig(
+            kind=ObjectKind.FEATURE_FLAG,
+            selector=FeatureFlagSelector(
+                query="true", summary=False, environments=["production", "staging"]
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier='.key + "-" + .__projectKey',
+                        title=".name",
+                        blueprint='"launchDarklyFeatureFlag"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        mock_client.send_api_request.return_value = {
+            "key": "flag-1",
+            "name": "Test Flag",
+            "environments": {
+                "production": {"on": True},
+                "staging": {"on": False},
+            },
+        }
+
+        result = await feature_flag_processor.handle_event(
+            valid_feature_flag_payload, resource_config
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results[0]["key"] == "flag-1"
+
+        mock_client.send_api_request.assert_called_once()
+        call_args = mock_client.send_api_request.call_args[0][0]
+        assert "summary=0" in call_args
+        assert "env=production" in call_args
+        assert "env=staging" in call_args

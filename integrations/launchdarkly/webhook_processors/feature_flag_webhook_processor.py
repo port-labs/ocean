@@ -75,6 +75,20 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
                 for env_key, env_data in response["environments"].items()
             ]
         else:
+            selector = getattr(resource_config, "selector", None)
+            environments: list[str] = []
+
+            if selector:
+                summary = getattr(selector, "summary", True)
+                environments = getattr(selector, "environments", [])
+
+                if not summary and environments:
+                    endpoint_with_params = f"{endpoint}?summary=0&{'&'.join(f'env={env}' for env in environments)}"
+                    logger.debug(
+                        f"Fetching feature flag with environment filter: {endpoint_with_params}"
+                    )
+                    endpoint = endpoint_with_params
+
             data_to_update = [
                 await enrich_resource_with_project(endpoint, kind, client)
             ]

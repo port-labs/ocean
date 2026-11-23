@@ -7,6 +7,7 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
+    Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -25,10 +26,28 @@ class AuditLogResourceConfig(ResourceConfig):
     )
 
 
+class FeatureFlagSelector(Selector):
+    summary: bool = Field(
+        default=True,
+        title="Summary Mode",
+        description="Whether to fetch flags in summary mode (true) or with full environment details (false). Set to false to include prerequisites, targets, contextTargets, and rules for each environment.",
+    )
+    environments: list[str] = Field(
+        default_factory=list,
+        title="Environments",
+        description="List of environment keys to include detailed configuration for. Only applies when summary is false. If empty, all environments will be included.",
+    )
+
+
 class FeatureFlagResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.FEATURE_FLAG] = Field(
         title="LaunchDarkly Feature Flag",
         description="LaunchDarkly feature flag resource kind.",
+    )
+    selector: FeatureFlagSelector = Field(
+        default_factory=lambda: FeatureFlagSelector(query="true"),
+        title="Feature Flag Selector",
+        description="Selector for the LaunchDarkly feature flag resource.",
     )
 
 

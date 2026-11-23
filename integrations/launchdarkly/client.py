@@ -52,7 +52,12 @@ class LaunchDarklyClient:
         )
 
     async def get_paginated_resource(
-        self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
+        self,
+        kind: str,
+        resource_path: str | None = None,
+        page_size: int = PAGE_SIZE,
+        summary: bool = True,
+        environments: list[str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch and paginate through resources from a LaunchDarkly API endpoint.
@@ -62,7 +67,15 @@ class LaunchDarklyClient:
 
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
-        params: Optional[dict[str, Any]] = {"limit": page_size}
+
+        params: Optional[dict[str, Any]] | list[tuple[str, Any]] = {"limit": page_size}
+
+        if kind == "flags" and not summary:
+            params_list = [("limit", page_size), ("summary", "0")]
+            if environments:
+                for env in environments:
+                    params_list.append(("env", env))
+            params = params_list
 
         while url:
             try:
@@ -79,6 +92,25 @@ class LaunchDarklyClient:
                 if next_link := response.get("_links", {}).get("next"):
                     url = next_link["href"]
                     logger.debug(f"Fetching next page of {kind}: {url}")
+
+                    if isinstance(params, list) and "?" in url:
+                        from urllib.parse import urlparse, parse_qs
+
+                        parsed = urlparse(url)
+                        query_params = parse_qs(parsed.query)
+
+                        has_summary = "summary" in query_params
+                        has_env = "env" in query_params
+
+                        if not has_summary and not summary:
+                            url = (
+                                url + "&summary=0" if "?" in url else url + "?summary=0"
+                            )
+
+                        if not has_env and environments:
+                            for env in environments:
+                                url = url + f"&env={env}"
+
                     params = None
                 else:
                     total_count = response.get("totalCount", len(items))
@@ -102,7 +134,7 @@ class LaunchDarklyClient:
         self,
         endpoint: str,
         method: str = "GET",
-        query_params: Optional[dict[str, Any]] = None,
+        query_params: Optional[Union[dict[str, Any], list[tuple[str, Any]]]] = None,
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
@@ -205,10 +237,15 @@ class LaunchDarklyClient:
 
     async def get_paginated_feature_flags(
         self,
+        summary: bool = True,
+        environments: list[str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.get_paginated_projects():
             tasks = [
-                self.fetch_feature_flags_for_project(project) for project in projects
+                self.fetch_feature_flags_for_project(
+                    project, summary=summary, environments=environments
+                )
+                for project in projects
             ]
 
             feature_flags_batches = await asyncio.gather(*tasks)
@@ -216,11 +253,24 @@ class LaunchDarklyClient:
                 yield feature_flags
 
     async def fetch_feature_flags_for_project(
-        self, project: dict[str, Any]
+        self,
+        project: dict[str, Any],
+        summary: bool = True,
+        environments: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         feature_flags = []
+
+        if not summary and not environments:
+            logger.warning(
+                f"Fetching feature flags for project {project['key']} with summary=false but no environments specified. "
+                "This will include full details for all environments."
+            )
+
         async for flags_batch in self.get_paginated_resource(
-            ObjectKind.FEATURE_FLAG, resource_path=project["key"]
+            ObjectKind.FEATURE_FLAG,
+            resource_path=project["key"],
+            summary=summary,
+            environments=environments,
         ):
             updated_batch = [
                 {**flag, "__projectKey": project["key"]} for flag in flags_batch
