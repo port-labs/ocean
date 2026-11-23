@@ -17,9 +17,14 @@ LATER = "2026-11-08T11:00:00Z"
 
 
 def _required(
-    name: str, outcome: str, started_at: Optional[str] = EARLIER
+    name: str,
+    outcome: str,
+    started_at: Optional[str] = EARLIER,
+    completed_at: Optional[str] = None,
 ) -> ObservedCheck:
-    return ObservedCheck(name, outcome, True, started_at)  # type: ignore[arg-type]
+    return ObservedCheck(  # type: ignore[arg-type]
+        name, outcome, True, started_at, completed_at
+    )
 
 
 def _optional(name: str, outcome: str) -> ObservedCheck:
@@ -197,6 +202,72 @@ class TestSummarizeRequiredChecks:
         )
 
         assert summary.status == "failure"
+
+
+class TestFailedAt:
+    def test_is_when_the_failing_check_finished(self) -> None:
+        summary = _summarize([GATE], [_required(GATE, "failure", EARLIER, LATER)])
+
+        assert summary.status == "failure"
+        assert summary.failed_at == LATER
+
+    def test_is_the_latest_finish_among_the_failing_checks(self) -> None:
+        summary = _summarize(
+            ["lint", "test"],
+            [
+                _required("lint", "failure", EARLIER, EARLIER),
+                _required("test", "failure", EARLIER, LATER),
+            ],
+        )
+
+        assert summary.failed_at == LATER
+
+    def test_ignores_checks_that_did_not_fail(self) -> None:
+        summary = _summarize(
+            ["lint", "test"],
+            [
+                _required("lint", "failure", EARLIER, EARLIER),
+                _required("test", "success", LATER, LATER),
+            ],
+        )
+
+        assert summary.failed_at == EARLIER
+
+    def test_ignores_a_failure_superseded_by_a_newer_run(self) -> None:
+        summary = _summarize(
+            ["build"],
+            [
+                _required("build", "failure", EARLIER, EARLIER),
+                _required("build", "pending", LATER),
+            ],
+        )
+
+        assert summary.status == "pending"
+        assert summary.failed_at is None
+
+    def test_keeps_the_old_failure_until_the_rerun_reports(self) -> None:
+        summary = _summarize(
+            [GATE, "Validation Gate"],
+            [
+                _required(GATE, "failure", EARLIER, EARLIER),
+                _required("Validation Gate", "success", LATER, LATER),
+            ],
+        )
+
+        assert summary.status == "failure"
+        assert summary.failed_at == EARLIER
+
+    @pytest.mark.parametrize("outcome", ["success", "pending"])
+    def test_is_none_without_a_failure(self, outcome: str) -> None:
+        summary = _summarize([GATE], [_required(GATE, outcome, EARLIER, LATER)])
+
+        assert summary.failed_at is None
+
+    def test_is_none_when_the_failure_has_no_time(self) -> None:
+        summary = _summarize([GATE], [_required(GATE, "failure", EARLIER)])
+
+        assert summary.status == "failure"
+        assert summary.failed_at is None
 
 
 class TestExclusionPatterns:

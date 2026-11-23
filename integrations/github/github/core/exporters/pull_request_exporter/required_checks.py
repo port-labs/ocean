@@ -29,6 +29,7 @@ REQUIRED_CHECKS_STATUS_FIELD = "required_checks_status"
 REQUIRED_CHECKS_FAILING_FIELD = "required_checks_failing"
 REQUIRED_CHECKS_PENDING_FIELD = "required_checks_pending"
 REQUIRED_CHECKS_SHA_FIELD = "required_checks_sha"
+REQUIRED_CHECKS_FAILED_AT_FIELD = "required_checks_failed_at"
 
 # GitHub treats these conclusions of a required check as passing.
 _PASSING_CONCLUSIONS = frozenset({"SUCCESS", "NEUTRAL", "SKIPPED"})
@@ -41,12 +42,15 @@ class ObservedCheck:
 
     ``started_at`` is when the check run started (or the status was created). ``None``
     means it has not started yet, which makes it the newest report of its name.
+    ``completed_at`` is when the check run finished (or the status was created), and
+    ``None`` while it is still running.
     """
 
     name: str
     outcome: CheckOutcome
     is_required: bool
     started_at: Optional[str] = None
+    completed_at: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +59,9 @@ class RequiredChecksSummary:
     failing: list[str]
     pending: list[str]
     sha: Optional[str]
+    # When the latest failing required check finished: lets a consumer tell a failure
+    # of the run it is waiting on from the failure of an earlier run on the same commit.
+    failed_at: Optional[str] = None
 
 
 def check_run_outcome(status: Optional[str], conclusion: Optional[str]) -> CheckOutcome:
@@ -85,19 +92,22 @@ def _is_excluded(name: str, excluded: Iterable[str]) -> bool:
     )
 
 
-def _latest_outcome(observations: Sequence[ObservedCheck]) -> CheckOutcome:
-    """Outcome of the most recent report of a check, like GitHub's merge gate.
+def _latest_reports(observations: Sequence[ObservedCheck]) -> list[ObservedCheck]:
+    """The most recent reports of a check, like GitHub's merge gate.
 
     A re-run as a new check suite leaves the superseded run in the rollup, so folding
     every report of a name would let an old failure outlive the re-run that fixed it.
-    Reports tied for the latest (e.g. two that have not started) resolve to the worst.
+    Reports tied for the latest (e.g. two that have not started) are all returned.
     """
     latest = max((o.started_at is None, o.started_at or "") for o in observations)
-    outcomes = {
-        o.outcome
-        for o in observations
-        if (o.started_at is None, o.started_at or "") == latest
-    }
+    return [
+        o for o in observations if (o.started_at is None, o.started_at or "") == latest
+    ]
+
+
+def _outcome_of(reports: Sequence[ObservedCheck]) -> CheckOutcome:
+    """Outcome of reports tied for the latest: the worst one."""
+    outcomes = {o.outcome for o in reports}
     if "failure" in outcomes:
         return "failure"
     return "pending" if "pending" in outcomes else "success"
@@ -133,10 +143,17 @@ def summarize_required_checks(
 
     failing: list[str] = []
     pending: list[str] = []
+    failed_at: list[str] = []
     for name, reports in sorted(reports_by_name.items()):
-        outcome = _latest_outcome(reports) if reports else "pending"
+        latest = _latest_reports(reports) if reports else []
+        outcome = _outcome_of(latest) if latest else "pending"
         if outcome == "failure":
             failing.append(name)
+            failed_at.extend(
+                o.completed_at
+                for o in latest
+                if o.outcome == "failure" and o.completed_at
+            )
         elif outcome == "pending":
             pending.append(name)
 
@@ -150,7 +167,11 @@ def summarize_required_checks(
     else:
         status = "success"
     return RequiredChecksSummary(
-        status=status, failing=failing, pending=pending, sha=sha
+        status=status,
+        failing=failing,
+        pending=pending,
+        sha=sha,
+        failed_at=max(failed_at, default=None),
     )
 
 
@@ -165,6 +186,9 @@ def apply_required_checks(
     pull_request[REQUIRED_CHECKS_FAILING_FIELD] = summary.failing if summary else None
     pull_request[REQUIRED_CHECKS_PENDING_FIELD] = summary.pending if summary else None
     pull_request[REQUIRED_CHECKS_SHA_FIELD] = summary.sha if summary else None
+    pull_request[REQUIRED_CHECKS_FAILED_AT_FIELD] = (
+        summary.failed_at if summary else None
+    )
 
 
 @dataclass
@@ -197,10 +221,12 @@ def parse_pull_request_node(pr_node: Mapping[str, Any]) -> PullRequestChecks:
             name = node.get("name")
             outcome = check_run_outcome(node.get("status"), node.get("conclusion"))
             started_at = node.get("startedAt")
+            completed_at = node.get("completedAt") or started_at
         else:
             name = node.get("context")
             outcome = status_context_outcome(node.get("state"))
             started_at = node.get("createdAt")
+            completed_at = started_at
         if not name:
             continue
         is_required = node.get("isRequired")
@@ -215,6 +241,7 @@ def parse_pull_request_node(pr_node: Mapping[str, Any]) -> PullRequestChecks:
                 outcome=outcome,
                 is_required=is_required,
                 started_at=started_at,
+                completed_at=completed_at if outcome != "pending" else None,
             )
         )
 

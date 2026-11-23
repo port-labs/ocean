@@ -69,6 +69,7 @@ def _check_run(
     conclusion: Optional[str],
     required: Optional[bool],
     started_at: Optional[str] = EARLIER,
+    completed_at: Optional[str] = None,
 ) -> dict[str, Any]:
     return {
         "__typename": "CheckRun",
@@ -76,6 +77,7 @@ def _check_run(
         "status": status,
         "conclusion": conclusion,
         "startedAt": started_at,
+        "completedAt": completed_at,
         "isRequired": required,
     }
 
@@ -138,6 +140,7 @@ class TestGraphQLRequiredChecksEnricher:
         assert pr["required_checks_failing"] == []
         assert pr["required_checks_pending"] == []
         assert pr["required_checks_sha"] == "gqlsha"
+        assert pr["required_checks_failed_at"] is None
 
     async def test_enriches_the_pull_requests_in_place(
         self, graphql_client: GithubGraphQLClient
@@ -180,6 +183,38 @@ class TestGraphQLRequiredChecksEnricher:
 
         assert pr["required_checks_status"] == "failure"
         assert pr["required_checks_failing"] == ["legacy/ci"]
+        assert pr["required_checks_failed_at"] == EARLIER
+
+    async def test_reports_when_the_failing_required_check_run_finished(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        node = _gql_pr_node(
+            7,
+            [_check_run(GATE, "COMPLETED", "FAILURE", True, EARLIER, LATER)],
+            required_contexts=[GATE],
+        )
+
+        pr = await _enrich_one(
+            graphql_client, AsyncMock(return_value=_gql_response(pr_7=node))
+        )
+
+        assert pr["required_checks_status"] == "failure"
+        assert pr["required_checks_failed_at"] == LATER
+
+    async def test_failed_at_falls_back_to_when_the_run_started(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        node = _gql_pr_node(
+            7,
+            [_check_run(GATE, "COMPLETED", "FAILURE", True, EARLIER, None)],
+            required_contexts=[GATE],
+        )
+
+        pr = await _enrich_one(
+            graphql_client, AsyncMock(return_value=_gql_response(pr_7=node))
+        )
+
+        assert pr["required_checks_failed_at"] == EARLIER
 
     async def test_required_check_not_reported_yet_is_pending(
         self, graphql_client: GithubGraphQLClient
@@ -290,6 +325,7 @@ class TestGraphQLRequiredChecksEnricher:
 
         assert pr["required_checks_status"] == "unknown"
         assert pr["required_checks_failing"] is None
+        assert pr["required_checks_failed_at"] is None
         # Not a size problem, so it is not retried.
         assert send_api_request.await_count == 1
 
@@ -503,6 +539,7 @@ class TestRequiredChecksQuery:
         assert "$first: Int!" in query
         assert "contexts(first: $first)" in query
         assert "startedAt" in query
+        assert "completedAt" in query
         assert "createdAt" in query
         assert "state" in query
 

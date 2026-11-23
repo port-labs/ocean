@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add required_checks_failed_at to pull requests when includeRequiredChecksStatus is enabled. It is when the latest failing required check finished, so a consumer can tell the failure of a re-run from a failure of an earlier run on the same commit, which GitHub keeps reporting until the re-run's check reports.
