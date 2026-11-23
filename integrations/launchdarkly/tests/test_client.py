@@ -343,18 +343,15 @@ async def test_pagination_preserves_params(
     assert len(batches) == TOTAL
     assert len(seen_urls) == 3  # 3 pages for 300 items with limit=100
 
-    # Verify each key appears exactly once per URL with correct values
+    # Verify exact query params (catches offset accumulation)
     for idx, url in enumerate(seen_urls):
         parsed = httpx.URL(url)
         offset_expected = idx * 100
-        assert parsed.params.get("offset") == (
-            str(offset_expected) if offset_expected > 0 else None
-        )
-        assert parsed.params.get("limit") == "100"
 
+        expected = [("limit", "100")]
         if extra_params:
-            assert parsed.params.get("summary") == "0"
-            assert parsed.params.get_list("env") == ["production", "staging"]
-        else:
-            assert "summary" not in parsed.params
-            assert "env" not in parsed.params
+            expected.extend(extra_params)
+        if offset_expected:
+            expected.append(("offset", str(offset_expected)))
+
+        assert sorted(parsed.params.multi_items()) == sorted(expected)

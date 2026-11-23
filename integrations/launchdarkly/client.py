@@ -71,7 +71,7 @@ class LaunchDarklyClient:
         if extra_params:
             base_params.extend(extra_params)
 
-        params = base_params
+        params: list[tuple[str, str]] | None = base_params
 
         while url:
             try:
@@ -92,7 +92,7 @@ class LaunchDarklyClient:
                     ]
                     url = str(next_url.copy_merge_params(missing))  # type: ignore[arg-type]
                     logger.debug(f"Fetching next page of {kind}: {url}")
-                    params = None  # type: ignore[assignment]
+                    params = None
                 else:
                     total_count = response.get("totalCount", len(items))
                     logger.info(
