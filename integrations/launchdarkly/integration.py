@@ -30,12 +30,12 @@ class FeatureFlagSelector(Selector):
     summary: bool = Field(
         default=True,
         title="Summary Mode",
-        description="Whether to fetch flags in summary mode (true) or with full environment details (false). Set to false to include prerequisites, targets, contextTargets, and rules for each environment.",
+        description="Whether to fetch flags in summary mode (true) or with full environment details (false). Set to false to include per-environment prerequisites, targets, contextTargets, and rules.",
     )
     environments: list[str] = Field(
         default_factory=list,
         title="Environments",
-        description="List of environment keys to include detailed configuration for. Only applies when summary is false. If empty, all environments will be included.",
+        description="List of environment keys to fetch. When specified, only these environments are included. When empty with summary=false, per-environment rules/targets/prerequisites may be omitted per LaunchDarkly API behavior.",
     )
 
 

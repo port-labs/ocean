@@ -34,6 +34,12 @@ async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = cast(FeatureFlagResourceConfig, event.resource_config).selector
 
+    if not selector.summary and not selector.environments:
+        logger.warning(
+            "Fetching flags with summary=false but no environments specified. "
+            "Per-environment rules, targets, contextTargets, and prerequisites may be omitted without the env parameter."
+        )
+
     async for flags in client.get_paginated_feature_flags(
         summary=selector.summary, environments=selector.environments
     ):

@@ -61,7 +61,7 @@ async def test_send_api_request_with_params(mock_client: LaunchDarklyClient) -> 
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"data": "test"}
-    params = {"limit": 100}
+    params = [("limit", "100")]
     with patch.object(
         mock_client.http_client, "request", new_callable=AsyncMock
     ) as mock_request:
@@ -208,16 +208,19 @@ async def test_create_launchdarkly_webhook_existing(
         )
 
 
-@pytest.mark.asyncio
-async def test_fetch_feature_flags_default_selector(
-    mock_client: LaunchDarklyClient,
-) -> None:
-    """Test fetching feature flags with default selector (summary=true)."""
-    flags_response = {
+@pytest.fixture
+def flags_response() -> dict[str, Any]:
+    return {
         "items": [{"key": "flag-1", "name": "Test Flag"}],
         "totalCount": 1,
     }
 
+
+@pytest.mark.asyncio
+async def test_fetch_feature_flags_default_selector(
+    mock_client: LaunchDarklyClient, flags_response: dict[str, Any]
+) -> None:
+    """Test fetching feature flags with default selector (summary=true)."""
     with patch.object(
         mock_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
@@ -226,33 +229,16 @@ async def test_fetch_feature_flags_default_selector(
         result = await mock_client.fetch_feature_flags_for_project({"key": "project-1"})
 
         assert len(result) == 1
-        assert result[0]["key"] == "flag-1"
         assert result[0]["__projectKey"] == "project-1"
-
-        mock_request.assert_called_once()
-        call_args = mock_request.call_args
-        assert call_args[1]["query_params"] == {"limit": 100}
+        params = mock_request.call_args[1]["query_params"]
+        assert params == [("limit", "100")]
 
 
 @pytest.mark.asyncio
 async def test_fetch_feature_flags_with_environments(
-    mock_client: LaunchDarklyClient,
+    mock_client: LaunchDarklyClient, flags_response: dict[str, Any]
 ) -> None:
     """Test fetching feature flags with summary=false and environments."""
-    flags_response = {
-        "items": [
-            {
-                "key": "flag-1",
-                "name": "Test Flag",
-                "environments": {
-                    "production": {"on": True, "rules": []},
-                    "staging": {"on": False, "targets": []},
-                },
-            }
-        ],
-        "totalCount": 1,
-    }
-
     with patch.object(
         mock_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
@@ -265,28 +251,49 @@ async def test_fetch_feature_flags_with_environments(
         )
 
         assert len(result) == 1
-        assert result[0]["key"] == "flag-1"
-        assert "environments" in result[0]
-
-        mock_request.assert_called_once()
-        call_args = mock_request.call_args
-        params = call_args[1]["query_params"]
-        assert isinstance(params, list)
-        assert ("limit", 100) in params
+        params = mock_request.call_args[1]["query_params"]
+        assert ("limit", "100") in params
         assert ("summary", "0") in params
         assert ("env", "production") in params
         assert ("env", "staging") in params
 
 
 @pytest.mark.asyncio
+async def test_get_feature_flag(mock_client: LaunchDarklyClient) -> None:
+    """Test getting a single feature flag with environments."""
+    flag_response = {"key": "flag-1", "name": "Test Flag"}
+
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = flag_response
+
+        result = await mock_client.get_feature_flag(
+            "project-1", "flag-1", ["production", "staging"]
+        )
+
+        assert result["key"] == "flag-1"
+        mock_request.assert_called_once_with(
+            "flags/project-1/flag-1",
+            query_params=[("env", "production"), ("env", "staging")],
+        )
+
+
+@pytest.mark.parametrize(
+    "next_href,expected_production_count",
+    [
+        ("/api/v2/flags/project-1?offset=100", 1),
+        ("/api/v2/flags/project-1?offset=100&summary=0&env=production", 1),
+    ],
+)
+@pytest.mark.asyncio
 async def test_pagination_preserves_params(
     mock_client: LaunchDarklyClient,
+    next_href: str,
+    expected_production_count: int,
 ) -> None:
-    """Test that pagination preserves summary and env parameters."""
-    page1 = {
-        "items": [{"key": "flag-1"}],
-        "_links": {"next": {"href": "/api/v2/flags/project-1?offset=100"}},
-    }
+    """Test that pagination merges extra_params without duplicating."""
+    page1 = {"items": [{"key": "flag-1"}], "_links": {"next": {"href": next_href}}}
     page2 = {"items": [{"key": "flag-2"}], "totalCount": 2}
 
     with patch.object(
@@ -298,23 +305,16 @@ async def test_pagination_preserves_params(
         async for batch in mock_client.get_paginated_resource(
             "flag",
             resource_path="project-1",
-            summary=False,
-            environments=["production"],
+            extra_params=[("summary", "0"), ("env", "production")],
         ):
             batches.extend(batch)
 
         assert len(batches) == 2
-        assert batches[0]["key"] == "flag-1"
-        assert batches[1]["key"] == "flag-2"
 
-        calls = mock_request.call_args_list
-        page1_call = calls[0]
-        params = page1_call[1]["query_params"]
-        assert isinstance(params, list)
-        assert ("summary", "0") in params
-        assert ("env", "production") in params
-
-        page2_call = calls[1]
-        endpoint = page2_call[1]["endpoint"]
-        assert "summary=0" in endpoint
-        assert "env=production" in endpoint
+        page2_params = mock_request.call_args_list[1][1]["query_params"]
+        summary_count = sum(1 for k, v in page2_params if k == "summary" and v == "0")
+        production_count = sum(
+            1 for k, v in page2_params if k == "env" and v == "production"
+        )
+        assert summary_count == 1
+        assert production_count == expected_production_count

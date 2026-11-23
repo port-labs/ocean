@@ -56,8 +56,7 @@ class LaunchDarklyClient:
         kind: str,
         resource_path: str | None = None,
         page_size: int = PAGE_SIZE,
-        summary: bool = True,
-        environments: list[str] | None = None,
+        extra_params: list[tuple[str, str]] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch and paginate through resources from a LaunchDarkly API endpoint.
@@ -68,14 +67,9 @@ class LaunchDarklyClient:
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
 
-        params: Optional[dict[str, Any]] | list[tuple[str, Any]] = {"limit": page_size}
-
-        if kind == "flags" and not summary:
-            params_list = [("limit", page_size), ("summary", "0")]
-            if environments:
-                for env in environments:
-                    params_list.append(("env", env))
-            params = params_list
+        params: list[tuple[str, str]] = [("limit", str(page_size))]
+        if extra_params:
+            params.extend(extra_params)
 
         while url:
             try:
@@ -93,25 +87,15 @@ class LaunchDarklyClient:
                     url = next_link["href"]
                     logger.debug(f"Fetching next page of {kind}: {url}")
 
-                    if isinstance(params, list) and "?" in url:
-                        from urllib.parse import urlparse, parse_qs
+                    next_url = httpx.URL(url)
+                    existing_params = set(next_url.params.multi_items())
 
-                        parsed = urlparse(url)
-                        query_params = parse_qs(parsed.query)
+                    merged_params = list(existing_params)
+                    for param in params:
+                        if param not in existing_params:
+                            merged_params.append(param)
 
-                        has_summary = "summary" in query_params
-                        has_env = "env" in query_params
-
-                        if not has_summary and not summary:
-                            url = (
-                                url + "&summary=0" if "?" in url else url + "?summary=0"
-                            )
-
-                        if not has_env and environments:
-                            for env in environments:
-                                url = url + f"&env={env}"
-
-                    params = None
+                    params = merged_params
                 else:
                     total_count = response.get("totalCount", len(items))
                     logger.info(
@@ -134,7 +118,7 @@ class LaunchDarklyClient:
         self,
         endpoint: str,
         method: str = "GET",
-        query_params: Optional[Union[dict[str, Any], list[tuple[str, Any]]]] = None,
+        query_params: list[tuple[str, str]] | None = None,
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
@@ -147,7 +131,7 @@ class LaunchDarklyClient:
                 response = await self.http_client.request(
                     method=method,
                     url=url,
-                    params=query_params,
+                    params=query_params,  # type: ignore[arg-type]
                     json=json_data,
                 )
                 response.raise_for_status()
@@ -199,6 +183,19 @@ class LaunchDarklyClient:
             ]
             environments.extend(updated_batch)
         return environments
+
+    async def get_feature_flag(
+        self,
+        project_key: str,
+        flag_key: str,
+        environments: list[str] | None = None,
+    ) -> dict[str, Any]:
+        endpoint = f"flags/{project_key}/{flag_key}"
+        params: list[tuple[str, str]] | None = None
+        if environments:
+            params = [("env", env) for env in environments]
+        feature_flag = await self.send_api_request(endpoint, query_params=params)
+        return feature_flag
 
     async def get_feature_flag_status(
         self, projectKey: str, featureFlagKey: str
@@ -260,17 +257,16 @@ class LaunchDarklyClient:
     ) -> list[dict[str, Any]]:
         feature_flags = []
 
-        if not summary and not environments:
-            logger.warning(
-                f"Fetching feature flags for project {project['key']} with summary=false but no environments specified. "
-                "This will include full details for all environments."
-            )
+        extra_params: list[tuple[str, str]] | None = None
+        if not summary:
+            extra_params = [("summary", "0")]
+            if environments:
+                extra_params.extend([("env", env) for env in environments])
 
         async for flags_batch in self.get_paginated_resource(
             ObjectKind.FEATURE_FLAG,
             resource_path=project["key"],
-            summary=summary,
-            environments=environments,
+            extra_params=extra_params,
         ):
             updated_batch = [
                 {**flag, "__projectKey": project["key"]} for flag in flags_batch
