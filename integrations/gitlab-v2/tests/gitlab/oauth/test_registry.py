@@ -49,6 +49,7 @@ def test_register_is_noop_in_saas(mock_ocean: MagicMock) -> None:
     with patch("gitlab.oauth.registry.logger") as logger:
         register_oauth_provider()
 
+    logger.info.assert_called_once()
     logger.warning.assert_not_called()
     mock_ocean.register_oauth_provider.assert_not_called()
 
