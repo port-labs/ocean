@@ -1,6 +1,10 @@
+import typing
+
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from client import LaunchDarklyClient, ObjectKind
+from integration import FeatureFlagResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from webhook_processors import (
     FeatureFlagWebhookProcessor,
@@ -28,7 +32,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG)
 async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LaunchDarklyClient.create_from_ocean_configuration()
-    async for flags in client.get_paginated_feature_flags():
+    selector = typing.cast(FeatureFlagResourceConfig, event.resource_config).selector
+    async for flags in client.get_paginated_feature_flags(
+        include_environment_config=selector.include_environment_config
+    ):
         logger.info(f"Received {kind} batch with {len(flags)} items")
         yield flags
 
