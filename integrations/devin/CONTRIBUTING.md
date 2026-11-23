@@ -22,6 +22,14 @@ Create an organization service user in Devin and grant it:
 - `ImpersonateOrgSessions`, only when `createAsUserId` / `messageAsUserId` are set (impersonation uses the Devin user ID directly; there is no email lookup).
 - Read access to playbooks, knowledge and secrets for their resyncs.
 
+## Catalog resync (v1)
+
+Catalog kinds do not use Ocean incremental resync: there is no `on_incremental_resync` and no integration-maintained cursors.
+
+- **Sessions:** Each resync lists sessions in a rolling window via `createdAfterDays` (and the other session selectors in `port-app-config`). Older sessions fall out of the window and may be deleted on the next full sync when Ocean compares the catalog to the resync result.
+- **Playbooks, knowledge notes, secrets:** Each resync walks the full Devin list for that kind (paginated).
+- **Later:** True incremental resync (per-kind cursors or Devin change feeds) is deferred until product needs it.
+
 ## Session tracking
 
 `create_session` and `send_message` with `reportCompletion: true` leave the Port run `IN_PROGRESS`. The `SessionTracker` (started in `on_start`) completes it.
