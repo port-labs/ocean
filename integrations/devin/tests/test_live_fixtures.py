@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from actions.exceptions import DevinApiError
+from actions.abstract_executor import DevinApiError
 from clients.devin_client import DevinClient
 from core.tracking.tags import pending_tag
 from core.tracking.turn_state import to_epoch_seconds

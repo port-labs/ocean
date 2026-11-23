@@ -5,11 +5,11 @@ import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
-from actions.abstract_executor import AbstractDevinExecutor
-from actions.exceptions import DevinApiError, SessionBusyError
+from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
 from actions.utils import (
     ensure_port_managed_session,
     ensure_session_continuable,
@@ -28,6 +28,10 @@ from integration import ObjectKind
 SENDING_STATUS_LABEL = "Sending message"
 SESSION_RUNNING_STATUS_LABEL = "Session running"
 MESSAGE_SENT_STATUS_LABEL = "Message sent"
+
+
+class SessionBusyError(ActionExecutionError):
+    DEFAULT_STATUS_LABEL = "Session busy"
 
 
 class SendMessageInputs(AbstractDevinActionInput):

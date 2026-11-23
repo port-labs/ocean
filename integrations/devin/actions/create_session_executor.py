@@ -8,8 +8,7 @@ from port_ocean.core.models import IntegrationRun
 from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
-from actions.abstract_executor import AbstractDevinExecutor
-from actions.exceptions import DevinApiError
+from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
 from actions.utils import ensure_no_reserved_tags, merge_config
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags

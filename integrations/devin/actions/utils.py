@@ -4,7 +4,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun
 
-from actions.exceptions import InvalidActionParametersException
+from actions.abstract_action_input import InvalidActionParametersException
 from clients.models import SessionResponse
 from core.tracking.tags import MANAGED_TAG, reserved_tags
 

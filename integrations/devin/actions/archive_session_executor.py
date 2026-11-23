@@ -4,8 +4,7 @@ from port_ocean.core.models import IntegrationRun
 from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
-from actions.abstract_executor import AbstractDevinExecutor
-from actions.exceptions import DevinApiError
+from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
 from actions.utils import ensure_port_managed_session
 from integration import ObjectKind
 

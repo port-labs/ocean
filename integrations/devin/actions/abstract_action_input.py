@@ -1,8 +1,11 @@
 from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, ValidationError
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from actions.exceptions import InvalidActionParametersException
+
+class InvalidActionParametersException(ActionExecutionError):
+    DEFAULT_STATUS_LABEL = "Invalid inputs"
 
 
 class AbstractDevinActionInput(BaseModel):
