@@ -1,6 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, patch, PropertyMock
-from typing import Any, Generator
+from unittest.mock import AsyncMock, patch
+from typing import Any
 from integration import FeatureFlagResourceConfig, FeatureFlagSelector
 from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
@@ -9,26 +9,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 
 
-@pytest.fixture
-def mock_integration_config() -> Generator[dict[str, str], None, None]:
-    """Mock the ocean integration config."""
-    config = {
-        "launchdarkly_host": "https://app.launchdarkly.com",
-        "launchdarkly_token": "test_token",
-        "webhook_secret": "test_secret",
-    }
-    with patch(
-        "port_ocean.context.ocean.PortOceanContext.integration_config",
-        new_callable=PropertyMock,
-    ) as mock_config:
-        mock_config.return_value = config
-        yield config
-
-
 @pytest.mark.asyncio
-async def test_on_resync_flags_wiring(
-    mock_integration_config: dict[str, str],
-) -> None:
+async def test_on_resync_flags_wiring() -> None:
     """Test that on_resync_flags reads selector from event and passes to client."""
 
     # Patch decorators before importing main

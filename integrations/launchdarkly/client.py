@@ -86,11 +86,13 @@ class LaunchDarklyClient:
                 yield items
 
                 if next_link := response.get("_links", {}).get("next"):
-                    url = next_link["href"]
+                    next_url = httpx.URL(next_link["href"])
+                    missing: list[tuple[str, str]] = [
+                        p for p in base_params if p[0] not in next_url.params
+                    ]
+                    url = str(next_url.copy_merge_params(missing))  # type: ignore[arg-type]
                     logger.debug(f"Fetching next page of {kind}: {url}")
-
-                    next_url = httpx.URL(url)
-                    params = [p for p in base_params if p[0] not in next_url.params]
+                    params = None  # type: ignore[assignment]
                 else:
                     total_count = response.get("totalCount", len(items))
                     logger.info(
