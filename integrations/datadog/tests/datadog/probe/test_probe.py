@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
 from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
+from datadog.client import DatadogClient
 from datadog.exceptions import IntegrationMissingConfigError
 from datadog.probe.probe import DatadogPermissionProbe
 from tests.datadog.probe.conftest import (
@@ -258,7 +259,9 @@ async def test_effective_permissions_keep_only_those_selected_kinds_need(
     client = make_client(role_permissions={"monitors_read", "slos_read", "hosts_read"})
 
     permissions = await DatadogPermissionProbe(probe_context)._effective_permissions(
-        client, USER_ID, {"monitors_read", "teams_read", "apm_read"}
+        cast(DatadogClient, client),
+        USER_ID,
+        {"monitors_read", "teams_read", "apm_read"},
     )
 
     assert permissions == {"monitors_read": True, "teams_read": True}
