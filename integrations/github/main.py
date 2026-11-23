@@ -15,7 +15,6 @@ from github.clients.auth.github_app.installation_registry import (
 from github.probe import GitHubAppPermissionProbe, GitHubPatPermissionProbe
 from github.probe.app.probe import format_app_probe_auth_error
 from port_ocean.context.event import event
-from port_ocean.config.settings import VaultType
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from github.helpers.incremental import resolve_effective_datetime
@@ -1639,5 +1638,4 @@ register_live_events_webhooks()
 
 # Register actions executors
 register_actions_executors()
-if ocean.config.identity_propagation.vault.type != VaultType.port:
-    register_oauth_provider()
+register_oauth_provider()

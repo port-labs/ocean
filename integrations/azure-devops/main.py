@@ -97,7 +97,6 @@ from integration import (
     AzureDevopsWikiResourceConfig,
 )
 from port_ocean.context.event import event
-from port_ocean.config.settings import VaultType
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -530,5 +529,4 @@ ocean.add_webhook_processor("/webhook", WikiWebhookProcessor)
 
 register_actions_executors()
 
-if ocean.config.identity_propagation.vault.type != VaultType.port:
-    register_oauth_provider()
+register_oauth_provider()

@@ -48,11 +48,14 @@ def test_register_warns_when_ip_enabled_but_identity_oauth_missing(
     mock_ocean.register_oauth_provider.assert_not_called()
 
 
-def test_register_skips_warning_when_vault_type_is_port(
-    mock_ocean: MagicMock,
-) -> None:
+def test_register_is_noop_in_saas(mock_ocean: MagicMock) -> None:
     mock_ocean.config.identity_propagation.enabled = True
     mock_ocean.config.identity_propagation.vault.type = VaultType.port
+    mock_ocean.integration_config = {
+        "identity_oauth_tenant_id": "tid",
+        "identity_oauth_client_id": "cid",
+        "identity_oauth_client_secret": "csecret",
+    }
 
     with patch("azure_devops.oauth.registry.logger") as logger:
         register_oauth_provider()

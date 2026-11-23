@@ -3,7 +3,6 @@ from typing import cast, Any
 
 from loguru import logger
 from port_ocean.context.event import event
-from port_ocean.config.settings import VaultType
 from port_ocean.context.ocean import ocean
 from gitlab.actions.registry import register_actions_executors
 from gitlab.oauth.registry import register_oauth_provider
@@ -725,5 +724,4 @@ ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
 
 register_actions_executors()
-if ocean.config.identity_propagation.vault.type != VaultType.port:
-    register_oauth_provider()
+register_oauth_provider()
