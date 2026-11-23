@@ -82,6 +82,7 @@ class PortAppConfigResource(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     kind: str = Field(min_length=1)
+    port: dict[str, Any] = Field(default_factory=dict)
 
 
 class PortAppConfigDocument(BaseModel):

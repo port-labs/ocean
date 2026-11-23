@@ -43,10 +43,10 @@ def rewrite_mapping_blueprints(
     expressions or blueprints missing from the set would write outside the
     run's isolated blueprints, so they are rejected.
     """
-    rewritten = copy.deepcopy(port_app_config.as_mapping())
-    for resource in rewritten["resources"]:
-        kind = resource["kind"]
-        mappings = resource.get("port", {}).get("entity", {}).get("mappings")
+    rewritten = port_app_config.model_copy(deep=True)
+    for resource in rewritten.resources:
+        kind = resource.kind
+        mappings = resource.port.get("entity", {}).get("mappings")
         mapping_list = mappings if isinstance(mappings, list) else [mappings]
         for mapping in mapping_list:
             if not isinstance(mapping, dict):
@@ -56,7 +56,7 @@ def rewrite_mapping_blueprints(
             mapping["blueprint"] = _rewrite_blueprint_expression(
                 mapping.get("blueprint"), kind, renames
             )
-    return PortAppConfigDocument.model_validate(rewritten)
+    return rewritten
 
 
 def blueprint_deletion_layers(blueprints: list[dict[str, Any]]) -> list[list[str]]:
