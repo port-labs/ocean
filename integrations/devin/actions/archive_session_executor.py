@@ -18,8 +18,6 @@ class ArchiveSessionInputs(AbstractDevinActionInput):
 
 
 class ArchiveSessionExecutor(AbstractDevinExecutor):
-    """Executor for the `archive_session` action. Completes synchronously."""
-
     ACTION_NAME = "archive_session"
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:

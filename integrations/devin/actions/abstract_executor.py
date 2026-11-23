@@ -12,8 +12,6 @@ from core.sessions import DevinSessions
 
 
 class AbstractDevinExecutor(AbstractExecutor):
-    """Base executor for Devin actions."""
-
     # `AbstractExecutor` only declares this as a type annotation, so without this
     # default `execution_manager.register_executor` raises `AttributeError`.
     # Devin has no webhooks: tracked runs are completed by the `SessionTracker`.
@@ -23,7 +21,6 @@ class AbstractDevinExecutor(AbstractExecutor):
         self.sessions = DevinSessions(create_devin_client())
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
-        """Devin exposes no rate-limit state; 429s are retried by the transport."""
         return False
 
     async def get_remaining_seconds_until_rate_limit(
@@ -34,5 +31,4 @@ class AbstractDevinExecutor(AbstractExecutor):
     async def register_entity(
         self, kind: str, raw: dict[str, Any], run: IntegrationRun
     ) -> None:
-        """Best-effort upsert of a raw object into the catalog."""
         await upsert_raw_best_effort(kind, raw, run)

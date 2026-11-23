@@ -1,5 +1,3 @@
-"""Locks Devin API response shapes recorded from fixture JSON under tests/fixtures/."""
-
 import json
 from collections.abc import Iterator
 from pathlib import Path

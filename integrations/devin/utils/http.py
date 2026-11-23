@@ -18,7 +18,6 @@ def build_list_page_params(
     page_size: int,
     max_page_size: int = MAX_PAGE_SIZE,
 ) -> dict[str, Any]:
-    """Build Devin cursor-paginated list query params for one page."""
     page_params = dict(params or {})
     page_params["first"] = min(page_size, max_page_size)
     if after:

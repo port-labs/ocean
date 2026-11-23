@@ -14,7 +14,6 @@ ALLOWED_CONFIG_KEYS = frozenset({"devin_mode", "attachment_urls"})
 def merge_config(
     config: dict[str, Any] | None, typed: dict[str, Any]
 ) -> dict[str, Any]:
-    """Shallow-merge typed inputs onto an allowlisted `config` slice of the API body."""
     body: dict[str, Any] = {}
     if config:
         unknown = set(config) - ALLOWED_CONFIG_KEYS
@@ -56,7 +55,6 @@ def _session_continuity_error(
 
 
 def ensure_session_continuable(session: SessionResponse) -> None:
-    """Reject ``send_message`` when the session cannot accept another message."""
     if message := _session_continuity_error(
         session.status, session.status_detail, session.session_id
     ):
@@ -64,14 +62,12 @@ def ensure_session_continuable(session: SessionResponse) -> None:
 
 
 async def upsert_raw(kind: str, raw: dict[str, Any]) -> None:
-    """Register one raw object in the catalog."""
     await ocean.register_raw(kind, [raw])
 
 
 async def upsert_raw_best_effort(
     kind: str, raw: dict[str, Any], run: IntegrationRun | None = None
 ) -> None:
-    """Best-effort catalog upsert; optional run receives a warning log on failure."""
     try:
         await upsert_raw(kind, raw)
     except Exception as error:

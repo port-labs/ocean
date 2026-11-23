@@ -12,17 +12,6 @@ from utils.http import DEFAULT_PAGE_SIZE, build_list_page_params, drop_none
 
 
 class DevinClient:
-    """Thin transport layer for the Devin v3 API.
-
-    Every org-scoped path is relative to `/v3/organizations/{org_id}`; callers
-    pass `absolute_path=True` for the few endpoints that live elsewhere (the
-    v3beta1 member lookup). Auth is a service-user Bearer key (`cog_...`).
-
-    Devin does not document rate-limit headers, so `429`/`5xx` backoff on idempotent
-    reads is left to Ocean's RetryTransport. `POST` is not retried so a slow create
-    or send cannot duplicate sessions or messages.
-    """
-
     def __init__(self, api_host: str, api_key: str, org_id: str) -> None:
         self._client = http_async_client
         self._api_host = api_host.rstrip("/")
@@ -68,17 +57,6 @@ class DevinClient:
         *,
         envelopes: bool = False,
     ) -> AsyncGenerator[Any, None]:
-        """Walk every page of a Devin list endpoint.
-
-        Yields each page's ``items`` by default. Pass ``envelopes=True`` to yield the
-        raw API page (items, end_cursor, has_next_page) instead.
-
-        A page that still fails after Ocean's RetryTransport has exhausted its
-        retries is logged and pagination stops early so the pages already fetched
-        still load; `DevinPaginationError` is then raised once at the end, which
-        makes Ocean skip its delete phase so entities behind the unreachable
-        remainder survive until the next resync.
-        """
         base_params = dict(params or {})
         after: str | None = base_params.pop("after", None)
         page_count = 0

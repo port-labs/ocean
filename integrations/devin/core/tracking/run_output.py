@@ -37,7 +37,6 @@ def completion_output(
 
 
 def completion_summary(output: dict[str, Any]) -> str:
-    """One-line run message; action runs don't persist `output`, so it carries the essentials."""
     parts = [
         f"Devin session {output['sessionId']} turn ended "
         f"after {output['durationSeconds']}s ({output['status']}"

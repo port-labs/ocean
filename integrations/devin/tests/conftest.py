@@ -1,5 +1,3 @@
-"""Pytest configuration and fixtures."""
-
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +6,6 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _mock_ocean_context() -> Generator[None, None, None]:
-    """Mock Port Ocean context so the integration modules can run in tests."""
     mock_ocean = MagicMock()
     mock_ocean.app.is_saas.return_value = False
     mock_ocean.config.client_timeout = 60

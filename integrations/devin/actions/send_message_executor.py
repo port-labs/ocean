@@ -48,13 +48,6 @@ class SendMessageInputs(AbstractDevinActionInput):
 
 
 class SendMessageExecutor(AbstractDevinExecutor):
-    """Executor for the `send_message` action.
-
-    With `reportCompletion`, the tracking tags are appended *before* the message
-    is sent, so a turn can never start without the `SessionTracker` being able
-    to find it. Runs are serialized per session so two follow-ups can't race.
-    """
-
     ACTION_NAME = "send_message"
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
@@ -146,7 +139,6 @@ class SendMessageExecutor(AbstractDevinExecutor):
             )
 
     async def _untrack(self, session_id: str) -> None:
-        """Best effort; a leftover tag is stripped by the tracker once its run is gone."""
         try:
             tags = (await self.sessions.get(session_id)).tags
             await self.sessions.replace_tags(

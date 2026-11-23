@@ -28,7 +28,6 @@ def _session_label(data: dict[str, Any]) -> str:
 
 
 def require_session_response(data: Any) -> SessionResponse:
-    """Strict parse for user-initiated session operations."""
     if not isinstance(data, dict):
         raise TypeError(
             f"Devin session payload must be a dict, got {type(data).__name__}"
@@ -37,7 +36,6 @@ def require_session_response(data: Any) -> SessionResponse:
 
 
 def parse_session_response_best_effort(data: Any) -> SessionResponse | None:
-    """Parse one session from a list response; skip and log on unrecoverable input."""
     if not isinstance(data, dict):
         logger.warning(
             f"Skipping Devin session list item: expected dict, got {type(data).__name__}"

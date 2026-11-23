@@ -11,12 +11,6 @@ class SessionPullRequest(BaseModel):
 
 
 class SessionResponse(BaseModel):
-    """Typed view of the fields this integration reads off a Devin session.
-
-    `extra="allow"` keeps every other field, so `raw()` hands the catalog the
-    full API payload rather than only what is modelled here.
-    """
-
     model_config = ConfigDict(extra="allow")
 
     session_id: str

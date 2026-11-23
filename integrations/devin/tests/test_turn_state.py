@@ -27,7 +27,6 @@ ALL_STATUS_DETAILS = [
 
 
 def _expected(status: str, detail: str | None) -> tuple[TurnOutcome, bool]:
-    """The documented mapping, written out independently of the implementation."""
     match status:
         case "new" | "claimed" | "resuming":
             return IN_PROGRESS, False

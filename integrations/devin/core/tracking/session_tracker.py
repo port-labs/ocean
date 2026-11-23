@@ -1,15 +1,3 @@
-"""Completes Port runs that are waiting on Devin session turns.
-
-Devin has no outbound webhooks and Port has no "list in-progress runs" API, so
-the durable record of in-flight work is the tags on the Devin sessions
-themselves (see `core/tracking/tags.py`). Every tick lists the
-sessions tagged `port:pending:<installationId>`, posts their new messages to
-the waiting run's logs, and completes the run once the turn has ended.
-
-All per-turn state kept here (message cursor, cached run) is an optimisation
-that the first tick after a restart rebuilds from the tags alone.
-"""
-
 import asyncio
 import time
 from collections.abc import Callable
@@ -189,7 +177,6 @@ class SessionTracker:
         turn: _TurnProgress,
         sent_at: int,
     ) -> None:
-        """Post this turn's new messages; never blocks completion handling."""
         try:
             messages, next_cursor = await self._sessions.list_messages_after(
                 session.session_id, turn.cursor
@@ -317,8 +304,6 @@ class SessionTracker:
         )
 
     async def _release(self, session: SessionResponse, external_id: str | None) -> None:
-        """Strip the tracking tags. On failure they stay, and the next tick
-        retries: the run is no longer in progress, so nothing is reported twice."""
         await self._sessions.replace_tags(
             session.session_id,
             strip_tracking_tags(session.tags, self._installation_id),

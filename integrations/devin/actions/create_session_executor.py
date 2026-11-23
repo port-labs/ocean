@@ -51,16 +51,6 @@ class CreateSessionInputs(AbstractDevinActionInput):
 
 
 class CreateSessionExecutor(AbstractDevinExecutor):
-    """Executor for the `create_session` action.
-
-    With `reportCompletion`, every tracking tag is written in the create call
-    itself (the external ID only needs the Port run ID), so there is no window
-    in which a session exists that the `SessionTracker` cannot find. The run is
-    then left in progress for the tracker to complete.
-
-    New sessions are independent, so runs have no partition key.
-    """
-
     ACTION_NAME = "create_session"
 
     async def execute(self, run: IntegrationRun) -> None:

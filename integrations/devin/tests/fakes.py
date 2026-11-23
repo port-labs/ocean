@@ -1,10 +1,3 @@
-"""In-memory stand-ins for the Devin API and Port's run API.
-
-The tracker and executors are exercised against these rather than call-level
-mocks so tests can assert on end state (tags left on a session, what a run
-reported, which logs it got) the way a real restart would observe it.
-"""
-
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field

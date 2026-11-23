@@ -6,8 +6,6 @@ from actions.exceptions import InvalidActionParametersException
 
 
 class AbstractDevinActionInput(BaseModel):
-    """Base for action inputs validated from a run's execution properties."""
-
     model_config = ConfigDict(extra="ignore")
 
     @classmethod

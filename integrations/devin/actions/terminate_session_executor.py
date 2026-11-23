@@ -22,13 +22,6 @@ class TerminateSessionInputs(AbstractDevinActionInput):
 
 
 class TerminateSessionExecutor(AbstractDevinExecutor):
-    """Executor for the `terminate_session` action.
-
-    A run still waiting on the session is failed here rather than left to the
-    `SessionTracker`, which would otherwise read the terminated session's
-    `exit` status as a successful turn.
-    """
-
     ACTION_NAME = "terminate_session"
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
@@ -69,6 +62,7 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
     async def _release_waiting_run(
         self, session_id: str, tags: list[str], run: IntegrationRun
     ) -> None:
+        # Fail waiting runs here; the tracker would treat `exit` as a successful turn.
         external_id = parse_external_id(tags)
         if external_id is None:
             return

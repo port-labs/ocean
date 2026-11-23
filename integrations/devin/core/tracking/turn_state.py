@@ -1,5 +1,3 @@
-"""Maps a Devin session's `status`/`status_detail` to the outcome of a Port run."""
-
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -30,7 +28,6 @@ class TurnOutcome(StrEnum):
 @dataclass(frozen=True)
 class TurnState:
     outcome: TurnOutcome
-    # Shown on the Port run; keep it to two words at most.
     label: str
     # A previous turn leaves the session in this same state, so it only counts
     # as this turn's end once Devin has replied since the turn started.

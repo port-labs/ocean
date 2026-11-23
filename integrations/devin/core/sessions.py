@@ -12,12 +12,6 @@ from clients.parsing import (
 
 
 class DevinSessions:
-    """Session operations shared by the action executors and the session tracker.
-
-    Kept apart from `DevinClient` so the client stays a generic transport and
-    the resource-specific paths and payload shapes live in one place.
-    """
-
     def __init__(self, client: DevinClient) -> None:
         self.client = client
 
@@ -55,12 +49,7 @@ class DevinSessions:
     async def list_messages_after(
         self, session_id: str, after: str | None
     ) -> tuple[list[SessionMessage], str | None]:
-        """Return every message after `after` (all messages when it is `None`)
-        and the cursor to resume from next time.
-
-        The returned cursor is `after` itself when no new page was produced, so
-        a caller can always store it without losing its place.
-        """
+        # When no page is returned, keep `after` so the cursor does not move backward.
         messages: list[SessionMessage] = []
         cursor = after
         params = {"after": after} if after else None
