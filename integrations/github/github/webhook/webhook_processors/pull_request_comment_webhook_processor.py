@@ -71,10 +71,11 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
         config = cast(GithubPullRequestConfig, resource_config)
         if not config.selector.include_comments:
-            return empty
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         header = self.event.headers.get("x-github-event")
         parent = self._parent_pull_request(payload, header)
@@ -90,7 +91,9 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         if not await self.should_process_repo_search(payload, resource_config):
-            return empty
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
         rest_client = await create_github_client_for_org(organization)
@@ -120,7 +123,9 @@ class PullRequestCommentWebhookProcessor(BaseRepositoryWebhookProcessor):
                 f"No pull request data for {organization}/{repo_name}#{pr_number}; "
                 "skipping comments refresh"
             )
-            return empty
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
