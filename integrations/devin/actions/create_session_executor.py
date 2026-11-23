@@ -9,6 +9,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
+from actions.port_mcp_utils import apply_port_mcp_session_secrets
 from actions.utils import ensure_no_reserved_tags, merge_config, upsert_raw_best_effort
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags
@@ -29,6 +30,7 @@ class CreateSessionInputs(AbstractDevinActionInput):
     maxAcuLimit: int | None = None
     structuredOutputSchema: dict[str, Any] | None = None
     createAsUserId: str | None = None
+    enablePortMcp: bool = False
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
@@ -72,8 +74,11 @@ class CreateSessionExecutor(AbstractDevinExecutor):
                 tracking_tags(ocean.config.integration.identifier, external_id, sent_at)
             )
 
+        body = inputs.to_api_body(tags=tags)
+        apply_port_mcp_session_secrets(body, run, inputs.enablePortMcp)
+
         try:
-            session = await self.sessions.create(inputs.to_api_body(tags=tags))
+            session = await self.sessions.create(body)
         except httpx.HTTPError as error:
             raise DevinApiError.from_http_error(
                 error, "Failed to create the Devin session"

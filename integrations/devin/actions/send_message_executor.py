@@ -10,6 +10,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
+from actions.port_mcp_utils import apply_port_mcp_session_secrets
 from actions.utils import (
     ensure_port_managed_session,
     ensure_session_continuable,
@@ -39,6 +40,7 @@ class SendMessageInputs(AbstractDevinActionInput):
     sessionId: str = Field(min_length=1)
     message: str = Field(min_length=1)
     messageAsUserId: str | None = None
+    enablePortMcp: bool = False
     reportCompletion: bool = True
     config: dict[str, Any] | None = None
 
@@ -109,8 +111,11 @@ class SendMessageExecutor(AbstractDevinExecutor):
                     "the message was not sent",
                 ) from error
 
+        body = inputs.to_api_body()
+        apply_port_mcp_session_secrets(body, run, inputs.enablePortMcp)
+
         try:
-            session = await self.sessions.send_message(session_id, inputs.to_api_body())
+            session = await self.sessions.send_message(session_id, body)
         except httpx.HTTPError as error:
             if inputs.reportCompletion:
                 await self._untrack(session_id)
