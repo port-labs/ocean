@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -6,6 +7,10 @@ from datadog.core.exporters.base_exporter import (
     GetOptions,
     PaginatedExporter,
     SingleResourceExporter,
+)
+from datadog.incremental import (
+    CHANGED_USERS_AUDIT_QUERY,
+    ROLES_API_PATH_PREFIX,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +35,23 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         url = f"{self.client.api_url}/api/v2/users"
         async for batch in self._paginate_by_page_param(url):
             yield batch
+
+    async def get_changed_users(
+        self, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get users created or modified since ``incremental_cursor``, found through audit events.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        user_ids = await self._changed_asset_ids(
+            CHANGED_USERS_AUDIT_QUERY,
+            incremental_cursor,
+            excluded_path_prefix=ROLES_API_PATH_PREFIX,
+        )
+
+        async for users in self._get_existing_resources(
+            GetUserOptions(resource_id=user_id) for user_id in user_ids
+        ):
+            yield users
 
     async def get_resource(self, options: GetUserOptions) -> dict[str, Any] | None:
         """Get a single user by ID.

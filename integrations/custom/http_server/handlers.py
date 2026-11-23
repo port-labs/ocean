@@ -8,6 +8,11 @@ from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
 
 import httpx
+from loguru import logger
+
+from http_server.helpers.utils import resolve_next_link_url
+
+_OFFSET_LIST_ENVELOPE_KEYS = ("data", "items", "results", "content")
 
 # ============================================================================
 # Pagination Handlers
@@ -162,8 +167,69 @@ class PagePagination(PaginationHandler):
             page += 1
 
 
+def _offset_default_has_next(
+    response_data: Dict[str, Any],
+    config: Dict[str, Any],
+    get_nested_value: Callable[[Dict[str, Any], str], Any],
+    *,
+    offset: int,
+    page_size: int,
+    initial_offset: int,
+) -> bool:
+    """Offset-specific stop heuristics after has_more_path / last_page_path.
+
+    - total_count_path: continue while the next offset is still in range
+      (``offset + page_size < total + initial_offset`` so 0-based and 1-based
+      starts both cover the last item)
+    - has_more / hasMore keys when present
+    - common list envelopes (data/items/results/content): continue on full page
+    - otherwise stop (never default to True forever)
+    """
+    total_count_path = config.get("total_count_path", "")
+    if total_count_path:
+        total = get_nested_value(response_data, total_count_path)
+        if total is not None:
+            try:
+                return offset + page_size < int(total) + initial_offset
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Offset pagination stopping after this page: "
+                    f"totalCountPath '{total_count_path}' resolved to a "
+                    f"non-numeric value ({total!r}). Configure hasMorePath "
+                    "or a numeric totalCountPath to control paging."
+                )
+                return False
+
+    if "has_more" in response_data:
+        return bool(response_data["has_more"])
+    if "hasMore" in response_data:
+        return bool(response_data["hasMore"])
+
+    for key in _OFFSET_LIST_ENVELOPE_KEYS:
+        value = response_data.get(key)
+        if isinstance(value, list):
+            return len(value) >= page_size
+
+    if response_data:
+        logger.warning(
+            "Offset pagination stopping after this page: response has no "
+            f"recognised list envelope among {_OFFSET_LIST_ENVELOPE_KEYS} "
+            "and no has_more/hasMore flag. Configure hasMorePath or "
+            "totalCountPath so paging does not silently stop at page 1."
+        )
+    return False
+
+
 class OffsetPagination(PaginationHandler):
-    """Offset/limit pagination with configurable response paths"""
+    """Offset/limit pagination with configurable response paths.
+
+    ``pagination_placement`` controls where the offset and page size are sent:
+    ``query`` (default) uses query parameters; ``body`` merges them into the
+    JSON request body for non-GET methods. GET requests always use query
+    parameters so servers that ignore bodies cannot loop forever. Offset is
+    sent on every page (including the first), starting at ``initial_offset``
+    (default 0).
+    """
 
     async def fetch_all(
         self,
@@ -175,19 +241,43 @@ class OffsetPagination(PaginationHandler):
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         offset_param = self.config.get("pagination_param", "offset")
         limit_param = self.config.get("size_param", "limit")
-        has_more_path = self.config.get("has_more_path", "")
-
-        offset = 0
+        placement = self.config.get("pagination_placement", "query")
+        # Body placement needs a JSON object to merge into; arrays/scalars fall
+        # back to query params so dict(body) cannot crash.
+        use_body_placement = (
+            placement == "body"
+            and method.upper() != "GET"
+            and (body is None or isinstance(body, dict))
+        )
+        try:
+            initial_offset = int(self.config.get("initial_offset", 0))
+        except (TypeError, ValueError):
+            logger.warning(
+                "Invalid initial_offset "
+                f"({self.config.get('initial_offset')!r}); defaulting to 0"
+            )
+            initial_offset = 0
+        offset = initial_offset
 
         while True:
-            current_params = {
-                **params,
-                offset_param: offset,
-                limit_param: self.page_size,
-            }
+            current_params: Optional[Dict[str, Any]]
+            current_body: Optional[Dict[str, Any]]
+            if use_body_placement:
+                current_params = dict(params) if params else {}
+                body_payload = dict(body) if isinstance(body, dict) else {}
+                body_payload[offset_param] = offset
+                body_payload[limit_param] = self.page_size
+                current_body = body_payload
+            else:
+                current_params = {
+                    **params,
+                    offset_param: offset,
+                    limit_param: self.page_size,
+                }
+                current_body = body
 
             response = await self.make_request(
-                url, method, current_params, headers, body
+                url, method, current_params, headers, current_body
             )
             response_data = response.json()
 
@@ -196,13 +286,28 @@ class OffsetPagination(PaginationHandler):
 
             # Check if there are more pages
             if isinstance(response_data, dict):
-                if has_more_path:
-                    has_more = self.get_nested_value(response_data, has_more_path)
-                else:
-                    has_more = response_data.get(
-                        "has_more", response_data.get("hasMore", True)
+                current_offset = offset
+
+                def _default_has_next(
+                    data: Dict[str, Any],
+                    *,
+                    _offset: int = current_offset,
+                ) -> bool:
+                    return _offset_default_has_next(
+                        data,
+                        self.config,
+                        self.get_nested_value,
+                        offset=_offset,
+                        page_size=self.page_size,
+                        initial_offset=initial_offset,
                     )
-                if not has_more:
+
+                if not _dict_response_has_next(
+                    response_data,
+                    self.config,
+                    self.get_nested_value,
+                    default_has_next=_default_has_next,
+                ):
                     break
             else:
                 # For list responses, check if we got a full page
@@ -216,7 +321,16 @@ class OffsetPagination(PaginationHandler):
 
 
 class CursorPagination(PaginationHandler):
-    """Cursor-based pagination with configurable response paths"""
+    """Cursor-based pagination with configurable response paths.
+
+    ``pagination_placement`` controls where the cursor and page size are sent:
+    ``query`` (default) uses query parameters; ``body`` merges them into the
+    JSON request body for non-GET methods. GET requests always use query
+    parameters so servers that ignore bodies cannot loop forever. When using
+    body placement, the cursor field is omitted on the first page and set only
+    after a cursor is extracted. Pagination also stops if the next cursor
+    repeats the previous one.
+    """
 
     async def fetch_all(
         self,
@@ -230,17 +344,33 @@ class CursorPagination(PaginationHandler):
         limit_param = self.config.get("size_param", "limit")
         cursor_path = self.config.get("cursor_path", "")
         has_more_path = self.config.get("has_more_path", "")
+        placement = self.config.get("pagination_placement", "query")
+        use_body_placement = (
+            placement == "body"
+            and method.upper() != "GET"
+            and (body is None or isinstance(body, dict))
+        )
 
         cursor = None
 
         while True:
-            current_params = {**params, limit_param: self.page_size}
-
-            if cursor:
-                current_params[cursor_param] = cursor
+            current_params: Optional[Dict[str, Any]]
+            current_body: Optional[Dict[str, Any]]
+            if use_body_placement:
+                current_params = dict(params) if params else {}
+                body_payload = dict(body) if isinstance(body, dict) else {}
+                body_payload[limit_param] = self.page_size
+                if cursor:
+                    body_payload[cursor_param] = cursor
+                current_body = body_payload
+            else:
+                current_params = {**params, limit_param: self.page_size}
+                if cursor:
+                    current_params[cursor_param] = cursor
+                current_body = body
 
             response = await self.make_request(
-                url, method, current_params, headers, body
+                url, method, current_params, headers, current_body
             )
             response_data = response.json()
 
@@ -274,8 +404,8 @@ class CursorPagination(PaginationHandler):
                         ),
                     )
 
-                # Stop if no more pages
-                if not next_cursor or not has_more:
+                # Stop if no more pages or the cursor did not advance
+                if not next_cursor or not has_more or next_cursor == cursor:
                     break
 
                 # Update cursor for next iteration
@@ -286,9 +416,11 @@ class CursorPagination(PaginationHandler):
 
 
 class NextLinkPagination(PaginationHandler):
-    """URL-based pagination for APIs that return a full URL for the next page.
-    The next link URL is used directly for subsequent requests - all query
-    parameters are already embedded in the URL.
+    """URL-based pagination for APIs that return a next-page URL.
+
+    Absolute next links are requested as-is. Relative next links are resolved
+    against the integration base URL (not RFC urljoin against the current URL).
+    Query parameters for follow-up pages are embedded in the next link.
     """
 
     async def fetch_all(
@@ -300,6 +432,7 @@ class NextLinkPagination(PaginationHandler):
         body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         next_link_path = self.config.get("next_link_path", "@odata.nextLink")
+        base_url = self.config.get("base_url", "")
 
         current_url = url
         current_params: Optional[Dict[str, Any]] = params
@@ -322,7 +455,9 @@ class NextLinkPagination(PaginationHandler):
             if not next_url:
                 break
 
-            current_url = next_url
+            current_url = resolve_next_link_url(
+                next_url, base_url, current_url=current_url
+            )
             current_params = None
 
 
