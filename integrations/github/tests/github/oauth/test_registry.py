@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from github.oauth.registry import _SCOPES, oauth_web_host, register_oauth_provider
+from port_ocean.config.settings import VaultType
 from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 
@@ -12,6 +13,7 @@ def mock_ocean() -> Generator[MagicMock, None, None]:
     with patch("github.oauth.registry.ocean") as ocean:
         ocean.integration_config = {}
         ocean.config.identity_propagation.enabled = False
+        ocean.config.identity_propagation.vault.type = VaultType.aws_secrets_manager
         ocean.config.integration.type = "github"
         ocean.register_oauth_provider = MagicMock()
         yield ocean
@@ -42,6 +44,19 @@ def test_register_warns_when_ip_enabled_but_identity_oauth_missing(
 
     logger.warning.assert_called_once()
     assert "identityOauthClientId" in logger.warning.call_args.args[0]
+    mock_ocean.register_oauth_provider.assert_not_called()
+
+
+def test_register_skips_warning_when_vault_type_is_port(
+    mock_ocean: MagicMock,
+) -> None:
+    mock_ocean.config.identity_propagation.enabled = True
+    mock_ocean.config.identity_propagation.vault.type = VaultType.port
+
+    with patch("github.oauth.registry.logger") as logger:
+        register_oauth_provider()
+
+    logger.warning.assert_not_called()
     mock_ocean.register_oauth_provider.assert_not_called()
 
 

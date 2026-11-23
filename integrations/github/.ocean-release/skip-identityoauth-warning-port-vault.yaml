@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Skip the missing-identityOauth warning when identity propagation vault type is port (SaaS).
