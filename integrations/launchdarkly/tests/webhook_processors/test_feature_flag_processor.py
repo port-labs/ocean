@@ -16,6 +16,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
+from integration import FeatureFlagResourceConfig, FeatureFlagSelector
 from typing import Generator
 
 
@@ -51,10 +52,10 @@ def invalid_feature_flag_payload() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_feature_flag_resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def mock_feature_flag_resource_config() -> FeatureFlagResourceConfig:
+    return FeatureFlagResourceConfig(
         kind=ObjectKind.FEATURE_FLAG,
-        selector=Selector(query="true"),
+        selector=FeatureFlagSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -163,7 +164,7 @@ class TestFeatureFlagWebhookProcessor:
         }
 
         if resource_kind == ObjectKind.FEATURE_FLAG and not is_deletion:
-            mock_client.send_api_request.return_value = {
+            mock_client.get_feature_flag.return_value = {
                 "key": "flag-1",
                 "name": "Test Flag",
             }
@@ -198,3 +199,44 @@ class TestFeatureFlagWebhookProcessor:
                 assert all(
                     "__environmentKey" in item for item in result.deleted_raw_results
                 )
+
+    async def test_handle_event_with_environment_filter(
+        self,
+        feature_flag_processor: FeatureFlagWebhookProcessor,
+        mock_client: AsyncMock,
+        valid_feature_flag_payload: Dict[str, Any],
+    ) -> None:
+        """Test that webhook processor passes environment filter when re-fetching a flag."""
+        resource_config = FeatureFlagResourceConfig(
+            kind=ObjectKind.FEATURE_FLAG,
+            selector=FeatureFlagSelector(
+                query="true", summary=False, environments=["production", "staging"]
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier='.key + "-" + .__projectKey',
+                        title=".name",
+                        blueprint='"launchDarklyFeatureFlag"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        mock_client.get_feature_flag.return_value = {
+            "key": "flag-1",
+            "name": "Test Flag",
+        }
+
+        result = await feature_flag_processor.handle_event(
+            valid_feature_flag_payload, resource_config
+        )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results[0]["key"] == "flag-1"
+
+        mock_client.get_feature_flag.assert_called_once_with(
+            "project-1", "flag-1", ["production", "staging"]
+        )

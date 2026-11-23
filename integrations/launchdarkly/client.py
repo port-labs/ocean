@@ -52,7 +52,11 @@ class LaunchDarklyClient:
         )
 
     async def get_paginated_resource(
-        self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
+        self,
+        kind: str,
+        resource_path: str | None = None,
+        page_size: int = PAGE_SIZE,
+        extra_params: list[tuple[str, str]] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch and paginate through resources from a LaunchDarkly API endpoint.
@@ -62,7 +66,12 @@ class LaunchDarklyClient:
 
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
-        params: Optional[dict[str, Any]] = {"limit": page_size}
+
+        base_params: list[tuple[str, str]] = [("limit", str(page_size))]
+        if extra_params:
+            base_params.extend(extra_params)
+
+        params: list[tuple[str, str]] | None = base_params
 
         while url:
             try:
@@ -77,7 +86,11 @@ class LaunchDarklyClient:
                 yield items
 
                 if next_link := response.get("_links", {}).get("next"):
-                    url = next_link["href"]
+                    next_url = httpx.URL(next_link["href"])
+                    missing: list[tuple[str, str]] = [
+                        p for p in base_params if p[0] not in next_url.params
+                    ]
+                    url = str(next_url.copy_merge_params(missing))  # type: ignore[arg-type]
                     logger.debug(f"Fetching next page of {kind}: {url}")
                     params = None
                 else:
@@ -102,7 +115,7 @@ class LaunchDarklyClient:
         self,
         endpoint: str,
         method: str = "GET",
-        query_params: Optional[dict[str, Any]] = None,
+        query_params: list[tuple[str, str]] | None = None,
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
@@ -115,7 +128,7 @@ class LaunchDarklyClient:
                 response = await self.http_client.request(
                     method=method,
                     url=url,
-                    params=query_params,
+                    params=query_params,  # type: ignore[arg-type]
                     json=json_data,
                 )
                 response.raise_for_status()
@@ -168,6 +181,19 @@ class LaunchDarklyClient:
             environments.extend(updated_batch)
         return environments
 
+    async def get_feature_flag(
+        self,
+        project_key: str,
+        flag_key: str,
+        environments: list[str] | None = None,
+    ) -> dict[str, Any]:
+        endpoint = f"flags/{project_key}/{flag_key}"
+        params: list[tuple[str, str]] | None = None
+        if environments:
+            params = [("env", env) for env in environments]
+        feature_flag = await self.send_api_request(endpoint, query_params=params)
+        return feature_flag
+
     async def get_feature_flag_status(
         self, projectKey: str, featureFlagKey: str
     ) -> dict[str, Any]:
@@ -205,10 +231,15 @@ class LaunchDarklyClient:
 
     async def get_paginated_feature_flags(
         self,
+        summary: bool = True,
+        environments: list[str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.get_paginated_projects():
             tasks = [
-                self.fetch_feature_flags_for_project(project) for project in projects
+                self.fetch_feature_flags_for_project(
+                    project, summary=summary, environments=environments
+                )
+                for project in projects
             ]
 
             feature_flags_batches = await asyncio.gather(*tasks)
@@ -216,11 +247,23 @@ class LaunchDarklyClient:
                 yield feature_flags
 
     async def fetch_feature_flags_for_project(
-        self, project: dict[str, Any]
+        self,
+        project: dict[str, Any],
+        summary: bool = True,
+        environments: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         feature_flags = []
+
+        extra_params: list[tuple[str, str]] | None = None
+        if not summary:
+            extra_params = [("summary", "0")]
+            if environments:
+                extra_params.extend([("env", env) for env in environments])
+
         async for flags_batch in self.get_paginated_resource(
-            ObjectKind.FEATURE_FLAG, resource_path=project["key"]
+            ObjectKind.FEATURE_FLAG,
+            resource_path=project["key"],
+            extra_params=extra_params,
         ):
             updated_batch = [
                 {**flag, "__projectKey": project["key"]} for flag in flags_batch

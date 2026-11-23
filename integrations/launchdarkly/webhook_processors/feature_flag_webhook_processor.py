@@ -1,3 +1,4 @@
+from typing import cast
 from webhook_processors.launchdarkly_abstract_webhook_processor import (
     _LaunchDarklyAbstractWebhookProcessor,
 )
@@ -8,11 +9,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from client import LaunchDarklyClient, ObjectKind
+from integration import FeatureFlagResourceConfig
 from loguru import logger
-from webhook_processors.utils import (
-    extract_project_key_from_endpoint,
-    enrich_resource_with_project,
-)
+from webhook_processors.utils import extract_project_key_from_endpoint
 
 
 class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
@@ -75,9 +74,14 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
                 for env_key, env_data in response["environments"].items()
             ]
         else:
-            data_to_update = [
-                await enrich_resource_with_project(endpoint, kind, client)
-            ]
+            selector = cast(FeatureFlagResourceConfig, resource_config).selector
+            environments = selector.environments if selector.environments else None
+
+            response = await client.get_feature_flag(
+                project_key, feature_flag_key, environments
+            )
+            response["__projectKey"] = project_key
+            data_to_update = [response]
 
         return WebhookEventRawResults(
             updated_raw_results=data_to_update,

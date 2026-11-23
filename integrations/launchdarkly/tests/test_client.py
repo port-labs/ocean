@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+import httpx
 from httpx import AsyncClient, HTTPStatusError
 from typing import Any, Generator
 from client import LaunchDarklyClient
@@ -61,7 +62,7 @@ async def test_send_api_request_with_params(mock_client: LaunchDarklyClient) -> 
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"data": "test"}
-    params = {"limit": 100}
+    params = [("limit", "100")]
     with patch.object(
         mock_client.http_client, "request", new_callable=AsyncMock
     ) as mock_request:
@@ -206,3 +207,151 @@ async def test_create_launchdarkly_webhook_existing(
             method="PATCH",
             json_data=[{"op": "replace", "path": "/secret", "value": "test_secret"}],
         )
+
+
+@pytest.fixture
+def flags_response() -> dict[str, Any]:
+    return {
+        "items": [{"key": "flag-1", "name": "Test Flag"}],
+        "totalCount": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_fetch_feature_flags_default_selector(
+    mock_client: LaunchDarklyClient, flags_response: dict[str, Any]
+) -> None:
+    """Test fetching feature flags with default selector (summary=true)."""
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = flags_response
+
+        result = await mock_client.fetch_feature_flags_for_project({"key": "project-1"})
+
+        assert len(result) == 1
+        assert result[0]["__projectKey"] == "project-1"
+        params = mock_request.call_args[1]["query_params"]
+        assert params == [("limit", "100")]
+
+
+@pytest.mark.asyncio
+async def test_fetch_feature_flags_with_environments(
+    mock_client: LaunchDarklyClient, flags_response: dict[str, Any]
+) -> None:
+    """Test fetching feature flags with summary=false and environments."""
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = flags_response
+
+        result = await mock_client.fetch_feature_flags_for_project(
+            {"key": "project-1"},
+            summary=False,
+            environments=["production", "staging"],
+        )
+
+        assert len(result) == 1
+        params = mock_request.call_args[1]["query_params"]
+        assert ("limit", "100") in params
+        assert ("summary", "0") in params
+        assert ("env", "production") in params
+        assert ("env", "staging") in params
+
+
+@pytest.mark.asyncio
+async def test_get_feature_flag(mock_client: LaunchDarklyClient) -> None:
+    """Test getting a single feature flag with environments."""
+    flag_response = {"key": "flag-1", "name": "Test Flag"}
+
+    with patch.object(
+        mock_client, "send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = flag_response
+
+        result = await mock_client.get_feature_flag(
+            "project-1", "flag-1", ["production", "staging"]
+        )
+
+        assert result["key"] == "flag-1"
+        mock_request.assert_called_once_with(
+            "flags/project-1/flag-1",
+            query_params=[("env", "production"), ("env", "staging")],
+        )
+
+
+@pytest.mark.parametrize(
+    "extra_params,echo_params",
+    [
+        (None, False),  # Default selector, href without echoed params
+        (None, True),  # Default selector, href with echoed params
+        ([("summary", "0"), ("env", "production"), ("env", "staging")], False),
+        ([("summary", "0"), ("env", "production"), ("env", "staging")], True),
+    ],
+)
+@pytest.mark.asyncio
+async def test_pagination_preserves_params(
+    mock_integration_config: dict[str, str],
+    extra_params: list[tuple[str, str]] | None,
+    echo_params: bool,
+) -> None:
+    """Test pagination at HTTP seam over 300 items across 3 pages."""
+    mock_ocean = MagicMock()
+    mock_ocean.app.is_saas.return_value = False
+
+    with patch("port_ocean.helpers.async_client.ocean", mock_ocean):
+        client = LaunchDarklyClient(
+            "test_token", "https://app.launchdarkly.com", "test_secret"
+        )
+
+    TOTAL = 300
+    seen_urls: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        q = req.url.params
+        seen_urls.append(str(req.url))
+        if len(seen_urls) > 8:
+            raise RuntimeError("LOOP: Too many requests")
+
+        offset = int(q.get("offset", 0))
+        limit = int(q.get("limit", 20))
+        body = {
+            "items": [{"k": i} for i in range(offset, min(offset + limit, TOTAL))],
+            "totalCount": TOTAL,
+        }
+
+        if offset + limit < TOTAL:
+            next_params = [("offset", str(offset + limit))]
+            if echo_params:
+                next_params.extend(
+                    [(k, v) for k, v in q.multi_items() if k != "offset"]
+                )
+            body["_links"] = {
+                "next": {"href": str(httpx.URL(req.url.path, params=next_params))}
+            }
+
+        return httpx.Response(200, json=body)
+
+    client.http_client._transport = httpx.MockTransport(handler)
+
+    batches = []
+    async for batch in client.get_paginated_resource(
+        "flag", resource_path="project-1", extra_params=extra_params
+    ):
+        batches.extend(batch)
+
+    assert len(batches) == TOTAL
+    assert len(seen_urls) == 3  # 3 pages for 300 items with limit=100
+
+    # Verify exact query params (catches offset accumulation)
+    for idx, url in enumerate(seen_urls):
+        parsed = httpx.URL(url)
+        offset_expected = idx * 100
+
+        expected = [("limit", "100")]
+        if extra_params:
+            expected.extend(extra_params)
+        if offset_expected:
+            expected.append(("offset", str(offset_expected)))
+
+        assert sorted(parsed.params.multi_items()) == sorted(expected)
