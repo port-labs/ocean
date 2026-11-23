@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, cast
 from unittest.mock import AsyncMock
 
@@ -419,3 +420,71 @@ async def test_empty_credential_map_fails_probe(
     assert probe_context.status is ProbeStatus.FAILED
     assert probe_context.message == "No Datadog organizations were accessible."
     assert probe_context.checks == []
+
+
+@pytest.mark.asyncio
+async def test_orgs_are_probed_concurrently(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    """Both orgs must be authenticating at once, or the first never finishes."""
+    both_started = asyncio.Event()
+    started = 0
+
+    def authenticate_as(org_name: str, public_id: str) -> AsyncMock:
+        async def get_current_user() -> dict[str, Any]:
+            nonlocal started
+            started += 1
+            if started == 2:
+                both_started.set()
+            await both_started.wait()
+            return current_user(org_name, public_id)
+
+        return AsyncMock(side_effect=get_current_user)
+
+    set_clients(
+        [
+            make_client(
+                role_permissions={"monitors_read"},
+                get_current_user=authenticate_as("prod", "abc"),
+            ),
+            make_client(
+                role_permissions={"monitors_read"},
+                get_current_user=authenticate_as("eu", "xyz"),
+            ),
+        ],
+        multi_org=True,
+    )
+    probe_context.available_kinds = ["monitor"]
+
+    await asyncio.wait_for(DatadogPermissionProbe(probe_context).run(), timeout=1)
+
+    assert {check.scopes["org"]: check.status for check in probe_context.checks} == {
+        "prod (abc)": ProbeCheckStatus.SUCCESS,
+        "eu (xyz)": ProbeCheckStatus.SUCCESS,
+    }
+
+
+@pytest.mark.asyncio
+async def test_unverified_scopes_note_lists_orgs_in_a_stable_order(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    set_clients(
+        [
+            make_client(
+                access_token="token",
+                get_current_user=AsyncMock(return_value=current_user("prod", "abc")),
+            ),
+            make_client(
+                access_token="token",
+                get_current_user=AsyncMock(return_value=current_user("eu", "xyz")),
+            ),
+        ],
+        multi_org=True,
+    )
+    probe_context.available_kinds = ["monitor"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    assert probe_context.message == unverified_scopes_message(
+        ["eu (xyz)", "prod (abc)"]
+    )

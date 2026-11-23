@@ -22,6 +22,8 @@ from datadog.probe.permissions import (
     unverified_scopes_message,
 )
 
+_MAX_CONCURRENT_ORGS = 5
+
 
 class AuthenticationFailedError(Exception):
     def __init__(self, message: str) -> None:
@@ -68,13 +70,16 @@ class DatadogPermissionProbe:
 
     Every check is scoped by ``org``, as the spec declares, including single-org
     installs. A rejected single-org configuration fails the whole probe; in a
-    multi-org setup it fails only that org's checks.
+    multi-org setup it fails only that org's checks. Orgs are probed
+    concurrently, at most ``_MAX_CONCURRENT_ORGS`` at a time (each org has its
+    own Datadog rate limits).
     """
 
     def __init__(self, context: ProbeContext) -> None:
         self.context = context
         self.permission_verdict = DatadogKindPermissionVerdict()
         self._unverified_scope_orgs: list[str] = []
+        self._org_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_ORGS)
 
     async def run(self) -> None:
         try:
@@ -87,18 +92,28 @@ class DatadogPermissionProbe:
             await self.context.fail("No Datadog organizations were accessible.")
             return
 
-        for index, client in enumerate(manager.clients):
-            await self._probe_org(client, index, multi_org=manager.is_multi_org)
+        await asyncio.gather(
+            *(
+                self._probe_org(client, index, multi_org=manager.is_multi_org)
+                for index, client in enumerate(manager.clients)
+            )
+        )
 
         if (
             self._unverified_scope_orgs
             and self.context.status is not ProbeStatus.FAILED
         ):
             self.context.message = unverified_scopes_message(
-                self._unverified_scope_orgs if manager.is_multi_org else None
+                sorted(self._unverified_scope_orgs) if manager.is_multi_org else None
             )
 
     async def _probe_org(
+        self, client: DatadogClient, index: int, *, multi_org: bool
+    ) -> None:
+        async with self._org_semaphore:
+            await self._probe_org_checks(client, index, multi_org=multi_org)
+
+    async def _probe_org_checks(
         self, client: DatadogClient, index: int, *, multi_org: bool
     ) -> None:
         try:
