@@ -1,10 +1,17 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
+from datadog.core.exporters.base_exporter import (
+    GetOptions,
+    ListOptions,
+    PaginatedExporter,
+    SingleResourceExporter,
+)
+from datadog.incremental import CHANGED_CATALOG_ENTITIES_AUDIT_QUERY
 
 if TYPE_CHECKING:
     from datadog.overrides import CatalogEntityResourceConfig
@@ -24,6 +31,34 @@ class ListCatalogEntityOptions(ListOptions["CatalogEntityResourceConfig"]):
             include_discovered=resource_config.selector.include_discovered,
             entity_kinds=resource_config.selector.entity_kinds,
         )
+
+
+class GetCatalogEntityOptions(GetOptions["CatalogEntityResourceConfig"]):
+    include_discovered: bool = False
+    entity_kinds: list[str] = []
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "CatalogEntityResourceConfig", *, resource_id: str
+    ) -> "GetCatalogEntityOptions":
+        return cls(
+            resource_id=resource_id,
+            include_discovered=resource_config.selector.include_discovered,
+            entity_kinds=resource_config.selector.entity_kinds,
+        )
+
+
+def _entity_params(
+    options: ListCatalogEntityOptions | GetCatalogEntityOptions,
+) -> dict[str, Any]:
+    """Query parameters shared by the full and the incremental resync, so entities
+    keep one shape."""
+    params: dict[str, Any] = {"include": "schema"}
+    if options.include_discovered:
+        params["includeDiscovered"] = "true"
+    if options.entity_kinds:
+        params["filter[kind]"] = options.entity_kinds
+    return params
 
 
 def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -53,7 +88,14 @@ def attach_schemas(response: dict[str, Any]) -> list[dict[str, Any]]:
     return entities
 
 
-class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
+class CatalogEntityExporter(
+    PaginatedExporter[ListCatalogEntityOptions],
+    SingleResourceExporter[GetCatalogEntityOptions],
+):
+    @property
+    def _entities_url(self) -> str:
+        return f"{self.client.api_url}/api/v2/catalog/entity"
+
     async def get_paginated_resources(
         self, options: ListCatalogEntityOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -61,20 +103,12 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
         kind — service, datastore, queue, api, system and the rest — is returned.
         Docs: https://docs.datadoghq.com/api/latest/software-catalog/#get-a-list-of-entities
         """
-        url = f"{self.client.api_url}/api/v2/catalog/entity"
-        # `include` takes exactly one value: "schema,relation" returns includeCount 0
-        params: dict[str, Any] = {"include": "schema"}
-        if options.include_discovered:
-            params["includeDiscovered"] = "true"
-        if options.entity_kinds:
-            params["filter[kind]"] = options.entity_kinds
-
         pending_kinds = set(options.entity_kinds)
         async for response in self._paginate_responses_by_offset(
-            url,
+            self._entities_url,
             offset_param="page[offset]",
             size_param="page[limit]",
-            extra_params=params,
+            extra_params=_entity_params(options),
         ):
             entities = attach_schemas(response)
             if pending_kinds:
@@ -86,3 +120,44 @@ class CatalogEntityExporter(PaginatedExporter[ListCatalogEntityOptions]):
                 f"No catalog entities returned for kinds {sorted(pending_kinds)}; Datadog "
                 "matches kind names exactly and returns an empty page for one it does not know"
             )
+
+    async def get_changed_entities(
+        self, options: ListCatalogEntityOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get catalog entities created or modified since ``incremental_cursor``, found
+        through audit events. Deleted entities, and entities of kinds outside
+        ``entity_kinds``, are not returned. Discovered entities have no audit events,
+        so only a full resync picks up newly discovered ones.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        refs = await self._changed_asset_ids(
+            CHANGED_CATALOG_ENTITIES_AUDIT_QUERY, incremental_cursor
+        )
+
+        async for entities in self._get_existing_resources(
+            GetCatalogEntityOptions(
+                resource_id=ref,
+                include_discovered=options.include_discovered,
+                entity_kinds=options.entity_kinds,
+            )
+            for ref in refs
+        ):
+            yield entities
+
+    async def get_resource(
+        self, options: GetCatalogEntityOptions
+    ) -> dict[str, Any] | None:
+        """Get a single entity by its reference (``<kind>:<namespace>/<name>``), or
+        None if it doesn't exist or its kind is filtered out.
+        Docs: https://docs.datadoghq.com/api/latest/software-catalog/#get-a-list-of-entities
+        """
+        response = await self.client.send_api_request(
+            self._entities_url,
+            params={**_entity_params(options), "filter[ref]": options.resource_id},
+        )
+        if not response.get("data"):
+            logger.warning(
+                f"Skipping catalog entity '{options.resource_id}'; it no longer exists in Datadog"
+            )
+            return None
+        return attach_schemas(response)[0]

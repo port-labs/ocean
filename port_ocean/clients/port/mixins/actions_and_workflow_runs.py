@@ -83,6 +83,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         level: Literal["INFO", "WARNING", "ERROR", "DEBUG"] = "INFO",
         status_label: str | None = None,
         should_raise: bool = False,
+        should_log: bool = True,
     ) -> None:
         """Post a log line to a run.
 
@@ -100,12 +101,14 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 run.id,
                 [WorkflowNodeRunLog(level=log_level, message=message)],
                 should_raise=should_raise,
+                should_log=should_log,
             )
             if status_label:
                 await self.patch_wf_node_run(
                     run.id,
                     {"statusLabel": {"text": status_label}},
                     should_raise=should_raise,
+                    should_log=should_log,
                 )
         else:
             await self.post_action_run_log(run.id, message, status_label=status_label)
@@ -115,9 +118,12 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         run: IntegrationRun,
         logs: list[WorkflowNodeRunLog],
         should_raise: bool = False,
+        should_log: bool = True,
     ) -> None:
         if isinstance(run, WorkflowNodeRun):
-            await self.post_wf_node_run_logs(run.id, logs, should_raise=should_raise)
+            await self.post_wf_node_run_logs(
+                run.id, logs, should_raise=should_raise, should_log=should_log
+            )
         else:
             for log in logs:
                 await self.post_action_run_log(run.id, log.message)
@@ -127,12 +133,17 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         run: IntegrationRun,
         payload: dict[str, Any],
         should_raise: bool = True,
+        should_log: bool = True,
     ) -> None:
         """Patch an action or workflow node run."""
         if isinstance(run, WorkflowNodeRun):
-            await self.patch_wf_node_run(run.id, payload, should_raise=should_raise)
+            await self.patch_wf_node_run(
+                run.id, payload, should_raise=should_raise, should_log=should_log
+            )
         else:
-            await self.patch_action_run(run.id, payload, should_raise=should_raise)
+            await self.patch_action_run(
+                run.id, payload, should_raise=should_raise, should_log=should_log
+            )
 
     async def find_run_by_external_id(self, external_id: str) -> IntegrationRun | None:
         """Get a run by its external ID."""
@@ -184,6 +195,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         message: str | None = None,
         status_label: str | None = None,
         should_raise: bool = False,
+        should_log: bool = True,
     ) -> None:
         """Report a run as completed with success or failure.
 
@@ -212,11 +224,13 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                     run.id,
                     [WorkflowNodeRunLog(level=log_level, message=message)],
                     should_raise=should_raise,
+                    should_log=should_log,
                 )
             await self.patch_wf_node_run(
                 run.id,
                 self._wf_node_completion_patch(result, output, status_label),
                 should_raise=should_raise,
+                should_log=should_log,
             )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
@@ -225,4 +239,6 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             patch: dict[str, Any] = {"status": status}
             if status_label:
                 patch["statusLabel"] = status_label
-            await self.patch_action_run(run.id, patch, should_raise=should_raise)
+            await self.patch_action_run(
+                run.id, patch, should_raise=should_raise, should_log=should_log
+            )

@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.62.1 (2026-11-23)
+
+
+### Improvements
+
+- >-
+    Propagate should_log through action and workflow run patch, log, and completion
+    helpers so integrations can silence Port API error logging on expected responses.
+
+
 ## 0.62.0 (2026-11-19)
 
 
