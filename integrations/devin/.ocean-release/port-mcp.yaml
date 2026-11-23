@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Add enablePortMcp on create_session and send_message to inject the workflow user's Port JWT into Devin session_secrets under MCP_PORT_TOKEN.
