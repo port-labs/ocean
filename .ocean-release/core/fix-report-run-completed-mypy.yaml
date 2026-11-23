@@ -1,0 +1,5 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Fix mypy failure in ExecutionManager by passing status_label as a typed kwarg
+  to report_run_completed instead of unpacking a dict.
