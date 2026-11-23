@@ -1,0 +1,5 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Force Ocean Once mode to exit after a grace period so CronJob pods cannot hang
+  forever on leftover non-daemon threads after uvicorn shuts down.

@@ -1,5 +1,8 @@
 import datetime
+import os
 import signal
+import threading
+import time
 from typing import Any, Literal
 
 from loguru import logger
@@ -18,6 +21,9 @@ from port_ocean.utils.integration import (
 )
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import convert_str_to_utc_datetime, parse_interval_to_minutes
+
+# Grace period for uvicorn + signal handlers before hard-killing leftover threads.
+ONCE_EXIT_GRACE_SECONDS = 30
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -143,6 +149,7 @@ class OnceEventListener(BaseEventListener):
         @repeat_every(seconds=0, max_repetitions=1)
         async def resync_and_exit() -> None:
             logger.info("Once event listener started")
+            exit_code = 0
             try:
                 integration_settings = ocean.config.integration
                 if integration_settings.incremental_sync_enabled:
@@ -172,9 +179,26 @@ class OnceEventListener(BaseEventListener):
             except Exception:
                 # we catch all exceptions here to make sure the application will exit gracefully
                 logger.exception("Error occurred while resyncing")
+                exit_code = 1
             finally:
                 logger.info("Once event listener finished")
                 logger.info("Exiting application")
+
+                # SIGINT starts graceful uvicorn shutdown, but non-daemon threads
+                # (e.g. log shipping) can keep the process alive forever. Hard-exit
+                # after a grace period so Once CronJobs always terminate.
+                def _force_exit() -> None:
+                    time.sleep(ONCE_EXIT_GRACE_SECONDS)
+                    logger.bind(local_only=True).warning(
+                        "Once mode grace period elapsed; forcing process exit",
+                        exit_code=exit_code,
+                        grace_seconds=ONCE_EXIT_GRACE_SECONDS,
+                    )
+                    os._exit(exit_code)
+
+                threading.Thread(
+                    target=_force_exit, name="once-force-exit", daemon=True
+                ).start()
                 signal.raise_signal(signal.SIGINT)
 
         await resync_and_exit()
