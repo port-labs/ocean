@@ -1,16 +1,29 @@
+import asyncio
+from collections.abc import Iterable
+from datetime import datetime
+from http import HTTPStatus
+from itertools import batched
 from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
 
+from httpx import HTTPStatusError
+from loguru import logger
 from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
+from datadog.incremental import (
+    audit_event_asset_id,
+    audit_event_path,
+    audit_events_search_body,
+)
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 MAX_PAGE_SIZE = 100
+CHANGED_RESOURCES_FETCH_BATCH_SIZE = 10
 
 RC = TypeVar("RC", bound="ResourceConfig")
 
@@ -44,7 +57,7 @@ class GetOptions(BaseModel, Generic[RC]):
 
 
 ListOptionsT = TypeVar("ListOptionsT")
-GetOptionsT = TypeVar("GetOptionsT")
+GetOptionsT = TypeVar("GetOptionsT", bound=GetOptions[Any])
 
 
 class DatadogExporter(ABC):
@@ -137,9 +150,86 @@ class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
             yield result
             offset += page_size
 
+    async def _paginate_by_search_cursor(
+        self,
+        url: str,
+        body: dict[str, Any],
+        *,
+        data_key: str = "data",
+        page_size: int = MAX_PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Cursor-based pagination for POST search endpoints. Sends the previous
+        response's meta.page.after as page.cursor until empty or no next cursor."""
+        cursor: str | None = None
+        while True:
+            page: dict[str, Any] = {"limit": page_size}
+            if cursor:
+                page["cursor"] = cursor
+            result = await self.client.send_api_request(
+                url, json_data={**body, "page": page}, method="POST"
+            )
+
+            items = result.get(data_key, [])
+            if not items:
+                break
+
+            yield items
+            cursor = result.get("meta", {}).get("page", {}).get("after")
+            if not cursor:
+                break
+
+    async def _changed_asset_ids(
+        self, query: str, since: datetime, *, excluded_path_prefix: str | None = None
+    ) -> list[str]:
+        """Return the IDs of the assets that audit events matching *query* since
+        *since* are about, deduplicated in order. Events recorded on API paths
+        under *excluded_path_prefix* are skipped.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        url = f"{self.client.api_url}/api/v2/audit/events/search"
+        asset_ids: dict[str, None] = {}
+        async for events in self._paginate_by_search_cursor(
+            url, audit_events_search_body(query, since)
+        ):
+            for event in events:
+                if excluded_path_prefix and audit_event_path(event).startswith(
+                    excluded_path_prefix
+                ):
+                    continue
+                if asset_id := audit_event_asset_id(event):
+                    asset_ids[asset_id] = None
+        return list(asset_ids)
+
 
 class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
     """Mixin for exporters that support single resource fetching."""
 
     @abstractmethod
     async def get_resource(self, options: GetOptionsT) -> dict[str, Any] | None: ...
+
+    async def _get_existing_resources(
+        self, options: Iterable[GetOptionsT]
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get the resource behind each of *options*, a batch at a time, leaving out
+        those that no longer exist."""
+        for batch in batched(options, CHANGED_RESOURCES_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(self._get_resource_if_exists(get_options) for get_options in batch)
+            )
+            if resources := [resource for resource in results if resource]:
+                yield resources
+
+    async def _get_resource_if_exists(
+        self, options: GetOptionsT
+    ) -> dict[str, Any] | None:
+        """Get a resource, or None if it no longer exists."""
+        try:
+            return await self.get_resource(options)
+        except HTTPStatusError as e:
+            if e.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"Skipping '{options.resource_id}' in {type(self).__name__}; "
+                "it no longer exists in Datadog"
+            )
+            return None

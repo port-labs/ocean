@@ -1,0 +1,18 @@
+{
+  "serviceName": "payment-service",
+  "environments": [
+    "docker-desktop"
+  ],
+  "clusters": [
+    "docker-desktop"
+  ],
+  "namespaces": [
+    "default"
+  ],
+  "requestsPerSecond": 0.62,
+  "errorRatePct": 5.4,
+  "p95LatencyMs": 195.3,
+  "window": "1h",
+  "metricsSource": "calls_total",
+  "__teamUrl": "https://getport.app.eu2.coralogix.com"
+}

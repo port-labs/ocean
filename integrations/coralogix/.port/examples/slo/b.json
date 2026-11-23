@@ -1,0 +1,68 @@
+{
+  "id": "989124ea-7a5e-4748-afe3-9d938c6e5d39",
+  "name": "Login latency: avg under 200ms (window)",
+  "description": "Window-based: share of 5-minute windows where login-service average server latency is at or under 200 ms.",
+  "creator": "user@email.com",
+  "labels": {
+    "env": "docker-desktop",
+    "service": "login-service",
+    "team": "platform-demo"
+  },
+  "revision": {
+    "revision": 1,
+    "updateTime": "2026-11-16T15:28:12.811Z"
+  },
+  "grouping": {
+    "labels": []
+  },
+  "createTime": "2026-11-16T15:28:12.811Z",
+  "updateTime": "2026-11-16T15:28:12.821Z",
+  "targetThresholdPercentage": 99,
+  "sloTimeFrame": "SLO_TIME_FRAME_7_DAYS",
+  "windowBasedMetricSli": {
+    "query": {
+      "query": "sum(rate(duration_ms_sum{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"login-service\"}[1m])) / sum(rate(duration_ms_count{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"login-service\"}[1m]))"
+    },
+    "window": "WINDOW_SLO_WINDOW_5_MINUTES",
+    "comparisonOperator": "COMPARISON_OPERATOR_LESS_THAN_OR_EQUALS",
+    "threshold": 200,
+    "missingDataStrategy": "MISSING_DATA_STRATEGY_UNCOUNTED"
+  },
+  "sliDefinition": {
+    "windowBased": {
+      "window": "WINDOW_SLO_WINDOW_5_MINUTES",
+      "missingDataStrategy": "MISSING_DATA_STRATEGY_UNCOUNTED",
+      "custom": {
+        "query": {
+          "query": "sum(rate(duration_ms_sum{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"login-service\"}[1m])) / sum(rate(duration_ms_count{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"login-service\"}[1m]))"
+        },
+        "comparisonOperator": "COMPARISON_OPERATOR_LESS_THAN_OR_EQUALS",
+        "threshold": 200
+      }
+    }
+  },
+  "type": "request",
+  "sloType": "SLO_TYPE_REQUEST",
+  "productType": "SLO_PRODUCT_TYPE_UNSPECIFIED",
+  "ownershipTags": {
+    "environment": {
+      "staticValues": [
+        "docker-desktop"
+      ],
+      "labelKeys": [],
+      "resolvedValues": [
+        "docker-desktop"
+      ]
+    },
+    "team": {
+      "staticValues": [
+        "platform-demo"
+      ],
+      "labelKeys": [],
+      "resolvedValues": [
+        "platform-demo"
+      ]
+    }
+  },
+  "__teamUrl": "https://getport.app.eu2.coralogix.com"
+}

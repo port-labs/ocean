@@ -7,6 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from datadog.client import DatadogClient
 from datadog.core.exporters import UserExporter
 from datadog.webhook.consts import (
+    ROLES_API_PATH_PREFIX,
     AuditTrailAction,
     AuditTrailAssetType,
     AuditTrailEventName,
@@ -50,7 +51,7 @@ class RoleMembershipWebhookProcessor(BaseAuditTrailProcessor):
             # This is the only indication that this is role membership event
             # rather than user crud event
             and attrs.http is not None
-            and attrs.http.url_details.path.startswith("/api/v2/roles")
+            and attrs.http.url_details.path.startswith(ROLES_API_PATH_PREFIX)
         ):
             return False
         return _extract_target_user_email(event.message) is not None

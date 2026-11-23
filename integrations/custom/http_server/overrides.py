@@ -26,6 +26,7 @@ class ApiPathParameter(BaseModel):
         default="GET",
     )
     query_params: Optional[Dict[str, Any]] = Field(
+        alias="queryParams",
         title="Query Parameters",
         description="Query parameters for discovery endpoint",
         default=None,
@@ -36,6 +37,7 @@ class ApiPathParameter(BaseModel):
         default=None,
     )
     data_path: Optional[str] = Field(
+        alias="dataPath",
         title="Data Path",
         description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
         default=None,
@@ -52,6 +54,7 @@ class ApiPathParameter(BaseModel):
 
     class Config:
         extra = "forbid"
+        allow_population_by_field_name = True
 
 
 class HttpServerSelector(Selector):
@@ -69,6 +72,7 @@ class HttpServerSelector(Selector):
         default="GET",
     )
     query_params: Optional[Dict[str, Any]] = Field(
+        alias="queryParams",
         title="Query Parameters",
         description="Query parameters",
         default=None,
@@ -79,13 +83,20 @@ class HttpServerSelector(Selector):
         default=None,
     )
     path_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
+        alias="pathParameters",
         title="Path Parameters",
         description="Dynamic path parameters",
         default=None,
     )
     data_path: Optional[str] = Field(
+        alias="dataPath",
         title="Data Path",
         description="JQ path to extract data array from response (e.g., '.members', '.data.items')",
+        default=None,
+    )
+    body: Optional[Dict[str, Any]] = Field(
+        title="Body",
+        description="Static JSON request body merged with pagination fields when applicable",
         default=None,
     )
 

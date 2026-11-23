@@ -19,7 +19,11 @@ from port_ocean.utils.async_iterators import (
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 from azure_integration.foundry.core.exporters.base import FoundryExporter
-from azure_integration.foundry.core.options import EndpointScope, EndpointScopedOptions
+from azure_integration.foundry.core.options import (
+    EndpointScope,
+    EndpointScopedOptions,
+    SingleEndpointScopedOptions,
+)
 from azure_integration.foundry.helpers.utils import (
     agent_openai_protocol_path,
     effective_conversation_cutoff,
@@ -29,16 +33,39 @@ from azure_integration.foundry.helpers.utils import (
 MAX_CONCURRENT_AGENTS = 10
 
 
-class EndpointScopedExporter[OptionsT: EndpointScopedOptions](
-    FoundryExporter[OptionsT]
-):
+class EndpointScopedExporter[
+    ListOptionsT: EndpointScopedOptions, GetOptionsT: SingleEndpointScopedOptions
+](FoundryExporter[ListOptionsT, GetOptionsT]):
     """Lists a Foundry resource via agent protocol and/or project openai/v1 APIs."""
 
     resource: ClassVar[str]
     strategy: ClassVar[IncrementalStrategy]
 
+    async def get_resource(self, options: GetOptionsT) -> dict[str, Any] | None:
+        if options.endpoint_scope == EndpointScope.AGENT:
+            agent_id = (options.agent_id or "").strip()
+            if not agent_id:
+                raise ValueError("agent_id is required for EndpointScope.AGENT")
+            path = (
+                f"{agent_openai_protocol_path(agent_id, self.resource)}"
+                f"/{options.resource_id}"
+            )
+        else:
+            path = f"openai/v1/{self.resource}/{options.resource_id}"
+
+        try:
+            payload = await self.client.send_api_request(
+                self.client.build_url(options.project_endpoint, path),
+                method="GET",
+            )
+        except FoundryApiError as error:
+            if error.status_code == 404:
+                return None
+            raise
+        return payload if isinstance(payload, dict) else None
+
     async def get_paginated_resources(
-        self, options: OptionsT
+        self, options: ListOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         project_endpoint = options.project_endpoint
         project_id = options.project_id

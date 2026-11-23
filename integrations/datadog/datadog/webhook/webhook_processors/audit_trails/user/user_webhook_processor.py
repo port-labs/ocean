@@ -7,6 +7,7 @@ from datadog.client import DatadogClient
 from datadog.core.exporters import UserExporter
 from datadog.core.exporters.user_exporter import GetUserOptions
 from datadog.webhook.consts import (
+    ROLES_API_PATH_PREFIX,
     USER_ACTIONS,
     AuditTrailAssetType,
     AuditTrailEventName,
@@ -30,7 +31,7 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
             and attrs.action in USER_ACTIONS
             # http path distinguishes user CRUD from role-membership events
             and attrs.http is not None
-            and not attrs.http.url_details.path.startswith("/api/v2/roles")
+            and not attrs.http.url_details.path.startswith(ROLES_API_PATH_PREFIX)
         )
 
     async def _fetch_resource(

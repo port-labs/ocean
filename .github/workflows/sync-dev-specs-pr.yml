@@ -11,6 +11,12 @@ permissions:
   contents: write
   pull-requests: write
 
+# Serialize per-PR so a newer push cancels an outdated in-flight sync instead
+# of racing two merges of the same PR onto `dev-specs`.
+concurrency:
+  group: sync-dev-specs-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   sync-dev-specs:
     name: Merge spec changes into dev-specs
