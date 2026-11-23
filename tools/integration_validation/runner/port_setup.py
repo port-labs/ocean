@@ -85,18 +85,24 @@ class ValidationPortClient(PortClient):
         """Make Ocean skip its default-resources setup entirely on startup."""
         await self.patch_integration(are_port_resources_initialized=True)
 
-    async def delete_blueprint_with_entities(self, identifier: str) -> None:
+    async def delete_blueprint_with_entities(self, identifier: str) -> bool:
         """Fire the blueprint-and-entities deletion without waiting for it.
 
-        A missing blueprint counts as deleted.
+        A missing blueprint counts as deleted. Returns ``False`` on other HTTP
+        failures so teardown can continue and report leftovers.
         """
-        response = await self.client.delete(
-            f"{self.auth.api_url}/blueprints/{identifier}/all-entities",
-            headers=await self.auth.headers(),
-            params={"delete_blueprint": "true"},
-        )
-        if response.status_code != 404:
-            handle_port_status_code(response)
+        try:
+            response = await self.client.delete(
+                f"{self.auth.api_url}/blueprints/{identifier}/all-entities",
+                headers=await self.auth.headers(),
+                params={"delete_blueprint": "true"},
+            )
+            if response.status_code != 404:
+                handle_port_status_code(response)
+        except httpx.HTTPError as exc:
+            logger.warning(f"Could not delete blueprint {identifier}: {exc}")
+            return False
+        return True
 
     async def delete_validation_integration(self) -> None:
         """Delete the integration; a missing integration counts as deleted."""
@@ -162,10 +168,7 @@ async def teardown_scenario_port(
 
     for layer in blueprint_deletion_layers(plan.blueprints):
         deleted = await asyncio.gather(
-            *(
-                _delete_blueprint_with_entities(client, identifier)
-                for identifier in layer
-            )
+            *(client.delete_blueprint_with_entities(identifier) for identifier in layer)
         )
         leftovers.extend(
             f"blueprint {identifier}"
@@ -181,17 +184,6 @@ async def _create_blueprints(
     """Create blueprints one by one in file order (relation targets come first)."""
     for blueprint in blueprints:
         await client.create_blueprint(blueprint)
-
-
-async def _delete_blueprint_with_entities(
-    client: ValidationPortClient, identifier: str
-) -> bool:
-    try:
-        await client.delete_blueprint_with_entities(identifier)
-    except httpx.HTTPError as exc:
-        logger.warning(f"Could not delete blueprint {identifier}: {exc}")
-        return False
-    return True
 
 
 def _port_error(

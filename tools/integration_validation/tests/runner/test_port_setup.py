@@ -48,12 +48,12 @@ class FakePortClient(ValidationPortClient):
         self.blueprints.add(identifier)
         return raw_blueprint
 
-    async def delete_blueprint_with_entities(self, identifier: str) -> None:
+    async def delete_blueprint_with_entities(self, identifier: str) -> bool:
         self.calls.append(("delete_blueprint", identifier))
-        self._maybe_fail(
-            "delete_blueprint", identifier, "DELETE", f"/blueprints/{identifier}"
-        )
+        if self._fail_on == ("delete_blueprint", identifier):
+            return False
         self.blueprints.discard(identifier)
+        return True
 
     async def create_validation_integration(
         self, port_app_config: dict[str, Any]
