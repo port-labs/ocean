@@ -57,6 +57,11 @@ def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
     }
 
 
+# Cap how long shutdown waits on log-shipping threads. Without a timeout,
+# a stuck ingest (or fail→reflush loop) blocks process exit forever.
+LOG_SHIP_JOIN_TIMEOUT_SECONDS = 30.0
+
+
 class HTTPMemoryHandler(MemoryHandler):
     def __init__(
         self,
@@ -64,10 +69,12 @@ class HTTPMemoryHandler(MemoryHandler):
         flush_level: int = logging.FATAL,
         flush_interval: int = 5,
         flush_size: int = 1024,
+        join_timeout_seconds: float = LOG_SHIP_JOIN_TIMEOUT_SECONDS,
     ):
         super().__init__(capacity, flushLevel=flush_level, target=None)
         self.flush_interval = flush_interval
         self.flush_size = flush_size
+        self.join_timeout_seconds = join_timeout_seconds
         self.last_flush_time = time.time()
         self._serialized_buffer: list[dict[str, Any]] = []
         self._thread_pool: list[threading.Thread] = []
@@ -96,9 +103,11 @@ class HTTPMemoryHandler(MemoryHandler):
         return False
 
     def wait_for_lingering_threads(self) -> None:
-        for thread in self._thread_pool:
+        # Snapshot: joining a live list while failed sends append new threads
+        # can loop forever during ingest outages.
+        for thread in list(self._thread_pool):
             if thread.is_alive():
-                thread.join()
+                thread.join(timeout=self.join_timeout_seconds)
 
     def flush(self) -> None:
         if self.ocean is None or not self.buffer:
@@ -121,7 +130,10 @@ class HTTPMemoryHandler(MemoryHandler):
                 self.last_flush_time = time.time()
                 clear_thread_pool()
                 thread = threading.Thread(
-                    target=_wrap_event_loop, args=(self.ocean, logs)
+                    target=_wrap_event_loop,
+                    args=(self.ocean, logs),
+                    daemon=True,
+                    name="ocean-log-ship",
                 )
                 thread.start()
                 self._thread_pool.append(thread)
@@ -134,4 +146,8 @@ class HTTPMemoryHandler(MemoryHandler):
         try:
             await _ocean.port_client.ingest_integration_logs(logs_to_send)
         except Exception as e:
-            logger.error(f"Failed to send logs to Port with error: {e}")
+            # local_only: do not re-ingest this error — that starts another ship
+            # thread and can loop forever while Port ingest is down.
+            logger.bind(local_only=True).error(
+                f"Failed to send logs to Port with error: {e}"
+            )

@@ -1,0 +1,6 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Make Port log-shipping threads daemonized with a join timeout, and log ship
+  failures as local-only so ingest outages cannot spawn an endless reflush loop
+  that blocks process exit.

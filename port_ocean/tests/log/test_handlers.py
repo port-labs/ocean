@@ -1,7 +1,7 @@
 import logging
 import sys
 from collections import namedtuple
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -143,3 +143,62 @@ def test_flush_releases_lock_when_it_fails() -> None:
         handler.flush()
 
     handler.lock.release.assert_called_once()
+
+
+def test_flush_starts_daemon_log_ship_thread() -> None:
+    handler = HTTPMemoryHandler(capacity=100, flush_level=logging.FATAL)
+    handler.buffer.append(MagicMock())
+    handler._serialized_buffer.append({"message": log_message})
+    mock_thread = MagicMock()
+
+    with (
+        patch.object(
+            HTTPMemoryHandler,
+            "ocean",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+        ),
+        patch(
+            "port_ocean.log.handlers.threading.Thread",
+            return_value=mock_thread,
+        ) as thread_cls,
+    ):
+        handler.flush()
+
+    kwargs = thread_cls.call_args.kwargs
+    assert kwargs["daemon"] is True
+    assert kwargs["name"] == "ocean-log-ship"
+    mock_thread.start.assert_called_once()
+
+
+def test_wait_for_lingering_threads_joins_with_timeout() -> None:
+    handler = HTTPMemoryHandler(
+        capacity=100, flush_level=logging.FATAL, join_timeout_seconds=1.5
+    )
+    alive = MagicMock()
+    alive.is_alive.return_value = True
+    dead = MagicMock()
+    dead.is_alive.return_value = False
+    handler._thread_pool = [alive, dead]
+
+    handler.wait_for_lingering_threads()
+
+    alive.join.assert_called_once_with(timeout=1.5)
+    dead.join.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_logs_failure_is_local_only() -> None:
+    handler = HTTPMemoryHandler(capacity=100, flush_level=logging.FATAL)
+    ocean_app = MagicMock()
+    ocean_app.port_client.ingest_integration_logs = AsyncMock(
+        side_effect=RuntimeError("ingest down")
+    )
+
+    bound = MagicMock()
+    with patch("port_ocean.log.handlers.logger") as mock_logger:
+        mock_logger.bind.return_value = bound
+        await handler.send_logs(ocean_app, [{"message": "x"}])
+
+    mock_logger.bind.assert_called_once_with(local_only=True)
+    bound.error.assert_called_once()
