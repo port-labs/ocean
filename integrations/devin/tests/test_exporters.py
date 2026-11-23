@@ -1,30 +1,11 @@
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock
 
 import yaml  # type: ignore[import-untyped]
 
-from core.exporters.knowledge_notes_exporter import KnowledgeNotesExporter
-from core.exporters.options import PlaybooksExportOptions
-from core.exporters.playbooks_exporter import PlaybooksExporter
-from core.exporters.sessions_exporter import SessionsExporter, build_sessions_query
+from core.sessions_query import build_sessions_query
 from integration import DevinPortAppConfig, SessionResourceConfig
 
 RESOURCES_DIR = Path(__file__).parent.parent / ".port" / "resources"
-
-
-def _paginating_client(*pages: list[dict[str, Any]]) -> MagicMock:
-    client = MagicMock()
-    calls: list[tuple[str, dict[str, Any] | None]] = []
-
-    async def paginate(path: str, params: dict[str, Any] | None = None) -> Any:
-        calls.append((path, params))
-        for page in pages:
-            yield page
-
-    client.paginate = paginate
-    client.calls = calls
-    return client
 
 
 def test_default_sessions_query() -> None:
@@ -44,51 +25,6 @@ def test_sessions_query_with_every_selector() -> None:
         origins=["api", "slack"],
         only_managed_by_port=True,
     ) == {"origins": ["api", "slack"], "tags": ["port:managed"]}
-
-
-async def test_sessions_exporter_passes_query_to_client() -> None:
-    client = _paginating_client([{"session_id": "devin-1"}])
-    exporter = SessionsExporter(client)
-
-    pages = [
-        page
-        async for page in exporter.get_paginated_resources(
-            {
-                "include_archived": True,
-                "created_after_days": None,
-                "origins": None,
-                "only_managed_by_port": True,
-            }
-        )
-    ]
-
-    assert pages == [[{"session_id": "devin-1"}]]
-    assert client.calls == [("/sessions", {"tags": ["port:managed"]})]
-
-
-async def test_playbooks_exporter_include_enterprise() -> None:
-    client = _paginating_client([{"playbook_id": "p1"}])
-
-    pages = [
-        page
-        async for page in PlaybooksExporter(client).get_paginated_resources(
-            PlaybooksExportOptions(include_enterprise=True)
-        )
-    ]
-
-    assert pages == [[{"playbook_id": "p1"}]]
-    assert client.calls == [("/playbooks", {"include_enterprise": True})]
-
-
-async def test_knowledge_notes_exporter() -> None:
-    client = _paginating_client([{"note_id": "n1"}])
-
-    pages = [
-        page async for page in KnowledgeNotesExporter(client).get_paginated_resources()
-    ]
-
-    assert pages == [[{"note_id": "n1"}]]
-    assert client.calls == [("/knowledge/notes", None)]
 
 
 def test_default_port_app_config_parses() -> None:
