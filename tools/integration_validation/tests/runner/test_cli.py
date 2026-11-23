@@ -74,6 +74,7 @@ scenarios:
                 "OCEAN__PORT__CLIENT_ID=test-client",
                 "OCEAN__PORT__CLIENT_SECRET=test-secret",
                 "OCEAN__PORT__BASE_URL=https://api.getport.io",
+                "OCEAN__INTEGRATION__TYPE=sample",
             ]
         ),
         encoding="utf-8",
@@ -224,3 +225,27 @@ def test_validate_missing_port_credentials_exits_2(
 
     assert exc_info.value.code == 2
     assert "Missing Port credentials" in capsys.readouterr().err
+
+
+def test_validate_missing_integration_type_exits_2(
+    validation_integration: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("OCEAN__INTEGRATION__TYPE", raising=False)
+    (validation_integration / ".env").write_text(
+        "\n".join(
+            [
+                "OCEAN__PORT__CLIENT_ID=test-client",
+                "OCEAN__PORT__CLIENT_SECRET=test-secret",
+                "OCEAN__PORT__BASE_URL=https://api.getport.io",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main([str(validation_integration)])
+
+    assert exc_info.value.code == 2
+    assert "OCEAN__INTEGRATION__TYPE" in capsys.readouterr().err

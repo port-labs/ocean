@@ -18,11 +18,22 @@ _PORT_CREDENTIAL_HINT = (
     "Set OCEAN__PORT__CLIENT_ID, OCEAN__PORT__CLIENT_SECRET, and "
     "OCEAN__PORT__BASE_URL in the environment or integrations/<name>/.env."
 )
+INTEGRATION_TYPE_ENV = "OCEAN__INTEGRATION__TYPE"
 
 
 def run_preflight(validation_paths: ValidationPaths) -> None:
     _ensure_validation_directory(validation_paths)
     _load_port_credentials(validation_paths.integration_root)
+
+
+def load_integration_type() -> str:
+    integration_type = os.environ.get(INTEGRATION_TYPE_ENV)
+    if not integration_type:
+        raise ValidationSetupError(
+            f"Missing {INTEGRATION_TYPE_ENV}. Set it in the environment or "
+            "integrations/<name>/.env."
+        )
+    return integration_type
 
 
 def _ensure_validation_directory(validation_paths: ValidationPaths) -> None:

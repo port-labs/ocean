@@ -15,7 +15,6 @@ from tools.integration_validation.runner.blueprint_rewrite import (
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.loader import (
     load_blueprints_file,
-    load_integration_type,
     load_port_app_config_file,
     load_scenarios_document,
     resolve_integration_resource_path,
@@ -37,6 +36,7 @@ from tools.integration_validation.runner.port_setup import (
     teardown_scenario_port,
 )
 from tools.integration_validation.runner.preflight import (
+    load_integration_type,
     run_preflight,
     select_scenario_names,
 )
@@ -71,7 +71,7 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
     run_preflight(paths)
 
     scenario_names = select_scenario_names(scenarios, options.scenario_names)
-    integration_type = load_integration_type(paths)
+    integration_type = load_integration_type()
     plans = _plan_scenarios(paths, scenarios, scenario_names)
 
     # TODO(follow-up PRs): start the mock and `ocean sail` between prepare and
