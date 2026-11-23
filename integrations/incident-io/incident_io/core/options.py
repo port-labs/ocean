@@ -11,6 +11,7 @@ class AlertStatus(StrEnum):
 
 class IncidentStatusCategory(StrEnum):
     """Triage, active, post-incident, paused, closed, declined, canceled, or merged."""
+
     TRIAGE = "triage"
     LIVE = "live"
     LEARNING = "learning"
