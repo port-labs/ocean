@@ -76,13 +76,6 @@ class ListPullRequestCommentOptions(RepositoryIdentifier):
     pull_request_id: Required[int]
 
 
-class SinglePullRequestCommentOptions(ListPullRequestCommentOptions):
-    """Options for fetching one pull request comment or review."""
-
-    comment_id: Required[int]
-    comment_type: Required[str]
-
-
 class PullRequestGraphQLOptions(BaseModel):
     enrich_with_first_commit: bool = Field(default=False)
     exclude_graphql_fields: list[str] = Field(

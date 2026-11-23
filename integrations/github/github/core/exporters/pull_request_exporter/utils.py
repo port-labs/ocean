@@ -4,10 +4,7 @@ from typing import Any, AsyncIterator, Callable, Iterable, Literal, Optional, ca
 from loguru import logger
 
 from github.clients.http.rest_client import GithubRestClient
-from github.core.options import (
-    ListPullRequestCommentOptions,
-    SinglePullRequestCommentOptions,
-)
+from github.core.options import ListPullRequestCommentOptions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 CommentType = Literal["comment", "review", "review-summary"]
@@ -133,21 +130,23 @@ def _repo_url(client: GithubRestClient, organization: str, repo_name: str) -> st
 
 
 async def get_pull_request_comment(
-    client: GithubRestClient, options: SinglePullRequestCommentOptions
+    client: GithubRestClient,
+    *,
+    organization: str,
+    repo_name: str,
+    pr_number: int,
+    comment_id: int,
+    comment_type: CommentType,
 ) -> Optional[RAW_ITEM]:
-    organization = options["organization"]
-    repo_name = options["repo_name"]
-    pr_number = options["pr_number"]
-    comment_type = cast(CommentType, options["comment_type"])
     endpoint = _COMMENT_ENDPOINTS[comment_type].format(
-        pr_number=pr_number, comment_id=options["comment_id"]
+        pr_number=pr_number, comment_id=comment_id
     )
     response = await client.send_api_request(
         f"{_repo_url(client, organization, repo_name)}/{endpoint}"
     )
     if not response:
         logger.warning(
-            f"No pull request {comment_type} {options['comment_id']} found "
+            f"No pull request {comment_type} {comment_id} found "
             f"for {organization}/{repo_name}#{pr_number}"
         )
         return None
@@ -191,16 +190,6 @@ async def iter_pull_request_comments(
                 yield normalized
 
 
-async def fetch_all_pull_request_comments(
-    client: GithubRestClient, options: ListPullRequestCommentOptions
-) -> list[dict[str, Any]]:
-    """Collect every comment type for one pull request into a single list."""
-    comments: list[dict[str, Any]] = []
-    async for batch in iter_pull_request_comments(client, options):
-        comments.extend(batch)
-    return comments
-
-
 async def attach_pull_request_comments(
     client: GithubRestClient,
     pull_requests: list[dict[str, Any]],
@@ -218,15 +207,15 @@ async def attach_pull_request_comments(
             enriched.append(pull_request)
             continue
 
-        comments = await fetch_all_pull_request_comments(
-            client,
-            ListPullRequestCommentOptions(
-                organization=organization,
-                repo_name=repo_name,
-                pr_number=pull_request["number"],
-                pull_request_id=pull_request["id"],
-            ),
+        list_options = ListPullRequestCommentOptions(
+            organization=organization,
+            repo_name=repo_name,
+            pr_number=pull_request["number"],
+            pull_request_id=pull_request["id"],
         )
+        comments: list[dict[str, Any]] = []
+        async for batch in iter_pull_request_comments(client, list_options):
+            comments.extend(batch)
         with_comments = dict(pull_request)
         with_comments["__comments"] = comments
         enriched.append(with_comments)

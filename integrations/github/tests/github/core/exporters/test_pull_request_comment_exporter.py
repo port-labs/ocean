@@ -11,10 +11,7 @@ from github.core.exporters.pull_request_exporter.utils import (
     iter_pull_request_comments,
     normalize_pull_request_comment,
 )
-from github.core.options import (
-    ListPullRequestCommentOptions,
-    SinglePullRequestCommentOptions,
-)
+from github.core.options import ListPullRequestCommentOptions
 
 
 def _async_batches(
@@ -85,14 +82,11 @@ class TestPullRequestCommentExporter:
         ) as mock_request:
             comment = await get_pull_request_comment(
                 rest_client,
-                SinglePullRequestCommentOptions(
-                    organization="test-org",
-                    repo_name="repo1",
-                    pr_number=7,
-                    pull_request_id=700,
-                    comment_id=11,
-                    comment_type="comment",
-                ),
+                organization="test-org",
+                repo_name="repo1",
+                pr_number=7,
+                comment_id=11,
+                comment_type="comment",
             )
 
         assert comment is not None
@@ -116,14 +110,11 @@ class TestPullRequestCommentExporter:
         ):
             comment = await get_pull_request_comment(
                 rest_client,
-                SinglePullRequestCommentOptions(
-                    organization="test-org",
-                    repo_name="repo1",
-                    pr_number=7,
-                    pull_request_id=700,
-                    comment_id=34,
-                    comment_type="review-summary",
-                ),
+                organization="test-org",
+                repo_name="repo1",
+                pr_number=7,
+                comment_id=34,
+                comment_type="review-summary",
             )
         assert comment is not None
         assert comment["__commentId"] == "repo1/7/review-summary/34"
