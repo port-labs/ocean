@@ -1,5 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: >-
-  Propagate should_log through action and workflow run patch, log, and completion
-  helpers so integrations can silence Port API error logging on expected responses.
