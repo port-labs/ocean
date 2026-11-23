@@ -201,7 +201,7 @@ class PortAppConfig(BaseModel):
             "validation_only": False,
         }
 
-    def to_request(self) -> dict[str, Any]:
+    def to_request(self, with_resource_id: bool = False) -> dict[str, Any]:
         return {
             "deleteDependentEntities": self.delete_dependent_entities,
             "createMissingRelatedEntities": self.create_missing_related_entities,
@@ -212,21 +212,16 @@ class PortAppConfig(BaseModel):
                     by_alias=True,
                     exclude_none=True,
                     exclude_unset=True,
-                    exclude={"resource_id"},
+                    exclude=None if with_resource_id else {"resource_id"},
                 )
                 for resource in self.resources
             ],
         }
 
     def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
-        mapping = self.to_request()
         # The DSP pins this copy and groups blocks by resourceId, the same way
         # sync_raw grouped its fetches, so the ids Port served go back here.
-        for resource_config, resource in zip(
-            self.resources, mapping.get("resources", [])
-        ):
-            if resource_config.resource_id:
-                resource["resourceId"] = resource_config.resource_id
+        mapping = self.to_request(with_resource_id=True)
         for resource in mapping.get("resources", []):
             entity = resource.get("port", {}).get("entity", {})
             mappings = entity.get("mappings")

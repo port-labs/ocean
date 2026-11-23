@@ -71,8 +71,6 @@ SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS = 10
 
 
-
-
 class SyncRawMixin(HandlerMixin, EventsMixin):
     """Mixin class for synchronization of raw constructed entities.
 
@@ -951,17 +949,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 resource, index, user_agent_type, grouped
             )
 
-    async def _process_fetch_unit(
-        self, unit: FetchUnit, user_agent_type: UserAgentType
-    ) -> tuple[list[Entity], list[Exception]]:
-        # An ungrouped unit is a single block: call process_resource exactly as before,
-        # so overrides that don't take `grouped` keep working.
-        if unit.grouped:
-            return await self.process_resource(
-                unit.resource, unit.index, user_agent_type, grouped=True
-            )
-        return await self.process_resource(unit.resource, unit.index, user_agent_type)
-
     @TimeMetricWithResourceKind(MetricPhase.RESYNC)
     async def _resync_reconciliation(
         self,
@@ -1163,8 +1150,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         kind_started_at = time.monotonic()
         try:
             with with_active_incremental_cursor(cursor):
-                entities, errors = await self._process_fetch_unit(
-                    FetchUnit(index, resource, grouped), user_agent_type
+                entities, errors = await self.process_resource(
+                    resource, index, user_agent_type, grouped=grouped
                 )
 
             if errors:
@@ -1585,7 +1572,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         f"Starting processing resource {unit.resource.kind} with index {unit.index}"
                     )
                     creation_results.append(
-                        await self._process_fetch_unit(unit, user_agent_type)
+                        await self.process_resource(
+                            unit.resource,
+                            unit.index,
+                            user_agent_type,
+                            grouped=unit.grouped,
+                        )
                     )
 
             except asyncio.CancelledError as e:

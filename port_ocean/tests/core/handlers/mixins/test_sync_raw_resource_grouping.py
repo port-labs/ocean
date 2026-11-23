@@ -206,7 +206,7 @@ async def test_dsp_resync_fetches_a_grouped_resource_once_under_its_head_slot(
     calls = mixin.process_resource.await_args_list
     assert [(call.args[0], call.args[1], call.kwargs) for call in calls] == [
         (resources[0], 0, {"grouped": True}),
-        (resources[1], 1, {}),
+        (resources[1], 1, {"grouped": False}),
     ]
     reported = mock_ocean.metrics.report_sync_metrics.await_args_list[0].kwargs  # type: ignore[attr-defined]
     assert reported["kinds"] == ["pr-0", "issue-1"]
@@ -231,8 +231,10 @@ async def test_dsp_resync_without_ids_processes_every_block(
         await mixin.sync_raw_all(user_agent_type=UserAgentType.exporter)
 
     calls = mixin.process_resource.await_args_list
-    # No ids: process_resource is called exactly as before grouping existed.
-    assert [(call.args[1], call.kwargs) for call in calls] == [(0, {}), (1, {})]
+    assert [(call.args[1], call.kwargs) for call in calls] == [
+        (0, {"grouped": False}),
+        (1, {"grouped": False}),
+    ]
     reported = mock_ocean.metrics.report_sync_metrics.await_args_list[0].kwargs  # type: ignore[attr-defined]
     assert reported["kinds"] == ["pr-0", "pr-1"]
 

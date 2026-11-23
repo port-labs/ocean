@@ -217,7 +217,7 @@ class TestSyncIncrementalCursorScope:
         captured: dict[str, datetime | None] = {"cursor": None}
 
         async def capture_cursor(
-            resource: Any, index: int, user_agent_type: Any
+            resource: Any, index: int, user_agent_type: Any, grouped: bool = False
         ) -> tuple[list[Any], list[Any]]:
             captured["cursor"] = active_incremental_cursor()
             return [], []
@@ -598,6 +598,6 @@ class TestSyncIncrementalResourceGrouping:
 
         process_calls = mock_mixin.process_resource.await_args_list  # type: ignore[attr-defined]
         assert [(call.args[1], call.kwargs) for call in process_calls] == [
-            (0, {}),
-            (1, {}),
+            (0, {"grouped": False}),
+            (1, {"grouped": False}),
         ]
