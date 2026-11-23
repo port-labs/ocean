@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-11-23)
+
+
+### Features
+
+- Add enablePortMcp on create_session and send_message to inject the workflow user's Port JWT into Devin session_secrets under MCP_PORT_TOKEN.
+
+
 ## 0.1.0 (2026-10-20)
 
 
