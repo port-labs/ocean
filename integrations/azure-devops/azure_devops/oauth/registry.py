@@ -19,7 +19,9 @@ def register_oauth_provider() -> None:
     and when identity OAuth client credentials are absent.
     """
     if ocean.config.identity_propagation.vault.type == VaultType.port:
-        logger.info("Identity propagation enabled; OAuth provider registration is handled externally")
+        logger.info(
+            "Identity propagation enabled; OAuth provider registration is handled externally"
+        )
         return
 
     tenant_id = ocean.integration_config.get("identity_oauth_tenant_id")
