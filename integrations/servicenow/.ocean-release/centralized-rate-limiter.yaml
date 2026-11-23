@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Wire ServiceNow into the centralized rate limiter. The integration credential has one Redis pool per ServiceNow instance, admission runs before each retry, and the local limiter stays as the fallback.

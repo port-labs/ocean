@@ -47,6 +47,10 @@ class ServiceNowRateLimiter:
             return max(0.0, self._reset_time - time.time())
         return 0.0
 
+    @property
+    def is_limit_reached(self) -> bool:
+        return self._limit is not None and self._request_count >= self._limit
+
     async def __aenter__(self) -> "ServiceNowRateLimiter":
         async with self._lock:
             if self._cooldown_until is not None:
