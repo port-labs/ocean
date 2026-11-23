@@ -1,0 +1,5 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Abort and fail a running resync when the lifecycle API reports the resync no
+  longer exists (404), instead of polling forever.

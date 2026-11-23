@@ -1108,14 +1108,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         while not event.aborted:
             await asyncio.sleep(LIFECYCLE_ABORT_POLL_INTERVAL_SECONDS)
             status = await ocean.app.lifecycle_client.get_resync_status(resync_id)
-            if status != "aborted":
-                continue
-            logger.warning(
-                "Lifecycle API reported aborted status; cancelling Ocean resync",
-                resync_id=resync_id,
-            )
-            event.abort(external_abort=True)
-            return
+            if status == "aborted":
+                logger.warning(
+                    "Lifecycle API reported aborted status; cancelling Ocean resync",
+                    resync_id=resync_id,
+                )
+                event.abort(external_abort=True)
+                return
+            if status == "not_found":
+                logger.error(
+                    "Lifecycle API reported resync no longer exists; failing Ocean resync",
+                    resync_id=resync_id,
+                )
+                event.abort(external_abort=True)
+                return
 
     async def _sync_incremental_kind(
         self,

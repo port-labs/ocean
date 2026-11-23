@@ -77,6 +77,9 @@ class OceanResyncHttpClient(OceanAsyncClient):
         try:
             headers = await self._lifecycle_auth.headers()
             response = await self._raw_get(url, headers=headers)
+            if response.status_code == 404:
+                # Resync was deleted / never existed — callers must stop the run.
+                return {"status": "not_found"}
             if response.is_error:
                 escaped = response.text.replace("{", "{{").replace("}", "}}")
                 logger.warning(

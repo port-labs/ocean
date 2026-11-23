@@ -2624,6 +2624,28 @@ async def test_poll_for_lifecycle_abort_aborts_event(
 
 
 @pytest.mark.asyncio
+async def test_poll_for_lifecycle_abort_fails_when_resync_not_found(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    mock_ocean.lifecycle_client = MagicMock()
+    mock_ocean.lifecycle_client.get_resync_status = AsyncMock(return_value="not_found")
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.asyncio.sleep", AsyncMock()
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as current_event:
+            assert not current_event.aborted
+            await mock_sync_raw_mixin._poll_for_lifecycle_abort("resync-gone")
+            assert current_event.aborted
+            assert current_event.external_abort
+
+
+@pytest.mark.asyncio
 async def test_sync_raw_all_ignores_poll_task_failure_and_completes_cleanup(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_port_app_config: PortAppConfig,

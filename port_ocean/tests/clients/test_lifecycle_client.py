@@ -341,6 +341,19 @@ class TestNotifyResyncAborted:
         assert logged_body.endswith("…")
 
 
+class TestDoGet:
+    @pytest.mark.asyncio
+    async def test_maps_404_to_not_found_status(self, mock_auth: MagicMock) -> None:
+        client = OceanResyncHttpClient(auth=mock_auth)
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 404
+        response.is_error = True
+        response.text = "resync not found"
+        with patch.object(client, "_raw_get", AsyncMock(return_value=response)):
+            result = await client.do_get("https://api.port.io/v1/lifecycle/r1")
+        assert result == {"status": "not_found"}
+
+
 class TestGetResyncStatus:
     @pytest.mark.asyncio
     async def test_returns_lowercased_status(
@@ -369,6 +382,19 @@ class TestGetResyncStatus:
 
         status = await lifecycle_client.get_resync_status("r1")
         assert status is None
+
+    @pytest.mark.asyncio
+    async def test_returns_not_found_when_do_get_maps_404(
+        self, lifecycle_client: LifecycleClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            lifecycle_client._lifecycle_http_client,
+            "do_get",
+            AsyncMock(return_value={"status": "not_found"}),
+        )
+
+        status = await lifecycle_client.get_resync_status("r1")
+        assert status == "not_found"
 
 
 class TestNotifyGranularStarted:
