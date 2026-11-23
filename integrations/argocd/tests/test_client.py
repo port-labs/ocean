@@ -825,3 +825,84 @@ async def test_get_resources_yields_all_batches(
     assert len(all_resources) == 5
     for j in range(5):
         assert {"name": f"item-{j}"} in all_resources
+
+
+@pytest.mark.asyncio
+async def test_get_unreachable_cluster_identifiers(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    response_data = {
+        "items": [
+            {
+                "server": "https://cluster1.example.com",
+                "name": "cluster-1",
+                "connectionState": {"status": "Successful"},
+            },
+            {
+                "server": "https://ballparks-fenway.example.com",
+                "name": "ballparks-fenway",
+                "connectionState": {"status": "Failed"},
+            },
+            {
+                "server": "https://cluster3.example.com",
+                "name": "cluster-3",
+                "connectionState": {"status": "Unknown"},
+            },
+        ]
+    }
+
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch.object(
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ):
+        unreachable = await mock_argocd_client.get_unreachable_cluster_identifiers()
+
+    assert unreachable == {
+        "ballparks-fenway",
+        "https://ballparks-fenway.example.com",
+        "cluster-3",
+        "https://cluster3.example.com",
+    }
+
+
+def test_is_application_on_unreachable_cluster_by_server() -> None:
+    application = {
+        "metadata": {"name": "app-1"},
+        "spec": {"destination": {"server": "https://ballparks-fenway.example.com"}},
+    }
+    unreachable = {"https://ballparks-fenway.example.com", "ballparks-fenway"}
+
+    assert (
+        ArgocdClient.is_application_on_unreachable_cluster(application, unreachable)
+        is True
+    )
+
+
+def test_is_application_on_unreachable_cluster_by_name() -> None:
+    application = {
+        "metadata": {"name": "app-1"},
+        "spec": {"destination": {"name": "ballparks-fenway"}},
+    }
+    unreachable = {"https://ballparks-fenway.example.com", "ballparks-fenway"}
+
+    assert (
+        ArgocdClient.is_application_on_unreachable_cluster(application, unreachable)
+        is True
+    )
+
+
+def test_is_application_on_reachable_cluster() -> None:
+    application = {
+        "metadata": {"name": "app-1"},
+        "spec": {"destination": {"server": "https://healthy.example.com"}},
+    }
+    unreachable = {"https://ballparks-fenway.example.com", "ballparks-fenway"}
+
+    assert (
+        ArgocdClient.is_application_on_unreachable_cluster(application, unreachable)
+        is False
+    )

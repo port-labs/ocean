@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Skip managed-resource fetches for apps on unreachable ArgoCD clusters so resyncs complete instead of hanging per disconnected destination
