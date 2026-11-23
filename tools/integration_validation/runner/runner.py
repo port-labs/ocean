@@ -101,10 +101,11 @@ def _plan_scenarios(
         scenario = scenarios.scenarios[name]
         blueprints = load_blueprints_file(
             resolve_scenario_blueprints_path(paths, scenarios.defaults, scenario)
-        )
+        ).as_mappings()
         suffixed_blueprints, renames = suffix_blueprints(blueprints, name)
         port_app_config = rewrite_mapping_blueprints(
-            build_scenario_port_app_config(base_config, name, scenario), renames
+            build_scenario_port_app_config(base_config, name, scenario).as_mapping(),
+            renames,
         )
         plans.append(
             ScenarioPortPlan(

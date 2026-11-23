@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
 
 
 class ScenarioExpect(BaseModel):
@@ -51,6 +51,40 @@ class ScenariosDocument(BaseModel):
             if not name.strip():
                 raise ValueError("scenario names must be non-empty strings")
         return value
+
+
+class BlueprintDefinition(BaseModel):
+    """Minimal shape of a Port blueprint entry for validation runs."""
+
+    model_config = ConfigDict(extra="allow")
+
+    identifier: str = Field(min_length=1)
+
+
+class BlueprintsDocument(RootModel[list[BlueprintDefinition]]):
+    """Typed view of an integration ``blueprints.json`` array."""
+
+    def as_mappings(self) -> list[dict[str, Any]]:
+        return self.model_dump(mode="python")
+
+
+class PortAppConfigResource(BaseModel):
+    """Minimal shape of a ``port_app_config`` resource entry for validation runs."""
+
+    model_config = ConfigDict(extra="allow")
+
+    kind: str = Field(min_length=1)
+
+
+class PortAppConfigDocument(BaseModel):
+    """Typed view of an integration ``port-app-config.yaml`` (validation subset)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    resources: list[PortAppConfigResource]
+
+    def as_mapping(self) -> dict[str, Any]:
+        return self.model_dump(mode="python")
 
 
 class ValidationPaths(BaseModel):

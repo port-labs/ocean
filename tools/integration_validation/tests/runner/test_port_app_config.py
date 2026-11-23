@@ -3,26 +3,33 @@ from typing import Any
 import pytest
 
 from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import ScenarioDefinition
+from tools.integration_validation.runner.models import (
+    PortAppConfigDocument,
+    ScenarioDefinition,
+)
 from tools.integration_validation.runner.port_app_config import (
     build_scenario_port_app_config,
 )
 
-BASE_CONFIG: dict[str, Any] = {
-    "deleteDependentEntities": True,
-    "resources": [
-        {
-            "kind": "team",
-            "selector": {"query": "true", "includeMembers": False},
-            "port": {"entity": {"mappings": {"blueprint": '"team"', "title": ".name"}}},
-        },
-        {
-            "kind": "user",
-            "selector": {"query": "true"},
-            "port": {"entity": {"mappings": {"blueprint": '"user"'}}},
-        },
-    ],
-}
+BASE_CONFIG = PortAppConfigDocument.model_validate(
+    {
+        "deleteDependentEntities": True,
+        "resources": [
+            {
+                "kind": "team",
+                "selector": {"query": "true", "includeMembers": False},
+                "port": {
+                    "entity": {"mappings": {"blueprint": '"team"', "title": ".name"}}
+                },
+            },
+            {
+                "kind": "user",
+                "selector": {"query": "true"},
+                "port": {"entity": {"mappings": {"blueprint": '"user"'}}},
+            },
+        ],
+    }
+)
 
 
 def _scenario(**kwargs: Any) -> ScenarioDefinition:
@@ -41,8 +48,8 @@ def test_kinds_filter_resources() -> None:
         BASE_CONFIG, "happy", _scenario(kinds=["user"])
     )
 
-    assert [r["kind"] for r in config["resources"]] == ["user"]
-    assert config["deleteDependentEntities"] is True
+    assert [resource.kind for resource in config.resources] == ["user"]
+    assert config.as_mapping()["deleteDependentEntities"] is True
 
 
 def test_unknown_kind_is_rejected() -> None:
@@ -65,13 +72,15 @@ def test_overrides_deep_merge_into_matching_kind() -> None:
 
     config = build_scenario_port_app_config(BASE_CONFIG, "members", scenario)
 
-    team = config["resources"][0]
+    team = config.as_mapping()["resources"][0]
     assert team["selector"] == {"query": "true", "includeMembers": True}
     assert team["port"]["entity"]["mappings"] == {
         "blueprint": '"team"',
         "title": ".attributes.name",
     }
-    assert BASE_CONFIG["resources"][0]["selector"]["includeMembers"] is False
+    assert (
+        BASE_CONFIG.as_mapping()["resources"][0]["selector"]["includeMembers"] is False
+    )
 
 
 def test_override_for_filtered_out_kind_is_rejected() -> None:

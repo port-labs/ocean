@@ -4,20 +4,23 @@ import copy
 from typing import Any
 
 from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import ScenarioDefinition
+from tools.integration_validation.runner.models import (
+    PortAppConfigDocument,
+    ScenarioDefinition,
+)
 
 
 def build_scenario_port_app_config(
-    base_config: dict[str, Any],
+    base_config: PortAppConfigDocument,
     scenario_name: str,
     scenario: ScenarioDefinition,
-) -> dict[str, Any]:
+) -> PortAppConfigDocument:
     """Apply a scenario's ``kinds`` filter and ``port_app_config_overrides``.
 
     Each override is deep-merged into every resource with the same ``kind``:
     mappings merge key by key, while lists and scalar values are replaced.
     """
-    config = copy.deepcopy(base_config)
+    config = copy.deepcopy(base_config.as_mapping())
     resources: list[dict[str, Any]] = config.get("resources") or []
 
     if scenario.kinds:
@@ -52,7 +55,7 @@ def build_scenario_port_app_config(
             )
 
     config["resources"] = resources
-    return config
+    return PortAppConfigDocument.model_validate(config)
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

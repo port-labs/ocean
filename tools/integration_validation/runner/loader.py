@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import ValidationError
 
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.models import (
+    BlueprintsDocument,
+    PortAppConfigDocument,
     ScenarioDefinition,
     ScenariosDefaults,
     ScenariosDocument,
@@ -88,7 +89,7 @@ def resolve_scenario_blueprints_path(
     return resolve_integration_resource_path(validation_paths, relative, "blueprints")
 
 
-def load_blueprints_file(blueprints_file: Path) -> list[dict[str, Any]]:
+def load_blueprints_file(blueprints_file: Path) -> BlueprintsDocument:
     try:
         raw = json.loads(blueprints_file.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -96,12 +97,15 @@ def load_blueprints_file(blueprints_file: Path) -> list[dict[str, Any]]:
             f"Could not load blueprints from {blueprints_file}: {exc}"
         ) from exc
 
-    if not isinstance(raw, list):
-        raise ValidationSetupError(f"{blueprints_file} must contain a JSON array")
-    return raw
+    try:
+        return BlueprintsDocument.model_validate(raw)
+    except ValidationError as exc:
+        raise ValidationSetupError(
+            _format_pydantic_error(str(blueprints_file), exc)
+        ) from exc
 
 
-def load_port_app_config_file(port_app_config_file: Path) -> dict[str, Any]:
+def load_port_app_config_file(port_app_config_file: Path) -> PortAppConfigDocument:
     try:
         raw = yaml.safe_load(port_app_config_file.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
@@ -109,11 +113,15 @@ def load_port_app_config_file(port_app_config_file: Path) -> dict[str, Any]:
             f"Could not load port_app_config from {port_app_config_file}: {exc}"
         ) from exc
 
-    if not isinstance(raw, dict) or not isinstance(raw.get("resources", []), list):
+    if raw is None:
+        raise ValidationSetupError(f"{port_app_config_file} is empty")
+
+    try:
+        return PortAppConfigDocument.model_validate(raw)
+    except ValidationError as exc:
         raise ValidationSetupError(
-            f"{port_app_config_file} must be a mapping with a 'resources' list"
-        )
-    return raw
+            _format_pydantic_error(str(port_app_config_file), exc)
+        ) from exc
 
 
 def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:
