@@ -78,7 +78,8 @@ class IncidentExporter(AbstractIncidentIoExporter[IncidentIoClient]):
         resolved: list[str] = []
         missing: list[str] = []
         for value in requested:
-            match = by_key.get(value) or by_key.get(value.lower())
+            key = value.strip()
+            match = (by_key.get(key) or by_key.get(key.lower())) if key else None
             if match is None:
                 missing.append(value)
             elif match not in resolved:

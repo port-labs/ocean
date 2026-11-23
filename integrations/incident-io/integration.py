@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.v1 import Field, validator
+from pydantic.v1 import Field
 
 from incident_io.core.options import AlertStatus, IncidentStatusCategory
 from incident_io.helpers.utils import ObjectKind
@@ -120,17 +120,6 @@ class IncidentSelector(Selector):
         title="Include test incidents",
         description="Also sync test and tutorial incidents. Default: standard and retrospective only.",
     )
-
-    @validator("severities")
-    def _check_severities(cls, value: Optional[list[str]]) -> Optional[list[str]]:
-        if not value:
-            return None
-        cleaned = []
-        for item in value:
-            if not isinstance(item, str) or not item.strip():
-                raise ValueError("severities must be severity names or ids")
-            cleaned.append(item.strip())
-        return cleaned
 
 
 class IncidentResourceConfig(ResourceConfig):

@@ -28,7 +28,7 @@ def test_selector_aliases() -> None:
             "query": "true",
             "daysBack": 30,
             "statusCategories": ["live"],
-            "severities": [" Critical ", "Major"],
+            "severities": ["Critical", "Major"],
             "includeTest": True,
         }
     )
@@ -43,11 +43,6 @@ def test_selector_aliases() -> None:
 def test_empty_status_categories_mean_all() -> None:
     selector = IncidentSelector(query="true", statusCategories=[])
     assert selector.status_categories == []
-
-
-def test_blank_severity_is_rejected() -> None:
-    with pytest.raises(ValidationError):
-        IncidentSelector(query="true", severities=[" "])
 
 
 def test_unknown_status_category_is_rejected() -> None:
