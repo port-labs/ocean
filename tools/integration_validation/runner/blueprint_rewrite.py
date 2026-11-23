@@ -65,25 +65,6 @@ def rewrite_mapping_blueprints(
     return rewritten
 
 
-def blueprint_creation_stages(
-    blueprints: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-    """Split blueprints into bare, with-relations and full payloads.
-
-    Same staging Ocean uses for default resources, so relation and derived
-    property targets exist before they are referenced.
-    """
-    bare = [
-        _without_keys(blueprint, _RELATION_KEYS + _DERIVED_PROPERTY_KEYS)
-        for blueprint in blueprints
-    ]
-    with_relations = [
-        _without_keys(blueprint, _DERIVED_PROPERTY_KEYS) for blueprint in blueprints
-    ]
-    full = [copy.deepcopy(blueprint) for blueprint in blueprints]
-    return bare, with_relations, full
-
-
 def blueprint_deletion_layers(blueprints: list[dict[str, Any]]) -> list[list[str]]:
     """Group identifiers so each layer is referenced only by earlier layers.
 

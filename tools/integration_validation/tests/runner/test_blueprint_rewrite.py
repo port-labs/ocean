@@ -4,7 +4,6 @@ from typing import Any
 import pytest
 
 from tools.integration_validation.runner.blueprint_rewrite import (
-    blueprint_creation_stages,
     blueprint_deletion_layers,
     rewrite_mapping_blueprints,
     suffix_blueprints,
@@ -112,21 +111,6 @@ def test_rewrite_mapping_blueprints_rejects_blueprints_outside_the_set() -> None
 
     with pytest.raises(ValidationSetupError, match="'service'"):
         rewrite_mapping_blueprints(config, {"team": "team-a1b2"})
-
-
-def test_blueprint_creation_stages_strip_relations_then_derived_properties() -> None:
-    bare, with_relations, full = blueprint_creation_stages(BLUEPRINTS)
-
-    assert set(bare[1]) == {"identifier", "title", "schema"}
-    assert set(with_relations[1]) == {
-        "identifier",
-        "title",
-        "schema",
-        "relations",
-        "ownership",
-    }
-    assert full[1] == BLUEPRINTS[1]
-    assert "relations" in BLUEPRINTS[1]
 
 
 def test_blueprint_deletion_layers_delete_dependents_first() -> None:

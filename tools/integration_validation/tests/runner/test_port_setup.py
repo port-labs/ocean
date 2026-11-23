@@ -48,14 +48,6 @@ class FakePortClient(ValidationPortClient):
         self.blueprints.add(identifier)
         return raw_blueprint
 
-    async def patch_blueprint(
-        self, identifier: str, raw_blueprint: dict[str, Any], *args: Any, **kwargs: Any
-    ) -> None:
-        self.calls.append(("patch_blueprint", raw_blueprint))
-        self._maybe_fail(
-            "patch_blueprint", identifier, "PATCH", f"/blueprints/{identifier}"
-        )
-
     async def delete_blueprint_with_entities(self, identifier: str) -> None:
         self.calls.append(("delete_blueprint", identifier))
         self._maybe_fail(
@@ -104,7 +96,7 @@ def plan() -> ScenarioPortPlan:
     )
 
 
-async def test_prepare_creates_blueprints_in_stages_then_integration(
+async def test_prepare_creates_blueprints_in_file_order_then_integration(
     plan: ScenarioPortPlan,
 ) -> None:
     client = FakePortClient()
@@ -116,20 +108,15 @@ async def test_prepare_creates_blueprints_in_stages_then_integration(
     assert [name for name, _ in calls] == [
         "create_blueprint",
         "create_blueprint",
-        "patch_blueprint",
-        "patch_blueprint",
-        "patch_blueprint",
-        "patch_blueprint",
         "create_integration",
         "mark_initialized",
     ]
-    created_team = calls[1][1]
-    relation_patch = calls[3][1]
-    full_patch = calls[5][1]
-    assert "relations" not in created_team
-    assert "relations" in relation_patch and "mirrorProperties" not in relation_patch
-    assert "mirrorProperties" in full_patch
-    assert calls[6][1] == PORT_APP_CONFIG
+    assert [payload["identifier"] for _, payload in calls[:2]] == [
+        "user-a1b2",
+        "team-a1b2",
+    ]
+    assert calls[1][1] == plan.blueprints[1]
+    assert calls[2][1] == PORT_APP_CONFIG
 
 
 async def test_prepare_first_removes_resources_left_by_a_previous_run(
@@ -152,18 +139,6 @@ async def test_prepare_fails_when_previous_run_resources_cannot_be_removed(
         await prepare_scenario_port(client, plan)
 
     assert "create_blueprint" not in client.names()
-
-
-async def test_prepare_rolls_back_blueprints_when_a_patch_is_rejected(
-    plan: ScenarioPortPlan,
-) -> None:
-    client = FakePortClient(fail_on=("patch_blueprint", "team-a1b2"))
-
-    with pytest.raises(ValidationFailedError, match="Port rejected PATCH"):
-        await prepare_scenario_port(client, plan)
-
-    assert "create_integration" not in client.names()
-    assert client.blueprints == set()
 
 
 async def test_prepare_rolls_back_created_blueprints_when_a_create_is_rejected(

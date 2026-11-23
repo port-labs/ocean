@@ -15,7 +15,6 @@ from port_ocean.tests.helpers.port_client import (
     ensure_ocean_context_for_standalone_port_client,
 )
 from tools.integration_validation.runner.blueprint_rewrite import (
-    blueprint_creation_stages,
     blueprint_deletion_layers,
 )
 from tools.integration_validation.runner.errors import (
@@ -179,22 +178,9 @@ async def teardown_scenario_port(
 async def _create_blueprints(
     client: ValidationPortClient, blueprints: list[dict[str, Any]]
 ) -> None:
-    bare, *patch_stages = blueprint_creation_stages(blueprints)
-    # Wait for every create before raising, so rollback cannot race one in flight.
-    results = await asyncio.gather(
-        *(client.create_blueprint(blueprint) for blueprint in bare),
-        return_exceptions=True,
-    )
-    for result in results:
-        if isinstance(result, BaseException):
-            raise result
-    for stage in patch_stages:
-        await asyncio.gather(
-            *(
-                client.patch_blueprint(blueprint["identifier"], blueprint)
-                for blueprint in stage
-            )
-        )
+    """Create blueprints one by one in file order (relation targets come first)."""
+    for blueprint in blueprints:
+        await client.create_blueprint(blueprint)
 
 
 async def _delete_blueprint_with_entities(
