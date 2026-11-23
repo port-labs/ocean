@@ -70,14 +70,6 @@
       "sensitive": false,
       "default": 72,
       "description": "How long a Port run may wait for its Devin session turn before it is reported as failed with a timeout."
-    },
-    {
-      "name": "portMcpSecretKey",
-      "type": "string",
-      "required": false,
-      "sensitive": false,
-      "default": "MCP_PORT_TOKEN",
-      "description": "Session secret key injected into Devin session_secrets when a workflow node sets enablePortMcp on create_session or send_message. Must start with MCP_ and match what your Port MCP configuration expects. Ignored when enablePortMcp is not used on any node."
     }
   ],
   "actionsProcessingEnabled": true,
@@ -155,7 +147,7 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, injects a per-session user secret (session_secrets) with this run's Port access token so Devin can authenticate to Port MCP. Requires executionIdentity on the node.",
+          "description": "When true, injects a per-session user secret (session_secrets) keyed MCP_PORT_TOKEN with this run's Port access token so Devin can authenticate to Port MCP. Requires executionIdentity on the node.",
           "default": false,
           "required": false
         },
@@ -207,7 +199,7 @@
           "name": "enablePortMcp",
           "title": "Enable Port MCP",
           "type": "boolean",
-          "description": "When true, injects a per-session user secret (session_secrets) with this run's Port access token for this turn. Requires executionIdentity on the node.",
+          "description": "When true, injects a per-session user secret (session_secrets) keyed MCP_PORT_TOKEN with this run's Port access token for this turn. Requires executionIdentity on the node.",
           "default": false,
           "required": false
         },
