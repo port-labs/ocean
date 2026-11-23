@@ -39,22 +39,21 @@ def ensure_port_managed_session(session: SessionResponse) -> None:
         )
 
 
-def validate_session_active(
+def _session_continuity_error(
     status: str, status_detail: str | None, session_id: str
-) -> None:
-    """Reject ``send_message`` when the session is ended, failed, or user-stopped."""
-    match (status, status_detail):
-        case ("exit", _):
-            raise InvalidActionParametersException(
-                f"Session {session_id} has already ended"
-            )
-        case ("error", _):
-            raise InvalidActionParametersException(
-                f"Session {session_id} is in an error state"
-            )
-        case ("suspended", "user_request"):
-            raise InvalidActionParametersException(
-                f"Session {session_id} was stopped and cannot accept messages"
-            )
-        case _:
-            return
+) -> str | None:
+    if status == "exit":
+        return f"Session {session_id} has already ended"
+    if status == "error":
+        return f"Session {session_id} is in an error state"
+    if status == "suspended" and status_detail == "user_request":
+        return f"Session {session_id} was stopped and cannot accept messages"
+    return None
+
+
+def ensure_session_continuable(session: SessionResponse) -> None:
+    """Reject ``send_message`` when the session cannot accept another message."""
+    if message := _session_continuity_error(
+        session.status, session.status_detail, session.session_id
+    ):
+        raise InvalidActionParametersException(message)

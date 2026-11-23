@@ -111,10 +111,13 @@ async def test_paginate_follows_end_cursor(client: DevinClient) -> None:
 
 
 async def test_page_size_is_capped(client: DevinClient) -> None:
-    send = AsyncMock(return_value={"items": []})
+    send = AsyncMock(
+        return_value={"items": [], "end_cursor": None, "has_next_page": False}
+    )
     client.send_api_request = send  # type: ignore[method-assign]
 
-    await client._fetch_page("/sessions", page_size=500)
+    async for _ in client.paginate("/sessions", page_size=500):
+        break
 
     assert _last_kwargs(send)["params"]["first"] == 200
 
@@ -138,7 +141,7 @@ async def test_paginate_yields_fetched_pages_then_raises(client: DevinClient) ->
 async def test_list_messages_after_walks_pages_and_returns_last_cursor(
     client: DevinClient,
 ) -> None:
-    client._fetch_page = AsyncMock(  # type: ignore[method-assign]
+    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
         side_effect=[
             {
                 "items": [_message("e1")],
@@ -153,13 +156,14 @@ async def test_list_messages_after_walks_pages_and_returns_last_cursor(
 
     assert [m.event_id for m in messages] == ["e1", "e2"]
     assert cursor == "c2"
-    assert client._fetch_page.await_args_list[1].kwargs["after"] == "c1"
+    second_params = client.send_api_request.await_args_list[1].kwargs["params"]
+    assert second_params == {"first": 100, "after": "c1"}
 
 
 async def test_list_messages_after_keeps_cursor_when_nothing_new(
     client: DevinClient,
 ) -> None:
-    client._fetch_page = AsyncMock(  # type: ignore[method-assign]
+    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
         return_value={"items": [], "end_cursor": None, "has_next_page": False}
     )
 
@@ -174,7 +178,7 @@ def _message(event_id: str) -> dict[str, Any]:
 
 
 async def test_list_messages_after_skips_invalid_rows(client: DevinClient) -> None:
-    client._fetch_page = AsyncMock(  # type: ignore[method-assign]
+    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
         return_value={
             "items": [_message("e1"), {"event_id": "bad"}, _message("e2")],
             "has_next_page": False,

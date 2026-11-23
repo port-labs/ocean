@@ -26,22 +26,12 @@ class DevinClient:
     or send cannot duplicate sessions or messages.
     """
 
-    def __init__(
-        self,
-        api_host: str,
-        api_key: str,
-        org_id: str,
-        request_timeout_seconds: int = 30,
-    ) -> None:
+    def __init__(self, api_host: str, api_key: str, org_id: str) -> None:
         self._client = http_async_client
         self._api_host = api_host.rstrip("/")
         self._org_id = org_id
         self._org_base_url = f"{self._api_host}/v3/organizations/{org_id}"
-        self._request_timeout_seconds = request_timeout_seconds
-        self._headers = {
-            "Authorization": f"Bearer {api_key}",
-            "content-type": "application/json",
-        }
+        self._headers = {"Authorization": f"Bearer {api_key}"}
 
     @property
     def org_id(self) -> str:
@@ -67,29 +57,11 @@ class DevinClient:
             headers=self._headers,
             params=drop_none(params),
             json=json_body,
-            timeout=self._request_timeout_seconds,
         )
         response.raise_for_status()
         if not response.content:
             return {}
         return response.json()
-
-    async def _fetch_page(
-        self,
-        path: str,
-        params: dict[str, Any] | None = None,
-        after: str | None = None,
-        page_size: int = DEFAULT_PAGE_SIZE,
-        absolute_path: bool = False,
-    ) -> dict[str, Any]:
-        """Fetch one page of a Devin `items`/`end_cursor`/`has_next_page` envelope."""
-        page_params = dict(params or {})
-        page_params["first"] = min(page_size, MAX_PAGE_SIZE)
-        if after:
-            page_params["after"] = after
-        return await self.send_api_request(
-            "GET", path, params=page_params, absolute_path=absolute_path
-        )
 
     async def paginate(
         self,
@@ -105,14 +77,20 @@ class DevinClient:
         makes Ocean skip its delete phase so entities behind the unreachable
         remainder survive until the next resync.
         """
+
+        async def fetch_page(after: str | None) -> dict[str, Any]:
+            page_params = dict(params or {})
+            page_params["first"] = min(page_size, MAX_PAGE_SIZE)
+            if after:
+                page_params["after"] = after
+            return await self.send_api_request("GET", path, params=page_params)
+
         after: str | None = None
         page_count = 0
         failed = False
         while True:
             try:
-                payload = await self._fetch_page(
-                    path, params, after=after, page_size=page_size
-                )
+                payload = await fetch_page(after)
             except httpx.HTTPError as exc:
                 failed = True
                 logger.error(

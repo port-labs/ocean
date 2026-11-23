@@ -7,7 +7,6 @@ from port_ocean.core.models import IntegrationRun
 
 async def upsert_raw(kind: str, raw: dict[str, Any]) -> None:
     """Register one raw object in the catalog."""
-    await ocean.integration.port_app_config_handler.get_port_app_config(use_cache=False)
     await ocean.register_raw(kind, [raw])
 
 
