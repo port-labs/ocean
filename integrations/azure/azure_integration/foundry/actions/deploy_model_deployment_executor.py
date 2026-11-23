@@ -70,7 +70,7 @@ class DeployModelDeploymentExecutor(ArmDeploymentExecutor):
         )
 
         try:
-            arm_payload = await self.arm_deployments.upsert_model_deployment(
+            arm_payload = await self.foundry_arm.upsert_model_deployment(
                 project_endpoint=inputs.projectEndpoint,
                 deployment_name=inputs.deploymentName,
                 model_name=inputs.modelName,

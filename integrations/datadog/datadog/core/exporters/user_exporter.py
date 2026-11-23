@@ -1,11 +1,6 @@
-import asyncio
 from datetime import datetime
-from http import HTTPStatus
-from itertools import batched
 from typing import TYPE_CHECKING, Any
 
-from httpx import HTTPStatusError
-from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import (
@@ -20,8 +15,6 @@ from datadog.incremental import (
 
 if TYPE_CHECKING:
     from datadog.overrides import UserResourceConfig
-
-CHANGED_USERS_FETCH_BATCH_SIZE = 10
 
 
 class GetUserOptions(GetOptions["UserResourceConfig"]):
@@ -55,24 +48,10 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
             excluded_path_prefix=ROLES_API_PATH_PREFIX,
         )
 
-        for batch in batched(user_ids, CHANGED_USERS_FETCH_BATCH_SIZE):
-            results = await asyncio.gather(
-                *(self._get_changed_user(user_id) for user_id in batch)
-            )
-            if users := [user for user in results if user]:
-                yield users
-
-    async def _get_changed_user(self, user_id: str) -> dict[str, Any] | None:
-        """Get a user found through audit events, or None if it was deleted since."""
-        try:
-            return await self.get_resource(GetUserOptions(resource_id=user_id))
-        except HTTPStatusError as e:
-            if e.response.status_code != HTTPStatus.NOT_FOUND:
-                raise
-            logger.warning(
-                f"Skipping user '{user_id}' from audit events; it no longer exists in Datadog"
-            )
-            return None
+        async for users in self._get_existing_resources(
+            GetUserOptions(resource_id=user_id) for user_id in user_ids
+        ):
+            yield users
 
     async def get_resource(self, options: GetUserOptions) -> dict[str, Any] | None:
         """Get a single user by ID.

@@ -7,6 +7,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.62.2 (2026-11-23)
+
+
+### Bug Fixes
+
+- >-
+    Fix mypy failure in ExecutionManager by passing status_label as a typed kwarg
+    to report_run_completed instead of unpacking a dict.
+
+
+## 0.62.1 (2026-11-23)
+
+
+### Improvements
+
+- >-
+    Propagate should_log through action and workflow run patch, log, and completion
+    helpers so integrations can silence Port API error logging on expected responses.
+
+
 ## 0.62.0 (2026-11-19)
 
 
