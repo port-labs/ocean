@@ -30,7 +30,6 @@
       "name": "confluenceUserEmail",
       "required": true,
       "type": "string",
-      "sensitive": true,
       "description": "Email of the Atlassian account used to read Confluence. The account must be able to view the spaces, pages, and users you want in Port."
     },
     {
