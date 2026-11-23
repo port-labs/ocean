@@ -7,12 +7,16 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 
 from azure_integration.foundry.clients.client_factory import management_headers
 from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
-from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
+from azure_integration.foundry.core.exporters.project_exporter import (
+    FoundryProject,
+    ProjectExporter,
+    foundry_project_from_arm_id,
+)
 from azure_integration.foundry.kinds import DEFAULT_FOUNDRY_ARM_API_VERSION
 
 
-class ArmDeploymentsClient:
-    """Create/delete model deployments via Azure Resource Manager."""
+class FoundryArmClient:
+    """Azure Resource Manager calls for Foundry (deployments, project connections)."""
 
     def __init__(self) -> None:
         self.rate_limiter = FoundryRateLimiter()
@@ -27,8 +31,27 @@ class ArmDeploymentsClient:
     async def close(self) -> None:
         await self._http.aclose()
 
-    async def _url_for(self, project_endpoint: str, deployment_name: str) -> str:
-        project = await ProjectExporter().find_by_endpoint(project_endpoint)
+    async def _project(
+        self,
+        project_endpoint: str,
+        *,
+        project_arm_id: str | None = None,
+    ) -> FoundryProject:
+        if project_arm_id:
+            project = foundry_project_from_arm_id(project_arm_id)
+            if project is None:
+                raise ValueError(f"Invalid Foundry project ARM id: {project_arm_id}")
+            return project
+        return await ProjectExporter().find_by_endpoint(project_endpoint)
+
+    async def _url_for(
+        self,
+        project_endpoint: str,
+        deployment_name: str,
+        *,
+        project_arm_id: str | None = None,
+    ) -> str:
+        project = await self._project(project_endpoint, project_arm_id=project_arm_id)
         return (
             "https://management.azure.com/subscriptions/"
             f"{project.subscription_id}/resourceGroups/{project.resource_group_name}"
@@ -36,6 +59,49 @@ class ArmDeploymentsClient:
             f"{project.account_name}/deployments/{deployment_name}"
             f"?api-version={DEFAULT_FOUNDRY_ARM_API_VERSION}"
         )
+
+    async def upsert_project_connection(
+        self,
+        *,
+        project_endpoint: str,
+        name: str,
+        target: str,
+        access_token: str,
+        project_arm_id: str | None = None,
+    ) -> None:
+        """Create/update a RemoteTool CustomKeys connection (MCP auth).
+
+        Data-plane ``/connections`` is read-only; create/update is ARM only.
+        """
+        project = await self._project(project_endpoint, project_arm_id=project_arm_id)
+        token = access_token.strip()
+        if not token.lower().startswith("bearer "):
+            token = f"Bearer {token}"
+        url = (
+            "https://management.azure.com/subscriptions/"
+            f"{project.subscription_id}/resourceGroups/{project.resource_group_name}"
+            "/providers/Microsoft.CognitiveServices/accounts/"
+            f"{project.account_name}/projects/{project.project_name}"
+            f"/connections/{name}"
+            f"?api-version={DEFAULT_FOUNDRY_ARM_API_VERSION}"
+        )
+        response = await self._http.put(
+            url,
+            headers={
+                **(await management_headers()),
+                "Content-Type": "application/json",
+            },
+            json={
+                "properties": {
+                    "authType": "CustomKeys",
+                    "category": "RemoteTool",
+                    "target": target,
+                    "credentials": {"keys": {"Authorization": token}},
+                    "metadata": {"type": "generic_mcp"},
+                }
+            },
+        )
+        response.raise_for_status()
 
     async def delete_deployment(
         self, project_endpoint: str, deployment_name: str

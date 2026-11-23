@@ -4,7 +4,7 @@ import io
 import zipfile
 from functools import partial
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Never
 
 from loguru import logger
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
@@ -47,7 +47,7 @@ def skill_markdown_from_zip(payload: bytes) -> str | None:
         return None
 
 
-class SkillsExporter(FoundryExporter[ListSkillsOptions]):
+class SkillsExporter(FoundryExporter[ListSkillsOptions, Never]):
     async def get_paginated_resources(
         self, options: ListSkillsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

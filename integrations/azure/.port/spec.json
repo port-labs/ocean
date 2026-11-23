@@ -57,7 +57,7 @@
   "saas": {
     "enabled": true,
     "liveEvents": {
-      "enabled": false
+      "enabled": true
     },
     "incrementalSync": {
       "enabled": true
@@ -84,6 +84,14 @@
       "type": "string",
       "sensitive": true,
       "description": "Azure Tenant ID. For more information on how to create and manage credentials, see the <a href=\"https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal\" target=\"_blank\">Azure documentation</a>"
+    },
+    {
+      "name": "createFoundryWebhooks",
+      "title": "Create Foundry webhooks",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, registers Foundry account webhooks on startup so invoke runs can complete via response.* events. Leave false unless you use Foundry invoke actions with reportInvocationStatus."
     }
   ],
   "deploymentMethodRequirements": [
@@ -158,7 +166,7 @@
     {
       "name": "create_agent",
       "icon": "Azure",
-      "description": "Create a Foundry agent in the configured project",
+      "description": "Create a Foundry agent in the configured project. Port toolbox wiring happens on invoke_agent (enablePortMcp), not here.",
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -197,7 +205,7 @@
     {
       "name": "update_agent",
       "icon": "Azure",
-      "description": "Update a Foundry agent",
+      "description": "Update a Foundry agent. Port toolbox remint happens on invoke_agent, not here.",
       "inputs": [
         {
           "name": "projectEndpoint",
@@ -322,6 +330,130 @@
           "title": "Deployment name",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "invoke_agent",
+      "icon": "Azure",
+      "description": "Invoke a Foundry agent via the Responses API. Optionally creates/remints the Port toolbox before the call (first invoke does full wiring).",
+      "allowedExecutionIdentities": ["service_account"],
+      "inputs": [
+        {
+          "name": "projectArmId",
+          "title": "Foundry project ARM ID",
+          "type": "string",
+          "required": true,
+          "description": "ARM resource id for the project: /subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/.../projects/.... Data-plane URL is derived from this id for invoke and MCP remint."
+        },
+        {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "input",
+          "title": "Input",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
+        },
+        {
+          "name": "conversationMetadata",
+          "title": "Conversation metadata",
+          "type": "jqObject",
+          "required": false,
+          "description": "Optional metadata to set on the conversation before invoke (for example subject, ticket id, or owner). Applied on create when conversationId is omitted, or patched onto an existing conversationId."
+        },
+        {
+          "name": "enablePortMcp",
+          "title": "Enable Port MCP",
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "When true and a Service Account execution identity is present, remints Port MCP CustomKeys and ensures Port tools are in a Foundry toolbox before invoke. Prompt agents: Port-owned port-mcps-<hash> is created/reused by default; a foreign toolbox is left alone unless useExistingToolbox is true. Hosted agents: omit toolboxName to prepare port-mcps-<hash>, or pass toolboxName to upsert into an existing toolbox. Same-agent invokes are serialized so remints do not race."
+        },
+        {
+          "name": "gitProvider",
+          "title": "Git provider",
+          "type": "string",
+          "required": false,
+          "default": "github",
+          "enum": ["github"],
+          "description": "Git provider for gitAccessToken. Only github is supported."
+        },
+        {
+          "name": "gitAccessToken",
+          "title": "Git access token",
+          "type": "string",
+          "required": false,
+          "sensitive": true,
+          "description": "Optional GitHub PAT. When set, remints the per-agent GitHub MCP connection and includes GitHub MCP in the Port toolbox for this invoke. Omit to skip GitHub MCP."
+        },
+        {
+          "name": "useExistingToolbox",
+          "title": "Use existing toolbox",
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Prompt agents only (ignored for hosted). When false (default), a foreign/custom toolbox on the agent causes Port/GitHub MCP setup to be skipped with a warning so shared toolboxes are not mutated; Port-owned port-mcps-<hash> is still created or reused. When true, Port tools are merged into the agent's existing toolbox (attach skipped). Shared toolboxes affect every agent that uses them."
+        },
+        {
+          "name": "toolboxName",
+          "title": "Toolbox name",
+          "type": "string",
+          "required": false,
+          "description": "Hosted agents only (ignored for prompt). Existing Foundry toolbox to upsert Port/GitHub MCP into; the toolbox must already exist or the action fails. Passing this name is consent to edit that toolbox. Omit to prepare the Port-owned port-mcps-<hash> toolbox (set TOOLBOX_NAME in the hosted agent to the same name)."
+        },
+        {
+          "name": "reportInvocationStatus",
+          "title": "Report invocation status",
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "When true, keeps the run open until a terminal Foundry response.* webhook or SSE event completes it. When false, closes the run after the invoke is submitted. The Responses request always uses background=true."
+        }
+      ]
+    },
+    {
+      "name": "invoke_model",
+      "icon": "Azure",
+      "description": "Invoke a chat-capable model deployment via the project openai/v1/responses API. Requires capabilities.chat_completion=true (Decision/SystemOne and other non-chat deployments are rejected).",
+      "inputs": [
+        {
+          "name": "projectArmId",
+          "title": "Foundry project ARM ID",
+          "type": "string",
+          "required": true,
+          "description": "ARM resource id for the project: /subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/.../projects/.... Data-plane URL is derived from this id."
+        },
+        {
+          "name": "deploymentName",
+          "title": "Deployment name",
+          "type": "string",
+          "required": true,
+          "description": "Foundry model deployment name with capabilities.chat_completion=true. Non-chat deployments (e.g. Microsoft-Decision-1) are rejected."
+        },
+        {
+          "name": "input",
+          "title": "Input",
+          "type": "string",
+          "required": true,
+          "description": "Plain-text user prompt for the Responses API input field."
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
         }
       ]
     }

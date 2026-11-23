@@ -10,13 +10,15 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.helpers.agent_api import (
-    definition_kind,
-    foundry_features_header,
-    latest_agent_definition,
+from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
+from azure_integration.foundry.core.options import SingleAgentOptions
+from azure_integration.foundry.helpers.utils import (
+    deep_merge,
+    enrich_with_project,
+    project_name_from_endpoint,
 )
-from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
+from azure_integration.foundry.models.agent import Agent, parse_agent_definition
 
 UPDATING_STATUS_LABEL = "Updating agent"
 UPDATE_FAILED_STATUS_LABEL = "Update failed"
@@ -51,7 +53,6 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = UpdateAgentInputs.from_execution_properties(run.execution_properties)
-        patch = inputs.to_api_body()
 
         if not any(
             (
@@ -65,6 +66,8 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             )
 
+        patch = inputs.to_api_body()
+
         await ocean.port_client.post_run_log(
             run,
             f"Updating Foundry agent '{inputs.agentId}'",
@@ -76,21 +79,28 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
             inputs.projectEndpoint, f"agents/{inputs.agentId}"
         )
         try:
-            existing = await self.client.send_api_request(agent_url)
+            existing = await AgentsExporter(self.client).get_resource(
+                SingleAgentOptions(
+                    project_endpoint=inputs.projectEndpoint,
+                    project_id=project_name_from_endpoint(inputs.projectEndpoint),
+                    agent_id=inputs.agentId,
+                )
+            )
         except Exception as error:
             raise ActionExecutionError(
                 f"Failed to update agent: {error}",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             ) from error
 
-        if not isinstance(existing, dict) or not existing:
+        if existing is None:
             raise ActionExecutionError(
                 f"Agent '{inputs.agentId}' not found",
                 status_label=UPDATE_FAILED_STATUS_LABEL,
             )
 
+        base = Agent.model_validate(existing).latest_version.definition.model_dump()
         body = deep_merge(
-            {"definition": latest_agent_definition(existing) or {"kind": "prompt"}},
+            {"definition": base or {"kind": "prompt"}},
             patch,
         )
         definition = body.get("definition")
@@ -102,7 +112,9 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
                 agent_url,
                 method="POST",
                 json_body=body,
-                extra_headers=foundry_features_header(definition_kind(body)),
+                extra_headers=parse_agent_definition(
+                    body["definition"]
+                ).features_header,
             )
         except Exception as error:
             raise ActionExecutionError(

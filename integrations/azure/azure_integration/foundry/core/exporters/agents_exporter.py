@@ -8,9 +8,12 @@ from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.cache import cache_iterator_result
 
-from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
+from azure_integration.foundry.clients.http.foundry_client import (
+    FoundryApiError,
+    FoundryHttpClient,
+)
 from azure_integration.foundry.core.exporters.base import FoundryExporter
-from azure_integration.foundry.core.options import ListAgentsOptions
+from azure_integration.foundry.core.options import ListAgentsOptions, SingleAgentOptions
 from azure_integration.foundry.foundry_incremental import AGENT_INCREMENTAL
 from azure_integration.foundry.helpers.utils import (
     build_foundry_url,
@@ -18,7 +21,21 @@ from azure_integration.foundry.helpers.utils import (
 )
 
 
-class AgentsExporter(FoundryExporter[ListAgentsOptions]):
+class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
+    async def get_resource(self, options: SingleAgentOptions) -> dict[str, Any] | None:
+        try:
+            payload = await self.client.send_api_request(
+                self.client.build_url(
+                    options.project_endpoint, f"agents/{options.agent_id}"
+                ),
+                method="GET",
+            )
+        except FoundryApiError as error:
+            if error.status_code == 404:
+                return None
+            raise
+        return payload if isinstance(payload, dict) else None
+
     @cache_iterator_result()
     async def iter_agent_pages(
         self, project_endpoint: str
@@ -77,7 +94,13 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions]):
         """Attach full version history as ``__versions`` (keeps API ``versions.latest`` intact)."""
         for agent in agents:
             agent_id = agent["id"]
-            versions_payload = await self.client.send_api_request(
-                build_foundry_url(project_endpoint, f"agents/{agent_id}/versions")
-            )
+            try:
+                versions_payload = await self.client.send_api_request(
+                    build_foundry_url(project_endpoint, f"agents/{agent_id}/versions")
+                )
+            except FoundryApiError as error:
+                if error.status_code == 404:
+                    agent["__versions"] = []
+                    continue
+                raise
             agent["__versions"] = self.client.items_from_payload(versions_payload)

@@ -1,12 +1,13 @@
-from typing import Any
-
 import pytest
 
 from azure_integration.foundry.actions.create_agent_executor import CreateAgentInputs
+from azure_integration.foundry.actions.invoke_agent_executor import InvokeAgentInputs
 from azure_integration.foundry.actions.update_agent_executor import UpdateAgentInputs
-from azure_integration.foundry.helpers.agent_api import (
-    foundry_features_header,
-    latest_agent_definition,
+from azure_integration.foundry.models.agent import (
+    Agent,
+    HostedAgentDefinition,
+    PromptAgentDefinition,
+    features_header_for_kind,
 )
 
 _ENDPOINT = "https://example.services.ai.azure.com/api/projects/p1"
@@ -118,34 +119,61 @@ def test_update_agent_to_api_body_does_not_force_prompt_kind() -> None:
     assert body["definition"]["kind"] == "hosted"
 
 
-@pytest.mark.parametrize(
-    ("agent", "expected"),
-    [
-        (
-            {
-                "definition": {"kind": "prompt", "model": "old"},
-                "versions": {
-                    "latest": {
-                        "definition": {
-                            "kind": "prompt",
-                            "model": "gpt-5",
-                            "instructions": "hi",
-                        }
+def test_prompt_agent_from_foundry_get() -> None:
+    agent = Agent.model_validate(
+        {
+            "object": "agent",
+            "id": "helpful-agent",
+            "versions": {
+                "latest": {
+                    "definition": {
+                        "kind": "prompt",
+                        "model": "gpt-4o-mini",
+                        "instructions": "Be helpful",
+                        "tools": [
+                            {
+                                "type": "mcp",
+                                "server_label": "tb",
+                                "server_url": "https://x/toolboxes/tb/versions/2/mcp",
+                            }
+                        ],
                     }
-                },
+                }
             },
-            {"kind": "prompt", "model": "gpt-5", "instructions": "hi"},
-        ),
-        (
-            {"definition": {"kind": "prompt", "model": "gpt-4.1"}},
-            {"kind": "prompt", "model": "gpt-4.1"},
-        ),
-    ],
-)
-def test_latest_agent_definition(
-    agent: dict[str, Any], expected: dict[str, Any]
-) -> None:
-    assert latest_agent_definition(agent) == expected
+            "__foundryProjectEndpoint": "https://x/api/projects/p",
+        }
+    )
+    assert agent.kind == "prompt"
+    assert isinstance(agent.latest_version.definition, PromptAgentDefinition)
+    assert agent.latest_version.definition.model == "gpt-4o-mini"
+    assert len(agent.latest_version.definition.tools) == 1
+    assert agent.latest_version.definition.tools[0]["server_label"] == "tb"
+
+
+def test_hosted_agent_from_foundry_get() -> None:
+    agent = Agent.model_validate(
+        {
+            "object": "agent",
+            "id": "hosted-1",
+            "versions": {
+                "latest": {
+                    "definition": {
+                        "kind": "hosted",
+                        "cpu": "0.5",
+                        "memory": "1Gi",
+                        "environment_variables": {"FOO": "bar"},
+                    }
+                }
+            },
+            "__foundryProjectId": "/subscriptions/.../projects/p",
+        }
+    )
+    assert agent.kind == "hosted"
+    assert isinstance(agent.latest_version.definition, HostedAgentDefinition)
+    dumped = agent.latest_version.definition.model_dump()
+    assert dumped["cpu"] == "0.5"
+    assert dumped["memory"] == "1Gi"
+    assert "tools" not in dumped
 
 
 @pytest.mark.parametrize(
@@ -158,5 +186,20 @@ def test_latest_agent_definition(
         ("voice", {"Foundry-Features": "VoiceAgents=V1Preview"}),
     ],
 )
-def test_foundry_features_header(kind: str, expected: dict[str, str] | None) -> None:
-    assert foundry_features_header(kind) == expected
+def test_features_header(kind: str, expected: dict[str, str] | None) -> None:
+    assert features_header_for_kind(kind) == expected
+
+
+def test_build_responses_invoke_uses_protocol_path() -> None:
+    inputs = InvokeAgentInputs(
+        projectArmId=(
+            "/subscriptions/s/resourceGroups/rg/providers/"
+            "Microsoft.CognitiveServices/accounts/acct/projects/p"
+        ),
+        agentId="Omby-agent",
+        input="hello",
+    )
+    path, body = inputs.build_responses_invoke("conv_123")
+    assert path == "agents/Omby-agent/endpoint/protocols/openai/responses"
+    assert body["input"] == "hello"
+    assert body["conversation"] == "conv_123"

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.0 (2026-11-23)
+
+
+### Features
+
+- Add Azure AI Foundry invoke_agent and invoke_model with Port toolbox (Port/GitHub MCP) wired on invoke. Prompt agents use useExistingToolbox (default false) — Port-owned port-mcps-<hash> create/reuse, or skip MCP with a warning when a foreign toolbox is present; opt in to merge into that toolbox. Hosted agents use toolboxName to upsert an existing toolbox (must exist) or omit to prepare port-mcps-<hash>. Also CustomKeys remint, optional gitAccessToken/gitProvider, opt-in createFoundryWebhooks, streaming, catalog enrichment, and reportInvocationStatus.
+
+
+## 0.5.4 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.1
+
+
 ## 0.5.3 (2026-11-19)
 
 

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (2026-11-23)
+
+
+### Features
+
+- Added a Test Connection probe, runnable with the Ocean CLI, that reports per kind whether the configured credentials hold the IAM permissions needed to sync it
+
+
+## 0.4.0 (2026-11-23)
+
+
+### Features
+
+- Added live events for the iamPolicy kind, so grants reach Port as they change rather than at the next resync. Requires a second Cloud Asset Inventory feed created with --content-type=iam-policy, since a feed carries one content type; installations without one are unchanged and stay resync-only.
+
+
+## 0.3.6 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.1
+
+
 ## 0.3.5 (2026-11-19)
 
 

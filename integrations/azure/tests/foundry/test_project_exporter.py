@@ -11,6 +11,7 @@ from azure_integration.foundry.core.exporters.project_exporter import (
     FoundryProject,
     ProjectExporter,
     foundry_project_from_arm,
+    foundry_project_from_arm_id,
 )
 
 _MODULE = "azure_integration.foundry.core.exporters.project_exporter"
@@ -185,6 +186,21 @@ def test_project_from_arm_builds_endpoint_from_arm_id() -> None:
         == "https://omby-project-resource.services.ai.azure.com/api/projects/omby-project"
     )
     assert found.project_name == "omby-project"
+
+
+def test_foundry_project_from_arm_id() -> None:
+    arm_id = (
+        "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+        "Microsoft.CognitiveServices/accounts/acct-1/projects/proj-1"
+    )
+    project = foundry_project_from_arm_id(arm_id)
+    assert project is not None
+    assert project.subscription_id == "sub-1"
+    assert project.project_name == "proj-1"
+    assert (
+        project.endpoint == "https://acct-1.services.ai.azure.com/api/projects/proj-1"
+    )
+    assert foundry_project_from_arm_id("not-an-arm-id") is None
 
 
 async def _find_by_endpoint_with_projects(
