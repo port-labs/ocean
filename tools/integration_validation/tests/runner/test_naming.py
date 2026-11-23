@@ -5,13 +5,13 @@ from tools.integration_validation.runner.naming import (
 )
 
 
-def test_suffix_identifier_appends_sanitized_scenario_name() -> None:
-    assert suffix_identifier("datadogTeam", "Team_Members enabled") == (
+def test_suffix_identifier_appends_scenario_slug() -> None:
+    assert suffix_identifier("datadogTeam", "team_members_enabled") == (
         "datadogTeam-team-members-enabled"
     )
 
 
-def test_build_integration_identifier_sanitizes_scenario_name() -> None:
+def test_build_integration_identifier_uses_scenario_slug() -> None:
     assert build_integration_identifier("datadog", "happy_path") == (
         "validate-datadog-happy-path"
     )

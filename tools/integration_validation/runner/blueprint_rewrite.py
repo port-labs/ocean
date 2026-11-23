@@ -7,13 +7,6 @@ from typing import Any
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.naming import suffix_identifier
 
-_RELATION_KEYS = ("relations", "teamInheritance", "ownership")
-_DERIVED_PROPERTY_KEYS = (
-    "calculationProperties",
-    "mirrorProperties",
-    "aggregationProperties",
-)
-
 
 def suffix_blueprints(
     blueprints: list[dict[str, Any]], scenario_name: str
@@ -98,12 +91,6 @@ def _blueprint_references(blueprint: dict[str, Any]) -> list[dict[str, Any]]:
             value for value in section.values() if isinstance(value, dict)
         )
     return references
-
-
-def _without_keys(blueprint: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
-    return {
-        key: copy.deepcopy(value) for key, value in blueprint.items() if key not in keys
-    }
 
 
 def _rewrite_blueprint_expression(
