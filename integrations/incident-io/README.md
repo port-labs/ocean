@@ -36,7 +36,7 @@ If a kind's permission is missing, that kind's resync fails and Port keeps the e
 | `incident` | `statusCategories` | all | e.g. `["live", "learning"]`. Active in the dashboard is `live`. Post-incident is `learning`. |
 | `incident` | `severities` | all | Severity names or ids, e.g. `["Critical", "Major"]`. Sent as `severity[one_of]` after names are resolved with `GET /v1/severities`. |
 | `incident` | `includeTest` | `false` | Also sync test and tutorial incidents. Default is standard and retrospective, which is the API default. |
-| `alert` | `daysBack` | `30` | Alerts created in the last N days. Allowed range is 1 to 3650. |
+| `alert` | `daysBack` | `180` | Alerts created in the last N days. Allowed range is 1 to 3650. |
 | `alert` | `statuses` | firing and resolved | e.g. `["firing"]`. |
 
 ## Notes
