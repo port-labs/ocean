@@ -43,22 +43,3 @@ jobs:
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |
           make lint
-
-  # Stable check name for branch protection. Matrix jobs are named
-  # "🌊 Ocean Core" / "🚢 <integration>" and cannot be required individually.
-  required:
-    name: Lint
-    needs: [detect-changes, lint]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require lint jobs to pass when they ran
-        run: |
-          detect="${{ needs.detect-changes.result }}"
-          lint="${{ needs.lint.result }}"
-          echo "detect-changes=$detect lint=$lint"
-          for result in "$detect" "$lint"; do
-            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
-              exit 1
-            fi
-          done
