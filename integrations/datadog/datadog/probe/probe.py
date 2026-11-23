@@ -215,7 +215,10 @@ class DatadogPermissionProbe:
         granted = (role_permissions | IMPLICIT_PERMISSIONS) & required
         if scopes is not None:
             granted &= set(scopes)
-        return {permission: True for permission in granted}, scopes_verified
+
+        return {
+            permission: permission in granted for permission in required
+        }, scopes_verified
 
     @staticmethod
     async def _application_key_scopes(

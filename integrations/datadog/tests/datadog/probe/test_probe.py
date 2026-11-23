@@ -298,7 +298,11 @@ async def test_effective_permissions_keep_only_those_selected_kinds_need(
         {"monitors_read", "teams_read", "apm_read"},
     )
 
-    assert permissions == {"monitors_read": True, "teams_read": True}
+    assert permissions == {
+        "monitors_read": True,
+        "teams_read": True,
+        "apm_read": False,
+    }
     assert scopes_verified
 
 
