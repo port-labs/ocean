@@ -1,0 +1,127 @@
+{
+  "title": "Factory.ai",
+  "description": "Factory.ai (Droid / Software Factory) integration for Port Ocean",
+  "icon": "FactoryAi",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/",
+  "recommendedInstallationMethod": "Saas",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "AI Agents",
+      "resources": [
+        {
+          "kind": "environment"
+        },
+        {
+          "kind": "session"
+        },
+        {
+          "kind": "computer"
+        },
+        {
+          "kind": "user"
+        },
+        {
+          "kind": "automation"
+        },
+        {
+          "kind": "service-account"
+        },
+        {
+          "kind": "wiki"
+        }
+      ]
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": false
+    }
+  },
+  "configurations": [
+    {
+      "name": "factoryApiKey",
+      "type": "string",
+      "required": true,
+      "sensitive": true,
+      "description": "Factory API key used to authenticate with the Factory Public API. Create one at https://app.factory.ai/settings/api-keys."
+    },
+    {
+      "name": "factoryApiHost",
+      "type": "url",
+      "required": false,
+      "sensitive": false,
+      "default": "https://api.factory.ai",
+      "description": "Base URL for the Factory Public API. Defaults to https://api.factory.ai."
+    }
+  ],
+  "actionsProcessingEnabled": true,
+  "actions": [
+    {
+      "name": "execute_droid",
+      "icon": "FactoryAi",
+      "description": "Start a headless Factory Droid turn via POST /api/v0/droid/execute. Target an environment (fresh computer + session), an existing computer (new session), or an existing session (follow-up). Factory returns 202 when the turn is accepted. With waitForCompletion true (default), the Port run stays open and the integration polls until the session is idle and an assistant message exists after the returned messageId. With waitForCompletion false, the Port run completes immediately after the 202 with sessionId, messageId, computerId, and app links.",
+      "inputs": [
+        {
+          "name": "prompt",
+          "title": "Prompt",
+          "type": "string",
+          "description": "User message / instructions for the Droid turn",
+          "required": true
+        },
+        {
+          "name": "targetKind",
+          "title": "Target kind",
+          "type": "string",
+          "description": "Where to run the turn: environment (provision a fresh computer from the environment's active build and start a session), computer (start a new session on an existing computer), or session (send a follow-up on an existing session).",
+          "required": true
+        },
+        {
+          "name": "environmentId",
+          "title": "Environment ID",
+          "type": "string",
+          "description": "Required when targetKind is environment. Ignored (must be omitted) for computer and session targets.",
+          "required": false
+        },
+        {
+          "name": "computerId",
+          "title": "Computer ID",
+          "type": "string",
+          "description": "Required when targetKind is computer. Ignored (must be omitted) for environment and session targets.",
+          "required": false
+        },
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "Required when targetKind is session. Ignored (must be omitted) for environment and computer targets. Concurrent execute_droid runs targeting the same sessionId are serialized.",
+          "required": false
+        },
+        {
+          "name": "model",
+          "title": "Model",
+          "type": "string",
+          "description": "Optional model for a new session. Applies only when targetKind is environment or computer; ignored for session follow-ups.",
+          "required": false
+        },
+        {
+          "name": "reasoningEffort",
+          "title": "Reasoning effort",
+          "type": "string",
+          "description": "Optional reasoning effort for a new session: none, dynamic, off, minimal, low, medium, high, xhigh, or max. Applies only when targetKind is environment or computer; ignored for session follow-ups.",
+          "required": false
+        },
+        {
+          "name": "waitForCompletion",
+          "title": "Wait for completion",
+          "type": "boolean",
+          "description": "When true (default), keep the Port run in progress and poll Factory until the turn finishes (session idle and an assistant message after messageId). When false, complete the Port run immediately after Factory accepts the turn (202).",
+          "default": true,
+          "required": false
+        }
+      ]
+    }
+  ]
+}

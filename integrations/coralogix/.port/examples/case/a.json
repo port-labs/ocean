@@ -1,0 +1,101 @@
+{
+  "id": "8e372a8d-2697-5279-a5dd-b7b538de9f2e",
+  "title": "Payment service error rate above 2%",
+  "description": "payment-service server error rate over 2% (APM span metrics).",
+  "assignee": {
+    "email": "user@email.com"
+  },
+  "status": "CASE_STATUS_ACKNOWLEDGED",
+  "priority": "CASE_PRIORITY_P1",
+  "category": "CASE_CATEGORY_AVAILABILITY",
+  "createTime": "2026-11-16T15:38:27.071796Z",
+  "updateTime": "2026-11-16T15:43:37.453165Z",
+  "acknowledgeTime": "2026-11-16T15:43:24.329957Z",
+  "labels": [
+    {
+      "key": "source",
+      "value": "apm-span-metrics"
+    },
+    {
+      "key": "team",
+      "value": "platform-demo"
+    },
+    {
+      "key": "env",
+      "value": "docker-desktop"
+    }
+  ],
+  "groupings": [
+    {
+      "key": "service_name",
+      "value": "payment-service"
+    }
+  ],
+  "priorityDetails": {
+    "system": "CASE_PRIORITY_P1"
+  },
+  "readableId": "CASE-11",
+  "duration": "2188280",
+  "caseIndicators": {
+    "alertIndicators": [
+      {
+        "alertId": "ef9e130c-38d1-4d4e-9644-b2c631272002",
+        "alertType": "ALERT_TYPE_METRIC_THRESHOLD",
+        "latestAlertVersion": "913c3061-2d7d-4fb9-b42d-ece48e189c32",
+        "priority": "INDICATOR_PRIORITY_P1",
+        "groupingType": "GROUPING_TYPE_COMBINATION_ALERT",
+        "state": "INDICATOR_STATE_TRIGGERED",
+        "triggerTime": "2026-11-16T15:37:00Z",
+        "alertVersions": [
+          "913c3061-2d7d-4fb9-b42d-ece48e189c32"
+        ],
+        "permutations": [
+          {
+            "permutation": {
+              "service_name": "payment-service"
+            }
+          }
+        ],
+        "resolveWithSignal": true,
+        "customDataprimeQueries": [],
+        "details": {
+          "valueOverThreshold": 10.416666984558104
+        },
+        "renderedTitle": "Payment service error rate above 2%",
+        "renderedDescription": "payment-service server error rate over 2% (APM span metrics).",
+        "query": {
+          "text": "100 * sum by (service_name) (rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"payment-service\",status_code=\"STATUS_CODE_ERROR\"}[1m])) / sum by (service_name) (rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",service_name=\"payment-service\"}[1m]))",
+          "language": "ALERT_QUERY_LANGUAGE_PROMQL"
+        },
+        "entityLabels": [
+          {
+            "key": "env",
+            "value": "docker-desktop"
+          },
+          {
+            "key": "source",
+            "value": "apm-span-metrics"
+          },
+          {
+            "key": "team",
+            "value": "platform-demo"
+          }
+        ]
+      }
+    ],
+    "prometheusAlertIndicators": [],
+    "genericIndicators": []
+  },
+  "impactedEntities": [
+    {
+      "apmService": {
+        "name": "payment-service",
+        "language": "python",
+        "environment": "docker-desktop"
+      }
+    }
+  ],
+  "muted": false,
+  "lockStatus": "CASE_LOCK_STATUS_UNLOCKED",
+  "__teamUrl": "https://getport.app.eu2.coralogix.com"
+}

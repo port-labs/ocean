@@ -182,6 +182,92 @@
     }
   },
   {
+    "identifier": "eksNodegroup",
+    "title": "EKS Nodegroup",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "nodegroupArn": {
+          "type": "string",
+          "title": "Nodegroup ARN",
+          "description": "The Amazon Resource Name (ARN) of the EKS nodegroup"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the nodegroup"
+        },
+        "capacityType": {
+          "type": "string",
+          "title": "Capacity Type",
+          "description": "The capacity type of the nodegroup (ON_DEMAND or SPOT)"
+        },
+        "instanceTypes": {
+          "type": "array",
+          "title": "Instance Types",
+          "description": "The instance types associated with the nodegroup",
+          "items": {
+            "type": "string"
+          }
+        },
+        "amiType": {
+          "type": "string",
+          "title": "AMI Type",
+          "description": "The AMI type for the nodegroup"
+        },
+        "scalingConfig": {
+          "type": "object",
+          "title": "Scaling Config",
+          "description": "The scaling configuration of the nodegroup"
+        },
+        "version": {
+          "type": "string",
+          "title": "Kubernetes Version",
+          "description": "The Kubernetes version for the nodegroup"
+        },
+        "releaseVersion": {
+          "type": "string",
+          "title": "Release Version",
+          "description": "The AMI release version for the nodegroup"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The timestamp when the nodegroup was created",
+          "format": "date-time"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region of the nodegroup"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the nodegroup"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "eksCluster": {
+        "title": "EKS Cluster",
+        "target": "eksCluster",
+        "required": false,
+        "many": false
+      },
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "snsTopic",
     "title": "SNS Topic",
     "icon": "AWS",

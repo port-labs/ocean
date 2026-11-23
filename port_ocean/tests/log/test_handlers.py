@@ -1,7 +1,11 @@
+import logging
 import sys
 from collections import namedtuple
+from unittest.mock import MagicMock, PropertyMock, patch
 
-from port_ocean.log.handlers import _serialize_record
+import pytest
+
+from port_ocean.log.handlers import HTTPMemoryHandler, _serialize_record
 from port_ocean.log.logger_setup import _extract_traceback
 from loguru import logger
 from logging import LogRecord
@@ -115,3 +119,27 @@ def log_record(cb: Callable[[], None]) -> LogRecord:
     logger.remove(logger_id)
     record = queue.get()
     return record
+
+
+def test_flush_releases_lock_when_it_fails() -> None:
+    handler = HTTPMemoryHandler(capacity=100, flush_level=logging.FATAL)
+    handler.buffer.append(MagicMock())
+    handler._serialized_buffer.append({"message": log_message})
+    handler.lock = MagicMock()
+
+    with (
+        patch.object(
+            HTTPMemoryHandler,
+            "ocean",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+        ),
+        patch(
+            "port_ocean.log.handlers.threading.Thread",
+            side_effect=RuntimeError("thread failure"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
+        handler.flush()
+
+    handler.lock.release.assert_called_once()

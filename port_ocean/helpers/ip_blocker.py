@@ -86,6 +86,7 @@ _TRUSTED_SUBDOMAINS = (
     ".okta.com",
     ".opsgenie.com",
     ".pagerduty.com",
+    ".plain.com",
     ".sentinelone.net",
     ".sentry.io",
     ".servicenow.com",

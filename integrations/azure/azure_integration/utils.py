@@ -32,6 +32,8 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     FOUNDRY_CONVERSATION = "foundry-conversation"
     FOUNDRY_RESPONSE = "foundry-response"
     FOUNDRY_MEMORY_STORE = "foundry-memory-store"
+    FOUNDRY_SKILL = "foundry-skill"
+    FOUNDRY_TOOLBOX = "foundry-toolbox"
 
 
 def get_current_resource_config() -> (

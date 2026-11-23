@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
@@ -11,6 +12,7 @@ from port_ocean.utils.async_iterators import stream_independent_async_iterators
 from port_ocean.utils.cache import cache_iterator_result
 from pydantic import BaseModel, ConfigDict, Field
 
+from azure_integration.foundry.helpers.utils import projects_matching_regions
 from azure_integration.foundry.kinds import (
     DEFAULT_FOUNDRY_ARM_API_VERSION,
     FOUNDRY_ARM_PROJECT_KIND,
@@ -41,9 +43,14 @@ class FoundryProject(BaseModel):
     resource_group_name: str = Field(serialization_alias="resourceGroupName")
     account_endpoint_host: str = Field(serialization_alias="accountEndpointHost")
 
+    @property
+    def account_base_url(self) -> str:
+        return f"https://{self.account_endpoint_host}"
 
-def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
-    project_id = str(project.get("id") or "")
+
+def foundry_project_from_arm_id(arm_id: str) -> FoundryProject | None:
+    """Parse a project resource id without ARM list/discovery."""
+    project_id = arm_id.strip()
     match = _ARM_PROJECT_ID.match(project_id)
     if match is None:
         return None
@@ -65,8 +72,18 @@ def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
             f"https://{account_name}.services.ai.azure.com/api/projects/{project_name}"
         ),
         account_endpoint_host=f"{account_name}.services.ai.azure.com",
-        location=str(project["location"]) if project.get("location") else None,
-        tags=project["tags"] if isinstance(project.get("tags"), dict) else {},
+    )
+
+
+def foundry_project_from_arm(project: dict[str, Any]) -> FoundryProject | None:
+    base = foundry_project_from_arm_id(str(project.get("id") or ""))
+    if base is None:
+        return None
+    return base.model_copy(
+        update={
+            "location": str(project["location"]) if project.get("location") else None,
+            "tags": project["tags"] if isinstance(project.get("tags"), dict) else {},
+        }
     )
 
 
@@ -76,8 +93,27 @@ class ProjectExporter:
         self,
         *,
         api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+        regions: list[str] | None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        discovered = 0
+        """Yield Foundry projects, optionally filtered by ARM location.
+
+        Full ARM discovery is cached separately so different ``regions`` filters
+        reuse the same project list within an event.
+        """
+        exported = 0
+        async for projects in self._iter_all_projects(api_version=api_version):
+            matched = projects_matching_regions(projects, regions or [])
+            if matched:
+                exported += len(matched)
+                yield matched
+        logger.info(f"Exported {exported} Foundry project(s)")
+
+    @cache_iterator_result()
+    async def _iter_all_projects(
+        self,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async with DefaultAzureCredential() as credential:
             async with SubscriptionClient(credential=credential) as subscription_client:
                 async for subscriptions_batch in batch_resources_iterator(
@@ -103,7 +139,43 @@ class ProjectExporter:
                             if (project := foundry_project_from_arm(raw)) is not None
                         ]
                         if projects:
-                            discovered += len(projects)
                             yield projects
 
-        logger.info(f"Exported {discovered} Foundry project(s)")
+    async def find_by_endpoint(
+        self,
+        endpoint: str,
+        *,
+        api_version: str = DEFAULT_FOUNDRY_ARM_API_VERSION,
+    ) -> FoundryProject:
+        """ARM deploy/delete needs subscription, resource group, and account.
+
+        The data-plane URL only carries the account host and project name.
+        ``.../projects/_project`` is Foundry's default-project alias; resolve it to
+        the sole project on that account host when discovery has exactly one.
+        Uses the cached project list from ``get_paginated_resources``.
+        """
+        target = endpoint.rstrip("/")
+        target_host = urlparse(target).netloc.casefold()
+        alias_default = target.rsplit("/", 1)[-1] == "_project"
+        account_matches: list[FoundryProject] = []
+
+        async for projects in self.get_paginated_resources(api_version=api_version):
+            for raw in projects:
+                ep = str(raw["__foundryProjectEndpoint"]).rstrip("/")
+                project = foundry_project_from_arm(raw)
+                if project is None:
+                    continue
+                if ep == target:
+                    return project
+                if alias_default and urlparse(ep).netloc.casefold() == target_host:
+                    account_matches.append(project)
+
+        if alias_default and len(account_matches) == 1:
+            return account_matches[0]
+        if alias_default and len(account_matches) > 1:
+            raise ValueError(
+                f"Endpoint {target} is ambiguous "
+                f"({len(account_matches)} projects on this account); "
+                "use the concrete project name in the URL"
+            )
+        raise ValueError(f"No discovered Foundry project matches endpoint {target}")

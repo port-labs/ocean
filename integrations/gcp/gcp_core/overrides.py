@@ -19,6 +19,9 @@ class GCPCloudResourceSelector(Selector):
 
 
 class GCPCloudResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllResources",
+    )
     kind: Literal["cloudResource"] = Field(
         title="GCP Cloud Resource",
         description="GCP cloud resource kind.",
@@ -26,6 +29,35 @@ class GCPCloudResourceConfig(ResourceConfig):
     selector: GCPCloudResourceSelector = Field(
         title="Cloud Resource Selector",
         description="Selector for the GCP cloud resource.",
+    )
+
+
+class GCPIamPolicySelector(Selector):
+    asset_types: list[str] = Field(
+        alias="assetTypes",
+        min_items=1,
+        title="Asset Types",
+        description="GCP asset types whose IAM allow-policy bindings to fetch, e.g. iam.googleapis.com/ServiceAccount. Required on purpose: the API treats it as optional and searches every asset type when it is omitted, which fans out one entity per member grant across the whole project.",
+    )
+    policy_query: str | None = Field(
+        default=None,
+        alias="policyQuery",
+        title="Policy Query",
+        description="Server-side IAM policy filter, e.g. memberTypes:serviceAccount. Setting this turns off live events for the resource, because a feed delivers the whole policy and the grants it filters out would be ingested live and then removed by the next resync. See https://cloud.google.com/asset-inventory/docs/searching-iam-policies",
+    )
+
+
+class GCPIamPolicyResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllIamPolicies",
+    )
+    kind: Literal["iamPolicy"] = Field(
+        title="GCP IAM Policy",
+        description="GCP IAM allow-policy bindings kind.",
+    )
+    selector: GCPIamPolicySelector = Field(
+        title="IAM Policy Selector",
+        description="Selector for the GCP IAM allow-policy bindings.",
     )
 
 
@@ -45,6 +77,7 @@ class GCPResourceSelector(Selector):
 
 
 class GCPTopicResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("pubsub.topics.list",)
     kind: Literal["pubsub.googleapis.com/Topic"] = Field(
         title="GCP PubSub Topic",
         description="GCP PubSub Topic resource kind.",
@@ -56,6 +89,7 @@ class GCPTopicResourceConfig(ResourceConfig):
 
 
 class GCPSubscriptionResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("pubsub.subscriptions.list",)
     kind: Literal["pubsub.googleapis.com/Subscription"] = Field(
         title="GCP PubSub Subscription",
         description="GCP PubSub Subscription resource kind.",
@@ -67,6 +101,7 @@ class GCPSubscriptionResourceConfig(ResourceConfig):
 
 
 class GCPProjectResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("resourcemanager.projects.get",)
     kind: Literal["cloudresourcemanager.googleapis.com/Project"] = Field(
         title="GCP Project",
         description="GCP Project resource kind.",
@@ -78,6 +113,9 @@ class GCPProjectResourceConfig(ResourceConfig):
 
 
 class GCPOrganizationResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "resourcemanager.organizations.get",
+    )
     kind: Literal["cloudresourcemanager.googleapis.com/Organization"] = Field(
         title="GCP Organization",
         description="GCP Organization resource kind.",
@@ -89,6 +127,7 @@ class GCPOrganizationResourceConfig(ResourceConfig):
 
 
 class GCPFolderResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = ("resourcemanager.folders.get",)
     kind: Literal["cloudresourcemanager.googleapis.com/Folder"] = Field(
         title="GCP Folder",
         description="GCP Folder resource kind.",
@@ -100,6 +139,9 @@ class GCPFolderResourceConfig(ResourceConfig):
 
 
 class GCPResourceConfig(ResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "cloudasset.assets.searchAllResources",
+    )
     kind: str = Field(
         title="Custom Kind",
         description="Use this to map GCP resources supported by the <a target='_blank' href='https://docs.cloud.google.com/asset-inventory/docs/asset-types'>GCP Asset Inventory API</a> by setting the kind name to the full resource type.\n\nExample: compute.googleapis.com/Instance",
@@ -144,6 +186,7 @@ class GCPPortAppConfig(PortAppConfig):
         | GCPOrganizationResourceConfig
         | GCPFolderResourceConfig
         | GCPCloudFunctionResourceConfig
+        | GCPIamPolicyResourceConfig
         | GCPResourceConfig
     ] = Field(
         title="Resources",

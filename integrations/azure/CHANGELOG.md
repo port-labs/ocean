@@ -7,6 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.1 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.2
+
+
+## 0.6.0 (2026-11-23)
+
+
+### Features
+
+- Add Azure AI Foundry invoke_agent and invoke_model with Port toolbox (Port/GitHub MCP) wired on invoke. Prompt agents use useExistingToolbox (default false) — Port-owned port-mcps-<hash> create/reuse, or skip MCP with a warning when a foreign toolbox is present; opt in to merge into that toolbox. Hosted agents use toolboxName to upsert an existing toolbox (must exist) or omit to prepare port-mcps-<hash>. Also CustomKeys remint, optional gitAccessToken/gitProvider, opt-in createFoundryWebhooks, streaming, catalog enrichment, and reportInvocationStatus.
+
+
+## 0.5.4 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.1
+
+
+## 0.5.3 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.0
+
+
+## 0.5.2 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.8
+
+
+## 0.5.1 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.7
+
+
+## 0.5.0 (2026-11-18)
+
+
+### Features
+
+- Add Azure AI Foundry management actions to the Azure integration (create/update/delete agent, deploy/delete model deployment) with optional immediate catalog sync after mutations. Create/update agent and deploy model accept a Claude-style `config` jqObject for pass-through API fields (tools, metadata, ARM sku/properties extras).
+
+
+## 0.4.2 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.6
+
+
+## 0.4.1 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.5
+
+
+## 0.4.0 (2026-11-16)
+
+
+### Features
+
+- >-
+    Add Foundry skill and toolbox sync kinds with optional ARM region filtering on
+    project discovery, A2A sub-agent enrichment on toolboxes (normalize ARM
+    connection ids), and SKILL.md content download for skills (throttled).
+
+
+## 0.3.5 (2026-11-16)
+
+
+### Improvements
+
+- List Foundry conversation and response kinds via selectable endpointScopes (default agent protocol; optional project openai/v1 or both as separate stores), scoped to the integration Azure identity.
+
+
 ## 0.3.4 (2026-11-15)
 
 
