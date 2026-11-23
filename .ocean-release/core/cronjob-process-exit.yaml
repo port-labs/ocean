@@ -1,0 +1,6 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  Fix CronJob pods hanging after sync: force Once mode to exit after a grace
+  period, daemonize Port log-ship threads with a join timeout, and avoid
+  re-flushing log ingest failures during shutdown.
