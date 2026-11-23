@@ -58,6 +58,7 @@ Before recommending, check whether core already has an equivalent, and if it doe
 - Overly broad error handling: bare `except:`, `except Exception: pass`, or catching an error only to log and continue when the caller needs to know it failed. Prefer specific, custom exceptions with actionable messages.
 - Comments that restate the code. Keep comments for non-obvious intent and complex logic only.
 - Over-engineering: new abstractions, flags, or config nobody uses yet.
+- Pointless wrapper functions: tiny functions that do close to nothing or literally nothing, such as one that only forwards its arguments to another function, renames a call, or wraps a single expression with no added logic, naming value, or reuse. Recommend inlining them. A small function is fine when it has a clear name for non-obvious logic, is reused, or is a deliberate seam (for example a test hook or an override point).
 
 ## Security (always flag)
 
