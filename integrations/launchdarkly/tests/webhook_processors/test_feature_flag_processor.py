@@ -5,6 +5,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from integration import FeatureFlagResourceConfig
 from client import ObjectKind
 from webhook_processors.feature_flag_webhook_processor import (
     FeatureFlagWebhookProcessor,
@@ -198,3 +199,40 @@ class TestFeatureFlagWebhookProcessor:
                 assert all(
                     "__environmentKey" in item for item in result.deleted_raw_results
                 )
+
+    async def test_flag_deletion_includes_environments_when_option_enabled(
+        self,
+        feature_flag_processor: FeatureFlagWebhookProcessor,
+        valid_feature_flag_payload: Dict[str, Any],
+    ) -> None:
+        """With includeEnvironmentConfig the delete record lists the environments from the event."""
+        valid_feature_flag_payload["titleVerb"] = "deleted"
+        valid_feature_flag_payload["_links"]["self"] = {
+            "href": "/api/v2/flags/project-1/flag-1"
+        }
+        valid_feature_flag_payload["accesses"] = [
+            {"resource": "proj:project-1:env/env1:flag/flag-1"},
+            {"resource": "proj:project-1:env/env2:flag/flag-1"},
+        ]
+        resource_config = FeatureFlagResourceConfig.parse_obj(
+            {
+                "kind": "flag",
+                "selector": {"query": "true", "includeEnvironmentConfig": True},
+                "port": {
+                    "entity": {"mappings": {"identifier": ".key", "blueprint": '"b"'}}
+                },
+            }
+        )
+
+        result = await feature_flag_processor.handle_event(
+            valid_feature_flag_payload, resource_config
+        )
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == [
+            {
+                "key": "flag-1",
+                "__projectKey": "project-1",
+                "environments": {"env1": {}, "env2": {}},
+            }
+        ]

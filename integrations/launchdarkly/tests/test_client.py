@@ -209,6 +209,16 @@ async def test_create_launchdarkly_webhook_existing(
         )
 
 
+def _environments_stream(*batches: list[dict[str, Any]]) -> Any:
+    """Fake of the cached get_paginated_environments async generator."""
+
+    async def _stream() -> Any:
+        for batch in batches:
+            yield batch
+
+    return lambda: _stream()
+
+
 @pytest.mark.asyncio
 async def test_get_paginated_resource_default_params_unchanged(
     mock_client: LaunchDarklyClient,
@@ -280,7 +290,7 @@ async def test_fetch_feature_flags_default_skips_environments(
     """By default the environments are not listed and flags are requested as before."""
     with (
         patch.object(
-            mock_client, "fetch_environments_for_project", new_callable=AsyncMock
+            mock_client, "get_paginated_environments", side_effect=AssertionError
         ) as mock_environments,
         patch.object(
             mock_client, "send_api_request", new_callable=AsyncMock
@@ -289,7 +299,7 @@ async def test_fetch_feature_flags_default_skips_environments(
         mock_request.return_value = {"items": [{"key": "flag-1"}]}
         flags = await mock_client.fetch_feature_flags_for_project({"key": "proj"})
 
-    mock_environments.assert_not_awaited()
+    mock_environments.assert_not_called()
     mock_request.assert_awaited_once_with(
         endpoint="flags/proj", query_params={"limit": 100}
     )
@@ -304,10 +314,15 @@ async def test_fetch_feature_flags_with_environment_config(
     with (
         patch.object(
             mock_client,
-            "fetch_environments_for_project",
-            new_callable=AsyncMock,
-            return_value=[{"key": "production"}, {"key": "test"}],
-        ) as mock_environments,
+            "get_paginated_environments",
+            _environments_stream(
+                [
+                    {"key": "other-env", "__projectKey": "other"},
+                    {"key": "production", "__projectKey": "proj"},
+                    {"key": "test", "__projectKey": "proj"},
+                ]
+            ),
+        ),
         patch.object(
             mock_client, "send_api_request", new_callable=AsyncMock
         ) as mock_request,
@@ -319,7 +334,6 @@ async def test_fetch_feature_flags_with_environment_config(
             {"key": "proj"}, include_environment_config=True
         )
 
-    mock_environments.assert_awaited_once_with({"key": "proj"})
     mock_request.assert_awaited_once_with(
         endpoint="flags/proj",
         query_params={"limit": 100, "summary": 0, "env": ["production", "test"]},
@@ -336,9 +350,8 @@ async def test_fetch_feature_flags_with_environment_config_no_environments(
     with (
         patch.object(
             mock_client,
-            "fetch_environments_for_project",
-            new_callable=AsyncMock,
-            return_value=[],
+            "get_paginated_environments",
+            _environments_stream([{"key": "elsewhere", "__projectKey": "other"}]),
         ),
         patch.object(
             mock_client, "send_api_request", new_callable=AsyncMock
@@ -357,10 +370,10 @@ async def test_fetch_feature_flags_with_environment_config_no_environments(
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_feature_flags_propagates_environment_option(
+async def test_get_paginated_feature_flags_default_collects_per_project(
     mock_client: LaunchDarklyClient,
 ) -> None:
-    """The option reaches the per-project fetch for every project."""
+    """Without the option, flags are fetched per project exactly as before."""
 
     async def fake_projects() -> Any:
         yield [{"key": "p1"}, {"key": "p2"}]
@@ -371,16 +384,44 @@ async def test_get_paginated_feature_flags_propagates_environment_option(
             mock_client,
             "fetch_feature_flags_for_project",
             new_callable=AsyncMock,
-            return_value=[],
+            return_value=[{"key": "f"}],
         ) as mock_fetch,
     ):
-        _ = [
+        batches = [batch async for batch in mock_client.get_paginated_feature_flags()]
+
+    assert batches == [[{"key": "f"}], [{"key": "f"}]]
+    assert mock_fetch.await_count == 2
+    for call in mock_fetch.await_args_list:
+        assert call.kwargs == {}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_feature_flags_with_environment_config_streams_pages(
+    mock_client: LaunchDarklyClient,
+) -> None:
+    """With the option on, each page is yielded as it arrives, not collected per project."""
+
+    async def fake_projects() -> Any:
+        yield [{"key": "p1"}, {"key": "p2"}]
+
+    async def fake_stream(project: dict[str, Any], **kwargs: Any) -> Any:
+        assert kwargs == {"include_environment_config": True}
+        yield [{"key": f"{project['key']}-a"}]
+        yield [{"key": f"{project['key']}-b"}]
+
+    with (
+        patch.object(mock_client, "get_paginated_projects", fake_projects),
+        patch.object(mock_client, "stream_feature_flags_for_project", fake_stream),
+        patch.object(
+            mock_client, "fetch_feature_flags_for_project", new_callable=AsyncMock
+        ) as mock_fetch,
+    ):
+        batches = [
             batch
             async for batch in mock_client.get_paginated_feature_flags(
                 include_environment_config=True
             )
         ]
 
-    assert mock_fetch.await_count == 2
-    for call in mock_fetch.await_args_list:
-        assert call.kwargs == {"include_environment_config": True}
+    assert [b[0]["key"] for b in batches] == ["p1-a", "p1-b", "p2-a", "p2-b"]
+    mock_fetch.assert_not_awaited()

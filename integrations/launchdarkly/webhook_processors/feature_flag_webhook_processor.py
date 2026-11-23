@@ -45,8 +45,8 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
         # Handle deletion events
         if self.is_deletion_event(payload):
             payload["_links"]["self"]["href"] = endpoint
-            deleted_records = (
-                [
+            if resource_config_kind == ObjectKind.FEATURE_FLAG_STATUS:
+                deleted_records = [
                     {
                         "__environmentKey": env_key,
                         **payload,
@@ -55,9 +55,21 @@ class FeatureFlagWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
                     if (env_key := self._extract_environment_key(env["resource"]))
                     is not None
                 ]
-                if resource_config_kind == ObjectKind.FEATURE_FLAG_STATUS
-                else [feature_flag]
-            )
+            else:
+                deleted_records = [feature_flag]
+                if getattr(
+                    resource_config.selector, "include_environment_config", False
+                ):
+                    # The deleted flag has no configuration to fetch, but the event
+                    # lists its environments. Provide them so that mappings using
+                    # `itemsToParse: .environments | to_entries` can build the
+                    # identifiers of the per-environment entities to delete.
+                    deleted_records[0]["environments"] = {
+                        env_key: {}
+                        for env in payload.get("accesses", [])
+                        if (env_key := self._extract_environment_key(env["resource"]))
+                        is not None
+                    }
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=deleted_records
