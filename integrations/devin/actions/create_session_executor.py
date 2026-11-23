@@ -9,7 +9,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
-from actions.utils import ensure_no_reserved_tags, merge_config
+from actions.utils import ensure_no_reserved_tags, merge_config, upsert_raw_best_effort
 from core.tracking.run_output import started_output
 from core.tracking.tags import MANAGED_TAG, build_external_id, tracking_tags
 from integration import ObjectKind
@@ -94,7 +94,7 @@ class CreateSessionExecutor(AbstractDevinExecutor):
             extra_output=started_output(session, sent_at),
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
-        await self.register_entity(ObjectKind.SESSION, session.raw(), run)
+        await upsert_raw_best_effort(ObjectKind.SESSION, session.raw(), run)
 
         if not inputs.reportCompletion:
             await ocean.port_client.report_run_completed(

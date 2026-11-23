@@ -6,7 +6,7 @@ from pydantic import Field
 
 from actions.abstract_action_input import AbstractDevinActionInput
 from actions.abstract_executor import AbstractDevinExecutor, DevinApiError
-from actions.utils import ensure_port_managed_session
+from actions.utils import ensure_port_managed_session, upsert_raw_best_effort
 from core.tracking.tags import parse_external_id, strip_tracking_tags
 from integration import ObjectKind
 
@@ -50,7 +50,7 @@ class TerminateSessionExecutor(AbstractDevinExecutor):
                 error, f"Failed to terminate Devin session {session_id}"
             ) from error
 
-        await self.register_entity(ObjectKind.SESSION, session.raw(), run)
+        await upsert_raw_best_effort(ObjectKind.SESSION, session.raw(), run)
         await ocean.port_client.report_run_completed(
             run,
             True,

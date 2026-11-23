@@ -1,5 +1,4 @@
 import json
-from typing import Any
 
 import httpx
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
@@ -10,7 +9,6 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.core.models import IntegrationRun
 
 from clients.client_factory import create_devin_client
-from actions.utils import upsert_raw_best_effort
 from core.sessions import DevinSessions
 
 
@@ -55,8 +53,3 @@ class AbstractDevinExecutor(AbstractExecutor):
         self, run: IntegrationRun
     ) -> float:
         return 0.0
-
-    async def register_entity(
-        self, kind: str, raw: dict[str, Any], run: IntegrationRun
-    ) -> None:
-        await upsert_raw_best_effort(kind, raw, run)

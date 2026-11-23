@@ -61,15 +61,11 @@ def ensure_session_continuable(session: SessionResponse) -> None:
         raise InvalidActionParametersException(message)
 
 
-async def upsert_raw(kind: str, raw: dict[str, Any]) -> None:
-    await ocean.register_raw(kind, [raw])
-
-
 async def upsert_raw_best_effort(
     kind: str, raw: dict[str, Any], run: IntegrationRun | None = None
 ) -> None:
     try:
-        await upsert_raw(kind, raw)
+        await ocean.register_raw(kind, [raw])
     except Exception as error:
         message = f"Failed to upsert {kind} into the catalog (continuing): {error}"
         logger.warning(message)

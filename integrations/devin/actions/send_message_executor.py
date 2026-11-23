@@ -14,6 +14,7 @@ from actions.utils import (
     ensure_port_managed_session,
     ensure_session_continuable,
     merge_config,
+    upsert_raw_best_effort,
 )
 from core.tracking.run_output import started_output
 from core.tracking.tags import (
@@ -132,7 +133,7 @@ class SendMessageExecutor(AbstractDevinExecutor):
             extra_output=started_output(session, sent_at),
             status_label=SESSION_RUNNING_STATUS_LABEL,
         )
-        await self.register_entity(ObjectKind.SESSION, session.raw(), run)
+        await upsert_raw_best_effort(ObjectKind.SESSION, session.raw(), run)
 
         if not inputs.reportCompletion:
             await ocean.port_client.report_run_completed(
