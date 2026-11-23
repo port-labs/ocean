@@ -1,3 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: Added a Test Connection probe, runnable with the Ocean CLI, that reports per kind whether the configured credentials hold the IAM permissions needed to sync it
