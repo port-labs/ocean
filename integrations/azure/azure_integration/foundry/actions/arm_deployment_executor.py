@@ -1,12 +1,8 @@
 from port_ocean.core.models import IntegrationRun
 
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.clients.arm_deployments_client import (
-    ArmDeploymentsClient,
-)
-from azure_integration.foundry.clients.client_factory import (
-    create_arm_deployments_client,
-)
+from azure_integration.foundry.clients.client_factory import create_foundry_arm_client
+from azure_integration.foundry.clients.foundry_arm_client import FoundryArmClient
 
 
 class ArmDeploymentExecutor(AbstractFoundryExecutor):
@@ -14,12 +10,12 @@ class ArmDeploymentExecutor(AbstractFoundryExecutor):
 
     def __init__(self) -> None:
         super().__init__()
-        self.arm_deployments: ArmDeploymentsClient = create_arm_deployments_client()
+        self.foundry_arm: FoundryArmClient = create_foundry_arm_client()
 
     async def is_close_to_rate_limit(self, run: IntegrationRun) -> bool:
         return (
             self.client.rate_limiter.is_close_to_rate_limit()
-            or self.arm_deployments.rate_limiter.is_close_to_rate_limit()
+            or self.foundry_arm.rate_limiter.is_close_to_rate_limit()
         )
 
     async def get_remaining_seconds_until_rate_limit(
@@ -27,5 +23,5 @@ class ArmDeploymentExecutor(AbstractFoundryExecutor):
     ) -> float:
         return max(
             self.client.rate_limiter.seconds_until_rate_limit_reset(),
-            self.arm_deployments.rate_limiter.seconds_until_rate_limit_reset(),
+            self.foundry_arm.rate_limiter.seconds_until_rate_limit_reset(),
         )

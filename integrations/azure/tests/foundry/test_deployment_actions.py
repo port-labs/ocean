@@ -62,8 +62,8 @@ def test_deployment_from_arm_maps_catalog_shape() -> None:
 @pytest.mark.asyncio
 async def test_deploy_model_deployment_uses_arm_client() -> None:
     executor = DeployModelDeploymentExecutor()
-    executor.arm_deployments = MagicMock()
-    executor.arm_deployments.upsert_model_deployment = AsyncMock(
+    executor.foundry_arm = MagicMock()
+    executor.foundry_arm.upsert_model_deployment = AsyncMock(
         return_value={
             "name": "gpt-5",
             "sku": {"name": "GlobalStandard"},
@@ -96,7 +96,7 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
 
         await executor.execute(run)
 
-    executor.arm_deployments.upsert_model_deployment.assert_awaited_once()
+    executor.foundry_arm.upsert_model_deployment.assert_awaited_once()
     mock_ocean_base.register_raw.assert_awaited_once()
     registered = mock_ocean_base.register_raw.await_args.args[1][0]
     assert registered["name"] == "gpt-5"
@@ -112,8 +112,8 @@ async def test_deploy_model_deployment_uses_arm_client() -> None:
 @pytest.mark.asyncio
 async def test_delete_model_deployment_uses_arm_client() -> None:
     executor = DeleteModelDeploymentExecutor()
-    executor.arm_deployments = MagicMock()
-    executor.arm_deployments.delete_deployment = AsyncMock()
+    executor.foundry_arm = MagicMock()
+    executor.foundry_arm.delete_deployment = AsyncMock()
 
     run = _run(
         "delete_model_deployment",
@@ -138,7 +138,7 @@ async def test_delete_model_deployment_uses_arm_client() -> None:
 
         await executor.execute(run)
 
-    executor.arm_deployments.delete_deployment.assert_awaited_once_with(
+    executor.foundry_arm.delete_deployment.assert_awaited_once_with(
         "https://acct.services.ai.azure.com/api/projects/demo",
         "gpt-5",
     )

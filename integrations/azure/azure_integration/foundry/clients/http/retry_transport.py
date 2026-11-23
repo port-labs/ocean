@@ -40,3 +40,16 @@ class FoundryRetryTransport(RetryTransport):
                 except ValueError:
                     pass
         return super()._calculate_sleep(attempts_made, headers, status_code)
+
+
+class FoundryStreamingTransport(FoundryRetryTransport):
+    """Retry transport that never prefetches/areads the response body.
+
+    Ocean's default RetryTransport buffers chunked bodies when
+    ``streaming.enabled`` is false (prefetch + response-size logging). SSE
+    Responses streams must stay live, so this client always reports streaming
+    as enabled without flipping the global Ocean setting.
+    """
+
+    def _is_streaming_enabled(self) -> bool:
+        return True

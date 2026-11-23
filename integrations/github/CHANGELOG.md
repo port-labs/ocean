@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.27.0 (2026-11-23)
+
+
+### Features
+
+- Add required_checks_failed_at to pull requests when includeRequiredChecksStatus is enabled. It is when the latest failing required check finished, so a consumer can tell the failure of a re-run from a failure of an earlier run on the same commit, which GitHub keeps reporting until the re-run's check reports.
+
+
+## 6.26.2 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.2
+
+
 ## 6.26.1 (2026-11-23)
 
 
