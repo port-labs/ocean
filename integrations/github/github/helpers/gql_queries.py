@@ -606,6 +606,7 @@ def _pr_required_checks_selection(pr_number: int, after: str | None) -> str:
                     status
                     conclusion
                     startedAt
+                    completedAt
                     isRequired(pullRequestNumber: {pr_number})
                   }}
                   ... on StatusContext {{
