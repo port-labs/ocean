@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from clients.devin_client import DevinClient
-from clients.exceptions import DevinPaginationError
+from clients.devin_client import DevinClient, DevinPaginationError
 from core.sessions import DevinSessions
 from tests.fakes import http_error
 

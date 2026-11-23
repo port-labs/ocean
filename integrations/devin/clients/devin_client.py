@@ -7,8 +7,12 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from clients.exceptions import DevinPaginationError
 from utils.http import DEFAULT_PAGE_SIZE, build_list_page_params, drop_none
+
+
+class DevinPaginationError(Exception):
+    # Raising after a partial list makes Ocean skip delete for unfetched pages.
+    pass
 
 
 class DevinClient:
