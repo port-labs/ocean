@@ -59,8 +59,6 @@ class RequiredChecksSummary:
     failing: list[str]
     pending: list[str]
     sha: Optional[str]
-    # When the latest failing required check finished: lets a consumer tell a failure
-    # of the run it is waiting on from the failure of an earlier run on the same commit.
     failed_at: Optional[str] = None
 
 
