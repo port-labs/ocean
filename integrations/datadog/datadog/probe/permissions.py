@@ -56,18 +56,13 @@ def permissions_lookup_failure_message(status_code: int) -> str:
     )
 
 
-def unverified_scopes_message(orgs: list[str] | None = None) -> str:
-    """Probe-level note when the credentials' own scopes couldn't be read, so the
-    verdicts reflect the owner's role only (*orgs*: the affected orgs, multi-org)."""
-    message = (
-        "Credentials are valid, but the scopes of the application key or access "
-        "token could not be verified, so permissions were checked against the "
-        "owner's role only. A kind can still fail to sync if the credentials are "
-        "scoped without its permissions."
+def unverified_scopes_message(permissions: tuple[str, ...]) -> str:
+    """Check message for a kind the owner's role grants when the application
+    key's scopes couldn't be read to confirm the key holds it too."""
+    return (
+        f"The owner's role grants {', '.join(permissions)}, but the application "
+        "key's scopes could not be read to confirm it."
     )
-    if orgs:
-        message += f" Affected org(s): {', '.join(orgs)}."
-    return message
 
 
 class DatadogKindPermissionVerdict(KindPermissionVerdict):

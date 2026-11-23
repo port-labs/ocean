@@ -7,7 +7,6 @@ from port_ocean.core.probe import (
     ProbeCheck,
     ProbeCheckStatus,
     ProbeContext,
-    ProbeStatus,
 )
 
 from client_manager import get_client_manager
@@ -78,7 +77,6 @@ class DatadogPermissionProbe:
     def __init__(self, context: ProbeContext) -> None:
         self.context = context
         self.permission_verdict = DatadogKindPermissionVerdict()
-        self._unverified_scope_orgs: list[str] = []
         self._org_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_ORGS)
 
     async def run(self) -> None:
@@ -98,14 +96,6 @@ class DatadogPermissionProbe:
                 for index, client in enumerate(manager.clients)
             )
         )
-
-        if (
-            self._unverified_scope_orgs
-            and self.context.status is not ProbeStatus.FAILED
-        ):
-            self.context.message = unverified_scopes_message(
-                sorted(self._unverified_scope_orgs) if manager.is_multi_org else None
-            )
 
     async def _probe_org(
         self, client: DatadogClient, index: int, *, multi_org: bool
@@ -132,7 +122,7 @@ class DatadogPermissionProbe:
             client, index
         )
         checks = await self.context.add_scopes({"org": org})
-        await self._resolve_checks(client, current_user["data"]["id"], org, checks)
+        await self._resolve_checks(client, current_user["data"]["id"], checks)
 
     async def _authenticate(self, client: DatadogClient) -> dict[str, Any]:
         """Return the /api/v2/current_user response for the credentials."""
@@ -170,7 +160,7 @@ class DatadogPermissionProbe:
         )
 
     async def _resolve_checks(
-        self, client: DatadogClient, user_id: str, org: str, checks: list[ProbeCheck]
+        self, client: DatadogClient, user_id: str, checks: list[ProbeCheck]
     ) -> None:
         required = {
             permission
@@ -180,8 +170,8 @@ class DatadogPermissionProbe:
             )
         }
         try:
-            permissions = await self._effective_permissions(
-                client, user_id, required, org
+            permissions, scopes_verified = await self._effective_permissions(
+                client, user_id, required
             )
         except HTTPStatusError as error:
             await self._mark_checks(
@@ -202,33 +192,41 @@ class DatadogPermissionProbe:
             check.status, check.message = self.permission_verdict.verdict(
                 check.kind, permissions
             )
+            # A role grant the key's unknown scopes may still withhold; a role
+            # denial fails whatever the scopes are, so it stays a failure.
+            if check.status is ProbeCheckStatus.SUCCESS and not scopes_verified:
+                check.status = ProbeCheckStatus.UNKNOWN
+                check.message = unverified_scopes_message(
+                    self.permission_verdict.kind_permissions[check.kind]
+                )
         await self.context.update_progress()
 
     async def _effective_permissions(
-        self, client: DatadogClient, user_id: str, required: set[str], org: str
-    ) -> dict[str, bool]:
-        """Return the *required* permissions the credentials hold. Datadog can't
-        be asked about specific permissions, so the owner's full list is fetched
-        and narrowed to the ones the selected kinds need."""
-        role_permissions, scopes = await asyncio.gather(
+        self, client: DatadogClient, user_id: str, required: set[str]
+    ) -> tuple[dict[str, bool], bool]:
+        """Return the *required* permissions the credentials hold, and whether the
+        application key's scopes were applied. Datadog can't be asked about
+        specific permissions, so the owner's full list is fetched and narrowed to
+        the ones the selected kinds need."""
+        role_permissions, (scopes, scopes_verified) = await asyncio.gather(
             client.get_user_permissions(user_id),
-            self._application_key_scopes(client, org),
+            self._application_key_scopes(client),
         )
         granted = (role_permissions | IMPLICIT_PERMISSIONS) & required
         if scopes is not None:
             granted &= set(scopes)
-        return {permission: True for permission in granted}
+        return {permission: True for permission in granted}, scopes_verified
 
+    @staticmethod
     async def _application_key_scopes(
-        self, client: DatadogClient, org: str
-    ) -> list[str] | None:
-        """Return the scopes of the configured application key, or None when it
-        is unscoped (it then has all of its owner's permissions). When the scopes
-        can't be read, *org* is recorded so the probe notes its verdicts are
-        role-only, and None is returned."""
+        client: DatadogClient,
+    ) -> tuple[list[str] | None, bool]:
+        """Return the configured application key's scopes (None when unscoped: it
+        then has all of its owner's permissions) and whether they could be read.
+        An OAuth token's scopes are set by Port's OAuth app, not by the user, so
+        its role permissions are taken as final."""
         if client.access_token:
-            self._unverified_scope_orgs.append(org)
-            return None
+            return None, True
 
         try:
             keys = await client.get_current_user_application_keys()
@@ -238,8 +236,7 @@ class DatadogPermissionProbe:
                 f"(HTTP {error.response.status_code}); checking the owner's role "
                 "permissions only"
             )
-            self._unverified_scope_orgs.append(org)
-            return None
+            return None, False
 
         last4 = client.dd_app_key[-4:]
         matches = [key for key in keys if key["attributes"].get("last4") == last4]
@@ -248,9 +245,8 @@ class DatadogPermissionProbe:
                 f"Found {len(matches)} application keys of the current user ending "
                 "with the configured key; checking the owner's role permissions only"
             )
-            self._unverified_scope_orgs.append(org)
-            return None
-        return matches[0]["attributes"].get("scopes")
+            return None, False
+        return matches[0]["attributes"].get("scopes"), True
 
     async def _mark_checks(
         self, checks: list[ProbeCheck], status: ProbeCheckStatus, message: str

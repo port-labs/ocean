@@ -7,7 +7,6 @@ from port_ocean.core.probe import ProbeCheckStatus, ProbeContext, ProbeStatus
 
 from datadog.client import DatadogClient
 from datadog.exceptions import IntegrationMissingConfigError
-from datadog.probe.permissions import unverified_scopes_message
 from datadog.probe.probe import DatadogPermissionProbe
 from tests.datadog.probe.conftest import (
     BASE_URL,
@@ -80,7 +79,7 @@ async def test_scoped_key_limits_permissions_to_its_scopes(
 
 
 @pytest.mark.asyncio
-async def test_unreadable_key_scopes_fall_back_to_role_permissions(
+async def test_unreadable_key_scopes_mark_role_grants_unknown(
     probe_context: ProbeContext, set_clients: Any
 ) -> None:
     client = make_client(
@@ -94,8 +93,30 @@ async def test_unreadable_key_scopes_fall_back_to_role_permissions(
 
     await DatadogPermissionProbe(probe_context).run()
 
-    assert statuses(probe_context) == {"slo": ProbeCheckStatus.SUCCESS}
-    assert probe_context.message == unverified_scopes_message()
+    [check] = probe_context.checks
+    assert check.status is ProbeCheckStatus.UNKNOWN
+    assert check.message == (
+        "The owner's role grants slos_read, but the application key's scopes "
+        "could not be read to confirm it."
+    )
+    assert probe_context.message is None
+
+
+@pytest.mark.asyncio
+async def test_unreadable_key_scopes_keep_role_denials_as_failures(
+    probe_context: ProbeContext, set_clients: Any
+) -> None:
+    client = make_client(
+        get_current_user_application_keys=AsyncMock(return_value=[]),
+    )
+    set_clients([client])
+    probe_context.available_kinds = ["slo"]
+
+    await DatadogPermissionProbe(probe_context).run()
+
+    [check] = probe_context.checks
+    assert check.status is ProbeCheckStatus.FAILURE
+    assert check.message == "Missing permission(s): slos_read"
 
 
 @pytest.mark.parametrize(
@@ -181,7 +202,7 @@ async def test_oauth_token_skips_key_scopes_and_validation(
 
     client.get_current_user_application_keys.assert_not_awaited()
     assert statuses(probe_context) == {"host": ProbeCheckStatus.SUCCESS}
-    assert probe_context.message == unverified_scopes_message()
+    assert probe_context.message is None
 
 
 @pytest.mark.asyncio
@@ -271,15 +292,14 @@ async def test_effective_permissions_keep_only_those_selected_kinds_need(
     client = make_client(role_permissions={"monitors_read", "slos_read", "hosts_read"})
 
     probe = DatadogPermissionProbe(probe_context)
-    permissions = await probe._effective_permissions(
+    permissions, scopes_verified = await probe._effective_permissions(
         cast(DatadogClient, client),
         USER_ID,
         {"monitors_read", "teams_read", "apm_read"},
-        "prod",
     )
 
     assert permissions == {"monitors_read": True, "teams_read": True}
-    assert probe._unverified_scope_orgs == []
+    assert scopes_verified
 
 
 @pytest.mark.asyncio
@@ -361,15 +381,17 @@ async def test_org_reported_by_datadog_takes_precedence_over_configuration(
 
 
 @pytest.mark.asyncio
-async def test_unverified_scopes_note_names_the_affected_orgs_in_multi_org(
+async def test_unreadable_key_scopes_affect_only_that_orgs_checks(
     probe_context: ProbeContext, set_clients: Any
 ) -> None:
     set_clients(
         [
             make_client(
-                get_current_user=AsyncMock(return_value=current_user("prod", "abc"))
+                role_permissions={"monitors_read"},
+                get_current_user=AsyncMock(return_value=current_user("prod", "abc")),
             ),
             make_client(
+                role_permissions={"monitors_read"},
                 get_current_user=AsyncMock(return_value=current_user("eu", "xyz")),
                 get_current_user_application_keys=AsyncMock(return_value=[]),
             ),
@@ -380,8 +402,10 @@ async def test_unverified_scopes_note_names_the_affected_orgs_in_multi_org(
 
     await DatadogPermissionProbe(probe_context).run()
 
-    assert probe_context.message == unverified_scopes_message(["eu (xyz)"])
-    assert probe_context.message.endswith("Affected org(s): eu (xyz).")
+    assert {check.scopes["org"]: check.status for check in probe_context.checks} == {
+        "prod (abc)": ProbeCheckStatus.SUCCESS,
+        "eu (xyz)": ProbeCheckStatus.UNKNOWN,
+    }
 
 
 @pytest.mark.asyncio
@@ -462,29 +486,3 @@ async def test_orgs_are_probed_concurrently(
         "prod (abc)": ProbeCheckStatus.SUCCESS,
         "eu (xyz)": ProbeCheckStatus.SUCCESS,
     }
-
-
-@pytest.mark.asyncio
-async def test_unverified_scopes_note_lists_orgs_in_a_stable_order(
-    probe_context: ProbeContext, set_clients: Any
-) -> None:
-    set_clients(
-        [
-            make_client(
-                access_token="token",
-                get_current_user=AsyncMock(return_value=current_user("prod", "abc")),
-            ),
-            make_client(
-                access_token="token",
-                get_current_user=AsyncMock(return_value=current_user("eu", "xyz")),
-            ),
-        ],
-        multi_org=True,
-    )
-    probe_context.available_kinds = ["monitor"]
-
-    await DatadogPermissionProbe(probe_context).run()
-
-    assert probe_context.message == unverified_scopes_message(
-        ["eu (xyz)", "prod (abc)"]
-    )
