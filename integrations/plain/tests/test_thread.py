@@ -8,7 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 from integration import ThreadResourceConfig
 from main import on_resync_threads
-from plain.queries import LIST_THREADS
+from plain.queries import GET_THREAD, LIST_THREADS
 from tests.kind_helpers import (
     collect_pages,
     exporter_kinds,
@@ -30,6 +30,17 @@ def test_list_threads_query_includes_relations_labels_and_fields() -> None:
     assert "threadFields" in selection
     assert "filters: $filters" in LIST_THREADS
     assert "hasNextPage" in LIST_THREADS
+
+
+def test_thread_fields_selection_includes_every_value_field() -> None:
+    for query in (LIST_THREADS, GET_THREAD):
+        thread_fields = query.split("threadFields {", 1)[1].split("createdAt", 1)[0]
+
+        assert "stringValue" in thread_fields
+        assert "booleanValue" in thread_fields
+        assert "numberValue" in thread_fields
+        assert "dateValue {" in thread_fields
+        assert "iso8601" in thread_fields
 
 
 def test_thread_kind_is_registered_in_spec() -> None:
