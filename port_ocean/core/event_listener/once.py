@@ -139,9 +139,9 @@ class OnceEventListener(BaseEventListener):
     async def _start(self) -> None:
         """
         Starts the resync process, and exits the application once finished.
-        When ``incrementalSyncEnabled`` is set on the integration config the pod
-        runs ``sync_incremental`` instead of a full resync.  This is how the Helm
-        CronJob for incremental sync works: same ONCE listener, different routing.
+        When ``incrementalSyncEnabled`` is set on the integration config the
+        process runs ``sync_incremental`` instead of a full resync (same ONCE
+        listener, different routing).
         """
 
         # we use the `repeat_every` decorator to make sure the resync will be triggered, but won't stuck the application
@@ -186,7 +186,7 @@ class OnceEventListener(BaseEventListener):
 
                 # SIGINT starts graceful uvicorn shutdown, but non-daemon threads
                 # (e.g. log shipping) can keep the process alive forever. Hard-exit
-                # after a grace period so Once CronJobs always terminate.
+                # after a grace period so the process always terminates.
                 def _force_exit() -> None:
                     time.sleep(ONCE_EXIT_GRACE_SECONDS)
                     logger.bind(local_only=True).warning(
