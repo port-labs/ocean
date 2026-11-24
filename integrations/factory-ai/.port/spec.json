@@ -122,6 +122,20 @@
           "required": false
         }
       ]
+    },
+    {
+      "name": "interrupt_session",
+      "icon": "FactoryAi",
+      "description": "Interrupt a running Factory Droid session via POST /api/v0/sessions/{sessionId}/interrupt. Stops the active agent loop and returns the session execution status (idle, pending, or running). Idempotent when the session is already idle. Refreshes the session entity in the catalog when it is readable.",
+      "inputs": [
+        {
+          "name": "sessionId",
+          "title": "Session ID",
+          "type": "string",
+          "description": "Factory session to interrupt. Concurrent interrupt_session runs targeting the same sessionId are serialized.",
+          "required": true
+        }
+      ]
     }
   ]
 }
