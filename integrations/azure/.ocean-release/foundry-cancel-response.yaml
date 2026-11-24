@@ -1,4 +1,0 @@
-bump: minor
-changelog-type: feature
-changelog: |
-  - Added `cancel_response` action to cancel in-flight Foundry Responses API invocations (factory timeout / cancel on stop).
