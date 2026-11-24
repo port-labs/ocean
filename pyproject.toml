@@ -181,7 +181,12 @@ ignore_missing_imports = true
 
 [tool.ruff]
 extend = "ruff.toml"
-exclude = ['venv', '.venv', 'integrations', 'port_ocean/cli/cookiecutter']
+extend-exclude = [
+    "venv",
+    ".venv",
+    "integrations",
+    "port_ocean/cli/cookiecutter",
+]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
