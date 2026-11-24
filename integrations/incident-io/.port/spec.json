@@ -1,7 +1,7 @@
 {
   "title": "incident.io",
   "description": "incident.io integration for Port Ocean",
-  "icon": "Alert",
+  "icon": "IncidentIo",
   "docs": "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/available-integrations/incident-management/incident-io",
   "features": [
     {

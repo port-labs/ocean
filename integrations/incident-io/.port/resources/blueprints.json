@@ -2,7 +2,7 @@
   {
     "identifier": "incidentIoUser",
     "title": "incident.io User",
-    "icon": "User",
+    "icon": "IncidentIo",
     "schema": {
       "properties": {
         "email": {
@@ -38,7 +38,7 @@
   {
     "identifier": "incidentIoTeam",
     "title": "incident.io Team",
-    "icon": "Team",
+    "icon": "IncidentIo",
     "schema": {
       "properties": {
         "externalId": {
@@ -64,7 +64,7 @@
   {
     "identifier": "incidentIoSchedule",
     "title": "incident.io Schedule",
-    "icon": "Clock",
+    "icon": "IncidentIo",
     "schema": {
       "properties": {
         "timezone": {
@@ -109,7 +109,7 @@
   {
     "identifier": "incidentIoAlert",
     "title": "incident.io Alert",
-    "icon": "Alert",
+    "icon": "IncidentIo",
     "description": "A fired or resolved alert in incident.io",
     "schema": {
       "properties": {
@@ -157,7 +157,7 @@
   {
     "identifier": "incidentIoIncident",
     "title": "incident.io Incident",
-    "icon": "Alert",
+    "icon": "IncidentIo",
     "schema": {
       "properties": {
         "reference": {
