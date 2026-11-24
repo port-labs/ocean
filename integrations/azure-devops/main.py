@@ -529,5 +529,4 @@ ocean.add_webhook_processor("/webhook", WikiWebhookProcessor)
 
 register_actions_executors()
 
-# Register identity-propagation OAuth provider (no-op if not configured)
 register_oauth_provider()
