@@ -1,0 +1,6 @@
+bump: patch
+changelog-type: improvement
+changelog: >-
+  Repository-wide Ruff configuration now lives in a single root ruff.toml; Ocean
+  core, integrations, and CLI-scaffolded integrations extend that shared config
+  instead of duplicating lint rules in each pyproject.toml.
