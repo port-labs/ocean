@@ -227,6 +227,9 @@ threadFields {
   stringValue
   booleanValue
   numberValue
+  dateValue {
+    iso8601
+  }
 }
 createdAt {
   iso8601
