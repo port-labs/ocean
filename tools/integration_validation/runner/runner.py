@@ -244,9 +244,9 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
 
 
 def _aggregate_status(result: ValidateResult) -> ValidationAggregateStatus:
-    statuses = {run.integration.integration_status() for run in result.scenario_runs}
-    if any(status.is_failure for status in statuses):
-        return ValidationAggregateStatus.FAILED
-    if statuses == {ScenarioIntegrationStatus.COMPLETED}:
+    if all(
+        run.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
+        for run in result.scenario_runs
+    ):
         return ValidationAggregateStatus.PASSED
-    return ValidationAggregateStatus.PARTIAL
+    return ValidationAggregateStatus.FAILED
