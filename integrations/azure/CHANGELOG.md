@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.4 (2026-11-24)
+
+
+### Improvements
+
+- Remove the AZURE_AI_FOUNDRY org feature flag gate on Foundry sync kinds so they appear in the Azure integration mapping UI without manual org opt-in.
+
+
+## 0.6.3 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.4
+
+
+## 0.6.2 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.3
+
+
 ## 0.6.1 (2026-11-23)
 
 

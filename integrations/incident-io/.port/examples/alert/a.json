@@ -1,0 +1,24 @@
+{
+  "id": "01GW2G3V0S59R238FAHPDS1R66",
+  "alert_source_id": "01GW2G3V0S59R238FAHPDS1R66",
+  "title": "CPU on the payments service has exceeded 75 percent",
+  "description": "CPU on the payments service has exceeded 75 percent for 5 minutes",
+  "status": "firing",
+  "deduplication_key": "4293868629",
+  "source_url": "https://www.example.com/alerts/my-alert-123",
+  "created_at": "2021-08-17T13:28:57.801578Z",
+  "updated_at": "2021-08-17T13:28:57.801578Z",
+  "attributes": [
+    {
+      "attribute": {
+        "id": "01GW2G3V0S59R238FAHPDS1R67",
+        "name": "Priority",
+        "type": "String"
+      },
+      "value": {
+        "label": "Urgent",
+        "literal": "urgent"
+      }
+    }
+  ]
+}
