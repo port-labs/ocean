@@ -335,5 +335,93 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "bedrockAgent",
+    "title": "Bedrock Agent",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "agentArn": {
+          "type": "string",
+          "title": "Agent ARN",
+          "description": "The Amazon Resource Name (ARN) of the Bedrock Agent"
+        },
+        "agentStatus": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the Bedrock Agent",
+          "enum": [
+            "CREATING",
+            "PREPARING",
+            "PREPARED",
+            "NOT_PREPARED",
+            "DELETING",
+            "FAILED",
+            "VERSIONING",
+            "UPDATING"
+          ]
+        },
+        "agentVersion": {
+          "type": "string",
+          "title": "Agent Version",
+          "description": "The current draft version of the agent"
+        },
+        "foundationModel": {
+          "type": "string",
+          "title": "Foundation Model",
+          "description": "The foundation model used for orchestration by the agent"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the agent"
+        },
+        "idleSessionTTLInSeconds": {
+          "type": "number",
+          "title": "Idle Session TTL (seconds)",
+          "description": "The number of seconds for which Amazon Bedrock keeps information about a user's conversation with the agent"
+        },
+        "agentResourceRoleArn": {
+          "type": "string",
+          "title": "Agent Resource Role ARN",
+          "description": "The ARN of the IAM role with permissions to invoke API operations on the agent"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The timestamp when the agent was created",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "The timestamp when the agent was last updated",
+          "format": "date-time"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the agent is deployed"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the Bedrock Agent"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
