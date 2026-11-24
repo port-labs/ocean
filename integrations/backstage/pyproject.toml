@@ -84,8 +84,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
+extend = "../../ruff.toml"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
