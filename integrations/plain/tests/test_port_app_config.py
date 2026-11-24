@@ -212,6 +212,14 @@ def test_thread_fields_mapping_includes_every_field_type() -> None:
                 "dateValue": None,
             },
             {
+                "key": "unset_string",
+                "type": "STRING",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
                 "key": "count",
                 "type": "NUMBER",
                 "stringValue": None,
@@ -220,11 +228,51 @@ def test_thread_fields_mapping_includes_every_field_type() -> None:
                 "dateValue": None,
             },
             {
+                "key": "unset_number",
+                "type": "NUMBER",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
                 "key": "flagged",
                 "type": "BOOL",
                 "stringValue": None,
                 "booleanValue": False,
                 "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "enabled",
+                "type": "BOOL",
+                "stringValue": None,
+                "booleanValue": True,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "unset_bool",
+                "type": "BOOL",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "product_area",
+                "type": "ENUM",
+                "stringValue": "Authentication",
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "amount",
+                "type": "CURRENCY",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": 12.5,
                 "dateValue": None,
             },
             {
@@ -247,7 +295,9 @@ def test_thread_fields_mapping_includes_every_field_type() -> None:
     }
 
     assert _apply(mappings["thread"]["properties"]["fields"], thread) == (
-        "label=alpha, count=0, flagged=false, due_at=2026-01-03T10:00:00.000Z, unset_date=null"
+        "label=alpha, unset_string=null, count=0, unset_number=null, "
+        "flagged=false, enabled=true, unset_bool=null, product_area=Authentication, "
+        "amount=12.5, due_at=2026-01-03T10:00:00.000Z, unset_date=null"
     )
 
 

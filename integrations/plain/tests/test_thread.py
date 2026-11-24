@@ -34,13 +34,12 @@ def test_list_threads_query_includes_relations_labels_and_fields() -> None:
 
 def test_thread_fields_selection_includes_every_value_field() -> None:
     for query in (LIST_THREADS, GET_THREAD):
-        thread_fields = query.split("threadFields {", 1)[1].split("createdAt", 1)[0]
-
-        assert "stringValue" in thread_fields
-        assert "booleanValue" in thread_fields
-        assert "numberValue" in thread_fields
-        assert "dateValue {" in thread_fields
-        assert "iso8601" in thread_fields
+        normalized = " ".join(query.split())
+        expected_fields = (
+            "threadFields { id key type stringValue booleanValue numberValue "
+            "dateValue { iso8601 } }"
+        )
+        assert expected_fields in normalized
 
 
 def test_thread_kind_is_registered_in_spec() -> None:
