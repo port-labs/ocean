@@ -8,15 +8,18 @@ from port_ocean.core.event_listener.once import (
     OnceEventListener,
     OnceEventListenerSettings,
 )
+from port_ocean.core.models import EventListenerType
 
 
 def test_once_exit_grace_seconds_default() -> None:
-    settings = OnceEventListenerSettings(type="ONCE")
+    settings = OnceEventListenerSettings(type=EventListenerType.ONCE)
     assert settings.exit_grace_seconds == DEFAULT_ONCE_EXIT_GRACE_SECONDS
 
 
 def test_once_exit_grace_seconds_configurable() -> None:
-    settings = OnceEventListenerSettings(type="ONCE", exit_grace_seconds=12.5)
+    settings = OnceEventListenerSettings(
+        type=EventListenerType.ONCE, exit_grace_seconds=12.5
+    )
     assert settings.exit_grace_seconds == 12.5
 
 
@@ -26,7 +29,7 @@ async def test_once_listener_schedules_force_exit_after_resync(
 ) -> None:
     listener = OnceEventListener(
         events={"on_resync": AsyncMock(return_value=True)},
-        event_listener_config=OnceEventListenerSettings(type="ONCE"),
+        event_listener_config=OnceEventListenerSettings(type=EventListenerType.ONCE),
     )
     monkeypatch.setattr(listener, "_resync", AsyncMock())
 
