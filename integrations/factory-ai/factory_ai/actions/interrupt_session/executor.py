@@ -13,6 +13,7 @@ from factory_ai.actions.interrupt_session.models import (
 )
 from factory_ai.clients.exceptions import FactoryAIError
 from factory_ai.config import DEFAULT_FACTORY_APP_HOST
+
 INTERRUPT_FAILED_STATUS_LABEL = "Interrupt failed"
 INTERRUPTING_STATUS_LABEL = "Interrupting session"
 SESSION_INTERRUPTED_STATUS_LABEL = "Session interrupted"

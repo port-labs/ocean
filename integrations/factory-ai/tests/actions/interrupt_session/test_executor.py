@@ -69,7 +69,9 @@ class TestInterruptSessionExecutor:
         run = make_run({"sessionId": "sess-1"})
         with (
             patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean,
-            patch.object(executor, "_reflect_session", new_callable=AsyncMock) as reflect,
+            patch.object(
+                executor, "_reflect_session", new_callable=AsyncMock
+            ) as reflect,
         ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
@@ -93,8 +95,12 @@ class TestInterruptSessionExecutor:
         client: MagicMock,
         mock_port_client: MagicMock,
     ) -> None:
-        request = httpx.Request("POST", "https://api.factory.ai/api/v0/sessions/sess-1/interrupt")
-        response = httpx.Response(404, json={"detail": "Session not found"}, request=request)
+        request = httpx.Request(
+            "POST", "https://api.factory.ai/api/v0/sessions/sess-1/interrupt"
+        )
+        response = httpx.Response(
+            404, json={"detail": "Session not found"}, request=request
+        )
         client.post.side_effect = httpx.HTTPStatusError(
             "not found", request=request, response=response
         )

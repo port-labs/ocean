@@ -200,9 +200,7 @@ class TestExecuteDroidExecutor:
                 "target": {"kind": "environment", "environmentId": "env-1"},
             },
         )
-        reflect.assert_awaited_once_with(
-            "sess-1", run, computer_id="comp-1"
-        )
+        reflect.assert_awaited_once_with("sess-1", run, computer_id="comp-1")
         mock_port_client.update_run_started.assert_not_called()
         mock_port_client.report_run_completed.assert_called_once()
         args, kwargs = mock_port_client.report_run_completed.call_args
@@ -493,7 +491,9 @@ class TestExecuteDroidExecutor:
             }
         )
         with (
-            patch("factory_ai.actions.abstract_executor.SessionExporter") as exporter_cls,
+            patch(
+                "factory_ai.actions.abstract_executor.SessionExporter"
+            ) as exporter_cls,
             patch.object(
                 executor, "register_entity", new_callable=AsyncMock
             ) as register,
@@ -514,7 +514,9 @@ class TestExecuteDroidExecutor:
             }
         )
         with (
-            patch("factory_ai.actions.abstract_executor.SessionExporter") as exporter_cls,
+            patch(
+                "factory_ai.actions.abstract_executor.SessionExporter"
+            ) as exporter_cls,
             patch.object(
                 executor, "register_entity", new_callable=AsyncMock
             ) as register,
