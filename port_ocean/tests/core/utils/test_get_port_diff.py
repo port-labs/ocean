@@ -162,3 +162,24 @@ def test_get_port_diff_mixed_changes() -> None:
 
     assert len(diff.deleted) == 1
     assert entity2 in diff.deleted
+
+
+def test_get_port_diff_same_identifier_different_blueprints() -> None:
+    """
+    Test get_port_diff with entities that share an identifier across blueprints.
+    Each blueprint's entity is tracked on its own, so neither hides the other.
+    """
+    service = create_test_entity("payments", "service", {}, {}, "payments")
+    repository = create_test_entity("payments", "repository", {}, {}, "payments")
+
+    diff = get_port_diff([service, repository], [service])
+
+    assert not diff.created
+    assert diff.modified == [service]
+    assert diff.deleted == [repository]
+
+    diff = get_port_diff([service], [service, repository])
+
+    assert diff.created == [repository]
+    assert diff.modified == [service]
+    assert not diff.deleted

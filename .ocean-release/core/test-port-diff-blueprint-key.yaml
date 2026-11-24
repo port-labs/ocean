@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Add a unit test that get_port_diff keeps entities with the same identifier in different blueprints apart
