@@ -105,7 +105,7 @@ resources:
             assigneeType: .assignedTo.__typename
             labels: "[.labels[]?.labelType.name]"
             productArea: '([.threadFields[]? | select(.key == "product_area") | .stringValue] | first) // ""'
-            fields: '[.threadFields[]? | .key + "=" + ((.stringValue // .numberValue // .booleanValue) | tostring)] | join(", ")'
+            fields: '[.threadFields[]? | .key + "=" + ((.stringValue // .numberValue // .dateValue.iso8601 // .booleanValue) | tostring)] | join(", ")'
             createdAt: .createdAt.iso8601
             updatedAt: .updatedAt.iso8601
           relations:
