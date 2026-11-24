@@ -35,10 +35,13 @@ def _run(execution_properties: dict[str, object]) -> WorkflowNodeRun:
 
 @pytest.mark.asyncio
 async def test_cancel_response_posts_to_openai_cancel_route() -> None:
-    executor = CancelResponseExecutor()
-    executor.client.send_api_request = AsyncMock(
+    client_mock = MagicMock()
+    client_mock.build_url = CancelResponseExecutor().client.build_url
+    client_mock.send_api_request = AsyncMock(
         return_value={"id": "resp_1", "status": "cancelled"}
     )
+    executor = CancelResponseExecutor()
+    executor.client = client_mock
     mock_ocean = MagicMock()
     mock_ocean.port_client.post_run_log = AsyncMock()
     mock_ocean.port_client.report_run_completed = AsyncMock()
@@ -49,9 +52,11 @@ async def test_cancel_response_posts_to_openai_cancel_route() -> None:
     ):
         await executor.execute(run)
 
-    url = executor.client.send_api_request.await_args.args[0]
+    send_call = client_mock.send_api_request.await_args
+    assert send_call is not None
+    url = send_call.args[0]
     assert url.endswith("/openai/v1/responses/resp_1/cancel")
-    assert executor.client.send_api_request.await_args.kwargs["method"] == "POST"
+    assert send_call.kwargs["method"] == "POST"
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert (
         mock_ocean.port_client.report_run_completed.await_args.kwargs["status_label"]

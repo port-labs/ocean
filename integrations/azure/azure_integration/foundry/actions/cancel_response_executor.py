@@ -32,7 +32,9 @@ class CancelResponseExecutor(AbstractFoundryExecutor):
         return str(response_id) if response_id else None
 
     async def execute(self, run: IntegrationRun) -> None:
-        inputs = CancelResponseInputs.from_execution_properties(run.execution_properties)
+        inputs = CancelResponseInputs.from_execution_properties(
+            run.execution_properties
+        )
         cancel_url = self.client.build_url(
             inputs.project_endpoint,
             f"openai/v1/responses/{inputs.responseId}/cancel",
