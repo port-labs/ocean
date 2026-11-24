@@ -84,6 +84,9 @@ plugins = [
     "pydantic.v1.mypy"
 ]
 
+[tool.ruff]
+extend = "../../ruff.toml"
+
 [tool.black]
 line-length = 88
 target-version = ['py39', 'py310', 'py311']
