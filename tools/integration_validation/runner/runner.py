@@ -48,6 +48,10 @@ from tools.integration_validation.runner.preflight import (
     run_preflight,
     select_scenario_names,
 )
+from tools.integration_validation.runner.statuses import (
+    ScenarioIntegrationStatus,
+    ValidationAggregateStatus,
+)
 
 
 @dataclass(frozen=True)
@@ -86,13 +90,7 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
     plans = _plan_scenarios(paths, scenarios, scenario_names)
 
     scenario_runs = asyncio.run(
-        _run_scenarios(
-            paths,
-            scenarios,
-            plans,
-            integration_type,
-            options,
-        )
+        _run_plans(paths, scenarios, plans, integration_type, options)
     )
 
     result = ValidateResult(paths=paths, options=options, scenario_runs=scenario_runs)
@@ -137,25 +135,17 @@ def _plan_scenarios(
     return plans
 
 
-async def _run_scenarios(
+async def _run_plans(
     paths: ValidationPaths,
     scenarios: ScenariosDocument,
     plans: list[ScenarioPortPlan],
     integration_type: str,
     options: ValidateOptions,
 ) -> list[ScenarioRun]:
-    runs: list[ScenarioRun] = []
-    for plan in plans:
-        runs.append(
-            await _run_scenario(
-                paths,
-                scenarios,
-                plan,
-                integration_type,
-                options,
-            )
-        )
-    return runs
+    return [
+        await _run_scenario(paths, scenarios, plan, integration_type, options)
+        for plan in plans
+    ]
 
 
 async def _run_scenario(
@@ -241,7 +231,7 @@ def _write_report(result: ValidateResult, report_path: Path) -> None:
 def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
     return {
         "name": run.plan.scenario_name,
-        "status": _scenario_status(run),
+        "status": run.integration.integration_status(),
         "kinds": run.plan.kinds,
         "port": {
             "integration_identifier": run.plan.integration_identifier,
@@ -249,40 +239,14 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleaned_up": run.cleaned_up,
             "cleanup_leftovers": run.cleanup_leftovers,
         },
-        "integration": _integration_report(run.integration),
+        "integration": run.integration.report_dict(),
     }
 
 
-def _integration_report(integration: IntegrationRunResult) -> dict[str, Any]:
-    return {
-        "returncode": integration.returncode,
-        "timed_out": integration.timed_out,
-        "stderr_tail": _tail(integration.stderr),
-        "stdout_tail": _tail(integration.stdout),
-    }
-
-
-def _tail(text: str, *, limit: int = 2000) -> str:
-    if len(text) <= limit:
-        return text
-    return text[-limit:]
-
-
-def _scenario_status(run: ScenarioRun) -> str:
-    if run.integration.timed_out:
-        return "integration_timeout"
-    if run.integration.returncode != 0:
-        return "integration_failed"
-    return "integration_completed"
-
-
-def _aggregate_status(result: ValidateResult) -> str:
-    statuses = {_scenario_status(run) for run in result.scenario_runs}
-    if any(
-        status.endswith("failed") or status == "integration_timeout"
-        for status in statuses
-    ):
-        return "failed"
-    if statuses == {"integration_completed"}:
-        return "passed"
-    return "partial"
+def _aggregate_status(result: ValidateResult) -> ValidationAggregateStatus:
+    statuses = {run.integration.integration_status() for run in result.scenario_runs}
+    if any(status.is_failure for status in statuses):
+        return ValidationAggregateStatus.FAILED
+    if statuses == {ScenarioIntegrationStatus.COMPLETED}:
+        return ValidationAggregateStatus.PASSED
+    return ValidationAggregateStatus.PARTIAL

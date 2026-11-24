@@ -54,7 +54,7 @@ def integration_config_env_vars(config: dict[str, Any]) -> dict[str, str]:
             continue
         env_key = f"{_INTEGRATION_CONFIG_ENV_PREFIX}{decamelize(key).upper()}"
         if isinstance(value, (dict, list)):
-            env[env_key] = _json_stringify(value)
+            env[env_key] = json.dumps(value)
         else:
             env[env_key] = str(value)
     return env
@@ -78,7 +78,3 @@ def build_sail_subprocess_env(
     env["OCEAN__EVENT_LISTENER__TYPE"] = "ONCE"
     env.update(integration_config_env_vars(rendered))
     return env
-
-
-def _json_stringify(value: dict[str, Any] | list[Any]) -> str:
-    return json.dumps(value)

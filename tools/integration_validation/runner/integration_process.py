@@ -5,6 +5,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -12,9 +13,11 @@ from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.integration_config_env import (
     build_sail_subprocess_env,
 )
+from tools.integration_validation.runner.statuses import ScenarioIntegrationStatus
 
 DEFAULT_MOCK_BASE_URL = "http://127.0.0.1:9000"
 DEFAULT_INTEGRATION_TIMEOUT_SECONDS = 180.0
+REPORT_LOG_TAIL_CHARS = 2000
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,21 @@ class IntegrationRunResult:
     stdout: str
     stderr: str
     timed_out: bool
+
+    def report_dict(self, *, tail_chars: int = REPORT_LOG_TAIL_CHARS) -> dict[str, Any]:
+        return {
+            "returncode": self.returncode,
+            "timed_out": self.timed_out,
+            "stderr_tail": self.stderr[-tail_chars:],
+            "stdout_tail": self.stdout[-tail_chars:],
+        }
+
+    def integration_status(self) -> ScenarioIntegrationStatus:
+        if self.timed_out:
+            return ScenarioIntegrationStatus.TIMEOUT
+        if self.returncode != 0:
+            return ScenarioIntegrationStatus.FAILED
+        return ScenarioIntegrationStatus.COMPLETED
 
 
 def resolve_ocean_sail_command() -> list[str]:

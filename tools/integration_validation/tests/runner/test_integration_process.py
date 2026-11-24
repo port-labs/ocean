@@ -9,6 +9,26 @@ from tools.integration_validation.runner.integration_process import (
     IntegrationRunResult,
     run_ocean_sail_once,
 )
+from tools.integration_validation.runner.statuses import ScenarioIntegrationStatus
+
+
+@pytest.mark.parametrize(
+    ("returncode", "timed_out", "expected"),
+    [
+        (0, False, ScenarioIntegrationStatus.COMPLETED),
+        (1, False, ScenarioIntegrationStatus.FAILED),
+        (-1, True, ScenarioIntegrationStatus.TIMEOUT),
+    ],
+)
+def test_integration_status(
+    returncode: int,
+    timed_out: bool,
+    expected: ScenarioIntegrationStatus,
+) -> None:
+    result = IntegrationRunResult(
+        returncode=returncode, stdout="", stderr="", timed_out=timed_out
+    )
+    assert result.integration_status() is expected
 
 
 def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
