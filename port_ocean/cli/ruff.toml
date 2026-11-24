@@ -1,0 +1,4 @@
+# Cookiecutter templates live under port_ocean/cli/cookiecutter/<slug>/ and use
+# extend = "../../ruff.toml", which resolves here. Generated integrations under
+# integrations/<slug>/ extend the repo root config directly.
+extend = "../../ruff.toml"
