@@ -9,7 +9,11 @@ define run_checks
 	echo "Running mypy"; \
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
 	echo "Running ruff"; \
-	ruff check . || exit_code=$$?; \
+	if [ "$1" = "." ]; then \
+		ruff check . --extend-exclude port_ocean/cli/cookiecutter --extend-exclude integrations; \
+	else \
+		ruff check .; \
+	fi || exit_code=$$?; \
 	echo "Running black"; \
 	black --check . || exit_code=$$?; \
 	echo "Running yamllint"; \
@@ -108,7 +112,7 @@ lint:
 lint/fix:
 	$(ACTIVATE) && \
 	black . && \
-	ruff check --fix .
+	ruff check --fix . --extend-exclude port_ocean/cli/cookiecutter --extend-exclude integrations
 
 # Development commands
 build:

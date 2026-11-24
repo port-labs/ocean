@@ -7,6 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.62.4 (2026-11-24)
+
+
+### Improvements
+
+- >-
+    Repository-wide Ruff configuration now lives in a single root ruff.toml; Ocean
+    core, integrations, and CLI-scaffolded integrations extend that shared config
+    instead of duplicating lint rules in each pyproject.toml.
+
+
 ## 0.62.3 (2026-11-24)
 
 
