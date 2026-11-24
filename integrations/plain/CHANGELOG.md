@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.10-beta (2026-11-24)
+
+
+### Bug Fixes
+
+- Fetch the value of DATE thread fields (`dateValue.iso8601`) and include it in the default thread `fields` mapping.
+
+
 ## 0.3.9-beta (2026-11-24)
 
 
