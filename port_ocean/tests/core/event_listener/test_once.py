@@ -4,10 +4,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from port_ocean.core.event_listener.once import (
-    ONCE_EXIT_GRACE_SECONDS,
+    DEFAULT_ONCE_EXIT_GRACE_SECONDS,
     OnceEventListener,
     OnceEventListenerSettings,
 )
+
+
+def test_once_exit_grace_seconds_default() -> None:
+    settings = OnceEventListenerSettings(type="ONCE")
+    assert settings.exit_grace_seconds == DEFAULT_ONCE_EXIT_GRACE_SECONDS
+
+
+def test_once_exit_grace_seconds_configurable() -> None:
+    settings = OnceEventListenerSettings(type="ONCE", exit_grace_seconds=12.5)
+    assert settings.exit_grace_seconds == 12.5
 
 
 @pytest.mark.asyncio
@@ -45,6 +55,6 @@ async def test_once_listener_schedules_force_exit_after_resync(
     kwargs = thread_cls.call_args.kwargs
     assert kwargs["daemon"] is True
     assert kwargs["name"] == "once-force-exit"
-    assert ONCE_EXIT_GRACE_SECONDS > 0
+    assert listener.event_listener_config.exit_grace_seconds > 0
     mock_thread.start.assert_called_once()
     raise_signal.assert_called_once()

@@ -22,19 +22,22 @@ from port_ocean.utils.integration import (
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import convert_str_to_utc_datetime, parse_interval_to_minutes
 
-# Grace period for uvicorn + signal handlers before hard-killing leftover threads.
-ONCE_EXIT_GRACE_SECONDS = 30
+DEFAULT_ONCE_EXIT_GRACE_SECONDS = 30.0
 
 
 class OnceEventListenerSettings(EventListenerSettings):
     """
     Once event listener configuration settings.
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
+
+    Attributes:
+        exit_grace_seconds: Seconds to wait after SIGINT for graceful shutdown before ``os._exit``.
     """
 
     type: Literal[EventListenerType.ONCE]
     should_process_webhooks: bool = False
     should_run_actions: bool = False
+    exit_grace_seconds: float = DEFAULT_ONCE_EXIT_GRACE_SECONDS
 
 
 class OnceEventListener(BaseEventListener):
@@ -187,12 +190,14 @@ class OnceEventListener(BaseEventListener):
                 # SIGINT starts graceful uvicorn shutdown, but non-daemon threads
                 # (e.g. log shipping) can keep the process alive forever. Hard-exit
                 # after a grace period so the process always terminates.
+                grace_seconds = self.event_listener_config.exit_grace_seconds
+
                 def _force_exit() -> None:
-                    time.sleep(ONCE_EXIT_GRACE_SECONDS)
+                    time.sleep(grace_seconds)
                     logger.bind(local_only=True).warning(
                         "Once mode grace period elapsed; forcing process exit",
                         exit_code=exit_code,
-                        grace_seconds=ONCE_EXIT_GRACE_SECONDS,
+                        grace_seconds=grace_seconds,
                     )
                     os._exit(exit_code)
 
