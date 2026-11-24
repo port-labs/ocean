@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "playbook_id": "playbook-372d8afe44ae40ba84601385404e5cfa",
+        "created_at": 1792504698,
+        "updated_at": 1792504698,
+        "title": "Hi, I'm Devin"
+      }
+    ],
+    "end_cursor": null,
+    "has_next_page": false,
+    "total": 1
+  }
+}
