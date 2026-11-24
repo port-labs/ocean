@@ -13,12 +13,7 @@ _INTEGRATION_CONFIG_ENV_PREFIX = "OCEAN__INTEGRATION__CONFIG__"
 
 # Validation runs integrations in-process address-less mode; webhook/app URLs must
 # not leak from the developer's .env into the subprocess.
-_BLOCKED_SUBPROCESS_ENV_KEYS = frozenset(
-    {
-        "OCEAN__BASE_URL",
-        "OCEAN__INTEGRATION__CONFIG__APP_HOST",
-    }
-)
+_BLOCKED_SUBPROCESS_ENV_KEYS = frozenset({"OCEAN__BASE_URL"})
 
 
 def merge_scenario_integration_config(
@@ -31,20 +26,26 @@ def merge_scenario_integration_config(
     return merged
 
 
+def _render_integration_config_value(value: Any, *, mock_base_url: str) -> Any:
+    if isinstance(value, str):
+        return _MOCK_BASE_URL_TEMPLATE.sub(mock_base_url, value)
+    if isinstance(value, dict):
+        return render_integration_config_values(value, mock_base_url=mock_base_url)
+    if isinstance(value, list):
+        return [
+            _render_integration_config_value(item, mock_base_url=mock_base_url)
+            for item in value
+        ]
+    return value
+
+
 def render_integration_config_values(
     config: dict[str, Any], *, mock_base_url: str
 ) -> dict[str, Any]:
-    rendered: dict[str, Any] = {}
-    for key, value in config.items():
-        if isinstance(value, str):
-            rendered[key] = _MOCK_BASE_URL_TEMPLATE.sub(mock_base_url, value)
-        elif isinstance(value, dict):
-            rendered[key] = render_integration_config_values(
-                value, mock_base_url=mock_base_url
-            )
-        else:
-            rendered[key] = value
-    return rendered
+    return {
+        key: _render_integration_config_value(value, mock_base_url=mock_base_url)
+        for key, value in config.items()
+    }
 
 
 def integration_config_env_vars(config: dict[str, Any]) -> dict[str, str]:

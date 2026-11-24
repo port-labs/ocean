@@ -34,6 +34,6 @@ python -m tools.integration_validation.runner integrations/datadog \
 
 Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`, `--mock-base-url URL` (required; the runner does not start the mock), `--integration-timeout SECONDS` (subprocess limit, default 180).
 
-Each scenario runs `ocean sail -O` as a subprocess with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` and `OCEAN__INTEGRATION__CONFIG__APP_HOST` are stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
+Each scenario runs `ocean sail -O` as a subprocess with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
 
 Exit codes: `0` pass, `1` validation failed (for example Port rejected a blueprint or the mapping), `2` setup/preflight error.

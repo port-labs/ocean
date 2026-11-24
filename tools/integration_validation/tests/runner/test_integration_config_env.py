@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from tools.integration_validation.runner.integration_config_env import (
@@ -16,6 +18,30 @@ def test_render_integration_config_replaces_mock_base_url() -> None:
     assert rendered == {"exampleBaseUrl": "http://127.0.0.1:9000/api", "count": 1}
 
 
+def test_render_integration_config_replaces_mock_base_url_in_lists() -> None:
+    rendered = render_integration_config_values(
+        {
+            "organizationUrls": [
+                "{{mock_base_url}}/org-a",
+                {"nestedBaseUrl": "{{mock_base_url}}/nested"},
+            ]
+        },
+        mock_base_url="http://127.0.0.1:9000",
+    )
+    assert rendered == {
+        "organizationUrls": [
+            "http://127.0.0.1:9000/org-a",
+            {"nestedBaseUrl": "http://127.0.0.1:9000/nested"},
+        ]
+    }
+
+    env = integration_config_env_vars(rendered)
+    assert json.loads(env["OCEAN__INTEGRATION__CONFIG__ORGANIZATION_URLS"]) == [
+        "http://127.0.0.1:9000/org-a",
+        {"nestedBaseUrl": "http://127.0.0.1:9000/nested"},
+    ]
+
+
 def test_integration_config_env_vars_use_ocean_prefix() -> None:
     env = integration_config_env_vars(
         {"datadogBaseUrl": "http://example.com", "datadogApiKey": "key"}
@@ -26,11 +52,10 @@ def test_integration_config_env_vars_use_ocean_prefix() -> None:
     }
 
 
-def test_build_sail_subprocess_env_blocks_app_host_and_sets_once(
+def test_build_sail_subprocess_env_blocks_base_url_and_sets_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("OCEAN__BASE_URL", "https://should-not-propagate")
-    monkeypatch.setenv("OCEAN__INTEGRATION__CONFIG__APP_HOST", "https://app")
     monkeypatch.setenv("OCEAN__PORT__CLIENT_ID", "client")
 
     env = build_sail_subprocess_env(
@@ -40,7 +65,6 @@ def test_build_sail_subprocess_env_blocks_app_host_and_sets_once(
     )
 
     assert "OCEAN__BASE_URL" not in env
-    assert "OCEAN__INTEGRATION__CONFIG__APP_HOST" not in env
     assert env["OCEAN__INTEGRATION__IDENTIFIER"] == "validate-sample-happy"
     assert env["OCEAN__INITIALIZE_PORT_RESOURCES"] == "false"
     assert env["OCEAN__EVENT_LISTENER__TYPE"] == "ONCE"
