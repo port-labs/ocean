@@ -1,0 +1,1 @@
+from datadog.probe.probe import DatadogPermissionProbe as DatadogPermissionProbe
