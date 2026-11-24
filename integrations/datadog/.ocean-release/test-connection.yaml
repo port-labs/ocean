@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added test connection (probe) support, verifying the Datadog credentials and read access for each resource kind, per organization in multi-org setups
