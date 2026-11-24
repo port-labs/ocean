@@ -1,7 +1,0 @@
-bump: patch
-changelog-type: bugfix
-changelog: >-
-  Fix the application hanging after a Once-mode run finishes: force exit after a
-  configurable grace period (`OCEAN__EVENT_LISTENER__EXIT_GRACE_SECONDS`),
-  daemonize Port log-ship threads with a join timeout, and avoid re-flushing log
-  ingest failures during shutdown.
