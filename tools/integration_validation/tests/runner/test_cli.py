@@ -15,7 +15,7 @@ MOCK_BASE_URL = "http://127.0.0.1:9000"
 
 @pytest.fixture(autouse=True)
 def fake_ocean_sail(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_sail(*_args: object, **_kwargs: object) -> IntegrationRunResult:
+    def fake_sail(*_args: object, **_kwargs: object) -> IntegrationRunResult:
         return IntegrationRunResult(
             returncode=0,
             stdout="",
@@ -234,7 +234,7 @@ def test_validate_cleans_up_when_integration_step_raises(
     fake_port_clients: dict[str, FakePortClient],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def boom(*_args: object, **_kwargs: object) -> None:
+    def boom(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("sail blew up")
 
     monkeypatch.setattr(runner_module, "run_ocean_sail_once", boom)
@@ -265,17 +265,13 @@ def test_validate_with_mock_base_url_runs_sail_after_port_prep(
 ) -> None:
     sail_calls: list[str] = []
 
-    async def fake_sail(
+    def fake_sail(
         integration_root: Path,
         *,
         integration_identifier: str,
         **kwargs: object,
-    ) -> object:
+    ) -> IntegrationRunResult:
         sail_calls.append(integration_identifier)
-        from tools.integration_validation.runner.integration_process import (
-            IntegrationRunResult,
-        )
-
         return IntegrationRunResult(
             returncode=0,
             stdout="",

@@ -28,11 +28,10 @@ From the repo root, against an integration directory:
 # Terminal 2: Port prep + one-shot sail (mock must already be listening)
 python -m tools.integration_validation.runner integrations/datadog \
   --scenario happy_path \
-  --mock-base-url http://127.0.0.1:9000 \
   --report /tmp/validate-report.json
 ```
 
-Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`, `--mock-base-url URL` (required; the runner does not start the mock), `--integration-timeout SECONDS` (subprocess limit, default 180).
+Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`, `--mock-base-url URL` (default `http://127.0.0.1:9000`; the runner does not start the mock), `--integration-timeout SECONDS` (subprocess limit, default 180).
 
 Each scenario runs `ocean sail -O` as a subprocess with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
 

@@ -183,7 +183,7 @@ async def _run_scenario(
             scenarios.defaults.integration_config,
             scenario.integration_config,
         )
-        integration_result = await run_ocean_sail_once(
+        integration_result = run_ocean_sail_once(
             paths.integration_root,
             integration_identifier=plan.integration_identifier,
             integration_config=integration_config,

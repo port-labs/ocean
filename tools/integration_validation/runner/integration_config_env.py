@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from typing import Any
 
 from humps import decamelize
 
-_MOCK_BASE_URL_TEMPLATE = re.compile(r"\{\{\s*mock_base_url\s*\}\}")
+MOCK_BASE_URL_PLACEHOLDER = "{{mock_base_url}}"
 
 _INTEGRATION_CONFIG_ENV_PREFIX = "OCEAN__INTEGRATION__CONFIG__"
 
@@ -28,7 +27,7 @@ def merge_scenario_integration_config(
 
 def _render_integration_config_value(value: Any, *, mock_base_url: str) -> Any:
     if isinstance(value, str):
-        return _MOCK_BASE_URL_TEMPLATE.sub(mock_base_url, value)
+        return value.replace(MOCK_BASE_URL_PLACEHOLDER, mock_base_url)
     if isinstance(value, dict):
         return render_integration_config_values(value, mock_base_url=mock_base_url)
     if isinstance(value, list):

@@ -8,6 +8,10 @@ from pathlib import Path
 from typing import Sequence
 
 from tools.integration_validation.runner.errors import ValidationCliError
+from tools.integration_validation.runner.integration_process import (
+    DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
+    DEFAULT_MOCK_BASE_URL,
+)
 from tools.integration_validation.runner.runner import ValidateOptions, run_validate
 
 
@@ -51,17 +55,18 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument(
         "--mock-base-url",
         dest="mock_base_url",
-        required=True,
+        default=DEFAULT_MOCK_BASE_URL,
         metavar="URL",
         help=(
-            "Base URL of a mock server already running and loaded with the scenario. "
-            "Runs `ocean sail -O` after Port preparation."
+            "Base URL of a mock server already running and loaded with the scenario "
+            f"(default: {DEFAULT_MOCK_BASE_URL}). Runs `ocean sail -O` after Port "
+            "preparation."
         ),
     )
     parser.add_argument(
         "--integration-timeout",
         type=float,
-        default=180.0,
+        default=DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
         dest="integration_timeout_seconds",
         metavar="SECONDS",
         help="Max seconds to wait for the integration subprocess (default: 180).",

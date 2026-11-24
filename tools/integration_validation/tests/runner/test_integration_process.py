@@ -11,8 +11,7 @@ from tools.integration_validation.runner.integration_process import (
 )
 
 
-@pytest.mark.asyncio
-async def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
+def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -21,24 +20,23 @@ async def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
 
     captured: dict[str, Any] = {}
 
-    class FakeProcess:
+    class FakeCompletedProcess:
         returncode = 0
+        stdout = b"ok"
+        stderr = b""
 
-        async def communicate(self) -> tuple[bytes, bytes]:
-            return b"ok", b""
-
-    async def fake_create_subprocess_exec(*args: Any, **kwargs: Any) -> FakeProcess:
+    def fake_run(*args: Any, **kwargs: Any) -> FakeCompletedProcess:
         captured["args"] = args
         captured["kwargs"] = kwargs
-        return FakeProcess()
+        return FakeCompletedProcess()
 
     monkeypatch.setenv("OCEAN_CLI", "/fake/ocean")
     monkeypatch.setattr(
-        "tools.integration_validation.runner.integration_process.asyncio.create_subprocess_exec",
-        fake_create_subprocess_exec,
+        "tools.integration_validation.runner.integration_process.subprocess.run",
+        fake_run,
     )
 
-    result = await run_ocean_sail_once(
+    result = run_ocean_sail_once(
         integration_root,
         integration_identifier="validate-sample-happy",
         integration_config={"exampleBaseUrl": "{{mock_base_url}}"},
@@ -48,7 +46,7 @@ async def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
     assert result == IntegrationRunResult(
         returncode=0, stdout="ok", stderr="", timed_out=False
     )
-    assert captured["args"] == ("/fake/ocean", "sail", "-O")
+    assert captured["args"][0] == ["/fake/ocean", "sail", "-O"]
     assert captured["kwargs"]["cwd"] == integration_root
     assert (
         captured["kwargs"]["env"]["OCEAN__INTEGRATION__CONFIG__EXAMPLE_BASE_URL"]
