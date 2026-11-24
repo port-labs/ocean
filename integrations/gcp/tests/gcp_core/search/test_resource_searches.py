@@ -183,6 +183,7 @@ async def test_feed_to_resource(
     mock_resource_config.selector = MagicMock(preserve_api_response_case_style=False)
     get_current_resource_config_mock.return_value = mock_resource_config
 
+    from gcp_core.feed_event import FeedEvent
     from gcp_core.search.resource_searches import feed_event_to_resource
 
     # Mock resolve_request_controllers
@@ -191,14 +192,14 @@ async def test_feed_to_resource(
     mock_asset_name = "projects/project_name/topics/topic_name"
     mock_asset_type = "pubsub.googleapis.com/Topic"
     mock_asset_project_name = "project_name"
-    mock_asset_data = {
-        "asset": {
-            "name": mock_asset_name,
-            "asset_type": mock_asset_type,
-        },
-        "event": "google.cloud.audit.log.v1.written",
-        "project": "project_name",
-    }
+    mock_feed_event = FeedEvent.model_validate(
+        {
+            "asset": {
+                "name": mock_asset_name,
+                "assetType": mock_asset_type,
+            },
+        }
+    )
 
     expected_resource = {
         "__project": {
@@ -229,13 +230,64 @@ async def test_feed_to_resource(
             asset_name=mock_asset_name,
             project_rate_limiter=mock_rate_limiter,
             project_id=mock_asset_project_name,
-            asset_data=mock_asset_data,
+            feed_event=mock_feed_event,
             config=config,
             project_semaphore=AsyncMock(),
         )
 
     # Assert
     assert actual_resource == expected_resource
+
+
+@pytest.mark.asyncio
+@patch("gcp_core.utils.get_current_resource_config")
+async def test_feed_to_resource_reads_a_delete_from_the_prior_asset(
+    get_current_resource_config_mock: MagicMock,
+    monkeypatch: Any,
+) -> None:
+    """A delete carries the resource only on priorAsset: the live asset is already gone."""
+    from gcp_core.feed_event import FeedEvent
+    from gcp_core.search.resource_searches import feed_event_to_resource
+
+    mock_projects_client = AsyncMock()
+    mock_projects_client.get_project = AsyncMock(
+        return_value=Project({"name": "project_name"})
+    )
+    monkeypatch.setitem(clients._instances, "ProjectsAsyncClient", mock_projects_client)
+
+    mock_resource_config = MagicMock()
+    mock_resource_config.selector = MagicMock(preserve_api_response_case_style=False)
+    get_current_resource_config_mock.return_value = mock_resource_config
+
+    feed_event = FeedEvent.model_validate(
+        {
+            "asset": {
+                "name": "//compute.googleapis.com/projects/p/instances/gone",
+                "assetType": "compute.googleapis.com/Instance",
+            },
+            "priorAsset": {
+                "name": "//compute.googleapis.com/projects/p/instances/gone",
+                "assetType": "compute.googleapis.com/Instance",
+                "resource": {"data": {"name": "gone", "status": "TERMINATED"}},
+            },
+            "deleted": True,
+        }
+    )
+
+    async with event_context("test_event"):
+        resource = await feed_event_to_resource(
+            asset_type="compute.googleapis.com/Instance",
+            asset_name="//compute.googleapis.com/projects/p/instances/gone",
+            project_id="project_name",
+            feed_event=feed_event,
+            project_rate_limiter=AsyncMock(),
+            project_semaphore=AsyncMock(),
+            config=ProtoConfig(preserving_proto_field_name=False),
+        )
+
+    assert resource["name"] == "gone"
+    assert resource["status"] == "TERMINATED"
+    assert resource["__project"]["name"] == "project_name"
 
 
 @pytest.mark.asyncio
@@ -417,5 +469,137 @@ async def test_search_all_resources_in_project_reraises_unexpected_error(
     with pytest.raises(ValueError, match="boom"):
         async for _ in resource_searches.search_all_resources_in_project(
             project, "bigquery.googleapis.com/Table", semaphore
+        ):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_search_all_iam_policies_per_project_request_and_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `asset_types` is a repeated request field, so every mapped type goes out in one search
+    rather than one search per type. The request carries only `scope` and `asset_types` when
+    no `policyQuery` is set (no `read_mask`, which belongs to searchAllResources), and the yielded item is the raw
+    IamPolicySearchResult: `policy` left intact for the mapping's `itemsToParse` to expand,
+    and no `__project` enrichment since the payload already carries `project`.
+    """
+    from gcp_core.search import resource_searches
+
+    policy_result = {
+        "resource": "//iam.googleapis.com/projects/p/serviceAccounts/a@p.iam.gserviceaccount.com",
+        "asset_type": "iam.googleapis.com/ServiceAccount",
+        "project": "projects/385573848890",
+        "policy": {"bindings": [{"role": "roles/viewer", "members": ["user:a@b.com"]}]},
+    }
+    captured: dict[str, Any] = {}
+
+    monkeypatch.setattr(
+        resource_searches, "parse_protobuf_messages", lambda results: results
+    )
+
+    async def fake_paginated_query(
+        client: Any,
+        method: str,
+        request: dict[str, Any],
+        parse_fn: Any,
+        rate_limiter: Any = None,
+        timeout: Any = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        captured["method"] = method
+        captured["request"] = request
+        response = MagicMock()
+        response.results = [policy_result]
+        yield parse_fn(response)
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    results: list[Any] = []
+    async for batch in resource_searches.search_all_iam_policies_per_project(
+        {"name": "projects/123"},
+        ["iam.googleapis.com/ServiceAccount", "storage.googleapis.com/Bucket"],
+        BoundedSemaphore(1),
+    ):
+        results.extend(batch)
+
+    assert captured["method"] == "search_all_iam_policies"
+    assert captured["request"] == {
+        "scope": "projects/123",
+        "asset_types": [
+            "iam.googleapis.com/ServiceAccount",
+            "storage.googleapis.com/Bucket",
+        ],
+    }
+    assert results == [policy_result]
+    assert "__project" not in results[0]
+    assert results[0]["policy"]["bindings"]
+
+
+@pytest.mark.asyncio
+async def test_search_all_iam_policies_per_project_passes_policy_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`policyQuery` is forwarded as the request's `query`."""
+    from gcp_core.search import resource_searches
+
+    captured: dict[str, Any] = {}
+
+    monkeypatch.setattr(
+        resource_searches, "parse_protobuf_messages", lambda results: results
+    )
+
+    async def fake_paginated_query(
+        client: Any,
+        method: str,
+        request: dict[str, Any],
+        parse_fn: Any,
+        rate_limiter: Any = None,
+        timeout: Any = None,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        captured["request"] = request
+        response = MagicMock()
+        response.results = []
+        yield parse_fn(response)
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    async for _ in resource_searches.search_all_iam_policies_per_project(
+        {"name": "projects/123"},
+        ["iam.googleapis.com/ServiceAccount"],
+        BoundedSemaphore(1),
+        policy_query="memberTypes:serviceAccount",
+    ):
+        pass
+
+    assert captured["request"]["query"] == "memberTypes:serviceAccount"
+
+
+@pytest.mark.asyncio
+async def test_search_all_iam_policies_per_project_propagates_permission_denied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `PermissionDenied` must propagate, unlike on `search_all_resources_in_project` which
+    swallows it. Grant entities drive deletion in Port: an empty yield with an empty error
+    list makes Ocean reconcile away every grant it holds for the project and still report
+    the resync successful. Propagating makes `_resync_reconciliation` skip the delete phase.
+    """
+    from google.api_core.exceptions import PermissionDenied
+
+    from gcp_core.search import resource_searches
+
+    async def fake_paginated_query(
+        *args: Any, **kwargs: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise PermissionDenied("missing cloudasset.assets.searchAllIamPolicies")
+        yield  # pragma: no cover - unreachable, keeps this an async generator
+
+    monkeypatch.setattr(resource_searches, "paginated_query", fake_paginated_query)
+
+    with pytest.raises(PermissionDenied):
+        async for _ in resource_searches.search_all_iam_policies_per_project(
+            {"name": "projects/123"},
+            ["iam.googleapis.com/ServiceAccount"],
+            BoundedSemaphore(1),
         ):
             pass

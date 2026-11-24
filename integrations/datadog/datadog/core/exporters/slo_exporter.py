@@ -1,10 +1,11 @@
 import asyncio
+from datetime import datetime
 from itertools import batched
-
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
+
 
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
@@ -14,6 +15,11 @@ from datadog.core.exporters.base_exporter import (
     ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
+)
+from datadog.incremental import (
+    CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY,
+    CHANGED_SLOS_AUDIT_QUERY,
+    restricted_resource_id,
 )
 
 SLO_ENRICHMENT_BATCH_SIZE = 10
@@ -76,6 +82,33 @@ class SloExporter(
                     ]
                 )
                 yield enriched_slos
+
+    async def get_changed_slos(
+        self, options: ListSloOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get SLOs created or modified since ``incremental_cursor``, found through audit
+        events. With restriction policies on, SLOs whose restriction policy changed are
+        included.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        slo_ids = dict.fromkeys(
+            await self._changed_asset_ids(CHANGED_SLOS_AUDIT_QUERY, incremental_cursor)
+        )
+        if options.include_restriction_policy:
+            for asset_id in await self._changed_asset_ids(
+                CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY, incremental_cursor
+            ):
+                if slo_id := restricted_resource_id(asset_id, "slo"):
+                    slo_ids[slo_id] = None
+
+        async for slos in self._get_existing_resources(
+            GetSloOptions(
+                resource_id=slo_id,
+                include_restriction_policy=options.include_restriction_policy,
+            )
+            for slo_id in slo_ids
+        ):
+            yield slos
 
     async def get_resource(self, options: GetSloOptions) -> dict[str, Any] | None:
         """Get a single SLO by ID.

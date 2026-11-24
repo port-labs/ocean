@@ -59,7 +59,7 @@ def test_get_exporter_metadata_none_for_unknown_kind_with_generic_config() -> No
 
 
 def test_get_exporter_metadata_cloud_control_for_custom_kind_config() -> None:
-    """Custom kinds are not in AWSPortAppConfig yet; config is parsed directly."""
+    """Cloud Control metadata resolves from AWSCustomKindResourceConfig directly."""
     config = AWSCustomKindResourceConfig.parse_obj(
         {
             "kind": "AWS::IAM::Role",

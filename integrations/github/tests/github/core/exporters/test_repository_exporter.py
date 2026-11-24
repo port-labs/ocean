@@ -665,15 +665,27 @@ class TestRestRepositoryExporter:
                     {"type": "all", "sort": "pushed", "direction": "desc"},
                 )
 
-    async def test_search_strategy_applies_pushed_since_qualifier(
+    async def test_repo_search_with_pushed_since_checks_pushed_repos_against_the_query(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
+        """Pushed repositories come from the live list; search only checks which match.
+
+        The search index updates push times late, so ``pushed:`` is not used.
+        """
         cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        pushed = [
+            {"name": "matches", "pushed_at": "2026-06-02T00:00:00Z"},
+            {"name": "no-match", "pushed_at": "2026-06-01T13:00:00Z"},
+            {"name": "idle", "pushed_at": "2026-05-01T00:00:00Z"},
+        ]
 
         async def mock_paginated_request(
             url: str, params: dict[str, Any], *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[dict[str, Any], None]:
-            yield {"items": TEST_REPOS}
+        ) -> AsyncGenerator[Any, None]:
+            if url.endswith("/search/repositories"):
+                yield {"items": [{"name": "matches"}]}
+            else:
+                yield pushed
 
         with patch.object(
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
@@ -682,21 +694,28 @@ class TestRestRepositoryExporter:
                 options = ListRepositoryOptions(
                     organization="test-org",
                     organization_type="Organization",
-                    type=mock_port_app_config.repository_type,
+                    type="private",
                     search_params=RepoSearchParams(query="code in:name"),
                     pushed_since=cursor,
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
-                repos: list[list[dict[str, Any]]] = [
+                repos = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]
 
-                assert repos == [TEST_REPOS]
-                mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/search/repositories",
-                    {"q": "org:test-org code in:name pushed:>=2026-06-01T12:00:00Z"},
-                )
+        assert repos == [[pushed[0]]]
+        list_call, search_call = mock_request.call_args_list
+        # Every repository type: the query decides, as on a full resync.
+        assert list_call.args == (
+            f"{rest_client.base_url}/orgs/test-org/repos",
+            {"type": "all", "sort": "pushed", "direction": "desc"},
+        )
+        # Only the pushed repositories, and no org: (search ORs it with repo:).
+        assert search_call.args == (
+            f"{rest_client.base_url}/search/repositories",
+            {"q": "code in:name repo:test-org/matches repo:test-org/no-match"},
+        )
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig

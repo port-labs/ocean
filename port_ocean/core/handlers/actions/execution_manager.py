@@ -295,8 +295,8 @@ class ExecutionManager:
             run,
             success=False,
             message=message,
+            status_label=status_label,
             should_raise=False,
-            **({"status_label": status_label} if status_label is not None else {}),
         )
 
     async def _get_queues_size(self) -> int:
@@ -570,6 +570,13 @@ class ExecutionManager:
                         )
                         return
                     await self._pause_run_for_user_auth(run)
+                    return
+                except ActionExecutionError as e:
+                    await self._ack_and_fail_run(
+                        run,
+                        message=str(e),
+                        status_label=e.status_label or DEFAULT_FAILURE_STATUS_LABEL,
+                    )
                     return
                 except Exception as e:
                     logger.exception(

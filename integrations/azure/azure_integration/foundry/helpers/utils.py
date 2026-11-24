@@ -7,9 +7,47 @@ from urllib.parse import urljoin
 from port_ocean.utils.time import convert_str_to_utc_datetime
 
 
+def projects_matching_regions(
+    projects: list[dict[str, Any]], regions: list[str]
+) -> list[dict[str, Any]]:
+    if not regions:
+        return projects
+    allowed = {r.casefold() for r in regions}
+    return [
+        project
+        for project in projects
+        if (project.get("location") or "").casefold() in allowed
+    ]
+
+
 def build_foundry_url(project_endpoint: str, path: str) -> str:
     base = project_endpoint.rstrip("/") + "/"
     return urljoin(base, path.lstrip("/"))
+
+
+def agent_openai_protocol_path(agent_id: str, resource: str) -> str:
+    """Path under the agent OpenAI protocol endpoint (conversations/responses)."""
+    return f"agents/{agent_id}/endpoint/protocols/openai/{resource}"
+
+
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge overlay into a shallow copy of base (dicts only).
+
+    Overlay values override base at each key; nested dicts merge recursively.
+    """
+    merged = dict(base)
+    for key, value in overlay.items():
+        existing = merged.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            merged[key] = deep_merge(existing, value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def project_name_from_endpoint(project_endpoint: str) -> str:
+    """Last path segment of a Foundry project data-plane URL (``.../api/projects/<name>``)."""
+    return project_endpoint.rstrip("/").rsplit("/", 1)[-1]
 
 
 def enrich_with_project(
@@ -24,6 +62,10 @@ def enrich_with_project(
     if project_id:
         enriched["__foundryProjectId"] = project_id
         enriched["__foundryProjectName"] = project_id.rstrip("/").rsplit("/", 1)[-1]
+    else:
+        # Mutations often only have the endpoint; deployment identifiers still need
+        # ``.__foundryProjectName + "/" + .name`` (e.g. omby-project/gpt-4o-mini).
+        enriched["__foundryProjectName"] = project_name_from_endpoint(project_endpoint)
     _coerce_created_at(enriched)
     versions = enriched.get("versions")
     if isinstance(versions, dict) and isinstance(versions.get("latest"), dict):

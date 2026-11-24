@@ -184,7 +184,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
 
     mock_batch = AsyncMock()
     with (
-        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch("port_ocean.core.integrations.mixins.utils.ocean", mock_ocean),
         patch.object(
             mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
         ),
@@ -235,7 +235,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
 
     mock_batch = AsyncMock()
     with (
-        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch("port_ocean.core.integrations.mixins.utils.ocean", mock_ocean),
         patch.object(
             mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
         ),
@@ -283,7 +283,7 @@ async def test_send_webhook_raw_data_to_lakehouse_api_failure(
 
     mock_batch = AsyncMock(side_effect=Exception("Lakehouse API error"))
     with (
-        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch("port_ocean.core.integrations.mixins.utils.ocean", mock_ocean),
         patch.object(
             mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
         ),
@@ -314,7 +314,7 @@ async def test_send_webhook_raw_data_to_lakehouse_empty_results(
     """Test that empty results don't call lakehouse API."""
     mock_batch = AsyncMock()
     with (
-        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch("port_ocean.core.integrations.mixins.utils.ocean", mock_ocean),
         patch.object(
             mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
         ),
@@ -344,7 +344,7 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
 
     mock_batch = AsyncMock()
     with (
-        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch("port_ocean.core.integrations.mixins.utils.ocean", mock_ocean),
         patch.object(
             mock_ocean.port_client, "post_integration_raw_data_batch", mock_batch
         ),

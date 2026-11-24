@@ -99,7 +99,10 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
     @property
     def _local_is_close_to_rate_limit(self) -> bool:
         info = self._limiter.rate_limit_info
-        if not info:
+        # The action pre-check backs off without sending requests, so `remaining`
+        # is never refreshed on its own. Once the window has reset, let the run
+        # proceed; its response will refresh the info.
+        if not info or info.is_expired:
             return False
         return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_ACTIONS
 

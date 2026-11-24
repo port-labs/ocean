@@ -35,6 +35,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 _INTEGRATION_PATH_PREFIX = "/integration/"
+# Keeps the socket timeout above the XREADGROUP block time, so an empty read
+# never trips it.
+STREAM_SOCKET_TIMEOUT_MARGIN_SECONDS = 5.0
 
 
 OnStreamMessage = Callable[[str, WebhookEvent], Awaitable[None]]
@@ -69,8 +72,16 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         integration = ocean.config.integration
         return f"{integration.type}.{integration.identifier}"
 
+    @property
+    def _socket_timeout_seconds(self) -> float:
+        return max(
+            self._settings.socket_timeout_seconds,
+            self._settings.block_ms / 1000 + STREAM_SOCKET_TIMEOUT_MARGIN_SECONDS,
+        )
+
     async def start(self) -> None:
         client_kwargs = self._redis_connection_helper.client_kwargs(self._settings)
+        client_kwargs["socket_timeout"] = self._socket_timeout_seconds
         self._redis = await create_redis_client_with_retry(
             self._settings.url,
             max_retries=self._settings.connection_startup_max_retries,

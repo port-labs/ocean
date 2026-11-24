@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -8,9 +9,11 @@ from azure.identity.aio import DefaultAzureCredential
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
+from azure_integration.foundry.clients.http.rate_limit import FoundryRateLimiter
 from azure_integration.foundry.clients.http.retry_transport import (
     FOUNDRY_RETRY_AFTER_HEADERS,
     FoundryRetryTransport,
+    FoundryStreamingTransport,
 )
 from azure_integration.foundry.helpers.utils import build_foundry_url
 
@@ -23,7 +26,15 @@ _client: FoundryHttpClient | None = None
 
 
 class FoundryApiError(Exception):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+    @property
+    def is_skippable_client_error(self) -> bool:
+        """True for expected 4xx (e.g. missing protocol); false for 429/5xx."""
+        code = self.status_code
+        return code is not None and 400 <= code < 500 and code != 429
 
 
 class FoundryHttpClient:
@@ -39,12 +50,27 @@ class FoundryHttpClient:
     ) -> None:
         self._api_version = api_version
         self._page_size = page_size
+        self.rate_limiter = FoundryRateLimiter()
         self._credential: DefaultAzureCredential | None = None
+        retry_config = RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS)
+        hooks = {"response": [self._on_response]}
         self._http = OceanAsyncClient(
             FoundryRetryTransport,
-            retry_config=RetryConfig(retry_after_headers=FOUNDRY_RETRY_AFTER_HEADERS),
+            retry_config=retry_config,
             timeout=httpx.Timeout(60.0),
+            event_hooks=hooks,
         )
+        # Separate client for SSE: default retry transport buffers chunked bodies
+        # when Ocean streaming.enabled is false.
+        self._stream_http = OceanAsyncClient(
+            FoundryStreamingTransport,
+            retry_config=retry_config,
+            timeout=httpx.Timeout(60.0, read=None),
+            event_hooks=hooks,
+        )
+
+    async def _on_response(self, response: httpx.Response) -> None:
+        self.rate_limiter.observe(response)
 
     async def _authorization_headers(self) -> dict[str, str]:
         if self._credential is None:
@@ -54,9 +80,14 @@ class FoundryHttpClient:
 
     async def close(self) -> None:
         await self._http.aclose()
+        await self._stream_http.aclose()
         if self._credential is not None:
             await self._credential.close()
             self._credential = None
+
+    @staticmethod
+    def build_url(project_endpoint: str, path: str) -> str:
+        return build_foundry_url(project_endpoint, path)
 
     @staticmethod
     def uses_openai_compatible_routes(endpoint: str) -> bool:
@@ -86,9 +117,45 @@ class FoundryHttpClient:
             json=json_body,
             headers=headers,
         )
-        # Missing resource: GET/DELETE are empty; mutations must fail.
-        if response.status_code == 404 and method.upper() in {"GET", "DELETE"}:
+        if response.is_error:
+            detail = (
+                response.text[:_ERROR_BODY_LIMIT]
+                if response.text
+                else response.reason_phrase
+            )
+            raise FoundryApiError(
+                f"Foundry API {response.status_code}: {detail}",
+                status_code=response.status_code,
+            )
+        if not response.content:
             return {}
+        payload = response.json()
+        if isinstance(payload, (list, dict)):
+            return payload
+        return {}
+
+    async def send_bytes_request(
+        self,
+        endpoint: str,
+        *,
+        params: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> bytes:
+        """GET binary payloads (e.g. skill content ZIP). 404 → empty bytes."""
+        query_params = dict(params or {})
+        if not self.uses_openai_compatible_routes(endpoint):
+            query_params.setdefault("api-version", self._api_version)
+        response = await self._http.request(
+            "GET",
+            endpoint,
+            params=query_params or None,
+            headers={
+                **await self._authorization_headers(),
+                **(extra_headers or {}),
+            },
+        )
+        if response.status_code == 404:
+            return b""
         if response.is_error:
             detail = (
                 response.text[:_ERROR_BODY_LIMIT]
@@ -96,12 +163,7 @@ class FoundryHttpClient:
                 else response.reason_phrase
             )
             raise FoundryApiError(f"Foundry API {response.status_code}: {detail}")
-        if not response.content:
-            return {}
-        payload = response.json()
-        if isinstance(payload, (list, dict)):
-            return payload
-        return {}
+        return response.content or b""
 
     @staticmethod
     def items_from_payload(payload: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
@@ -169,6 +231,47 @@ class FoundryHttpClient:
                 break
             url = next_url
             request_params = {}
+
+    async def open_responses_stream(
+        self,
+        invoke_url: str,
+        body: dict[str, Any],
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        headers = await self._authorization_headers()
+        headers["Accept"] = "text/event-stream"
+        stream_body = {**body, "stream": True}
+        query_params = dict(params or {})
+        if not self.uses_openai_compatible_routes(invoke_url):
+            query_params.setdefault("api-version", self._api_version)
+        # Use _stream_http (no body prefetch) + send(stream=True). Regular
+        # _http RetryTransport buffers chunked SSE until the agent finishes.
+        request = self._stream_http.build_request(
+            "POST",
+            invoke_url,
+            params=query_params or None,
+            json=stream_body,
+            headers=headers,
+        )
+        # POST not in Ocean defaults; mark retryable so ConnectError on stream
+        # open is retried. send(stream=True) only waits for headers — body
+        # consume is outside the transport, so mid-SSE fails stay unretried.
+        request.extensions["retryable"] = True
+        response = await self._stream_http.send(request, stream=True)
+        if response.is_error:
+            with contextlib.suppress(Exception):
+                await response.aread()
+            detail = (response.text or response.reason_phrase or "")[:2000]
+            status_code = response.status_code
+            # Close before raise so the connection is not left half-open (SSL shutdown).
+            with contextlib.suppress(Exception):
+                await response.aclose()
+            raise FoundryApiError(
+                f"Foundry stream {status_code}: {detail}",
+                status_code=status_code,
+            )
+        return response
 
 
 def create_foundry_client(

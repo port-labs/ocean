@@ -97,7 +97,8 @@ async def test_handle_single_event_fetches_team_with_members_flag(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
+            _event("modified", "t-1"),
+            resource_config=resource_config,  # type: ignore[arg-type]
         )
 
     exporter.get_resource.assert_awaited_once_with(

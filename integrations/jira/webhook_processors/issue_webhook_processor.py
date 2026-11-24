@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 from loguru import logger
 from initialize_client import get_or_create_jira_client
 from jira.overrides import JiraIssueConfig
@@ -45,14 +45,15 @@ class IssueWebhookProcessor(JiraAbstractWebhookProcessor):
             jql = f"({config.selector.jql}) AND key = {issue_key}"
 
         issues = []
-        async for batch in client.get_paginated_issues(
-            params={
-                "jql": jql,
-                "fields": config.selector.fields,
-                "expand": config.selector.expand,
-                "reconcileIssues": [issue_id],
-            }
-        ):
+        issue_params: dict[str, Any] = {
+            "jql": jql,
+            "fields": config.selector.fields,
+            "expand": config.selector.expand,
+            "reconcileIssues": [issue_id],
+        }
+        if config.selector.include_comments:
+            issue_params["includeComments"] = True
+        async for batch in client.get_paginated_issues(issue_params):
             issues.extend(batch)
 
         data_to_update = []

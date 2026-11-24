@@ -91,6 +91,9 @@
         },
         {
           "kind": "AWS::SNS::Topic"
+        },
+        {
+          "kind": "AWS::EKS::Nodegroup"
         }
       ]
     }

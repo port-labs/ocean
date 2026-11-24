@@ -1,0 +1,291 @@
+name: Wiz CLI scan
+
+on:
+  workflow_call:
+    inputs:
+      enable_directory_scan:
+        description: Run Wiz directory/code scan (IaC, SAST, secrets, sensitive data, SCA)
+        type: boolean
+        required: false
+        default: true
+      enable_image_scan:
+        description: Run Wiz container image scan for each URI in `images`
+        type: boolean
+        required: false
+        default: false
+      images:
+        description: JSON array of already-built image URIs (strings) or objects with image_uri
+        type: string
+        required: false
+        default: '[]'
+      directory_path:
+        description: Path to scan for the directory job
+        type: string
+        required: false
+        default: '.'
+      directory_vulnerabilities_policy:
+        description: Wiz directory vulnerabilities (SCA) policy name
+        type: string
+        required: false
+        default: "Default vulnerabilities policy"
+      directory_secrets_policy:
+        description: Wiz directory secrets policy name
+        type: string
+        required: false
+        default: "Default secrets policy"
+      directory_iac_policy:
+        description: Wiz directory IaC policy name
+        type: string
+        required: false
+        default: "Default IaC policy"
+      directory_sast_policy:
+        description: Wiz directory SAST policy name
+        type: string
+        required: false
+        default: "Default SAST policy (Wiz CI/CD scan)"
+      directory_sensitive_data_policy:
+        description: Wiz directory sensitive data policy name
+        type: string
+        required: false
+        default: "Default sensitive data policy"
+      image_vulnerabilities_policy:
+        description: Wiz image vulnerabilities policy name
+        type: string
+        required: false
+        default: "Default vulnerabilities policy"
+      image_secrets_policy:
+        description: Wiz image secrets policy name
+        type: string
+        required: false
+        default: "Default secrets policy"
+      image_malware_policy:
+        description: Wiz image malware policy name
+        type: string
+        required: false
+        default: "Default malware policy"
+      image_sensitive_data_policy:
+        description: Wiz image sensitive data policy name
+        type: string
+        required: false
+        default: "Default sensitive data policy"
+      image_host_configuration_policy:
+        description: Wiz image host configuration policy name (empty to omit)
+        type: string
+        required: false
+        default: ""
+      docker_platform:
+        description: Platform to pull when the tag is multi-arch (empty = registry default)
+        type: string
+        required: false
+        default: linux/arm64
+      enable_wiz_graph_tag:
+        description: Run `wizcli tag` on the image digest for Wiz graph enrichment
+        type: boolean
+        required: false
+        default: true
+      continue_on_error:
+        description: Do not fail the job when a Wiz scan reports findings or errors
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      WIZ_CLIENT_ID:
+        required: false
+      WIZ_CLIENT_SECRET:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  wiz-cli-dir-scan:
+    name: Wiz-cli code scan
+    if: ${{ inputs.enable_directory_scan }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Wiz CLI
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "${RUNNER_TEMP}/wizcli" https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          chmod +x "${RUNNER_TEMP}/wizcli"
+
+      - name: Run wiz-cli directory scan
+        continue-on-error: ${{ inputs.continue_on_error }}
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          SCAN_PATH: ${{ inputs.directory_path }}
+          POLICY_VULN: ${{ inputs.directory_vulnerabilities_policy }}
+          POLICY_SECRETS: ${{ inputs.directory_secrets_policy }}
+          POLICY_IAC: ${{ inputs.directory_iac_policy }}
+          POLICY_SAST: ${{ inputs.directory_sast_policy }}
+          POLICY_SENSITIVE: ${{ inputs.directory_sensitive_data_policy }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${WIZ_CLIENT_ID}" || -z "${WIZ_CLIENT_SECRET}" ]]; then
+            echo "::error::WIZ_CLIENT_ID and WIZ_CLIENT_SECRET must be set (org or repo secrets)."
+            exit 1
+          fi
+          policies=()
+          for policy in "$POLICY_VULN" "$POLICY_SECRETS" "$POLICY_IAC" "$POLICY_SAST" "$POLICY_SENSITIVE"; do
+            [[ -n "$policy" ]] && policies+=("$policy")
+          done
+          IFS=,
+          POLICIES="${policies[*]}"
+          unset IFS
+          "${RUNNER_TEMP}/wizcli" scan dir "$SCAN_PATH" --policies "$POLICIES"
+
+  prepare-images:
+    name: Normalize images to scan
+    if: ${{ inputs.enable_image_scan }}
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.normalize.outputs.images }}
+    steps:
+      - name: Normalize image matrix
+        id: normalize
+        env:
+          IMAGES_RAW: ${{ inputs.images }}
+          PLATFORM: ${{ inputs.docker_platform }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$IMAGES_RAW" || "$IMAGES_RAW" == "[]" ]]; then
+            echo "images=[]" >> "$GITHUB_OUTPUT"
+            echo "No images to scan"
+            exit 0
+          fi
+
+          if ! echo "$IMAGES_RAW" | jq -e . >/dev/null 2>&1; then
+            echo "::error::inputs.images must be valid JSON"
+            exit 1
+          fi
+          if [[ "$(echo "$IMAGES_RAW" | jq -r 'type')" != "array" ]]; then
+            echo "::error::inputs.images must be a JSON array of image URIs or objects with image_uri"
+            exit 1
+          fi
+
+          name_from_uri() {
+            local uri="$1"
+            local without_digest="${uri%%@*}"
+            local image="${without_digest##*/}"
+            echo "${image%%:*}"
+          }
+
+          result='[]'
+          while IFS= read -r item; do
+            [[ -z "$item" ]] && continue
+
+            if echo "$item" | jq -e 'type == "string"' >/dev/null; then
+              image_uri=$(echo "$item" | jq -r '.')
+              name=""
+              platforms="$PLATFORM"
+            else
+              image_uri=$(echo "$item" | jq -r '.image_uri // .image // empty')
+              name=$(echo "$item" | jq -r '.name // empty')
+              platforms=$(echo "$item" | jq -r --arg p "$PLATFORM" '.platforms // $p')
+            fi
+
+            if [[ -z "$image_uri" ]]; then
+              echo "::error::Each images entry must be an image URI string or an object with image_uri. This workflow does not build images."
+              exit 1
+            fi
+            if [[ "$image_uri" != */* && "$image_uri" != *.* ]]; then
+              echo "::error::'$image_uri' is not an image URI. Pass already-built images (e.g. registry/name:tag), not service names."
+              exit 1
+            fi
+            if [[ -z "$name" ]]; then
+              name="$(name_from_uri "$image_uri")"
+            fi
+
+            obj=$(jq -nc \
+              --arg name "$name" \
+              --arg image_uri "$image_uri" \
+              --arg platforms "$platforms" \
+              '{name: $name, image_uri: $image_uri, platforms: $platforms}')
+            result=$(echo "$result" | jq -c --argjson obj "$obj" '. + [$obj]')
+          done < <(echo "$IMAGES_RAW" | jq -c '.[]')
+
+          echo "images=$result" >> "$GITHUB_OUTPUT"
+          echo "Normalized $(echo "$result" | jq 'length') image(s)"
+          echo "$result" | jq .
+
+  wiz-cli-image-scan:
+    name: Wiz-cli scan ${{ matrix.name }}
+    needs: prepare-images
+    if: ${{ inputs.enable_image_scan && needs.prepare-images.result == 'success' && needs.prepare-images.outputs.images != '[]' && needs.prepare-images.outputs.images != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-images.outputs.images != '[]' && needs.prepare-images.outputs.images || '[{"name":"noop","image_uri":"noop","platforms":"linux/amd64"}]') }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image to scan
+        env:
+          IMAGE_URI: ${{ matrix.image_uri }}
+          PLATFORM: ${{ matrix.platforms }}
+        run: |
+          set -euo pipefail
+          pull_args=()
+          if [[ -n "$PLATFORM" ]]; then
+            pull_args+=(--platform "$PLATFORM")
+          fi
+          docker pull "${pull_args[@]}" "$IMAGE_URI"
+
+      - name: Download Wiz CLI
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "${RUNNER_TEMP}/wizcli" https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          chmod +x "${RUNNER_TEMP}/wizcli"
+
+      - name: Run wiz-cli docker image scan
+        continue-on-error: ${{ inputs.continue_on_error }}
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          IMAGE_URI: ${{ matrix.image_uri }}
+          POLICY_VULN: ${{ inputs.image_vulnerabilities_policy }}
+          POLICY_SECRETS: ${{ inputs.image_secrets_policy }}
+          POLICY_MALWARE: ${{ inputs.image_malware_policy }}
+          POLICY_SENSITIVE: ${{ inputs.image_sensitive_data_policy }}
+          POLICY_HOST: ${{ inputs.image_host_configuration_policy }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${WIZ_CLIENT_ID}" || -z "${WIZ_CLIENT_SECRET}" ]]; then
+            echo "::error::WIZ_CLIENT_ID and WIZ_CLIENT_SECRET must be set (org or repo secrets)."
+            exit 1
+          fi
+          policies=()
+          for policy in "$POLICY_HOST" "$POLICY_MALWARE" "$POLICY_SECRETS" "$POLICY_SENSITIVE" "$POLICY_VULN"; do
+            [[ -n "$policy" ]] && policies+=("$policy")
+          done
+          IFS=,
+          POLICIES="${policies[*]}"
+          unset IFS
+          "${RUNNER_TEMP}/wizcli" scan container-image "$IMAGE_URI" --policies "$POLICIES"
+
+      - name: Tag image in Wiz graph
+        if: ${{ inputs.enable_wiz_graph_tag }}
+        continue-on-error: true
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          IMAGE_URI: ${{ matrix.image_uri }}
+        run: |
+          set -euo pipefail
+          digest=$(docker inspect --format='{{.Id}}' "$IMAGE_URI" 2>/dev/null || true)
+          if [[ -z "$digest" ]]; then
+            echo "No image digest available, skipping wizcli tag"
+            exit 0
+          fi
+          "${RUNNER_TEMP}/wizcli" tag "$digest"
