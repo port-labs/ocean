@@ -23,6 +23,7 @@ An integration used to import gcp resources into Port.
 - resourcemanager.folders.list
 
 The `iamPolicy` kind is the only kind that needs `cloudasset.assets.searchAllIamPolicies`, and it needs it on every project in scope.
+Its live events additionally need `cloudasset.assets.searchAllResources`, which every other kind already requires: a feed event can name an asset by an alias (a service account arrives as its numeric ID, not its email) and the integration translates that back to the name the resync uses. Without it a live event fails and is logged as an error; the kind still resyncs normally.
 
 #### Suggested way of achieving this
 
@@ -40,11 +41,11 @@ The `iamPolicy` kind is the only kind that needs `cloudasset.assets.searchAllIam
 3. Create Assets feed pointing to this topic:
     
     ```
-    gcloud asset feeds create <FEED_ID> 
-    	--pubsub-topic=<your_pubsub_topic> 
-    	--asset-types=<ASSET_TYPES>
-    	--content-type=resource
-    	--condition-expression=<CONDITION_EXPRESSION> 
+    gcloud asset feeds create <FEED_ID> \
+    	--pubsub-topic=<your_pubsub_topic> \
+    	--asset-types=<ASSET_TYPES> \
+    	--content-type=resource \
+    	--condition-expression=<CONDITION_EXPRESSION> \
     	<--folder=FOLDER_ID | --organization=ORGANIZATION_ID | --project=PROJECT_ID>
     ```
     
@@ -54,6 +55,20 @@ The `iamPolicy` kind is the only kind that needs `cloudasset.assets.searchAllIam
     - **FOLDER/ORGANIZATION/PROJECT**  - This depends on what resolution you want the real time events for. **NOTICE that for each unique folder/project you’ll have to create another topic+subscription+feed.**
     - **CONDITION_EXPRESSION** - Quote surrounded query that controls what types of events create a feed event. For more information: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes-with-condition
         - Suggestion: `"'<YOUR PROJECT/FOLDER/ORGANIZATION ID>' in temporal_asset.asset.ancestors"`
+4. If your mapping includes the `iamPolicy` kind, create a second feed for IAM allow-policy changes. A feed carries one content type, so this is an additional feed rather than a change to the one above. It can publish to the topic and subscription you already created:
+
+    ```
+    gcloud asset feeds create <IAM_FEED_ID> \
+    	--pubsub-topic=<your_pubsub_topic> \
+    	--asset-types=<ASSET_TYPES> \
+    	--content-type=iam-policy \
+    	--condition-expression=<CONDITION_EXPRESSION> \
+    	<--folder=FOLDER_ID | --organization=ORGANIZATION_ID | --project=PROJECT_ID>
+    ```
+
+    - **ASSET_TYPES** - Keep this list in step with the `assetTypes` of your `iamPolicy` mapping. The integration skips events for asset types the mapping does not list, and it logs each one it skips. Asset types the feed does not cover stay resync-only.
+    - Grants on a **deleted** asset are removed by the next resync rather than live. Translating a feed event's asset name reads an inventory index that no longer lists a deleted asset, so the event is skipped. The same applies for a short window after an asset is created, while that index catches up.
+    - Without this feed the `iamPolicy` kind is resync-only, which is how every installation created before this release behaves.
 
 ### Starting up Ocean
 

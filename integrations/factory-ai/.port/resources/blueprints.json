@@ -1,0 +1,304 @@
+[
+  {
+    "identifier": "factory_environment",
+    "title": "Factory Environment",
+    "icon": "FactoryAi",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["building", "ready", "failed"],
+          "enumColors": {
+            "building": "blue",
+            "ready": "green",
+            "failed": "red"
+          }
+        },
+        "scope": {
+          "type": "string",
+          "title": "Scope",
+          "enum": ["user", "organization"],
+          "enumColors": {
+            "user": "lightGray",
+            "organization": "blue"
+          }
+        },
+        "isDefault": {
+          "type": "boolean",
+          "title": "Default Environment"
+        },
+        "sourceName": {
+          "type": "string",
+          "title": "Source"
+        },
+        "providerName": {
+          "type": "string",
+          "title": "Provider"
+        },
+        "repositoryUrls": {
+          "type": "array",
+          "title": "Repository URLs",
+          "items": {
+            "type": "string",
+            "format": "url"
+          }
+        },
+        "latestBuildStatus": {
+          "type": "string",
+          "title": "Latest Build Status",
+          "enum": [
+            "queued",
+            "building",
+            "validating",
+            "succeeded",
+            "failed",
+            "superseded"
+          ],
+          "enumColors": {
+            "queued": "lightGray",
+            "building": "blue",
+            "validating": "purple",
+            "succeeded": "green",
+            "failed": "red",
+            "superseded": "yellow"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "factory_computer",
+    "title": "Factory Computer",
+    "icon": "FactoryAi",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["provisioning", "active", "error"],
+          "enumColors": {
+            "provisioning": "blue",
+            "active": "green",
+            "error": "red"
+          }
+        },
+        "providerStatus": {
+          "type": "string",
+          "title": "Provider Status",
+          "enum": [
+            "requested",
+            "provisioning",
+            "booting",
+            "running",
+            "paused",
+            "snapshotting",
+            "terminating",
+            "terminated",
+            "failed"
+          ],
+          "enumColors": {
+            "requested": "lightGray",
+            "provisioning": "blue",
+            "booting": "blue",
+            "running": "green",
+            "paused": "yellow",
+            "snapshotting": "purple",
+            "terminating": "orange",
+            "terminated": "lightGray",
+            "failed": "red"
+          }
+        },
+        "providerType": {
+          "type": "string",
+          "title": "Provider Type"
+        },
+        "isListed": {
+          "type": "boolean",
+          "title": "Listed"
+        },
+        "diskBand": {
+          "type": "string",
+          "title": "Disk Band",
+          "enum": ["ok", "low", "full"],
+          "enumColors": {
+            "ok": "green",
+            "low": "yellow",
+            "full": "red"
+          }
+        },
+        "ownerPrincipalKind": {
+          "type": "string",
+          "title": "Owner Kind"
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Seen At"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "environment": {
+        "title": "Environment",
+        "target": "factory_environment",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "factory_user",
+    "title": "Factory User",
+    "icon": "FactoryAi",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email"
+        },
+        "firstName": {
+          "type": "string",
+          "title": "First Name"
+        },
+        "lastName": {
+          "type": "string",
+          "title": "Last Name"
+        },
+        "role": {
+          "type": "string",
+          "title": "Role",
+          "enum": ["user", "manager", "owner"],
+          "enumColors": {
+            "user": "lightGray",
+            "manager": "blue",
+            "owner": "purple"
+          }
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["invited", "already_member", "role_updated", "already_invited", "error"]
+        },
+        "lastSignInAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Sign In At"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "factory_session",
+    "title": "Factory Session",
+    "icon": "FactoryAi",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["idle", "pending", "running"],
+          "enumColors": {
+            "idle": "lightGray",
+            "pending": "yellow",
+            "running": "blue"
+          }
+        },
+        "messageCount": {
+          "type": "number",
+          "title": "Message Count"
+        },
+        "factoryCredits": {
+          "type": "number",
+          "title": "Factory Credits"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "interactionMode": {
+          "type": "string",
+          "title": "Interaction Mode",
+          "enum": ["auto", "spec", "agi", "mission"],
+          "enumColors": {
+            "auto": "lightGray",
+            "spec": "blue",
+            "agi": "purple",
+            "mission": "green"
+          }
+        },
+        "autonomyLevel": {
+          "type": "string",
+          "title": "Autonomy Level",
+          "enum": ["off", "low", "medium", "high"],
+          "enumColors": {
+            "off": "lightGray",
+            "low": "yellow",
+            "medium": "blue",
+            "high": "green"
+          }
+        },
+        "repoRoot": {
+          "type": "string",
+          "title": "Repo Root"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Completed At"
+        }
+      },
+      "required": []
+    },
+    "relations": {
+      "computer": {
+        "title": "Computer",
+        "target": "factory_computer",
+        "required": false,
+        "many": false
+      },
+      "parentSession": {
+        "title": "Parent Session",
+        "target": "factory_session",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

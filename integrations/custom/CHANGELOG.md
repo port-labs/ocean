@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.180 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.2
+
+
+## 0.6.179 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.1
+
+
+## 0.6.178 (2026-11-19)
+
+
+### Features
+
+- Add paginationPlacement (query|body), initialOffset, and totalCountPath for offset pagination so APIs like Orca Serving Layer can page via start_at_index + limit in the POST body and stop on total_items.
+
+
 ## 0.6.177 (2026-11-19)
 
 

@@ -35,7 +35,7 @@ class DeleteModelDeploymentExecutor(ArmDeploymentExecutor):
             should_raise=False,
         )
         try:
-            await self.arm_deployments.delete_deployment(
+            await self.foundry_arm.delete_deployment(
                 inputs.projectEndpoint, inputs.deploymentName
             )
         except Exception as error:

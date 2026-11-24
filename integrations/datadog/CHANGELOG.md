@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.11.2 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.2
+
+
+## 0.11.1 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.1
+
+
+## 0.11.0 (2026-11-22)
+
+
+### Features
+
+- Added incremental sync for Datadog teams, roles and catalog entities, loading those created or modified since the last cursor from audit events (including team and role membership changes)
+
+
+## 0.10.0 (2026-11-19)
+
+
+### Features
+
+- Added incremental sync for Datadog SLOs, loading SLOs created or modified since the last cursor (and, with includeRestrictionPolicy, SLOs whose restriction policy changed) from audit events
+
+
+## 0.9.0 (2026-11-19)
+
+
+### Features
+
+- Added incremental sync for Datadog users and services, loading users and services created or modified since the last cursor from audit events
+
+
 ## 0.8.3 (2026-11-19)
 
 

@@ -295,8 +295,8 @@ class ExecutionManager:
             run,
             success=False,
             message=message,
+            status_label=status_label,
             should_raise=False,
-            **({"status_label": status_label} if status_label is not None else {}),
         )
 
     async def _get_queues_size(self) -> int:

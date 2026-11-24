@@ -1,0 +1,248 @@
+[
+    {
+        "identifier": "devin_playbook",
+        "title": "Devin Playbook",
+        "icon": "Devin",
+        "schema": {
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "title": "Body",
+                    "format": "markdown"
+                },
+                "macro": {
+                    "type": "string",
+                    "title": "Macro"
+                },
+                "accessType": {
+                    "type": "string",
+                    "title": "Access type",
+                    "enum": [
+                        "org",
+                        "enterprise"
+                    ]
+                },
+                "createdBy": {
+                    "type": "string",
+                    "title": "Created by"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "devin_knowledge_note",
+        "title": "Devin Knowledge Note",
+        "icon": "Devin",
+        "schema": {
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "title": "Body",
+                    "format": "markdown"
+                },
+                "trigger": {
+                    "type": "string",
+                    "title": "Trigger"
+                },
+                "folderPath": {
+                    "type": "string",
+                    "title": "Folder path"
+                },
+                "pinnedRepo": {
+                    "type": "string",
+                    "title": "Pinned repository"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "title": "Enabled"
+                },
+                "accessType": {
+                    "type": "string",
+                    "title": "Access type",
+                    "enum": [
+                        "org",
+                        "enterprise"
+                    ]
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "devin_secret",
+        "title": "Devin Secret",
+        "icon": "Devin",
+        "description": "Secret metadata only; Devin never returns secret values.",
+        "schema": {
+            "properties": {
+                "note": {
+                    "type": "string",
+                    "title": "Note"
+                },
+                "secretType": {
+                    "type": "string",
+                    "title": "Secret type",
+                    "enum": [
+                        "key-value",
+                        "cookie",
+                        "totp"
+                    ]
+                },
+                "accessType": {
+                    "type": "string",
+                    "title": "Access type",
+                    "enum": [
+                        "org",
+                        "personal"
+                    ]
+                },
+                "sensitive": {
+                    "type": "boolean",
+                    "title": "Sensitive"
+                },
+                "createdBy": {
+                    "type": "string",
+                    "title": "Created by"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "devin_session",
+        "title": "Devin Session",
+        "icon": "Devin",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": [
+                        "new",
+                        "claimed",
+                        "running",
+                        "resuming",
+                        "suspended",
+                        "exit",
+                        "error"
+                    ],
+                    "enumColors": {
+                        "new": "lightGray",
+                        "claimed": "lightGray",
+                        "running": "blue",
+                        "resuming": "blue",
+                        "suspended": "yellow",
+                        "exit": "green",
+                        "error": "red"
+                    }
+                },
+                "statusDetail": {
+                    "type": "string",
+                    "title": "Status detail"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Devin URL",
+                    "format": "url"
+                },
+                "origin": {
+                    "type": "string",
+                    "title": "Origin"
+                },
+                "category": {
+                    "type": "string",
+                    "title": "Category"
+                },
+                "tags": {
+                    "type": "array",
+                    "title": "Tags",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "managedByPort": {
+                    "type": "boolean",
+                    "title": "Managed by Port"
+                },
+                "pullRequests": {
+                    "type": "array",
+                    "title": "Pull request URLs",
+                    "items": {
+                        "type": "string",
+                        "format": "url"
+                    }
+                },
+                "acusConsumed": {
+                    "type": "number",
+                    "title": "ACUs consumed"
+                },
+                "onDemandUsage": {
+                    "type": "number",
+                    "title": "On-demand usage"
+                },
+                "devinMode": {
+                    "type": "string",
+                    "title": "Devin mode"
+                },
+                "archived": {
+                    "type": "boolean",
+                    "title": "Archived"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "playbook": {
+                "title": "Playbook",
+                "target": "devin_playbook",
+                "required": false,
+                "many": false
+            },
+            "parentSession": {
+                "title": "Parent session",
+                "target": "devin_session",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]
