@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab-v2"
-version = "0.18.11"
+version = "0.18.12"
 description = "Gitlab"
 authors = ["Shariff <mohammed.s@getport.io>"]
 
