@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Remove the AZURE_AI_FOUNDRY org feature flag gate on Foundry sync kinds so they appear in the Azure integration mapping UI without manual org opt-in.
