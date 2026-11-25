@@ -31,11 +31,13 @@ python -m tools.integration_validation.runner integrations/datadog \
   --report /tmp/validate-report.json
 ```
 
+Or from the integration directory: `make validate-mock` (mock on `PORT`, default 9000) and `make validate ARGS="--scenario happy_path"`. Both use the repo root venv.
+
 Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`, `--mock-base-url URL` (default `http://127.0.0.1:9000`; the runner does not start the mock), `--integration-timeout SECONDS` (subprocess limit, default 180).
 
 The runner only reads the mock's admin API; it never loads or resets it. Load the scenario before each run and reset the mock between runs (`POST /__admin/reset`), otherwise the journal and call counts include earlier requests. Run one `--scenario` at a time, since every scenario hits whatever is loaded.
 
-Each scenario runs `ocean sail -O` as a subprocess with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
+Each scenario runs `ocean sail -O` as a subprocess (`OCEAN_CLI`, else `<integration>/.venv/bin/ocean`, else `ocean` on `PATH`) with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
 
 ## Collected results
 

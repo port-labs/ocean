@@ -7,6 +7,7 @@ import pytest
 
 from tools.integration_validation.runner.integration.process import (
     IntegrationRunResult,
+    resolve_ocean_sail_command,
     run_ocean_sail_once,
 )
 from tools.integration_validation.runner.core.statuses import ScenarioIntegrationStatus
@@ -72,3 +73,17 @@ def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
         captured["kwargs"]["env"]["OCEAN__INTEGRATION__CONFIG__EXAMPLE_BASE_URL"]
         == "http://127.0.0.1:9000"
     )
+
+
+def test_ocean_cli_env_wins_over_the_integration_venv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    integration_ocean = tmp_path / ".venv" / "bin" / "ocean"
+    integration_ocean.parent.mkdir(parents=True)
+    integration_ocean.touch()
+
+    monkeypatch.delenv("OCEAN_CLI", raising=False)
+    assert resolve_ocean_sail_command(tmp_path)[0] == str(integration_ocean)
+
+    monkeypatch.setenv("OCEAN_CLI", "/fake/ocean")
+    assert resolve_ocean_sail_command(tmp_path)[0] == "/fake/ocean"

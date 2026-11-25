@@ -43,7 +43,10 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed
+.SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed validate validate-mock
+
+# Validation tooling lives in tools/integration_validation and runs from the repo root venv.
+INTEGRATION_NAME := $(notdir $(CURDIR))
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -75,6 +78,14 @@ test:
 
 test/integration:
 	$(ACTIVATE) && poetry run pytest integration_tests/ -xvs -o "addopts="
+
+validate-mock:
+	cd ../.. && .venv/bin/python -m tools.integration_validation.mock_server.main \
+		--fixture-root integrations/$(INTEGRATION_NAME)/validation/mock --port $(or $(PORT),9000)
+
+validate:
+	cd ../.. && .venv/bin/python -m tools.integration_validation.runner \
+		integrations/$(INTEGRATION_NAME) $(ARGS)
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
