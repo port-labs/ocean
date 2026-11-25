@@ -62,7 +62,7 @@
     {
       "name": "execute_droid",
       "icon": "FactoryAi",
-      "description": "Start a headless Factory Droid turn via POST /api/v0/droid/execute. Target an environment (fresh computer + session), an existing computer (new session), or an existing session (follow-up). Factory returns 202 when the turn is accepted. With waitForCompletion true (default), the Port run stays open and the integration polls until the session is idle and an assistant message exists after the returned messageId. With waitForCompletion false, the Port run completes immediately after the 202 with sessionId, messageId, computerId, and app links.",
+      "description": "Start a headless Factory Droid turn. Target an environment (fresh computer and session), an existing computer (new session), or an existing session (follow-up). With waitForCompletion true (default), the Port run stays open and the integration polls until the session is idle and an assistant message exists after the returned messageId. With waitForCompletion false, the Port run completes as soon as Factory accepts the turn, with sessionId, messageId, computerId, and app links in the output. Refreshes the session entity in the catalog when it is readable.",
       "inputs": [
         {
           "name": "prompt",
@@ -117,7 +117,7 @@
           "name": "waitForCompletion",
           "title": "Wait for completion",
           "type": "boolean",
-          "description": "When true (default), keep the Port run in progress and poll Factory until the turn finishes (session idle and an assistant message after messageId). When false, complete the Port run immediately after Factory accepts the turn (202).",
+          "description": "When true (default), keep the Port run in progress and poll Factory until the turn finishes (session idle and an assistant message after messageId). When false, complete the Port run as soon as Factory accepts the turn.",
           "default": true,
           "required": false
         }
@@ -126,7 +126,7 @@
     {
       "name": "interrupt_session",
       "icon": "FactoryAi",
-      "description": "Interrupt a running Factory Droid session via POST /api/v0/sessions/{sessionId}/interrupt. Stops the active agent loop and returns the session execution status (idle, pending, or running). Idempotent when the session is already idle. Refreshes the session entity in the catalog when it is readable.",
+      "description": "Stop the active agent loop on a running Factory Droid session and return the session execution status (idle, pending, or running). Idempotent when the session is already idle. Refreshes the session entity in the catalog when it is readable. Requires Factory Sessions API access (enabled for selected organizations only).",
       "inputs": [
         {
           "name": "sessionId",
