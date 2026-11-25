@@ -12,6 +12,10 @@ from tools.integration_validation.runner.blueprint_rewrite import (
     rewrite_mapping_blueprints,
     suffix_blueprints,
 )
+from tools.integration_validation.runner.collect import (
+    ScenarioCollection,
+    collect_scenario,
+)
 from tools.integration_validation.runner.errors import ValidationSetupError
 from tools.integration_validation.runner.loader import (
     load_blueprints_file,
@@ -71,6 +75,7 @@ class ScenarioRun:
     cleanup_leftovers: list[str]
     cleaned_up: bool
     integration: IntegrationRunResult
+    collection: ScenarioCollection
 
 
 @dataclass(frozen=True)
@@ -180,6 +185,9 @@ async def _run_scenario(
             mock_base_url=options.mock_base_url,
             timeout_seconds=options.integration_timeout_seconds,
         )
+        collection = await collect_scenario(
+            client, plan, mock_base_url=options.mock_base_url
+        )
     finally:
         if prepared:
             leftovers = await _teardown_scenario(client, plan, options)
@@ -189,6 +197,7 @@ async def _run_scenario(
         cleanup_leftovers=leftovers,
         cleaned_up=prepared and not options.skip_cleanup and not leftovers,
         integration=integration_result,
+        collection=collection,
     )
 
 
@@ -240,6 +249,7 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleanup_leftovers": run.cleanup_leftovers,
         },
         "integration": run.integration.report_dict(),
+        "collection": run.collection.report_dict(),
     }
 
 

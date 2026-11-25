@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from tools.integration_validation.runner import collect as collect_module
 from tools.integration_validation.runner import runner as runner_module
 from tools.integration_validation.runner.integration_process import IntegrationRunResult
 from tools.integration_validation.runner.main import main
+from tools.integration_validation.runner.mock_journal import MockJournal
 from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
 
 MOCK_BASE_URL = "http://127.0.0.1:9000"
@@ -24,6 +26,14 @@ def fake_ocean_sail(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(runner_module, "run_ocean_sail_once", fake_sail)
+
+
+@pytest.fixture(autouse=True)
+def fake_mock_journal(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_fetch(mock_base_url: str) -> MockJournal:
+        return MockJournal(requests=[], route_call_counts={})
+
+    monkeypatch.setattr(collect_module, "fetch_mock_journal", fake_fetch)
 
 
 def _cli_args(integration_root: Path, *extra: str) -> list[str]:
@@ -204,7 +214,8 @@ def test_validate_skip_cleanup_keeps_port_resources_and_reports_them(
 
     assert "Port resources kept" in capsys.readouterr().out
     (client,) = fake_port_clients.values()
-    assert client.names()[-1] == "mark_initialized"
+    names = client.names()
+    assert "delete_integration" not in names[names.index("mark_initialized") :]
     assert client.blueprints == {"sampleTeam-happy-path"}
     report = json.loads(report_path.read_text())
     port = report["scenarios"][0]["port"]
@@ -285,6 +296,37 @@ def test_validate_with_mock_base_url_runs_sail_after_port_prep(
 
     assert sail_calls == ["validate-sample-happy-path"]
     assert "All scenarios completed integration subprocess." in capsys.readouterr().err
+
+
+def test_validate_collects_entities_before_cleanup_and_reports_them(
+    validation_integration: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    clients: list[FakePortClient] = []
+
+    def factory(integration_identifier: str, integration_type: str) -> FakePortClient:
+        client = FakePortClient(
+            entities={"sampleTeam-happy-path": [{"identifier": "platform"}]}
+        )
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(runner_module, "create_port_client", factory)
+    report_path = tmp_path / "report.json"
+
+    main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    (client,) = clients
+    names = client.names()
+    assert names.index("search_entities") < names.index(
+        "delete_integration", names.index("mark_initialized")
+    )
+    assert "Entities: sampleTeam=1" in capsys.readouterr().out
+    collection = json.loads(report_path.read_text())["scenarios"][0]["collection"]
+    assert collection["resync_status"] == "completed"
+    assert collection["entity_counts"] == {"sampleTeam": 1}
 
 
 def test_validate_missing_port_credentials_exits_2(

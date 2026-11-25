@@ -33,6 +33,18 @@ python -m tools.integration_validation.runner integrations/datadog \
 
 Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`, `--mock-base-url URL` (default `http://127.0.0.1:9000`; the runner does not start the mock), `--integration-timeout SECONDS` (subprocess limit, default 180).
 
+The runner only reads the mock's admin API; it never loads or resets it. Load the scenario before each run and reset the mock between runs (`POST /__admin/reset`), otherwise the journal and call counts include earlier requests. Run one `--scenario` at a time, since every scenario hits whatever is loaded.
+
 Each scenario runs `ocean sail -O` as a subprocess with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
+
+## Collected results
+
+After the subprocess exits and before cleanup, each scenario collects:
+
+- the resync status Port reports for the integration (`completed`, `failed`, `aborted`, `running` or `missing`). Ocean reports the final status before `ocean sail -O` exits, so `running` here means it could not report it (for example after a timeout);
+- every entity in each of the run's blueprints, searched by blueprint rather than datasource, so placeholders from `createMissingRelatedEntities` and unexpected entities are included;
+- the mock's journal: all requests, unmatched requests, unused routes and per-route call counts.
+
+The console prints a summary per scenario, and the report has a `collection` section with the resync status, entity counts per blueprint and the journal summary. Collected results do not change the exit code yet.
 
 Exit codes: `0` pass, `1` validation failed (for example Port rejected a blueprint or the mapping), `2` setup/preflight error.
