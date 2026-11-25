@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.171 (2026-11-25)
+
+
+### Bug Fixes
+
+- Skip managed-resource fetches for apps on unreachable ArgoCD clusters so resyncs complete instead of hanging per disconnected destination
+
+
 ## 0.4.170 (2026-11-24)
 
 

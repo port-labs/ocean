@@ -41,3 +41,9 @@ class ExecuteDroidError(FactoryActionError):
     """Raised when ``POST /api/v0/droid/execute`` fails or returns a bad body."""
 
     DEFAULT_STATUS_LABEL = "Execute failed"
+
+
+class InterruptSessionError(FactoryActionError):
+    """Raised when ``POST /api/v0/sessions/{sessionId}/interrupt`` fails."""
+
+    DEFAULT_STATUS_LABEL = "Interrupt failed"

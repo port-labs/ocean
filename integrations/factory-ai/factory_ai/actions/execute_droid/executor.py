@@ -18,9 +18,7 @@ from factory_ai.actions.execute_droid.models import (
 )
 from factory_ai.clients.exceptions import FactoryAIError
 from factory_ai.config import DEFAULT_FACTORY_APP_HOST
-from factory_ai.core.exporters.session.exporter import SessionExporter
-from factory_ai.core.exporters.session.models import GetSessionOptions, Session
-from factory_ai.kinds import ObjectKind
+from factory_ai.core.exporters.session.models import Session
 
 DROID_EXECUTE_PATH = "/api/v0/droid/execute"
 EXECUTING_STATUS_LABEL = "Executing droid"
@@ -124,7 +122,9 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             f"for Port run {run.id}"
         )
 
-        await self._reflect_session(response.session_id, response.computer_id, run)
+        await self._reflect_session(
+            response.session_id, run, computer_id=response.computer_id
+        )
 
         output = {
             "sessionId": response.session_id,
@@ -169,7 +169,9 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
         completion = await self._wait_for_turn_completion(
             response.session_id, response.computer_id, response.message_id
         )
-        await self._reflect_session(response.session_id, response.computer_id, run)
+        await self._reflect_session(
+            response.session_id, run, computer_id=response.computer_id
+        )
 
         completion_output = {
             **completion.session.to_raw_item(),
@@ -249,24 +251,3 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
         return TurnCompletion(
             session=session, reply=reply, user_message_id=user_message_id
         )
-
-    async def _reflect_session(
-        self, session_id: str, computer_id: str, run: IntegrationRun
-    ) -> None:
-        """Best-effort catalog upsert for the session created/continued by execute."""
-        try:
-            exporter = SessionExporter(self.client)
-            raw = await exporter.get_resource(
-                GetSessionOptions(session_id=session_id, computer_id=computer_id)
-            )
-        except Exception as error:
-            logger.warning(
-                f"Failed to fetch session {session_id} after execute (continuing): {error}"
-            )
-            return
-        if raw is None:
-            logger.warning(
-                f"Session {session_id} not readable yet after execute (continuing)"
-            )
-            return
-        await self.register_entity(ObjectKind.SESSION, raw, run)
