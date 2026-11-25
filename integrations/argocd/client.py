@@ -139,6 +139,54 @@ class ArgocdClient:
         async for clusters in self.get_paginated_resources(url):
             yield clusters
 
+    async def get_unreachable_cluster_identifiers(self) -> set[str]:
+        """Return cluster names/servers whose connectionState is not Successful.
+
+        Used to skip managed-resource fetches for apps on disconnected clusters
+        before those requests hang and burn through retries.
+        """
+        unreachable_cluster_identifiers: set[str] = set()
+        unreachable_cluster_labels: list[str] = []
+
+        async for clusters in self.get_clusters():
+            for cluster in clusters:
+                connection_status = cluster.get("connectionState", {}).get("status")
+
+                if connection_status == ClusterState.AVAILABLE.value:
+                    continue
+
+                cluster_name = cluster.get("name")
+                cluster_server = cluster.get("server")
+
+                if cluster_name:
+                    unreachable_cluster_identifiers.add(cluster_name)
+
+                if cluster_server:
+                    unreachable_cluster_identifiers.add(cluster_server)
+
+                if label := cluster_name or cluster_server:
+                    unreachable_cluster_labels.append(label)
+
+        if unreachable_cluster_labels:
+            logger.warning(
+                f"Found {len(unreachable_cluster_labels)} unreachable cluster(s): {', '.join(unreachable_cluster_labels)}. "
+                "These clusters will be skipped during managed resource fetches."
+            )
+
+        return unreachable_cluster_identifiers
+
+    @staticmethod
+    def is_application_on_unreachable_cluster(
+        application: dict[str, Any], unreachable_cluster_identifiers: set[str]
+    ) -> bool:
+        destination = application.get("spec", {}).get("destination") or {}
+        server = destination.get("server")
+        name = destination.get("name")
+        return bool(
+            (server and server in unreachable_cluster_identifiers)
+            or (name and name in unreachable_cluster_identifiers)
+        )
+
     async def get_resources(
         self, resource_kind: str, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
