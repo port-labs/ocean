@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from port_ocean.utils.ttl_cache import TTLCache
 
+from claude_managed_agents.core import archived_resources
 from claude_managed_agents.core.archived_resources import (
     ArchivedResourceChecker,
-    clear_archive_state_cache,
-    get_session_referenced_ids,
+    SessionReferences,
 )
 from claude_managed_agents.core.exporters.sessions_exporter import SessionsExporter
 from claude_managed_agents.integration import (
@@ -23,10 +24,12 @@ from claude_managed_agents.integration import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_cache() -> Iterator[None]:
-    clear_archive_state_cache()
-    yield
-    clear_archive_state_cache()
+def _fresh_archived_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        archived_resources,
+        "_archived_resources_cache",
+        TTLCache[bool](ttl_seconds=60, max_items=100),
+    )
 
 
 def _model(data: dict[str, Any]) -> MagicMock:
@@ -111,7 +114,7 @@ def test_session_selector_reads_alias() -> None:
     assert selector.include_sessions_of_archived_resources is True
 
 
-def test_get_session_referenced_ids() -> None:
+def test_session_referenced_ids() -> None:
     session = _session(
         "s1",
         agent_id="a1",
@@ -119,7 +122,7 @@ def test_get_session_referenced_ids() -> None:
         vault_ids=["v1", "v2"],
         memory_store_ids=["m1"],
     )
-    assert get_session_referenced_ids(session) == {
+    assert SessionReferences.model_validate(session).referenced_ids() == {
         ObjectKind.AGENT: {"a1"},
         ObjectKind.ENVIRONMENT: {"e1"},
         ObjectKind.VAULT: {"v1", "v2"},
@@ -127,8 +130,8 @@ def test_get_session_referenced_ids() -> None:
     }
 
 
-def test_get_session_referenced_ids_handles_missing_fields() -> None:
-    assert get_session_referenced_ids({"id": "s1"}) == {
+def test_session_referenced_ids_handle_missing_fields() -> None:
+    assert SessionReferences.model_validate({"id": "s1"}).referenced_ids() == {
         ObjectKind.AGENT: set(),
         ObjectKind.ENVIRONMENT: set(),
         ObjectKind.VAULT: set(),
@@ -191,6 +194,12 @@ async def test_loaded_checker_lists_every_kind_with_archived_included() -> None:
         resource.list.assert_called_once_with(include_archived=True)
 
 
+async def _archived_retrieve(_resource_id: str) -> MagicMock:
+    resource = MagicMock()
+    resource.archived_at = "2026-01-01T00:00:00Z"
+    return resource
+
+
 def _lookup_client(*, archived: set[str]) -> MagicMock:
     client = MagicMock()
 
@@ -225,16 +234,30 @@ async def test_unloaded_checker_looks_up_each_referenced_resource() -> None:
 
 
 @pytest.mark.asyncio
-async def test_unloaded_checker_caches_lookups() -> None:
+async def test_unloaded_checker_always_rechecks_active_resources() -> None:
+    """An active resource can be archived while its sessions keep running, so
+    an "active" answer must never be cached."""
     client = _lookup_client(archived=set())
     checker = ArchivedResourceChecker(client)
     session = _session("s1")
 
     assert await checker.session_references_archived_resource(session) is False
-    assert await checker.session_references_archived_resource(session) is False
+    client.get_agent.side_effect = _archived_retrieve
+    assert await checker.session_references_archived_resource(session) is True
 
-    client.get_agent.assert_awaited_once_with("agent_active")
-    client.get_environment.assert_awaited_once_with("env_active")
+    assert client.get_agent.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_unloaded_checker_caches_archived_resources() -> None:
+    client = _lookup_client(archived={"agent_archived"})
+    checker = ArchivedResourceChecker(client)
+    session = _session("s1", agent_id="agent_archived")
+
+    assert await checker.session_references_archived_resource(session) is True
+    assert await checker.session_references_archived_resource(session) is True
+
+    client.get_agent.assert_awaited_once_with("agent_archived")
 
 
 @pytest.mark.asyncio

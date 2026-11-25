@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+from port_ocean.utils.ttl_cache import TTLCache
 
 from claude_managed_agents.actions.archive_agent_executor import ArchiveAgentExecutor
-from claude_managed_agents.core.archived_resources import clear_archive_state_cache
+from claude_managed_agents.core import archived_resources
 from claude_managed_agents.integration import (
     AgentResourceConfig,
     AgentSelector,
@@ -49,10 +49,12 @@ _ARCHIVED_AT = "2026-01-01T00:00:00Z"
 
 
 @pytest.fixture(autouse=True)
-def _clear_cache() -> Iterator[None]:
-    clear_archive_state_cache()
-    yield
-    clear_archive_state_cache()
+def _fresh_archived_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        archived_resources,
+        "_archived_resources_cache",
+        TTLCache[bool](ttl_seconds=60, max_items=100),
+    )
 
 
 def _event(data: dict[str, Any]) -> WebhookEvent:

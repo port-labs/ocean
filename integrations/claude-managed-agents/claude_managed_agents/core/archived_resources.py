@@ -1,16 +1,13 @@
 import asyncio
-import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from loguru import logger
+from port_ocean.utils.ttl_cache import TTLCache
+from pydantic import BaseModel
 
 from claude_managed_agents.clients.anthropic_client import AnthropicClient
 from claude_managed_agents.integration import ObjectKind
-
-# Archiving is terminal, so an archived resource never becomes active again and
-# is cached for good. Active resources are re-checked after this TTL.
-ACTIVE_STATE_CACHE_TTL_SECONDS = 300.0
 
 # Resource kinds a session can reference.
 SESSION_REFERENCED_KINDS = (
@@ -20,31 +17,54 @@ SESSION_REFERENCED_KINDS = (
     ObjectKind.MEMORY_STORE,
 )
 
-# (kind, resource id) -> (is archived, monotonic expiry)
-_archive_state_cache: dict[tuple[ObjectKind, str], tuple[bool, float]] = {}
+# Archiving is terminal, so only archived resources are cached. Active ones are
+# always looked up again, since they can be archived at any moment while their
+# sessions keep running.
+ARCHIVED_CACHE_TTL_SECONDS = 24 * 60 * 60
+ARCHIVED_CACHE_MAX_ITEMS = 10_000
+_archived_resources_cache = TTLCache[bool](
+    ttl_seconds=ARCHIVED_CACHE_TTL_SECONDS, max_items=ARCHIVED_CACHE_MAX_ITEMS
+)
 
 
-def clear_archive_state_cache() -> None:
-    _archive_state_cache.clear()
+class ArchivableResource(BaseModel):
+    id: str
+    archived_at: str | None = None
 
 
-def get_session_referenced_ids(session: dict[str, Any]) -> dict[ObjectKind, set[str]]:
-    """Mirrors the session relations in `port-app-config.yml`."""
-    agent = session.get("agent") or {}
-    resources = session.get("resources") or []
-    return {
-        ObjectKind.AGENT: {agent["id"]} if agent.get("id") else set(),
-        ObjectKind.ENVIRONMENT: (
-            {session["environment_id"]} if session.get("environment_id") else set()
-        ),
-        ObjectKind.VAULT: set(session.get("vault_ids") or []),
-        ObjectKind.MEMORY_STORE: {
-            resource["memory_store_id"]
-            for resource in resources
-            if resource.get("type") == "memory_store"
-            and resource.get("memory_store_id")
-        },
-    }
+class SessionAgent(BaseModel):
+    id: str | None = None
+
+
+class SessionResource(BaseModel):
+    type: str | None = None
+    memory_store_id: str | None = None
+
+
+class SessionReferences(BaseModel):
+    """The parts of a session that link it to other resources. Mirrors the
+    session relations in `port-app-config.yml`."""
+
+    agent: SessionAgent | None = None
+    environment_id: str | None = None
+    vault_ids: list[str] | None = None
+    resources: list[SessionResource] | None = None
+
+    def referenced_ids(self) -> dict[ObjectKind, set[str]]:
+        return {
+            ObjectKind.AGENT: (
+                {self.agent.id} if self.agent and self.agent.id else set()
+            ),
+            ObjectKind.ENVIRONMENT: (
+                {self.environment_id} if self.environment_id else set()
+            ),
+            ObjectKind.VAULT: set(self.vault_ids or []),
+            ObjectKind.MEMORY_STORE: {
+                resource.memory_store_id
+                for resource in self.resources or []
+                if resource.type == "memory_store" and resource.memory_store_id
+            },
+        }
 
 
 class ArchivedResourceChecker:
@@ -52,7 +72,7 @@ class ArchivedResourceChecker:
 
     Resyncs call `load_archived_ids` once to list every archived resource up
     front, while webhook events (which have no resync context) look resources up
-    one by one and cache the answer.
+    one by one.
     """
 
     def __init__(self, client: AnthropicClient) -> None:
@@ -81,7 +101,7 @@ class ArchivedResourceChecker:
     async def session_references_archived_resource(
         self, session: dict[str, Any]
     ) -> bool:
-        referenced = get_session_referenced_ids(session)
+        referenced = SessionReferences.model_validate(session).referenced_ids()
 
         if self._archived_ids is not None:
             return any(
@@ -100,9 +120,11 @@ class ArchivedResourceChecker:
         archived_ids: set[str] = set()
         async for batch in self._client.paginate(list_call):
             for item in batch:
-                raw = item.to_dict(mode="json", warnings=False)
-                if raw.get("archived_at"):
-                    archived_ids.add(str(raw["id"]))
+                resource = ArchivableResource.model_validate(
+                    item.to_dict(mode="json", warnings=False)
+                )
+                if resource.archived_at:
+                    archived_ids.add(resource.id)
         return archived_ids
 
     def _retrievers(self) -> dict[ObjectKind, Callable[[str], Awaitable[Any]]]:
@@ -114,10 +136,9 @@ class ArchivedResourceChecker:
         }
 
     async def _is_archived(self, kind: ObjectKind, resource_id: str) -> bool:
-        key = (kind, resource_id)
-        cached = _archive_state_cache.get(key)
-        if cached is not None and cached[1] > time.monotonic():
-            return cached[0]
+        cache_key = f"{kind}:{resource_id}"
+        if _archived_resources_cache.get(cache_key):
+            return True
 
         try:
             resource = await self._retrievers()[kind](resource_id)
@@ -130,10 +151,6 @@ class ArchivedResourceChecker:
             return False
 
         archived = bool(getattr(resource, "archived_at", None))
-        expires_at = (
-            float("inf")
-            if archived
-            else time.monotonic() + ACTIVE_STATE_CACHE_TTL_SECONDS
-        )
-        _archive_state_cache[key] = (archived, expires_at)
+        if archived:
+            _archived_resources_cache.set(cache_key, True)
         return archived
