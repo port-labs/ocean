@@ -8,16 +8,16 @@ from typing import Any
 
 from loguru import logger
 
-from tools.integration_validation.runner.blueprint_rewrite import (
+from tools.integration_validation.runner.port.blueprints import (
     rewrite_mapping_blueprints,
     suffix_blueprints,
 )
-from tools.integration_validation.runner.collect import (
+from tools.integration_validation.runner.results.collect import (
     ScenarioCollection,
     collect_scenario,
 )
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.scenarios.loader import (
     load_blueprints_file,
     load_port_app_config_file,
     load_scenarios_document,
@@ -25,34 +25,34 @@ from tools.integration_validation.runner.loader import (
     resolve_scenario_blueprints_path,
     resolve_validation_paths,
 )
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.models import (
     ScenariosDocument,
     ValidationPaths,
 )
-from tools.integration_validation.runner.naming import build_integration_identifier
-from tools.integration_validation.runner.port_app_config import (
+from tools.integration_validation.runner.core.naming import build_integration_identifier
+from tools.integration_validation.runner.port.app_config import (
     build_scenario_port_app_config,
 )
-from tools.integration_validation.runner.port_setup import (
+from tools.integration_validation.runner.port.client import (
     ScenarioPortPlan,
     ValidationPortClient,
     create_port_client,
     prepare_scenario_port,
     teardown_scenario_port,
 )
-from tools.integration_validation.runner.integration_config_env import (
+from tools.integration_validation.runner.integration.config_env import (
     merge_scenario_integration_config,
 )
-from tools.integration_validation.runner.integration_process import (
+from tools.integration_validation.runner.integration.process import (
     IntegrationRunResult,
     run_ocean_sail_once,
 )
-from tools.integration_validation.runner.preflight import (
+from tools.integration_validation.runner.scenarios.preflight import (
     load_integration_type,
     run_preflight,
     select_scenario_names,
 )
-from tools.integration_validation.runner.statuses import (
+from tools.integration_validation.runner.core.statuses import (
     ScenarioIntegrationStatus,
     ValidationAggregateStatus,
 )
@@ -249,7 +249,7 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleanup_leftovers": run.cleanup_leftovers,
         },
         "integration": run.integration.report_dict(),
-        "collection": run.collection.report_dict(),
+        "collection": run.collection.to_dict(),
     }
 
 

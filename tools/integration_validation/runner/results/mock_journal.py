@@ -11,7 +11,7 @@ from tools.integration_validation.mock_server.admin_schemas import (
     JournalResponse,
 )
 from tools.integration_validation.mock_server.constants import ADMIN_PREFIX
-from tools.integration_validation.runner.errors import ValidationSetupError
+from tools.integration_validation.runner.core.errors import ValidationSetupError
 
 MOCK_ADMIN_TIMEOUT_SECONDS = 10.0
 
@@ -29,7 +29,7 @@ class MockJournal(JournalResponse):
             route_id for route_id, count in self.route_call_counts.items() if not count
         ]
 
-    def report_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "request_count": len(self.requests),
             "unmatched_requests": [

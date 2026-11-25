@@ -9,11 +9,11 @@ from typing import Any
 
 from loguru import logger
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.integration_config_env import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.integration.config_env import (
     build_sail_subprocess_env,
 )
-from tools.integration_validation.runner.statuses import ScenarioIntegrationStatus
+from tools.integration_validation.runner.core.statuses import ScenarioIntegrationStatus
 
 DEFAULT_MOCK_BASE_URL = "http://127.0.0.1:9000"
 DEFAULT_INTEGRATION_TIMEOUT_SECONDS = 180.0

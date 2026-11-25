@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.integration_validation.runner import collect as collect_module
+from tools.integration_validation.runner.results import collect as collect_module
 from tools.integration_validation.runner import runner as runner_module
-from tools.integration_validation.runner.integration_process import IntegrationRunResult
+from tools.integration_validation.runner.integration.process import IntegrationRunResult
 from tools.integration_validation.runner.main import main
-from tools.integration_validation.runner.mock_journal import MockJournal
-from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
+from tools.integration_validation.runner.results.mock_journal import MockJournal
+from tools.integration_validation.tests.runner.test_port_client import FakePortClient
 
 MOCK_BASE_URL = "http://127.0.0.1:9000"
 

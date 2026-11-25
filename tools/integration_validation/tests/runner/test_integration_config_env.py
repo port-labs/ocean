@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from tools.integration_validation.runner.integration_config_env import (
+from tools.integration_validation.runner.integration.config_env import (
     build_sail_subprocess_env,
     integration_config_env_vars,
     merge_scenario_integration_config,
