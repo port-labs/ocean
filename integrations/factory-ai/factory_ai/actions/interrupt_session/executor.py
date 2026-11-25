@@ -65,7 +65,6 @@ class InterruptSessionExecutor(AbstractFactoryExecutor):
                 status_label=INTERRUPT_FAILED_STATUS_LABEL,
             ) from error
 
-        session_url = f"{DEFAULT_FACTORY_APP_HOST}/sessions/{session_id}"
         logger.info(
             f"Interrupted Factory session {session_id} "
             f"(status={response.status}) for Port run {run.id}"
@@ -73,6 +72,7 @@ class InterruptSessionExecutor(AbstractFactoryExecutor):
 
         await self._reflect_session(session_id, run)
 
+        session_url = f"{DEFAULT_FACTORY_APP_HOST}/sessions/{session_id}"
         output = {
             "sessionId": session_id,
             "status": response.status,
