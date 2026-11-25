@@ -13,7 +13,7 @@ from tools.integration_validation.runner.results.mock_journal import (
     MockJournal,
     fetch_mock_journal,
 )
-from tools.integration_validation.runner.port.setup import (
+from tools.integration_validation.runner.port.provision import (
     ScenarioPortPlan,
     ValidationPortClient,
     port_error,

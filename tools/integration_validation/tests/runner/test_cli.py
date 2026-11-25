@@ -10,7 +10,7 @@ from tools.integration_validation.runner import runner as runner_module
 from tools.integration_validation.runner.integration.process import IntegrationRunResult
 from tools.integration_validation.runner.main import main
 from tools.integration_validation.runner.results.mock_journal import MockJournal
-from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
+from tools.integration_validation.tests.runner.test_port_provision import FakePortClient
 
 MOCK_BASE_URL = "http://127.0.0.1:9000"
 

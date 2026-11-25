@@ -33,7 +33,7 @@ from tools.integration_validation.runner.core.naming import build_integration_id
 from tools.integration_validation.runner.port.app_config import (
     build_scenario_port_app_config,
 )
-from tools.integration_validation.runner.port.setup import (
+from tools.integration_validation.runner.port.provision import (
     ScenarioPortPlan,
     ValidationPortClient,
     create_port_client,
