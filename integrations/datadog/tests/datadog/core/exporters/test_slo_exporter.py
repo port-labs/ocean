@@ -6,9 +6,11 @@ import httpx
 import pytest
 
 from datadog.client import DatadogClient
-from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
+from datadog.core.exporters.base_exporter import (
+    CHANGED_RESOURCES_FETCH_BATCH_SIZE,
+    MAX_PAGE_SIZE,
+)
 from datadog.core.exporters.slo_exporter import (
-    CHANGED_SLOS_FETCH_BATCH_SIZE,
     GetSloOptions,
     ListSloOptions,
     SloExporter,
@@ -142,7 +144,7 @@ async def test_get_changed_slos_yields_one_batch_per_concurrent_fetch(
     audit_mocks: tuple[AsyncMock, AsyncMock],
 ) -> None:
     mock_request, _ = audit_mocks
-    slo_ids = [str(i) for i in range(CHANGED_SLOS_FETCH_BATCH_SIZE + 1)]
+    slo_ids = [str(i) for i in range(CHANGED_RESOURCES_FETCH_BATCH_SIZE + 1)]
     mock_request.return_value = _audit_page(*(_audit_event(i) for i in slo_ids))
 
     batches = [
@@ -152,7 +154,7 @@ async def test_get_changed_slos_yields_one_batch_per_concurrent_fetch(
         )
     ]
 
-    assert [len(batch) for batch in batches] == [CHANGED_SLOS_FETCH_BATCH_SIZE, 1]
+    assert [len(batch) for batch in batches] == [CHANGED_RESOURCES_FETCH_BATCH_SIZE, 1]
     assert [slo for batch in batches for slo in batch] == [_slo(i) for i in slo_ids]
 
 

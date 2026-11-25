@@ -627,7 +627,8 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "Adds the status of the checks GitHub requires for merging to open pull requests: "
             "required_checks_status (success, failure, pending, no_required_checks or unknown), "
             "required_checks_failing and required_checks_pending (check names), and "
-            "required_checks_sha (the head commit the status was computed for). "
+            "required_checks_sha (the head commit the status was computed for), and "
+            "required_checks_failed_at (when the latest failing required check finished). "
             "Costs one extra GraphQL query per 5 open pull requests. "
             "Requires the graphql api; it is ignored when the api selector is rest."
         ),

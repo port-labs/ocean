@@ -64,13 +64,16 @@ class ActionsClientMixin:
         run_id: str,
         run: ActionRun | dict[str, Any],
         should_raise: bool = True,
+        should_log: bool = True,
     ) -> None:
         response = await self.client.patch(
             f"{self.auth.api_url}/actions/runs/{run_id}",
             headers=await self.auth.headers(),
             json=run.dict() if isinstance(run, ActionRun) else run,
         )
-        handle_port_status_code(response, should_raise=should_raise)
+        handle_port_status_code(
+            response, should_raise=should_raise, should_log=should_log
+        )
 
     async def acknowledge_action_run(self, run_id: str) -> None:
         try:
