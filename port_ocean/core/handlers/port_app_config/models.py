@@ -112,6 +112,17 @@ class ResourceConfig(BaseModel):
         title="Kind",
         description="key is a specifier for the object you wish to map from the tool's API.",
     )
+    resource_id: str | None = Field(
+        alias="resourceId",
+        default=None,
+        title="Resource ID",
+        description=(
+            "Set by Port on the executor view when the org groups resources: blocks "
+            "with the same kind and selector (ignoring query) share it. Read-only; "
+            "never sent back to Port."
+        ),
+        extra={"ui_schema": {"hidden": True}},
+    )
     enable_delete: bool = Field(
         alias="enableDelete",
         default=True,
@@ -190,20 +201,27 @@ class PortAppConfig(BaseModel):
             "validation_only": False,
         }
 
-    def to_request(self) -> dict[str, Any]:
+    def to_request(self, with_resource_id: bool = False) -> dict[str, Any]:
         return {
             "deleteDependentEntities": self.delete_dependent_entities,
             "createMissingRelatedEntities": self.create_missing_related_entities,
             "enableMergeEntity": self.enable_merge_entity,
             "entityDeletionThreshold": self.entity_deletion_threshold,
             "resources": [
-                resource.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+                resource.dict(
+                    by_alias=True,
+                    exclude_none=True,
+                    exclude_unset=True,
+                    exclude=None if with_resource_id else {"resource_id"},
+                )
                 for resource in self.resources
             ],
         }
 
     def to_dsp_lifecycle_mapping(self) -> dict[str, Any]:
-        mapping = self.to_request()
+        # The DSP pins this copy and groups blocks by resourceId, the same way
+        # sync_raw grouped its fetches, so the ids Port served go back here.
+        mapping = self.to_request(with_resource_id=True)
         for resource in mapping.get("resources", []):
             entity = resource.get("port", {}).get("entity", {})
             mappings = entity.get("mappings")

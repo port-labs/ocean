@@ -34,6 +34,10 @@ INTEGRATION_IN_PROGRESS_ERROR = "integration_is_in_progress"
 SPEC_PATCH_RETRY_ATTEMPTS = 8
 SPEC_PATCH_RETRY_INITIAL_SECONDS = 2.0
 SPEC_PATCH_RETRY_BACKOFF = 1.5
+# Port returns the blocks as written; when the org groups resources, each block also
+# carries a resourceId shared by the blocks of one resource.
+RESOURCES_VIEW_PARAM = "resourcesView"
+EXECUTOR_RESOURCES_VIEW = "executor"
 
 
 def _is_resync_stale_lakehouse_response(response: httpx.Response) -> bool:
@@ -129,6 +133,7 @@ class IntegrationClientMixin:
             "params": {
                 "oceanCoreVersion": ocean_core_version,
                 "isPolling": "true" if is_polling else "false",
+                RESOURCES_VIEW_PARAM: EXECUTOR_RESOURCES_VIEW,
             },
         }
         response = await self.client.get(
@@ -488,6 +493,8 @@ class IntegrationClientMixin:
                     "selectorHash": entry["metadata"].get("selector_hash"),
                 },
             }
+            if resource_id := entry["metadata"].get("resource_id"):
+                entry_data["metadata"]["resourceId"] = resource_id
             if environment_data := entry.get("environment_data"):
                 entry_data["environment_data"] = make_json_compatible(environment_data)
             data.append(entry_data)
