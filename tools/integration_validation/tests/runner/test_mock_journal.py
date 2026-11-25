@@ -29,7 +29,7 @@ async def test_fetch_mock_journal_reads_requests_unmatched_and_unused(
     assert journal.route_call_counts["list-teams"] == 1
     assert [entry.path for entry in journal.unmatched_requests] == ["/api/v2/users"]
     assert journal.unused_route_ids == ["create-team", "unused-route", "rate-limited"]
-    assert journal.report_dict()["unmatched_requests"] == [
+    assert journal.to_dict()["unmatched_requests"] == [
         {"method": "GET", "path": "/api/v2/users", "query": {}}
     ]
 

@@ -61,7 +61,7 @@ async def test_collects_resync_status_entities_by_blueprint_and_journal(
     assert collection.resync_status == ResyncStatus.FAILED
     assert collection.entities == {"user": [], "team": [team]}
     assert collection.mock is journal
-    assert collection.report_dict() == {
+    assert collection.to_dict() == {
         "resync_status": "failed",
         "entity_counts": {"user": 0, "team": 1},
         "mock": {

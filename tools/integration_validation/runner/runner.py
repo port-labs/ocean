@@ -249,7 +249,7 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleanup_leftovers": run.cleanup_leftovers,
         },
         "integration": run.integration.report_dict(),
-        "collection": run.collection.report_dict(),
+        "collection": run.collection.to_dict(),
     }
 
 
