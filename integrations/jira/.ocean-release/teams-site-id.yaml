@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Send the required siteId on Atlassian Teams API requests, resolved automatically from the Jira site, so the team kind no longer fails with 400 Bad Request. Failed Jira API requests now also log the response body.

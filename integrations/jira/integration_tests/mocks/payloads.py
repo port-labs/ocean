@@ -11,6 +11,15 @@ JIRA_API_URL = f"{JIRA_REST_URL}/api/3"
 PROJECT_KEYS = ["PORT", "OCEAN"]
 ISSUE_COUNT = 2
 USER_COUNT = 2
+TEAM_COUNT = 2
+
+# Atlassian organization ID (admin.atlassian.com/o/<id>) and the Jira site's
+# cloud ID, which the Teams API expects as ``siteId``.
+ORG_ID = "11111111-2222-3333-4444-555555555555"
+SITE_ID = "99999999-8888-7777-6666-555555555555"
+
+TEAMS_API_PATH = f"/gateway/api/public/teams/v1/org/{ORG_ID}/teams"
+TENANT_INFO_URL = f"{JIRA_HOST}/_edge/tenant_info"
 
 
 # ---------------------------------------------------------------------------
@@ -98,3 +107,49 @@ def user_response(idx: int) -> dict[str, Any]:
 
 def users_page_response() -> list[dict[str, Any]]:
     return [user_response(i) for i in range(1, USER_COUNT + 1)]
+
+
+# ---------------------------------------------------------------------------
+# Teams
+# ---------------------------------------------------------------------------
+
+
+def team_id(idx: int) -> str:
+    return f"team-{idx}"
+
+
+def team_response(idx: int) -> dict[str, Any]:
+    return {
+        "teamId": team_id(idx),
+        "displayName": f"Team {idx}",
+        "organizationId": ORG_ID,
+        "teamType": "MEMBER_INVITE",
+        "description": f"Description of team {idx}",
+    }
+
+
+def teams_page_response() -> dict[str, Any]:
+    # No "cursor" → single page, pagination stops.
+    return {"entities": [team_response(i) for i in range(1, TEAM_COUNT + 1)]}
+
+
+def team_member_account_id(idx: int) -> str:
+    return f"user-account-{idx}"
+
+
+def team_members_page_response(idx: int) -> dict[str, Any]:
+    return {
+        "results": [{"accountId": team_member_account_id(idx)}],
+        "pageInfo": {"endCursor": "end", "hasNextPage": False},
+    }
+
+
+def site_id_required_response() -> dict[str, Any]:
+    """What the mock Atlassian answers when a Teams call has no ``siteId``."""
+    return {
+        "status_code": 400,
+        "json": {
+            "code": "SITE_ID_REQUIRED_FOR_TEAM_API",
+            "message": "siteId is required",
+        },
+    }

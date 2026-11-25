@@ -1,6 +1,6 @@
 from typing import Any
 
-from mocks.payloads import JIRA_EMAIL, JIRA_HOST, JIRA_TOKEN
+from mocks.payloads import JIRA_EMAIL, JIRA_HOST, JIRA_TOKEN, ORG_ID
 
 _RESOURCES: dict[str, dict[str, Any]] = {
     "project": {
@@ -72,6 +72,27 @@ _RESOURCES: dict[str, dict[str, Any]] = {
             }
         },
     },
+    "team": {
+        "kind": "team",
+        "selector": {"query": "true", "includeMembers": True},
+        "port": {
+            "entity": {
+                "mappings": {
+                    "identifier": ".teamId",
+                    "title": ".displayName",
+                    "blueprint": '"jiraTeam"',
+                    "properties": {
+                        "organizationId": ".organizationId",
+                        "teamType": ".teamType",
+                        "description": ".description",
+                    },
+                    "relations": {
+                        "members": "if .__members != null then .__members | map(.accountId) else [] end",
+                    },
+                }
+            }
+        },
+    },
 }
 
 
@@ -85,6 +106,7 @@ def integration_config() -> dict[str, Any]:
                 "jira_host": JIRA_HOST,
                 "atlassian_user_email": JIRA_EMAIL,
                 "atlassian_user_token": JIRA_TOKEN,
+                "atlassian_organization_id": ORG_ID,
             },
         }
     }
