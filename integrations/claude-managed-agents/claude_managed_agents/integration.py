@@ -19,12 +19,26 @@ class ObjectKind(StrEnum):
     SKILL = "skill"
 
 
-class AgentSelector(Selector):
+class ArchivableSelector(Selector):
     include_archived: bool = Field(
         default=False,
         alias="includeArchived",
         title="Include Archived",
-        description="Whether to include archived agents in the results.",
+        description="Whether to include archived resources in the results.",
+    )
+
+
+class AgentSelector(ArchivableSelector):
+    include_archived: bool = Field(
+        default=False,
+        alias="includeArchived",
+        title="Include Archived",
+        description=(
+            "Whether to include archived agents in the results. Sessions keep "
+            "referencing agents after they are archived, so enable this "
+            "together with `includeSessionsOfArchivedResources` on the "
+            "session kind to keep those sessions."
+        ),
     )
 
 
@@ -39,12 +53,17 @@ class AgentResourceConfig(ResourceConfig):
     )
 
 
-class EnvironmentSelector(Selector):
+class EnvironmentSelector(ArchivableSelector):
     include_archived: bool = Field(
         default=False,
         alias="includeArchived",
         title="Include Archived",
-        description="Whether to include archived environments in the results.",
+        description=(
+            "Whether to include archived environments in the results. Sessions keep "
+            "referencing environments after they are archived, so enable this "
+            "together with `includeSessionsOfArchivedResources` on the "
+            "session kind to keep those sessions."
+        ),
     )
 
 
@@ -59,12 +78,23 @@ class EnvironmentResourceConfig(ResourceConfig):
     )
 
 
-class SessionSelector(Selector):
+class SessionSelector(ArchivableSelector):
     include_archived: bool = Field(
         default=False,
         alias="includeArchived",
         title="Include Archived",
         description="Whether to include archived sessions in the results.",
+    )
+    include_sessions_of_archived_resources: bool = Field(
+        default=False,
+        alias="includeSessionsOfArchivedResources",
+        title="Include Sessions Of Archived Resources",
+        description=(
+            "Whether to include sessions that reference an archived agent, "
+            "environment, vault or memory store. When enabled, also set "
+            "`includeArchived: true` on those kinds, otherwise these sessions "
+            "point at resources that are not in the catalog."
+        ),
     )
 
 
@@ -79,12 +109,17 @@ class SessionResourceConfig(ResourceConfig):
     )
 
 
-class VaultSelector(Selector):
+class VaultSelector(ArchivableSelector):
     include_archived: bool = Field(
         default=False,
         alias="includeArchived",
         title="Include Archived",
-        description="Whether to include archived vaults in the results.",
+        description=(
+            "Whether to include archived vaults in the results. Sessions keep "
+            "referencing vaults after they are archived, so enable this "
+            "together with `includeSessionsOfArchivedResources` on the "
+            "session kind to keep those sessions."
+        ),
     )
 
 
@@ -99,12 +134,17 @@ class VaultResourceConfig(ResourceConfig):
     )
 
 
-class MemoryStoreSelector(Selector):
+class MemoryStoreSelector(ArchivableSelector):
     include_archived: bool = Field(
         default=False,
         alias="includeArchived",
         title="Include Archived",
-        description="Whether to include archived memory stores in the results.",
+        description=(
+            "Whether to include archived memory stores in the results. Sessions keep "
+            "referencing memory stores after they are archived, so enable this "
+            "together with `includeSessionsOfArchivedResources` on the "
+            "session kind to keep those sessions."
+        ),
     )
 
 

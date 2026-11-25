@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: breaking
+changelog: Sessions that reference an archived agent, environment, vault or memory store are no longer ingested by default, so they stop pointing at resources missing from the catalog. Existing sessions of archived resources are removed from Port on the next resync; set `includeSessionsOfArchivedResources` on the session kind and `includeArchived` on the referenced kinds to keep them. Also added an `archived` boolean property to the agent, environment, vault, memory store and session blueprints, and webhooks and the archive agent action now honor `includeArchived`.

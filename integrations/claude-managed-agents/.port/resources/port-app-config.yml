@@ -16,6 +16,7 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
+            archived: .archived_at != null
   - kind: vault
     selector:
       query: 'true'
@@ -30,6 +31,7 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
+            archived: .archived_at != null
   - kind: memory-store
     selector:
       query: 'true'
@@ -45,6 +47,7 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
+            archived: .archived_at != null
   - kind: skill
     selector:
       query: 'true'
@@ -79,6 +82,7 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
+            archived: .archived_at != null
           relations:
             skills: '[.skills[]? | select(.type == "custom") | .skill_id]'
             delegateAgents: '[.multiagent.agents[]?.id] // []'
@@ -105,6 +109,7 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
+            archived: .archived_at != null
           relations:
             agent: .agent.id
             environment: .environment_id

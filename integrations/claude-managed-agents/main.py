@@ -61,7 +61,8 @@ async def on_resync_sessions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SessionResourceConfig, event.resource_config).selector
     exporter = create_sessions_exporter()
     async for page in exporter.get_paginated_resources(
-        include_archived=selector.include_archived
+        include_archived=selector.include_archived,
+        include_sessions_of_archived_resources=selector.include_sessions_of_archived_resources,
     ):
         if page:
             yield page
