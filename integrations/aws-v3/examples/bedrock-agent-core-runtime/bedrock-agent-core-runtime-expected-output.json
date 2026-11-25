@@ -1,0 +1,22 @@
+{
+  "identifier": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/my-agent-runtime-Ab1Cd2Ef3G",
+  "title": "my-agent-runtime",
+  "blueprint": "bedrockAgentCoreRuntime",
+  "properties": {
+    "arn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/my-agent-runtime-Ab1Cd2Ef3G",
+    "status": "READY",
+    "runtimeVersion": "1",
+    "description": "A sample BedrockAgentCore Runtime for order processing",
+    "roleArn": "arn:aws:iam::123456789012:role/BedrockAgentCoreRuntimeRole",
+    "networkConfiguration": {
+      "networkMode": "PUBLIC"
+    },
+    "platformVersion": "1.0",
+    "lastUpdatedAt": "2025-06-01T12:00:00Z",
+    "createdAt": "2025-05-15T09:30:00Z",
+    "region": "us-east-1"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

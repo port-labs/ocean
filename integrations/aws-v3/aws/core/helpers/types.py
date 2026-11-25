@@ -37,6 +37,7 @@ class ObjectKind(StrEnum):
     SES_CONFIGURATION_SET = "AWS::SES::ConfigurationSet"
     SNS_TOPIC = "AWS::SNS::Topic"
     EKS_NODEGROUP = "AWS::EKS::Nodegroup"
+    BEDROCK_AGENT_CORE_RUNTIME = "AWS::BedrockAgentCore::Runtime"
 
 
 SupportedServices = Literal[
@@ -59,4 +60,5 @@ SupportedServices = Literal[
     "dynamodb",
     "sns",
     "cloudcontrol",
+    "bedrock-agentcore-control",
 ]

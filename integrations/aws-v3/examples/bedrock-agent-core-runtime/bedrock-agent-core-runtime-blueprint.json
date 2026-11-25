@@ -1,0 +1,73 @@
+{
+  "identifier": "bedrockAgentCoreRuntime",
+  "title": "BedrockAgentCore Runtime",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "arn": {
+        "type": "string",
+        "title": "ARN",
+        "description": "The Amazon Resource Name (ARN) of the BedrockAgentCore Runtime"
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "description": "The current status of the BedrockAgentCore Runtime"
+      },
+      "runtimeVersion": {
+        "type": "string",
+        "title": "Runtime Version",
+        "description": "The version of the BedrockAgentCore Runtime"
+      },
+      "description": {
+        "type": "string",
+        "title": "Description",
+        "description": "The description of the BedrockAgentCore Runtime"
+      },
+      "roleArn": {
+        "type": "string",
+        "title": "Role ARN",
+        "description": "The IAM role ARN that provides permissions for the runtime"
+      },
+      "networkConfiguration": {
+        "type": "object",
+        "title": "Network Configuration",
+        "description": "The network configuration of the BedrockAgentCore Runtime"
+      },
+      "platformVersion": {
+        "type": "string",
+        "title": "Platform Version",
+        "description": "The platform version of the BedrockAgentCore Runtime"
+      },
+      "lastUpdatedAt": {
+        "type": "string",
+        "title": "Last Updated At",
+        "description": "The timestamp when the runtime was last updated",
+        "format": "date-time"
+      },
+      "createdAt": {
+        "type": "string",
+        "title": "Created At",
+        "description": "The timestamp when the runtime was created",
+        "format": "date-time"
+      },
+      "region": {
+        "type": "string",
+        "title": "Region",
+        "description": "The AWS region of the BedrockAgentCore Runtime"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

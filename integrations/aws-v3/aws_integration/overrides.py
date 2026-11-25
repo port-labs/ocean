@@ -438,6 +438,17 @@ class AWSEKSNodegroupResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSBedrockAgentCoreRuntimeResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "bedrock:ListAgentRuntimes",
+        "bedrock:GetAgentRuntime",
+    )
+    kind: Literal["AWS::BedrockAgentCore::Runtime"] = Field(
+        title="AWS BedrockAgentCore Runtime",
+        description="AWS BedrockAgentCore Runtime resource kind.",
+    )
+
+
 class AWSCustomKindSelector(AWSRegionPolicySelector):
     use_get_resource_api: bool = Field(
         alias="useGetResourceAPI",
@@ -521,6 +532,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
         | AWSEKSNodegroupResourceConfig
+        | AWSBedrockAgentCoreRuntimeResourceConfig
         | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,
