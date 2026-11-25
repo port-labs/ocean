@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-11-25)
+
+
+### Features
+
+- Add interrupt_session action to stop a running Factory Droid session via the Sessions interrupt API
+
+
 ## 0.1.4 (2026-11-24)
 
 
