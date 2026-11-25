@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.0 (2026-11-25)
+
+
+### Features
+
+- Wire PagerDuty into the centralized rate limiter. The per-minute quota is one Redis pool and admission runs before each retry. The analytics daily quota stays on the local limiter and still raises instead of sleeping until the reset. The local limiter stays as the fallback.
+
+
 ## 0.8.56 (2026-11-25)
 
 
