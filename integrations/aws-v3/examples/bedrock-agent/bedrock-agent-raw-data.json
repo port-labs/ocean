@@ -1,0 +1,31 @@
+{
+  "Type": "AWS::Bedrock::Agent",
+  "Properties": {
+    "AgentId": "ABCDEF1234",
+    "AgentName": "my-customer-support-agent",
+    "AgentArn": "arn:aws:bedrock:us-east-1:123456789012:agent/ABCDEF1234",
+    "AgentStatus": "PREPARED",
+    "AgentVersion": "DRAFT",
+    "Description": "An agent for handling customer support inquiries",
+    "FoundationModel": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "OrchestrationType": "DEFAULT",
+    "IdleSessionTTLInSeconds": 600,
+    "AgentResourceRoleArn": "arn:aws:iam::123456789012:role/AmazonBedrockExecutionRoleForAgents_my-agent",
+    "GuardrailConfiguration": {
+      "guardrailIdentifier": "gr1a2b3c4d5e",
+      "guardrailVersion": "1"
+    },
+    "AgentCollaboration": "DISABLED",
+    "CreatedAt": "2024-01-15T10:30:00Z",
+    "UpdatedAt": "2024-01-20T14:45:00Z",
+    "PreparedAt": "2024-01-20T14:45:00Z",
+    "Tags": {
+      "Environment": "production",
+      "Team": "support"
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

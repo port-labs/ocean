@@ -1,0 +1,28 @@
+resources:
+  - kind: AWS::Bedrock::Agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.AgentArn
+          title: .Properties.AgentName
+          blueprint: '"bedrockAgent"'
+          properties:
+            agentArn: .Properties.AgentArn
+            agentStatus: .Properties.AgentStatus
+            agentVersion: .Properties.AgentVersion
+            foundationModel: .Properties.FoundationModel
+            orchestrationType: .Properties.OrchestrationType
+            roleArn: .Properties.AgentResourceRoleArn
+            guardrailEnabled: (.Properties.GuardrailConfiguration != null)
+            collaboration: .Properties.AgentCollaboration
+            description: .Properties.Description
+            idleSessionTTLInSeconds: .Properties.IdleSessionTTLInSeconds
+            createdAt: .Properties.CreatedAt
+            updatedAt: .Properties.UpdatedAt
+            preparedAt: .Properties.PreparedAt
+            region: .__ExtraContext.Region
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
