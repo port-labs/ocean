@@ -5,9 +5,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from port_ocean.utils.ttl_cache import TTLCache
 
-from claude_managed_agents.core import archived_resources
 from claude_managed_agents.core.archived_resources import (
     ArchivedResourceChecker,
     SessionReferences,
@@ -21,15 +19,6 @@ from claude_managed_agents.integration import (
     SessionSelector,
     VaultSelector,
 )
-
-
-@pytest.fixture(autouse=True)
-def _fresh_archived_cache(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        archived_resources,
-        "_archived_resources_cache",
-        TTLCache[bool](ttl_seconds=60, max_items=100),
-    )
 
 
 def _model(data: dict[str, Any]) -> MagicMock:
@@ -234,9 +223,9 @@ async def test_unloaded_checker_looks_up_each_referenced_resource() -> None:
 
 
 @pytest.mark.asyncio
-async def test_unloaded_checker_always_rechecks_active_resources() -> None:
-    """An active resource can be archived while its sessions keep running, so
-    an "active" answer must never be cached."""
+async def test_unloaded_checker_looks_up_resources_on_every_call() -> None:
+    """A resource can be archived while its sessions keep running, so lookups
+    are never reused between calls."""
     client = _lookup_client(archived=set())
     checker = ArchivedResourceChecker(client)
     session = _session("s1")
@@ -246,18 +235,6 @@ async def test_unloaded_checker_always_rechecks_active_resources() -> None:
     assert await checker.session_references_archived_resource(session) is True
 
     assert client.get_agent.await_count == 2
-
-
-@pytest.mark.asyncio
-async def test_unloaded_checker_caches_archived_resources() -> None:
-    client = _lookup_client(archived={"agent_archived"})
-    checker = ArchivedResourceChecker(client)
-    session = _session("s1", agent_id="agent_archived")
-
-    assert await checker.session_references_archived_resource(session) is True
-    assert await checker.session_references_archived_resource(session) is True
-
-    client.get_agent.assert_awaited_once_with("agent_archived")
 
 
 @pytest.mark.asyncio

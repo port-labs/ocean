@@ -3,7 +3,6 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from loguru import logger
-from port_ocean.utils.ttl_cache import TTLCache
 from pydantic import BaseModel
 
 from claude_managed_agents.clients.anthropic_client import AnthropicClient
@@ -15,15 +14,6 @@ SESSION_REFERENCED_KINDS = (
     ObjectKind.ENVIRONMENT,
     ObjectKind.VAULT,
     ObjectKind.MEMORY_STORE,
-)
-
-# Archiving is terminal, so only archived resources are cached. Active ones are
-# always looked up again, since they can be archived at any moment while their
-# sessions keep running.
-ARCHIVED_CACHE_TTL_SECONDS = 24 * 60 * 60
-ARCHIVED_CACHE_MAX_ITEMS = 10_000
-_archived_resources_cache = TTLCache[bool](
-    ttl_seconds=ARCHIVED_CACHE_TTL_SECONDS, max_items=ARCHIVED_CACHE_MAX_ITEMS
 )
 
 
@@ -136,10 +126,6 @@ class ArchivedResourceChecker:
         }
 
     async def _is_archived(self, kind: ObjectKind, resource_id: str) -> bool:
-        cache_key = f"{kind}:{resource_id}"
-        if _archived_resources_cache.get(cache_key):
-            return True
-
         try:
             resource = await self._retrievers()[kind](resource_id)
         except Exception as error:
@@ -150,7 +136,4 @@ class ArchivedResourceChecker:
             )
             return False
 
-        archived = bool(getattr(resource, "archived_at", None))
-        if archived:
-            _archived_resources_cache.set(cache_key, True)
-        return archived
+        return bool(getattr(resource, "archived_at", None))

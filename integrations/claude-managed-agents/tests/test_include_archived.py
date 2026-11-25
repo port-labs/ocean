@@ -6,10 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from port_ocean.utils.ttl_cache import TTLCache
 
 from claude_managed_agents.actions.archive_agent_executor import ArchiveAgentExecutor
-from claude_managed_agents.core import archived_resources
 from claude_managed_agents.integration import (
     AgentResourceConfig,
     AgentSelector,
@@ -46,15 +44,6 @@ from tests.action_test_helpers import (
 )
 
 _ARCHIVED_AT = "2026-01-01T00:00:00Z"
-
-
-@pytest.fixture(autouse=True)
-def _fresh_archived_cache(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        archived_resources,
-        "_archived_resources_cache",
-        TTLCache[bool](ttl_seconds=60, max_items=100),
-    )
 
 
 def _event(data: dict[str, Any]) -> WebhookEvent:
