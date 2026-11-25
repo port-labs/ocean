@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import load_blueprints_file
-from tools.integration_validation.runner.models import BlueprintsDocument
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.scenarios.loader import load_blueprints_file
+from tools.integration_validation.runner.core.models import BlueprintsDocument
 
 
 def test_load_blueprints_file_parses_valid_json(tmp_path: Path) -> None:

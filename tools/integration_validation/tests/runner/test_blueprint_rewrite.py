@@ -3,13 +3,13 @@ from typing import Any
 
 import pytest
 
-from tools.integration_validation.runner.blueprint_rewrite import (
+from tools.integration_validation.runner.port.blueprints import (
     blueprint_deletion_layers,
     rewrite_mapping_blueprints,
     suffix_blueprints,
 )
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import PortAppConfigDocument
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import PortAppConfigDocument
 
 BLUEPRINTS: list[dict[str, Any]] = [
     {"identifier": "user", "title": "User", "schema": {"properties": {}}},

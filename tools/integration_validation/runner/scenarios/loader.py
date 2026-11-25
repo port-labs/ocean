@@ -6,8 +6,8 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import (
     BlueprintsDocument,
     PortAppConfigDocument,
     ScenarioDefinition,

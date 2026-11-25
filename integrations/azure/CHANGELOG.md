@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-11-24)
+
+
+### Features
+
+- |
+- Added `cancel_response` action to cancel in-flight Foundry Responses API invocations (factory timeout / cancel on stop).
+
+
 ## 0.6.4 (2026-11-24)
 
 
