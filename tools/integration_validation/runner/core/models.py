@@ -77,6 +77,29 @@ class BlueprintsDocument(RootModel[list[BlueprintDefinition]]):
         return self.model_dump(mode="python")
 
 
+class PortEntity(BaseModel):
+    """An entity as Port's search returns it, or as a snapshot file stores it."""
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+    identifier: str = Field(min_length=1)
+    title: str | None = None
+    icon: str | None = None
+    team: list[str] | None = None
+    properties: dict[str, Any] | None = None
+    relations: dict[str, Any] | None = None
+    blueprint: str | None = None
+
+    @field_validator("team", mode="before")
+    @classmethod
+    def _team_as_list(cls, value: Any) -> Any:
+        return [value] if isinstance(value, str) else value
+
+
+# Keyed by the blueprint identifier in the integration's blueprints file.
+EntitiesByBlueprint = dict[str, list[PortEntity]]
+
+
 class PortAppConfigResource(BaseModel):
     """Minimal shape of a ``port_app_config`` resource entry for validation runs."""
 
