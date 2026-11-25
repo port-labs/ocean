@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: improvement
+changelog: Session relations in the default mapping now use search relations on `$identifier`, so a session whose agent, environment, vault or memory store is not in the catalog (for example because it is archived) is ingested with that relation empty instead of failing. Added an `archived` boolean property to the agent, environment, vault, memory store and session blueprints, and webhooks and the archive agent action now honor `includeArchived`. Existing installations keep their current mapping until it is updated.

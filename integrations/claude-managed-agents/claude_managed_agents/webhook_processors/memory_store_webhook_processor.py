@@ -42,10 +42,8 @@ class MemoryStoreWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         client = create_anthropic_client()
         memory_store = await client.get_memory_store(memory_store_id)
-        logger.info(
-            f"Upserting memory store {memory_store_id} from catalog ({event_type})"
-        )
-        return WebhookEventRawResults(
-            updated_raw_results=[memory_store.to_dict(mode="json", warnings=False)],
-            deleted_raw_results=[],
+        return self.build_upsert_results(
+            memory_store.to_dict(mode="json", warnings=False),
+            resource_config,
+            event_type,
         )
