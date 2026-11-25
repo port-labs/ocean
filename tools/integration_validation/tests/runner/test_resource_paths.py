@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.scenarios.loader import (
     load_scenarios_document,
     resolve_scenario_blueprints_path,
 )
-from tools.integration_validation.runner.models import ValidationPaths
+from tools.integration_validation.runner.core.models import ValidationPaths
 
 
 def _validation_paths(integration_root: Path) -> ValidationPaths:

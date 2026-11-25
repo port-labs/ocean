@@ -456,6 +456,28 @@
           "description": "Optional Foundry conversation ID to continue multi-turn chat history. When omitted, a new conversation is created for the invoke."
         }
       ]
+    },
+    {
+      "name": "cancel_response",
+      "icon": "Azure",
+      "description": "Cancel a background Foundry Responses API invocation started by invoke_agent or invoke_model. Only responses created with background=true can be cancelled.",
+      "allowedExecutionIdentities": ["service_account"],
+      "inputs": [
+        {
+          "name": "projectArmId",
+          "title": "Foundry project ARM ID",
+          "type": "string",
+          "required": true,
+          "description": "ARM resource id for the project that owns the response."
+        },
+        {
+          "name": "responseId",
+          "title": "Response ID",
+          "type": "string",
+          "required": true,
+          "description": "The Foundry response id returned when the invoke was submitted (for example resp_…)."
+        }
+      ]
     }
   ]
 }

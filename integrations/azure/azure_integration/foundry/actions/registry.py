@@ -1,5 +1,8 @@
 from port_ocean.context.ocean import ocean
 
+from azure_integration.foundry.actions.cancel_response_executor import (
+    CancelResponseExecutor,
+)
 from azure_integration.foundry.actions.create_agent_executor import CreateAgentExecutor
 from azure_integration.foundry.actions.delete_agent_executor import DeleteAgentExecutor
 from azure_integration.foundry.actions.delete_model_deployment_executor import (
@@ -19,5 +22,6 @@ def register_action_executors() -> None:
     ocean.register_action_executor(DeleteAgentExecutor())
     ocean.register_action_executor(InvokeAgentExecutor())
     ocean.register_action_executor(InvokeModelExecutor())
+    ocean.register_action_executor(CancelResponseExecutor())
     ocean.register_action_executor(DeployModelDeploymentExecutor())
     ocean.register_action_executor(DeleteModelDeploymentExecutor())

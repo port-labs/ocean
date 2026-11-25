@@ -270,8 +270,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return await ocean.port_client.search_entities(
             user_agent_type,
             parameters_to_include=["blueprint", "identifier"]
-            + (["title"] if resource.port.entity.mappings.title != None else [])
-            + (["team"] if resource.port.entity.mappings.team != None else [])
+            + (["title"] if resource.port.entity.mappings.title is not None else [])
+            + (["team"] if resource.port.entity.mappings.team is not None else [])
             + [
                 f"properties.{prop}"
                 for prop in resource.port.entity.mappings.properties
@@ -1556,7 +1556,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         await self.process_resource(resource, index, user_agent_type)
                     )
 
-            except asyncio.CancelledError as e:
+            except asyncio.CancelledError:
                 if event.external_abort:
                     return
 

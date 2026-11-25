@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "aikido"
-version = "0.3.112"
+version = "0.3.114"
 description = "Aikido Ocean Integation"
 authors = ["Habib Nuhu <habib.nuhu@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.62.2", extras = ["cli"]}
+port_ocean = {version = "^0.62.4", extras = ["cli"]}
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -85,8 +85,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
+extend = "../../ruff.toml"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
