@@ -3,12 +3,12 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import (
     PortAppConfigDocument,
     ScenarioDefinition,
 )
-from tools.integration_validation.runner.port_app_config import (
+from tools.integration_validation.runner.port.app_config import (
     build_scenario_port_app_config,
 )
 
