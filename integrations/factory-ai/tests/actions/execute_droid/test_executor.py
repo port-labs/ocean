@@ -247,7 +247,9 @@ class TestExecuteDroidExecutor:
         )
         output_at_patch: dict[str, Any] = {}
 
-        async def capture_update_started(run_arg: WorkflowNodeRun, *_a: object, **_k: object) -> None:
+        async def capture_update_started(
+            run_arg: WorkflowNodeRun, *_a: object, **_k: object
+        ) -> None:
             output_at_patch.update(run_arg.output)
 
         with (
