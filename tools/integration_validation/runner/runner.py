@@ -16,6 +16,11 @@ from tools.integration_validation.runner.results.collect import (
     ScenarioCollection,
     collect_scenario,
 )
+from tools.integration_validation.runner.results.evaluate import (
+    ScenarioComparison,
+    evaluate_scenario,
+)
+from tools.integration_validation.runner.results.expected import resolve_expected_dir
 from tools.integration_validation.runner.core.errors import ValidationSetupError
 from tools.integration_validation.runner.scenarios.loader import (
     load_blueprints_file,
@@ -53,6 +58,7 @@ from tools.integration_validation.runner.scenarios.preflight import (
     select_scenario_names,
 )
 from tools.integration_validation.runner.core.statuses import (
+    ResyncStatus,
     ScenarioIntegrationStatus,
     ValidationAggregateStatus,
 )
@@ -76,6 +82,14 @@ class ScenarioRun:
     cleaned_up: bool
     integration: IntegrationRunResult
     collection: ScenarioCollection
+    comparison: ScenarioComparison
+
+    @property
+    def passed(self) -> bool:
+        return (
+            self.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
+            and self.comparison.passed
+        )
 
 
 @dataclass(frozen=True)
@@ -166,6 +180,7 @@ async def _run_scenario(
         f"(integration {plan.integration_identifier})"
     )
 
+    scenario = scenarios.scenarios[plan.scenario_name]
     leftovers: list[str] = []
     prepared = False
 
@@ -173,7 +188,6 @@ async def _run_scenario(
         await prepare_scenario_port(client, plan)
         prepared = True
 
-        scenario = scenarios.scenarios[plan.scenario_name]
         integration_config = merge_scenario_integration_config(
             scenarios.defaults.integration_config,
             scenario.integration_config,
@@ -192,12 +206,25 @@ async def _run_scenario(
         if prepared:
             leftovers = await _teardown_scenario(client, plan, options)
 
+    comparison = evaluate_scenario(
+        collection.entities,
+        expected_dir=resolve_expected_dir(paths, plan.scenario_name, scenario),
+        ignore_fields=scenarios.defaults.ignore_fields,
+        update_expected=options.update_expected,
+        resync_succeeded=(
+            integration_result.integration_status()
+            == ScenarioIntegrationStatus.COMPLETED
+            and collection.resync_status == ResyncStatus.COMPLETED
+        ),
+    )
+
     return ScenarioRun(
         plan=plan,
         cleanup_leftovers=leftovers,
         cleaned_up=prepared and not options.skip_cleanup and not leftovers,
         integration=integration_result,
         collection=collection,
+        comparison=comparison,
     )
 
 
@@ -250,13 +277,11 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
         },
         "integration": run.integration.report_dict(),
         "collection": run.collection.to_dict(),
+        "comparison": run.comparison.to_dict(),
     }
 
 
 def _aggregate_status(result: ValidateResult) -> ValidationAggregateStatus:
-    if all(
-        run.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
-        for run in result.scenario_runs
-    ):
+    if all(run.passed for run in result.scenario_runs):
         return ValidationAggregateStatus.PASSED
     return ValidationAggregateStatus.FAILED

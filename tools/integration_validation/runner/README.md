@@ -45,6 +45,28 @@ After the subprocess exits and before cleanup, each scenario collects:
 - every entity in each of the run's blueprints, searched by blueprint rather than datasource, so placeholders from `createMissingRelatedEntities` and unexpected entities are included;
 - the mock's journal: all requests, unmatched requests, unused routes and per-route call counts.
 
-The console prints a summary per scenario, and the report has a `collection` section with the resync status, entity counts per blueprint and the journal summary. Collected results do not change the exit code yet.
+The console prints a summary per scenario, and the report has a `collection` section with the resync status, entity counts per blueprint and the journal summary.
 
-Exit codes: `0` pass, `1` validation failed (for example Port rejected a blueprint or the mapping), `2` setup/preflight error.
+## Expected entities
+
+The collected entities are compared with snapshots in `validation/expected/<scenario>/`, or the folder `expect.entities` names (relative to `validation/`). There is one `<blueprint>.json` per blueprint, named with the real blueprint identifier; a blueprint without a file is expected to have no entities.
+
+Both sides are normalized before comparing:
+
+- `blueprint`, `createdAt`, `updatedAt`, `createdBy` and `updatedBy` are dropped, as is every path in `defaults.ignore_fields` (dotted, for example `properties.lastSeen`);
+- `null` properties and relations are dropped, so `null` and a missing value compare equal;
+- relation arrays and `team` are sorted, entities are sorted by identifier, and files are written with sorted keys.
+
+Each scenario gets a comparison status, shown in the console and in the report's `comparison` section:
+
+| Status | Meaning |
+| --- | --- |
+| `matched` | Entities equal the snapshots |
+| `different` | Entities were added, removed or changed; the report lists each one with the changed field path, for example `properties.handle` |
+| `new` | No snapshots existed, so they were written from this run |
+| `updated` | `--update-expected` overwrote the snapshots with this run's result |
+| `skipped` | Snapshots were due to be written, but the integration or resync did not complete, so nothing was written |
+
+Snapshots are never written from a failed resync. Review the files `new` and `updated` write before committing them.
+
+Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, entities differ from the snapshots, or snapshots were skipped), `2` setup/preflight error.

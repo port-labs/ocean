@@ -28,6 +28,19 @@ class ResyncStatus(StrEnum):
             return cls.MISSING
 
 
+class ComparisonStatus(StrEnum):
+    """Outcome of comparing a scenario's entities with ``expected/<scenario>/``."""
+
+    MATCHED = "matched"
+    DIFFERENT = "different"
+    # No expected files yet; they were written from this run.
+    NEW = "new"
+    # ``--update-expected`` overwrote the expected files.
+    UPDATED = "updated"
+    # The resync did not complete, so there was nothing trustworthy to write.
+    SKIPPED = "skipped"
+
+
 class ValidationAggregateStatus(StrEnum):
     FAILED = "failed"
     PASSED = "passed"
