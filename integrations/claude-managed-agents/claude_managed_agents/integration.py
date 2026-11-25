@@ -29,16 +29,7 @@ class ArchivableSelector(Selector):
 
 
 class AgentSelector(ArchivableSelector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description=(
-            "Whether to include archived agents in the results. Sessions of "
-            "archived agents are still ingested, and with the default mapping their "
-            "relation is left empty."
-        ),
-    )
+    pass
 
 
 class AgentResourceConfig(ResourceConfig):
@@ -53,16 +44,7 @@ class AgentResourceConfig(ResourceConfig):
 
 
 class EnvironmentSelector(ArchivableSelector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description=(
-            "Whether to include archived environments in the results. Sessions of "
-            "archived environments are still ingested, and with the default mapping their "
-            "relation is left empty."
-        ),
-    )
+    pass
 
 
 class EnvironmentResourceConfig(ResourceConfig):
@@ -77,12 +59,7 @@ class EnvironmentResourceConfig(ResourceConfig):
 
 
 class SessionSelector(ArchivableSelector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description="Whether to include archived sessions in the results.",
-    )
+    pass
 
 
 class SessionResourceConfig(ResourceConfig):
@@ -97,16 +74,7 @@ class SessionResourceConfig(ResourceConfig):
 
 
 class VaultSelector(ArchivableSelector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description=(
-            "Whether to include archived vaults in the results. Sessions of "
-            "archived vaults are still ingested, and with the default mapping their "
-            "relation is left empty."
-        ),
-    )
+    pass
 
 
 class VaultResourceConfig(ResourceConfig):
@@ -121,16 +89,7 @@ class VaultResourceConfig(ResourceConfig):
 
 
 class MemoryStoreSelector(ArchivableSelector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description=(
-            "Whether to include archived memory stores in the results. Sessions of "
-            "archived memory stores are still ingested, and with the default mapping their "
-            "relation is left empty."
-        ),
-    )
+    pass
 
 
 class MemoryStoreResourceConfig(ResourceConfig):

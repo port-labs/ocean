@@ -60,11 +60,6 @@ class AbstractAnthropicWebhookProcessor(AbstractWebhookProcessor):
         data = payload.get("data") or {}
         return str(data.get("id") or "")
 
-    @staticmethod
-    def includes_archived(resource_config: ResourceConfig | None) -> bool:
-        selector = getattr(resource_config, "selector", None)
-        return not isinstance(selector, ArchivableSelector) or selector.include_archived
-
     def build_upsert_results(
         self,
         raw: dict[str, Any],
@@ -76,7 +71,12 @@ class AbstractAnthropicWebhookProcessor(AbstractWebhookProcessor):
         resource_id = raw["id"]
         resource_name = event_type.split(".")[0]
 
-        if raw.get("archived_at") and not self.includes_archived(resource_config):
+        selector = resource_config.selector if resource_config else None
+        include_archived = (
+            not isinstance(selector, ArchivableSelector) or selector.include_archived
+        )
+
+        if raw.get("archived_at") and not include_archived:
             logger.info(
                 f"Deleting archived {resource_name} {resource_id} from catalog "
                 f"because includeArchived is disabled ({event_type})"
