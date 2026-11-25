@@ -403,3 +403,46 @@ async def test_patch_integration_does_not_retry_in_progress_without_spec(
 
     assert integration_client.client.patch.await_count == 1
     sleep.assert_not_awaited()
+
+
+async def test_get_current_integration_requests_executor_resources_view(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    integration_client.client.get.return_value.json.return_value = {  # type: ignore[attr-defined]
+        "integration": {"config": {}}
+    }
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await integration_client.get_current_integration()
+
+    params = integration_client.client.get.call_args.kwargs["params"]  # type: ignore[attr-defined]
+    assert params["resourcesView"] == "executor"
+
+
+async def test_patch_integration_config_does_not_send_resource_id(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    resource = {
+        "kind": "repository",
+        "resourceId": "res_abc",
+        "selector": {"query": "true"},
+        "port": {
+            "entity": {
+                "mappings": {
+                    "identifier": ".id",
+                    "blueprint": '"service"',
+                    "properties": {},
+                }
+            }
+        },
+    }
+    port_app_config = PortAppConfig.parse_obj({"resources": [resource]})
+    assert port_app_config.resources[0].resource_id == "res_abc"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await integration_client.patch_integration_config(port_app_config)
+
+    sent = integration_client.client.patch.call_args.kwargs["json"]["config"]  # type: ignore[attr-defined]
+    expected = dict(resource)
+    del expected["resourceId"]
+    assert sent["resources"] == [expected]

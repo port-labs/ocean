@@ -39,8 +39,6 @@ class AgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         client = create_anthropic_client()
         agent = await client.get_agent(agent_id)
-        logger.info(f"Upserting agent {agent_id} from catalog ({event_type})")
-        return WebhookEventRawResults(
-            updated_raw_results=[agent.to_dict(mode="json", warnings=False)],
-            deleted_raw_results=[],
+        return self.build_upsert_results(
+            agent.to_dict(mode="json", warnings=False), resource_config, event_type
         )
