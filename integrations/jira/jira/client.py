@@ -18,7 +18,7 @@ from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
-from .rate_limiter import JiraRateLimiter
+from .rate_limiter import JiraRateLimiter, is_rate_limit_response
 from .rate_limit_wrapper import JiraRateLimitWrapper, centralized_rate_limit_pool
 from .retry_transport import JiraRetryTransport
 
@@ -269,7 +269,7 @@ class JiraClient(OAuthClient):
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
-            is_rate_limit = self._rate_limiter.is_rate_limit_response(response)
+            is_rate_limit = is_rate_limit_response(response)
             logger.bind(
                 status_code=response.status_code,
                 method=method,

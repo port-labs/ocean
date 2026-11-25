@@ -10,15 +10,15 @@ import httpx
 
 from jira.rate_limiter import (
     DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
-    RATE_LIMIT_STATUS_CODE,
     JiraRateLimiter,
+    is_rate_limit_response,
 )
 from port_ocean.rate_limiting.models import CentralizedRateLimitState
 from port_ocean.rate_limiting.rate_limit_wrapper import RateLimitWrapper
 
 
 def centralized_rate_limit_pool(jira_url: str) -> str:
-    """Redis pool for the integration credential on this Jira site."""
+    """Redis pool for this Jira site."""
     parsed = urlparse(jira_url if "://" in jira_url else f"//{jira_url}")
     return (parsed.hostname or jira_url).lower()
 
@@ -29,9 +29,6 @@ class JiraRateLimitWrapper(RateLimitWrapper):
         self._limiter = limiter
         self._known_limit: int | None = None
         self._known_reset_at: float | None = None
-
-    def is_rate_limit_response(self, response: httpx.Response) -> bool:
-        return self._limiter.is_rate_limit_response(response)
 
     # Local limiter
 
@@ -70,7 +67,7 @@ class JiraRateLimitWrapper(RateLimitWrapper):
     # Centralized limiter
 
     def _centralized_is_rate_limited(self, response: httpx.Response) -> bool:
-        return response.status_code == RATE_LIMIT_STATUS_CODE
+        return is_rate_limit_response(response)
 
     def _parse_centralized_state(
         self, response: httpx.Response, context: str
