@@ -5,9 +5,9 @@ from tools.integration_validation.runner.results import collect as collect_modul
 from tools.integration_validation.runner.results.collect import collect_scenario
 from tools.integration_validation.runner.core.errors import ValidationFailedError
 from tools.integration_validation.runner.results.mock_journal import MockJournal
-from tools.integration_validation.runner.port.provision import ScenarioPortPlan
+from tools.integration_validation.runner.port.client import ScenarioPortPlan
 from tools.integration_validation.runner.core.statuses import ResyncStatus
-from tools.integration_validation.tests.runner.test_port_provision import FakePortClient
+from tools.integration_validation.tests.runner.test_port_client import FakePortClient
 
 MOCK_BASE_URL = "http://127.0.0.1:9000"
 

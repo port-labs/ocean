@@ -7,7 +7,7 @@ from tools.integration_validation.runner.core.errors import (
     ValidationFailedError,
     ValidationSetupError,
 )
-from tools.integration_validation.runner.port.provision import (
+from tools.integration_validation.runner.port.client import (
     ScenarioPortPlan,
     ValidationPortClient,
     prepare_scenario_port,
