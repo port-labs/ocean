@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.27.3 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.4
+
+
+## 6.27.2 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.3
+
+
+## 6.27.1 (2026-11-24)
+
+
+### Bug Fixes
+
+- Skip OAuth provider registration when vault type is port (SaaS); provider registration is handled externally in this mode.
+
+
 ## 6.27.0 (2026-11-23)
 
 

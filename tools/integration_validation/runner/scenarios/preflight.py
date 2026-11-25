@@ -8,12 +8,8 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from port_ocean.config.settings import PortSettings
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import (
-    resolve_integration_resource_path,
-    resolve_scenario_blueprints_path,
-)
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import (
     ScenariosDocument,
     ValidationPaths,
 )
@@ -22,31 +18,22 @@ _PORT_CREDENTIAL_HINT = (
     "Set OCEAN__PORT__CLIENT_ID, OCEAN__PORT__CLIENT_SECRET, and "
     "OCEAN__PORT__BASE_URL in the environment or integrations/<name>/.env."
 )
+INTEGRATION_TYPE_ENV = "OCEAN__INTEGRATION__TYPE"
 
 
-def run_preflight(
-    validation_paths: ValidationPaths,
-    scenarios: ScenariosDocument,
-    selected_scenarios: list[str] | None,
-) -> None:
+def run_preflight(validation_paths: ValidationPaths) -> None:
     _ensure_validation_directory(validation_paths)
     _load_port_credentials(validation_paths.integration_root)
-    resolve_integration_resource_path(
-        validation_paths,
-        scenarios.defaults.port_app_config,
-        "port_app_config",
-    )
-    _ensure_scenario_blueprints(validation_paths, scenarios, selected_scenarios)
 
 
-def _ensure_scenario_blueprints(
-    validation_paths: ValidationPaths,
-    scenarios: ScenariosDocument,
-    selected_scenarios: list[str] | None,
-) -> None:
-    for name in _selected_scenario_names(scenarios, selected_scenarios):
-        scenario = scenarios.scenarios[name]
-        resolve_scenario_blueprints_path(validation_paths, scenarios.defaults, scenario)
+def load_integration_type() -> str:
+    integration_type = os.environ.get(INTEGRATION_TYPE_ENV)
+    if not integration_type:
+        raise ValidationSetupError(
+            f"Missing {INTEGRATION_TYPE_ENV}. Set it in the environment or "
+            "integrations/<name>/.env."
+        )
+    return integration_type
 
 
 def _ensure_validation_directory(validation_paths: ValidationPaths) -> None:
@@ -92,7 +79,7 @@ def _load_port_credentials(integration_root: Path) -> None:
         ) from exc
 
 
-def _selected_scenario_names(
+def select_scenario_names(
     scenarios: ScenariosDocument, selected_scenarios: list[str] | None
 ) -> list[str]:
     if not selected_scenarios:

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import yaml
 from pydantic import ValidationError
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import (
+    BlueprintsDocument,
+    PortAppConfigDocument,
     ScenarioDefinition,
     ScenariosDefaults,
     ScenariosDocument,
@@ -84,6 +87,41 @@ def resolve_scenario_blueprints_path(
         scenario.blueprints if scenario.blueprints is not None else defaults.blueprints
     )
     return resolve_integration_resource_path(validation_paths, relative, "blueprints")
+
+
+def load_blueprints_file(blueprints_file: Path) -> BlueprintsDocument:
+    try:
+        raw = json.loads(blueprints_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValidationSetupError(
+            f"Could not load blueprints from {blueprints_file}: {exc}"
+        ) from exc
+
+    try:
+        return BlueprintsDocument.model_validate(raw)
+    except ValidationError as exc:
+        raise ValidationSetupError(
+            _format_pydantic_error(str(blueprints_file), exc)
+        ) from exc
+
+
+def load_port_app_config_file(port_app_config_file: Path) -> PortAppConfigDocument:
+    try:
+        raw = yaml.safe_load(port_app_config_file.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        raise ValidationSetupError(
+            f"Could not load port_app_config from {port_app_config_file}: {exc}"
+        ) from exc
+
+    if raw is None:
+        raise ValidationSetupError(f"{port_app_config_file} is empty")
+
+    try:
+        return PortAppConfigDocument.model_validate(raw)
+    except ValidationError as exc:
+        raise ValidationSetupError(
+            _format_pydantic_error(str(port_app_config_file), exc)
+        ) from exc
 
 
 def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:

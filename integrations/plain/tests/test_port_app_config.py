@@ -199,6 +199,108 @@ def test_mapping_resolves_identifiers_titles_and_relations() -> None:
     )
 
 
+def test_thread_fields_mapping_includes_every_field_type() -> None:
+    mappings = _mappings()
+    thread = {
+        "threadFields": [
+            {
+                "key": "label",
+                "type": "STRING",
+                "stringValue": "alpha",
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "unset_string",
+                "type": "STRING",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "count",
+                "type": "NUMBER",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": 0,
+                "dateValue": None,
+            },
+            {
+                "key": "unset_number",
+                "type": "NUMBER",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "flagged",
+                "type": "BOOL",
+                "stringValue": None,
+                "booleanValue": False,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "enabled",
+                "type": "BOOL",
+                "stringValue": None,
+                "booleanValue": True,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "unset_bool",
+                "type": "BOOL",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "product_area",
+                "type": "ENUM",
+                "stringValue": "Authentication",
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+            {
+                "key": "amount",
+                "type": "CURRENCY",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": 12.5,
+                "dateValue": None,
+            },
+            {
+                "key": "due_at",
+                "type": "DATE",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": {"iso8601": "2026-01-03T10:00:00.000Z"},
+            },
+            {
+                "key": "unset_date",
+                "type": "DATE",
+                "stringValue": None,
+                "booleanValue": None,
+                "numberValue": None,
+                "dateValue": None,
+            },
+        ]
+    }
+
+    assert _apply(mappings["thread"]["properties"]["fields"], thread) == (
+        "label=alpha, unset_string=null, count=0, unset_number=null, "
+        "flagged=false, enabled=true, unset_bool=null, product_area=Authentication, "
+        "amount=12.5, due_at=2026-01-03T10:00:00.000Z, unset_date=null"
+    )
+
+
 def test_mappings_handle_null_lists() -> None:
     mappings = _mappings()
     customer_no_tenants = {"tenantMemberships": None}

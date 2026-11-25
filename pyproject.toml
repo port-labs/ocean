@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.62.2"
+version = "0.62.4"
 description = "Port Ocean is a Python framework for building integrations that ingest data into Port, the platform for building your AI software factory."
 readme = "README.md"
 homepage = "https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/ocean-framework/overview/"
@@ -180,14 +180,13 @@ module = ["confluent_kafka", "confluent_kafka.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
-exclude = ['venv', '.venv', 'integrations', 'port_ocean/cli/cookiecutter']
-target-version = "py311"
-
-[tool.ruff.lint.per-file-ignores]
-# Ignore unused imports in __init__ files
-"**/__init__.py" = ["F401"]
+extend = "ruff.toml"
+extend-exclude = [
+    "venv",
+    ".venv",
+    "integrations",
+    "port_ocean/cli/cookiecutter",
+]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
