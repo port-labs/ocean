@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Never
+
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -12,7 +14,7 @@ from azure_integration.foundry.helpers.utils import enrich_with_project
 _MEMORY_STORES_FEATURE = "MemoryStores=V1Preview"
 
 
-class MemoryStoresExporter(FoundryExporter[ListMemoryStoresOptions]):
+class MemoryStoresExporter(FoundryExporter[ListMemoryStoresOptions, Never]):
     async def get_paginated_resources(
         self, options: ListMemoryStoresOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from gitlab.oauth.registry import _DEFAULT_HOST, _SCOPES, register_oauth_provider
+from port_ocean.config.settings import VaultType
 from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
 
@@ -12,6 +13,7 @@ def mock_ocean() -> Generator[MagicMock, None, None]:
     with patch("gitlab.oauth.registry.ocean") as ocean:
         ocean.integration_config = {}
         ocean.config.identity_propagation.enabled = False
+        ocean.config.identity_propagation.vault.type = VaultType.aws_secrets_manager
         ocean.config.integration.type = "gitlab-v2"
         ocean.register_oauth_provider = MagicMock()
         yield ocean
@@ -33,6 +35,22 @@ def test_register_warns_when_ip_enabled_but_identity_oauth_missing(
 
     logger.warning.assert_called_once()
     assert "identityOauthClientId" in logger.warning.call_args.args[0]
+    mock_ocean.register_oauth_provider.assert_not_called()
+
+
+def test_register_is_noop_in_saas(mock_ocean: MagicMock) -> None:
+    mock_ocean.config.identity_propagation.enabled = True
+    mock_ocean.config.identity_propagation.vault.type = VaultType.port
+    mock_ocean.integration_config = {
+        "identity_oauth_client_id": "cid",
+        "identity_oauth_client_secret": "csecret",
+    }
+
+    with patch("gitlab.oauth.registry.logger") as logger:
+        register_oauth_provider()
+
+    logger.info.assert_called_once()
+    logger.warning.assert_not_called()
     mock_ocean.register_oauth_provider.assert_not_called()
 
 

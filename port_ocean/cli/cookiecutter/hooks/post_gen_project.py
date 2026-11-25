@@ -2,6 +2,27 @@ import os
 import shutil
 
 
+def add_shared_ruff_config() -> None:
+    pyproject_path = "pyproject.toml"
+    if not os.path.exists(pyproject_path):
+        return
+    with open(pyproject_path, encoding="utf-8") as file:
+        content = file.read()
+    if "[tool.ruff]" in content:
+        return
+    block = (
+        "[tool.ruff]\n"
+        'extend = "../../ruff.toml"\n'
+        "\n"
+    )
+    marker = "[tool.pydantic-mypy]"
+    if marker not in content:
+        raise RuntimeError(f"Expected {marker} in generated pyproject.toml")
+    updated = content.replace(marker, block + marker, 1)
+    with open(pyproject_path, "w", encoding="utf-8") as file:
+        file.write(updated)
+
+
 def handle_private_integration_flags():
     target_dir = os.path.join(
         "{{cookiecutter._output_dir}}", "{{cookiecutter.integration_slug}}"
@@ -34,6 +55,7 @@ def handle_private_integration_flags():
 
 
 if __name__ == "__main__":
+    add_shared_ruff_config()
     handle_private_integration_flags()
     if os.path.exists(".env.development"):
         shutil.move(".env.development", ".env")

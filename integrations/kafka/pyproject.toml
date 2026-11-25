@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "kafka"
-version = "0.1.469"
+version = "0.1.473"
 description = "Integration to import information from a Kafka cluster into Port. The integration supports importing metadata regarding the Kafka cluster, brokers and topics."
 authors = ["Tal Sabag <tal@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.62.0", extras = ["cli"]}
+port_ocean = {version = "^0.62.4", extras = ["cli"]}
 confluent-kafka = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -85,8 +85,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
+extend = "../../ruff.toml"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

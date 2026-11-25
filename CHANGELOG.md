@@ -7,6 +7,49 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.62.4 (2026-11-24)
+
+
+### Improvements
+
+- >-
+    Repository-wide Ruff configuration now lives in a single root ruff.toml; Ocean
+    core, integrations, and CLI-scaffolded integrations extend that shared config
+    instead of duplicating lint rules in each pyproject.toml.
+
+
+## 0.62.3 (2026-11-24)
+
+
+### Bug Fixes
+
+- >-
+    Fix the application hanging after a Once-mode run finishes: force exit after a
+    configurable grace period (`OCEAN__EVENT_LISTENER__EXIT_GRACE_SECONDS`),
+    daemonize Port log-ship threads with a join timeout, and avoid re-flushing log
+    ingest failures during shutdown.
+
+
+## 0.62.2 (2026-11-23)
+
+
+### Bug Fixes
+
+- >-
+    Fix mypy failure in ExecutionManager by passing status_label as a typed kwarg
+    to report_run_completed instead of unpacking a dict.
+
+
+## 0.62.1 (2026-11-23)
+
+
+### Improvements
+
+- >-
+    Propagate should_log through action and workflow run patch, log, and completion
+    helpers so integrations can silence Port API error logging on expected responses.
+
+
 ## 0.62.0 (2026-11-19)
 
 

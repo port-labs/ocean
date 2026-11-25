@@ -11,7 +11,6 @@ from azure_integration.foundry.core.options import EndpointScope
 
 FOUNDRY_ARM_PROJECT_KIND = "Microsoft.CognitiveServices/accounts/projects"
 DEFAULT_FOUNDRY_ARM_API_VERSION = "2025-06-01"
-FOUNDRY_FEATURE_FLAG = "AZURE_AI_FOUNDRY"
 
 
 class ObjectKind(StrEnum):
@@ -73,7 +72,6 @@ class FoundryProjectResourceConfig(ResourceConfig):
     kind: Literal["Microsoft.CognitiveServices/accounts/projects"] = Field(
         title="Foundry project (ARM)",
         description="Azure AI Foundry project discovered via ARM Cognitive Services accounts/projects.",
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundryProjectSelector = Field(
         default_factory=lambda: FoundryProjectSelector(query="true"),
@@ -97,7 +95,6 @@ class AgentResourceConfig(ResourceConfig):
     kind: Literal["foundry-agent"] = Field(
         title="Foundry agent",
         description="Microsoft Foundry agent from the project Agent Control Plane.",
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: AgentSelector = Field(
         default_factory=lambda: AgentSelector(query="true"),
@@ -108,7 +105,6 @@ class ModelDeploymentResourceConfig(ResourceConfig):
     kind: Literal["foundry-model-deployment"] = Field(
         title="Foundry model deployment",
         description="Model deployment visible to a Foundry project (project data-plane).",
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(
         default_factory=lambda: FoundrySelector(query="true"),
@@ -167,7 +163,6 @@ class ConversationResourceConfig(ResourceConfig):
             "protocol). Scoped to the integration Azure identity. Conversation "
             "state in Azure is short-lived (~30 days)."
         ),
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: ConversationSelector = Field(
         default_factory=lambda: ConversationSelector(query="true"),
@@ -198,7 +193,6 @@ class ResponseResourceConfig(ResourceConfig):
             "protocol). Scoped to the integration Azure identity. Response objects "
             "are retained for a limited period (~30 days), not indefinitely."
         ),
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: ResponseSelector = Field(
         default_factory=lambda: ResponseSelector(query="true"),
@@ -209,7 +203,6 @@ class MemoryStoreResourceConfig(ResourceConfig):
     kind: Literal["foundry-memory-store"] = Field(
         title="Foundry memory store",
         description="Persistent memory store for Foundry agents in a project.",
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(
         default_factory=lambda: FoundrySelector(query="true"),
@@ -220,7 +213,6 @@ class SkillResourceConfig(ResourceConfig):
     kind: Literal["foundry-skill"] = Field(
         title="Foundry skill",
         description="Reusable skill definition in a Foundry project.",
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(
         default_factory=lambda: FoundrySelector(query="true"),
@@ -234,7 +226,6 @@ class ToolboxResourceConfig(ResourceConfig):
             "Toolbox bundling tools and skills in a Foundry project, including A2A "
             "sub-agent connection metadata."
         ),
-        featureFlag=FOUNDRY_FEATURE_FLAG,
     )
     selector: FoundrySelector = Field(
         default_factory=lambda: FoundrySelector(query="true"),

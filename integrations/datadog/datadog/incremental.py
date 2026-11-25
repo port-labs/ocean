@@ -14,6 +14,31 @@ CHANGED_RESTRICTION_POLICIES_AUDIT_QUERY = (
     "@action:(modified OR deleted)"
 )
 
+# https://docs.datadoghq.com/account_management/audit_trail/events/#teams-management
+CHANGED_TEAMS_AUDIT_QUERY = (
+    '@evt.name:"Teams Management" '
+    "(@action:(created OR modified) OR (@action:deleted @asset.name:membership-*))"
+)
+
+# https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
+CHANGED_ROLES_AUDIT_QUERY = (
+    '@evt.name:"Access Management" @asset.type:role @action:(created OR modified)'
+)
+
+# Adding or removing a user from a role is logged as a "modified" event with asset type
+# "user" (not "role", despite the docs), but its asset ID is the role's ID. The request
+# path tells it apart from other user changes.
+CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY = (
+    '@evt.name:"Access Management" @asset.type:user @action:modified '
+    "@http.url_details.path:/api/v2/roles/*"
+)
+
+# https://docs.datadoghq.com/account_management/audit_trail/events/#internal-developer-portal
+CHANGED_CATALOG_ENTITIES_AUDIT_QUERY = (
+    '@evt.name:"Internal Developer Portal" @asset.type:idp_entity '
+    "@action:(created OR modified)"
+)
+
 # Deletes are excluded on purpose: the full resync reconciles removed users.
 # https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
 CHANGED_USERS_AUDIT_QUERY = (

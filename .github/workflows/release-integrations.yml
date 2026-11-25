@@ -115,8 +115,8 @@ jobs:
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
-          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+          docker-user: ${{ github.actor }}
+          docker-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get image sizes
         continue-on-error: true

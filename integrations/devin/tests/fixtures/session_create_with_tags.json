@@ -1,0 +1,11 @@
+{
+  "status": 403,
+  "body": {
+    "type": "about:blank",
+    "title": "Forbidden",
+    "status": 403,
+    "detail": "Your organization has a billing error. Error: out_of_quota",
+    "instance": "/v3/organizations/org-REDACTED/sessions",
+    "error_code": "billing_restricted"
+  }
+}
