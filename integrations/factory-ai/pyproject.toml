@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "factory-ai"
-version = "0.1.4"
+version = "0.2.0"
 description = "Factory.ai (Droid) integration for Port Ocean"
 authors = ["Amit Einny <amite@port.io>"]
 
