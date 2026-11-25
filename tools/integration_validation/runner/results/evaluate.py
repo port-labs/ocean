@@ -16,7 +16,9 @@ from tools.integration_validation.runner.results.expected import (
     load_expected,
     write_expected,
 )
-from tools.integration_validation.runner.results.normalize import normalize_entities
+from tools.integration_validation.runner.results.normalize import (
+    normalize_blueprint_entities,
+)
 
 
 class ScenarioComparison(BaseModel):
@@ -35,7 +37,11 @@ class ScenarioComparison(BaseModel):
 
     @property
     def passed(self) -> bool:
-        return self.status == ComparisonStatus.MATCHED
+        return self.status in (
+            ComparisonStatus.MATCHED,
+            ComparisonStatus.NEW,
+            ComparisonStatus.UPDATED,
+        )
 
 
 def evaluate_scenario(
@@ -48,22 +54,37 @@ def evaluate_scenario(
 ) -> ScenarioComparison:
     """Diff ``entities`` (keyed by real blueprint) with the scenario's snapshots.
 
-    On a first run or with ``--update-expected`` the snapshots are written from
-    this run first, so the scenario matches. A failed resync never writes, so a
-    broken run never becomes the expected state.
+    Snapshots are only written from a resync that succeeded: on a first run
+    (``new``) or with ``--update-expected`` (``updated``). Otherwise the result
+    is ``skipped`` so a broken run never becomes the expected state.
     """
-    actual = normalize_entities(entities, ignore_fields)
+    actual = _normalize(entities, ignore_fields)
     expected = load_expected(expected_dir)
 
-    if resync_succeeded and (update_expected or expected is None):
-        write_expected(expected_dir, actual)
-        expected = actual
+    if update_expected or expected is None:
+        if not resync_succeeded:
+            status = ComparisonStatus.SKIPPED
+        else:
+            write_expected(expected_dir, actual)
+            status = (
+                ComparisonStatus.NEW if expected is None else ComparisonStatus.UPDATED
+            )
+        return ScenarioComparison(
+            status=status, expected_dir=expected_dir, entity_diff={}
+        )
 
-    entity_diff = diff_entities(
-        normalize_entities(expected or {}, ignore_fields), actual
-    )
+    entity_diff = diff_entities(_normalize(expected, ignore_fields), actual)
     return ScenarioComparison(
         status=ComparisonStatus.DIFFERENT if entity_diff else ComparisonStatus.MATCHED,
         expected_dir=expected_dir,
         entity_diff=entity_diff,
     )
+
+
+def _normalize(
+    entities: EntitiesByBlueprint, ignore_fields: list[str]
+) -> EntitiesByBlueprint:
+    return {
+        blueprint: normalize_blueprint_entities(blueprint_entities, ignore_fields)
+        for blueprint, blueprint_entities in entities.items()
+    }
