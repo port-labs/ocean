@@ -94,6 +94,9 @@
         },
         {
           "kind": "AWS::EKS::Nodegroup"
+        },
+        {
+          "kind": "AWS::Bedrock::Agent"
         }
       ]
     }

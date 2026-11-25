@@ -1,0 +1,73 @@
+{
+  "identifier": "bedrockAgent",
+  "title": "Bedrock Agent",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "agentArn": {
+        "type": "string",
+        "title": "Agent ARN",
+        "description": "The Amazon Resource Name (ARN) of the Bedrock Agent"
+      },
+      "agentStatus": {
+        "type": "string",
+        "title": "Agent Status",
+        "description": "The current status of the Bedrock Agent"
+      },
+      "agentVersion": {
+        "type": "string",
+        "title": "Agent Version",
+        "description": "The version of the Bedrock Agent"
+      },
+      "foundationModel": {
+        "type": "string",
+        "title": "Foundation Model",
+        "description": "The foundation model used by the Bedrock Agent"
+      },
+      "description": {
+        "type": "string",
+        "title": "Description",
+        "description": "The description of the Bedrock Agent"
+      },
+      "idleSessionTTLInSeconds": {
+        "type": "number",
+        "title": "Idle Session TTL (seconds)",
+        "description": "The time in seconds for which a session is kept open"
+      },
+      "createdAt": {
+        "type": "string",
+        "title": "Created At",
+        "description": "The timestamp when the agent was created",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "title": "Updated At",
+        "description": "The timestamp when the agent was last updated",
+        "format": "date-time"
+      },
+      "region": {
+        "type": "string",
+        "title": "Region",
+        "description": "The AWS region where the Bedrock Agent is deployed"
+      },
+      "tags": {
+        "type": "object",
+        "title": "Tags",
+        "description": "Tags associated with the Bedrock Agent"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}
