@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -9,6 +10,10 @@ from datadog.core.exporters.base_exporter import (
     ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
+)
+from datadog.incremental import (
+    CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY,
+    CHANGED_ROLES_AUDIT_QUERY,
 )
 
 if TYPE_CHECKING:
@@ -64,6 +69,34 @@ class RoleExporter(
         if options.enrich_with_users:
             data["__users"] = await self._fetch_users_for_role(data["id"])
         return data
+
+    async def get_changed_roles(
+        self, options: ListRoleOptions, incremental_cursor: datetime
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get roles created or modified since ``incremental_cursor``, found through
+        audit events. With ``enrich_with_users``, roles whose users were added or
+        removed are included too. Deleted roles are not returned.
+        Docs: https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events
+        """
+        role_ids = dict.fromkeys(
+            await self._changed_asset_ids(CHANGED_ROLES_AUDIT_QUERY, incremental_cursor)
+        )
+        if options.enrich_with_users:
+            role_ids.update(
+                dict.fromkeys(
+                    await self._changed_asset_ids(
+                        CHANGED_ROLE_MEMBERSHIPS_AUDIT_QUERY, incremental_cursor
+                    )
+                )
+            )
+
+        async for roles in self._get_existing_resources(
+            GetRoleOptions(
+                resource_id=role_id, enrich_with_users=options.enrich_with_users
+            )
+            for role_id in role_ids
+        ):
+            yield roles
 
     async def enrich_role_with_users(
         self, role_batch: list[dict[str, Any]]

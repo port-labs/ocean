@@ -1,5 +1,6 @@
 from loguru import logger
 
+from port_ocean.config.settings import VaultType
 from port_ocean.context.ocean import ocean
 from port_ocean.identity_propagation.oauth_broker.providers import OAuth2Provider
 
@@ -24,8 +25,15 @@ def oauth_web_host(api_host: str) -> str:
 def register_oauth_provider() -> None:
     """Register this integration's identity-propagation OAuth provider.
 
-    No-op when identity OAuth client credentials are absent.
+    No-op in SaaS mode (vault.type=port) where provider registration is handled externally,
+    and when identity OAuth client credentials are absent.
     """
+    if ocean.config.identity_propagation.vault.type == VaultType.port:
+        logger.info(
+            "Identity propagation enabled; OAuth provider registration is handled externally"
+        )
+        return
+
     client_id = ocean.integration_config.get("identity_oauth_client_id")
     client_secret = ocean.integration_config.get("identity_oauth_client_secret")
 

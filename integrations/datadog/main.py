@@ -7,12 +7,14 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_independent_async_iterators,
 )
 
 from datadog.client import DatadogClient
+from datadog.probe import DatadogPermissionProbe
 from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY, enrich_batch
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
@@ -99,6 +101,21 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for teams in _resync_across_orgs(
         lambda client: TeamExporter(client).get_paginated_resources(options),
+        context="Team exporter",
+    ):
+        yield teams
+
+
+@ocean.on_incremental_resync(ObjectKind.TEAM)
+async def on_incremental_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListTeamOptions.from_resource_config(
+        cast(TeamResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for teams in _resync_across_orgs(
+        lambda client: TeamExporter(client).get_changed_teams(
+            options, incremental_cursor=cursor
+        ),
         context="Team exporter",
     ):
         yield teams
@@ -221,6 +238,23 @@ async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield entities
 
 
+@ocean.on_incremental_resync(ObjectKind.CATALOG_ENTITY)
+async def on_incremental_resync_catalog_entities(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListCatalogEntityOptions.from_resource_config(
+        cast(CatalogEntityResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for entities in _resync_across_orgs(
+        lambda client: CatalogEntityExporter(client).get_changed_entities(
+            options, incremental_cursor=cursor
+        ),
+        context="Catalog entity exporter",
+    ):
+        yield entities
+
+
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListServiceMetricOptions.from_resource_config(
@@ -259,6 +293,21 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield roles
 
 
+@ocean.on_incremental_resync(ObjectKind.ROLE)
+async def on_incremental_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListRoleOptions.from_resource_config(
+        cast(RoleResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for roles in _resync_across_orgs(
+        lambda client: RoleExporter(client).get_changed_roles(
+            options, incremental_cursor=cursor
+        ),
+        context="Role exporter",
+    ):
+        yield roles
+
+
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for orgs in _resync_across_orgs(
@@ -267,6 +316,15 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         enrich_with_org_identity=False,
     ):
         yield orgs
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Datadog access for {len(context.available_kinds)} resource kinds"
+    )
+    await DatadogPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_start()

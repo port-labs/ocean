@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -10,16 +10,22 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.core.options import ProjectIdentifier
 
-TOptions = TypeVar("TOptions", bound=ProjectIdentifier)
+TListOptions = TypeVar("TListOptions", bound=ProjectIdentifier)
+TGetOptions = TypeVar("TGetOptions", bound=ProjectIdentifier)
 
 
-class FoundryExporter(ABC, Generic[TOptions]):
+class FoundryExporter(ABC, Generic[TListOptions, TGetOptions]):
     def __init__(self, client: FoundryHttpClient) -> None:
         self.client = client
 
+    async def get_resource(self, options: TGetOptions) -> dict[str, Any] | None:
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support get_resource"
+        )
+
     @abstractmethod
     def get_paginated_resources(
-        self, options: TOptions
+        self, options: TListOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
 
     async def get_paginated_resources_across_projects(
@@ -28,7 +34,7 @@ class FoundryExporter(ABC, Generic[TOptions]):
         resource_label: str,
         project_api_version: str,
         regions: list[str],
-        build_options: Callable[[str, str], TOptions],
+        build_options: Callable[[str, str], TListOptions],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         # Late import: ProjectExporter pulls ARM clients; keep data-plane exporters light.
         from azure_integration.foundry.core.exporters.project_exporter import (

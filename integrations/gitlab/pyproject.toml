@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab"
-version = "0.2.392-post1"
+version = "0.2.397-post1"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
@@ -10,7 +10,7 @@ aiolimiter = "^1.1.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port_ocean = {version = "^0.62.0", extras = ["cli"]}
+port_ocean = {version = "^0.63.0", extras = ["cli"]}
 glob2 = "^0.7"
 braceexpand = "^0.1.7"
 
@@ -83,6 +83,9 @@ plugins = [
     "pydantic.mypy",
     "pydantic.v1.mypy"
 ]
+
+[tool.ruff]
+extend = "../../ruff.toml"
 
 [tool.black]
 line-length = 88

@@ -18,6 +18,7 @@ from clients.rate_limiter import (
     RateLimitInfo,
     daily_quota_exhausted,
 )
+from clients.rate_limit_wrapper import MINUTE_POOL, PagerDutyRateLimitWrapper
 from clients.retry_transport import PagerDutyRetryTransport
 
 USER_KEY = "users"
@@ -35,17 +36,17 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
-        self._rate_limiter = PagerDutyRateLimiter(
-            max_concurrent=MAX_CONCURRENT_REQUESTS,
-        )
+        limiter = PagerDutyRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
+        self._rate_limiter = PagerDutyRateLimitWrapper(limiter, pool=MINUTE_POOL)
         self.http_client = OceanAsyncClient(
             transport_class=PagerDutyRetryTransport,
-            transport_kwargs={"rate_limiter": self._rate_limiter},
+            transport_kwargs={"rate_limiter": limiter},
             retry_config=RetryConfig(
                 additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 retry_after_headers=[
                     "ratelimit-reset",
                 ],
+                rate_limiter=self._rate_limiter,
             ),
             timeout=ocean.config.client_timeout,
         )

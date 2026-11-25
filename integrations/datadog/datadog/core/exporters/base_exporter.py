@@ -1,8 +1,14 @@
+import asyncio
+from collections.abc import Iterable
 from datetime import datetime
+from http import HTTPStatus
+from itertools import batched
 from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
 
+from httpx import HTTPStatusError
+from loguru import logger
 from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -17,6 +23,7 @@ if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 MAX_PAGE_SIZE = 100
+CHANGED_RESOURCES_FETCH_BATCH_SIZE = 10
 
 RC = TypeVar("RC", bound="ResourceConfig")
 
@@ -50,7 +57,7 @@ class GetOptions(BaseModel, Generic[RC]):
 
 
 ListOptionsT = TypeVar("ListOptionsT")
-GetOptionsT = TypeVar("GetOptionsT")
+GetOptionsT = TypeVar("GetOptionsT", bound=GetOptions[Any])
 
 
 class DatadogExporter(ABC):
@@ -199,3 +206,30 @@ class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
 
     @abstractmethod
     async def get_resource(self, options: GetOptionsT) -> dict[str, Any] | None: ...
+
+    async def _get_existing_resources(
+        self, options: Iterable[GetOptionsT]
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """Get the resource behind each of *options*, a batch at a time, leaving out
+        those that no longer exist."""
+        for batch in batched(options, CHANGED_RESOURCES_FETCH_BATCH_SIZE):
+            results = await asyncio.gather(
+                *(self._get_resource_if_exists(get_options) for get_options in batch)
+            )
+            if resources := [resource for resource in results if resource]:
+                yield resources
+
+    async def _get_resource_if_exists(
+        self, options: GetOptionsT
+    ) -> dict[str, Any] | None:
+        """Get a resource, or None if it no longer exists."""
+        try:
+            return await self.get_resource(options)
+        except HTTPStatusError as e:
+            if e.response.status_code != HTTPStatus.NOT_FOUND:
+                raise
+            logger.warning(
+                f"Skipping '{options.resource_id}' in {type(self).__name__}; "
+                "it no longer exists in Datadog"
+            )
+            return None
