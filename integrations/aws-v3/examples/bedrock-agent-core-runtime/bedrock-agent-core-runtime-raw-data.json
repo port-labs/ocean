@@ -1,0 +1,31 @@
+{
+  "Type": "AWS::BedrockAgentCore::Runtime",
+  "Properties": {
+    "agentRuntimeId": "my-agent-runtime-Ab1Cd2Ef3G",
+    "agentRuntimeArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/my-agent-runtime-Ab1Cd2Ef3G",
+    "agentRuntimeName": "my-agent-runtime",
+    "agentRuntimeVersion": "1",
+    "description": "A sample BedrockAgentCore Runtime for order processing",
+    "status": "READY",
+    "lastUpdatedAt": "2025-06-01T12:00:00Z",
+    "createdAt": "2025-05-15T09:30:00Z",
+    "roleArn": "arn:aws:iam::123456789012:role/BedrockAgentCoreRuntimeRole",
+    "networkConfiguration": {
+      "networkMode": "PUBLIC"
+    },
+    "platformVersion": "1.0",
+    "lifecycleConfiguration": {
+      "idleRuntimeSessionTimeout": 3600
+    },
+    "metadataConfiguration": null,
+    "agentRuntimeArtifact": {
+      "containerConfiguration": {
+        "containerUri": "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-agent:latest"
+      }
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

@@ -63,3 +63,25 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::BedrockAgentCore::Runtime
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.agentRuntimeArn
+          title: .Properties.agentRuntimeName
+          blueprint: '"bedrockAgentCoreRuntime"'
+          properties:
+            arn: .Properties.agentRuntimeArn
+            status: .Properties.status
+            runtimeVersion: .Properties.agentRuntimeVersion
+            description: .Properties.description
+            roleArn: .Properties.roleArn
+            networkConfiguration: .Properties.networkConfiguration
+            platformVersion: .Properties.platformVersion
+            lastUpdatedAt: .Properties.lastUpdatedAt
+            createdAt: .Properties.createdAt
+            region: .__ExtraContext.Region
+          relations:
+            account: .__ExtraContext.AccountId

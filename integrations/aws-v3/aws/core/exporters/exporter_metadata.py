@@ -121,6 +121,10 @@ from aws.core.exporters.sns.topic.live_events import SNS_TOPIC_LIVE_EVENTS
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.live_events import SQS_QUEUE_LIVE_EVENTS
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
+from aws.core.exporters.bedrock_agent_core import (
+    BedrockAgentCoreRuntimeExporter,
+    PaginatedBedrockAgentCoreRuntimeRequest,
+)
 from aws.core.helpers.types import ObjectKind
 
 kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
@@ -268,6 +272,10 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
         SNSTopicExporter,
         PaginatedTopicRequest,
         live_events=SNS_TOPIC_LIVE_EVENTS,
+    ),
+    ObjectKind.BEDROCK_AGENT_CORE_RUNTIME: ExporterMetadata(
+        BedrockAgentCoreRuntimeExporter,
+        PaginatedBedrockAgentCoreRuntimeRequest,
     ),
 }
 
