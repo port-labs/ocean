@@ -11,6 +11,9 @@ from port_ocean.core.models import IntegrationRun
 
 from factory_ai.clients.client_factory import ClientFactory
 from factory_ai.clients.factory_client import FactoryClient
+from factory_ai.core.exporters.session.exporter import SessionExporter
+from factory_ai.core.exporters.session.models import GetSessionOptions
+from factory_ai.kinds import ObjectKind
 
 
 class AbstractFactoryExecutor(AbstractExecutor):
@@ -71,3 +74,30 @@ class AbstractFactoryExecutor(AbstractExecutor):
                 logger.warning(
                     f"Failed to post run log for catalog upsert failure: {log_error}"
                 )
+
+    async def _reflect_session(
+        self,
+        session_id: str,
+        run: IntegrationRun,
+        *,
+        computer_id: str | None = None,
+    ) -> None:
+        """Best-effort catalog upsert for a Factory session."""
+        try:
+            exporter = SessionExporter(self.client)
+            raw = await exporter.get_resource(
+                GetSessionOptions(session_id=session_id, computer_id=computer_id)
+            )
+        except Exception as error:
+            logger.warning(
+                f"Failed to fetch session {session_id} for catalog reflection "
+                f"(continuing): {error}"
+            )
+            return
+        if raw is None:
+            logger.warning(
+                f"Session {session_id} not readable yet for catalog reflection "
+                "(continuing)"
+            )
+            return
+        await self.register_entity(ObjectKind.SESSION, raw, run)
