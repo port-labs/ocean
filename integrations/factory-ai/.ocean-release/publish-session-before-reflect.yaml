@@ -1,0 +1,6 @@
+bump: patch
+changelog-type: bugfix
+changelog: >-
+  execute_droid now publishes sessionId on the workflow node output immediately
+  after Factory accepts the turn, before catalog session reflection, so the
+  software factory can continue the same session on retry without dropping on a race condition.
