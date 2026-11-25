@@ -347,7 +347,7 @@ def team_entities(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
     return entities
 
 
-def test_validate_first_run_writes_expected_and_passes_as_new(
+def test_validate_first_run_writes_expected_and_passes(
     validation_integration: Path,
     team_entities: list[dict[str, object]],
     tmp_path: Path,
@@ -361,10 +361,10 @@ def test_validate_first_run_writes_expected_and_passes_as_new(
     assert json.loads(snapshot.read_text()) == [
         {"identifier": "platform", "properties": {"handle": "platform"}}
     ]
-    assert "Expected entities: new" in capsys.readouterr().out
+    assert "Expected entities: matched" in capsys.readouterr().out
     report = json.loads(report_path.read_text())
     assert report["status"] == "passed"
-    assert report["scenarios"][0]["comparison"]["status"] == "new"
+    assert report["scenarios"][0]["comparison"]["status"] == "matched"
 
 
 def test_validate_entity_diff_fails_and_reports_the_field(
@@ -413,9 +413,12 @@ def test_validate_update_expected_accepts_the_new_result(
     main(_cli_args(validation_integration, "--update-expected"))
     main(_cli_args(validation_integration))
 
-    out = capsys.readouterr().out
-    assert "Expected entities: updated" in out
-    assert "Expected entities: matched" in out
+    snapshot = validation_integration / "validation/expected/happy_path/sampleTeam.json"
+    assert [entity["identifier"] for entity in json.loads(snapshot.read_text())] == [
+        "infra",
+        "platform",
+    ]
+    assert "difference(s)" not in capsys.readouterr().out
 
 
 def test_validate_missing_port_credentials_exits_2(

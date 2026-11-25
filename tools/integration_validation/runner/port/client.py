@@ -7,8 +7,6 @@ from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import TypeAdapter
-
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import CreatePortResourcesOrigin
@@ -28,8 +26,6 @@ from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 # `ocean sail` patches the real version onto the integration at startup.
 PLACEHOLDER_INTEGRATION_VERSION = "0.0.0"
-
-PORT_ENTITIES = TypeAdapter(list[PortEntity])
 
 
 @dataclass(frozen=True)
@@ -133,7 +129,9 @@ class ValidationPortClient(PortClient):
             extensions={"retryable": True},
         )
         handle_port_status_code(response)
-        return PORT_ENTITIES.validate_python(response.json()["entities"])
+        return [
+            PortEntity.model_validate(entity) for entity in response.json()["entities"]
+        ]
 
     async def get_resync_status(self) -> ResyncStatus:
         integration = await self.get_current_integration(should_log=False)

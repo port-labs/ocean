@@ -47,8 +47,9 @@ def write_expected(expected_dir: Path, entities: EntitiesByBlueprint) -> None:
     """Replace the scenario's snapshots with ``entities`` (already normalized).
 
     Every blueprint gets a file, ``[]`` when it has no entities, so an empty
-    result is still a committed expectation (git cannot keep an empty folder).
-    Files of blueprints no longer in ``entities`` are removed.
+    result is still an expectation: ``load_expected`` treats a folder without
+    files as a first run. Files of blueprints no longer in ``entities`` are
+    removed.
     """
     try:
         expected_dir.mkdir(parents=True, exist_ok=True)
@@ -67,7 +68,7 @@ def write_expected(expected_dir: Path, entities: EntitiesByBlueprint) -> None:
 
 
 def dump_snapshot(entities: list[PortEntity]) -> str:
-    payload = [entity.as_json() for entity in entities]
+    payload = [entity.model_dump(exclude_unset=True) for entity in entities]
     return json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 

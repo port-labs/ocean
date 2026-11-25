@@ -25,7 +25,7 @@ def _port_entity(**overrides: Any) -> PortEntity:
 
 
 def _normalize(entity: PortEntity, ignore_fields: list[str]) -> dict[str, Any]:
-    return normalize_entity(entity, ignore_fields).as_json()
+    return normalize_entity(entity, ignore_fields).model_dump(exclude_unset=True)
 
 
 def test_drops_port_metadata_and_the_suffixed_blueprint() -> None:
@@ -63,6 +63,12 @@ def test_sorts_relation_arrays_and_team_but_not_property_arrays() -> None:
     assert normalized["relations"]["members"] == ["adam", "zoe"]
     assert normalized["team"] == ["a", "b"]
     assert normalized["properties"]["tags"] == ["z", "a"]
+
+
+def test_single_team_string_becomes_a_list() -> None:
+    normalized = _normalize(_port_entity(team="platform"), [])
+
+    assert normalized["team"] == ["platform"]
 
 
 def test_ignore_fields_supports_top_level_and_dotted_paths() -> None:

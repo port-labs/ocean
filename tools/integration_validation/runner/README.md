@@ -63,10 +63,7 @@ Each scenario gets a comparison status, shown in the console and in the report's
 | --- | --- |
 | `matched` | Entities equal the snapshots |
 | `different` | Entities were added, removed or changed; the report lists each one with the changed field path, for example `properties.handle` |
-| `new` | No snapshots existed, so they were written from this run |
-| `updated` | `--update-expected` overwrote the snapshots with this run's result |
-| `skipped` | Snapshots were due to be written, but the integration or resync did not complete, so nothing was written |
 
-Snapshots are never written from a failed resync. Review the files `new` and `updated` write before committing them.
+When no snapshots exist yet, or with `--update-expected`, the snapshots are first written from this run, so the scenario matches. Snapshots are never written from a failed resync. Review the written files before relying on them.
 
-Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, entities differ from the snapshots, or snapshots were skipped), `2` setup/preflight error.
+Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, or entities differ from the snapshots), `2` setup/preflight error.

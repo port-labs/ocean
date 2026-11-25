@@ -16,11 +16,12 @@ class FieldChange(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     identifier: str
-    # Dotted path inside the entity, for example ``properties.handle``.
     field: str
-    # ``None`` when the field is missing on that side.
+    """Dotted path inside the entity, for example ``properties.handle``."""
     expected: JsonValue
+    """``None`` when the field is missing from the expected entity."""
     actual: JsonValue
+    """``None`` when the field is missing from the actual entity."""
 
 
 class BlueprintDiff(BaseModel):
@@ -67,7 +68,9 @@ def _diff_blueprint(
                 actual=actual_value,
             )
             for path, expected_value, actual_value in _diff_values(
-                expected[identifier].as_json(), actual[identifier].as_json(), ""
+                expected[identifier].model_dump(exclude_unset=True),
+                actual[identifier].model_dump(exclude_unset=True),
+                "",
             )
         )
     return BlueprintDiff(

@@ -164,9 +164,6 @@ def _print_comparison(comparison: ScenarioComparison) -> None:
 COMPARISON_LABELS: dict[ComparisonStatus, str] = {
     ComparisonStatus.MATCHED: "matched",
     ComparisonStatus.DIFFERENT: "{differences} difference(s) from {location}",
-    ComparisonStatus.NEW: "new, written to {location}",
-    ComparisonStatus.UPDATED: "updated in {location}",
-    ComparisonStatus.SKIPPED: "not written, the resync did not complete",
 }
 
 
