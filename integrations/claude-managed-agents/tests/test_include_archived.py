@@ -204,38 +204,17 @@ async def test_active_resource_is_upserted_when_include_archived_is_off() -> Non
     assert results.updated_raw_results == [raw]
 
 
-def _session_raw(session_id: str = "s1", **overrides: Any) -> dict[str, Any]:
-    raw: dict[str, Any] = {
-        "id": session_id,
-        "archived_at": None,
-        "agent": {"id": "a1"},
-        "environment_id": "e1",
-        "vault_ids": [],
-        "resources": [],
-    }
+def _session_raw(**overrides: Any) -> dict[str, Any]:
+    raw: dict[str, Any] = {"id": "s1", "archived_at": None}
     raw.update(overrides)
     return raw
 
 
-def _session_client(raw: dict[str, Any], *, archived_agent: bool) -> MagicMock:
-    client = MagicMock()
-    client.get_session = AsyncMock(return_value=_sdk_resource(raw))
-    client.get_agent = AsyncMock(
-        return_value=_sdk_resource(
-            {"id": "a1", "archived_at": _ARCHIVED_AT if archived_agent else None}
-        )
-    )
-    client.get_environment = AsyncMock(
-        return_value=_sdk_resource({"id": "e1", "archived_at": None})
-    )
-    return client
-
-
-async def _handle_session(
-    raw: dict[str, Any], client: MagicMock, config: MagicMock | None
-) -> Any:
+async def _handle_session(raw: dict[str, Any], config: MagicMock | None) -> Any:
     payload = {"data": {"type": "session.idled", "id": raw["id"]}}
     processor = SessionWebhookProcessor(_event(payload["data"]))
+    client = MagicMock()
+    client.get_session = AsyncMock(return_value=_sdk_resource(raw))
     with patch(
         "claude_managed_agents.webhook_processors.session_webhook_processor.create_anthropic_client",
         return_value=client,
@@ -252,61 +231,37 @@ def _session_config(**selector: Any) -> MagicMock:
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "config",
-    [_session_config(), _session_config(includeSessionsOfArchivedResources=False)],
+    [_session_config(), _session_config(includeArchived=False)],
     ids=["default", "explicit"],
 )
-async def test_session_of_archived_resource_is_deleted_when_selector_is_off(
+async def test_archived_session_is_deleted_when_include_archived_is_off(
     config: MagicMock,
 ) -> None:
-    raw = _session_raw()
-    client = _session_client(raw, archived_agent=True)
+    raw = _session_raw(archived_at=_ARCHIVED_AT)
 
-    results = await _handle_session(raw, client, config)
+    results = await _handle_session(raw, config)
 
     assert results.updated_raw_results == []
     assert results.deleted_raw_results == [{"id": "s1"}]
 
 
 @pytest.mark.asyncio
-async def test_session_of_active_resources_is_upserted_when_selector_is_off() -> None:
-    raw = _session_raw()
-    client = _session_client(raw, archived_agent=False)
+async def test_archived_session_is_upserted_when_include_archived_is_on() -> None:
+    raw = _session_raw(archived_at=_ARCHIVED_AT)
 
-    results = await _handle_session(
-        raw, client, _session_config(includeSessionsOfArchivedResources=False)
-    )
+    results = await _handle_session(raw, _session_config(includeArchived=True))
 
     assert results.updated_raw_results == [raw]
     assert results.deleted_raw_results == []
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "config",
-    [None, _session_config(includeSessionsOfArchivedResources=True)],
-    ids=["no-config", "selector-on"],
-)
-async def test_session_of_archived_resource_is_upserted_when_selector_is_on(
-    config: MagicMock | None,
-) -> None:
+async def test_active_session_is_upserted_when_include_archived_is_off() -> None:
     raw = _session_raw()
-    client = _session_client(raw, archived_agent=True)
 
-    results = await _handle_session(raw, client, config)
+    results = await _handle_session(raw, _session_config())
 
     assert results.updated_raw_results == [raw]
-    client.get_agent.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_archived_session_is_deleted_when_include_archived_is_off() -> None:
-    raw = _session_raw(archived_at=_ARCHIVED_AT)
-    client = _session_client(raw, archived_agent=False)
-
-    results = await _handle_session(raw, client, _session_config(includeArchived=False))
-
-    assert results.updated_raw_results == []
-    assert results.deleted_raw_results == [{"id": "s1"}]
 
 
 def _archive_executor_run() -> MagicMock:
@@ -396,3 +351,14 @@ async def test_archive_agent_executor_registers_when_config_cannot_be_read() -> 
 
     mock_ocean.register_raw.assert_awaited_once()
     mock_ocean.unregister_raw.assert_not_awaited()
+
+
+def test_include_archived_defaults_to_false_for_every_kind() -> None:
+    for selector_cls in (
+        AgentSelector,
+        EnvironmentSelector,
+        VaultSelector,
+        MemoryStoreSelector,
+        SessionSelector,
+    ):
+        assert selector_cls(query="true").include_archived is False

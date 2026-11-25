@@ -34,10 +34,9 @@ class AgentSelector(ArchivableSelector):
         alias="includeArchived",
         title="Include Archived",
         description=(
-            "Whether to include archived agents in the results. Sessions keep "
-            "referencing agents after they are archived, so enable this "
-            "together with `includeSessionsOfArchivedResources` on the "
-            "session kind to keep those sessions."
+            "Whether to include archived agents in the results. Sessions of "
+            "archived agents are still ingested, and with the default mapping their "
+            "relation is left empty."
         ),
     )
 
@@ -59,10 +58,9 @@ class EnvironmentSelector(ArchivableSelector):
         alias="includeArchived",
         title="Include Archived",
         description=(
-            "Whether to include archived environments in the results. Sessions keep "
-            "referencing environments after they are archived, so enable this "
-            "together with `includeSessionsOfArchivedResources` on the "
-            "session kind to keep those sessions."
+            "Whether to include archived environments in the results. Sessions of "
+            "archived environments are still ingested, and with the default mapping their "
+            "relation is left empty."
         ),
     )
 
@@ -85,17 +83,6 @@ class SessionSelector(ArchivableSelector):
         title="Include Archived",
         description="Whether to include archived sessions in the results.",
     )
-    include_sessions_of_archived_resources: bool = Field(
-        default=False,
-        alias="includeSessionsOfArchivedResources",
-        title="Include Sessions Of Archived Resources",
-        description=(
-            "Whether to include sessions that reference an archived agent, "
-            "environment, vault or memory store. When enabled, also set "
-            "`includeArchived: true` on those kinds, otherwise these sessions "
-            "point at resources that are not in the catalog."
-        ),
-    )
 
 
 class SessionResourceConfig(ResourceConfig):
@@ -115,10 +102,9 @@ class VaultSelector(ArchivableSelector):
         alias="includeArchived",
         title="Include Archived",
         description=(
-            "Whether to include archived vaults in the results. Sessions keep "
-            "referencing vaults after they are archived, so enable this "
-            "together with `includeSessionsOfArchivedResources` on the "
-            "session kind to keep those sessions."
+            "Whether to include archived vaults in the results. Sessions of "
+            "archived vaults are still ingested, and with the default mapping their "
+            "relation is left empty."
         ),
     )
 
@@ -140,10 +126,9 @@ class MemoryStoreSelector(ArchivableSelector):
         alias="includeArchived",
         title="Include Archived",
         description=(
-            "Whether to include archived memory stores in the results. Sessions keep "
-            "referencing memory stores after they are archived, so enable this "
-            "together with `includeSessionsOfArchivedResources` on the "
-            "session kind to keep those sessions."
+            "Whether to include archived memory stores in the results. Sessions of "
+            "archived memory stores are still ingested, and with the default mapping their "
+            "relation is left empty."
         ),
     )
 

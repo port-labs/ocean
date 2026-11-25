@@ -7,8 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from claude_managed_agents.clients.client_factory import create_anthropic_client
-from claude_managed_agents.core.archived_resources import ArchivedResourceChecker
-from claude_managed_agents.integration import ObjectKind, SessionResourceConfig
+from claude_managed_agents.integration import ObjectKind
 from claude_managed_agents.webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
@@ -40,25 +39,6 @@ class SessionWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         client = create_anthropic_client()
         session = await client.get_session(session_id)
-        raw = session.to_dict(mode="json", warnings=False)
-
-        if not self._includes_sessions_of_archived_resources(resource_config):
-            checker = ArchivedResourceChecker(client)
-            if await checker.session_references_archived_resource(raw):
-                logger.info(
-                    f"Deleting session {session_id} from catalog because it "
-                    f"references an archived resource ({event_type})"
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[{"id": session_id}]
-                )
-
-        return self.build_upsert_results(raw, resource_config, event_type)
-
-    @staticmethod
-    def _includes_sessions_of_archived_resources(
-        resource_config: ResourceConfig | None,
-    ) -> bool:
-        if isinstance(resource_config, SessionResourceConfig):
-            return resource_config.selector.include_sessions_of_archived_resources
-        return True
+        return self.build_upsert_results(
+            session.to_dict(mode="json", warnings=False), resource_config, event_type
+        )

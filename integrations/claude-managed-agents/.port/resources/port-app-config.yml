@@ -111,7 +111,27 @@ resources:
             archivedAt: .archived_at
             archived: .archived_at != null
           relations:
-            agent: .agent.id
-            environment: .environment_id
-            memoryStores: '[.resources[]? | select(.type == "memory_store") | .memory_store_id]'
-            vaults: .vault_ids
+            agent:
+              combinator: '"and"'
+              rules:
+                - property: '"$identifier"'
+                  operator: '"="'
+                  value: .agent.id
+            environment:
+              combinator: '"and"'
+              rules:
+                - property: '"$identifier"'
+                  operator: '"="'
+                  value: .environment_id
+            memoryStores:
+              combinator: '"and"'
+              rules:
+                - property: '"$identifier"'
+                  operator: '"in"'
+                  value: '[.resources[]? | select(.type == "memory_store") | .memory_store_id]'
+            vaults:
+              combinator: '"and"'
+              rules:
+                - property: '"$identifier"'
+                  operator: '"in"'
+                  value: .vault_ids
