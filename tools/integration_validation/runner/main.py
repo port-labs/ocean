@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from tools.integration_validation.runner.errors import ValidationCliError
-from tools.integration_validation.runner.integration_process import (
+from tools.integration_validation.runner.results.collect import ScenarioCollection
+from tools.integration_validation.runner.core.errors import ValidationCliError
+from tools.integration_validation.runner.integration.process import (
     DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
     DEFAULT_MOCK_BASE_URL,
 )
@@ -107,6 +108,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             )
         else:
             print("    Integration subprocess completed")
+        _print_collection(run.collection)
         if run.cleaned_up:
             print("    Port resources cleaned up")
         elif run.cleanup_leftovers:
@@ -124,3 +126,20 @@ def main(argv: Sequence[str] | None = None) -> None:
         print("All scenarios completed integration subprocess.", file=sys.stderr)
     else:
         raise SystemExit(1)
+
+
+def _print_collection(collection: ScenarioCollection) -> None:
+    print(f"    Resync status in Port: {collection.resync_status}")
+    counts = ", ".join(
+        f"{blueprint}={len(entities)}"
+        for blueprint, entities in collection.entities.items()
+    )
+    print(f"    Entities: {counts or 'none'}")
+    mock = collection.mock
+    unmatched = mock.unmatched_requests
+    print(
+        f"    Mock requests: {len(mock.requests)} ({len(unmatched)} unmatched, "
+        f"{len(mock.unused_route_ids)} unused routes)"
+    )
+    for entry in unmatched:
+        print(f"      unmatched: {entry.method} {entry.path}", file=sys.stderr)

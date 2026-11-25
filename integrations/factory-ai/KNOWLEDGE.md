@@ -27,6 +27,14 @@
   - `false` — complete the Port run immediately after the 202 with ids + app links (no reply text yet)
 - Partition key: `sessionId` when continuing a session (serialize follow-ups); otherwise parallel
 
+### interrupt_session
+
+- `POST /api/v0/sessions/{sessionId}/interrupt` — stops the running agent loop; response is **200 OK**
+- Body: `{ status: idle | pending | running }` (`idle` if already interrupted)
+- Input: `sessionId` (required)
+- Partition key: `sessionId` (serialize with other session-scoped actions)
+- Best-effort catalog refresh via `GET /api/v0/sessions/{sessionId}` after interrupt
+
 ## Kind notes
 
 ### environment
