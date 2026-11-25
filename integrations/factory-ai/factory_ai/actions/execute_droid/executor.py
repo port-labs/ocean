@@ -134,6 +134,8 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             if inputs.waitForCompletion
             else TURN_ACCEPTED_STATUS_LABEL
         )
+        if isinstance(run, WorkflowNodeRun):
+            run.output.update(output)
         await ocean.port_client.update_run_started(
             run,
             session_url,

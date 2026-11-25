@@ -232,6 +232,68 @@ class TestExecuteDroidExecutor:
         assert run.output["sessionUrl"] == "https://app.factory.ai/sessions/sess-1"
         assert run.output["computerUrl"] == "https://app.factory.ai/computers/comp-1"
 
+    async def test_output_populated_before_update_run_started_patch(
+        self,
+        executor: ExecuteDroidExecutor,
+        client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "prompt": "hi",
+                "targetKind": "environment",
+                "environmentId": "env-1",
+            }
+        )
+        output_at_patch: dict[str, Any] = {}
+
+        async def capture_update_started(run_arg: WorkflowNodeRun, *_a: object, **_k: object) -> None:
+            output_at_patch.update(run_arg.output)
+
+        with (
+            patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean,
+            patch.object(executor, "_reflect_session", new_callable=AsyncMock),
+            patch.object(
+                executor,
+                "_wait_for_turn_completion",
+                new_callable=AsyncMock,
+                return_value=TurnCompletion(
+                    session=Session.model_validate(SESSION_RAW),
+                    reply={"assistantText": "ok"},
+                    user_message_id="msg-1",
+                ),
+            ),
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_port_client.update_run_started.side_effect = capture_update_started
+            await executor.execute(run)
+
+        assert output_at_patch.get("sessionId") == "sess-1"
+
+    async def test_session_output_survives_update_run_started_failure(
+        self,
+        executor: ExecuteDroidExecutor,
+        client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "prompt": "hi",
+                "targetKind": "environment",
+                "environmentId": "env-1",
+            }
+        )
+        mock_port_client.update_run_started.side_effect = RuntimeError("PATCH failed")
+        with (
+            patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean,
+            patch.object(executor, "_reflect_session", new_callable=AsyncMock),
+        ):
+            mock_ocean.port_client = mock_port_client
+            with pytest.raises(RuntimeError, match="PATCH failed"):
+                await executor.execute(run)
+
+        assert run.output["sessionId"] == "sess-1"
+
     async def test_publishes_session_output_before_reflect_session(
         self,
         executor: ExecuteDroidExecutor,
