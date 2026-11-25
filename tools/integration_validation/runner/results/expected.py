@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+
+from pydantic import TypeAdapter, ValidationError
 
 from tools.integration_validation.runner.core.errors import ValidationSetupError
 from tools.integration_validation.runner.core.models import (
+    EntitiesByBlueprint,
+    PortEntity,
     ScenarioDefinition,
     ValidationPaths,
 )
 
 EXPECTED_DIRNAME = "expected"
 SNAPSHOT_SUFFIX = ".json"
+SNAPSHOT_ADAPTER = TypeAdapter(list[PortEntity])
 
 
 def resolve_expected_dir(
@@ -26,33 +30,30 @@ def resolve_expected_dir(
     return paths.validation_root / configured
 
 
-def load_expected(expected_dir: Path) -> dict[str, list[dict[str, Any]]] | None:
+def load_expected(expected_dir: Path) -> EntitiesByBlueprint | None:
     """Snapshots keyed by blueprint, or ``None`` when the scenario has none yet.
 
-    A blueprint without a file is expected to have no entities.
+    "None yet" means no snapshot file at all; ``write_expected`` always leaves
+    one per blueprint. A blueprint without a file (for example one added to the
+    blueprints file later) is expected to have no entities.
     """
-    if not expected_dir.is_dir():
-        return None
     files = sorted(expected_dir.glob(f"*{SNAPSHOT_SUFFIX}"))
     if not files:
         return None
     return {file.stem: _load_snapshot(file) for file in files}
 
 
-def write_expected(
-    expected_dir: Path, entities: dict[str, list[dict[str, Any]]]
-) -> None:
+def write_expected(expected_dir: Path, entities: EntitiesByBlueprint) -> None:
     """Replace the scenario's snapshots with ``entities`` (already normalized).
 
-    Blueprints without entities get no file, and files of blueprints that are
-    now empty are removed, so the folder only ever describes this result.
+    Every blueprint gets a file, ``[]`` when it has no entities, so an empty
+    result is still a committed expectation (git cannot keep an empty folder).
+    Files of blueprints no longer in ``entities`` are removed.
     """
     try:
         expected_dir.mkdir(parents=True, exist_ok=True)
         written: list[Path] = []
         for blueprint, blueprint_entities in sorted(entities.items()):
-            if not blueprint_entities:
-                continue
             file = expected_dir / f"{blueprint}{SNAPSHOT_SUFFIX}"
             file.write_text(dump_snapshot(blueprint_entities), encoding="utf-8")
             written.append(file)
@@ -65,18 +66,22 @@ def write_expected(
         ) from exc
 
 
-def dump_snapshot(entities: list[dict[str, Any]]) -> str:
-    return json.dumps(entities, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+def dump_snapshot(entities: list[PortEntity]) -> str:
+    payload = [entity.as_json() for entity in entities]
+    return json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
-def _load_snapshot(file: Path) -> list[dict[str, Any]]:
+def _load_snapshot(file: Path) -> list[PortEntity]:
     try:
-        raw = json.loads(file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        content = file.read_text(encoding="utf-8")
+    except OSError as exc:
         raise ValidationSetupError(
             f"Could not load expected entities from {file}: {exc}"
         ) from exc
-
-    if not isinstance(raw, list) or not all(isinstance(item, dict) for item in raw):
-        raise ValidationSetupError(f"{file} must be a JSON array of entity objects")
-    return raw
+    try:
+        return SNAPSHOT_ADAPTER.validate_json(content)
+    except ValidationError as exc:
+        raise ValidationSetupError(
+            f"Could not load expected entities from {file}: it must be a JSON "
+            f"array of entity objects with an identifier. {exc}"
+        ) from exc

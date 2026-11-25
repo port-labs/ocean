@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from tools.integration_validation.runner.core.errors import ValidationSetupError
 from tools.integration_validation.runner.core.models import (
+    PortEntity,
     ScenarioDefinition,
     ValidationPaths,
 )
@@ -13,6 +15,10 @@ from tools.integration_validation.runner.results.expected import (
     resolve_expected_dir,
     write_expected,
 )
+
+
+def _entity(identifier: str, **fields: Any) -> PortEntity:
+    return PortEntity.model_validate({"identifier": identifier, **fields})
 
 
 @pytest.fixture
@@ -52,33 +58,39 @@ def test_missing_or_empty_dir_means_no_snapshots(tmp_path: Path) -> None:
     assert load_expected(tmp_path / "empty") is None
 
 
-def test_write_then_load_round_trips_and_skips_empty_blueprints(
+def test_write_then_load_round_trips_with_a_file_per_blueprint(
     tmp_path: Path,
 ) -> None:
-    entities = {"team": [{"identifier": "a", "title": "A"}], "user": []}
+    entities = {"team": [_entity("a", title="A")], "user": []}
 
     write_expected(tmp_path / "happy_path", entities)
 
-    assert [file.name for file in (tmp_path / "happy_path").iterdir()] == ["team.json"]
-    assert load_expected(tmp_path / "happy_path") == {"team": entities["team"]}
+    assert sorted(file.name for file in (tmp_path / "happy_path").iterdir()) == [
+        "team.json",
+        "user.json",
+    ]
+    assert (tmp_path / "happy_path" / "user.json").read_text() == "[]\n"
+    assert load_expected(tmp_path / "happy_path") == entities
 
 
-def test_write_removes_snapshots_of_blueprints_that_are_now_empty(
+def test_all_empty_result_is_loaded_as_expecting_no_entities(tmp_path: Path) -> None:
+    write_expected(tmp_path, {"team": [], "user": []})
+
+    assert load_expected(tmp_path) == {"team": [], "user": []}
+
+
+def test_write_removes_snapshots_of_blueprints_no_longer_in_the_result(
     tmp_path: Path,
 ) -> None:
-    write_expected(
-        tmp_path, {"team": [{"identifier": "a"}], "user": [{"identifier": "u"}]}
-    )
+    write_expected(tmp_path, {"team": [_entity("a")], "user": [_entity("u")]})
 
-    write_expected(tmp_path, {"team": [{"identifier": "a"}], "user": []})
+    write_expected(tmp_path, {"team": [_entity("a")]})
 
     assert sorted(file.name for file in tmp_path.iterdir()) == ["team.json"]
 
 
 def test_snapshot_files_are_stable(tmp_path: Path) -> None:
-    entities = {
-        "team": [{"title": "A", "identifier": "a", "properties": {"z": 1, "a": 2}}]
-    }
+    entities = {"team": [_entity("a", title="A", properties={"z": 1, "a": 2})]}
 
     write_expected(tmp_path, entities)
     first = (tmp_path / "team.json").read_text()
@@ -96,6 +108,7 @@ def test_snapshot_files_are_stable(tmp_path: Path) -> None:
         ("{not json", "Could not load"),
         (json.dumps({"identifier": "a"}), "JSON array"),
         (json.dumps(["a"]), "JSON array"),
+        (json.dumps([{"title": "no identifier"}]), "JSON array"),
     ],
 )
 def test_invalid_snapshot_is_a_setup_error(

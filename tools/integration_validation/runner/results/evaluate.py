@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
+from pydantic import BaseModel, ConfigDict
+
+from tools.integration_validation.runner.core.models import EntitiesByBlueprint
 from tools.integration_validation.runner.core.statuses import ComparisonStatus
 from tools.integration_validation.runner.results.compare import (
     BlueprintDiff,
@@ -20,8 +21,9 @@ from tools.integration_validation.runner.results.normalize import (
 )
 
 
-@dataclass(frozen=True)
-class ScenarioComparison:
+class ScenarioComparison(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     status: ComparisonStatus
     expected_dir: Path
     entity_diff: dict[str, BlueprintDiff]
@@ -41,19 +43,9 @@ class ScenarioComparison:
             ComparisonStatus.UPDATED,
         )
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "status": self.status.value,
-            "expected_dir": str(self.expected_dir),
-            "entity_diff": {
-                blueprint: diff.to_dict()
-                for blueprint, diff in self.entity_diff.items()
-            },
-        }
-
 
 def evaluate_scenario(
-    entities: dict[str, list[dict[str, Any]]],
+    entities: EntitiesByBlueprint,
     *,
     expected_dir: Path,
     ignore_fields: list[str],
@@ -90,8 +82,8 @@ def evaluate_scenario(
 
 
 def _normalize(
-    entities: dict[str, list[dict[str, Any]]], ignore_fields: list[str]
-) -> dict[str, list[dict[str, Any]]]:
+    entities: EntitiesByBlueprint, ignore_fields: list[str]
+) -> EntitiesByBlueprint:
     return {
         blueprint: normalize_blueprint_entities(blueprint_entities, ignore_fields)
         for blueprint, blueprint_entities in entities.items()

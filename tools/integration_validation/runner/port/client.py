@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 from loguru import logger
+from pydantic import TypeAdapter
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.utils import handle_port_status_code
@@ -22,10 +23,13 @@ from tools.integration_validation.runner.core.errors import (
     ValidationFailedError,
     ValidationSetupError,
 )
+from tools.integration_validation.runner.core.models import PortEntity
 from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 # `ocean sail` patches the real version onto the integration at startup.
 PLACEHOLDER_INTEGRATION_VERSION = "0.0.0"
+
+PORT_ENTITIES = TypeAdapter(list[PortEntity])
 
 
 @dataclass(frozen=True)
@@ -111,7 +115,7 @@ class ValidationPortClient(PortClient):
         if response.status_code != 404:
             handle_port_status_code(response)
 
-    async def search_blueprint_entities(self, blueprint: str) -> list[dict[str, Any]]:
+    async def search_blueprint_entities(self, blueprint: str) -> list[PortEntity]:
         """Every entity in ``blueprint``, whatever created it.
 
         Not filtered by datasource, so placeholders made by
@@ -129,7 +133,7 @@ class ValidationPortClient(PortClient):
             extensions={"retryable": True},
         )
         handle_port_status_code(response)
-        return response.json()["entities"]
+        return PORT_ENTITIES.validate_python(response.json()["entities"])
 
     async def get_resync_status(self) -> ResyncStatus:
         integration = await self.get_current_integration(should_log=False)

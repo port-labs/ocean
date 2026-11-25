@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from tools.integration_validation.runner.core.models import PortEntity
 from tools.integration_validation.runner.core.statuses import ComparisonStatus
 from tools.integration_validation.runner.results.evaluate import (
     ScenarioComparison,
@@ -28,7 +29,11 @@ def _evaluate(
         "resync_succeeded": True,
     }
     options.update(overrides)
-    return evaluate_scenario(entities, **options)
+    parsed = {
+        blueprint: [PortEntity.model_validate(entity) for entity in blueprint_entities]
+        for blueprint, blueprint_entities in entities.items()
+    }
+    return evaluate_scenario(parsed, **options)
 
 
 def test_first_run_writes_normalized_snapshots_and_is_new(tmp_path: Path) -> None:
@@ -111,3 +116,26 @@ def test_hand_edited_snapshots_are_normalized_before_diffing(tmp_path: Path) -> 
     )
 
     assert comparison.status == ComparisonStatus.MATCHED
+
+
+def test_all_empty_first_run_is_still_an_expectation(tmp_path: Path) -> None:
+    first = _evaluate(tmp_path, {"team": [], "user": []})
+
+    later = _evaluate(tmp_path, {"team": [TEAM], "user": []})
+
+    assert first.status == ComparisonStatus.NEW
+    assert later.status == ComparisonStatus.DIFFERENT
+    assert later.entity_diff["team"].added == ["platform"]
+    assert json.loads((tmp_path / "team.json").read_text()) == []
+
+
+def test_comparison_serializes_in_report_shape(tmp_path: Path) -> None:
+    _evaluate(tmp_path, {"team": [TEAM]})
+
+    comparison = _evaluate(tmp_path, {"team": []})
+
+    assert comparison.model_dump(mode="json") == {
+        "status": "different",
+        "expected_dir": str(tmp_path),
+        "entity_diff": {"team": {"added": [], "removed": ["platform"], "changed": []}},
+    }

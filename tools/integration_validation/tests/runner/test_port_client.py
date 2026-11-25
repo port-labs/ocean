@@ -8,11 +8,13 @@ from tools.integration_validation.runner.core.errors import (
     ValidationSetupError,
 )
 from tools.integration_validation.runner.port.client import (
+    PORT_ENTITIES,
     ScenarioPortPlan,
     ValidationPortClient,
     prepare_scenario_port,
     teardown_scenario_port,
 )
+from tools.integration_validation.runner.core.models import PortEntity
 from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 PORT_APP_CONFIG = {"resources": [{"kind": "team"}]}
@@ -74,10 +76,10 @@ class FakePortClient(ValidationPortClient):
     async def delete_validation_integration(self) -> None:
         self.calls.append(("delete_integration", None))
 
-    async def search_blueprint_entities(self, blueprint: str) -> list[dict[str, Any]]:
+    async def search_blueprint_entities(self, blueprint: str) -> list[PortEntity]:
         self.calls.append(("search_entities", blueprint))
         self._maybe_fail("search_entities", blueprint, "POST", "/entities/search")
-        return self.entities.get(blueprint, [])
+        return PORT_ENTITIES.validate_python(self.entities.get(blueprint, []))
 
     async def get_resync_status(self) -> ResyncStatus:
         self.calls.append(("get_resync_status", None))

@@ -277,7 +277,7 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
         },
         "integration": run.integration.report_dict(),
         "collection": run.collection.to_dict(),
-        "comparison": run.comparison.to_dict(),
+        "comparison": run.comparison.model_dump(mode="json"),
     }
 
 

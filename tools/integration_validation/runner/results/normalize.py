@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import copy
 from typing import Any
+
+from tools.integration_validation.runner.core.models import PortEntity
 
 # Set by Port, not by the mapping. ``blueprint`` carries the run suffix; the
 # expected file name already records the real blueprint.
-PORT_MANAGED_FIELDS = ("blueprint", "createdAt", "updatedAt", "createdBy", "updatedBy")
+PORT_MANAGED_FIELDS = {"blueprint", "createdAt", "updatedAt", "createdBy", "updatedBy"}
 
 # Sections whose null values are dropped so that null and missing compare equal;
 # a section left empty is dropped too.
@@ -15,18 +16,14 @@ NULLABLE_SECTIONS = ("properties", "relations")
 
 
 def normalize_blueprint_entities(
-    entities: list[dict[str, Any]], ignore_fields: list[str]
-) -> list[dict[str, Any]]:
+    entities: list[PortEntity], ignore_fields: list[str]
+) -> list[PortEntity]:
     normalized = [normalize_entity(entity, ignore_fields) for entity in entities]
-    return sorted(normalized, key=lambda entity: str(entity.get("identifier")))
+    return sorted(normalized, key=lambda entity: entity.identifier)
 
 
-def normalize_entity(
-    entity: dict[str, Any], ignore_fields: list[str]
-) -> dict[str, Any]:
-    normalized = copy.deepcopy(entity)
-    for field in PORT_MANAGED_FIELDS:
-        normalized.pop(field, None)
+def normalize_entity(entity: PortEntity, ignore_fields: list[str]) -> PortEntity:
+    normalized = entity.model_dump(exclude_unset=True, exclude=PORT_MANAGED_FIELDS)
     for field in ignore_fields:
         _drop_path(normalized, field.split("."))
 
@@ -48,7 +45,7 @@ def normalize_entity(
     if "team" in normalized:
         normalized["team"] = _sorted_if_list(normalized["team"])
 
-    return _without_nulls(normalized)
+    return PortEntity.model_validate(_without_nulls(normalized))
 
 
 def _drop_path(target: dict[str, Any], path: list[str]) -> None:
