@@ -8,7 +8,7 @@ from claude_managed_agents.actions.abstract_action_input import (
     AbstractAnthropicActionInput,
 )
 from claude_managed_agents.actions.abstract_executor import AbstractAnthropicExecutor
-from claude_managed_agents.integration import ObjectKind
+from claude_managed_agents.integration import AgentResourceConfig, ObjectKind
 
 ARCHIVING_STATUS_LABEL = "Archiving agent"
 ARCHIVE_FAILED_STATUS_LABEL = "Archive failed"
@@ -36,6 +36,31 @@ class ArchiveAgentExecutor(AbstractAnthropicExecutor):
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
         return run.execution_properties.get("agentId")
 
+    async def _should_keep_archived_agents(self) -> bool:
+        """Whether any `agent` mapping has `includeArchived` on. Defaults to
+        keeping the agent when the config cannot be read, so a failure here
+        never drops an entity."""
+        try:
+            port_app_config = (
+                await ocean.integration.port_app_config_handler.get_port_app_config(
+                    use_cache=False
+                )
+            )
+        except Exception as error:
+            logger.warning(
+                f"Could not read the port app config to check includeArchived: {error}"
+            )
+            return True
+
+        agent_selectors = [
+            resource.selector
+            for resource in port_app_config.resources
+            if isinstance(resource, AgentResourceConfig)
+        ]
+        return not agent_selectors or any(
+            selector.include_archived for selector in agent_selectors
+        )
+
     async def execute(self, run: IntegrationRun) -> None:
         inputs = ArchiveAgentInputs.from_execution_properties(run.execution_properties)
         agent_id = inputs.agentId
@@ -59,9 +84,11 @@ class ArchiveAgentExecutor(AbstractAnthropicExecutor):
 
         # Reflect the archived state in the catalog immediately (webhooks also
         # keep agents in sync). Best-effort: never fails the run.
-        await self.register_entity(
-            ObjectKind.AGENT, agent.to_dict(mode="json", warnings=False), run
-        )
+        raw_agent = agent.to_dict(mode="json", warnings=False)
+        if await self._should_keep_archived_agents():
+            await self.register_entity(ObjectKind.AGENT, raw_agent, run)
+        else:
+            await self.unregister_entity(ObjectKind.AGENT, raw_agent, run)
 
         if isinstance(run, WorkflowNodeRun):
             run.output["agentId"] = agent_id
