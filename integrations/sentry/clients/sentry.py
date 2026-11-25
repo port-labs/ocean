@@ -1,3 +1,4 @@
+import asyncio
 from itertools import chain
 from typing import Any, AsyncGenerator, AsyncIterator, Optional, List
 
@@ -9,9 +10,11 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 
 from .exceptions import IgnoredError, ResourceNotFoundError
+from .rate_limit_wrapper import SentryRateLimitWrapper, centralized_rate_limit_pool
 from .rate_limiter import SentryRateLimiter
 
 PAGE_SIZE = 100
+MAX_CONCURRENT_REQUESTS = 5
 
 
 def flatten_list(lst: list[Any]) -> list[Any]:
@@ -38,12 +41,19 @@ class SentryClient:
         self.base_headers = {"Authorization": "Bearer " + f"{self.auth_token}"}
         self.api_url = f"{self.sentry_base_url}/api/0"
         self.organization = sentry_organization
+        self._rate_limiter = SentryRateLimitWrapper(
+            SentryRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS),
+            pool=centralized_rate_limit_pool(sentry_base_url, sentry_organization),
+        )
+        # Sentry also rejects too many concurrent requests, and Redis mode skips
+        # the limiter's semaphore.
+        self._concurrency = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
         retry_config = RetryConfig(
             retry_after_headers=["X-Sentry-Rate-Limit-Reset", "Retry-After"],
             max_attempts=5,
+            rate_limiter=self._rate_limiter,
         )
         self._client = OceanAsyncClient(retry_config=retry_config)
-        self._rate_limiter = SentryRateLimiter()
 
     @staticmethod
     def get_next_link(link_header: str) -> str:
@@ -107,7 +117,7 @@ class SentryClient:
             httpx.HTTPStatusError: For any other non-2xx status codes
                                    (except 401, 403, and 404).
         """
-        async with self._rate_limiter:
+        async with self._concurrency, self._rate_limiter:
             full_url = (
                 url if url.startswith("http") else f"{self.api_url}/{url.lstrip('/')}"
             )
@@ -128,9 +138,6 @@ class SentryClient:
             except httpx.HTTPError:
                 # Re-raise non-HTTP status errors
                 raise
-            finally:
-                if "response" in locals() and response:
-                    await self._rate_limiter.update_from_headers(response.headers)
 
     async def _get_paginated_resource(
         self, url: str, ignored_errors: Optional[List[IgnoredError]] = None

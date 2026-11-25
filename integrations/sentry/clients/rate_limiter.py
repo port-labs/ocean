@@ -68,6 +68,13 @@ class SentryRateLimiter:
         logger.debug("Rate limit reset time is not set")
         return 0.0
 
+    @property
+    def is_limit_reached(self) -> bool:
+        return (
+            self._remaining is not None
+            and self._remaining <= self._minimum_limit_remaining
+        )
+
     async def __aenter__(self) -> "SentryRateLimiter":
         """Acquires semaphore and proactively sleeps if the rate limit is low."""
         await self._semaphore.acquire()
