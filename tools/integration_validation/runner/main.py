@@ -8,15 +8,23 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from tools.integration_validation.runner.results.collect import ScenarioCollection
 from tools.integration_validation.runner.results.evaluate import ScenarioComparison
 from tools.integration_validation.runner.core.errors import ValidationCliError
-from tools.integration_validation.runner.core.statuses import ComparisonStatus
+from tools.integration_validation.runner.core.statuses import (
+    ComparisonStatus,
+    ResyncStatus,
+    ScenarioIntegrationStatus,
+)
 from tools.integration_validation.runner.integration.process import (
     DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
     DEFAULT_MOCK_BASE_URL,
 )
-from tools.integration_validation.runner.runner import ValidateOptions, run_validate
+from tools.integration_validation.runner.runner import (
+    ScenarioRun,
+    ValidateOptions,
+    run_validate,
+    write_error_report,
+)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -76,89 +84,82 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Max seconds to wait for the integration subprocess (default: 180).",
     )
     args = parser.parse_args(argv)
+    options = ValidateOptions(
+        integration_path=args.path,
+        scenario_names=args.scenario_names,
+        update_expected=args.update_expected,
+        skip_cleanup=args.skip_cleanup,
+        report_path=args.report_path,
+        mock_base_url=args.mock_base_url,
+        integration_timeout_seconds=args.integration_timeout_seconds,
+    )
 
     try:
-        result = run_validate(
-            ValidateOptions(
-                integration_path=args.path,
-                scenario_names=args.scenario_names,
-                update_expected=args.update_expected,
-                skip_cleanup=args.skip_cleanup,
-                report_path=args.report_path,
-                mock_base_url=args.mock_base_url,
-                integration_timeout_seconds=args.integration_timeout_seconds,
-            )
-        )
+        result = run_validate(options)
     except ValidationCliError as error:
         print(f"{error.prefix}: {error.message}", file=sys.stderr)
+        write_error_report(options, error)
         raise SystemExit(error.exit_code) from error
 
-    integration_name = result.paths.integration_name
-    print(f"Loaded {len(result.scenario_runs)} scenario(s) for {integration_name}.")
-    for run in result.scenario_runs:
-        name = run.plan.scenario_name
-        kinds = run.plan.kinds
-        kinds_label = ", ".join(kinds) if kinds else "all configured kinds"
-        print(f"  • {name} ({kinds_label})")
-        print(f"    integration: {run.plan.integration_identifier}")
-        print(f"    blueprints: {', '.join(run.plan.blueprint_renames.values())}")
-        if run.integration.timed_out:
-            print("    Integration subprocess timed out", file=sys.stderr)
-        elif run.integration.returncode != 0:
-            print(
-                f"    Integration subprocess failed (exit {run.integration.returncode})",
-                file=sys.stderr,
-            )
-        else:
-            print("    Integration subprocess completed")
-        _print_collection(run.collection)
-        _print_comparison(run.comparison)
-        if run.cleaned_up:
-            print("    Port resources cleaned up")
-        elif run.cleanup_leftovers:
-            print(
-                f"    Cleanup left behind: {', '.join(run.cleanup_leftovers)}",
-                file=sys.stderr,
-            )
-        else:
-            print("    Port resources kept (--skip-cleanup)")
+    runs = result.scenario_runs
+    print(f"{result.paths.integration_name}: {len(runs)} scenario(s)")
+    for run in runs:
+        _print_scenario(run)
 
-    if result.scenario_runs and all(run.passed for run in result.scenario_runs):
-        print("All scenarios passed.", file=sys.stderr)
-    else:
+    unverified = sorted(
+        {route_id for run in runs for route_id in run.unverified_route_ids}
+    )
+    if unverified:
+        print(f"Unverified routes: {', '.join(unverified)}")
+    passed = sum(run.passed for run in runs)
+    print(f"{passed} passed, {len(runs) - passed} failed")
+    if not result.passed:
         raise SystemExit(1)
 
 
-def _print_collection(collection: ScenarioCollection) -> None:
-    print(f"    Resync status in Port: {collection.resync_status}")
-    counts = ", ".join(
-        f"{blueprint}={len(entities)}"
-        for blueprint, entities in collection.entities.items()
-    )
-    print(f"    Entities: {counts or 'none'}")
-    mock = collection.mock
-    unmatched = mock.unmatched_requests
+def _print_scenario(run: ScenarioRun) -> None:
+    entities = sum(len(entities) for entities in run.collection.entities.values())
+    unmatched = run.collection.mock.unmatched_requests
     print(
-        f"    Mock requests: {len(mock.requests)} ({len(unmatched)} unmatched, "
-        f"{len(mock.unused_route_ids)} unused routes)"
+        f"  {'PASS' if run.passed else 'FAIL'}  {run.plan.scenario_name}: "
+        f"{entities} entities, {len(unmatched)} unmatched requests, "
+        f"expected entities {_comparison_label(run.comparison)}"
     )
+    integration_status = run.integration.integration_status()
+    if integration_status != ScenarioIntegrationStatus.COMPLETED:
+        _print_detail(
+            f"{integration_status} (exit {run.integration.returncode}), "
+            f"see the report's integration logs"
+        )
+    if run.collection.resync_status != ResyncStatus.COMPLETED:
+        _print_detail(f"resync status in Port: {run.collection.resync_status}")
     for entry in unmatched:
-        print(f"      unmatched: {entry.method} {entry.path}", file=sys.stderr)
+        _print_detail(f"unmatched: {entry.method} {entry.path}")
+    _print_entity_diff(run.comparison)
+    if run.cleanup_leftovers:
+        _print_detail(f"cleanup left behind: {', '.join(run.cleanup_leftovers)}")
+    elif not run.cleaned_up:
+        _print_detail(
+            f"kept in Port: {run.plan.integration_identifier}, "
+            f"{', '.join(run.plan.blueprint_renames.values())}"
+        )
 
 
-def _print_comparison(comparison: ScenarioComparison) -> None:
-    print(f"    Expected entities: {_comparison_label(comparison)}")
+def _print_entity_diff(comparison: ScenarioComparison) -> None:
     for blueprint, diff in comparison.entity_diff.items():
         for identifier in diff.added:
-            print(f"      {blueprint} + {identifier} (unexpected)", file=sys.stderr)
+            _print_detail(f"{blueprint} + {identifier} (unexpected)")
         for identifier in diff.removed:
-            print(f"      {blueprint} - {identifier} (missing)", file=sys.stderr)
+            _print_detail(f"{blueprint} - {identifier} (missing)")
         for change in diff.changed:
-            print(
-                f"      {blueprint} {change.identifier} {change.field}: "
-                f"{json.dumps(change.expected)} -> {json.dumps(change.actual)}",
-                file=sys.stderr,
+            _print_detail(
+                f"{blueprint} {change.identifier} {change.field}: "
+                f"{json.dumps(change.expected)} -> {json.dumps(change.actual)}"
             )
+
+
+def _print_detail(message: str) -> None:
+    print(f"        {message}", file=sys.stderr)
 
 
 COMPARISON_LABELS: dict[ComparisonStatus, str] = {

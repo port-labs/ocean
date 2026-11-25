@@ -45,7 +45,13 @@ After the subprocess exits and before cleanup, each scenario collects:
 - every entity in each of the run's blueprints, searched by blueprint rather than datasource, so placeholders from `createMissingRelatedEntities` and unexpected entities are included;
 - the mock's journal: all requests, unmatched requests, unused routes and per-route call counts.
 
-The console prints a summary per scenario, and the report has a `collection` section with the resync status, entity counts per blueprint and the journal summary.
+A request no mock route matched fails the scenario, unless the scenario sets `expect.unmatched_requests: allow`.
+
+## Output
+
+The console prints one line per scenario (pass/fail, entity count, unmatched requests, expected-entities status). Only what needs attention is listed under it: an integration or resync failure, unmatched requests, entity differences, and Port resources the run left behind. A footer lists the unverified routes (`verified: false`) of the scenarios that ran, and the totals.
+
+`--report PATH` writes the same results as JSON: overall `status` (`passed`, `failed`, or `error`) and `totals`, and for each scenario `passed`, `unverified_routes`, the `integration` subprocess result with its log tails, the `collection` (resync status, entity counts per blueprint, mock journal summary) and the `comparison`. When a setup or Port error stops the run, the report is still written, with `status: error`, the message in `error` and no scenarios.
 
 ## Expected entities
 
@@ -54,7 +60,7 @@ The collected entities are compared with snapshots in `validation/expected/<scen
 Both sides are normalized before comparing:
 
 - `blueprint`, `createdAt`, `updatedAt`, `createdBy` and `updatedBy` are dropped, as is every path in `defaults.ignore_fields` (dotted, for example `properties.lastSeen`);
-- snapshot `null` values are kept; a field set to `null` in the expected file must be `null` on the collected entity too (a missing key is not equal to `null`);
+- `null` properties and relations are dropped, so `null` and a missing value compare equal;
 - relation arrays and `team` are sorted, entities are sorted by identifier, and files are written with sorted keys.
 
 Each scenario gets a comparison status, shown in the console and in the report's `comparison` section:
@@ -63,7 +69,10 @@ Each scenario gets a comparison status, shown in the console and in the report's
 | --- | --- |
 | `matched` | Entities equal the snapshots |
 | `different` | Entities were added, removed or changed; the report lists each one with the changed field path, for example `properties.handle` |
+| `new` | No snapshots existed, so they were written from this run |
+| `updated` | `--update-expected` overwrote the snapshots with this run's result |
+| `skipped` | Snapshots were due to be written, but the integration or resync did not complete, so nothing was written |
 
-When no snapshots exist yet, or with `--update-expected`, the snapshots are first written from this run, so the scenario matches. Snapshots are never written from a failed resync. Review the written files before relying on them.
+Snapshots are never written from a failed resync. Review the files `new` and `updated` write before committing them.
 
-Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, or entities differ from the snapshots), `2` setup/preflight error.
+Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, unmatched requests, entities differ from the snapshots, or snapshots were skipped), `2` setup/preflight error.

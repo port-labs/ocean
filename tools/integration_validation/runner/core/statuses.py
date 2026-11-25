@@ -38,3 +38,5 @@ class ComparisonStatus(StrEnum):
 class ValidationAggregateStatus(StrEnum):
     FAILED = "failed"
     PASSED = "passed"
+    # A setup or Port error stopped the run.
+    ERROR = "error"
