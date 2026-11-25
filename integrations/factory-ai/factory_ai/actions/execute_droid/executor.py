@@ -122,10 +122,6 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             f"for Port run {run.id}"
         )
 
-        await self._reflect_session(
-            response.session_id, run, computer_id=response.computer_id
-        )
-
         output = {
             "sessionId": response.session_id,
             "computerId": response.computer_id,
@@ -133,8 +129,22 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             "sessionUrl": session_url,
             "computerUrl": computer_url,
         }
-        if isinstance(run, WorkflowNodeRun):
-            run.output.update(output)
+        status_label = (
+            TURN_RUNNING_STATUS_LABEL
+            if inputs.waitForCompletion
+            else TURN_ACCEPTED_STATUS_LABEL
+        )
+        await ocean.port_client.update_run_started(
+            run,
+            session_url,
+            response.message_id,
+            extra_output=output,
+            status_label=status_label,
+        )
+
+        await self._reflect_session(
+            response.session_id, run, computer_id=response.computer_id
+        )
 
         if not inputs.waitForCompletion:
             await ocean.port_client.report_run_completed(
@@ -149,13 +159,6 @@ class ExecuteDroidExecutor(AbstractFactoryExecutor):
             )
             return
 
-        await ocean.port_client.update_run_started(
-            run,
-            session_url,
-            response.message_id,
-            extra_output=output,
-            status_label=TURN_RUNNING_STATUS_LABEL,
-        )
         await ocean.port_client.post_run_log(
             run,
             (

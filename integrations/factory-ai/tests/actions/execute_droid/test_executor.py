@@ -18,6 +18,7 @@ from factory_ai.actions.exceptions import (
 from factory_ai.actions.execute_droid.executor import (
     TURN_ACCEPTED_STATUS_LABEL,
     TURN_COMPLETED_STATUS_LABEL,
+    TURN_RUNNING_STATUS_LABEL,
     TURN_TIMED_OUT_STATUS_LABEL,
     ExecuteDroidExecutor,
     TurnCompletion,
@@ -82,7 +83,20 @@ def executor(client: MagicMock) -> ExecuteDroidExecutor:
 @pytest.fixture
 def mock_port_client() -> MagicMock:
     mock = MagicMock()
-    mock.update_run_started = AsyncMock()
+
+    async def update_run_started(
+        run: WorkflowNodeRun,
+        link: str,
+        external_id: str,
+        extra_output: dict[str, Any] | None = None,
+        status_label: str | None = None,
+    ) -> None:
+        output: dict[str, Any] = {"workflowRunUrl": link}
+        if extra_output:
+            output.update(extra_output)
+        run.output.update(output)
+
+    mock.update_run_started = AsyncMock(side_effect=update_run_started)
     mock.report_run_completed = AsyncMock()
     mock.post_run_log = AsyncMock()
     return mock
@@ -201,7 +215,10 @@ class TestExecuteDroidExecutor:
             },
         )
         reflect.assert_awaited_once_with("sess-1", run, computer_id="comp-1")
-        mock_port_client.update_run_started.assert_not_called()
+        mock_port_client.update_run_started.assert_called_once()
+        update_kwargs = mock_port_client.update_run_started.call_args.kwargs
+        assert update_kwargs["status_label"] == TURN_ACCEPTED_STATUS_LABEL
+        assert update_kwargs["extra_output"]["sessionId"] == "sess-1"
         mock_port_client.report_run_completed.assert_called_once()
         args, kwargs = mock_port_client.report_run_completed.call_args
         assert args[0] is run
@@ -214,6 +231,54 @@ class TestExecuteDroidExecutor:
         assert run.output["computerId"] == "comp-1"
         assert run.output["sessionUrl"] == "https://app.factory.ai/sessions/sess-1"
         assert run.output["computerUrl"] == "https://app.factory.ai/computers/comp-1"
+
+    async def test_publishes_session_output_before_reflect_session(
+        self,
+        executor: ExecuteDroidExecutor,
+        client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "prompt": "Fix the flaky test",
+                "targetKind": "environment",
+                "environmentId": "env-1",
+            }
+        )
+        call_order: list[str] = []
+
+        async def record_update_started(*_args: object, **_kwargs: object) -> None:
+            call_order.append("update_run_started")
+
+        async def record_reflect(*_args: object, **_kwargs: object) -> None:
+            call_order.append("_reflect_session")
+
+        with (
+            patch(f"{_EXECUTOR_MODULE}.ocean") as mock_ocean,
+            patch.object(
+                executor,
+                "_reflect_session",
+                side_effect=record_reflect,
+            ),
+            patch.object(
+                executor,
+                "_wait_for_turn_completion",
+                new_callable=AsyncMock,
+                return_value=TurnCompletion(
+                    session=Session.model_validate(SESSION_RAW),
+                    reply={"assistantText": "ok"},
+                    user_message_id="msg-1",
+                ),
+            ),
+        ):
+            mock_ocean.port_client = mock_port_client
+            mock_port_client.update_run_started.side_effect = record_update_started
+            await executor.execute(run)
+
+        assert call_order[:2] == ["update_run_started", "_reflect_session"]
+        update_kwargs = mock_port_client.update_run_started.call_args.kwargs
+        assert update_kwargs["status_label"] == TURN_RUNNING_STATUS_LABEL
+        assert update_kwargs["extra_output"]["sessionId"] == "sess-1"
 
     async def test_happy_path_session_follow_up_without_waiting(
         self,
