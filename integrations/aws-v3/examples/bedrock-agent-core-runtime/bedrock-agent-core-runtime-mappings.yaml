@@ -5,19 +5,22 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.agentRuntimeArn
-          title: .Properties.agentRuntimeName
+          identifier: .Properties.AgentRuntimeArn
+          title: .Properties.AgentRuntimeName
           blueprint: '"bedrockAgentCoreRuntime"'
           properties:
-            arn: .Properties.agentRuntimeArn
-            status: .Properties.status
-            runtimeVersion: .Properties.agentRuntimeVersion
-            description: .Properties.description
-            roleArn: .Properties.roleArn
-            networkConfiguration: .Properties.networkConfiguration
-            platformVersion: .Properties.platformVersion
-            lastUpdatedAt: .Properties.lastUpdatedAt
-            createdAt: .Properties.createdAt
+            arn: .Properties.AgentRuntimeArn
+            status: .Properties.Status
+            runtimeVersion: .Properties.AgentRuntimeVersion
+            description: .Properties.Description
+            roleArn: .Properties.RoleArn
+            containerUri: .Properties.AgentRuntimeArtifact.containerConfiguration.containerUri
+            networkMode: .Properties.NetworkConfiguration.networkMode
+            protocol: .Properties.ProtocolConfiguration.serverProtocol
+            hasAuthorizer: (.Properties.AuthorizerConfiguration != null)
+            createdAt: .Properties.CreatedAt
+            lastUpdatedAt: .Properties.LastUpdatedAt
             region: .__ExtraContext.Region
+            tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId

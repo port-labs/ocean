@@ -1,0 +1,48 @@
+{
+  "Type": "AWS::BedrockAgentCore::Runtime",
+  "Properties": {
+    "AgentRuntimeId": "my_agent_runtime-Ab1Cd2Ef3G",
+    "AgentRuntimeArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/my_agent_runtime-Ab1Cd2Ef3G",
+    "AgentRuntimeName": "my_agent_runtime",
+    "AgentRuntimeVersion": "3",
+    "Description": "Processes customer orders",
+    "Status": "READY",
+    "RoleArn": "arn:aws:iam::123456789012:role/AgentCoreRuntimeRole",
+    "AgentRuntimeArtifact": {
+      "containerConfiguration": {
+        "containerUri": "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-agent:latest"
+      }
+    },
+    "NetworkConfiguration": {
+      "networkMode": "PUBLIC"
+    },
+    "ProtocolConfiguration": {
+      "serverProtocol": "MCP"
+    },
+    "AuthorizerConfiguration": {
+      "customJWTAuthorizer": {
+        "discoveryUrl": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example/.well-known/openid-configuration",
+        "allowedClients": [
+          "example-client-id"
+        ]
+      }
+    },
+    "LifecycleConfiguration": {
+      "idleRuntimeSessionTimeout": 900,
+      "maxLifetime": 28800
+    },
+    "WorkloadIdentityDetails": {
+      "workloadIdentityArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:workload-identity-directory/default/workload-identity/my_agent_runtime-Ab1Cd2Ef3G"
+    },
+    "CreatedAt": "2026-05-15T09:30:00Z",
+    "LastUpdatedAt": "2026-06-01T12:00:00Z",
+    "Tags": {
+      "Environment": "production",
+      "Team": "commerce"
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

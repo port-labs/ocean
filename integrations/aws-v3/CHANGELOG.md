@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.6.0 (2026-11-25)
+
+
+### Features
+
+- Add support for syncing Amazon Bedrock AgentCore runtimes (`AWS::BedrockAgentCore::Runtime`), including optional tags
+
+
 ## 3.5.9 (2026-11-24)
 
 

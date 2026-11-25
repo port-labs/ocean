@@ -7,43 +7,55 @@
       "arn": {
         "type": "string",
         "title": "ARN",
-        "description": "The Amazon Resource Name (ARN) of the BedrockAgentCore Runtime"
+        "description": "The Amazon Resource Name (ARN) of the AgentCore Runtime"
       },
       "status": {
         "type": "string",
         "title": "Status",
-        "description": "The current status of the BedrockAgentCore Runtime"
+        "description": "The current status of the runtime",
+        "enum": [
+          "CREATING",
+          "CREATE_FAILED",
+          "UPDATING",
+          "UPDATE_FAILED",
+          "READY",
+          "DELETING"
+        ]
       },
       "runtimeVersion": {
         "type": "string",
         "title": "Runtime Version",
-        "description": "The version of the BedrockAgentCore Runtime"
+        "description": "The deployed version of the runtime"
       },
       "description": {
         "type": "string",
         "title": "Description",
-        "description": "The description of the BedrockAgentCore Runtime"
+        "description": "The description of the runtime"
       },
       "roleArn": {
         "type": "string",
         "title": "Role ARN",
-        "description": "The IAM role ARN that provides permissions for the runtime"
+        "description": "The IAM role the runtime runs with"
       },
-      "networkConfiguration": {
-        "type": "object",
-        "title": "Network Configuration",
-        "description": "The network configuration of the BedrockAgentCore Runtime"
-      },
-      "platformVersion": {
+      "containerUri": {
         "type": "string",
-        "title": "Platform Version",
-        "description": "The platform version of the BedrockAgentCore Runtime"
+        "title": "Container URI",
+        "description": "The container image the runtime runs, if it is container-based"
       },
-      "lastUpdatedAt": {
+      "networkMode": {
         "type": "string",
-        "title": "Last Updated At",
-        "description": "The timestamp when the runtime was last updated",
-        "format": "date-time"
+        "title": "Network Mode",
+        "description": "PUBLIC or VPC"
+      },
+      "protocol": {
+        "type": "string",
+        "title": "Protocol",
+        "description": "The server protocol the runtime exposes (HTTP, MCP or A2A)"
+      },
+      "hasAuthorizer": {
+        "type": "boolean",
+        "title": "Has Authorizer",
+        "description": "Whether inbound calls require a JWT authorizer"
       },
       "createdAt": {
         "type": "string",
@@ -51,10 +63,21 @@
         "description": "The timestamp when the runtime was created",
         "format": "date-time"
       },
+      "lastUpdatedAt": {
+        "type": "string",
+        "title": "Last Updated At",
+        "description": "The timestamp when the runtime was last updated",
+        "format": "date-time"
+      },
       "region": {
         "type": "string",
         "title": "Region",
-        "description": "The AWS region of the BedrockAgentCore Runtime"
+        "description": "The AWS region of the runtime"
+      },
+      "tags": {
+        "type": "object",
+        "title": "Tags",
+        "description": "Tags associated with the runtime"
       }
     },
     "required": []

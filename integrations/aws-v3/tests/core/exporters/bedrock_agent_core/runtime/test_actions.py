@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -5,24 +6,25 @@ import pytest
 from botocore.exceptions import ClientError
 
 from aws.core.exporters.bedrock_agent_core.runtime.actions import (
+    AgentRuntimeRecord,
     BedrockAgentCoreRuntimeActionsMap,
     GetAgentRuntimeAction,
+    ListAgentRuntimeTagsAction,
     ListAgentRuntimesAction,
 )
 from aws.core.interfaces.action import Action
 
-
 RUNTIME_ID = "my-runtime-Ab1Cd2Ef3G"
 RUNTIME_ARN = f"arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/{RUNTIME_ID}"
 
-SAMPLE_LIST_ITEM: dict[str, Any] = {
+SAMPLE_LIST_ITEM: AgentRuntimeRecord = {
     "agentRuntimeId": RUNTIME_ID,
     "agentRuntimeArn": RUNTIME_ARN,
     "agentRuntimeName": "my-runtime",
     "agentRuntimeVersion": "1",
     "description": "Test runtime",
     "status": "READY",
-    "lastUpdatedAt": "2025-06-01T12:00:00Z",
+    "lastUpdatedAt": datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
 }
 
 SAMPLE_GET_RESPONSE: dict[str, Any] = {
@@ -30,7 +32,6 @@ SAMPLE_GET_RESPONSE: dict[str, Any] = {
     "createdAt": "2025-05-15T09:30:00Z",
     "roleArn": "arn:aws:iam::123456789012:role/MyRole",
     "networkConfiguration": {"networkMode": "PUBLIC"},
-    "platformVersion": "1.0",
     "lifecycleConfiguration": {"idleRuntimeSessionTimeout": 3600},
     "metadataConfiguration": None,
     "agentRuntimeArtifact": {
@@ -142,7 +143,7 @@ class TestGetAgentRuntimeAction:
     async def test_execute_preserves_index_alignment_with_middle_failure(
         self, action: GetAgentRuntimeAction
     ) -> None:
-        runtimes = [
+        runtimes: list[AgentRuntimeRecord] = [
             {**SAMPLE_LIST_ITEM, "agentRuntimeId": "runtime-1"},
             {**SAMPLE_LIST_ITEM, "agentRuntimeId": "runtime-2"},
             {**SAMPLE_LIST_ITEM, "agentRuntimeId": "runtime-3"},
@@ -175,6 +176,41 @@ class TestBedrockAgentCoreRuntimeActionsMap:
         assert ListAgentRuntimesAction in actions_map.defaults
         assert GetAgentRuntimeAction in actions_map.defaults
 
-    def test_no_options(self) -> None:
+    def test_options(self) -> None:
         actions_map = BedrockAgentCoreRuntimeActionsMap()
-        assert actions_map.options == []
+        assert actions_map.options == [ListAgentRuntimeTagsAction]
+
+
+class TestListAgentRuntimeTagsAction:
+
+    @pytest.fixture
+    def action(self) -> ListAgentRuntimeTagsAction:
+        return ListAgentRuntimeTagsAction(AsyncMock())
+
+    @pytest.mark.asyncio
+    async def test_execute_keeps_tags_as_map(
+        self, action: ListAgentRuntimeTagsAction
+    ) -> None:
+        action.client.list_tags_for_resource.return_value = {
+            "tags": {"Team": "commerce"}
+        }
+
+        result = await action._execute([SAMPLE_LIST_ITEM])
+
+        assert result == [{"tags": {"Team": "commerce"}}]
+        action.client.list_tags_for_resource.assert_awaited_once_with(
+            resourceArn=RUNTIME_ARN
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_access_denied_returns_empty(
+        self, action: ListAgentRuntimeTagsAction
+    ) -> None:
+        action.client.list_tags_for_resource.side_effect = ClientError(
+            error_response={"Error": {"Code": "AccessDeniedException"}},
+            operation_name="ListTagsForResource",
+        )
+
+        result = await action._execute([SAMPLE_LIST_ITEM])
+
+        assert result == [{}]

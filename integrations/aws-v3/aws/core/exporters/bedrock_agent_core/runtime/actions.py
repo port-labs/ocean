@@ -1,15 +1,28 @@
-import asyncio
-from typing import Any, Type, cast
+from datetime import datetime
+from typing import Any, NotRequired, Type, TypedDict
 
-from loguru import logger
-
-from aws.core.exporters.bedrock_agent_core.runtime.models import AgentRuntimeRecord
-from aws.core.helpers.utils import is_recoverable_aws_exception
+from aws.core.helpers.utils import execute_concurrent_aws_operations
 from aws.core.interfaces.action import Action, ActionMap
 
 
+class AgentRuntimeRecord(TypedDict):
+    """A runtime as the actions receive it.
+
+    Resync feeds ``list_agent_runtimes`` items (all fields); a single-resource
+    fetch feeds only the ID and the ARN.
+    """
+
+    agentRuntimeId: str
+    agentRuntimeArn: str
+    agentRuntimeName: NotRequired[str]
+    agentRuntimeVersion: NotRequired[str]
+    description: NotRequired[str]
+    status: NotRequired[str]
+    lastUpdatedAt: NotRequired[datetime]
+
+
 class ListAgentRuntimesAction(Action[list[AgentRuntimeRecord]]):
-    """Pass-through action that wraps raw list_agent_runtimes items."""
+    """Pass-through action for list_agent_runtimes items (ID, ARN, name, status)."""
 
     async def _execute(
         self, runtimes: list[AgentRuntimeRecord]
@@ -18,47 +31,46 @@ class ListAgentRuntimesAction(Action[list[AgentRuntimeRecord]]):
 
 
 class GetAgentRuntimeAction(Action[list[AgentRuntimeRecord]]):
-    """Fetches full details for each BedrockAgentCore Runtime."""
+    """Fetches full details (role, artifact, network, protocol, auth) per runtime."""
 
     async def _execute(
         self, runtimes: list[AgentRuntimeRecord]
     ) -> list[dict[str, Any]]:
-        details = await asyncio.gather(
-            *(self._fetch_runtime_details(runtime) for runtime in runtimes),
-            return_exceptions=True,
+        return await execute_concurrent_aws_operations(
+            input_items=runtimes,
+            operation_func=self._fetch_runtime_details,
+            get_resource_identifier=lambda runtime: runtime["agentRuntimeId"],
+            operation_name="AgentCore runtime details",
         )
-
-        results: list[dict[str, Any]] = []
-        for idx, detail_result in enumerate(details):
-            if isinstance(detail_result, Exception):
-                runtime_id = runtimes[idx].get("agentRuntimeId", "unknown")
-                if is_recoverable_aws_exception(detail_result):
-                    logger.warning(
-                        f"Skipping BedrockAgentCore Runtime '{runtime_id}': {detail_result}"
-                    )
-                    results.append({})
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching details for BedrockAgentCore Runtime '{runtime_id}': {detail_result}"
-                    )
-                    raise detail_result
-            results.append(cast(dict[str, Any], detail_result))
-        logger.info(
-            f"Successfully fetched details for {len(results)} BedrockAgentCore Runtimes"
-        )
-        return results
 
     async def _fetch_runtime_details(
         self, runtime: AgentRuntimeRecord
     ) -> dict[str, Any]:
-        runtime_id = runtime["agentRuntimeId"]
-        response = await self.client.get_agent_runtime(agentRuntimeId=runtime_id)
-        response.pop("ResponseMetadata", None)
-        logger.info(
-            f"Successfully fetched details for BedrockAgentCore Runtime '{runtime_id}'"
+        response = await self.client.get_agent_runtime(
+            agentRuntimeId=runtime["agentRuntimeId"]
         )
+        response.pop("ResponseMetadata", None)
         return response
+
+
+class ListAgentRuntimeTagsAction(Action[list[AgentRuntimeRecord]]):
+    """Fetches tags, kept in the map shape AWS returns."""
+
+    async def _execute(
+        self, runtimes: list[AgentRuntimeRecord]
+    ) -> list[dict[str, Any]]:
+        return await execute_concurrent_aws_operations(
+            input_items=runtimes,
+            operation_func=self._fetch_tags,
+            get_resource_identifier=lambda runtime: runtime["agentRuntimeId"],
+            operation_name="AgentCore runtime tags",
+        )
+
+    async def _fetch_tags(self, runtime: AgentRuntimeRecord) -> dict[str, Any]:
+        response = await self.client.list_tags_for_resource(
+            resourceArn=runtime["agentRuntimeArn"]
+        )
+        return {"tags": response.get("tags", {})}
 
 
 class BedrockAgentCoreRuntimeActionsMap(ActionMap[list[AgentRuntimeRecord]]):
@@ -68,4 +80,6 @@ class BedrockAgentCoreRuntimeActionsMap(ActionMap[list[AgentRuntimeRecord]]):
         ListAgentRuntimesAction,
         GetAgentRuntimeAction,
     ]
-    options: list[Type[Action[list[AgentRuntimeRecord]]]] = []
+    options: list[Type[Action[list[AgentRuntimeRecord]]]] = [
+        ListAgentRuntimeTagsAction,
+    ]

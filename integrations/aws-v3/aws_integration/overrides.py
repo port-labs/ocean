@@ -440,8 +440,8 @@ class AWSEKSNodegroupResourceConfig(AWSResourceConfig):
 
 class AWSBedrockAgentCoreRuntimeResourceConfig(AWSResourceConfig):
     probe_permissions: ClassVar[tuple[str, ...]] = (
-        "bedrock:ListAgentRuntimes",
-        "bedrock:GetAgentRuntime",
+        "bedrock-agentcore:ListAgentRuntimes",
+        "bedrock-agentcore:GetAgentRuntime",
     )
     kind: Literal["AWS::BedrockAgentCore::Runtime"] = Field(
         title="AWS BedrockAgentCore Runtime",

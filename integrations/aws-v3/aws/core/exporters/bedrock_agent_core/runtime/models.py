@@ -1,50 +1,51 @@
-from typing import TypedDict
+from datetime import datetime
+from typing import Any
 
-from pydantic import Field, ConfigDict
+from pydantic import Field
 
 from aws.core.modeling.resource_models import (
+    BaseAWSPropertiesModel,
     ResourceModel,
     ResourceRequestModel,
-    BaseAWSPropertiesModel,
 )
 
 
-class AgentRuntimeRecord(TypedDict, total=False):
-    """Shape of an item returned by list_agent_runtimes and get_agent_runtime."""
-
-    agentRuntimeId: str
-    agentRuntimeArn: str
-    agentRuntimeName: str
-    agentRuntimeVersion: str
-    description: str
-    status: str
-    lastUpdatedAt: str
-    createdAt: str
-    roleArn: str
-    networkConfiguration: dict
-    lifecycleConfiguration: dict
-    metadataConfiguration: dict
-    agentRuntimeArtifact: dict
-    platformVersion: str
-
-
 class BedrockAgentCoreRuntimeProperties(BaseAWSPropertiesModel):
-    model_config = ConfigDict(extra="ignore")
+    """AgentCore Runtime properties exported to Port.
 
-    agentRuntimeId: str = Field(default_factory=str)
-    agentRuntimeArn: str = Field(default_factory=str)
-    agentRuntimeName: str = Field(default_factory=str)
-    agentRuntimeVersion: str | None = None
-    description: str | None = None
-    status: str | None = None
-    lastUpdatedAt: str | None = None
-    createdAt: str | None = None
-    roleArn: str | None = None
-    networkConfiguration: dict | None = None
-    lifecycleConfiguration: dict | None = None
-    metadataConfiguration: dict | None = None
-    agentRuntimeArtifact: dict | None = None
-    platformVersion: str | None = None
+    ``environmentVariables`` is intentionally not declared: it commonly holds
+    secrets such as LLM API keys, and ``BaseAWSPropertiesModel`` ignores
+    undeclared fields, so it never leaves the integration.
+    """
+
+    agentRuntimeId: str = Field(default_factory=str, alias="AgentRuntimeId")
+    agentRuntimeArn: str = Field(default_factory=str, alias="AgentRuntimeArn")
+    agentRuntimeName: str = Field(default_factory=str, alias="AgentRuntimeName")
+    agentRuntimeVersion: str | None = Field(default=None, alias="AgentRuntimeVersion")
+    description: str | None = Field(default=None, alias="Description")
+    status: str | None = Field(default=None, alias="Status")
+    roleArn: str | None = Field(default=None, alias="RoleArn")
+    agentRuntimeArtifact: dict[str, Any] | None = Field(
+        default=None, alias="AgentRuntimeArtifact"
+    )
+    networkConfiguration: dict[str, Any] | None = Field(
+        default=None, alias="NetworkConfiguration"
+    )
+    protocolConfiguration: dict[str, Any] | None = Field(
+        default=None, alias="ProtocolConfiguration"
+    )
+    authorizerConfiguration: dict[str, Any] | None = Field(
+        default=None, alias="AuthorizerConfiguration"
+    )
+    lifecycleConfiguration: dict[str, Any] | None = Field(
+        default=None, alias="LifecycleConfiguration"
+    )
+    workloadIdentityDetails: dict[str, Any] | None = Field(
+        default=None, alias="WorkloadIdentityDetails"
+    )
+    createdAt: datetime | None = Field(default=None, alias="CreatedAt")
+    lastUpdatedAt: datetime | None = Field(default=None, alias="LastUpdatedAt")
+    tags: dict[str, str] | None = Field(default=None, alias="Tags")
 
 
 class BedrockAgentCoreRuntime(ResourceModel[BedrockAgentCoreRuntimeProperties]):
