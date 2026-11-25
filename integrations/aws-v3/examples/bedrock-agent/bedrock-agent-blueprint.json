@@ -24,6 +24,26 @@
         "title": "Foundation Model",
         "description": "The foundation model used by the Bedrock Agent"
       },
+      "orchestrationType": {
+        "type": "string",
+        "title": "Orchestration Type",
+        "description": "Whether the agent uses AWS's default orchestration or a custom one"
+      },
+      "roleArn": {
+        "type": "string",
+        "title": "Role ARN",
+        "description": "The IAM role the agent runs with"
+      },
+      "guardrailEnabled": {
+        "type": "boolean",
+        "title": "Guardrail Enabled",
+        "description": "Whether a Bedrock guardrail is attached to the agent"
+      },
+      "collaboration": {
+        "type": "string",
+        "title": "Collaboration",
+        "description": "The agent's multi-agent collaboration mode"
+      },
       "description": {
         "type": "string",
         "title": "Description",
@@ -44,6 +64,12 @@
         "type": "string",
         "title": "Updated At",
         "description": "The timestamp when the agent was last updated",
+        "format": "date-time"
+      },
+      "preparedAt": {
+        "type": "string",
+        "title": "Prepared At",
+        "description": "The timestamp when the agent was last prepared",
         "format": "date-time"
       },
       "region": {

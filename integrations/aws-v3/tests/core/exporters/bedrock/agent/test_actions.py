@@ -9,8 +9,13 @@ from aws.core.exporters.bedrock.agent.actions import (
     AgentIdentifier,
     GetAgentAction,
     ListAgentsAction,
+    ListAgentTagsAction,
 )
 from aws.core.interfaces.action import Action
+
+
+def _agent_arn(agent_id: str) -> str:
+    return f"arn:aws:bedrock:us-east-1:123456789012:agent/{agent_id}"
 
 
 def _make_input(
@@ -19,7 +24,10 @@ def _make_input(
     account_id: str = "123456789012",
 ) -> BedrockAgentActionInput:
     return BedrockAgentActionInput(
-        items=[AgentIdentifier(agentId=agent_id) for agent_id in agent_ids],
+        items=[
+            AgentIdentifier(agentId=agent_id, agentArn=_agent_arn(agent_id))
+            for agent_id in agent_ids
+        ],
         region=region,
         account_id=account_id,
     )
@@ -45,8 +53,14 @@ class TestListAgentsAction:
         result = await action._execute(action_input)
 
         assert len(result) == 2
-        assert result[0] == {"agentId": "ABCDEF1234"}
-        assert result[1] == {"agentId": "GHIJKL5678"}
+        assert result[0] == {
+            "agentId": "ABCDEF1234",
+            "agentArn": _agent_arn("ABCDEF1234"),
+        }
+        assert result[1] == {
+            "agentId": "GHIJKL5678",
+            "agentArn": _agent_arn("GHIJKL5678"),
+        }
 
     @pytest.mark.asyncio
     async def test_execute_empty_list(self, action: ListAgentsAction) -> None:
@@ -122,9 +136,7 @@ class TestGetAgentAction:
                     error_response={"Error": {"Code": "AccessDenied"}},
                     operation_name="GetAgent",
                 )
-            return {
-                "agent": {"agentId": agentId, "agentName": f"agent-{agentId}"}
-            }
+            return {"agent": {"agentId": agentId, "agentName": f"agent-{agentId}"}}
 
         action.client.get_agent.side_effect = mock_get_agent
 
@@ -153,6 +165,39 @@ class TestGetAgentAction:
             await action._execute(action_input)
 
 
+class TestListAgentTagsAction:
+
+    @pytest.fixture
+    def action(self) -> ListAgentTagsAction:
+        return ListAgentTagsAction(AsyncMock())
+
+    @pytest.mark.asyncio
+    async def test_execute_keeps_tags_as_map(self, action: ListAgentTagsAction) -> None:
+        action.client.list_tags_for_resource.return_value = {
+            "tags": {"Environment": "production"}
+        }
+
+        result = await action._execute(_make_input(["ABCDEF1234"]))
+
+        assert result == [{"tags": {"Environment": "production"}}]
+        action.client.list_tags_for_resource.assert_called_once_with(
+            resourceArn=_agent_arn("ABCDEF1234")
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_access_denied_returns_empty(
+        self, action: ListAgentTagsAction
+    ) -> None:
+        action.client.list_tags_for_resource.side_effect = ClientError(
+            error_response={"Error": {"Code": "AccessDeniedException"}},
+            operation_name="ListTagsForResource",
+        )
+
+        result = await action._execute(_make_input(["ABCDEF1234"]))
+
+        assert result == [{}]
+
+
 class TestBedrockAgentActionsMap:
 
     def test_defaults(self) -> None:
@@ -162,4 +207,4 @@ class TestBedrockAgentActionsMap:
 
     def test_options(self) -> None:
         actions_map = BedrockAgentActionsMap()
-        assert actions_map.options == []
+        assert actions_map.options == [ListAgentTagsAction]

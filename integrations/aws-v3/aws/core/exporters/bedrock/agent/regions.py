@@ -10,6 +10,7 @@ BEDROCK_AGENT_SUPPORTED_REGIONS: frozenset[str] = frozenset(
         "ap-southeast-2",
         "ca-central-1",
         "eu-central-1",
+        "eu-central-2",
         "eu-west-1",
         "eu-west-2",
         "eu-west-3",

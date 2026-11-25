@@ -1,19 +1,25 @@
 {
   "Type": "AWS::Bedrock::Agent",
   "Properties": {
-    "agentId": "ABCDEF1234",
-    "agentName": "my-customer-support-agent",
-    "agentArn": "arn:aws:bedrock:us-east-1:123456789012:agent/ABCDEF1234",
-    "agentStatus": "PREPARED",
-    "agentVersion": "DRAFT",
-    "description": "An agent for handling customer support inquiries",
-    "foundationModel": "anthropic.claude-3-sonnet-20240229-v1:0",
-    "idleSessionTTLInSeconds": 600,
-    "agentResourceRoleArn": "arn:aws:iam::123456789012:role/AmazonBedrockExecutionRoleForAgents_my-agent",
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-20T14:45:00.000Z",
-    "preparedAt": "2024-01-20T14:45:00.000Z",
-    "tags": {
+    "AgentId": "ABCDEF1234",
+    "AgentName": "my-customer-support-agent",
+    "AgentArn": "arn:aws:bedrock:us-east-1:123456789012:agent/ABCDEF1234",
+    "AgentStatus": "PREPARED",
+    "AgentVersion": "DRAFT",
+    "Description": "An agent for handling customer support inquiries",
+    "FoundationModel": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "OrchestrationType": "DEFAULT",
+    "IdleSessionTTLInSeconds": 600,
+    "AgentResourceRoleArn": "arn:aws:iam::123456789012:role/AmazonBedrockExecutionRoleForAgents_my-agent",
+    "GuardrailConfiguration": {
+      "guardrailIdentifier": "gr1a2b3c4d5e",
+      "guardrailVersion": "1"
+    },
+    "AgentCollaboration": "DISABLED",
+    "CreatedAt": "2024-01-15T10:30:00Z",
+    "UpdatedAt": "2024-01-20T14:45:00Z",
+    "PreparedAt": "2024-01-20T14:45:00Z",
+    "Tags": {
       "Environment": "production",
       "Team": "support"
     }

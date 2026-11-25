@@ -12,8 +12,8 @@ from aws.core.exporters.bedrock.agent.models import (
     PaginatedAgentRequest,
 )
 from aws.core.exporters.bedrock.agent.regions import BEDROCK_AGENT_SUPPORTED_REGIONS
+from aws.core.exporters.bedrock.agent.utils import build_agent_arn
 from aws.core.helpers.types import SupportedServices
-from aws.core.helpers.utils import require_aws_resource
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 from loguru import logger
@@ -30,19 +30,28 @@ class BedrockAgentExporter(IResourceExporter[BedrockAgentActionInput]):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # GetAgentAction swallows ResourceNotFound as recoverable, so the
+            # inspector would build a stub from ListAgentsAction for a deleted agent.
+            # Confirm it exists so a missing agent raises and the live-event handler
+            # can treat the update as a delete instead.
+            await proxy.client.get_agent(agentId=options.agent_id)  # type: ignore[attr-defined]
+
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await proxy.client.get_agent(agentId=options.agent_id)  # type: ignore[attr-defined]
-            response.pop("ResponseMetadata", None)
-            agent_data = require_aws_resource(
-                [response["agent"]] if "agent" in response else [],
-                error_code="ResourceNotFoundException",
-                message=f"Agent not found: {options.agent_id}",
-                operation_name="GetAgent",
-            )
             action_result = await inspector.inspect(
-                agent_data,
+                BedrockAgentActionInput(
+                    items=[
+                        AgentIdentifier(
+                            agentId=options.agent_id,
+                            agentArn=build_agent_arn(
+                                options.region, options.account_id, options.agent_id
+                            ),
+                        )
+                    ],
+                    region=options.region,
+                    account_id=options.account_id,
+                ),
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
@@ -66,7 +75,13 @@ class BedrockAgentExporter(IResourceExporter[BedrockAgentActionInput]):
             async for agents in paginator.paginate():
                 if agents:
                     agent_items = [
-                        AgentIdentifier(agentId=agent["agentId"]) for agent in agents
+                        AgentIdentifier(
+                            agentId=agent["agentId"],
+                            agentArn=build_agent_arn(
+                                options.region, options.account_id, agent["agentId"]
+                            ),
+                        )
+                        for agent in agents
                     ]
                     result = await inspector.inspect(
                         BedrockAgentActionInput(

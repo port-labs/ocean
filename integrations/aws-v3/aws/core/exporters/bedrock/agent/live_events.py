@@ -1,4 +1,5 @@
 from aws.core.exporters.bedrock.agent.models import SingleAgentRequest
+from aws.core.exporters.bedrock.agent.utils import build_agent_arn
 from aws.core.helpers.metadata.types import (
     CloudTrailDetail,
     CloudTrailEventAction,
@@ -11,7 +12,7 @@ CLOUDTRAIL_EVENT_SOURCE = "bedrock.amazonaws.com"
 
 
 def _extract_agent_id(detail: CloudTrailDetail) -> str | None:
-    request_parameters = detail.get("requestParameters", {})
+    request_parameters = detail.get("requestParameters") or {}
     agent_id = request_parameters.get("agentId")
     if isinstance(agent_id, str):
         return agent_id
@@ -40,7 +41,10 @@ def _request_factory(
 
 def _deletion_identifier_properties(context: LiveEventContext) -> dict[str, str]:
     return {
-        "agentId": context.identifier,
+        "AgentArn": build_agent_arn(
+            context.region, context.account_id, context.identifier
+        ),
+        "AgentId": context.identifier,
     }
 
 
@@ -54,6 +58,11 @@ BEDROCK_AGENT_LIVE_EVENTS = LiveEventFactories(
             event_source=CLOUDTRAIL_EVENT_SOURCE,
         ),
         "UpdateAgent": CloudTrailEventMapping(
+            CloudTrailEventAction.UPSERT,
+            _extract_agent_id,
+            event_source=CLOUDTRAIL_EVENT_SOURCE,
+        ),
+        "PrepareAgent": CloudTrailEventMapping(
             CloudTrailEventAction.UPSERT,
             _extract_agent_id,
             event_source=CLOUDTRAIL_EVENT_SOURCE,

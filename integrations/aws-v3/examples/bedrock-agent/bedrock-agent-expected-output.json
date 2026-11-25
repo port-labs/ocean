@@ -1,5 +1,5 @@
 {
-  "identifier": "ABCDEF1234",
+  "identifier": "arn:aws:bedrock:us-east-1:123456789012:agent/ABCDEF1234",
   "title": "my-customer-support-agent",
   "blueprint": "bedrockAgent",
   "properties": {
@@ -7,10 +7,15 @@
     "agentStatus": "PREPARED",
     "agentVersion": "DRAFT",
     "foundationModel": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "orchestrationType": "DEFAULT",
+    "roleArn": "arn:aws:iam::123456789012:role/AmazonBedrockExecutionRoleForAgents_my-agent",
+    "guardrailEnabled": true,
+    "collaboration": "DISABLED",
     "description": "An agent for handling customer support inquiries",
     "idleSessionTTLInSeconds": 600,
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-20T14:45:00.000Z",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-20T14:45:00Z",
+    "preparedAt": "2024-01-20T14:45:00Z",
     "region": "us-east-1",
     "tags": {
       "Environment": "production",
