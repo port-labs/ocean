@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from tools.integration_validation.runner.collect import ScenarioCollection
-from tools.integration_validation.runner.errors import ValidationCliError
-from tools.integration_validation.runner.integration_process import (
+from tools.integration_validation.runner.results.collect import ScenarioCollection
+from tools.integration_validation.runner.core.errors import ValidationCliError
+from tools.integration_validation.runner.integration.process import (
     DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
     DEFAULT_MOCK_BASE_URL,
 )

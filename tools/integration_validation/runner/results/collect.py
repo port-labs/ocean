@@ -8,17 +8,17 @@ from typing import Any
 
 import httpx
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.mock_journal import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.results.mock_journal import (
     MockJournal,
     fetch_mock_journal,
 )
-from tools.integration_validation.runner.port_setup import (
+from tools.integration_validation.runner.port.setup import (
     ScenarioPortPlan,
     ValidationPortClient,
     port_error,
 )
-from tools.integration_validation.runner.statuses import ResyncStatus
+from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 
 @dataclass(frozen=True)
@@ -29,14 +29,14 @@ class ScenarioCollection:
     entities: dict[str, list[dict[str, Any]]]
     mock: MockJournal
 
-    def report_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "resync_status": self.resync_status.value,
             "entity_counts": {
                 blueprint: len(entities)
                 for blueprint, entities in self.entities.items()
             },
-            "mock": self.mock.report_dict(),
+            "mock": self.mock.to_dict(),
         }
 
 

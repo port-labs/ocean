@@ -4,8 +4,8 @@ import httpx
 import pytest
 
 from tools.integration_validation.mock_server.app import create_mock_server_app
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.mock_journal import fetch_mock_journal
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.results.mock_journal import fetch_mock_journal
 from tools.integration_validation.tests.mock_server.test_server import _write_routes
 
 MOCK_BASE_URL = "http://mock.test"

@@ -14,15 +14,15 @@ from port_ocean.core.models import CreatePortResourcesOrigin
 from port_ocean.tests.helpers.port_client import (
     ensure_ocean_context_for_standalone_port_client,
 )
-from tools.integration_validation.runner.blueprint_rewrite import (
+from tools.integration_validation.runner.port.blueprints import (
     blueprint_deletion_layers,
 )
-from tools.integration_validation.runner.errors import (
+from tools.integration_validation.runner.core.errors import (
     ValidationCliError,
     ValidationFailedError,
     ValidationSetupError,
 )
-from tools.integration_validation.runner.statuses import ResyncStatus
+from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 # `ocean sail` patches the real version onto the integration at startup.
 PLACEHOLDER_INTEGRATION_VERSION = "0.0.0"

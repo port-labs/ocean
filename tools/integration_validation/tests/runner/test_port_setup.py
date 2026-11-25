@@ -3,17 +3,17 @@ from typing import Any
 import httpx
 import pytest
 
-from tools.integration_validation.runner.errors import (
+from tools.integration_validation.runner.core.errors import (
     ValidationFailedError,
     ValidationSetupError,
 )
-from tools.integration_validation.runner.port_setup import (
+from tools.integration_validation.runner.port.setup import (
     ScenarioPortPlan,
     ValidationPortClient,
     prepare_scenario_port,
     teardown_scenario_port,
 )
-from tools.integration_validation.runner.statuses import ResyncStatus
+from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 PORT_APP_CONFIG = {"resources": [{"kind": "team"}]}
 

@@ -1,4 +1,4 @@
-from tools.integration_validation.runner.naming import (
+from tools.integration_validation.runner.core.naming import (
     MAX_INTEGRATION_IDENTIFIER_LENGTH,
     build_integration_identifier,
     suffix_identifier,
