@@ -200,7 +200,7 @@ class TestExecuteDroidExecutor:
                 "target": {"kind": "environment", "environmentId": "env-1"},
             },
         )
-        reflect.assert_awaited_once_with("sess-1", "comp-1", run)
+        reflect.assert_awaited_once_with("sess-1", run, computer_id="comp-1")
         mock_port_client.update_run_started.assert_not_called()
         mock_port_client.report_run_completed.assert_called_once()
         args, kwargs = mock_port_client.report_run_completed.call_args
@@ -491,13 +491,15 @@ class TestExecuteDroidExecutor:
             }
         )
         with (
-            patch(f"{_EXECUTOR_MODULE}.SessionExporter") as exporter_cls,
+            patch(
+                "factory_ai.actions.abstract_executor.SessionExporter"
+            ) as exporter_cls,
             patch.object(
                 executor, "register_entity", new_callable=AsyncMock
             ) as register,
         ):
             exporter_cls.return_value.get_resource = AsyncMock(return_value=SESSION_RAW)
-            await executor._reflect_session("sess-1", "comp-1", run)
+            await executor._reflect_session("sess-1", run, computer_id="comp-1")
 
         register.assert_awaited_once_with("session", SESSION_RAW, run)
 
@@ -512,13 +514,15 @@ class TestExecuteDroidExecutor:
             }
         )
         with (
-            patch(f"{_EXECUTOR_MODULE}.SessionExporter") as exporter_cls,
+            patch(
+                "factory_ai.actions.abstract_executor.SessionExporter"
+            ) as exporter_cls,
             patch.object(
                 executor, "register_entity", new_callable=AsyncMock
             ) as register,
         ):
             exporter_cls.return_value.get_resource = AsyncMock(return_value=None)
-            await executor._reflect_session("sess-1", "comp-1", run)
+            await executor._reflect_session("sess-1", run, computer_id="comp-1")
 
         register.assert_not_called()
 

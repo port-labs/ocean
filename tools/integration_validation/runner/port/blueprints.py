@@ -4,9 +4,9 @@ import copy
 import json
 from typing import Any
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import PortAppConfigDocument
-from tools.integration_validation.runner.naming import suffix_identifier
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import PortAppConfigDocument
+from tools.integration_validation.runner.core.naming import suffix_identifier
 
 
 def suffix_blueprints(

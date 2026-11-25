@@ -65,6 +65,13 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ManagedResourceResourceConfig, event.resource_config).selector
     app_filters = selector.app_filters
     params = app_filters.generate_request_params if app_filters else None
+
+    # Fetch cluster health once and skip apps on disconnected clusters before
+    # calling /managed-resources (those calls hang for disconnected destinations).
+    unreachable_cluster_identifiers = (
+        await argocd_client.get_unreachable_cluster_identifiers()
+    )
+
     async for app_batch in argocd_client.get_resources(
         resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
     ):
@@ -75,14 +82,26 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             continue
 
         for application in app_batch:
-            if application:
-                async for managed_resources in argocd_client.get_managed_resources(
-                    application=application
-                ):
-                    logger.info(
-                        f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
-                    )
-                    yield managed_resources
+            if not application:
+                continue
+
+            application_name = application.get("metadata", {}).get("name")
+            if argocd_client.is_application_on_unreachable_cluster(
+                application, unreachable_cluster_identifiers
+            ):
+                logger.warning(
+                    f"Skipping managed resources for application '{application_name}' "
+                    f"because its destination cluster is unreachable"
+                )
+                continue
+
+            async for managed_resources in argocd_client.get_managed_resources(
+                application=application
+            ):
+                logger.info(
+                    f"Ingesting managed resources for application: {application_name}"
+                )
+                yield managed_resources
 
 
 ocean.add_webhook_processor("/webhook", ArgocdApplicationWebhookProcessor)
