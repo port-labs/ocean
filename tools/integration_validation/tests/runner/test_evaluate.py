@@ -42,7 +42,10 @@ def test_first_run_writes_normalized_snapshots_and_matches(tmp_path: Path) -> No
     assert comparison.status == ComparisonStatus.MATCHED
     assert comparison.passed
     assert json.loads((tmp_path / "team.json").read_text()) == [
-        {"identifier": "platform", "properties": {"handle": "platform"}}
+        {
+            "identifier": "platform",
+            "properties": {"handle": "platform", "description": None},
+        }
     ]
 
 

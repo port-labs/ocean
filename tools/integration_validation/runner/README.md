@@ -54,7 +54,7 @@ The collected entities are compared with snapshots in `validation/expected/<scen
 Both sides are normalized before comparing:
 
 - `blueprint`, `createdAt`, `updatedAt`, `createdBy` and `updatedBy` are dropped, as is every path in `defaults.ignore_fields` (dotted, for example `properties.lastSeen`);
-- `null` properties and relations are dropped, so `null` and a missing value compare equal;
+- snapshot `null` values are kept; a field set to `null` in the expected file must be `null` on the collected entity too (a missing key is not equal to `null`);
 - relation arrays and `team` are sorted, entities are sorted by identifier, and files are written with sorted keys.
 
 Each scenario gets a comparison status, shown in the console and in the report's `comparison` section:

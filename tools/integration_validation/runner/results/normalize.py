@@ -13,10 +13,6 @@ from tools.integration_validation.runner.core.models import (
 # expected file name already records the real blueprint.
 PORT_MANAGED_FIELDS = {"blueprint", "createdAt", "updatedAt", "createdBy", "updatedBy"}
 
-# Sections whose null values are dropped so that null and missing compare equal;
-# a section left empty is dropped too.
-NULLABLE_SECTIONS = ("properties", "relations")
-
 
 def normalize_entities(
     entities: EntitiesByBlueprint, ignore_fields: list[str]
@@ -39,16 +35,6 @@ def normalize_entity(entity: PortEntity, ignore_fields: list[str]) -> PortEntity
     for field in ignore_fields:
         _drop_path(normalized, field.split("."))
 
-    for section in NULLABLE_SECTIONS:
-        values = normalized.get(section)
-        if values is None:
-            continue
-        values = _without_nulls(values)
-        if values:
-            normalized[section] = values
-        else:
-            del normalized[section]
-
     relations = normalized.get("relations")
     if relations is not None:
         normalized["relations"] = {
@@ -57,7 +43,7 @@ def normalize_entity(entity: PortEntity, ignore_fields: list[str]) -> PortEntity
     if normalized.get("team") is not None:
         normalized["team"] = sorted(normalized["team"])
 
-    return PortEntity.model_validate(_without_nulls(normalized))
+    return PortEntity.model_validate(normalized)
 
 
 def _drop_path(target: dict[str, Any], path: list[str]) -> None:
@@ -68,10 +54,6 @@ def _drop_path(target: dict[str, Any], path: list[str]) -> None:
     child = target.get(head)
     if isinstance(child, dict):
         _drop_path(child, rest)
-
-
-def _without_nulls(values: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in values.items() if value is not None}
 
 
 def _sorted_if_list(value: Any) -> Any:
