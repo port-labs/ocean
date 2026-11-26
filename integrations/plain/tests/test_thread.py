@@ -55,6 +55,8 @@ async def test_get_threads_yields_pages_with_assignee_typename() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen["query"] = query
         seen["operation_name"] = operation_name
@@ -74,7 +76,7 @@ async def test_get_threads_yields_pages_with_assignee_typename() -> None:
     assert seen["query"] is LIST_THREADS
     assert seen["operation_name"] == "ListThreads"
     assert seen["connection_path"] == "data.threads"
-    assert seen["variables"] is None
+    assert seen["variables"] == {}
     assert batches[0][0]["assignedTo"]["__typename"] == "User"
 
 
@@ -87,6 +89,8 @@ async def test_get_threads_passes_status_filter() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen["variables"] = variables
         yield []
