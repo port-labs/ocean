@@ -11,15 +11,15 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.context.ocean import ocean
 
-from core.catalog import normalize_raw_for_catalog
-from core.options import GetRunOptions
-from exporter_factory import create_runs_exporter
-from integration import ObjectKind
-from clients.client_factory import create_cursor_agents_client
-from webhook_processors.abstract_webhook_processor import (
+from cursor_cloud_agents.core.catalog import normalize_raw_for_catalog
+from cursor_cloud_agents.core.options import GetRunOptions
+from cursor_cloud_agents.exporter_factory import create_runs_exporter
+from cursor_cloud_agents.integration import ObjectKind
+from cursor_cloud_agents.clients.client_factory import create_cursor_agents_client
+from cursor_cloud_agents.webhook_processors.abstract_webhook_processor import (
     AbstractCursorWebhookProcessor,
 )
-from webhook_processors.utils import (
+from cursor_cloud_agents.webhook_processors.utils import (
     parse_webhook_timestamp,
     resolve_newest_run_id_at_or_before,
 )

@@ -10,10 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.core.models import WorkflowNodeRun
 
-from integration import ObjectKind
-from core.exporters.agents_exporter import AgentsExporter
-from core.exporters.runs_exporter import RunsExporter
-from webhook_processors.cursor_agent_webhook_processor import (
+from cursor_cloud_agents.integration import ObjectKind
+from cursor_cloud_agents.core.exporters.agents_exporter import AgentsExporter
+from cursor_cloud_agents.core.exporters.runs_exporter import RunsExporter
+from cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor import (
     _STATUS_LABELS,
     CursorAgentWebhookProcessor,
 )

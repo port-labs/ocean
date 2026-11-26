@@ -7,12 +7,12 @@ from typing import Any
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from clients.cursor_agents_client import CursorAgentsClient
-from clients.endpoints import v1_agent_run, v1_agent_runs
-from core.catalog import format_datetime_for_catalog
-from core.exporters.abstract_exporter import AbstractCursorExporter
-from core.exporters.agents_exporter import AgentsExporter
-from core.options import GetRunOptions, ListRunOptions
+from cursor_cloud_agents.clients.cursor_agents_client import CursorAgentsClient
+from cursor_cloud_agents.clients.endpoints import v1_agent_run, v1_agent_runs
+from cursor_cloud_agents.core.catalog import format_datetime_for_catalog
+from cursor_cloud_agents.core.exporters.abstract_exporter import AbstractCursorExporter
+from cursor_cloud_agents.core.exporters.agents_exporter import AgentsExporter
+from cursor_cloud_agents.core.options import GetRunOptions, ListRunOptions
 
 
 def _parse_run_created_at(value: object) -> datetime | None:

@@ -3,20 +3,19 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from actions.abstract_executor import AbstractCursorExecutor
-from actions.request_bodies import parse_v1_run_body
-from actions.exceptions import InvalidActionParametersException
-from actions.utils import (
+from cursor_cloud_agents.actions.abstract_executor import AbstractCursorExecutor
+from cursor_cloud_agents.actions.request_bodies import parse_v1_run_body
+from cursor_cloud_agents.actions.exceptions import InvalidActionParametersException
+from cursor_cloud_agents.actions.utils import (
     WEBHOOK_PATH,
     build_agent_link,
     build_v1_run_body,
 )
-from clients.endpoints import v1_agent_runs
-from integration import ObjectKind
-from webhook_processors.cursor_agent_webhook_processor import (
+from cursor_cloud_agents.clients.endpoints import v1_agent_runs
+from cursor_cloud_agents.integration import ObjectKind
+from cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor import (
     CursorAgentWebhookProcessor,
 )
-
 
 TRIGGERING_STATUS_LABEL = "Sending follow-up"
 TRIGGER_FAILED_STATUS_LABEL = "Follow-up failed"

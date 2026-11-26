@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from webhook_processors.utils import (
+from cursor_cloud_agents.webhook_processors.utils import (
     parse_webhook_timestamp,
     resolve_newest_run_id_at_or_before,
 )

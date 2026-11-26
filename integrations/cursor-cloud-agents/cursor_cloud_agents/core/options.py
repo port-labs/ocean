@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from integration import AgentResourceConfig, RunResourceConfig
+from cursor_cloud_agents.integration import AgentResourceConfig, RunResourceConfig
 
 
 @dataclass(frozen=True)

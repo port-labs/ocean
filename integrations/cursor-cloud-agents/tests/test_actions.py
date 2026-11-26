@@ -9,12 +9,16 @@ import pytest
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from actions.abstract_executor import AbstractCursorExecutor
-from actions.create_agent.v0_handler import AGENT_LAUNCHED_STATUS_LABEL
-from actions.create_agent.v1_handler import AGENT_CREATED_STATUS_LABEL
-from actions.create_agent_executor import CreateAgentExecutor
-from actions.exceptions import InvalidActionParametersException
-from actions.trigger_agent_executor import (
+from cursor_cloud_agents.actions.abstract_executor import AbstractCursorExecutor
+from cursor_cloud_agents.actions.create_agent.v0_handler import (
+    AGENT_LAUNCHED_STATUS_LABEL,
+)
+from cursor_cloud_agents.actions.create_agent.v1_handler import (
+    AGENT_CREATED_STATUS_LABEL,
+)
+from cursor_cloud_agents.actions.create_agent_executor import CreateAgentExecutor
+from cursor_cloud_agents.actions.exceptions import InvalidActionParametersException
+from cursor_cloud_agents.actions.trigger_agent_executor import (
     FOLLOW_UP_SENT_STATUS_LABEL,
     TriggerAgentExecutor,
 )

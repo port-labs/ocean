@@ -6,8 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from clients.cursor_agents_client import DEFAULT_PAGE_SIZE, CursorAgentsClient
-from clients.exceptions import CursorAgentsPaginationError
+from cursor_cloud_agents.clients.cursor_agents_client import (
+    DEFAULT_PAGE_SIZE,
+    CursorAgentsClient,
+)
+from cursor_cloud_agents.clients.exceptions import CursorAgentsPaginationError
 
 
 @pytest.fixture

@@ -1,8 +1,8 @@
 from port_ocean.core.models import IntegrationRun
 
-from actions.abstract_executor import AbstractCursorExecutor
-from actions.create_agent.context import CreateAgentContext
-from actions.create_agent.handlers import get_handler
+from cursor_cloud_agents.actions.abstract_executor import AbstractCursorExecutor
+from cursor_cloud_agents.actions.create_agent.context import CreateAgentContext
+from cursor_cloud_agents.actions.create_agent.handlers import get_handler
 
 
 class CreateAgentExecutor(AbstractCursorExecutor):

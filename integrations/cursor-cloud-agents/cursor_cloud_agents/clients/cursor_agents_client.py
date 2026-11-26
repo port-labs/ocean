@@ -8,7 +8,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from clients.exceptions import CursorAgentsPaginationError
+from cursor_cloud_agents.clients.exceptions import CursorAgentsPaginationError
 
 DEFAULT_PAGE_SIZE = 20
 

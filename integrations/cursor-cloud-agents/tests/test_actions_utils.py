@@ -1,4 +1,4 @@
-from actions.utils import (
+from cursor_cloud_agents.actions.utils import (
     build_agent_link,
     build_v0_launch_body,
     build_v1_create_body,

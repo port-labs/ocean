@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import Any
 
-from clients.cursor_agents_client import CursorAgentsClient
+from cursor_cloud_agents.clients.cursor_agents_client import CursorAgentsClient
 
 
 class AbstractCursorExporter(ABC):

@@ -2,7 +2,10 @@ import hashlib
 import hmac
 from unittest.mock import MagicMock, patch
 
-from core.webhook_signing import get_webhook_signing_secret, verify_hmac_signature
+from cursor_cloud_agents.core.webhook_signing import (
+    get_webhook_signing_secret,
+    verify_hmac_signature,
+)
 
 
 def test_get_webhook_signing_secret_returns_configured_value() -> None:
