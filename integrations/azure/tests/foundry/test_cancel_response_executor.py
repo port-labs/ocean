@@ -70,18 +70,16 @@ async def test_cancel_response_posts_to_openai_cancel_route() -> None:
         mock_ocean.port_client.report_run_completed.await_args.kwargs["status_label"]
         == RESPONSE_CANCELLED_STATUS_LABEL
     )
-    assert run.output == {
-        "responseId": "resp_1",
-        "responseIds": ["resp_1"],
-        "projectArmId": _PROJECT_ARM,
-        "status": "cancelled",
-    }
+    assert run.output == {"cancelledResponseIds": ["resp_1"]}
 
 
 @pytest.mark.asyncio
 async def test_cancel_response_partition_key_is_response_id() -> None:
     executor = CancelResponseExecutor()
     assert await executor._get_partition_key(_run({"responseId": "resp_9"})) == "resp_9"
+    assert (
+        await executor._get_partition_key(_run({"conversationId": "conv_9"})) == "conv_9"
+    )
     assert await executor._get_partition_key(_run({})) is None
 
 
@@ -145,4 +143,4 @@ async def test_cancel_response_cancels_all_in_flight_for_conversation() -> None:
     agent_prefix = "agents/agent-1/endpoint/protocols/openai/responses/"
     assert any(u.endswith(f"{agent_prefix}resp_a/cancel") for u in urls)
     assert any(u.endswith(f"{agent_prefix}resp_b/cancel") for u in urls)
-    assert run.output["responseIds"] == ["resp_a", "resp_b"]
+    assert run.output["cancelledResponseIds"] == ["resp_a", "resp_b"]

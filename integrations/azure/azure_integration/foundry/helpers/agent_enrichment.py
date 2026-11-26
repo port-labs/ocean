@@ -15,12 +15,11 @@ from azure_integration.foundry.core.exporters.toolboxes_exporter import (
     ToolboxPayload,
     ToolboxesExporter,
 )
+from azure_integration.foundry.core.options import SingleToolboxOptions
 from azure_integration.foundry.helpers.a2a import skill_names_from_refs
 from azure_integration.foundry.helpers.toolbox import toolbox_name_from_agent_tools
 from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.models.toolbox import TOOLBOX_SERVER_LABEL, Tool
-
-_TOOLBOXES_HEADER = {"Foundry-Features": "Toolboxes=V1Preview"}
 
 
 def guid_to_base64url(guid: str) -> str:
@@ -153,44 +152,30 @@ def _enrichment_from_toolbox_payload(
     return skill_names_from_refs(latest.skills), mcp_servers_from_tools(latest.tools)
 
 
-async def build_toolbox_enrichment_index(
-    client: FoundryHttpClient,
-    *,
-    project_endpoint: str,
-) -> dict[str, tuple[list[str], list[str]]]:
-    """List all toolboxes once per project; load details for agent enrichment lookups."""
-    exporter = ToolboxesExporter(client)
-    index: dict[str, tuple[list[str], list[str]]] = {}
-    async for page in client.send_cursor_paginated_request(
-        project_endpoint,
-        "toolboxes",
-        params={"limit": FoundryHttpClient.PAGE_SIZE},
-        extra_headers=_TOOLBOXES_HEADER,
-    ):
-        for item in page:
-            name = item.get("name") or item.get("id")
-            if not name:
-                continue
-            key = str(name)
-            if key in index:
-                continue
-            loaded = await exporter._load_toolbox(  # noqa: SLF001
-                project_endpoint,
-                item,
-                headers=_TOOLBOXES_HEADER,
-            )
-            index[key] = _enrichment_from_toolbox_payload(loaded)
-    return index
-
-
 async def enrich_agents_from_toolbox(
     *,
+    client: FoundryHttpClient,
     project_endpoint: str,
     agents: list[dict[str, Any]],
     fetch_agent_if_needed: Any | None,
-    toolbox_index: dict[str, tuple[list[str], list[str]]],
 ) -> None:
     """Set __toolboxSkillNames and __toolboxMcpServers when the agent pins a toolbox MCP."""
+    exporter = ToolboxesExporter(client)
+    by_name: dict[str, tuple[list[str], list[str]]] = {}
+
+    async def enrichment_for(toolbox_name: str) -> tuple[list[str], list[str]]:
+        if toolbox_name in by_name:
+            return by_name[toolbox_name]
+        loaded = await exporter.get_resource(
+            SingleToolboxOptions(
+                project_endpoint=project_endpoint,
+                project_id="",
+                toolbox_name=toolbox_name,
+            )
+        )
+        by_name[toolbox_name] = _enrichment_from_toolbox_payload(loaded or {})
+        return by_name[toolbox_name]
+
     for agent in agents:
         tools = _definition_tools(agent)
         if not tools and fetch_agent_if_needed is not None:
@@ -203,6 +188,6 @@ async def enrich_agents_from_toolbox(
             agent["__toolboxSkillNames"] = []
             agent["__toolboxMcpServers"] = []
             continue
-        skills, mcp_servers = toolbox_index.get(toolbox_name, ([], []))
+        skills, mcp_servers = await enrichment_for(toolbox_name)
         agent["__toolboxSkillNames"] = list(skills)
         agent["__toolboxMcpServers"] = list(mcp_servers)

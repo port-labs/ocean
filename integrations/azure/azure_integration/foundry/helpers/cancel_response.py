@@ -13,10 +13,6 @@ _TERMINAL_RESPONSE_STATUSES = frozenset(
 )
 
 
-def response_cancel_path(response_id: str, agent_id: str) -> str:
-    return f"{agent_openai_protocol_path(agent_id, 'responses')}/{response_id}/cancel"
-
-
 def _is_in_progress(status: str | None) -> bool:
     if not status:
         return True

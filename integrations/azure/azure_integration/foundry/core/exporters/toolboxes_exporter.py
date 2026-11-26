@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Never
+from typing import Any
 
 from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.incremental.strategies import paginate_with_strategy
@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.base import FoundryExporter
-from azure_integration.foundry.core.options import ListToolboxesOptions
+from azure_integration.foundry.core.options import ListToolboxesOptions, SingleToolboxOptions
 from azure_integration.foundry.foundry_incremental import TOOLBOX_INCREMENTAL
 from azure_integration.foundry.helpers.a2a import (
     a2a_connection_ids_from_tools,
@@ -22,7 +22,7 @@ from azure_integration.foundry.helpers.utils import (
     enrich_with_project,
 )
 
-_TOOLBOXES_FEATURE = "Toolboxes=V1Preview"
+_TOOLBOXES_HEADERS = {"Foundry-Features": "Toolboxes=V1Preview"}
 
 
 class ToolboxLatestVersion(BaseModel):
@@ -65,7 +65,24 @@ class ConnectionPayload(BaseModel):
     target: str = ""
 
 
-class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, Never]):
+class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptions]):
+    async def get_resource(
+        self, options: SingleToolboxOptions
+    ) -> dict[str, Any] | None:
+        name = options.toolbox_name.strip()
+        if not name:
+            return None
+        try:
+            detail = await self.client.send_api_request(
+                build_foundry_url(options.project_endpoint, f"toolboxes/{name}"),
+                extra_headers=_TOOLBOXES_HEADERS,
+            )
+        except FoundryApiError as error:
+            if error.status_code == 404:
+                return None
+            raise
+        return detail if isinstance(detail, dict) and detail else None
+
     @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListToolboxesOptions
@@ -74,25 +91,33 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, Never]):
         project_id = options.project_id
         cursor = active_incremental_cursor()
         params = TOOLBOX_INCREMENTAL.merge_params({}, cursor)
-        headers = {"Foundry-Features": _TOOLBOXES_FEATURE}
 
         async for page in paginate_with_strategy(
             self.client.send_cursor_paginated_request(
                 project_endpoint,
                 "toolboxes",
                 params=params,
-                extra_headers=headers,
+                extra_headers=_TOOLBOXES_HEADERS,
             ),
             cursor=cursor,
             strategy=TOOLBOX_INCREMENTAL,
         ):
             batch: list[dict[str, Any]] = []
             for item in page:
-                toolbox = await self._load_toolbox(
-                    project_endpoint, item, headers=headers
-                )
+                name = item.get("name") or item.get("id")
+                if name:
+                    loaded = await self.get_resource(
+                        SingleToolboxOptions(
+                            project_endpoint=project_endpoint,
+                            project_id=project_id,
+                            toolbox_name=str(name),
+                        )
+                    )
+                    toolbox = {**item, **loaded} if loaded else dict(item)
+                else:
+                    toolbox = dict(item)
                 toolbox = await self._enrich_toolbox(
-                    toolbox, project_endpoint=project_endpoint, headers=headers
+                    toolbox, project_endpoint=project_endpoint
                 )
                 batch.append(
                     enrich_with_project(
@@ -103,35 +128,11 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, Never]):
                 )
             yield batch
 
-    async def _load_toolbox(
-        self,
-        project_endpoint: str,
-        item: dict[str, Any],
-        *,
-        headers: dict[str, str],
-    ) -> dict[str, Any]:
-        name = item.get("name") or item.get("id")
-        if not name:
-            return dict(item)
-        try:
-            detail = await self.client.send_api_request(
-                build_foundry_url(project_endpoint, f"toolboxes/{name}"),
-                extra_headers=headers,
-            )
-        except FoundryApiError as error:
-            if error.status_code == 404:
-                return dict(item)
-            raise
-        if isinstance(detail, dict) and detail:
-            return {**item, **detail}
-        return dict(item)
-
     async def _enrich_toolbox(
         self,
         toolbox: dict[str, Any],
         *,
         project_endpoint: str,
-        headers: dict[str, str],
     ) -> dict[str, Any]:
         enriched = dict(toolbox)
         try:
@@ -145,7 +146,7 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, Never]):
 
         enriched["__skillNames"] = skill_names_from_refs(latest.skills)
         enriched["__a2aSubagents"] = await self._a2a_subagents(
-            project_endpoint, latest.tools, headers=headers
+            project_endpoint, latest.tools
         )
         return enriched
 
@@ -153,15 +154,13 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, Never]):
         self,
         project_endpoint: str,
         tools: list[Any],
-        *,
-        headers: dict[str, str],
     ) -> list[dict[str, Any]]:
         subagents: list[dict[str, Any]] = []
         for conn_name in a2a_connection_ids_from_tools(tools):
             try:
                 payload = await self.client.send_api_request(
                     build_foundry_url(project_endpoint, f"connections/{conn_name}"),
-                    extra_headers=headers,
+                    extra_headers=_TOOLBOXES_HEADERS,
                 )
             except FoundryApiError as error:
                 if error.status_code == 404:

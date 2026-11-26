@@ -73,3 +73,7 @@ class ListSkillsOptions(ProjectIdentifier):
 
 class ListToolboxesOptions(ProjectIdentifier):
     pass
+
+
+class SingleToolboxOptions(ProjectIdentifier):
+    toolbox_name: str

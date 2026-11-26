@@ -16,7 +16,6 @@ from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListAgentsOptions, SingleAgentOptions
 from azure_integration.foundry.foundry_incremental import AGENT_INCREMENTAL
 from azure_integration.foundry.helpers.agent_enrichment import (
-    build_toolbox_enrichment_index,
     enrich_agent_row,
     enrich_agents_from_toolbox,
 )
@@ -62,12 +61,6 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
         include_versions = options.include_versions
         enrich_toolbox = options.enrich_toolbox
         cursor = active_incremental_cursor()
-        toolbox_index: dict[str, tuple[list[str], list[str]]] = {}
-        if enrich_toolbox:
-            toolbox_index = await build_toolbox_enrichment_index(
-                self.client,
-                project_endpoint=project_endpoint,
-            )
 
         async def fetch_agent_summary(
             endpoint: str, agent_id: str
@@ -106,10 +99,10 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
                 await self._attach_versions(project_endpoint, batch)
             if enrich_toolbox and batch:
                 await enrich_agents_from_toolbox(
+                    client=self.client,
                     project_endpoint=project_endpoint,
                     agents=batch,
                     fetch_agent_if_needed=fetch_agent_summary,
-                    toolbox_index=toolbox_index,
                 )
             yield batch
 

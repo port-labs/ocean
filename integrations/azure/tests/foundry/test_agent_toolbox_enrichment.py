@@ -43,9 +43,7 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
     async def cursor_paginated(
         _endpoint: str, resource: str, **_kwargs: Any
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        if resource == "toolboxes":
-            yield [{"name": "my-tb"}]
-            return
+        assert resource == "agents"
         yield [
             {
                 "id": "agent-a",
