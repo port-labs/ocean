@@ -86,7 +86,7 @@ async def test_post_integration_raw_data_default_operation(
         lakehouse_integration_client.client.post.assert_called_once()
         call_args = lakehouse_integration_client.client.post.call_args
 
-        expected_url = f"{TEST_INGEST_URL}/lake/write/integration-type/github/integration/{TEST_INTEGRATION_IDENTIFIER}/sync/{sync_id}/kind/{kind}"
+        expected_url = f"{TEST_INGEST_URL}/lake/write/integration-type/github/integration/{TEST_INTEGRATION_IDENTIFIER}/sync/{sync_id}"
         assert call_args[0][0] == expected_url
         assert call_args[1]["extensions"] == {"retryable": True}
 
@@ -189,11 +189,34 @@ async def test_post_integration_raw_data_url_construction(
             f"{TEST_INGEST_URL}/lake/write/"
             f"integration-type/github/"
             f"integration/{TEST_INTEGRATION_IDENTIFIER}/"
-            f"sync/{sync_id}/"
-            f"kind/{kind}"
+            f"sync/{sync_id}"
         )
         assert call_args[0][0] == expected_url
+        assert "/kind/" not in call_args[0][0]
+        assert call_args[1]["json"]["kind"] == kind
         assert call_args[1]["json"]["data"][0]["metadata"]["resourceIndex"] == 2
+
+
+async def test_post_integration_raw_data_kind_with_query_stays_in_body_not_url(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Kinds with ? must not be URL-encoded into the lake-write path."""
+    raw_data = [{"id": "1"}]
+    sync_id = "sync-qmark"
+    kind = "/artifactory/api/repositories?project={project}"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        event = make_single_entry_lakehouse_batch(raw_data, kind=kind, index=0)
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+        call_args = lakehouse_integration_client.client.post.call_args
+        url = call_args[0][0]
+        assert url.endswith(f"/sync/{sync_id}")
+        assert "/kind/" not in url
+        assert "%3F" not in url
+        assert call_args[1]["json"]["kind"] == kind
 
 
 async def test_post_integration_raw_data_empty_list(
@@ -775,3 +798,36 @@ async def test_post_integration_raw_data_batch_retries_connect_error() -> None:
         await port_client.post_integration_raw_data_batch("sync-1", event)
 
     assert mock_handle_async_request.await_count == 2
+
+
+async def test_post_integration_raw_data_batch_includes_resource_id_when_set(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    event = make_single_entry_lakehouse_batch(
+        [{"name": "repo-one"}], kind="repository", index=0
+    )
+    event["data"][0]["metadata"]["resource_id"] = "res_abc"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            "sync-resource-id", event
+        )
+
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    assert body["data"][0]["metadata"]["resourceId"] == "res_abc"
+
+
+async def test_post_integration_raw_data_batch_omits_resource_id_when_unset(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    event = make_single_entry_lakehouse_batch(
+        [{"name": "repo-one"}], kind="repository", index=0
+    )
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            "sync-no-resource-id", event
+        )
+
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    assert "resourceId" not in body["data"][0]["metadata"]

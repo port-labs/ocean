@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.8.46"
+version = "0.9.1"
 description = "PagerDuty Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.61.4", extras = ["cli"]}
+port_ocean = {version = "^0.63.1", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
@@ -84,8 +84,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
+extend = "../../ruff.toml"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "gitlab-v2"
-version = "0.18.4"
+version = "0.18.16"
 description = "Gitlab"
 authors = ["Shariff <mohammed.s@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.61.4", extras = ["cli"]}
+port_ocean = {version = "^0.63.1", extras = ["cli"]}
 pyyaml = "^6.0.2"
 aiolimiter = "^1.2.1"
 types-aiofiles = "^24.1.0.20250822"
@@ -90,9 +90,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
-target-version = "py312"
+extend = "../../ruff.toml"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

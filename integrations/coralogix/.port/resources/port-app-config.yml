@@ -1,0 +1,97 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: false
+resources:
+  - kind: service
+    selector:
+      query: 'true'
+      lookback: 30d
+      window: 1h
+      metricsSource: auto
+    port:
+      entity:
+        mappings:
+          identifier: .serviceName
+          title: .serviceName
+          blueprint: '"coralogixService"'
+          properties:
+            environments: .environments
+            clusters: .clusters
+            namespaces: .namespaces
+            requestsPerSecond: .requestsPerSecond
+            errorRatePct: .errorRatePct
+            p95LatencyMs: .p95LatencyMs
+            metricsWindow: .window
+            metricsSource: .metricsSource
+            link: .__teamUrl
+  - kind: slo
+    selector:
+      query: 'true'
+      includeStatus: true
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"coralogixSlo"'
+          properties:
+            description: .description
+            targetPct: .targetThresholdPercentage
+            timeFrame: '{"SLO_TIME_FRAME_1_DAY": "1 day", "SLO_TIME_FRAME_7_DAYS": "7 days", "SLO_TIME_FRAME_14_DAYS": "14 days", "SLO_TIME_FRAME_21_DAYS": "21 days", "SLO_TIME_FRAME_28_DAYS": "28 days", "SLO_TIME_FRAME_30_DAYS": "30 days"}[.sloTimeFrame]'
+            sliType: 'if .apmSli then "apm" elif .windowBasedMetricSli then "window" else "request" end'
+            compliancePct: 'if .__status.lowestCompliance != null then .__status.lowestCompliance * 100 else null end'
+            remainingErrorBudgetPct: 'if .__status.lowestRemainingErrorBudget != null then .__status.lowestRemainingErrorBudget * 100 else null end'
+            completeWindow: .__status.effectiveWindowCompleteData
+            labels: .labels
+            creator: .creator
+            createdAt: .createTime
+            link: .__teamUrl + "/slo/" + .id + "/overview"
+          relations:
+            service: .labels.service // .apmSli.services[0]
+  - kind: alert-definition
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .alertDefProperties.name
+          blueprint: '"coralogixAlertDefinition"'
+          properties:
+            description: .alertDefProperties.description
+            type: '.alertDefProperties.type | sub("ALERT_DEF_TYPE_"; "") | sub("_OR_UNSPECIFIED$"; "")'
+            priority: '.alertDefProperties.priority | sub("ALERT_DEF_PRIORITY_"; "") | sub("_OR_UNSPECIFIED$"; "")'
+            enabled: .alertDefProperties.enabled
+            status: '(.status // "ALERT_DEF_STATUS_UNSPECIFIED") | sub("ALERT_DEF_STATUS_"; "")'
+            groupByKeys: .alertDefProperties.groupByKeys
+            hasNotificationTarget: '((.alertDefProperties.notificationGroup.webhooks // []) + (.alertDefProperties.notificationGroup.destinations // []) | length) > 0'
+            labels: .alertDefProperties.entityLabels
+            lastTriggeredAt: .lastTriggeredTime
+            link: .__teamUrl + "/alerts/" + .id
+          relations:
+            service: .alertDefProperties.entityLabels.service
+  - kind: case
+    selector:
+      query: 'true'
+      daysBack: 30
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .readableId + " " + .title
+          blueprint: '"coralogixCase"'
+          properties:
+            readableId: .readableId
+            status: .status | sub("CASE_STATUS_"; "")
+            priority: .priority | sub("CASE_PRIORITY_"; "")
+            priorityOverridden: '(.priorityDetails.user // .priorityDetails.override) != null'
+            category: .category | sub("CASE_CATEGORY_"; "")
+            assignee: .assignee.email
+            createdAt: .createTime
+            acknowledgedAt: .acknowledgeTime
+            resolvedAt: .resolutionDetails.resolveTime
+            resolutionReason: .resolutionDetails.reason
+            labels: '(.labels // []) | map({(.key): .value}) | add'
+            link: .__teamUrl + "/cases?id=" + .readableId
+          relations:
+            alertDefinitions: '[.caseIndicators.alertIndicators[]?.alertId] | unique'
+            service: '[.impactedEntities[]?.apmService.name // empty][0] // ((.groupings // []) | map(select(.key == "service_name")) | .[0].value)'

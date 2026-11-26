@@ -14,6 +14,8 @@ from azure_integration.foundry.kinds import (
     MemoryStoreResourceConfig,
     ModelDeploymentResourceConfig,
     ResponseResourceConfig,
+    SkillResourceConfig,
+    ToolboxResourceConfig,
 )
 
 
@@ -98,6 +100,8 @@ class AzurePortAppConfig(PortAppConfig):
         | ConversationResourceConfig
         | ResponseResourceConfig
         | MemoryStoreResourceConfig
+        | SkillResourceConfig
+        | ToolboxResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore

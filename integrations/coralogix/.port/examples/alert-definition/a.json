@@ -1,0 +1,62 @@
+{
+  "alertDefProperties": {
+    "name": "Server 5xx errors detected",
+    "description": "Any service in the default namespace returning server errors, one case per service.",
+    "enabled": true,
+    "priority": "ALERT_DEF_PRIORITY_P3",
+    "type": "ALERT_DEF_TYPE_METRIC_THRESHOLD",
+    "metricThreshold": {
+      "metricFilter": {
+        "promql": "sum by (service_name) (rate(calls_total{k8s_namespace_name=\"default\",span_kind=\"SPAN_KIND_SERVER\",status_code=\"STATUS_CODE_ERROR\"}[1m])) * 60"
+      },
+      "rules": [
+        {
+          "condition": {
+            "threshold": 0,
+            "forOverPct": 0,
+            "ofTheLast": {
+              "metricTimeWindowSpecificValue": "METRIC_TIME_WINDOW_VALUE_MINUTES_5"
+            },
+            "conditionType": "METRIC_THRESHOLD_CONDITION_TYPE_MORE_THAN_OR_UNSPECIFIED"
+          },
+          "override": {
+            "priority": "ALERT_DEF_PRIORITY_P3"
+          }
+        }
+      ],
+      "missingValues": {
+        "minNonNullValuesPct": 0
+      }
+    },
+    "groupByKeys": [
+      "service_name"
+    ],
+    "incidentsSettings": {
+      "minutes": 10,
+      "notifyOn": "NOTIFY_ON_TRIGGERED_ONLY_UNSPECIFIED"
+    },
+    "notificationGroup": {
+      "groupByKeys": [
+        "service_name"
+      ],
+      "webhooks": [],
+      "destinations": []
+    },
+    "notificationGroupExcess": [],
+    "entityLabels": {
+      "env": "docker-desktop",
+      "source": "apm-span-metrics",
+      "team": "platform-demo"
+    },
+    "phantomMode": false,
+    "deleted": false,
+    "dataSources": []
+  },
+  "id": "9a2a30a2-a7e3-4e86-9d82-b0bbae6d1eed",
+  "alertVersionId": "59805ed5-c25a-461e-b922-1193e9f8c2f2",
+  "createdTime": "2026-11-16T15:37:47Z",
+  "updatedTime": "2026-11-16T15:37:47Z",
+  "lastTriggeredTime": "2026-11-16T16:13:00Z",
+  "status": "ALERT_DEF_STATUS_ALERTING",
+  "__teamUrl": "https://getport.app.eu2.coralogix.com"
+}

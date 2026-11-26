@@ -5,6 +5,7 @@ import re
 import time
 import uuid
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 
@@ -285,6 +286,64 @@ def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
         selector_without_query, sort_keys=True, separators=(",", ":")
     )
     return selector_hash_from_selector(normalized_selector)
+
+
+@dataclass(frozen=True)
+class FetchUnit:
+    """One fetch: the block at ``index`` and, when ``grouped``, every other block of
+    its resource. The fetch runs, and reports, under the slot ``{kind}-{index}``."""
+
+    index: int
+    resource: ResourceConfig
+    grouped: bool = False
+
+    @property
+    def kind_identifier(self) -> str:
+        return f"{self.resource.kind}-{self.index}"
+
+
+def _fetch_settings(resource: ResourceConfig) -> tuple[str | None, str, bool]:
+    # Integrations may read these while fetching (resource_context), so one fetch can
+    # only serve blocks that agree on them. Normalized like the DSP's resourcegroup
+    # (an empty itemsToParse is unset, an empty itemsToParseName is "item"), so both
+    # sides group the same blocks.
+    return (
+        resource.port.items_to_parse or None,
+        resource.port.items_to_parse_name or "item",
+        resource.port.items_to_parse_top_level_transform,
+    )
+
+
+def group_resources_for_fetch(
+    resources: list[ResourceConfig], dsp_enabled: bool
+) -> list[FetchUnit]:
+    """The fetches of a resync, in block order.
+
+    In DSP mode, blocks sharing a ``resource_id`` are one resource: it is fetched once,
+    under its first (head) block, and the DSP maps the pages through every block of
+    the resource. A resource whose blocks disagree on ``itemsToParse*`` is not grouped:
+    each of its blocks is fetched on its own, as are blocks without an id. Outside DSP
+    mode every block is fetched on its own, as before.
+    """
+    if not dsp_enabled:
+        return [FetchUnit(index, block) for index, block in enumerate(resources)]
+
+    groups: dict[str, list[int]] = {}
+    for index, block in enumerate(resources):
+        if block.resource_id:
+            groups.setdefault(block.resource_id, []).append(index)
+
+    units: list[FetchUnit] = []
+    for index, block in enumerate(resources):
+        group = groups.get(block.resource_id or "", [index])
+        groupable = (
+            len(group) > 1 and len({_fetch_settings(resources[i]) for i in group}) == 1
+        )
+        if not groupable:
+            units.append(FetchUnit(index, block))
+        elif group[0] == index:
+            units.append(FetchUnit(index, block, grouped=True))
+    return units
 
 
 async def is_lakehouse_data_enabled() -> bool:

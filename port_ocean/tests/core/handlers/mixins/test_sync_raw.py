@@ -20,6 +20,10 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin
+from port_ocean.core.integrations.mixins.sync_raw import (
+    _kind_failure_error_message,
+    _log_kind_fetch_failure,
+)
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
 )
@@ -2456,6 +2460,99 @@ async def test_process_resource_dsp_notifies_lifecycle_kind_boundaries(
     )
     lifecycle_client.notify_failed.assert_not_awaited()
     lifecycle_client.notify_aborted.assert_not_awaited()
+
+
+def test_kind_failure_error_message_unwraps_exception_group_cause() -> None:
+    leaf = RuntimeError("e2e-kind-terminal-probe: intentional extract failure")
+    abort = OceanAbortException(f"Failed to execute resync function, error: {leaf}")
+    abort.__cause__ = leaf
+    group = ExceptionGroup(
+        "At least one of the resync generator iterations failed",
+        [abort],
+    )
+
+    assert (
+        _kind_failure_error_message([group])
+        == "e2e-kind-terminal-probe: intentional extract failure"
+    )
+
+
+def test_kind_failure_error_message_plain_exception() -> None:
+    assert _kind_failure_error_message([RuntimeError("crash")]) == "crash"
+    assert _kind_failure_error_message([]) is None
+
+
+def test_log_kind_fetch_failure_writes_error_extract_log() -> None:
+    records: list[dict[str, Any]] = []
+
+    def sink(message: Any) -> None:
+        records.append(message.record)
+
+    handler_id = logger.add(sink, level="ERROR")
+    try:
+        # Resync binds the sync id as event_id on the logger (event_context).
+        with logger.contextualize(event_id="resync-1"):
+            _log_kind_fetch_failure("service-0", [RuntimeError("boom")])
+    finally:
+        logger.remove(handler_id)
+
+    assert any(
+        r["message"] == "Fetch failed: boom"
+        and r["extra"].get("etl_phase") == ETLPhase.EXTRACT
+        and r["extra"].get("kind_identifier") == "service-0"
+        and r["extra"].get("event_id") == "resync-1"
+        and "failed_entity" not in r["extra"]
+        for r in records
+    ), f"expected ERROR extract log with event_id from logger context, got {records!r}"
+
+
+@pytest.mark.asyncio
+async def test_process_resource_dsp_notifies_kind_failed(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
+        side_effect=RuntimeError("crash")
+    )
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.event_id = "resync-1"
+    mock_ocean.config.integration.identifier = "integration-id"
+    mock_ocean.config.integration.type = "integration-type"
+
+    lifecycle_client = MagicMock()
+    lifecycle_client.notify_started = AsyncMock()
+    lifecycle_client.notify_finished = AsyncMock()
+    lifecycle_client.notify_failed = AsyncMock()
+    lifecycle_client.notify_aborted = AsyncMock()
+    mock_ocean.lifecycle_client = lifecycle_client
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+        AsyncMock(return_value=True),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ):
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert len(errors) == 1
+    assert str(errors[0]) == "crash"
+    assert mock_ocean.metrics.sync_state == SyncState.FAILED
+    lifecycle_client.notify_failed.assert_awaited_once_with(
+        event_id="resync-1",
+        granularity=GranularityType.KIND,
+        kind_identifier="service-0",
+    )
+    lifecycle_client.notify_finished.assert_not_awaited()
 
 
 @pytest.mark.asyncio

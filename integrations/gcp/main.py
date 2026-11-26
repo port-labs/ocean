@@ -7,19 +7,23 @@ from loguru import logger
 import gcp_core.clients as clients
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.signal import signal_handler
 
 from gcp_core.cloud_function.resync import resync_cloud_function_resources
 from gcp_core.overrides import (
     GCPCloudFunctionResourceConfig,
     GCPCloudResourceSelector,
+    GCPIamPolicySelector,
 )
+from gcp_core.probe.probe import GcpPermissionProbe
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     list_all_subscriptions_per_project,
     list_all_topics_per_project,
     search_all_folders,
     search_all_organizations,
+    search_all_iam_policies_per_project,
     search_all_projects,
     search_all_resources,
 )
@@ -84,6 +88,17 @@ async def setup_application_default_credentials() -> None:
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
     logger.info("Created Application Default Credentials configuration")
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing GCP permissions for {len(context.available_kinds)} resource kinds"
+    )
+    # A probe run never fires on_start, so encodedADCConfiguration is unwritten here.
+    await setup_application_default_credentials()
+    await GcpPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -165,6 +180,21 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         async for resources_batch in iterator_resync_method:
             yield resources_batch
+
+
+@ocean.on_resync(kind=AssetTypesWithSpecialHandling.IAM_POLICY)
+async def resync_iam_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = typing.cast(GCPIamPolicySelector, get_current_resource_config().selector)
+    rate_limiter, semaphore = await resolve_request_controllers(kind)
+    async for batch in iterate_per_available_project(
+        search_all_iam_policies_per_project,
+        asset_type=kind,
+        asset_types=selector.asset_types,
+        policy_query=selector.policy_query,
+        rate_limiter=rate_limiter,
+        semaphore=semaphore,
+    ):
+        yield batch
 
 
 register_webhook_processors()

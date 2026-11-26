@@ -166,6 +166,26 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
    ocean sail
    ```
 
+### Local Redis (live events and centralized rate limiter)
+
+Live events (Redis streams) and the centralized rate limiter need Redis. For local runs, start one in Docker (logical DB 0 for live events, DB 1 for the rate limiter):
+
+```bash
+make redis/up && eval "$(make -s redis/env)"
+```
+
+Run `ocean sail` in the same shell. `make redis/env` only prints the `OCEAN__*` exports, so `eval` is what applies them to your shell.
+
+| Command | Description |
+| --- | --- |
+| `make redis/up` | Start Redis on `localhost:6379` (idempotent) |
+| `make redis/env` | Print the `OCEAN__LIVE_EVENTS__*` and `OCEAN__CENTRALIZED_RATE_LIMITER__*` exports |
+| `make redis/status` | Container state, PING, and key count per DB |
+| `make redis/down` | Stop and remove the container (data is not persisted) |
+| `./scripts/local-redis.sh cli` | Open `redis-cli` in the container |
+
+If port 6379 is already in use, pick another one and pass it to every command, e.g. `OCEAN_LOCAL_REDIS_PORT=6380 make redis/up`.
+
 ## License
 
 The Ocean Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the [LICENSE](./LICENSE) file for more information.

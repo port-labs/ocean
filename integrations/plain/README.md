@@ -38,6 +38,8 @@ For local runs, set the same values as environment variables, for example `OCEAN
 
 When the Ocean event listener supports webhooks (for example `POLLING`), set `OCEAN__BASE_URL`. `webhookSecret` is optional and not required for registration; set it to verify inbound signatures. On start the integration creates or updates a Plain webhook target (needs `webhookTarget:create` / `webhookTarget:edit` / `webhookTarget:read`). Listeners that do not process webhooks (for example `ONCE`) skip registration. If the API key cannot create the target, startup still succeeds and inbound events on `{OCEAN__BASE_URL}/integration/webhook` are processed — create the webhook target in Plain yourself.
 
+Live events also work when the integration is hosted by Port (SaaS), with the same `webhookTarget:create`, `webhookTarget:edit`, and `webhookTarget:read` API key scopes.
+
 | Kind | Live-event source |
 |------|-------------------|
 | `thread` | `thread.thread_*` (created, status, assignment, labels, fields, tenant, locked, …) |

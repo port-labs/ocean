@@ -7,6 +7,108 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.63.1 (2026-11-26)
+
+
+### Bug Fixes
+
+- On kind fetch failure in DSP mode, emit an ERROR extract Event Log so sync status can show the real fetch error.
+
+
+## 0.63.0 (2026-11-25)
+
+
+### Features
+
+- Ask Port for the executor view of the config (resourcesView=executor) and read the optional resourceId on each resource. In DSP mode, blocks sharing a resourceId (same kind and selector) are fetched once under the first block's kind slot and the raw data carries the resourceId so DSP maps it through every block; blocks whose itemsToParse settings differ are fetched separately. resourceId is never sent back to Port in config writes. Without resourceIds, behaviour is unchanged
+
+
+## 0.62.4 (2026-11-24)
+
+
+### Improvements
+
+- >-
+    Repository-wide Ruff configuration now lives in a single root ruff.toml; Ocean
+    core, integrations, and CLI-scaffolded integrations extend that shared config
+    instead of duplicating lint rules in each pyproject.toml.
+
+
+## 0.62.3 (2026-11-24)
+
+
+### Bug Fixes
+
+- >-
+    Fix the application hanging after a Once-mode run finishes: force exit after a
+    configurable grace period (`OCEAN__EVENT_LISTENER__EXIT_GRACE_SECONDS`),
+    daemonize Port log-ship threads with a join timeout, and avoid re-flushing log
+    ingest failures during shutdown.
+
+
+## 0.62.2 (2026-11-23)
+
+
+### Bug Fixes
+
+- >-
+    Fix mypy failure in ExecutionManager by passing status_label as a typed kwarg
+    to report_run_completed instead of unpacking a dict.
+
+
+## 0.62.1 (2026-11-23)
+
+
+### Improvements
+
+- >-
+    Propagate should_log through action and workflow run patch, log, and completion
+    helpers so integrations can silence Port API error logging on expected responses.
+
+
+## 0.62.0 (2026-11-19)
+
+
+### Features
+
+- >-
+    Add IncrementalStrategy.merge_params_replacing, which merges the cursor params
+    after dropping the given base params the cursor supersedes (e.g. a configured
+    updated_before window). merge_params is unchanged.
+
+
+## 0.61.8 (2026-11-19)
+
+
+### Bug Fixes
+
+- Keep resource kind in the lake-write request body instead of the URL path so kinds containing "?" are not rejected at the ingest edge.
+
+
+## 0.61.7 (2026-11-19)
+
+
+### Improvements
+
+- Include tools/integration_validation tests in the default pytest suite
+
+
+## 0.61.6 (2026-11-17)
+
+
+### Bug Fixes
+
+- Set Redis socket and connect timeouts (previously unbounded) so a dead Redis connection can no longer hang the live-events consumer or the centralized rate limiter, which silently stalled the integration
+
+
+## 0.61.5 (2026-11-17)
+
+
+### Bug Fixes
+
+- Add Plain API (*.plain.com) to trusted subdomains list so its hostname is not rewritten to IP in SaaS mode, preventing TLS/certificate issues
+
+
 ## 0.61.4 (2026-11-15)
 
 

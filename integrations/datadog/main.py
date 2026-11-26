@@ -1,16 +1,20 @@
 import asyncio
+from datetime import datetime
 from typing import Callable, cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.probe import ProbeContext
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_independent_async_iterators,
 )
 
 from datadog.client import DatadogClient
+from datadog.probe import DatadogPermissionProbe
 from datadog.utils import ORG_ID_ENRICHMENT_KEY, ORG_NAME_ENRICHMENT_KEY, enrich_batch
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
@@ -102,10 +106,38 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield teams
 
 
+@ocean.on_incremental_resync(ObjectKind.TEAM)
+async def on_incremental_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListTeamOptions.from_resource_config(
+        cast(TeamResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for teams in _resync_across_orgs(
+        lambda client: TeamExporter(client).get_changed_teams(
+            options, incremental_cursor=cursor
+        ),
+        context="Team exporter",
+    ):
+        yield teams
+
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users in _resync_across_orgs(
         lambda client: UserExporter(client).get_paginated_resources(),
+        context="User exporter",
+    ):
+        yield users
+
+
+@ocean.on_incremental_resync(ObjectKind.USER)
+async def on_incremental_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    # Ocean sets the cursor before calling incremental handlers
+    cursor = cast(datetime, active_incremental_cursor())
+    async for users in _resync_across_orgs(
+        lambda client: UserExporter(client).get_changed_users(
+            incremental_cursor=cursor
+        ),
         context="User exporter",
     ):
         yield users
@@ -144,10 +176,27 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield slos
 
 
+@ocean.on_incremental_resync(ObjectKind.SLO)
+async def on_incremental_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListSloOptions.from_resource_config(
+        cast(SLOResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for slos in _resync_across_orgs(
+        lambda client: SloExporter(client).get_changed_slos(
+            options, incremental_cursor=cursor
+        ),
+        context="SLO exporter",
+    ):
+        yield slos
+
+
+@ocean.on_incremental_resync(ObjectKind.SLO_HISTORY)
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListSloHistoryOptions.from_resource_config(
-        cast(SLOHistoryResourceConfig, event.resource_config)
+        cast(SLOHistoryResourceConfig, event.resource_config),
+        incremental_cursor=active_incremental_cursor(),
     )
     async for histories in _resync_across_orgs(
         lambda client: SloHistoryExporter(client).get_paginated_resources(options),
@@ -165,6 +214,18 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield services
 
 
+@ocean.on_incremental_resync(ObjectKind.SERVICE)
+async def on_incremental_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    cursor = cast(datetime, active_incremental_cursor())
+    async for services in _resync_across_orgs(
+        lambda client: ServiceExporter(client).get_changed_services(
+            incremental_cursor=cursor
+        ),
+        context="Service exporter",
+    ):
+        yield services
+
+
 @ocean.on_resync(ObjectKind.CATALOG_ENTITY)
 async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     options = ListCatalogEntityOptions.from_resource_config(
@@ -172,6 +233,23 @@ async def on_resync_catalog_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for entities in _resync_across_orgs(
         lambda client: CatalogEntityExporter(client).get_paginated_resources(options),
+        context="Catalog entity exporter",
+    ):
+        yield entities
+
+
+@ocean.on_incremental_resync(ObjectKind.CATALOG_ENTITY)
+async def on_incremental_resync_catalog_entities(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListCatalogEntityOptions.from_resource_config(
+        cast(CatalogEntityResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for entities in _resync_across_orgs(
+        lambda client: CatalogEntityExporter(client).get_changed_entities(
+            options, incremental_cursor=cursor
+        ),
         context="Catalog entity exporter",
     ):
         yield entities
@@ -215,6 +293,21 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield roles
 
 
+@ocean.on_incremental_resync(ObjectKind.ROLE)
+async def on_incremental_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListRoleOptions.from_resource_config(
+        cast(RoleResourceConfig, event.resource_config)
+    )
+    cursor = cast(datetime, active_incremental_cursor())
+    async for roles in _resync_across_orgs(
+        lambda client: RoleExporter(client).get_changed_roles(
+            options, incremental_cursor=cursor
+        ),
+        context="Role exporter",
+    ):
+        yield roles
+
+
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for orgs in _resync_across_orgs(
@@ -223,6 +316,15 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         enrich_with_org_identity=False,
     ):
         yield orgs
+
+
+@ocean.on_probe()
+async def probe(context: ProbeContext) -> ProbeContext:
+    logger.info(
+        f"Probing Datadog access for {len(context.available_kinds)} resource kinds"
+    )
+    await DatadogPermissionProbe(context).run()
+    return context
 
 
 @ocean.on_start()

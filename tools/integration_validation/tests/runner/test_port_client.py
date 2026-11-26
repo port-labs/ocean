@@ -1,0 +1,211 @@
+from typing import Any
+
+import httpx
+import pytest
+
+from tools.integration_validation.runner.core.errors import (
+    ValidationFailedError,
+    ValidationSetupError,
+)
+from tools.integration_validation.runner.port.client import (
+    ScenarioPortPlan,
+    ValidationPortClient,
+    prepare_scenario_port,
+    teardown_scenario_port,
+)
+from tools.integration_validation.runner.core.models import PortEntity
+from tools.integration_validation.runner.core.statuses import ResyncStatus
+
+PORT_APP_CONFIG = {"resources": [{"kind": "team"}]}
+
+
+def _http_error(method: str, path: str, status_code: int) -> httpx.HTTPStatusError:
+    request = httpx.Request(method, f"https://api.port.io/v1{path}")
+    response = httpx.Response(status_code, request=request, text='{"error":"bad"}')
+    return httpx.HTTPStatusError("failed", request=request, response=response)
+
+
+class FakePortClient(ValidationPortClient):
+    def __init__(
+        self,
+        fail_on: tuple[str, str] | None = None,
+        status_code: int = 422,
+        existing_blueprints: set[str] | None = None,
+        entities: dict[str, list[dict[str, Any]]] | None = None,
+        resync_status: ResyncStatus = ResyncStatus.COMPLETED,
+    ):
+        self.calls: list[tuple[str, Any]] = []
+        self.blueprints: set[str] = set(existing_blueprints or ())
+        self.entities = entities or {}
+        self.resync_status = resync_status
+        self._fail_on = fail_on
+        self._status_code = status_code
+
+    def _maybe_fail(self, operation: str, target: str, method: str, path: str) -> None:
+        if self._fail_on == (operation, target):
+            raise _http_error(method, path, self._status_code)
+
+    async def create_blueprint(
+        self, raw_blueprint: dict[str, Any], *args: Any, **kwargs: Any
+    ) -> dict[str, Any]:
+        identifier = raw_blueprint["identifier"]
+        self.calls.append(("create_blueprint", raw_blueprint))
+        self._maybe_fail("create_blueprint", identifier, "POST", "/blueprints")
+        self.blueprints.add(identifier)
+        return raw_blueprint
+
+    async def delete_blueprint_with_entities(self, identifier: str) -> bool:
+        self.calls.append(("delete_blueprint", identifier))
+        if self._fail_on == ("delete_blueprint", identifier):
+            return False
+        self.blueprints.discard(identifier)
+        return True
+
+    async def create_validation_integration(
+        self, port_app_config: dict[str, Any]
+    ) -> dict[str, Any]:
+        self.calls.append(("create_integration", port_app_config))
+        self._maybe_fail("create_integration", "", "POST", "/integration")
+        return {}
+
+    async def mark_port_resources_initialized(self) -> None:
+        self.calls.append(("mark_initialized", None))
+        self._maybe_fail("mark_initialized", "", "PATCH", "/integration/x")
+
+    async def delete_validation_integration(self) -> None:
+        self.calls.append(("delete_integration", None))
+
+    async def search_blueprint_entities(self, blueprint: str) -> list[PortEntity]:
+        self.calls.append(("search_entities", blueprint))
+        self._maybe_fail("search_entities", blueprint, "POST", "/entities/search")
+        return [
+            PortEntity.model_validate(entity)
+            for entity in self.entities.get(blueprint, [])
+        ]
+
+    async def get_resync_status(self) -> ResyncStatus:
+        self.calls.append(("get_resync_status", None))
+        return self.resync_status
+
+    def names(self) -> list[str]:
+        return [name for name, _ in self.calls]
+
+
+PRE_RUN_CLEANUP = ["delete_integration", "delete_blueprint", "delete_blueprint"]
+
+
+@pytest.fixture
+def plan() -> ScenarioPortPlan:
+    return ScenarioPortPlan(
+        scenario_name="happy_path",
+        integration_identifier="validate-sample-happy-path",
+        blueprints=[
+            {"identifier": "user-a1b2", "title": "User"},
+            {
+                "identifier": "team-a1b2",
+                "title": "Team",
+                "relations": {"members": {"target": "user-a1b2", "many": True}},
+                "mirrorProperties": {"x": {"path": "members.$title"}},
+            },
+        ],
+        blueprint_renames={"user": "user-a1b2", "team": "team-a1b2"},
+        port_app_config=PORT_APP_CONFIG,
+        kinds=[],
+    )
+
+
+async def test_prepare_creates_blueprints_in_file_order_then_integration(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient()
+
+    await prepare_scenario_port(client, plan)
+
+    calls = client.calls[len(PRE_RUN_CLEANUP) :]
+    assert client.names()[: len(PRE_RUN_CLEANUP)] == PRE_RUN_CLEANUP
+    assert [name for name, _ in calls] == [
+        "create_blueprint",
+        "create_blueprint",
+        "create_integration",
+        "mark_initialized",
+    ]
+    assert [payload["identifier"] for _, payload in calls[:2]] == [
+        "user-a1b2",
+        "team-a1b2",
+    ]
+    assert calls[1][1] == plan.blueprints[1]
+    assert calls[2][1] == PORT_APP_CONFIG
+
+
+async def test_prepare_first_removes_resources_left_by_a_previous_run(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient(existing_blueprints={"user-a1b2"})
+
+    await prepare_scenario_port(client, plan)
+
+    assert client.names()[:3] == PRE_RUN_CLEANUP
+    assert client.blueprints == {"user-a1b2", "team-a1b2"}
+
+
+async def test_prepare_fails_when_previous_run_resources_cannot_be_removed(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient(fail_on=("delete_blueprint", "user-a1b2"))
+
+    with pytest.raises(ValidationSetupError, match="previous run: blueprint user-a1b2"):
+        await prepare_scenario_port(client, plan)
+
+    assert "create_blueprint" not in client.names()
+
+
+async def test_prepare_rolls_back_created_blueprints_when_a_create_is_rejected(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient(fail_on=("create_blueprint", "team-a1b2"))
+
+    with pytest.raises(ValidationFailedError):
+        await prepare_scenario_port(client, plan)
+
+    assert client.blueprints == set()
+
+
+async def test_prepare_deletes_integration_when_marking_initialized_fails(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient(fail_on=("mark_initialized", ""))
+
+    with pytest.raises(ValidationFailedError):
+        await prepare_scenario_port(client, plan)
+
+    assert client.names()[-3:] == [
+        "delete_integration",
+        "delete_blueprint",
+        "delete_blueprint",
+    ]
+    assert client.blueprints == set()
+
+
+async def test_prepare_reports_auth_failures_as_setup_errors(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient(fail_on=("create_blueprint", "user-a1b2"), status_code=401)
+
+    with pytest.raises(ValidationSetupError, match="401"):
+        await prepare_scenario_port(client, plan)
+
+
+async def test_teardown_deletes_dependents_first_and_reports_leftovers(
+    plan: ScenarioPortPlan,
+) -> None:
+    client = FakePortClient(
+        fail_on=("delete_blueprint", "user-a1b2"),
+        existing_blueprints={"user-a1b2", "team-a1b2"},
+    )
+
+    leftovers = await teardown_scenario_port(client, plan)
+
+    assert leftovers == ["blueprint user-a1b2"]
+    deleted = [target for name, target in client.calls if name == "delete_blueprint"]
+    assert client.names()[0] == "delete_integration"
+    assert deleted == ["team-a1b2", "user-a1b2"]

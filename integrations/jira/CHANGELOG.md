@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.18.1 (2026-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.63.1
+
+
+## 0.18.0 (2026-11-26)
+
+
+### Features
+
+- Wire Jira into the centralized rate limiter. The integration credential has one Redis pool per Jira site, admission runs before each retry, and the local limiter stays as the fallback.
+
+
+## 0.17.10 (2026-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.63.0
+
+
+## 0.17.9 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.4
+
+
+## 0.17.8 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.3
+
+
+## 0.17.7 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.2
+
+
+## 0.17.6 (2026-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.1
+
+
+## 0.17.5 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.0
+
+
+## 0.17.4 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.8
+
+
+## 0.17.3 (2026-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.7
+
+
+## 0.17.2 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.6
+
+
+## 0.17.1 (2026-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.61.5
+
+
 ## 0.17.0 (2026-11-15)
 
 

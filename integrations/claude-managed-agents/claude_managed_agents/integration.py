@@ -19,13 +19,17 @@ class ObjectKind(StrEnum):
     SKILL = "skill"
 
 
-class AgentSelector(Selector):
+class ArchivableSelector(Selector):
     include_archived: bool = Field(
         default=False,
         alias="includeArchived",
         title="Include Archived",
-        description="Whether to include archived agents in the results.",
+        description="Whether to include archived resources in the results.",
     )
+
+
+class AgentSelector(ArchivableSelector):
+    pass
 
 
 class AgentResourceConfig(ResourceConfig):
@@ -39,13 +43,8 @@ class AgentResourceConfig(ResourceConfig):
     )
 
 
-class EnvironmentSelector(Selector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description="Whether to include archived environments in the results.",
-    )
+class EnvironmentSelector(ArchivableSelector):
+    pass
 
 
 class EnvironmentResourceConfig(ResourceConfig):
@@ -59,13 +58,8 @@ class EnvironmentResourceConfig(ResourceConfig):
     )
 
 
-class SessionSelector(Selector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description="Whether to include archived sessions in the results.",
-    )
+class SessionSelector(ArchivableSelector):
+    pass
 
 
 class SessionResourceConfig(ResourceConfig):
@@ -79,13 +73,8 @@ class SessionResourceConfig(ResourceConfig):
     )
 
 
-class VaultSelector(Selector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description="Whether to include archived vaults in the results.",
-    )
+class VaultSelector(ArchivableSelector):
+    pass
 
 
 class VaultResourceConfig(ResourceConfig):
@@ -99,13 +88,8 @@ class VaultResourceConfig(ResourceConfig):
     )
 
 
-class MemoryStoreSelector(Selector):
-    include_archived: bool = Field(
-        default=False,
-        alias="includeArchived",
-        title="Include Archived",
-        description="Whether to include archived memory stores in the results.",
-    )
+class MemoryStoreSelector(ArchivableSelector):
+    pass
 
 
 class MemoryStoreResourceConfig(ResourceConfig):

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "sentry"
-version = "0.3.215"
+version = "0.3.226"
 description = "Sentry Integration"
 authors = ["Dvir Segev <dvir@getport.io>","Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.61.4", extras = ["cli"]}
+port_ocean = {version = "^0.63.1", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
@@ -84,8 +84,7 @@ disallow_untyped_defs = true
 
 
 [tool.ruff]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
+extend = "../../ruff.toml"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
