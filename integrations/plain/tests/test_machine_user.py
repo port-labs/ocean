@@ -45,6 +45,8 @@ async def test_get_machine_users_yields_mocked_pages() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen["query"] = query
         seen["operation_name"] = operation_name
@@ -74,6 +76,8 @@ async def test_get_machine_users_excludes_deleted_when_requested() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         yield [
             {"id": "mu_live", "isDeleted": False},

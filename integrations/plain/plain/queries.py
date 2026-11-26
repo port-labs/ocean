@@ -381,6 +381,33 @@ createdBy {
 }
 """.strip()
 
+LIST_THREAD_TIMELINES = f"""
+query ListThreadTimelines($first: Int, $after: String, $filters: ThreadsFilter, $timelineFirst: Int) {{
+  threads(first: $first, after: $after, filters: $filters) {{
+    pageInfo {{
+      hasNextPage
+      endCursor
+    }}
+    edges {{
+      node {{
+        id
+        timelineEntries(first: $timelineFirst) {{
+          pageInfo {{
+            hasNextPage
+            endCursor
+          }}
+          edges {{
+            node {{
+{_indent(_TIMELINE_ENTRY_FIELDS, 14)}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
 THREAD_TIMELINE = f"""
 query ThreadTimeline($threadId: ID!, $first: Int, $after: String) {{
   thread(threadId: $threadId) {{
@@ -408,11 +435,12 @@ query GetTimelineEntry($customerId: ID!, $timelineEntryId: ID!) {{
 """.strip()
 
 THREAD_DISCUSSIONS = f"""
-query ThreadDiscussions($threadId: ID!, $first: Int, $after: String) {{
+query ThreadDiscussions($threadIds: [ID!]!, $first: Int, $after: String) {{
   discussions(
     first: $first
     after: $after
-    filters: {{ threadIds: [$threadId] }}
+    filters: {{ threadIds: $threadIds }}
+    sortBy: {{ field: CREATED_AT, direction: ASC }}
   ) {{
     pageInfo {{
       hasNextPage
@@ -436,11 +464,12 @@ query GetDiscussion($discussionId: ID!) {{
 """.strip()
 
 THREAD_DISCUSSION_IDS = """
-query ThreadDiscussionIds($threadId: ID!, $first: Int, $after: String) {
+query ThreadDiscussionIds($threadIds: [ID!]!, $first: Int, $after: String) {
   discussions(
     first: $first
     after: $after
-    filters: { threadIds: [$threadId] }
+    filters: { threadIds: $threadIds }
+    sortBy: { field: CREATED_AT, direction: ASC }
   ) {
     pageInfo {
       hasNextPage
@@ -449,6 +478,7 @@ query ThreadDiscussionIds($threadId: ID!, $first: Int, $after: String) {
     edges {
       node {
         id
+        threadId
         channelDetails {
           __typename
         }

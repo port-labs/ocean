@@ -51,6 +51,8 @@ async def test_get_companies_yields_mocked_pages() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen["query"] = query
         seen["operation_name"] = operation_name

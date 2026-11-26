@@ -15,6 +15,7 @@ from plain.exceptions import (
     missing_permission_names,
 )
 from plain.constants import (
+    TIMELINE_NESTED_PAGE_SIZE,
     WEBHOOK_EVENT_TYPES,
     WEBHOOK_NAME,
     WEBHOOK_PATH_SUFFIX,
@@ -36,6 +37,7 @@ from plain.queries import (
     LIST_MACHINE_USERS,
     LIST_TENANTS,
     LIST_THREAD_IDS,
+    LIST_THREAD_TIMELINES,
     LIST_THREADS,
     LIST_USERS,
     LIST_WEBHOOK_TARGETS,
@@ -46,6 +48,41 @@ from plain.queries import (
     UPDATE_WEBHOOK_TARGET,
 )
 from plain.utils import edges_to_nodes, get_nested, is_ai_discussion
+
+
+def _nested_connection(
+    thread_id: str, connection: Any
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Extract nodes and next cursor from a nested connection, validating structure."""
+    if not isinstance(connection, dict):
+        raise PlainGraphQLError(
+            [{"message": f"Plain thread '{thread_id}' missing timelineEntries"}]
+        )
+    page_info = connection.get("pageInfo")
+    if not isinstance(page_info, dict):
+        raise PlainGraphQLError(
+            [
+                {
+                    "message": f"Plain thread '{thread_id}' timelineEntries missing pageInfo"
+                }
+            ]
+        )
+    nodes = edges_to_nodes(connection)
+    if page_info.get("hasNextPage"):
+        end_cursor = page_info.get("endCursor")
+        if not isinstance(end_cursor, str) or not end_cursor:
+            raise PlainGraphQLError(
+                [
+                    {
+                        "message": (
+                            f"Plain thread '{thread_id}' reported nested "
+                            "hasNextPage without endCursor"
+                        )
+                    }
+                ]
+            )
+        return nodes, end_cursor
+    return nodes, None
 
 
 class PlainClient:
@@ -153,6 +190,8 @@ class PlainClient:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield each page of nodes from a Relay connection.
 
@@ -160,7 +199,6 @@ class PlainClient:
         by ``execute``. A leading ``data.`` is accepted so callers can pass
         paths such as ``data.companies``.
         """
-        after: str | None = None
         lookup_path = _connection_lookup_path(connection_path)
         while True:
             page_variables = {
@@ -280,14 +318,34 @@ class PlainClient:
     async def get_thread_messages(
         self, statuses: list[str] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for threads in self.get_thread_ids(statuses):
-            for thread in threads:
+        variables = {
+            **self._thread_list_variables(statuses),
+            "timelineFirst": TIMELINE_NESTED_PAGE_SIZE,
+        }
+        follow_up_queue: list[tuple[str, str]] = []
+        async for batch in self.paginate_connection(
+            LIST_THREAD_TIMELINES,
+            "ListThreadTimelines",
+            variables,
+            "data.threads",
+        ):
+            for thread in batch:
                 thread_id = thread.get("id")
                 if not isinstance(thread_id, str) or not thread_id:
                     continue
-                async for messages in self._timeline_pages(thread_id):
-                    if messages:
-                        yield messages
+                timeline_connection = thread.get("timelineEntries")
+                entries, next_cursor = _nested_connection(
+                    thread_id, timeline_connection
+                )
+                filtered = [entry for entry in entries if _has_message_text(entry)]
+                if next_cursor:
+                    follow_up_queue.append((thread_id, next_cursor))
+                if filtered:
+                    yield filtered
+        for thread_id, cursor in follow_up_queue:
+            async for messages in self._timeline_pages(thread_id, after=cursor):
+                if messages:
+                    yield messages
 
     async def get_discussions(
         self,
@@ -295,20 +353,18 @@ class PlainClient:
         *,
         exclude_ai_discussions: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for threads in self.get_thread_ids(statuses):
-            for thread in threads:
-                thread_id = _entity_id(thread)
-                if thread_id is None:
-                    continue
-                async for discussions in self._discussion_pages(thread_id):
-                    if exclude_ai_discussions:
-                        discussions = [
-                            discussion
-                            for discussion in discussions
-                            if not is_ai_discussion(discussion)
-                        ]
-                    if discussions:
-                        yield discussions
+        async for thread_ids in self._thread_id_chunks(statuses):
+            async for discussions in self._discussions_for_threads(
+                THREAD_DISCUSSIONS, "ThreadDiscussions", thread_ids
+            ):
+                if exclude_ai_discussions:
+                    discussions = [
+                        discussion
+                        for discussion in discussions
+                        if not is_ai_discussion(discussion)
+                    ]
+                if discussions:
+                    yield discussions
 
     async def get_discussion_messages(
         self,
@@ -316,37 +372,75 @@ class PlainClient:
         *,
         exclude_ai_discussions: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for threads in self.get_thread_ids(statuses):
-            for thread in threads:
+        async for thread_ids in self._thread_id_chunks(statuses):
+            async for discussions in self._discussions_for_threads(
+                THREAD_DISCUSSION_IDS, "ThreadDiscussionIds", thread_ids
+            ):
+                for discussion in discussions:
+                    if exclude_ai_discussions and is_ai_discussion(discussion):
+                        continue
+                    discussion_id = _entity_id(discussion)
+                    if discussion_id is None:
+                        continue
+                    thread_id = discussion.get("threadId")
+                    if not isinstance(thread_id, str) or not thread_id:
+                        continue
+                    async for messages in self._discussion_message_pages(discussion_id):
+                        stamped = [
+                            {**message, "threadId": thread_id} for message in messages
+                        ]
+                        if stamped:
+                            yield stamped
+
+    def _thread_list_variables(self, statuses: list[str] | None) -> dict[str, Any]:
+        if not statuses:
+            return {}
+        return {"filters": {"statuses": statuses}}
+
+    async def _thread_id_chunks(
+        self, statuses: list[str] | None = None
+    ) -> AsyncGenerator[list[str], None]:
+        """Yield chunks of thread IDs of size up to _page_size()."""
+        chunk: list[str] = []
+        chunk_size = _page_size()
+        async for batch in self.get_thread_ids(statuses):
+            for thread in batch:
                 thread_id = _entity_id(thread)
                 if thread_id is None:
                     continue
-                async for discussions in self._discussion_id_pages(thread_id):
-                    for discussion in discussions:
-                        if exclude_ai_discussions and is_ai_discussion(discussion):
-                            continue
-                        discussion_id = _entity_id(discussion)
-                        if discussion_id is None:
-                            continue
-                        async for messages in self._discussion_message_pages(
-                            discussion_id
-                        ):
-                            stamped = [
-                                {**message, "threadId": thread_id}
-                                for message in messages
-                            ]
-                            if stamped:
-                                yield stamped
+                chunk.append(thread_id)
+                if len(chunk) >= chunk_size:
+                    yield chunk
+                    chunk = []
+        if chunk:
+            yield chunk
 
-    def _thread_list_variables(
-        self, statuses: list[str] | None
-    ) -> dict[str, Any] | None:
-        if not statuses:
-            return None
-        return {"filters": {"statuses": statuses}}
+    async def _discussions_for_threads(
+        self,
+        query: str,
+        operation_name: str,
+        thread_ids: list[str],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch discussions for a chunk of thread IDs, keeping only matching threadIds."""
+        if not thread_ids:
+            return
+        thread_id_set = set(thread_ids)
+        async for batch in self.paginate_connection(
+            query,
+            operation_name,
+            {"threadIds": thread_ids},
+            "discussions",
+        ):
+            filtered = [
+                discussion
+                for discussion in batch
+                if discussion.get("threadId") in thread_id_set
+            ]
+            if filtered:
+                yield filtered
 
     async def _timeline_pages(
-        self, thread_id: str
+        self, thread_id: str, *, after: str | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         try:
             async for batch in self.paginate_connection(
@@ -354,6 +448,7 @@ class PlainClient:
                 "ThreadTimeline",
                 {"threadId": thread_id},
                 "thread.timelineEntries",
+                after=after,
             ):
                 yield [entry for entry in batch if _has_message_text(entry)]
         except PlainGraphQLError as error:
@@ -362,28 +457,6 @@ class PlainClient:
                     [{"message": f"Plain thread '{thread_id}' was not found"}]
                 ) from error
             raise
-
-    async def _discussion_pages(
-        self, thread_id: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self.paginate_connection(
-            THREAD_DISCUSSIONS,
-            "ThreadDiscussions",
-            {"threadId": thread_id},
-            "discussions",
-        ):
-            yield batch
-
-    async def _discussion_id_pages(
-        self, thread_id: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self.paginate_connection(
-            THREAD_DISCUSSION_IDS,
-            "ThreadDiscussionIds",
-            {"threadId": thread_id},
-            "discussions",
-        ):
-            yield batch
 
     async def _discussion_message_pages(
         self, discussion_id: str

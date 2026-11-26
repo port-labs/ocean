@@ -2,6 +2,7 @@ WEBHOOK_PATH_SUFFIX = "/integration/webhook"
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 WEBHOOK_TARGET_VERSION = "2026-09-11"
 SIGNATURE_HEADER = "plain-request-signature"
+TIMELINE_NESTED_PAGE_SIZE = 50
 
 # Canonical event types from Plain webhook schema 2026-09-11.
 THREAD_UPSERT_EVENTS = frozenset(

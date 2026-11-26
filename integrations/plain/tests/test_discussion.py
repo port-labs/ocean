@@ -21,10 +21,16 @@ from tests.test_port_app_config import _apply, _load_json, _mappings
 
 
 def test_discussion_queries_select_channel_and_message_fields() -> None:
-    assert "threadIds: [$threadId]" in THREAD_DISCUSSIONS
+    assert "threadIds: $threadIds" in THREAD_DISCUSSIONS
+    assert "$threadIds: [ID!]!" in THREAD_DISCUSSIONS
+    assert "sortBy: { field: CREATED_AT, direction: ASC }" in THREAD_DISCUSSIONS
     assert "slackMessageLink" in THREAD_DISCUSSIONS
     assert "emailRecipients" in THREAD_DISCUSSIONS
     assert "userId" in THREAD_DISCUSSIONS
+    assert "threadIds: $threadIds" in THREAD_DISCUSSION_IDS
+    assert "$threadIds: [ID!]!" in THREAD_DISCUSSION_IDS
+    assert "sortBy: { field: CREATED_AT, direction: ASC }" in THREAD_DISCUSSION_IDS
+    assert "threadId" in THREAD_DISCUSSION_IDS
     assert "channelDetails" in THREAD_DISCUSSION_IDS
     assert "__typename" in THREAD_DISCUSSION_IDS
     assert "discussion(discussionId: $discussionId)" in DISCUSSION_MESSAGES
@@ -83,25 +89,30 @@ def test_discussion_message_mapping_relates_thread_and_discussion() -> None:
     assert _apply(mappings["title"], message) == "OUTBOUND: Looking into the refund now"
 
 
-async def test_get_discussions_pages_each_thread() -> None:
+async def test_get_discussions_batches_threads() -> None:
     client = make_client()
     seen: dict[str, Any] = {}
 
     async def get_thread_ids(statuses: list[str] | None = None) -> Any:
         seen["statuses"] = statuses
-        yield [{"id": "th_1"}, {"id": ""}]
+        yield [{"id": "th_1"}, {"id": "th_2"}, {"id": ""}]
 
     async def paginate_connection(
         query: str,
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen["query"] = query
         seen["operation_name"] = operation_name
         seen["variables"] = variables
         seen["connection_path"] = connection_path
-        yield [{"id": "disc_1", "threadId": "th_1", "title": "Check the refund"}]
+        yield [
+            {"id": "disc_1", "threadId": "th_1", "title": "Check the refund"},
+            {"id": "disc_2", "threadId": "th_2", "title": "Another thread"},
+        ]
 
     client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
     client.paginate_connection = paginate_connection  # type: ignore[method-assign]
@@ -110,9 +121,11 @@ async def test_get_discussions_pages_each_thread() -> None:
     assert seen["statuses"] == ["TODO", "SNOOZED"]
     assert seen["query"] is THREAD_DISCUSSIONS
     assert seen["operation_name"] == "ThreadDiscussions"
-    assert seen["variables"] == {"threadId": "th_1"}
+    assert seen["variables"] == {"threadIds": ["th_1", "th_2"]}
     assert seen["connection_path"] == "discussions"
+    assert len(batches[0]) == 2
     assert batches[0][0]["id"] == "disc_1"
+    assert batches[0][1]["id"] == "disc_2"
 
 
 async def test_get_discussions_skips_ai_channels_when_requested() -> None:
@@ -126,20 +139,25 @@ async def test_get_discussions_skips_ai_channels_when_requested() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         yield [
             {
                 "id": "disc_slack",
+                "threadId": "th_1",
                 "channelDetails": {"__typename": "ThreadDiscussionSlackChannelDetails"},
             },
             {
                 "id": "disc_agent",
+                "threadId": "th_1",
                 "channelDetails": {
                     "__typename": "ThreadDiscussionAgentSessionChannelDetails"
                 },
             },
             {
                 "id": "disc_cursor",
+                "threadId": "th_1",
                 "channelDetails": {
                     "__typename": (
                         "ThreadDiscussionCursorWorkspaceBackgroundAgentChannelDetails"
@@ -169,6 +187,8 @@ async def test_get_discussion_messages_stamps_parent_thread_id() -> None:
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen.append(
             {
@@ -179,7 +199,7 @@ async def test_get_discussion_messages_stamps_parent_thread_id() -> None:
             }
         )
         if operation_name == "ThreadDiscussionIds":
-            yield [{"id": "disc_1"}]
+            yield [{"id": "disc_1", "threadId": "th_1"}]
             return
         yield [
             {
@@ -195,6 +215,7 @@ async def test_get_discussion_messages_stamps_parent_thread_id() -> None:
     batches = await collect_pages(client.get_discussion_messages([]))
 
     assert seen[0]["query"] is THREAD_DISCUSSION_IDS
+    assert seen[0]["variables"] == {"threadIds": ["th_1"]}
     assert seen[0]["connection_path"] == "discussions"
     assert seen[1]["query"] is DISCUSSION_MESSAGES
     assert seen[1]["variables"] == {"discussionId": "disc_1"}
@@ -215,17 +236,21 @@ async def test_get_discussion_messages_skips_ai_discussions_when_requested() -> 
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         if operation_name == "ThreadDiscussionIds":
             yield [
                 {
                     "id": "disc_human",
+                    "threadId": "th_1",
                     "channelDetails": {
                         "__typename": "ThreadDiscussionSlackChannelDetails"
                     },
                 },
                 {
                     "id": "disc_agent",
+                    "threadId": "th_1",
                     "channelDetails": {
                         "__typename": "ThreadDiscussionAgentSessionChannelDetails"
                     },
@@ -258,9 +283,11 @@ async def test_get_discussion_messages_raises_when_discussion_is_missing() -> No
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         if operation_name == "ThreadDiscussionIds":
-            yield [{"id": "disc_missing"}]
+            yield [{"id": "disc_missing", "threadId": "th_1"}]
             return
         raise PlainGraphQLError(
             [
@@ -456,3 +483,129 @@ async def test_resync_passes_exclude_ai_discussions_when_flag_is_set(
             await collect_pages(handler(kind))
 
     assert seen["exclude_ai_discussions"] is True
+
+
+async def test_get_discussions_batches_250_threads_into_3_calls() -> None:
+    """With 250 threads and pageSize 100, makes 3 discussion batch calls."""
+    client = make_client()
+    call_count = 0
+
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        for i in range(3):
+            count = 100 if i < 2 else 50
+            yield [{"id": f"th_{j}"} for j in range(i * 100, i * 100 + count)]
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        nonlocal call_count
+        call_count += 1
+        yield []
+
+    async with resource_context(_resource("discussion", False)):
+        client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+        client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+        await collect_pages(client.get_discussions(None))
+
+    assert call_count == 3
+
+
+async def test_get_discussions_filters_by_thread_id() -> None:
+    """Only discussions matching the requested threadIds are returned."""
+    client = make_client()
+
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield [{"id": "th_1"}, {"id": "th_2"}]
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        yield [
+            {"id": "disc_1", "threadId": "th_1"},
+            {"id": "disc_2", "threadId": "th_2"},
+            {"id": "disc_3", "threadId": "th_other"},
+            {"id": "disc_4", "threadId": None},
+        ]
+
+    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    batches = await collect_pages(client.get_discussions(None))
+
+    assert len(batches[0]) == 2
+    assert {d["id"] for d in batches[0]} == {"disc_1", "disc_2"}
+
+
+async def test_get_discussions_does_not_call_with_empty_chunk() -> None:
+    """When no thread IDs are found, no discussion call is made."""
+    client = make_client()
+    call_count = 0
+
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield []
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        nonlocal call_count
+        call_count += 1
+        yield []
+
+    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    await collect_pages(client.get_discussions(None))
+
+    assert call_count == 0
+
+
+async def test_get_discussion_messages_chunks_thread_ids() -> None:
+    """Thread IDs are chunked by pageSize for discussion fetching."""
+    client = make_client()
+    seen_chunks: list[list[str]] = []
+
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield [{"id": "th_1"}, {"id": "th_2"}]
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        if operation_name == "ThreadDiscussionIds":
+            assert variables is not None
+            seen_chunks.append(variables["threadIds"])
+            yield []
+        else:
+            yield []
+
+    async with resource_context(_resource("discussion-message", False)):
+        client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+        client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+        await collect_pages(client.get_discussion_messages(None))
+
+    assert len(seen_chunks) == 1
+    assert seen_chunks[0] == ["th_1", "th_2"]
+
+
+async def test_discussions_query_includes_sortby() -> None:
+    """ThreadDiscussions query includes sortBy for consistent ordering."""
+    assert "sortBy:" in THREAD_DISCUSSIONS
+    assert "CREATED_AT" in THREAD_DISCUSSIONS
+    assert "ASC" in THREAD_DISCUSSIONS

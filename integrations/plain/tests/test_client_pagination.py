@@ -247,6 +247,32 @@ async def test_page_size_reads_selector_without_local_config_class() -> None:
     assert seen[0]["first"] == 40
 
 
+async def test_paginate_connection_sends_after_on_first_request() -> None:
+    """When after= is passed to paginate_connection, it's sent on the first request."""
+    client = _client()
+    seen_with_after: list[dict[str, Any]] = []
+
+    async def execute_with_after(
+        query: str,
+        page_variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
+    ) -> dict[str, Any]:
+        seen_with_after.append(page_variables or {})
+        return _connection([{"id": "th_2"}], has_next_page=False, end_cursor=None)
+
+    client.execute = execute_with_after  # type: ignore[assignment]
+    async with resource_context(_resource()):
+        [
+            batch
+            async for batch in client.paginate_connection(
+                QUERY, OPERATION, {}, "data.threads", after="cursor-start"
+            )
+        ]
+
+    assert len(seen_with_after) == 1
+    assert seen_with_after[0]["after"] == "cursor-start"
+
+
 async def test_graphql_error_is_not_treated_as_an_empty_page() -> None:
     client = _client()
     client.execute = AsyncMock(  # type: ignore[method-assign]

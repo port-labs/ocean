@@ -11,7 +11,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from integration import ThreadMessageResourceConfig
 from main import on_resync_thread_messages
 from plain.exceptions import PlainGraphQLError
-from plain.queries import LIST_THREAD_IDS, THREAD_TIMELINE
+from plain.queries import LIST_THREAD_IDS, LIST_THREAD_TIMELINES, THREAD_TIMELINE
 from tests.kind_helpers import (
     collect_pages,
     exporter_kinds,
@@ -27,6 +27,9 @@ def test_thread_timeline_query_selects_message_fields() -> None:
     assert "__typename" in THREAD_TIMELINE
     assert "timelineEntries" in THREAD_TIMELINE
     assert "filters: $filters" in LIST_THREAD_IDS
+    assert "llmText" in LIST_THREAD_TIMELINES
+    assert "threads(first:" in LIST_THREAD_TIMELINES
+    assert "timelineEntries(first: $timelineFirst)" in LIST_THREAD_TIMELINES
 
 
 def test_thread_message_kind_is_registered_in_spec() -> None:
@@ -49,81 +52,90 @@ async def test_get_thread_messages_skips_entries_without_text() -> None:
     client = make_client()
     seen: dict[str, Any] = {}
 
-    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
-        seen["statuses"] = statuses
-        yield [{"id": "th_1"}]
-
     async def paginate_connection(
         query: str,
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
         seen["query"] = query
         seen["operation_name"] = operation_name
         seen["variables"] = variables
         seen["connection_path"] = connection_path
+        seen["after"] = after
         yield [
             {
-                "id": "tl_1",
-                "threadId": "th_1",
-                "llmText": "Hello",
-                "entry": {"__typename": "ChatEntry"},
-            },
-            {
-                "id": "tl_2",
-                "threadId": "th_1",
-                "llmText": None,
-                "entry": {"__typename": "ThreadStatusTransitionedEntry"},
-            },
-            {
-                "id": "tl_3",
-                "threadId": "th_1",
-                "llmText": "   ",
-                "entry": {"__typename": "NoteEntry"},
-            },
+                "id": "th_1",
+                "timelineEntries": {
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "tl_1",
+                                "threadId": "th_1",
+                                "llmText": "Hello",
+                                "entry": {"__typename": "ChatEntry"},
+                            }
+                        },
+                        {
+                            "node": {
+                                "id": "tl_2",
+                                "threadId": "th_1",
+                                "llmText": None,
+                                "entry": {
+                                    "__typename": "ThreadStatusTransitionedEntry"
+                                },
+                            }
+                        },
+                        {
+                            "node": {
+                                "id": "tl_3",
+                                "threadId": "th_1",
+                                "llmText": "   ",
+                                "entry": {"__typename": "NoteEntry"},
+                            }
+                        },
+                    ],
+                },
+            }
         ]
 
-    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
     client.paginate_connection = paginate_connection  # type: ignore[method-assign]
     batches = await collect_pages(client.get_thread_messages([]))
 
-    assert seen["statuses"] == []
-    assert seen["query"] is THREAD_TIMELINE
-    assert seen["operation_name"] == "ThreadTimeline"
-    assert seen["variables"] == {"threadId": "th_1"}
-    assert seen["connection_path"] == "thread.timelineEntries"
+    # Empty list sends no filter
+    assert "filters" not in seen["variables"]
+    assert seen["query"] is LIST_THREAD_TIMELINES
+    assert seen["operation_name"] == "ListThreadTimelines"
+    assert seen["connection_path"] == "data.threads"
+    assert seen["after"] is None
     assert [entry["id"] for entry in batches[0]] == ["tl_1"]
 
 
-async def test_get_thread_messages_raises_when_thread_is_missing() -> None:
+async def test_get_thread_messages_raises_when_thread_is_missing_timeline() -> None:
     client = make_client()
-
-    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
-        yield [{"id": "th_missing"}]
 
     async def paginate_connection(
         query: str,
         operation_name: str,
         variables: dict[str, Any] | None,
         connection_path: str,
+        *,
+        after: str | None = None,
     ) -> Any:
-        raise PlainGraphQLError(
-            [
-                {
-                    "message": (
-                        "Plain response is missing connection 'thread.timelineEntries'"
-                    )
-                }
-            ]
-        )
-        yield []
+        yield [
+            {
+                "id": "th_missing",
+                "timelineEntries": None,
+            }
+        ]
 
-    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
     client.paginate_connection = paginate_connection  # type: ignore[method-assign]
 
     with pytest.raises(
-        PlainGraphQLError, match="Plain thread 'th_missing' was not found"
+        PlainGraphQLError, match="Plain thread 'th_missing' missing timelineEntries"
     ):
         await collect_pages(client.get_thread_messages([]))
 
@@ -219,3 +231,115 @@ async def test_resync_thread_messages_reads_exclude_flag_without_local_config_cl
             await collect_pages(on_resync_thread_messages("thread-message"))
 
     assert seen["statuses"] == ["TODO", "SNOOZED"]
+
+
+async def test_get_thread_messages_follows_nested_pagination() -> None:
+    """When nested hasNextPage is true, follows up with endCursor."""
+    client = make_client()
+    seen_operations: list[tuple[str, dict[str, Any] | None]] = []
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        seen_operations.append((operation_name, variables))
+        if operation_name == "ListThreadTimelines":
+            yield [
+                {
+                    "id": "th_1",
+                    "timelineEntries": {
+                        "pageInfo": {
+                            "hasNextPage": True,
+                            "endCursor": "cursor-nested-1",
+                        },
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": "tl_1",
+                                    "threadId": "th_1",
+                                    "llmText": "First",
+                                    "entry": {"__typename": "ChatEntry"},
+                                }
+                            }
+                        ],
+                    },
+                }
+            ]
+        else:
+            yield [
+                {
+                    "id": "tl_2",
+                    "threadId": "th_1",
+                    "llmText": "Second",
+                    "entry": {"__typename": "ChatEntry"},
+                }
+            ]
+
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    batches = await collect_pages(client.get_thread_messages(None))
+
+    assert len(seen_operations) == 2
+    assert seen_operations[0][0] == "ListThreadTimelines"
+    assert seen_operations[1][0] == "ThreadTimeline"
+    assert seen_operations[1][1] == {"threadId": "th_1"}
+    assert len(batches) == 2
+    assert batches[0][0]["id"] == "tl_1"
+    assert batches[1][0]["id"] == "tl_2"
+
+
+async def test_get_thread_messages_raises_on_nested_has_next_without_cursor() -> None:
+    """When nested hasNextPage is true but endCursor is missing, raises."""
+    client = make_client()
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        yield [
+            {
+                "id": "th_1",
+                "timelineEntries": {
+                    "pageInfo": {"hasNextPage": True, "endCursor": None},
+                    "edges": [],
+                },
+            }
+        ]
+
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+
+    with pytest.raises(
+        PlainGraphQLError,
+        match="Plain thread 'th_1' reported nested hasNextPage without endCursor",
+    ):
+        await collect_pages(client.get_thread_messages(None))
+
+
+async def test_get_thread_messages_passes_exclude_done_statuses() -> None:
+    """excludeDoneThreads passes correct ThreadsFilter."""
+    client = make_client()
+    seen_variables: dict[str, Any] = {}
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        seen_variables.update(variables or {})
+        yield []
+
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    async with resource_context(_message_resource(True)):
+        await collect_pages(client.get_thread_messages(["TODO", "SNOOZED"]))
+
+    assert seen_variables["filters"]["statuses"] == ["TODO", "SNOOZED"]

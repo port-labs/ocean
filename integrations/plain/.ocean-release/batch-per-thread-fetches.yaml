@@ -1,0 +1,5 @@
+bump: patch
+changelog-type: improvement
+changelog: >-
+  Batch per-thread fetches for thread-message, discussion and discussion-message kinds:
+  one call per thread becomes one call per batch of up to 100 threads.
