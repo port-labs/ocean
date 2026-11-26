@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any, List, Optional
 from urllib.parse import quote
 
 from loguru import logger
@@ -17,7 +18,8 @@ from github.core.exporters.skill_exporter.utils import (
     SkillFile,
     build_skill_raw_item,
 )
-from github.core.options import ListSkillSearchOptions
+from github.core.options import ListFileSearchOptions
+from github.helpers.changed_paths import changed_paths_since
 from github.helpers.utils import GithubClientType
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -25,10 +27,16 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class SkillExporter(RestFileExporter):
     """Discovers SKILL.md files and emits normalized skill entities."""
 
-    async def get_paginated_resources[ExporterOptionsT: ListSkillSearchOptions](  # type: ignore[override]
+    def __init__(
+        self, *args: Any, include_skill_folder: bool = False, **kwargs: Any
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.include_skill_folder = include_skill_folder
+
+    async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        repositories = options["repositories"]
+        repositories = options
         path_globs = list(
             dict.fromkeys(
                 file_options["path"]
@@ -57,7 +65,7 @@ class SkillExporter(RestFileExporter):
                         branch=file_obj["branch"],
                         organization=file_obj["organization"],
                         path_globs=path_globs,
-                        include_skill_folder=options["include_skill_folder"],
+                        include_skill_folder=self.include_skill_folder,
                         blob_sha=file_obj.get("metadata", {}).get("sha"),
                     )
                     for file_obj in valid_files
@@ -66,6 +74,39 @@ class SkillExporter(RestFileExporter):
             skills = [skill for skill in results if skill is not None]
             if skills:
                 yield skills
+
+    async def _match_files(
+        self,
+        organization: str,
+        repo_name: str,
+        branch: str,
+        pattern: str,
+        changed_since: Optional[datetime] = None,
+    ) -> list[dict[str, Any]]:
+        """SKILL.md entries matching ``pattern``, limited to skills changed since ``changed_since``.
+
+        With ``include_skill_folder``, a skill also counts as changed when any file
+        in its folder changed, since those files are part of the skill. When the
+        changed paths are unknown, every skill is returned.
+        """
+        if not self.include_skill_folder:
+            return await super()._match_files(
+                organization, repo_name, branch, pattern, changed_since
+            )
+        changed_paths = await changed_paths_since(
+            self.client, organization, repo_name, branch, changed_since
+        )
+        skills = await super()._match_files(organization, repo_name, branch, pattern)
+        if changed_paths is None:
+            return skills
+        return [
+            skill
+            for skill in skills
+            if any(
+                path.startswith(skill_dir_prefix(skill["path"]))
+                for path in changed_paths
+            )
+        ]
 
     async def build_skill_item(
         self,

@@ -269,13 +269,7 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
-
-
-class ListSkillSearchOptions(TypedDict):
-    """File search options for SKILL.md files and how to build each skill."""
-
-    repositories: Required[List[ListFileSearchOptions]]
-    include_skill_folder: Required[bool]
+    changed_since: NotRequired[Optional[datetime]]
 
 
 class PluginRepositoryOptions(SingleOrganizationOptions):
@@ -309,6 +303,8 @@ class ListFolderOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     folders: Required[List[FolderSearchOptions]]
+    # Only folders with a change on their branch since then.
+    changed_since: NotRequired[Optional[datetime]]
 
 
 class SingleCollaboratorOptions(RepositoryIdentifier):

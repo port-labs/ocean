@@ -48,6 +48,9 @@ if TYPE_CHECKING:
 
 ENRICHMENT_BATCH_SIZE = 10
 
+# GitHub's search API rejects queries longer than 256 characters.
+SEARCH_QUERY_MAX_LENGTH = 256
+
 ARCHIVED_QUALIFIER_PATTERN = re.compile(
     r"(?<!\S)archived:(?:true|false)(?!\S)", re.IGNORECASE
 )
@@ -235,20 +238,38 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             None,
             pushed_since=pushed_since,
         ):
-            # repo: qualifiers without org:, which search would OR with them.
-            repo_qualifiers = " ".join(
-                f"repo:{organization}/{repo['name']}" for repo in pushed
-            )
-            matching = {
-                item["name"]
+            matching: set[str] = set()
+            for qualifiers in self._chunk_repo_qualifiers(
+                query,
+                [f"repo:{organization}/{repo['name']}" for repo in pushed],
+            ):
                 async for items in self._search_result_items(
-                    url, {"q": f"{query} {repo_qualifiers}".strip()}
-                )
-                for item in items
-            }
+                    url, {"q": f"{query} {qualifiers}".strip()}
+                ):
+                    matching.update(item["name"] for item in items)
             repos = [repo for repo in pushed if repo["name"] in matching]
             if repos:
                 yield repos
+
+    @staticmethod
+    def _chunk_repo_qualifiers(query: str, qualifiers: list[str]) -> list[str]:
+        """Join repo: qualifiers (no org:, which search would OR with them) into
+        queries that stay within GitHub's search query length limit.
+
+        A single qualifier longer than the limit still gets its own chunk.
+        """
+        chunks: list[str] = []
+        current = ""
+        for qualifier in qualifiers:
+            candidate = f"{current} {qualifier}" if current else qualifier
+            if current and len(f"{query} {candidate}") > SEARCH_QUERY_MAX_LENGTH:
+                chunks.append(current)
+                current = qualifier
+            else:
+                current = candidate
+        if current:
+            chunks.append(current)
+        return chunks
 
     async def _search_strategy(
         self,

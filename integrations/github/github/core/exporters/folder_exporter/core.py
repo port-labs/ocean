@@ -11,6 +11,7 @@ from github.core.options import (
     ListFolderOptions,
     SingleFolderOptions,
 )
+from github.helpers.changed_paths import ancestor_dirs, changed_paths_since
 from github.helpers.utils import IgnoredError, matches_glob_pattern
 
 
@@ -36,12 +37,17 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources[ExporterOptionsT: List[ListFolderOptions]](
         self, options: ExporterOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Search for folders across repositories and fetch their trees."""
+        """Search for folders across repositories and fetch their trees.
+
+        A repository's ``changed_since`` limits it to folders containing a path
+        changed since then.
+        """
 
         for repo_opts in options:
             organization = repo_opts["organization"]
             repo_name = repo_opts["repo_name"]
             folders_patterns = repo_opts["folders"]
+            changed_since = repo_opts.get("changed_since")
 
             logger.debug(
                 f"Processing {organization}/{repo_name} with {len(folders_patterns)} folder patterns"
@@ -52,11 +58,19 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                 repo = folder["repo"]
                 branch = folder.get("branch") or repo["default_branch"]
 
+                changed_paths = await changed_paths_since(
+                    self.client, organization, repo_name, branch, changed_since
+                )
                 url = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/trees/{branch}"
                 is_recursive_api_call = self._needs_recursive_search(path)
                 tree = await self._get_tree(url, recursive=is_recursive_api_call)
                 folders = self._retrieve_relevant_tree(
-                    organization, tree, path=path, repo=repo, branch=branch
+                    organization,
+                    tree,
+                    path=path,
+                    repo=repo,
+                    branch=branch,
+                    changed_paths=changed_paths,
                 )
                 if folders:
                     yield folders
@@ -68,8 +82,13 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         path: str,
         repo: dict[str, Any],
         branch: str,
+        changed_paths: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
+        """Folders matching ``path``; with known ``changed_paths``, only those containing one."""
         folders = self._filter_folder_contents(tree, path)
+        if changed_paths is not None:
+            changed_dirs = ancestor_dirs(changed_paths)
+            folders = [folder for folder in folders if folder["path"] in changed_dirs]
         logger.info(f"fetched {len(folders)} folders from {repo['name']}")
         if folders:
             formatted = self._enrich_folder_with_repository(

@@ -144,7 +144,6 @@ from github.helpers.repo_selectors import (
 from github.core.options import (
     ListOrganizationOptions,
     ListPluginOptions,
-    ListSkillSearchOptions,
     PluginRepositoryOptions,
 )
 from github.enrichments.included_files import (
@@ -1247,12 +1246,13 @@ async def resync_code_scanning_alerts(
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 @_resync_per_authenticator
 async def resync_folders(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync all folders in specified repositories."""
+    """Resync all folders in specified repositories; incremental runs only cover folders changed since the cursor."""
     logger.info(f"Starting resync for kind: {kind}")
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
@@ -1293,7 +1293,9 @@ async def resync_folders(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(folders)
+    repo_path_map = await pattern_builder.build(
+        folders, changed_since=active_incremental_cursor()
+    )
 
     async for folder_batch in folder_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1301,12 +1303,13 @@ async def resync_folders(
         yield folder_batch
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 @_resync_per_authenticator
 async def resync_files(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync files based on configuration using the file exporter."""
+    """Resync files based on configuration using the file exporter; incremental runs only cover files changed since the cursor."""
     logger.info(f"Starting resync for kind: {kind}")
 
     config = cast(GithubFileResourceConfig, event.resource_config)
@@ -1320,7 +1323,9 @@ async def resync_files(
 
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
-    file_exporter = RestFileExporter(rest_client)
+    file_exporter = RestFileExporter(
+        rest_client, included_files=config.selector.included_files
+    )
     repo_exporter = RestRepositoryExporter(rest_client)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     should_enrich_with_included_files = bool(config.selector.included_files)
@@ -1340,7 +1345,9 @@ async def resync_files(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(files)
+    repo_path_map = await pattern_builder.build(
+        files, changed_since=active_incremental_cursor()
+    )
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         if included_files_enricher:
@@ -1348,12 +1355,13 @@ async def resync_files(
         yield file_results
 
 
+@ocean.on_incremental_resync(ObjectKind.SKILL)
 @ocean.on_resync(ObjectKind.SKILL)
 @_resync_per_authenticator
 async def resync_skills(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Agent Skills (SKILL.md) using glob path discovery."""
+    """Resync Agent Skills (SKILL.md) using glob path discovery; incremental runs only cover skills changed since the cursor."""
     config = cast(GithubSkillResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1367,7 +1375,9 @@ async def resync_skills(
     rest_client = create_github_client(authenticator)
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
-    skill_exporter = SkillExporter(rest_client)
+    skill_exporter = SkillExporter(
+        rest_client, include_skill_folder=selector.include_skill_folder
+    )
     app_config = cast(GithubPortAppConfig, event.port_app_config)
 
     file_patterns = [
@@ -1386,14 +1396,11 @@ async def resync_skills(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(file_patterns)
+    repo_path_map = await pattern_builder.build(
+        file_patterns, changed_since=active_incremental_cursor()
+    )
 
-    async for skills in skill_exporter.get_paginated_resources(
-        ListSkillSearchOptions(
-            repositories=repo_path_map,
-            include_skill_folder=selector.include_skill_folder,
-        )
-    ):
+    async for skills in skill_exporter.get_paginated_resources(repo_path_map):
         yield skills
 
 
@@ -1454,12 +1461,13 @@ async def resync_plugins(
                     yield plugins
 
 
+@ocean.on_incremental_resync(ObjectKind.MCP)
 @ocean.on_resync(ObjectKind.MCP)
 @_resync_per_authenticator
 async def resync_mcp(
     kind: str, authenticator: AbstractGitHubAuthenticator
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync MCP servers (mcp.json/.mcp.json) using glob path discovery."""
+    """Resync MCP servers (mcp.json/.mcp.json) using glob path discovery; incremental runs only cover files changed since the cursor."""
     config = cast(GithubMcpResourceConfig, event.resource_config)
     selector = config.selector
     paths = [
@@ -1490,7 +1498,9 @@ async def resync_mcp(
         repo_exporter=repo_exporter,
         repo_type=app_config.repository_type,
     )
-    repo_path_map = await pattern_builder.build(file_patterns)
+    repo_path_map = await pattern_builder.build(
+        file_patterns, changed_since=active_incremental_cursor()
+    )
 
     async for servers in mcp_exporter.get_paginated_resources(repo_path_map):
         yield servers
