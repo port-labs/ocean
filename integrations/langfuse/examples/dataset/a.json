@@ -1,0 +1,11 @@
+{
+  "id": "ds_abc",
+  "name": "qa-eval",
+  "description": "QA evaluation set",
+  "metadata": {},
+  "inputSchema": null,
+  "expectedOutputSchema": null,
+  "projectId": "clxxxx",
+  "createdAt": "2024-07-01T00:00:00Z",
+  "updatedAt": "2024-07-10T10:30:00Z"
+}

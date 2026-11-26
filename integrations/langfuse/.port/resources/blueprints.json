@@ -1,0 +1,186 @@
+[
+  {
+    "identifier": "langfuseProject",
+    "title": "Langfuse Project",
+    "icon": "Langfuse",
+    "schema": {
+      "properties": {
+        "organizationId": {
+          "type": "string",
+          "title": "Organization ID"
+        },
+        "organizationName": {
+          "type": "string",
+          "title": "Organization Name"
+        },
+        "retentionDays": {
+          "type": "number",
+          "title": "Retention Days"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "langfusePrompt",
+    "title": "Langfuse Prompt",
+    "icon": "Langfuse",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "text",
+            "chat"
+          ],
+          "enumColors": {
+            "text": "blue",
+            "chat": "purple"
+          }
+        },
+        "versions": {
+          "type": "array",
+          "title": "Versions",
+          "items": {
+            "type": "number"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "title": "Labels",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastUpdatedAt": {
+          "type": "string",
+          "title": "Last Updated At",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "langfuseDataset",
+    "title": "Langfuse Dataset",
+    "icon": "Langfuse",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "langfuseProject",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "langfuseModel",
+    "title": "Langfuse Model",
+    "icon": "Langfuse",
+    "schema": {
+      "properties": {
+        "modelName": {
+          "type": "string",
+          "title": "Model Name"
+        },
+        "matchPattern": {
+          "type": "string",
+          "title": "Match Pattern"
+        },
+        "isLangfuseManaged": {
+          "type": "boolean",
+          "title": "Langfuse Managed"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "langfuseSession",
+    "title": "Langfuse Session",
+    "icon": "Langfuse",
+    "schema": {
+      "properties": {
+        "environment": {
+          "type": "string",
+          "title": "Environment"
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "foundryConversation": {
+        "title": "Foundry Conversation",
+        "target": "azureFoundryConversation",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Project",
+        "target": "langfuseProject",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

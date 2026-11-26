@@ -1,0 +1,66 @@
+{
+  "title": "Langfuse",
+  "description": "Langfuse integration for Port Ocean. One installation maps to one Langfuse project via project API keys.",
+  "icon": "Langfuse",
+  "docs": "https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/",
+  "formMappingEnabled": true,
+  "features": [
+    {
+      "type": "exporter",
+      "section": "AI Agents",
+      "resources": [
+        {
+          "kind": "project"
+        },
+        {
+          "kind": "prompt"
+        },
+        {
+          "kind": "dataset"
+        },
+        {
+          "kind": "model"
+        },
+        {
+          "kind": "session"
+        }
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "langfusePublicKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "Langfuse project public key (Basic Auth username). From project settings."
+    },
+    {
+      "name": "langfuseSecretKey",
+      "required": true,
+      "type": "string",
+      "sensitive": true,
+      "description": "Langfuse project secret key (Basic Auth password). From project settings."
+    },
+    {
+      "name": "langfuseHost",
+      "required": false,
+      "type": "url",
+      "default": "https://cloud.langfuse.com",
+      "description": "Langfuse host. EU cloud default. US: https://us.cloud.langfuse.com. JP: https://jp.cloud.langfuse.com. Or your self-hosted origin."
+    },
+    {
+      "name": "webhookSecret",
+      "required": false,
+      "type": "string",
+      "sensitive": true,
+      "description": "Optional. Langfuse prompt automation webhook signing secret. When set, verifies x-langfuse-signature on /webhook."
+    }
+  ],
+  "saas": {
+    "enabled": true,
+    "liveEvents": {
+      "enabled": true
+    }
+  }
+}

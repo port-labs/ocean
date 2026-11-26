@@ -1,0 +1,10 @@
+{
+  "id": "clxxxx",
+  "name": "My Project",
+  "metadata": {},
+  "retentionDays": 30,
+  "organization": {
+    "id": "clyyyy",
+    "name": "My Org"
+  }
+}

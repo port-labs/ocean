@@ -1,0 +1,20 @@
+{
+  "name": "movie-critic",
+  "type": "text",
+  "versions": [
+    1,
+    2,
+    3
+  ],
+  "labels": [
+    "production",
+    "latest"
+  ],
+  "tags": [
+    "entertainment"
+  ],
+  "lastUpdatedAt": "2024-07-10T10:30:00Z",
+  "lastConfig": {
+    "key": "value"
+  }
+}
