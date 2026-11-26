@@ -42,10 +42,8 @@ class EnvironmentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         client = create_anthropic_client()
         environment = await client.get_environment(environment_id)
-        logger.info(
-            f"Upserting environment {environment_id} from catalog ({event_type})"
-        )
-        return WebhookEventRawResults(
-            updated_raw_results=[environment.to_dict(mode="json", warnings=False)],
-            deleted_raw_results=[],
+        return self.build_upsert_results(
+            environment.to_dict(mode="json", warnings=False),
+            resource_config,
+            event_type,
         )

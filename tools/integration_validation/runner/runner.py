@@ -8,12 +8,21 @@ from typing import Any
 
 from loguru import logger
 
-from tools.integration_validation.runner.blueprint_rewrite import (
+from tools.integration_validation.runner.port.blueprints import (
     rewrite_mapping_blueprints,
     suffix_blueprints,
 )
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import (
+from tools.integration_validation.runner.results.collect import (
+    ScenarioCollection,
+    collect_scenario,
+)
+from tools.integration_validation.runner.results.evaluate import (
+    ScenarioComparison,
+    evaluate_scenario,
+)
+from tools.integration_validation.runner.results.expected import resolve_expected_dir
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.scenarios.loader import (
     load_blueprints_file,
     load_port_app_config_file,
     load_scenarios_document,
@@ -21,24 +30,37 @@ from tools.integration_validation.runner.loader import (
     resolve_scenario_blueprints_path,
     resolve_validation_paths,
 )
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.models import (
     ScenariosDocument,
     ValidationPaths,
 )
-from tools.integration_validation.runner.naming import build_integration_identifier
-from tools.integration_validation.runner.port_app_config import (
+from tools.integration_validation.runner.core.naming import build_integration_identifier
+from tools.integration_validation.runner.port.app_config import (
     build_scenario_port_app_config,
 )
-from tools.integration_validation.runner.port_setup import (
+from tools.integration_validation.runner.port.client import (
     ScenarioPortPlan,
+    ValidationPortClient,
     create_port_client,
     prepare_scenario_port,
     teardown_scenario_port,
 )
-from tools.integration_validation.runner.preflight import (
+from tools.integration_validation.runner.integration.config_env import (
+    merge_scenario_integration_config,
+)
+from tools.integration_validation.runner.integration.process import (
+    IntegrationRunResult,
+    run_ocean_sail_once,
+)
+from tools.integration_validation.runner.scenarios.preflight import (
     load_integration_type,
     run_preflight,
     select_scenario_names,
+)
+from tools.integration_validation.runner.core.statuses import (
+    ResyncStatus,
+    ScenarioIntegrationStatus,
+    ValidationAggregateStatus,
 )
 
 
@@ -49,6 +71,8 @@ class ValidateOptions:
     update_expected: bool
     skip_cleanup: bool
     report_path: Path | None
+    mock_base_url: str
+    integration_timeout_seconds: float
 
 
 @dataclass(frozen=True)
@@ -56,6 +80,16 @@ class ScenarioRun:
     plan: ScenarioPortPlan
     cleanup_leftovers: list[str]
     cleaned_up: bool
+    integration: IntegrationRunResult
+    collection: ScenarioCollection
+    comparison: ScenarioComparison
+
+    @property
+    def passed(self) -> bool:
+        return (
+            self.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
+            and self.comparison.passed
+        )
 
 
 @dataclass(frozen=True)
@@ -74,10 +108,8 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
     integration_type = load_integration_type()
     plans = _plan_scenarios(paths, scenarios, scenario_names)
 
-    # TODO(follow-up PRs): start the mock and `ocean sail` between prepare and
-    # teardown, then collect, diff and report.
     scenario_runs = asyncio.run(
-        _run_scenarios(plans, integration_type, options.skip_cleanup)
+        _run_plans(paths, scenarios, plans, integration_type, options)
     )
 
     result = ValidateResult(paths=paths, options=options, scenario_runs=scenario_runs)
@@ -122,38 +154,101 @@ def _plan_scenarios(
     return plans
 
 
-async def _run_scenarios(
+async def _run_plans(
+    paths: ValidationPaths,
+    scenarios: ScenariosDocument,
     plans: list[ScenarioPortPlan],
     integration_type: str,
-    skip_cleanup: bool,
+    options: ValidateOptions,
 ) -> list[ScenarioRun]:
-    runs: list[ScenarioRun] = []
-    for plan in plans:
-        client = create_port_client(plan.integration_identifier, integration_type)
-        logger.info(
-            f"Preparing Port for scenario '{plan.scenario_name}' "
-            f"(integration {plan.integration_identifier})"
-        )
-        await prepare_scenario_port(client, plan)
+    return [
+        await _run_scenario(paths, scenarios, plan, integration_type, options)
+        for plan in plans
+    ]
 
-        leftovers: list[str] = []
-        if not skip_cleanup:
-            leftovers = await teardown_scenario_port(client, plan)
-        runs.append(
-            ScenarioRun(
-                plan=plan,
-                cleanup_leftovers=leftovers,
-                cleaned_up=not skip_cleanup and not leftovers,
-            )
+
+async def _run_scenario(
+    paths: ValidationPaths,
+    scenarios: ScenariosDocument,
+    plan: ScenarioPortPlan,
+    integration_type: str,
+    options: ValidateOptions,
+) -> ScenarioRun:
+    client = create_port_client(plan.integration_identifier, integration_type)
+    logger.info(
+        f"Preparing Port for scenario '{plan.scenario_name}' "
+        f"(integration {plan.integration_identifier})"
+    )
+
+    scenario = scenarios.scenarios[plan.scenario_name]
+    leftovers: list[str] = []
+    prepared = False
+
+    try:
+        await prepare_scenario_port(client, plan)
+        prepared = True
+
+        integration_config = merge_scenario_integration_config(
+            scenarios.defaults.integration_config,
+            scenario.integration_config,
         )
-    return runs
+        integration_result = run_ocean_sail_once(
+            paths.integration_root,
+            integration_identifier=plan.integration_identifier,
+            integration_config=integration_config,
+            mock_base_url=options.mock_base_url,
+            timeout_seconds=options.integration_timeout_seconds,
+        )
+        collection = await collect_scenario(
+            client, plan, mock_base_url=options.mock_base_url
+        )
+    finally:
+        if prepared:
+            leftovers = await _teardown_scenario(client, plan, options)
+
+    comparison = evaluate_scenario(
+        collection.entities,
+        expected_dir=resolve_expected_dir(paths, plan.scenario_name, scenario),
+        ignore_fields=scenarios.defaults.ignore_fields,
+        update_expected=options.update_expected,
+        resync_succeeded=(
+            integration_result.integration_status()
+            == ScenarioIntegrationStatus.COMPLETED
+            and collection.resync_status == ResyncStatus.COMPLETED
+        ),
+    )
+
+    return ScenarioRun(
+        plan=plan,
+        cleanup_leftovers=leftovers,
+        cleaned_up=prepared and not options.skip_cleanup and not leftovers,
+        integration=integration_result,
+        collection=collection,
+        comparison=comparison,
+    )
+
+
+async def _teardown_scenario(
+    client: ValidationPortClient,
+    plan: ScenarioPortPlan,
+    options: ValidateOptions,
+) -> list[str]:
+    if options.skip_cleanup:
+        return []
+    leftovers = await teardown_scenario_port(client, plan)
+    if leftovers:
+        logger.warning(
+            f"Scenario '{plan.scenario_name}' cleanup left behind: "
+            f"{', '.join(leftovers)}"
+        )
+    return leftovers
 
 
 def _write_report(result: ValidateResult, report_path: Path) -> None:
     # Placeholder report until full report.json schema is implemented.
     payload = {
         "integration": result.paths.integration_name,
-        "status": "port_prepared",
+        "status": _aggregate_status(result),
         "scenarios": [_scenario_report(run) for run in result.scenario_runs],
         "options": {
             "update_expected": result.options.update_expected,
@@ -172,7 +267,7 @@ def _write_report(result: ValidateResult, report_path: Path) -> None:
 def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
     return {
         "name": run.plan.scenario_name,
-        "status": "not_run",
+        "status": run.integration.integration_status(),
         "kinds": run.plan.kinds,
         "port": {
             "integration_identifier": run.plan.integration_identifier,
@@ -180,4 +275,13 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleaned_up": run.cleaned_up,
             "cleanup_leftovers": run.cleanup_leftovers,
         },
+        "integration": run.integration.report_dict(),
+        "collection": run.collection.to_dict(),
+        "comparison": run.comparison.model_dump(mode="json"),
     }
+
+
+def _aggregate_status(result: ValidateResult) -> ValidationAggregateStatus:
+    if all(run.passed for run in result.scenario_runs):
+        return ValidationAggregateStatus.PASSED
+    return ValidationAggregateStatus.FAILED

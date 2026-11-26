@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Sequence
 
-from tools.integration_validation.runner.errors import ValidationCliError
+from tools.integration_validation.runner.results.collect import ScenarioCollection
+from tools.integration_validation.runner.results.evaluate import ScenarioComparison
+from tools.integration_validation.runner.core.errors import ValidationCliError
+from tools.integration_validation.runner.core.statuses import ComparisonStatus
+from tools.integration_validation.runner.integration.process import (
+    DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
+    DEFAULT_MOCK_BASE_URL,
+)
 from tools.integration_validation.runner.runner import ValidateOptions, run_validate
 
 
@@ -48,6 +56,25 @@ def main(argv: Sequence[str] | None = None) -> None:
         metavar="PATH",
         help="Write a machine-readable JSON report to this file.",
     )
+    parser.add_argument(
+        "--mock-base-url",
+        dest="mock_base_url",
+        default=DEFAULT_MOCK_BASE_URL,
+        metavar="URL",
+        help=(
+            "Base URL of a mock server already running and loaded with the scenario "
+            f"(default: {DEFAULT_MOCK_BASE_URL}). Runs `ocean sail -O` after Port "
+            "preparation."
+        ),
+    )
+    parser.add_argument(
+        "--integration-timeout",
+        type=float,
+        default=DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
+        dest="integration_timeout_seconds",
+        metavar="SECONDS",
+        help="Max seconds to wait for the integration subprocess (default: 180).",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -58,6 +85,8 @@ def main(argv: Sequence[str] | None = None) -> None:
                 update_expected=args.update_expected,
                 skip_cleanup=args.skip_cleanup,
                 report_path=args.report_path,
+                mock_base_url=args.mock_base_url,
+                integration_timeout_seconds=args.integration_timeout_seconds,
             )
         )
     except ValidationCliError as error:
@@ -73,6 +102,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"  • {name} ({kinds_label})")
         print(f"    integration: {run.plan.integration_identifier}")
         print(f"    blueprints: {', '.join(run.plan.blueprint_renames.values())}")
+        if run.integration.timed_out:
+            print("    Integration subprocess timed out", file=sys.stderr)
+        elif run.integration.returncode != 0:
+            print(
+                f"    Integration subprocess failed (exit {run.integration.returncode})",
+                file=sys.stderr,
+            )
+        else:
+            print("    Integration subprocess completed")
+        _print_collection(run.collection)
+        _print_comparison(run.comparison)
         if run.cleaned_up:
             print("    Port resources cleaned up")
         elif run.cleanup_leftovers:
@@ -83,8 +123,52 @@ def main(argv: Sequence[str] | None = None) -> None:
         else:
             print("    Port resources kept (--skip-cleanup)")
 
+    if result.scenario_runs and all(run.passed for run in result.scenario_runs):
+        print("All scenarios passed.", file=sys.stderr)
+    else:
+        raise SystemExit(1)
+
+
+def _print_collection(collection: ScenarioCollection) -> None:
+    print(f"    Resync status in Port: {collection.resync_status}")
+    counts = ", ".join(
+        f"{blueprint}={len(entities)}"
+        for blueprint, entities in collection.entities.items()
+    )
+    print(f"    Entities: {counts or 'none'}")
+    mock = collection.mock
+    unmatched = mock.unmatched_requests
     print(
-        "Mock and integration run are not implemented yet; "
-        "Port resources were prepared for each scenario.",
-        file=sys.stderr,
+        f"    Mock requests: {len(mock.requests)} ({len(unmatched)} unmatched, "
+        f"{len(mock.unused_route_ids)} unused routes)"
+    )
+    for entry in unmatched:
+        print(f"      unmatched: {entry.method} {entry.path}", file=sys.stderr)
+
+
+def _print_comparison(comparison: ScenarioComparison) -> None:
+    print(f"    Expected entities: {_comparison_label(comparison)}")
+    for blueprint, diff in comparison.entity_diff.items():
+        for identifier in diff.added:
+            print(f"      {blueprint} + {identifier} (unexpected)", file=sys.stderr)
+        for identifier in diff.removed:
+            print(f"      {blueprint} - {identifier} (missing)", file=sys.stderr)
+        for change in diff.changed:
+            print(
+                f"      {blueprint} {change.identifier} {change.field}: "
+                f"{json.dumps(change.expected)} -> {json.dumps(change.actual)}",
+                file=sys.stderr,
+            )
+
+
+COMPARISON_LABELS: dict[ComparisonStatus, str] = {
+    ComparisonStatus.MATCHED: "matched",
+    ComparisonStatus.DIFFERENT: "{differences} difference(s) from {location}",
+}
+
+
+def _comparison_label(comparison: ScenarioComparison) -> str:
+    return COMPARISON_LABELS[comparison.status].format(
+        differences=comparison.difference_count,
+        location=comparison.expected_dir,
     )

@@ -5,9 +5,39 @@ from pathlib import Path
 
 import pytest
 
+from tools.integration_validation.runner.results import collect as collect_module
 from tools.integration_validation.runner import runner as runner_module
+from tools.integration_validation.runner.integration.process import IntegrationRunResult
 from tools.integration_validation.runner.main import main
-from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
+from tools.integration_validation.runner.results.mock_journal import MockJournal
+from tools.integration_validation.tests.runner.test_port_client import FakePortClient
+
+MOCK_BASE_URL = "http://127.0.0.1:9000"
+
+
+@pytest.fixture(autouse=True)
+def fake_ocean_sail(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_sail(*_args: object, **_kwargs: object) -> IntegrationRunResult:
+        return IntegrationRunResult(
+            returncode=0,
+            stdout="",
+            stderr="",
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(runner_module, "run_ocean_sail_once", fake_sail)
+
+
+@pytest.fixture(autouse=True)
+def fake_mock_journal(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_fetch(mock_base_url: str) -> MockJournal:
+        return MockJournal(requests=[], route_call_counts={})
+
+    monkeypatch.setattr(collect_module, "fetch_mock_journal", fake_fetch)
+
+
+def _cli_args(integration_root: Path, *extra: str) -> list[str]:
+    return [str(integration_root), "--mock-base-url", MOCK_BASE_URL, *extra]
 
 
 @pytest.fixture
@@ -71,10 +101,10 @@ scenarios:
     (integration_root / ".env").write_text(
         "\n".join(
             [
+                "OCEAN__INTEGRATION__TYPE=sample",
                 "OCEAN__PORT__CLIENT_ID=test-client",
                 "OCEAN__PORT__CLIENT_SECRET=test-secret",
                 "OCEAN__PORT__BASE_URL=https://api.getport.io",
-                "OCEAN__INTEGRATION__TYPE=sample",
             ]
         ),
         encoding="utf-8",
@@ -92,6 +122,8 @@ def test_validate_help_lists_options(capsys: pytest.CaptureFixture[str]) -> None
     assert "--update-expected" in output
     assert "--skip-cleanup" in output
     assert "--report" in output
+    assert "--mock-base-url" in output
+    assert "--integration-timeout" in output
 
 
 def test_validate_malformed_scenarios_yaml_exits_2(tmp_path: Path) -> None:
@@ -110,7 +142,7 @@ scenarios:
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(integration_root)])
+        main(_cli_args(integration_root))
 
     assert exc_info.value.code == 2
 
@@ -133,7 +165,7 @@ scenarios:
     )
 
     with pytest.raises(SystemExit):
-        main([str(integration_root)])
+        main(_cli_args(integration_root))
 
     err = capsys.readouterr().err
     assert "Setup error" in err
@@ -145,7 +177,7 @@ def test_validate_prepares_and_cleans_up_port_for_each_scenario(
     fake_port_clients: dict[str, FakePortClient],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main([str(validation_integration)])
+    main(_cli_args(validation_integration))
 
     out = capsys.readouterr()
     assert "happy_path" in out.out
@@ -174,11 +206,16 @@ def test_validate_skip_cleanup_keeps_port_resources_and_reports_them(
 ) -> None:
     report_path = tmp_path / "report.json"
 
-    main([str(validation_integration), "--skip-cleanup", "--report", str(report_path)])
+    main(
+        _cli_args(
+            validation_integration, "--skip-cleanup", "--report", str(report_path)
+        )
+    )
 
     assert "Port resources kept" in capsys.readouterr().out
     (client,) = fake_port_clients.values()
-    assert client.names()[-1] == "mark_initialized"
+    names = client.names()
+    assert "delete_integration" not in names[names.index("mark_initialized") :]
     assert client.blueprints == {"sampleTeam-happy-path"}
     report = json.loads(report_path.read_text())
     port = report["scenarios"][0]["port"]
@@ -196,11 +233,192 @@ def test_validate_rejects_mapping_to_unknown_blueprint_before_touching_port(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(validation_integration)])
+        main(_cli_args(validation_integration))
 
     assert exc_info.value.code == 2
     assert "sampleTeam" in capsys.readouterr().err
     assert fake_port_clients == {}
+
+
+def test_validate_cleans_up_when_integration_step_raises(
+    validation_integration: Path,
+    fake_port_clients: dict[str, FakePortClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("sail blew up")
+
+    monkeypatch.setattr(runner_module, "run_ocean_sail_once", boom)
+
+    with pytest.raises(RuntimeError, match="sail blew up"):
+        runner_module.run_validate(
+            runner_module.ValidateOptions(
+                integration_path=validation_integration,
+                scenario_names=None,
+                update_expected=False,
+                skip_cleanup=False,
+                report_path=None,
+                mock_base_url=MOCK_BASE_URL,
+                integration_timeout_seconds=30,
+            )
+        )
+
+    (client,) = fake_port_clients.values()
+    assert "delete_integration" in client.names()
+    assert "delete_blueprint" in client.names()
+
+
+def test_validate_with_mock_base_url_runs_sail_after_port_prep(
+    validation_integration: Path,
+    fake_port_clients: dict[str, FakePortClient],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sail_calls: list[str] = []
+
+    def fake_sail(
+        integration_root: Path,
+        *,
+        integration_identifier: str,
+        **kwargs: object,
+    ) -> IntegrationRunResult:
+        sail_calls.append(integration_identifier)
+        return IntegrationRunResult(
+            returncode=0,
+            stdout="",
+            stderr="",
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(runner_module, "run_ocean_sail_once", fake_sail)
+
+    main(_cli_args(validation_integration))
+
+    assert sail_calls == ["validate-sample-happy-path"]
+    assert "All scenarios passed." in capsys.readouterr().err
+
+
+def test_validate_collects_entities_before_cleanup_and_reports_them(
+    validation_integration: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    clients: list[FakePortClient] = []
+
+    def factory(integration_identifier: str, integration_type: str) -> FakePortClient:
+        client = FakePortClient(
+            entities={"sampleTeam-happy-path": [{"identifier": "platform"}]}
+        )
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(runner_module, "create_port_client", factory)
+    report_path = tmp_path / "report.json"
+
+    main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    (client,) = clients
+    names = client.names()
+    assert names.index("search_entities") < names.index(
+        "delete_integration", names.index("mark_initialized")
+    )
+    assert "Entities: sampleTeam=1" in capsys.readouterr().out
+    collection = json.loads(report_path.read_text())["scenarios"][0]["collection"]
+    assert collection["resync_status"] == "completed"
+    assert collection["entity_counts"] == {"sampleTeam": 1}
+
+
+@pytest.fixture
+def team_entities(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+    """Entities the fake Port returns for the run's team blueprint; edit to change them."""
+    entities: list[dict[str, object]] = [
+        {
+            "identifier": "platform",
+            "blueprint": "sampleTeam-happy-path",
+            "properties": {"handle": "platform"},
+        }
+    ]
+
+    def factory(integration_identifier: str, integration_type: str) -> FakePortClient:
+        return FakePortClient(entities={"sampleTeam-happy-path": entities})
+
+    monkeypatch.setattr(runner_module, "create_port_client", factory)
+    return entities
+
+
+def test_validate_first_run_writes_expected_and_passes(
+    validation_integration: Path,
+    team_entities: list[dict[str, object]],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    report_path = tmp_path / "report.json"
+
+    main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    snapshot = validation_integration / "validation/expected/happy_path/sampleTeam.json"
+    assert json.loads(snapshot.read_text()) == [
+        {"identifier": "platform", "properties": {"handle": "platform"}}
+    ]
+    assert "Expected entities: matched" in capsys.readouterr().out
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "passed"
+    assert report["scenarios"][0]["comparison"]["status"] == "matched"
+
+
+def test_validate_entity_diff_fails_and_reports_the_field(
+    validation_integration: Path,
+    team_entities: list[dict[str, object]],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(_cli_args(validation_integration))
+    team_entities[0]["properties"] = {"handle": None}
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    assert exc_info.value.code == 1
+    out, err = capsys.readouterr()
+    assert "Expected entities: 1 difference(s) from" in out
+    assert 'sampleTeam platform properties.handle: "platform" -> null' in err
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "failed"
+    assert report["scenarios"][0]["comparison"]["entity_diff"] == {
+        "sampleTeam": {
+            "added": [],
+            "removed": [],
+            "changed": [
+                {
+                    "identifier": "platform",
+                    "field": "properties.handle",
+                    "expected": "platform",
+                    "actual": None,
+                }
+            ],
+        }
+    }
+
+
+def test_validate_update_expected_accepts_the_new_result(
+    validation_integration: Path,
+    team_entities: list[dict[str, object]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(_cli_args(validation_integration))
+    team_entities.append({"identifier": "infra", "blueprint": "sampleTeam-happy-path"})
+
+    main(_cli_args(validation_integration, "--update-expected"))
+    main(_cli_args(validation_integration))
+
+    snapshot = validation_integration / "validation/expected/happy_path/sampleTeam.json"
+    assert [entity["identifier"] for entity in json.loads(snapshot.read_text())] == [
+        "infra",
+        "platform",
+    ]
+    assert "difference(s)" not in capsys.readouterr().out
 
 
 def test_validate_missing_port_credentials_exits_2(
@@ -217,7 +435,7 @@ def test_validate_missing_port_credentials_exits_2(
     (validation_integration / ".env").unlink()
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(validation_integration)])
+        main(_cli_args(validation_integration))
 
     assert exc_info.value.code == 2
     assert "Missing Port credentials" in capsys.readouterr().err
@@ -241,7 +459,7 @@ def test_validate_missing_integration_type_exits_2(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main([str(validation_integration)])
+        main(_cli_args(validation_integration))
 
     assert exc_info.value.code == 2
     assert "OCEAN__INTEGRATION__TYPE" in capsys.readouterr().err

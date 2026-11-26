@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from port_ocean.config.settings import PortSettings
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import (
     ScenariosDocument,
     ValidationPaths,
 )

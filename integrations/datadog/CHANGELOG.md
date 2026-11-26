@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.12.3 (2026-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.63.0
+
+
+## 0.12.2 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.4
+
+
+## 0.12.1 (2026-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.62.3
+
+
+## 0.12.0 (2026-11-24)
+
+
+### Features
+
+- Added test connection (probe) support, verifying the Datadog credentials and read access for each resource kind, per organization in multi-org setups
+
+
 ## 0.11.2 (2026-11-23)
 
 

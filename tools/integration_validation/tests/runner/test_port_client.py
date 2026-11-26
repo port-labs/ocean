@@ -3,16 +3,18 @@ from typing import Any
 import httpx
 import pytest
 
-from tools.integration_validation.runner.errors import (
+from tools.integration_validation.runner.core.errors import (
     ValidationFailedError,
     ValidationSetupError,
 )
-from tools.integration_validation.runner.port_setup import (
+from tools.integration_validation.runner.port.client import (
     ScenarioPortPlan,
     ValidationPortClient,
     prepare_scenario_port,
     teardown_scenario_port,
 )
+from tools.integration_validation.runner.core.models import PortEntity
+from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 PORT_APP_CONFIG = {"resources": [{"kind": "team"}]}
 
@@ -29,9 +31,13 @@ class FakePortClient(ValidationPortClient):
         fail_on: tuple[str, str] | None = None,
         status_code: int = 422,
         existing_blueprints: set[str] | None = None,
+        entities: dict[str, list[dict[str, Any]]] | None = None,
+        resync_status: ResyncStatus = ResyncStatus.COMPLETED,
     ):
         self.calls: list[tuple[str, Any]] = []
         self.blueprints: set[str] = set(existing_blueprints or ())
+        self.entities = entities or {}
+        self.resync_status = resync_status
         self._fail_on = fail_on
         self._status_code = status_code
 
@@ -68,6 +74,18 @@ class FakePortClient(ValidationPortClient):
 
     async def delete_validation_integration(self) -> None:
         self.calls.append(("delete_integration", None))
+
+    async def search_blueprint_entities(self, blueprint: str) -> list[PortEntity]:
+        self.calls.append(("search_entities", blueprint))
+        self._maybe_fail("search_entities", blueprint, "POST", "/entities/search")
+        return [
+            PortEntity.model_validate(entity)
+            for entity in self.entities.get(blueprint, [])
+        ]
+
+    async def get_resync_status(self) -> ResyncStatus:
+        self.calls.append(("get_resync_status", None))
+        return self.resync_status
 
     def names(self) -> list[str]:
         return [name for name, _ in self.calls]

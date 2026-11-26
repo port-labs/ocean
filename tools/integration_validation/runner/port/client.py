@@ -7,21 +7,22 @@ from typing import Any
 
 import httpx
 from loguru import logger
-
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import CreatePortResourcesOrigin
 from port_ocean.tests.helpers.port_client import (
     ensure_ocean_context_for_standalone_port_client,
 )
-from tools.integration_validation.runner.blueprint_rewrite import (
+from tools.integration_validation.runner.port.blueprints import (
     blueprint_deletion_layers,
 )
-from tools.integration_validation.runner.errors import (
+from tools.integration_validation.runner.core.errors import (
     ValidationCliError,
     ValidationFailedError,
     ValidationSetupError,
 )
+from tools.integration_validation.runner.core.models import PortEntity
+from tools.integration_validation.runner.core.statuses import ResyncStatus
 
 # `ocean sail` patches the real version onto the integration at startup.
 PLACEHOLDER_INTEGRATION_VERSION = "0.0.0"
@@ -110,6 +111,33 @@ class ValidationPortClient(PortClient):
         if response.status_code != 404:
             handle_port_status_code(response)
 
+    async def search_blueprint_entities(self, blueprint: str) -> list[PortEntity]:
+        """Every entity in ``blueprint``, whatever created it.
+
+        Not filtered by datasource, so placeholders made by
+        ``createMissingRelatedEntities`` and stray entities are included.
+        """
+        response = await self.client.post(
+            f"{self.auth.api_url}/entities/search",
+            headers=await self.auth.headers(),
+            json={
+                "combinator": "and",
+                "rules": [
+                    {"property": "$blueprint", "operator": "=", "value": blueprint}
+                ],
+            },
+            extensions={"retryable": True},
+        )
+        handle_port_status_code(response)
+        return [
+            PortEntity.model_validate(entity) for entity in response.json()["entities"]
+        ]
+
+    async def get_resync_status(self) -> ResyncStatus:
+        integration = await self.get_current_integration(should_log=False)
+        resync_state = integration.get("resyncState") or {}
+        return ResyncStatus.from_port(resync_state.get("status"))
+
 
 def create_port_client(
     integration_identifier: str, integration_type: str
@@ -145,7 +173,7 @@ async def prepare_scenario_port(
     except Exception as exc:
         leftovers = await teardown_scenario_port(client, plan)
         if isinstance(exc, httpx.HTTPStatusError):
-            raise _port_error(plan.scenario_name, exc, leftovers) from exc
+            raise port_error(plan.scenario_name, exc, leftovers) from exc
         raise
 
 
@@ -186,8 +214,10 @@ async def _create_blueprints(
         await client.create_blueprint(blueprint)
 
 
-def _port_error(
-    scenario_name: str, exc: httpx.HTTPStatusError, leftovers: list[str]
+def port_error(
+    scenario_name: str,
+    exc: httpx.HTTPStatusError,
+    leftovers: list[str] | None = None,
 ) -> ValidationCliError:
     request = exc.request
     message = (
