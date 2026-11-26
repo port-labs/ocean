@@ -214,6 +214,7 @@ class TestRefreshPullRequestsExecutor:
                 exclude_graphql_fields=[],
                 include_required_checks_status=False,
                 excluded_required_checks=[],
+                include_comments=False,
             )
         )
         rest_exporter.get_resource.assert_not_called()
@@ -424,6 +425,7 @@ class TestRefreshPullRequestsExecutor:
                 exclude_graphql_fields=[],
                 include_required_checks_status=False,
                 excluded_required_checks=[],
+                include_comments=False,
             )
         )
         graphql_exporter.get_resource.assert_not_called()

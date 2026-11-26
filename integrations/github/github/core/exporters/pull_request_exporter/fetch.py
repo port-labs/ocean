@@ -24,8 +24,14 @@ async def fetch_single_pull_request(
     is_graphql = resource_config.selector.api == GithubClientType.GRAPHQL
     exporter: AbstractGithubExporter[Any]
     if is_graphql:
+        rest_client = (
+            await create_github_client_for_org(organization)
+            if resource_config.selector.include_comments
+            else None
+        )
         exporter = GraphQLPullRequestExporter(
-            await create_github_client_for_org(organization, GithubClientType.GRAPHQL)
+            await create_github_client_for_org(organization, GithubClientType.GRAPHQL),
+            rest_client,
         )
         repo_option = repo if repo is not None else {"name": repo_name}
     else:
@@ -46,5 +52,6 @@ async def fetch_single_pull_request(
                 resource_config.selector.include_required_checks_status
             ),
             excluded_required_checks=resource_config.selector.excluded_required_checks,
+            include_comments=resource_config.selector.include_comments,
         )
     )

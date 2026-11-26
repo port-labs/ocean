@@ -76,6 +76,7 @@ async def test_fetch_single_pull_request_uses_graphql_exporter() -> None:
             exclude_graphql_fields=["additions"],
             include_required_checks_status=False,
             excluded_required_checks=[],
+            include_comments=False,
         )
     )
 
@@ -117,6 +118,7 @@ async def test_fetch_single_pull_request_uses_rest_exporter() -> None:
             exclude_graphql_fields=[],
             include_required_checks_status=False,
             excluded_required_checks=[],
+            include_comments=False,
         )
     )
 

@@ -602,7 +602,7 @@ async def resync_pull_requests(
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
-        GraphQLPullRequestExporter(graphql_client)
+        GraphQLPullRequestExporter(graphql_client, rest_client)
         if is_graphql_api
         else RestPullRequestExporter(rest_client)
     )
@@ -652,6 +652,7 @@ async def resync_pull_requests(
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
                                 include_required_checks_status=config.selector.include_required_checks_status,
                                 excluded_required_checks=config.selector.excluded_required_checks,
+                                include_comments=config.selector.include_comments,
                             )
                         )
                     )
