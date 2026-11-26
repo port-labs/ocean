@@ -43,6 +43,10 @@
                     "type": "string",
                     "format": "date-time",
                     "title": "Archived At"
+                },
+                "archived": {
+                    "type": "boolean",
+                    "title": "Archived"
                 }
             },
             "required": []
@@ -73,6 +77,10 @@
                     "type": "string",
                     "format": "date-time",
                     "title": "Archived At"
+                },
+                "archived": {
+                    "type": "boolean",
+                    "title": "Archived"
                 }
             },
             "required": []
@@ -107,6 +115,10 @@
                     "type": "string",
                     "format": "date-time",
                     "title": "Archived At"
+                },
+                "archived": {
+                    "type": "boolean",
+                    "title": "Archived"
                 }
             },
             "required": []
@@ -197,6 +209,10 @@
                     "type": "string",
                     "format": "date-time",
                     "title": "Archived At"
+                },
+                "archived": {
+                    "type": "boolean",
+                    "title": "Archived"
                 }
             },
             "required": []
@@ -291,6 +307,10 @@
                     "type": "string",
                     "format": "date-time",
                     "title": "Archived At"
+                },
+                "archived": {
+                    "type": "boolean",
+                    "title": "Archived"
                 }
             },
             "required": []

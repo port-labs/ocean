@@ -39,8 +39,6 @@ class VaultWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         client = create_anthropic_client()
         vault = await client.get_vault(vault_id)
-        logger.info(f"Upserting vault {vault_id} from catalog ({event_type})")
-        return WebhookEventRawResults(
-            updated_raw_results=[vault.to_dict(mode="json", warnings=False)],
-            deleted_raw_results=[],
+        return self.build_upsert_results(
+            vault.to_dict(mode="json", warnings=False), resource_config, event_type
         )
