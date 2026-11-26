@@ -1,4 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog:
-  - Conversation resync always overlays latest response id, status, and duration on conversation rows (rollupResponses selector removed). Invoke registers foundry-conversation and foundry-response on bind and terminal via register_raw with the same latest-response overlay.

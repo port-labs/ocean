@@ -23,10 +23,6 @@ from azure_integration.foundry.core.options import (
     SingleConversationOptions,
     SingleResponseOptions,
 )
-from azure_integration.foundry.helpers.conversation_overlay import (
-    conversation_latest_keys,
-    merge_overlay,
-)
 from azure_integration.foundry.helpers.utils import enrich_with_project, invoke_scope_from_run
 from azure_integration.foundry.models.responses import (
     TERMINAL_EVENTS,
@@ -83,13 +79,10 @@ async def sync_invoke_catalog_for_run(
                         agent_id=agent_id,
                     )
                 )
-                conv = merge_overlay(
-                    enrich_with_project(
-                        body if isinstance(body, dict) else {"id": conversation_id},
-                        project_endpoint=project_endpoint,
-                        project_id=project_id,
-                    ),
-                    conversation_latest_keys(response),
+                conv = enrich_with_project(
+                    body if isinstance(body, dict) else {"id": conversation_id},
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
                 )
                 await ocean.register_raw(conv_kind, [conv])
             if res_kind in kinds and response_id:

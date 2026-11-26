@@ -1,0 +1,4 @@
+bump: patch
+changelog-type: improvement
+changelog:
+  - cancel_response accepts optional conversationId and agentId alongside responseId; when conversationId is set, every non-terminal response in that session is cancelled (responseId still cancels a single run when provided).

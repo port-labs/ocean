@@ -10,7 +10,6 @@ from azure_integration.foundry.core.options import (
     SingleConversationOptions,
 )
 from azure_integration.foundry.foundry_incremental import CONVERSATION_INCREMENTAL
-from azure_integration.foundry.helpers.conversation_overlay import enrich_conversation_pages
 
 
 class ConversationsExporter(
@@ -24,9 +23,7 @@ class ConversationsExporter(
     async def get_paginated_resources(
         self, options: ListConversationsOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        since_days = options.since_days if options.since_days is not None else 30
-        pages = EndpointScopedExporter.get_paginated_resources(self, options)
-        async for page in enrich_conversation_pages(
-            self.client, since_days=since_days, pages=pages
+        async for page in EndpointScopedExporter.get_paginated_resources(
+            self, options
         ):
             yield page

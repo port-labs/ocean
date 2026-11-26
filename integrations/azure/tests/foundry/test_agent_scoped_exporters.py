@@ -61,10 +61,7 @@ async def test_lists_conversations_per_agent_endpoint() -> None:
 async def test_lists_conversations_project_scope_only() -> None:
     client = MagicMock()
     client.send_cursor_paginated_request = MagicMock(
-        side_effect=[
-            _agen([{"id": "conv-p", "created_at": _NOW}]),
-            _agen([]),
-        ]
+        side_effect=[_agen([{"id": "conv-p", "created_at": _NOW}])]
     )
 
     pages: list[list[dict[str, Any]]] = []
@@ -81,10 +78,7 @@ async def test_lists_conversations_project_scope_only() -> None:
     paths = [
         call.args[1] for call in client.send_cursor_paginated_request.call_args_list
     ]
-    assert paths == [
-        "openai/v1/conversations",
-        "openai/v1/responses",
-    ]
+    assert paths == ["openai/v1/conversations"]
     assert pages[0][0]["id"] == "conv-p"
     assert "__foundryAgentId" not in pages[0][0]
 
@@ -96,9 +90,7 @@ async def test_lists_conversations_both_scopes_are_separate_stores() -> None:
         side_effect=[
             _agen([{"id": "agent-a"}]),
             _agen([{"id": "agent-conv", "created_at": _NOW}]),
-            _agen([]),
             _agen([{"id": "project-conv", "created_at": _NOW}]),
-            _agen([]),
         ]
     )
 
@@ -119,9 +111,7 @@ async def test_lists_conversations_both_scopes_are_separate_stores() -> None:
     assert paths == [
         "agents",
         "agents/agent-a/endpoint/protocols/openai/conversations",
-        "agents/agent-a/endpoint/protocols/openai/responses",
         "openai/v1/conversations",
-        "openai/v1/responses",
     ]
     assert pages[0][0]["id"] == "agent-conv"
     assert pages[0][0]["__foundryAgentId"] == "agent-a"
