@@ -1,6 +1,6 @@
 ---
 name: create-integration-validation
-description: Create mock-backed validation scenarios for an Ocean integration (validation/ folder with response models, mock routes, scenarios.yaml and expected entities). Use when the developer asks to add validation, mock scenarios or validation fixtures to an integration, or when an integration has no validation/ folder yet. Requires the integration name (folder under integrations/).
+description: Create mock-backed validation scenarios for an Ocean integration (validation/ folder with response models, mock routes, scenarios.yaml and expected entities). Use when the developer asks to add validation, mock scenarios or validation fixtures, when an integration has no validation/ folder yet, or when validate-integration-change needs to bootstrap before running. Requires the integration name (folder under integrations/).
 ---
 
 # Create Integration Validation
@@ -66,9 +66,10 @@ Write `validation/scenarios.yaml`. Put the fake credentials and `{{mock_base_url
 
 ### 5. Run and write expected entities
 
-Run every scenario with the loop from the running reference. The first run of a scenario
-reports `comparison.status: new` and writes `validation/expected/<scenario>/`. Fix
-unmatched requests (a missing or wrong route) and rerun until every scenario passes.
+Run every scenario with the loop from the running reference (including mock port fallback
+when 9000 is in use). The first run of a scenario reports `comparison.status: new` and
+writes `validation/expected/<scenario>/`. Fix unmatched requests (a missing or wrong route)
+and rerun until every scenario passes.
 
 ### 6. Summarize for review
 
