@@ -25,6 +25,7 @@ class GroupEvents(EventConfig):
         True  # For now, users are required to toggle this on the UI,project events are not getting fired when created via the API, see https://gitlab.com/gitlab-org/gitlab/-/merge_requests/160887#note_2214257821 for more details
     )
     deployment_events: bool = True
+    note_events: bool = True
 
     def to_dict(self) -> dict[str, bool]:
         return asdict(self)
@@ -41,6 +42,7 @@ class ProjectEvents(EventConfig):
     job_events: bool = True
     confidential_issues_events: bool = True
     deployment_events: bool = True
+    note_events: bool = True
 
     def to_dict(self) -> dict[str, bool]:
         return asdict(self)

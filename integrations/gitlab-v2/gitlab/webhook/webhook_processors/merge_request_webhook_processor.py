@@ -5,10 +5,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from dateutil import parser
-from datetime import timezone
 
 from gitlab.helpers.utils import ObjectKind
+from gitlab.webhook.merge_request_webhook_shared import (
+    handle_merge_request_webhook_event,
+)
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
@@ -32,63 +33,25 @@ class MergeRequestWebhookProcessor(_GitlabAbstractWebhookProcessor):
         merge_request_id = object_attrs["iid"]
         project_id = payload["project"]["id"]
         state = object_attrs["state"]
-        updated_at = parser.parse(object_attrs["updated_at"]).replace(
-            tzinfo=timezone.utc
-        )
 
         logger.info(
             f"Handling merge request webhook event for project {project_id} and merge request {merge_request_id} with state {state}"
         )
 
         config = cast(GitlabMergeRequestResourceConfig, resource_config)
+        result = await handle_merge_request_webhook_event(
+            self._gitlab_webhook_client,
+            config.selector,
+            project_id=project_id,
+            merge_request_iid=merge_request_id,
+            state=state,
+            updated_at_raw=object_attrs.get("updated_at"),
+            delete_payload=object_attrs,
+        )
 
-        if state not in config.selector.states:
+        if result.updated_raw_results:
             logger.info(
-                f"Deleting merge request {merge_request_id} as current state {state} does not match configured states {config.selector.states}."
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[object_attrs],
+                f"Successfully created result for merge request {merge_request_id} in {state} state"
             )
 
-        if updated_at < config.selector.updated_after_datetime and state != "opened":
-            logger.info(
-                f"Deleting merge request {merge_request_id} as updated at {updated_at} is before {config.selector.updated_after_datetime}"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[object_attrs],
-            )
-
-        merge_request = await self._gitlab_webhook_client.get_merge_request(
-            project_id, merge_request_id
-        )
-        if not merge_request:
-            logger.warning(
-                f"Merge request {merge_request_id} in project {project_id} was not found, skipping upsert"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
-        selector = config.selector
-        if selector.enrich_with_commits or selector.enrich_with_review_discussion:
-            enriched = await self._gitlab_webhook_client.enrich_merge_requests(
-                [merge_request],
-                enrich_with_commits=selector.enrich_with_commits,
-                enrich_with_review_discussion=selector.enrich_with_review_discussion,
-                max_concurrent=1,
-            )
-            merge_request = enriched[0] if enriched else merge_request
-
-        raw_merge_request_result = WebhookEventRawResults(
-            updated_raw_results=[merge_request],
-            deleted_raw_results=[],
-        )
-
-        logger.info(
-            f"Successfully created result for merge request {merge_request_id} in {state} state"
-        )
-
-        return raw_merge_request_result
+        return result
