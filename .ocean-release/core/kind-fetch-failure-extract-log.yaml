@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: On kind fetch failure in DSP mode, emit an ERROR extract Event Log so sync status can show the real fetch error.
