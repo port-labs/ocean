@@ -10,7 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
 from azure_integration.foundry.core.exporters.base import FoundryExporter
-from azure_integration.foundry.core.options import ListToolboxesOptions, SingleToolboxOptions
+from azure_integration.foundry.core.options import (
+    ListToolboxesOptions,
+    SingleToolboxOptions,
+)
 from azure_integration.foundry.foundry_incremental import TOOLBOX_INCREMENTAL
 from azure_integration.foundry.helpers.a2a import (
     a2a_connection_ids_from_tools,
@@ -118,7 +121,9 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptio
         project_endpoint: str,
         project_id: str | None = None,
     ) -> dict[str, Any]:
-        enriched = enrich_with_project(toolbox, project_endpoint=project_endpoint, project_id=project_id)
+        enriched = enrich_with_project(
+            toolbox, project_endpoint=project_endpoint, project_id=project_id
+        )
         try:
             parsed = ToolboxPayload.model_validate(toolbox)
         except ValidationError:

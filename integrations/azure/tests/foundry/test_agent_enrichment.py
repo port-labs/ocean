@@ -31,5 +31,6 @@ def test_enrich_agent_row_adds_project_and_portal_url() -> None:
 
 def test_foundry_portal_agent_url() -> None:
     url = foundry_portal_agent_url(_PORTAL_ARM, "TESTONE", version="8")
+    assert url is not None
     assert "/build/agents/TESTONE/build?version=8" in url
     assert "EeQ3kisWT5S16t4Q6t467w,rg-demo,,acct-demo,demo" in url

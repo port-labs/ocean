@@ -13,7 +13,10 @@ from azure_integration.foundry.actions.abstract_executor import AbstractFoundryE
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 from azure_integration.foundry.core.options import SingleAgentOptions
 from azure_integration.foundry.helpers.agent_enrichment import prepare_agent_for_catalog
-from azure_integration.foundry.helpers.utils import deep_merge, project_name_from_endpoint
+from azure_integration.foundry.helpers.utils import (
+    deep_merge,
+    project_name_from_endpoint,
+)
 from azure_integration.foundry.kinds import ObjectKind
 from azure_integration.foundry.models.agent import Agent, parse_agent_definition
 

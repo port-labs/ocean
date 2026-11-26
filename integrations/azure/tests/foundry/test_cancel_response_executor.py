@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -78,7 +79,8 @@ async def test_cancel_response_partition_key_is_response_id() -> None:
     executor = CancelResponseExecutor()
     assert await executor._get_partition_key(_run({"responseId": "resp_9"})) == "resp_9"
     assert (
-        await executor._get_partition_key(_run({"conversationId": "conv_9"})) == "conv_9"
+        await executor._get_partition_key(_run({"conversationId": "conv_9"}))
+        == "conv_9"
     )
     assert await executor._get_partition_key(_run({})) is None
 
@@ -97,7 +99,9 @@ async def test_cancel_response_cancels_all_in_flight_for_conversation() -> None:
     client_mock = MagicMock()
     client_mock.build_url = CancelResponseExecutor().client.build_url
 
-    async def _pages(*_args: object, **_kwargs: object):
+    async def _pages(
+        *_args: object, **_kwargs: object
+    ) -> AsyncIterator[list[dict[str, object]]]:
         yield [
             {
                 "id": "resp_a",
@@ -117,9 +121,7 @@ async def test_cancel_response_cancels_all_in_flight_for_conversation() -> None:
         ]
 
     client_mock.send_cursor_paginated_request = MagicMock(side_effect=_pages)
-    client_mock.send_api_request = AsyncMock(
-        return_value={"status": "cancelled"}
-    )
+    client_mock.send_api_request = AsyncMock(return_value={"status": "cancelled"})
     executor = CancelResponseExecutor()
     executor.client = client_mock
     mock_ocean = MagicMock()

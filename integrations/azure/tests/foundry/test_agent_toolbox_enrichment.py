@@ -82,7 +82,7 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
                                     "server_label": "port-mcps",
                                     "server_url": toolbox_url,
                                 }
-                            ]
+                            ],
                         }
                     }
                 },

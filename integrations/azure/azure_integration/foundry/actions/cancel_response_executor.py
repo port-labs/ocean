@@ -10,7 +10,9 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryInvokeInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.core.exporters.responses_exporter import ResponsesExporter
+from azure_integration.foundry.core.exporters.responses_exporter import (
+    ResponsesExporter,
+)
 from azure_integration.foundry.core.options import ListResponsesOptions
 from azure_integration.foundry.helpers.utils import (
     agent_openai_protocol_path,
