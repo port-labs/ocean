@@ -20,13 +20,8 @@ async def test_toolboxes_exporter_enriches_skills_and_a2a() -> None:
     client = MagicMock()
 
     async def list_pages(*_args: Any, **_kwargs: Any) -> Any:
-        yield [{"name": "main-toolbox"}]
-
-    client.send_cursor_paginated_request = MagicMock(return_value=list_pages())
-
-    async def send_api_request(url: str, **_kwargs: Any) -> dict[str, Any]:
-        if url.endswith("/toolboxes/main-toolbox"):
-            return {
+        yield [
+            {
                 "name": "main-toolbox",
                 "versions": {
                     "latest": {
@@ -44,6 +39,11 @@ async def test_toolboxes_exporter_enriches_skills_and_a2a() -> None:
                     }
                 },
             }
+        ]
+
+    client.send_cursor_paginated_request = MagicMock(return_value=list_pages())
+
+    async def send_api_request(url: str, **_kwargs: Any) -> dict[str, Any]:
         if url.endswith("/connections/to-sub-agent"):
             return {"target": _A2A_TARGET, "type": "RemoteA2A"}
         return {}

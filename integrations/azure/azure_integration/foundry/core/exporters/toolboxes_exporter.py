@@ -102,39 +102,23 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptio
             cursor=cursor,
             strategy=TOOLBOX_INCREMENTAL,
         ):
-            batch: list[dict[str, Any]] = []
-            for item in page:
-                name = item.get("name") or item.get("id")
-                if name:
-                    loaded = await self.get_resource(
-                        SingleToolboxOptions(
-                            project_endpoint=project_endpoint,
-                            project_id=project_id,
-                            toolbox_name=str(name),
-                        )
-                    )
-                    toolbox = {**item, **loaded} if loaded else dict(item)
-                else:
-                    toolbox = dict(item)
-                toolbox = await self._enrich_toolbox(
-                    toolbox, project_endpoint=project_endpoint
+            yield [
+                await self._enrich_toolbox(
+                    item,
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
                 )
-                batch.append(
-                    enrich_with_project(
-                        toolbox,
-                        project_endpoint=project_endpoint,
-                        project_id=project_id,
-                    )
-                )
-            yield batch
+                for item in page
+            ]
 
     async def _enrich_toolbox(
         self,
         toolbox: dict[str, Any],
         *,
         project_endpoint: str,
+        project_id: str | None = None,
     ) -> dict[str, Any]:
-        enriched = dict(toolbox)
+        enriched = enrich_with_project(toolbox, project_endpoint=project_endpoint, project_id=project_id)
         try:
             parsed = ToolboxPayload.model_validate(toolbox)
         except ValidationError:

@@ -44,7 +44,29 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
         _endpoint: str, resource: str, **_kwargs: Any
     ) -> AsyncIterator[list[dict[str, Any]]]:
         if resource == "toolboxes":
-            yield [{"name": "my-tb"}]
+            yield [
+                {
+                    "name": "my-tb",
+                    "versions": {
+                        "latest": {
+                            "skills": ["skill-a"],
+                            "tools": [
+                                {
+                                    "type": "mcp",
+                                    "server_label": "github",
+                                    "server_url": "https://mcp.example/github",
+                                },
+                                {
+                                    "type": "mcp",
+                                    "server_label": "port-mcps",
+                                    "server_url": toolbox_url,
+                                },
+                                {"type": "function", "name": "fn"},
+                            ],
+                        }
+                    },
+                }
+            ]
             return
         assert resource == "agents"
         yield [
@@ -67,29 +89,7 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
         ]
 
     client.send_cursor_paginated_request = MagicMock(side_effect=cursor_paginated)
-
-    async def send_api_request(url: str, **_kwargs: Any) -> dict[str, Any]:
-        if url.endswith("/toolboxes/my-tb"):
-            return {
-                "name": "my-tb",
-                "versions": {
-                    "latest": {
-                        "skills": ["skill-a"],
-                        "tools": [
-                            {
-                                "type": "mcp",
-                                "server_label": "github",
-                                "server_url": "https://mcp.example/github",
-                            },
-                            {"type": "mcp", "server_label": "port-mcps", "server_url": toolbox_url},
-                            {"type": "function", "name": "fn"},
-                        ],
-                    }
-                },
-            }
-        return {}
-
-    client.send_api_request = AsyncMock(side_effect=send_api_request)
+    client.send_api_request = AsyncMock(return_value={})
 
     pages: list[list[dict[str, Any]]] = []
     async for page in AgentsExporter(client).get_paginated_resources(
