@@ -1,29 +1,13 @@
-"""Incremental-resync flows, used by ``main.py`` when a run has a cursor.
-
-For most kinds, ``main.py`` builds the full-resync query (``gitlab/clients/utils.py``)
-and, when there is a cursor, merges it in with one of the strategies below:
-``merge_params`` swaps the selector's ``TIMESTAMP_SELECTORS`` for the cursor filter.
-``build_incremental_*_params`` cover the queries that change more than that on an
-incremental run (``order_by=updated_at``).
-
-Kinds the cursor can't be expressed for as a query param (skills, plugins) get
-their own ``resync_*_incremental`` flow here; the full flows live in
-``gitlab/helpers/skill_plugin_resync.py``. Resync handlers in ``main.py`` pick one
-or the other on ``sync_cursor``.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal, Optional
 
 from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.clients.utils import build_project_params
+from gitlab.clients.options import IssueOptions
 from gitlab.helpers.skill_folder import find_owning_skill_md_paths
-from gitlab.helpers.utils import build_search_query, changed_files
 from gitlab.helpers.skill_plugin import (
     PluginProvider,
     matches_skill_path,
@@ -35,52 +19,132 @@ from gitlab.helpers.skill_plugin_resync import (
     partition_skill_patterns,
     plugins_for_projects,
 )
+from gitlab.helpers.utils import build_search_query, changed_files
 from integration import GitLabPluginSelector, GitLabSkillSelector
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-# Selector time filters the cursor replaces on every incremental run.
+# GitLab filters list endpoints server-side by the resource's updated_at.
+UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(param_key="updated_after")
+LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
+    param_key="last_activity_after"
+)
+
+# Dropped on incremental runs; replaced by cursor ``updated_after`` + ``order_by``.
 TIMESTAMP_SELECTORS = {
     "finished_after",
     "finished_before",
     "updated_after",
     "updated_before",
 }
-
-# GitLab filters list endpoints server-side by the resource's updated_at.
-UPDATED_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
-    param_key="updated_after", replaces=TIMESTAMP_SELECTORS
-)
-LAST_ACTIVITY_AFTER_INCREMENTAL = ServerSideTimestampStrategy(
-    param_key="last_activity_after", replaces=TIMESTAMP_SELECTORS
-)
+MergeRequestState = Literal["opened", "closed", "merged"]
 
 
-def build_incremental_project_updated_params(
-    include_only_active_projects: bool | None,
-    cursor: datetime,
+def resolve_effective_datetime(
+    cursor: datetime | None,
+    selector_value: datetime | None,
+) -> datetime | None:
+    """Prefer the incremental cursor over a selector-derived datetime."""
+    if cursor is not None:
+        return cursor
+    return selector_value
+
+
+def build_project_list_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects`` on an incremental run (``updated_after``).
+    """Query params for ``GET /projects``."""
+    return LAST_ACTIVITY_AFTER_INCREMENTAL.merge_params(base_params, cursor)
 
-    Used by the file, folder, skill and plugin resyncs.
-    """
-    params = UPDATED_AFTER_INCREMENTAL.merge_params(
-        build_project_params(include_only_active_projects=include_only_active_projects),
+
+def build_issue_params(
+    options: IssueOptions,
+    updated_after: Optional[datetime],
+) -> dict[str, Any]:
+    """Query params for ``GET /groups/{id}/issues``."""
+    params = {
+        key: value
+        for key, value in options.items()
+        if value is not None and key != "updated_after"
+    }
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, updated_after)
+
+
+def build_merge_request_params(
+    state: MergeRequestState,
+    cursor: datetime | None,
+    lookback_updated_after: datetime,
+) -> dict[str, Any]:
+    """Query params for ``GET /groups/{id}/merge_requests``."""
+    params: dict[str, Any] = {"state": state}
+    effective = resolve_effective_datetime(
         cursor,
+        lookback_updated_after if state != "opened" else None,
     )
-    params["order_by"] = "updated_at"
-    return params
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)
 
 
-def build_incremental_deployment_params(
-    selector_params: dict[str, Any] | None,
+def _parse_optional_iso_datetime(value: str | datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def build_pipeline_params(
+    api_query_params: dict[str, Any] | None,
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Query params for ``GET /projects/{id}/pipelines``."""
+    return merge_updated_after_params(api_query_params, cursor)
+
+
+def build_cursor_updated_after_params(
+    api_query_params: dict[str, Any] | None,
     cursor: datetime,
 ) -> dict[str, Any]:
-    """Query params for ``GET /projects/{id}/deployments`` on an incremental run.
+    """Drop selector timestamp filters and ``order_by``, then apply the cursor.
 
-    The selector ``order_by`` is replaced by ``order_by=updated_at``.
+    Keeps non-timestamp filters. ``updated_after``, ``updated_before``,
+    ``finished_after``, ``finished_before``, and ``order_by`` from the selector
+    are replaced by the cursor ``updated_after`` and ``order_by=updated_at``.
     """
-    params = UPDATED_AFTER_INCREMENTAL.merge_params(selector_params or {}, cursor)
+    params = {
+        key: value
+        for key, value in (api_query_params or {}).items()
+        if key not in TIMESTAMP_SELECTORS and key != "order_by" and value is not None
+    }
+    params = UPDATED_AFTER_INCREMENTAL.merge_params(params, cursor)
     params["order_by"] = "updated_at"
     return params
+
+
+def build_incremental_project_params(
+    base_params: dict[str, Any],
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    """Project-list params for an incremental run.
+
+    A cursor replaces selector timestamp filters with ``updated_after`` and
+    ``order_by=updated_at``. A full resync keeps ``base_params``.
+    """
+    if cursor is None:
+        return base_params
+    return build_cursor_updated_after_params(base_params, cursor)
+
+
+def merge_updated_after_params(
+    api_query_params: dict[str, Any] | None,
+    cursor: datetime | None,
+) -> dict[str, Any]:
+    raw = dict(api_query_params or {})
+    selector_updated_after = _parse_optional_iso_datetime(
+        raw.pop("updated_after", None)
+    )
+    params = {key: value for key, value in raw.items() if value is not None}
+    effective = resolve_effective_datetime(cursor, selector_updated_after)
+    return UPDATED_AFTER_INCREMENTAL.merge_params(params, effective)
 
 
 async def resync_skills_incremental(
@@ -163,7 +227,6 @@ async def _changed_skill_md_paths(
     include_skill_folder: bool,
 ) -> set[str]:
     """SKILL.md paths to rebuild: edited skills, plus owners of changed bundle files."""
-    # Same rule as the full resync: the repository tree match, then matches_skill_path.
     direct = {
         path
         for pattern in patterns
