@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.13-beta (2026-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.63.1
+
+
+## 0.3.12-beta (2026-11-26)
+
+
+### Improvements
+
+- Declare Hosted-by-Port SaaS live events in the integration spec so the live events control appears in integration settings.
+
+
 ## 0.3.11-beta (2026-11-25)
 
 
