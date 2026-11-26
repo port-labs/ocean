@@ -1,0 +1,58 @@
+title: Sonatype Lifecycle
+description: Sonatype Lifecycle (Nexus IQ Server) integration for Port Ocean
+icon: Sonatype
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/sonatype-lifecycle
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: organization
+      - kind: application
+      - kind: report
+      - kind: policyViolation
+      - kind: component
+      - kind: vulnerability
+      - kind: sourceControl
+configurations:
+  - name: iqServerUrl
+    required: true
+    type: url
+    description: >-
+      Base URL of your Sonatype IQ Server, including protocol
+      (e.g. https://iq.example.com). For Sonatype Cloud, use your tenant URL.
+  - name: iqUsername
+    required: true
+    type: string
+    description: >-
+      Username used to authenticate against IQ Server. We recommend a dedicated
+      service account with at least the "Developer"/"View" role on the
+      organizations and applications you want to sync.
+    sensitive: true
+  - name: iqUserToken
+    required: true
+    type: string
+    description: >-
+      A user token (or password) for the username above. Create a user token in
+      IQ Server under your account menu ->
+      <a target="_blank" href="https://help.sonatype.com/en/user-tokens.html">User Tokens</a>.
+    sensitive: true
+  - name: webhookSecret
+    required: false
+    type: string
+    description: >-
+      Optional shared secret. If set, it must match the "Secret Key" configured
+      on the IQ Server webhook so incoming events can be verified via
+      HMAC-SHA1 signatures.
+    sensitive: true
+  - name: appHost
+    required: false
+    type: url
+    description: >-
+      Publicly reachable base URL of this integration. Used only to tell you the
+      exact endpoint to register as a webhook target in IQ Server
+      (<appHost>/integration/webhook). Prefer OCEAN__BASE_URL for
+      deployments that need a live-events base URL.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
