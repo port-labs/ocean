@@ -10,7 +10,7 @@ from pydantic import (
     model_validator,
 )
 
-from actions.exceptions import InvalidActionParametersException
+from cursor_cloud_agents.actions.exceptions import InvalidActionParametersException
 
 
 class PromptImageBody(BaseModel):

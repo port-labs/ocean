@@ -3,21 +3,21 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from actions.abstract_executor import AbstractCursorExecutor
-from actions.create_agent.context import CreateAgentContext
-from actions.create_agent.handlers import CreateAgentHandler
-from actions.exceptions import InvalidActionParametersException
-from actions.request_bodies import parse_v0_create_body
-from actions.utils import (
+from cursor_cloud_agents.actions.abstract_executor import AbstractCursorExecutor
+from cursor_cloud_agents.actions.create_agent.context import CreateAgentContext
+from cursor_cloud_agents.actions.create_agent.handlers import CreateAgentHandler
+from cursor_cloud_agents.actions.exceptions import InvalidActionParametersException
+from cursor_cloud_agents.actions.request_bodies import parse_v0_create_body
+from cursor_cloud_agents.actions.utils import (
     build_agent_link,
     build_v0_launch_body,
     build_webhook_config,
     build_webhook_url,
 )
-from clients.endpoints import V0_AGENTS
-from core.webhook_signing import get_webhook_signing_secret
-from exporter_factory import create_runs_exporter
-from integration import ObjectKind
+from cursor_cloud_agents.clients.endpoints import V0_AGENTS
+from cursor_cloud_agents.core.webhook_signing import get_webhook_signing_secret
+from cursor_cloud_agents.exporter_factory import create_runs_exporter
+from cursor_cloud_agents.integration import ObjectKind
 
 LAUNCHING_STATUS_LABEL = "Launching agent"
 LAUNCH_FAILED_STATUS_LABEL = "Launch failed"

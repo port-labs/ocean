@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from actions.abstract_executor import AbstractCursorExecutor
-from actions.create_agent.context import (
+from cursor_cloud_agents.actions.abstract_executor import AbstractCursorExecutor
+from cursor_cloud_agents.actions.create_agent.context import (
     API_VERSION_V0,
     API_VERSION_V1,
     CreateAgentContext,
@@ -24,8 +24,12 @@ _HANDLERS: dict[str, CreateAgentHandler] | None = None
 def get_handler(api_version: str) -> CreateAgentHandler:
     global _HANDLERS
     if _HANDLERS is None:
-        from actions.create_agent.v0_handler import CreateAgentV0Handler
-        from actions.create_agent.v1_handler import CreateAgentV1Handler
+        from cursor_cloud_agents.actions.create_agent.v0_handler import (
+            CreateAgentV0Handler,
+        )
+        from cursor_cloud_agents.actions.create_agent.v1_handler import (
+            CreateAgentV1Handler,
+        )
 
         _HANDLERS = {
             API_VERSION_V0: CreateAgentV0Handler(),

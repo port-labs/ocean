@@ -3,13 +3,13 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
 
-from actions.abstract_executor import AbstractCursorExecutor
-from actions.create_agent.context import CreateAgentContext
-from actions.create_agent.handlers import CreateAgentHandler
-from actions.request_bodies import parse_v1_create_body
-from actions.utils import build_v1_create_body
-from clients.endpoints import V1_AGENTS
-from integration import ObjectKind
+from cursor_cloud_agents.actions.abstract_executor import AbstractCursorExecutor
+from cursor_cloud_agents.actions.create_agent.context import CreateAgentContext
+from cursor_cloud_agents.actions.create_agent.handlers import CreateAgentHandler
+from cursor_cloud_agents.actions.request_bodies import parse_v1_create_body
+from cursor_cloud_agents.actions.utils import build_v1_create_body
+from cursor_cloud_agents.clients.endpoints import V1_AGENTS
+from cursor_cloud_agents.integration import ObjectKind
 
 CREATING_STATUS_LABEL = "Creating agent"
 CREATE_FAILED_STATUS_LABEL = "Creation failed"

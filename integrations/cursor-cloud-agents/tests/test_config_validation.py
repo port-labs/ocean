@@ -1,14 +1,18 @@
 import pytest
 from unittest.mock import MagicMock
 
-from actions.create_agent.context import CreateAgentContext
-from actions.exceptions import InvalidActionParametersException
-from actions.request_bodies import (
+from cursor_cloud_agents.actions.create_agent.context import CreateAgentContext
+from cursor_cloud_agents.actions.exceptions import InvalidActionParametersException
+from cursor_cloud_agents.actions.request_bodies import (
     parse_v0_create_body,
     parse_v1_create_body,
     parse_v1_run_body,
 )
-from actions.utils import build_v0_launch_body, build_v1_create_body, build_v1_run_body
+from cursor_cloud_agents.actions.utils import (
+    build_v0_launch_body,
+    build_v1_create_body,
+    build_v1_run_body,
+)
 
 
 def _context_from_props(**props: object) -> CreateAgentContext:

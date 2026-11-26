@@ -2,7 +2,7 @@ from typing import Any
 
 from port_ocean.context.ocean import ocean
 
-from clients.cursor_agents_client import CursorAgentsClient
+from cursor_cloud_agents.clients.cursor_agents_client import CursorAgentsClient
 
 _cursor_agents_client: CursorAgentsClient | None = None
 

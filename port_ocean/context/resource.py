@@ -58,7 +58,9 @@ async def resource_context(
     )
 
     try:
-        with logger.contextualize(resource_kind=resource.kind):
+        # str() so enum kinds (e.g. fake-integration ObjectKind) are pickle-safe
+        # for loguru's multiprocess Port log sink.
+        with logger.contextualize(resource_kind=str(resource.kind)):
             yield resource
 
     finally:

@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from actions.utils import build_agent_link
-from integration import ObjectKind
+from cursor_cloud_agents.actions.utils import build_agent_link
+from cursor_cloud_agents.integration import ObjectKind
 
 # v0 launch / webhook payloads carry run lifecycle statuses. Map them to v1 agent
 # lifecycle values before upserting the cursor_agent blueprint.

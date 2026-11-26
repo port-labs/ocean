@@ -13,7 +13,7 @@ from pydantic import (
 )
 from port_ocean.core.models import IntegrationRun
 
-from actions.exceptions import InvalidActionParametersException
+from cursor_cloud_agents.actions.exceptions import InvalidActionParametersException
 
 API_VERSION_V0 = "v0"
 API_VERSION_V1 = "v1"

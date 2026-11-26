@@ -7,8 +7,8 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.models import IntegrationRun
-from clients.client_factory import create_cursor_agents_client
-from core.catalog import normalize_raw_for_catalog
+from cursor_cloud_agents.clients.client_factory import create_cursor_agents_client
+from cursor_cloud_agents.core.catalog import normalize_raw_for_catalog
 
 
 class AbstractCursorExecutor(AbstractExecutor):
