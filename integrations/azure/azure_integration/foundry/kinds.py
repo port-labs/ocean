@@ -89,6 +89,17 @@ class AgentSelector(FoundrySelector):
             'identifier (e.g. identifier: .id + "/" + (.item.version | tostring)).'
         ),
     )
+    enrich_toolbox: bool = Field(
+        default=False,
+        alias="enrichToolbox",
+        title="Enrich from toolbox",
+        description=(
+            "When true, agents whose MCP tools reference a Foundry toolbox get "
+            "__toolboxSkillNames and __toolboxMcpServers from the pinned toolbox "
+            "(lists toolboxes once per project, then one detail call per toolbox). "
+            "Off by default."
+        ),
+    )
 
 
 class AgentResourceConfig(ResourceConfig):

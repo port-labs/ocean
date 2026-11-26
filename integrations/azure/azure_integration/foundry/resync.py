@@ -75,6 +75,7 @@ async def resync_foundry_agents(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             project_endpoint=ep,
             project_id=pid,
             include_versions=selector.include_versions,
+            enrich_toolbox=selector.enrich_toolbox,
         ),
     ):
         yield page

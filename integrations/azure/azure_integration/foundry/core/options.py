@@ -19,6 +19,7 @@ class ProjectIdentifier(BaseModel):
 
 class ListAgentsOptions(ProjectIdentifier):
     include_versions: bool = False
+    enrich_toolbox: bool = False
 
 
 class SingleAgentOptions(ProjectIdentifier):

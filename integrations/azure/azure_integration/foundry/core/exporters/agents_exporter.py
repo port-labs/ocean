@@ -15,10 +15,12 @@ from azure_integration.foundry.clients.http.foundry_client import (
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListAgentsOptions, SingleAgentOptions
 from azure_integration.foundry.foundry_incremental import AGENT_INCREMENTAL
-from azure_integration.foundry.helpers.utils import (
-    build_foundry_url,
-    enrich_with_project,
+from azure_integration.foundry.helpers.agent_enrichment import (
+    build_toolbox_enrichment_index,
+    enrich_agent_row,
+    enrich_agents_from_toolbox,
 )
+from azure_integration.foundry.helpers.utils import build_foundry_url
 
 
 class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
@@ -58,7 +60,25 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         include_versions = options.include_versions
+        enrich_toolbox = options.enrich_toolbox
         cursor = active_incremental_cursor()
+        toolbox_index: dict[str, tuple[list[str], list[str]]] = {}
+        if enrich_toolbox:
+            toolbox_index = await build_toolbox_enrichment_index(
+                self.client,
+                project_endpoint=project_endpoint,
+            )
+
+        async def fetch_agent_summary(
+            endpoint: str, agent_id: str
+        ) -> dict[str, Any] | None:
+            return await self.get_resource(
+                SingleAgentOptions(
+                    project_endpoint=endpoint,
+                    project_id="",
+                    agent_id=agent_id,
+                )
+            )
 
         async for page in paginate_with_strategy(
             self.iter_agent_pages(project_endpoint),
@@ -76,7 +96,7 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
                     )
                     continue
                 batch.append(
-                    enrich_with_project(
+                    enrich_agent_row(
                         item,
                         project_endpoint=project_endpoint,
                         project_id=project_id,
@@ -84,6 +104,13 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
                 )
             if include_versions:
                 await self._attach_versions(project_endpoint, batch)
+            if enrich_toolbox and batch:
+                await enrich_agents_from_toolbox(
+                    project_endpoint=project_endpoint,
+                    agents=batch,
+                    fetch_agent_if_needed=fetch_agent_summary,
+                    toolbox_index=toolbox_index,
+                )
             yield batch
 
     async def _attach_versions(

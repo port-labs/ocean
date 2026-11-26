@@ -1,0 +1,4 @@
+bump: patch
+changelog-type: improvement
+changelog:
+  - Optional foundry-agent selector enrichToolbox (default false) loads toolbox skills and MCP server URLs onto agent rows; agent rows include __foundryPortalAgentUrl for the Foundry portal build UI.
