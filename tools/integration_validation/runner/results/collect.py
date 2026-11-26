@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.models import EntitiesByBlueprint
 from tools.integration_validation.runner.results.mock_journal import (
     MockJournal,
     fetch_mock_journal,
@@ -24,9 +25,8 @@ from tools.integration_validation.runner.core.statuses import ResyncStatus
 @dataclass(frozen=True)
 class ScenarioCollection:
     resync_status: ResyncStatus
-    # Keyed by the blueprint identifier in the integration's blueprints file;
-    # entity payloads are as Port returned them (suffixed blueprint names).
-    entities: dict[str, list[dict[str, Any]]]
+    # Entities are as Port returned them (suffixed blueprint names).
+    entities: EntitiesByBlueprint
     mock: MockJournal
 
     def to_dict(self) -> dict[str, Any]:
@@ -70,7 +70,7 @@ async def collect_scenario(
 
 async def _search_run_entities(
     client: ValidationPortClient, blueprint_renames: dict[str, str]
-) -> dict[str, list[dict[str, Any]]]:
+) -> EntitiesByBlueprint:
     results = await asyncio.gather(
         *(
             client.search_blueprint_entities(suffixed)

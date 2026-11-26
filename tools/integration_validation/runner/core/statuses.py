@@ -28,6 +28,13 @@ class ResyncStatus(StrEnum):
             return cls.MISSING
 
 
+class ComparisonStatus(StrEnum):
+    """Outcome of comparing a scenario's entities with ``expected/<scenario>/``."""
+
+    MATCHED = "matched"
+    DIFFERENT = "different"
+
+
 class ValidationAggregateStatus(StrEnum):
     FAILED = "failed"
     PASSED = "passed"

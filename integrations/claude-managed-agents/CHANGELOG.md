@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.18.0 (2026-11-25)
+
+
+### Improvements
+
+- Session relations in the default mapping now use search relations on `$identifier`, so a session whose agent, environment, vault or memory store is not in the catalog (for example because it is archived) is ingested with that relation empty instead of failing. Added an `archived` boolean property to the agent, environment, vault, memory store and session blueprints, and webhooks and the archive agent action now honor `includeArchived`. Existing installations keep their current mapping until it is updated.
+
+
 ## 0.17.19 (2026-11-25)
 
 
