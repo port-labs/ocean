@@ -10,11 +10,86 @@ Source of truth for formats and behavior:
 
 ## Prerequisites
 
+Complete **mandatory environment** checks first. Do not start the mock or run `make validate`
+until they pass (or the developer explicitly asks to continue despite a warning).
+
+### Mandatory environment
+
+The runner exits **2** (`status: error` in the report) when setup is incomplete. These must be
+set in the process environment or in `integrations/<name>/.env` (loaded during runner preflight):
+
+| Variable | Required for |
+| --- | --- |
+| `OCEAN__PORT__CLIENT_ID` | Port API authentication |
+| `OCEAN__PORT__CLIENT_SECRET` | Port API authentication |
+| `OCEAN__PORT__BASE_URL` | Port org API base URL |
+| `OCEAN__INTEGRATION__TYPE` | Integration type in Port (usually the folder name, e.g. `pagerduty`) |
+
+Validation mock scenarios inject vendor settings via `defaults.integration_config` in
+`scenarios.yaml` (for example a fake API token). Missing entries in `.env` for **3rd-party
+vendor** credentials are expected during validation; only the four variables above are
+mandatory.
+
+**Agent preflight (before the mock):**
+
+1. Confirm `integrations/<name>/.env` exists or the developer said the vars are exported in
+   the shell.
+2. Detect which of the four keys are absent or have an empty value. Check `.env` and the
+   current environment; inspect only key names and presence — **never** read, log, echo, or
+   repeat secret values in chat.
+3. If anything is missing, **stop** and tell the developer exactly which **key names** to add
+   and where (`integrations/<name>/.env`). Do not start `validate-mock`, probe port 9000, or
+   run `make validate` until they confirm the file is ready (unless they explicitly override).
+4. When reporting success, you may say all mandatory keys are present; do not list values.
+
+Safe check from `integrations/<name>/` using the repo root venv (prints only missing key
+names or `ok`):
+
+```bash
+cd ../.. && .venv/bin/python - <<'PY'
+from pathlib import Path
+import os
+
+integration = Path("integrations/<name>")  # substitute <name>
+required = (
+    "OCEAN__PORT__CLIENT_ID",
+    "OCEAN__PORT__CLIENT_SECRET",
+    "OCEAN__PORT__BASE_URL",
+    "OCEAN__INTEGRATION__TYPE",
+)
+
+def from_env_file(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        out[key.strip()] = value.strip().strip("'\"")
+    return out
+
+file_vars = from_env_file(integration / ".env")
+missing = [
+    key
+    for key in required
+    if not (os.environ.get(key) or file_vars.get(key))
+]
+if missing:
+    print("missing:", ", ".join(missing))
+    raise SystemExit(1)
+print("ok")
+PY
+```
+
+### Tooling
+
 - Repo root venv exists (`.venv/` at the repo root): it runs the runner and the mock.
-- The integration's venv exists (`make install` in `integrations/<name>/`): the runner uses its `ocean`.
-- `integrations/<name>/.env` has `OCEAN__PORT__CLIENT_ID`, `OCEAN__PORT__CLIENT_SECRET`,
-  `OCEAN__PORT__BASE_URL` and `OCEAN__INTEGRATION__TYPE`. If any is missing, ask the
-  developer to add it. Never read or print the values, and never ask for 3rd-party credentials.
+- The integration's venv exists (`make install` in `integrations/<name>/`): the runner uses
+  its `ocean`.
+
+Never ask for 3rd-party vendor credentials for validation runs.
 
 ## Mock port selection
 

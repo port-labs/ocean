@@ -22,6 +22,7 @@ Building `validation/` from scratch is described in
 | Write files under `integrations/<name>/validation/` | Change integration code to make validation pass, or without telling the developer why |
 | Mark every route it writes `verified: false` | Present made-up fixtures as recorded vendor responses |
 | Run the mock and the scenarios, and explain entity diffs | Run `--update-expected` without the developer's approval |
+| Preflight mandatory `OCEAN__*` env keys (names only) before the mock | Start `validate-mock` or `make validate` when Port env is incomplete |
 | Write the first expected entities for new scenarios | Commit expected entities without the developer's review |
 | Report Port leftovers | Delete Port resources by hand |
 
@@ -44,7 +45,19 @@ or when validation was just bootstrapped.
 
 ### 2. Preflight
 
-Check the prerequisites in the reference. Stop and tell the developer what is missing.
+Run this **before** mock port selection, `validate-mock`, or `make validate`.
+
+1. **Mandatory environment** — follow
+   [references/running-validation.md](references/running-validation.md) (*Mandatory
+   environment*). If any required `OCEAN__*` keys are missing or empty, list **only the key
+   names**, say they belong in `integrations/<name>/.env` (or the shell), and **stop**. Do not
+   start the mock or validation loop until the developer confirms env is ready, unless they
+   explicitly ask to continue anyway.
+2. **Tooling** — repo root `.venv/` and the integration venv (`make install` in
+   `integrations/<name>/`). Stop and name what is missing.
+
+Never read or print credential values. Vendor API secrets are not required for mock-backed
+validation when `scenarios.yaml` supplies `integration_config`.
 
 ### 3. Run
 
