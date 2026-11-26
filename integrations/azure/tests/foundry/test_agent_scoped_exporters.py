@@ -36,6 +36,7 @@ async def test_lists_conversations_per_agent_endpoint() -> None:
         side_effect=[
             _agen([{"id": "agent-a"}]),
             _agen([{"id": "conv-1", "created_at": _NOW}]),
+            _agen([]),
         ]
     )
 
@@ -74,10 +75,10 @@ async def test_lists_conversations_project_scope_only() -> None:
     ):
         pages.append(page)
 
-    assert client.send_cursor_paginated_request.call_count == 1
-    assert client.send_cursor_paginated_request.call_args.args[1] == (
-        "openai/v1/conversations"
-    )
+    paths = [
+        call.args[1] for call in client.send_cursor_paginated_request.call_args_list
+    ]
+    assert paths == ["openai/v1/conversations"]
     assert pages[0][0]["id"] == "conv-p"
     assert "__foundryAgentId" not in pages[0][0]
 

@@ -46,6 +46,17 @@ def test_response_run_output() -> None:
     }
 
 
+def test_response_failure_message() -> None:
+    body = Response.model_validate({"error": {"message": "quota exceeded"}})
+    assert body.failure_message() == "quota exceeded"
+
+
+def test_response_is_in_progress() -> None:
+    assert Response.model_validate({}).is_in_progress() is True
+    assert Response.model_validate({"status": "queued"}).is_in_progress() is True
+    assert Response.model_validate({"status": "completed"}).is_in_progress() is False
+
+
 def test_terminal_events() -> None:
     assert TERMINAL_EVENTS["response.completed"] is True
     assert TERMINAL_EVENTS["response.failed"] is False

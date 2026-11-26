@@ -19,6 +19,7 @@ class ProjectIdentifier(BaseModel):
 
 class ListAgentsOptions(ProjectIdentifier):
     include_versions: bool = False
+    enrich_toolbox: bool = False
 
 
 class SingleAgentOptions(ProjectIdentifier):
@@ -43,7 +44,8 @@ class ListConversationsOptions(EndpointScopedOptions):
 
 
 class ListResponsesOptions(EndpointScopedOptions):
-    pass
+    conversation_id: str | None = None
+    agent_id: str | None = None
 
 
 class SingleEndpointScopedOptions(ProjectIdentifier):
@@ -72,3 +74,7 @@ class ListSkillsOptions(ProjectIdentifier):
 
 class ListToolboxesOptions(ProjectIdentifier):
     pass
+
+
+class SingleToolboxOptions(ProjectIdentifier):
+    toolbox_name: str

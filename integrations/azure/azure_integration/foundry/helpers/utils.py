@@ -6,6 +6,8 @@ from urllib.parse import urljoin
 
 from port_ocean.utils.time import convert_str_to_utc_datetime
 
+from azure_integration.foundry.models.agent import Agent, PromptAgentDefinition
+
 
 def projects_matching_regions(
     projects: list[dict[str, Any]], regions: list[str]
@@ -23,6 +25,17 @@ def projects_matching_regions(
 def build_foundry_url(project_endpoint: str, path: str) -> str:
     base = project_endpoint.rstrip("/") + "/"
     return urljoin(base, path.lstrip("/"))
+
+
+def tools_from_agent(agent: Agent) -> list[Any]:
+    definition = agent.latest_version.definition
+    return definition.tools if isinstance(definition, PromptAgentDefinition) else []
+
+
+def tools_from_agent_payload(agent: dict[str, Any]) -> list[Any]:
+    if "versions" not in agent:
+        return []
+    return tools_from_agent(Agent.model_validate(agent))
 
 
 def agent_openai_protocol_path(agent_id: str, resource: str) -> str:

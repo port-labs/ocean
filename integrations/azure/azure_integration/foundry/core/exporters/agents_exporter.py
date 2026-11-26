@@ -15,10 +15,11 @@ from azure_integration.foundry.clients.http.foundry_client import (
 from azure_integration.foundry.core.exporters.base import FoundryExporter
 from azure_integration.foundry.core.options import ListAgentsOptions, SingleAgentOptions
 from azure_integration.foundry.foundry_incremental import AGENT_INCREMENTAL
-from azure_integration.foundry.helpers.utils import (
-    build_foundry_url,
-    enrich_with_project,
+from azure_integration.foundry.helpers.agent_enrichment import (
+    enrich_agent_row,
+    enrich_agents_from_toolbox,
 )
+from azure_integration.foundry.helpers.utils import build_foundry_url
 
 
 class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
@@ -58,6 +59,7 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
         project_endpoint = options.project_endpoint
         project_id = options.project_id
         include_versions = options.include_versions
+        enrich_toolbox = options.enrich_toolbox
         cursor = active_incremental_cursor()
 
         async for page in paginate_with_strategy(
@@ -76,7 +78,7 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
                     )
                     continue
                 batch.append(
-                    enrich_with_project(
+                    enrich_agent_row(
                         item,
                         project_endpoint=project_endpoint,
                         project_id=project_id,
@@ -84,6 +86,13 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
                 )
             if include_versions:
                 await self._attach_versions(project_endpoint, batch)
+            if enrich_toolbox and batch:
+                await enrich_agents_from_toolbox(
+                    self.client,
+                    project_endpoint,
+                    project_id,
+                    batch,
+                )
             yield batch
 
     async def _attach_versions(

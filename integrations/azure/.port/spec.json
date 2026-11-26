@@ -471,11 +471,25 @@
           "description": "ARM resource id for the project that owns the response."
         },
         {
+          "name": "agentId",
+          "title": "Agent ID",
+          "type": "string",
+          "required": true,
+          "description": "Foundry agent id; cancel and response listing use the agent OpenAI protocol endpoint."
+        },
+        {
           "name": "responseId",
           "title": "Response ID",
           "type": "string",
-          "required": true,
-          "description": "The Foundry response id returned when the invoke was submitted (for example resp_…)."
+          "required": false,
+          "description": "The Foundry response id returned when the invoke was submitted (for example resp_…). Omit when conversationId and agentId are set (factory cancel)."
+        },
+        {
+          "name": "conversationId",
+          "title": "Conversation ID",
+          "type": "string",
+          "required": false,
+          "description": "Foundry conversation id; cancels every non-terminal response in that session (responseId wins when set)."
         }
       ]
     }

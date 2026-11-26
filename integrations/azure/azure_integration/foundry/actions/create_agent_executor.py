@@ -10,7 +10,8 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryActionInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.helpers.utils import deep_merge, enrich_with_project
+from azure_integration.foundry.helpers.agent_enrichment import prepare_agent_for_catalog
+from azure_integration.foundry.helpers.utils import deep_merge
 from azure_integration.foundry.kinds import ObjectKind
 from azure_integration.foundry.models.agent import parse_agent_definition
 
@@ -82,7 +83,9 @@ class CreateAgentExecutor(AbstractFoundryExecutor):
         logger.info(f"Created Foundry agent {agent.get('id')} for run {run.id}")
         await self.register_entity(
             ObjectKind.FOUNDRY_AGENT,
-            enrich_with_project(agent, project_endpoint=inputs.projectEndpoint),
+            await prepare_agent_for_catalog(
+                agent, project_endpoint=inputs.projectEndpoint
+            ),
             run,
         )
 

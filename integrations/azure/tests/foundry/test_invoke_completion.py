@@ -10,7 +10,9 @@ from port_ocean.core.models import (
 from azure_integration.foundry.helpers.invoke_completion import (
     complete_invoke_run_for_response,
     complete_invoke_run_from_webhook,
+    sync_invoke_catalog_for_run,
 )
+from azure_integration.foundry.kinds import ObjectKind
 
 
 def _run(run_id: str) -> WorkflowNodeRun:
@@ -115,6 +117,10 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
         patch(
             "azure_integration.foundry.stream_manager.get_stream_manager"
         ) as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.sync_invoke_catalog_for_run",
+            AsyncMock(),
+        ),
     ):
         exporter_cls.return_value.get_resource = get_resource
         mock_manager.return_value.untrack_for_run = AsyncMock()
@@ -154,6 +160,10 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
         patch(
             "azure_integration.foundry.stream_manager.get_stream_manager"
         ) as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.sync_invoke_catalog_for_run",
+            AsyncMock(),
+        ),
     ):
         exporter_cls.return_value.get_resource = get_resource
         mock_manager.return_value.untrack_for_run = AsyncMock()
@@ -165,3 +175,105 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
     assert (
         options.project_endpoint == "https://acct.services.ai.azure.com/api/projects/p"
     )
+
+
+@pytest.mark.asyncio
+async def test_webhook_failed_response_sets_message() -> None:
+    run = _run("run_fail")
+    run.output = {"responseId": "resp_fail", "conversationId": "conv_1"}
+    mock_ocean = _ocean()
+    get_resource = AsyncMock(
+        return_value={
+            "id": "resp_fail",
+            "status": "failed",
+            "error": {"message": "model overloaded"},
+        }
+    )
+    with (
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.asyncio.sleep",
+            AsyncMock(),
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.ResponsesExporter"
+        ) as exporter_cls,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.create_foundry_client"
+        ),
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.sync_invoke_catalog_for_run",
+            AsyncMock(),
+        ),
+    ):
+        exporter_cls.return_value.get_resource = get_resource
+        mock_manager.return_value.untrack_for_run = AsyncMock()
+        await complete_invoke_run_from_webhook(
+            run, event_type="response.failed", response_id="resp_fail"
+        )
+    assert mock_ocean.port_client.report_run_completed.await_args.kwargs[
+        "message"
+    ] == "model overloaded"
+
+
+@pytest.mark.asyncio
+async def test_complete_invalid_response_body_still_closes() -> None:
+    run = _run("run_bad_body")
+    mock_ocean = _ocean()
+    with (
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.stream_manager.get_stream_manager"
+        ) as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.sync_invoke_catalog_for_run",
+            AsyncMock(),
+        ),
+    ):
+        mock_manager.return_value.untrack_for_run = AsyncMock()
+        assert await complete_invoke_run_for_response(
+            run,
+            response_id="resp_bad",
+            response_body={"usage": "not-a-dict"},
+            success=True,
+            source="test",
+        )
+    assert run.output.get("responseId") == "resp_bad"
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_catalog_sync_skips_missing_conversation_and_stamps_agent() -> None:
+    arm_id = (
+        "/subscriptions/s/resourceGroups/rg/providers/"
+        "Microsoft.CognitiveServices/accounts/acct/projects/p"
+    )
+    run = _run("run_catalog")
+    assert run.config is not None
+    run.config.integrationActionExecutionProperties.update({"agentId": "agent-1"})
+    run.output = {"conversationId": "conv_missing", "projectArmId": arm_id}
+    mock_ocean = MagicMock()
+    mock_ocean.register_raw = AsyncMock()
+    mock_ocean.port_client.post_run_log = AsyncMock()
+    get_conv = AsyncMock(return_value=None)
+    with (
+        patch("azure_integration.foundry.helpers.invoke_completion.ocean", mock_ocean),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.create_foundry_client"
+        ),
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.ConversationsExporter"
+        ) as conv_exporter,
+    ):
+        conv_exporter.return_value.get_resource = get_conv
+        await sync_invoke_catalog_for_run(
+            run, response_id="resp_1", response_body={"id": "resp_1", "status": "completed"}
+        )
+    mock_ocean.register_raw.assert_awaited_once()
+    kind, rows = mock_ocean.register_raw.await_args.args
+    assert kind == ObjectKind.FOUNDRY_RESPONSE
+    assert rows[0]["__foundryAgentId"] == "agent-1"
+    assert rows[0]["__foundryProjectId"] == arm_id

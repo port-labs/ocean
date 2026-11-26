@@ -12,9 +12,9 @@ from azure_integration.foundry.actions.abstract_action_input import (
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
 from azure_integration.foundry.core.exporters.agents_exporter import AgentsExporter
 from azure_integration.foundry.core.options import SingleAgentOptions
+from azure_integration.foundry.helpers.agent_enrichment import prepare_agent_for_catalog
 from azure_integration.foundry.helpers.utils import (
     deep_merge,
-    enrich_with_project,
     project_name_from_endpoint,
 )
 from azure_integration.foundry.kinds import ObjectKind
@@ -131,7 +131,9 @@ class UpdateAgentExecutor(AbstractFoundryExecutor):
         logger.info(f"Updated Foundry agent {inputs.agentId} for run {run.id}")
         await self.register_entity(
             ObjectKind.FOUNDRY_AGENT,
-            enrich_with_project(agent, project_endpoint=inputs.projectEndpoint),
+            await prepare_agent_for_catalog(
+                agent, project_endpoint=inputs.projectEndpoint
+            ),
             run,
         )
         await ocean.port_client.report_run_completed(

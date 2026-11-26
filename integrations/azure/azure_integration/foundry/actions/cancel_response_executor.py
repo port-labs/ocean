@@ -1,25 +1,39 @@
-from typing import Any
+from typing import Self
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
 from port_ocean.exceptions.execution_manager import ActionExecutionError
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryInvokeInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.clients.http.foundry_client import FoundryApiError
+from azure_integration.foundry.core.exporters.responses_exporter import (
+    ResponsesExporter,
+)
+from azure_integration.foundry.core.options import ListResponsesOptions
+from azure_integration.foundry.helpers.utils import (
+    agent_openai_protocol_path,
+    project_name_from_endpoint,
+)
 
 CANCELLING_STATUS_LABEL = "Cancelling response"
 CANCEL_FAILED_STATUS_LABEL = "Cancel failed"
 RESPONSE_CANCELLED_STATUS_LABEL = "Response cancelled"
-RESPONSE_NOT_CANCELLABLE_STATUS_LABEL = "Cannot cancel response"
 
 
 class CancelResponseInputs(AbstractFoundryInvokeInput):
-    responseId: str = Field(min_length=1)
+    responseId: str | None = Field(default=None, min_length=1)
+    conversationId: str | None = Field(default=None, min_length=1)
+    agentId: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _require_cancel_target(self) -> Self:
+        if self.responseId or self.conversationId:
+            return self
+        raise ValueError("responseId or conversationId is required")
 
 
 class CancelResponseExecutor(AbstractFoundryExecutor):
@@ -28,61 +42,62 @@ class CancelResponseExecutor(AbstractFoundryExecutor):
     ACTION_NAME = "cancel_response"
 
     async def _get_partition_key(self, run: IntegrationRun) -> str | None:
-        response_id = run.execution_properties.get("responseId")
-        return str(response_id) if response_id else None
+        return run.execution_properties.get(
+            "conversationId"
+        ) or run.execution_properties.get("responseId")
 
     async def execute(self, run: IntegrationRun) -> None:
         inputs = CancelResponseInputs.from_execution_properties(
             run.execution_properties
         )
-        cancel_url = self.client.build_url(
-            inputs.project_endpoint,
-            f"openai/v1/responses/{inputs.responseId}/cancel",
-        )
+        response_ids: list[str] = []
+        if inputs.conversationId:
+            response_ids = [
+                str(item["id"])
+                for item in await ResponsesExporter(self.client).in_progress(
+                    ListResponsesOptions(
+                        project_endpoint=inputs.project_endpoint,
+                        project_id=project_name_from_endpoint(inputs.project_endpoint),
+                        agent_id=inputs.agentId,
+                        conversation_id=inputs.conversationId,
+                    )
+                )
+                if item.get("id")
+            ]
+        elif inputs.responseId:
+            response_ids.append(inputs.responseId)
 
-        await ocean.port_client.post_run_log(
-            run,
-            f"Cancelling Foundry response {inputs.responseId}",
-            status_label=CANCELLING_STATUS_LABEL,
-            should_raise=False,
-        )
-
-        try:
-            payload = await self.client.send_api_request(cancel_url, method="POST")
-        except FoundryApiError as error:
-            if error.is_skippable_client_error:
+        cancelled: list[str] = []
+        for response_id in response_ids:
+            cancel_url = self.client.build_url(
+                inputs.project_endpoint,
+                f"{agent_openai_protocol_path(inputs.agentId, 'responses')}/{response_id}/cancel",
+            )
+            await ocean.port_client.post_run_log(
+                run,
+                f"Cancelling Foundry response {response_id}",
+                status_label=CANCELLING_STATUS_LABEL,
+                should_raise=False,
+            )
+            try:
+                await self.client.send_api_request(cancel_url, method="POST")
+                cancelled.append(response_id)
+            except Exception as error:
                 raise ActionExecutionError(
-                    f"Response {inputs.responseId} cannot be cancelled: {error}",
-                    status_label=RESPONSE_NOT_CANCELLABLE_STATUS_LABEL,
+                    f"Failed to cancel response {response_id}: {error}",
+                    status_label=CANCEL_FAILED_STATUS_LABEL,
                 ) from error
-            raise ActionExecutionError(
-                f"Failed to cancel response {inputs.responseId}: {error}",
-                status_label=CANCEL_FAILED_STATUS_LABEL,
-            ) from error
-        except Exception as error:
-            raise ActionExecutionError(
-                f"Failed to cancel response {inputs.responseId}: {error}",
-                status_label=CANCEL_FAILED_STATUS_LABEL,
-            ) from error
 
-        status = payload.get("status") if isinstance(payload, dict) else None
-        logger.info(
-            f"Cancelled Foundry response {inputs.responseId} "
-            f"(status={status!r}) for run {run.id}"
-        )
+        logger.info(f"Cancelled Foundry response(s) {cancelled} for run {run.id}")
 
         if isinstance(run, WorkflowNodeRun):
-            output: dict[str, Any] = {
-                "responseId": inputs.responseId,
-                "projectArmId": inputs.projectArmId,
+            run.output = {
+                "cancelledResponseIds": cancelled,
             }
-            if status is not None:
-                output["status"] = status
-            run.output = output
 
         await ocean.port_client.report_run_completed(
             run,
             True,
-            f"Cancelled response {inputs.responseId}",
+            f"Cancelled {len(cancelled)} response(s)",
             status_label=RESPONSE_CANCELLED_STATUS_LABEL,
         )

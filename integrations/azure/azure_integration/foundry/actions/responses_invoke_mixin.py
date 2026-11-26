@@ -13,6 +13,7 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.helpers.invoke_completion import (
+    sync_invoke_catalog_for_run,
     INVOCATION_SUBMITTED_STATUS_LABEL,
     complete_invoke_run_for_response,
     complete_invoke_run_from_sse,
@@ -69,6 +70,11 @@ class ResponsesInvokeMixin:
                 response_id=response_id,
                 bind_output=bind_output,
                 running_status_label=running_status_label,
+            )
+            await sync_invoke_catalog_for_run(
+                run,
+                response_id=response_id,
+                response_body=None,
             )
             if not early_complete_on_bind or submitted_after_bind:
                 return

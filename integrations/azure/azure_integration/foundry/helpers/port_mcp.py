@@ -12,7 +12,8 @@ from azure_integration.foundry.helpers.toolbox import (
     ensure_toolbox_version,
     toolbox_name_from_agent_tools,
 )
-from azure_integration.foundry.models.agent import Agent, PromptAgentDefinition
+from azure_integration.foundry.helpers.utils import tools_from_agent_payload
+from azure_integration.foundry.models.agent import Agent
 from azure_integration.foundry.models.toolbox import (
     GITHUB_MCP_SERVER_LABEL,
     PORT_MCP_SERVER_LABEL,
@@ -50,13 +51,6 @@ def agent_definition_kind(agent: dict[str, Any] | None) -> str:
     if not isinstance(agent, dict) or "versions" not in agent:
         return "prompt"
     return Agent.model_validate(agent).kind
-
-
-def tools_from_agent_payload(agent: Any) -> list[Any]:
-    if not isinstance(agent, dict) or "versions" not in agent:
-        return []
-    definition = Agent.model_validate(agent).latest_version.definition
-    return definition.tools if isinstance(definition, PromptAgentDefinition) else []
 
 
 async def upsert_custom_keys_connection(
