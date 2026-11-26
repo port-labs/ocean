@@ -86,14 +86,15 @@ class PortEntity(BaseModel):
     identifier: str = Field(min_length=1)
     title: str | None = None
     icon: str | None = None
-    team: list[str] | str | None = None
+    team: list[str] | None = None
     properties: dict[str, Any] | None = None
     relations: dict[str, Any] | None = None
     blueprint: str | None = None
 
-    def as_json(self) -> dict[str, Any]:
-        """Only the keys the payload had, so snapshots keep the shape Port returned."""
-        return self.model_dump(exclude_unset=True)
+    @field_validator("team", mode="before")
+    @classmethod
+    def _team_as_list(cls, value: Any) -> Any:
+        return [value] if isinstance(value, str) else value
 
 
 # Keyed by the blueprint identifier in the integration's blueprints file.

@@ -25,7 +25,7 @@ def _port_entity(**overrides: Any) -> PortEntity:
 
 
 def _normalize(entity: PortEntity, ignore_fields: list[str]) -> dict[str, Any]:
-    return normalize_entity(entity, ignore_fields).as_json()
+    return normalize_entity(entity, ignore_fields).model_dump(exclude_unset=True)
 
 
 def test_drops_port_metadata_and_the_suffixed_blueprint() -> None:
@@ -35,26 +35,26 @@ def test_drops_port_metadata_and_the_suffixed_blueprint() -> None:
         assert field not in normalized
 
 
-def test_null_and_missing_properties_and_relations_are_equal() -> None:
-    with_nulls = _normalize(_port_entity(icon=None), [])
+def test_keeps_explicit_null_property_and_relation_values() -> None:
+    normalized = _normalize(_port_entity(), [])
+
+    assert normalized["properties"] == {"handle": "platform", "description": None}
+    assert normalized["relations"] == {
+        "members": ["adam", "zoe"],
+        "lead": None,
+        "org": "acme",
+    }
+
+
+def test_null_property_key_is_not_equal_to_a_missing_key() -> None:
+    with_null = _normalize(_port_entity(), [])
     without = _normalize(
-        _port_entity(
-            properties={"handle": "platform"},
-            relations={"members": ["adam", "zoe"], "org": "acme"},
-        ),
+        _port_entity(properties={"handle": "platform"}),
         [],
     )
 
-    assert with_nulls == without
-    assert "icon" not in with_nulls
-
-
-def test_sections_left_empty_equal_missing_sections() -> None:
-    normalized = _normalize(
-        PortEntity(identifier="a", properties={"x": None}, relations={}), []
-    )
-
-    assert normalized == {"identifier": "a"}
+    assert with_null != without
+    assert "description" not in without["properties"]
 
 
 def test_sorts_relation_arrays_and_team_but_not_property_arrays() -> None:
@@ -63,6 +63,12 @@ def test_sorts_relation_arrays_and_team_but_not_property_arrays() -> None:
     assert normalized["relations"]["members"] == ["adam", "zoe"]
     assert normalized["team"] == ["a", "b"]
     assert normalized["properties"]["tags"] == ["z", "a"]
+
+
+def test_single_team_string_becomes_a_list() -> None:
+    normalized = _normalize(_port_entity(team="platform"), [])
+
+    assert normalized["team"] == ["platform"]
 
 
 def test_ignore_fields_supports_top_level_and_dotted_paths() -> None:
