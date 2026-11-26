@@ -23,7 +23,7 @@ Building `validation/` from scratch is described in
 | Mark every route it writes `verified: false` | Present made-up fixtures as recorded vendor responses |
 | Run the mock and the scenarios, and explain entity diffs | Run `--update-expected` without the developer's approval |
 | Preflight mandatory `OCEAN__*` env keys (names only) before the mock | Start `validate-mock` or `make validate` when Port env is incomplete |
-| Write the first expected entities for new scenarios | Commit expected entities without the developer's review |
+| Flag snapshot files the runner writes on a scenario's first successful resync | Commit `validation/expected/` without the developer's review |
 | Report Port leftovers | Delete Port resources by hand |
 
 ## Steps
@@ -71,11 +71,11 @@ you started at the end.
 | Report says | Do |
 | --- | --- |
 | `status: error` | Setup problem. Show `error` and stop. |
-| `integration.returncode` not 0, or `timed_out` | Read `stderr_tail`. Code bug: report it. Config bug in the scenario: fix it and rerun. |
-| `unmatched_requests` | The integration calls an endpoint the mock lacks. Add a model, route and body following the bootstrapping reference (steps 2 and 3), reload the scenario and rerun. |
-| `comparison.status: new` | First run of a scenario; expected entities were written. Flag them for review. |
+| `scenarios[].integration.returncode` not 0, or `integration.timed_out` | Read `stderr_tail`. Code bug: report it. Config bug in the scenario: fix it and rerun. |
+| `collection.mock.unmatched_requests` | The integration calls an endpoint the mock lacks. Add a model, route and body following the bootstrapping reference (steps 2 and 3), reload the scenario and rerun. |
+| No `validation/expected/<scenario>/` yet, resync completed, `comparison.status: matched` | First run: the runner wrote snapshots from this resync (`comparison.expected_dir`). Flag them for review—they are a baseline, not proof the mapping is correct. |
 | `comparison.status: different` | Explain each `entity_diff` entry and whether the change intended it. Ask before rerunning with `--update-expected`. |
-| `comparison.status: skipped` | The resync did not complete. Read `resync_status` and `stderr_tail`. |
+| `collection.resync_status` not `completed` | Snapshots were not written or updated this run. Read `resync_status`, `integration` logs, and `stderr_tail`; fix the resync before trusting entity comparison. |
 | `port.cleanup_leftovers` | List what is left in Port so the developer can delete it. |
 
 ### 5. Summarize
@@ -85,5 +85,5 @@ Keep it short:
 - If validation was bootstrapped: scenarios and what each covers, endpoints mocked with the
   docs URL each model came from, and assumptions made where the docs were unclear.
 - Fixtures you added (all `verified: false`) and what they assume about the vendor API.
-- Expected entities that are new or changed and need the developer's review.
+- Snapshot files under `validation/expected/` that were just written or that differ (`--update-expected`) and need the developer's review.
 - Port leftovers, if any.

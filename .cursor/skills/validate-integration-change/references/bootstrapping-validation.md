@@ -53,7 +53,12 @@ Write `validation/scenarios.yaml`. Put the fake credentials and `{{mock_base_url
 
 ## 5. First run
 
-Run every scenario with the loop in [running-validation.md](running-validation.md). The
-first run of a scenario reports `comparison.status: new` and writes
-`validation/expected/<scenario>/`. Fix unmatched requests (a missing or wrong route) and
-rerun until every scenario passes.
+Run every scenario with the loop in [running-validation.md](running-validation.md). When
+`validation/expected/<scenario>/` does not exist yet and Port reports a completed resync, the
+runner writes snapshots from that run, then compares them—`comparison.status` is
+`matched` if the diff is empty (always right after seeding). Have the developer review
+`validation/expected/<scenario>/` before committing; a passing first run only proves the mock
+and resync worked, not that the mapping is correct forever.
+
+Fix unmatched requests (a missing or wrong route) and rerun until every scenario reports
+`scenarios[].passed: true`.

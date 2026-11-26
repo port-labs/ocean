@@ -18,7 +18,7 @@ integrations/acme/validation/
 │       └── team/
 │           ├── page-1.json
 │           └── page-2.json
-└── expected/            # written by the runner on the first run
+└── expected/            # written by the runner when missing and resync completes (review before commit)
     └── happy_path/
         └── acmeTeam.json
 ```

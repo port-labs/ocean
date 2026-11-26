@@ -163,15 +163,18 @@ The report is written on every exit, including setup errors.
 | Field | Meaning |
 | --- | --- |
 | `status` | `passed`, `failed`, or `error` (setup or Port error; see `error`) |
-| `scenarios[].passed` | The scenario's verdict |
+| `scenarios[].passed` | `true` only when `ocean sail` completed, entity comparison is `matched`, and there are no unmatched mock requests (unless `expect.unmatched_requests: allow`). Does not consult `collection.resync_status` directly. |
 | `scenarios[].integration` | `returncode`, `timed_out`, `stdout_tail`, `stderr_tail` of `ocean sail` |
-| `scenarios[].collection.resync_status` | What Port reports for the resync |
+| `scenarios[].collection.resync_status` | What Port reports for the resync: `completed`, `failed`, `aborted`, `running`, or `missing`. When not `completed`, the runner does not write or refresh snapshots in `validation/expected/`. |
 | `scenarios[].collection.mock.unmatched_requests` | Requests no route matched; they fail the scenario unless it sets `expect.unmatched_requests: allow` |
 | `scenarios[].collection.mock.unused_routes` | Loaded routes the integration never called |
-| `scenarios[].comparison.status` | `matched`, `different`, `new`, `updated`, or `skipped` |
-| `scenarios[].comparison.entity_diff` | Per blueprint: `added`, `removed`, `changed` (with field path, expected, actual) |
+| `scenarios[].comparison.status` | `matched` or `different` only (`tools/integration_validation/runner/core/statuses.py`) |
+| `scenarios[].comparison.expected_dir` | Directory of snapshot JSON files compared for this scenario |
+| `scenarios[].comparison.entity_diff` | Populated when status is `different`: per blueprint, `added`, `removed`, `changed` (field path, expected, actual) |
 | `scenarios[].unverified_routes` | Routes marked `verified: false` |
 | `scenarios[].port.cleanup_leftovers` | Port resources the run could not delete |
+
+When `validation/expected/<scenario>/` is missing and the resync completes, the runner writes snapshots from the collected entities, then compares—so the first successful run usually shows `comparison.status: matched`, not a separate “new” status. Review those files before committing. With `--update-expected`, snapshots are overwritten the same way before the diff.
 
 ## Known limits
 
