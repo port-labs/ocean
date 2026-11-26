@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.63.1 (2026-11-26)
+
+
+### Bug Fixes
+
+- On kind fetch failure in DSP mode, emit an ERROR extract Event Log so sync status can show the real fetch error.
+
+
 ## 0.63.0 (2026-11-25)
 
 
