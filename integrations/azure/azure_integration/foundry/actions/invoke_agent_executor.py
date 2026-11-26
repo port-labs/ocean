@@ -23,7 +23,7 @@ from azure_integration.foundry.helpers.port_mcp import (
     ensure_port_mcp,
     sanitize_git_provider,
 )
-from azure_integration.foundry.helpers.utils import tools_from_agent_payload
+from azure_integration.foundry.helpers.utils import tools_from_agent
 from azure_integration.foundry.models.agent import Agent
 
 
@@ -152,7 +152,7 @@ class InvokeAgentExecutor(AbstractFoundryExecutor, ResponsesInvokeMixin):
 
         agent = Agent.model_validate(agent_payload)
         hosted = agent.kind == "hosted"
-        tools = tools_from_agent_payload(agent_payload)
+        tools = tools_from_agent(agent)
         # Prompt uses useExistingToolbox only; hosted uses toolboxName only.
         try:
             toolbox_result = await ensure_port_mcp(

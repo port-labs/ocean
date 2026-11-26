@@ -27,11 +27,15 @@ def build_foundry_url(project_endpoint: str, path: str) -> str:
     return urljoin(base, path.lstrip("/"))
 
 
-def tools_from_agent_payload(agent: Any) -> list[Any]:
-    if not isinstance(agent, dict) or "versions" not in agent:
-        return []
-    definition = Agent.model_validate(agent).latest_version.definition
+def tools_from_agent(agent: Agent) -> list[Any]:
+    definition = agent.latest_version.definition
     return definition.tools if isinstance(definition, PromptAgentDefinition) else []
+
+
+def tools_from_agent_payload(agent: dict[str, Any]) -> list[Any]:
+    if "versions" not in agent:
+        return []
+    return tools_from_agent(Agent.model_validate(agent))
 
 
 def agent_openai_protocol_path(agent_id: str, resource: str) -> str:
@@ -117,29 +121,6 @@ def _coerce_created_at(item: dict[str, Any]) -> None:
     iso = timestamp_to_iso(item.get("created_at") or item.get("createdAt"))
     if iso is not None:
         item["created_at"] = iso
-
-
-def invoke_scope_from_run(run: Any) -> tuple[str, str, str | None] | None:
-    """Project endpoint, project id, optional agent id from an invoke run."""
-    from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
-
-    from azure_integration.foundry.core.exporters.project_exporter import (
-        foundry_project_from_arm_id,
-    )
-
-    if not isinstance(run, IntegrationRun):
-        return None
-    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
-    project = foundry_project_from_arm_id(str(props.get("projectArmId") or ""))
-    endpoint = (
-        (project.endpoint if project else None)
-        or props.get("projectEndpoint")
-        or run.execution_properties.get("projectEndpoint")
-    )
-    if not isinstance(endpoint, str) or not endpoint.strip():
-        return None
-    agent_id = str(run.execution_properties.get("agentId") or "").strip() or None
-    return endpoint.strip(), project_name_from_endpoint(endpoint), agent_id
 
 
 def effective_conversation_cutoff(

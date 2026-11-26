@@ -22,10 +22,8 @@ from azure_integration.foundry.core.options import (
     SingleConversationOptions,
     SingleResponseOptions,
 )
-from azure_integration.foundry.helpers.utils import (
-    enrich_with_project,
-    invoke_scope_from_run,
-)
+from azure_integration.foundry.actions.utils import invoke_scope_from_run
+from azure_integration.foundry.helpers.utils import enrich_with_project
 from azure_integration.foundry.kinds import ObjectKind
 from azure_integration.foundry.models.responses import (
     TERMINAL_EVENTS,

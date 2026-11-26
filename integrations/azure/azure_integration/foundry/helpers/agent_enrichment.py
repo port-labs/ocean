@@ -5,6 +5,8 @@ import uuid
 from typing import Any
 from urllib.parse import quote
 
+from pydantic import ValidationError
+
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.core.exporters.project_exporter import (
     foundry_project_from_arm_id,
@@ -18,7 +20,32 @@ from azure_integration.foundry.helpers.utils import (
     enrich_with_project,
     tools_from_agent_payload,
 )
+from azure_integration.foundry.models.base import FoundryModel
 from port_ocean.utils.cache import cache_coroutine_result
+
+
+class AgentLatestSnapshot(FoundryModel):
+    version: str | int | None = None
+
+
+class AgentVersionsSnapshot(FoundryModel):
+    latest: AgentLatestSnapshot | None = None
+
+
+class AgentRowSnapshot(FoundryModel):
+    """Subset of agent GET payload used for portal URL and toolbox enrichment."""
+
+    name: str | None = None
+    versions: AgentVersionsSnapshot | None = None
+
+
+def _latest_version_from_agent(agent: dict[str, Any]) -> str | int | None:
+    try:
+        row = AgentRowSnapshot.model_validate(agent)
+    except ValidationError:
+        return None
+    latest = row.versions.latest if row.versions else None
+    return latest.version if latest else None
 
 
 def _guid_to_base64url(guid: str) -> str:
@@ -65,13 +92,9 @@ def enrich_agent_row(
     )
     arm_id, name = enriched.get("__foundryProjectId"), enriched.get("name")
     if isinstance(arm_id, str) and isinstance(name, str):
-        version = None
-        versions = enriched.get("versions")
-        if isinstance(versions, dict):
-            latest = versions.get("latest")
-            if isinstance(latest, dict):
-                version = latest.get("version")
-        url = foundry_portal_agent_url(arm_id, name, version=version)
+        url = foundry_portal_agent_url(
+            arm_id, name, version=_latest_version_from_agent(enriched)
+        )
         if url is not None:
             enriched["__foundryPortalAgentUrl"] = url
     return enriched
@@ -104,6 +127,11 @@ async def prepare_agent_for_catalog(
     )
 
 
+class ToolboxListItem(FoundryModel):
+    name: str | None = None
+    id: str | None = None
+
+
 @cache_coroutine_result()
 async def _build_toolbox_map(
     client: FoundryHttpClient, project_endpoint: str, project_id: str
@@ -114,10 +142,14 @@ async def _build_toolbox_map(
         ListToolboxesOptions(project_endpoint=project_endpoint, project_id=project_id)
     ):
         for item in page:
-            key = item.get("name") or item.get("id")
+            try:
+                row = ToolboxListItem.model_validate(item)
+            except ValidationError:
+                continue
+            key = row.name or row.id
             if not key:
                 continue
-            toolbox_map[str(key)] = item
+            toolbox_map[key] = item
     return toolbox_map
 
 
