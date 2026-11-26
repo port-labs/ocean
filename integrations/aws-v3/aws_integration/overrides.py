@@ -438,6 +438,17 @@ class AWSEKSNodegroupResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSBedrockAgentResourceConfig(AWSResourceConfig):
+    probe_permissions: ClassVar[tuple[str, ...]] = (
+        "bedrock:ListAgents",
+        "bedrock:GetAgent",
+    )
+    kind: Literal["AWS::Bedrock::Agent"] = Field(
+        title="AWS Bedrock Agent",
+        description="AWS Bedrock Agent resource kind.",
+    )
+
+
 class AWSCustomKindSelector(AWSRegionPolicySelector):
     use_get_resource_api: bool = Field(
         alias="useGetResourceAPI",
@@ -521,6 +532,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSSESConfigurationSetResourceConfig
         | AWSSNSTopicResourceConfig
         | AWSEKSNodegroupResourceConfig
+        | AWSBedrockAgentResourceConfig
         | AWSCustomKindResourceConfig
     ] = Field(
         default_factory=list,

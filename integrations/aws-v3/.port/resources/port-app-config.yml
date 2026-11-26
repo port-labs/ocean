@@ -63,3 +63,26 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::Bedrock::Agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.agentArn
+          title: .Properties.agentName
+          blueprint: '"bedrockAgent"'
+          properties:
+            agentArn: .Properties.agentArn
+            agentStatus: .Properties.agentStatus
+            agentVersion: .Properties.agentVersion
+            foundationModel: .Properties.foundationModel
+            description: .Properties.description
+            idleSessionTTLInSeconds: .Properties.idleSessionTTLInSeconds
+            agentResourceRoleArn: .Properties.agentResourceRoleArn
+            createdAt: .Properties.createdAt
+            updatedAt: .Properties.updatedAt
+            region: .__ExtraContext.Region
+            tags: .Properties.tags
+          relations:
+            account: .__ExtraContext.AccountId
