@@ -10,10 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.core.models import WorkflowNodeRun
 
-from integration import ObjectKind
-from core.exporters.agents_exporter import AgentsExporter
-from core.exporters.runs_exporter import RunsExporter
-from webhook_processors.cursor_agent_webhook_processor import (
+from cursor_cloud_agents.integration import ObjectKind
+from cursor_cloud_agents.core.exporters.agents_exporter import AgentsExporter
+from cursor_cloud_agents.core.exporters.runs_exporter import RunsExporter
+from cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor import (
     _STATUS_LABELS,
     CursorAgentWebhookProcessor,
 )
@@ -75,23 +75,26 @@ def _patch_handle_event(mock_ocean: MagicMock, client_mock: MagicMock) -> ExitSt
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     stack = ExitStack()
     stack.enter_context(
-        patch("webhook_processors.cursor_agent_webhook_processor.ocean", mock_ocean)
+        patch(
+            "cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor.ocean",
+            mock_ocean,
+        )
     )
     stack.enter_context(
         patch(
-            "webhook_processors.cursor_agent_webhook_processor.create_cursor_agents_client",
+            "cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor.create_cursor_agents_client",
             return_value=client_mock,
         )
     )
     stack.enter_context(
         patch(
-            "webhook_processors.utils.create_runs_exporter",
+            "cursor_cloud_agents.webhook_processors.utils.create_runs_exporter",
             return_value=RunsExporter(client_mock, AgentsExporter(client_mock)),
         )
     )
     stack.enter_context(
         patch(
-            "webhook_processors.cursor_agent_webhook_processor.create_runs_exporter",
+            "cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor.create_runs_exporter",
             return_value=RunsExporter(client_mock, AgentsExporter(client_mock)),
         )
     )
@@ -366,7 +369,7 @@ async def test_authenticate_accepts_valid_signature() -> None:
     mock_ocean.integration_config = {
         "webhook_signing_secret": "test-webhook-signing-secret",
     }
-    with patch("core.webhook_signing.ocean", mock_ocean):
+    with patch("cursor_cloud_agents.core.webhook_signing.ocean", mock_ocean):
         request = _build_request(body=raw_body.encode())
         processor.event._original_request = request
 
@@ -385,7 +388,7 @@ async def test_authenticate_rejects_wrong_signature() -> None:
     mock_ocean.integration_config = {
         "webhook_signing_secret": "test-webhook-signing-secret",
     }
-    with patch("core.webhook_signing.ocean", mock_ocean):
+    with patch("cursor_cloud_agents.core.webhook_signing.ocean", mock_ocean):
         request = _build_request(body=raw_body.encode())
         processor.event._original_request = request
 
@@ -403,7 +406,7 @@ async def test_authenticate_skips_verification_when_webhook_signing_secret_not_c
 
     mock_ocean = MagicMock()
     mock_ocean.integration_config = {}
-    with patch("core.webhook_signing.ocean", mock_ocean):
+    with patch("cursor_cloud_agents.core.webhook_signing.ocean", mock_ocean):
         assert await processor.authenticate({}, {}) is True
 
 
@@ -417,7 +420,7 @@ async def test_authenticate_rejects_missing_signature_header() -> None:
     mock_ocean.integration_config = {
         "webhook_signing_secret": "test-webhook-signing-secret",
     }
-    with patch("core.webhook_signing.ocean", mock_ocean):
+    with patch("cursor_cloud_agents.core.webhook_signing.ocean", mock_ocean):
         assert await processor.authenticate({}, {}) is False
 
 

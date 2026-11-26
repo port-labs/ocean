@@ -7,7 +7,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
 )
 
-from core.webhook_signing import get_webhook_signing_secret, verify_hmac_signature
+from cursor_cloud_agents.core.webhook_signing import (
+    get_webhook_signing_secret,
+    verify_hmac_signature,
+)
 
 SIGNATURE_HEADER = "x-webhook-signature"
 

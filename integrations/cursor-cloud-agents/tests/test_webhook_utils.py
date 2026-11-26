@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from webhook_processors.utils import (
+from cursor_cloud_agents.webhook_processors.utils import (
     parse_webhook_timestamp,
     resolve_newest_run_id_at_or_before,
 )
@@ -30,7 +30,7 @@ async def test_resolve_newest_run_id_at_or_before_uses_first_list_page() -> None
     webhook_time = datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc)
 
     with patch(
-        "webhook_processors.utils.create_runs_exporter",
+        "cursor_cloud_agents.webhook_processors.utils.create_runs_exporter",
         return_value=runs_exporter_mock,
     ):
         cursor_run_id = await resolve_newest_run_id_at_or_before("bc-1", webhook_time)

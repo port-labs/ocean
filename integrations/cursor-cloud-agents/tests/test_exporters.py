@@ -7,14 +7,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from clients.endpoints import V1_AGENTS, v1_agent_runs
-from core.exporters.agents_exporter import AgentsExporter
-from core.exporters.runs_exporter import RunsExporter
-from core.options import GetRunOptions, ListAgentOptions, ListRunOptions
+from cursor_cloud_agents.clients.endpoints import V1_AGENTS, v1_agent_runs
+from cursor_cloud_agents.core.exporters.agents_exporter import AgentsExporter
+from cursor_cloud_agents.core.exporters.runs_exporter import RunsExporter
+from cursor_cloud_agents.core.options import (
+    GetRunOptions,
+    ListAgentOptions,
+    ListRunOptions,
+)
 
 
 async def _aiter(
-    batches: list[list[dict[str, Any]]]
+    batches: list[list[dict[str, Any]]],
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     for batch in batches:
         yield batch

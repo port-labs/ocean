@@ -1,7 +1,7 @@
 from port_ocean.context.ocean import ocean
 
-from actions.create_agent_executor import CreateAgentExecutor
-from actions.trigger_agent_executor import TriggerAgentExecutor
+from cursor_cloud_agents.actions.create_agent_executor import CreateAgentExecutor
+from cursor_cloud_agents.actions.trigger_agent_executor import TriggerAgentExecutor
 
 
 def register_action_executors() -> None:

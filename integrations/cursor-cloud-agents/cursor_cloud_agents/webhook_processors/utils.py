@@ -5,7 +5,7 @@ from typing import Any
 
 from loguru import logger
 
-from exporter_factory import create_runs_exporter
+from cursor_cloud_agents.exporter_factory import create_runs_exporter
 
 
 def _parse_iso8601(value: object) -> datetime | None:

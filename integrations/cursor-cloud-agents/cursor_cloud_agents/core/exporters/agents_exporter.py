@@ -4,9 +4,9 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.cache import cache_iterator_result
 
-from clients.endpoints import V1_AGENTS, v1_agent_usage
-from core.exporters.abstract_exporter import AbstractCursorExporter
-from core.options import ListAgentOptions
+from cursor_cloud_agents.clients.endpoints import V1_AGENTS, v1_agent_usage
+from cursor_cloud_agents.core.exporters.abstract_exporter import AbstractCursorExporter
+from cursor_cloud_agents.core.options import ListAgentOptions
 
 
 class AgentsExporter(AbstractCursorExporter):
