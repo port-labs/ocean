@@ -36,8 +36,16 @@ class BedrockAgentCoreRuntimeExporter(IResourceExporter[list[AgentRuntimeRecord]
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            # Seed only the identifiers; GetAgentRuntimeAction makes the single
-            # GetAgentRuntime call, and the tags action needs the ARN.
+            # Live-event single fetch only has the runtime ID from CloudTrail.
+            # GetAgentRuntimeAction swallows ResourceNotFound as recoverable, so the
+            # inspector would build a stub from the seeded identifiers for a deleted
+            # runtime. Confirm it exists so a missing runtime raises and the
+            # live-event handler can treat the update as a delete instead.
+            await proxy.client.get_agent_runtime(  # type: ignore[attr-defined]
+                agentRuntimeId=options.agent_runtime_id
+            )
+
+            # Seed only the identifiers; the tags action needs the ARN.
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )

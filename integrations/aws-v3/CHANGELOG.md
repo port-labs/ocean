@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Add support for syncing Amazon Bedrock AgentCore runtimes (`AWS::BedrockAgentCore::Runtime`), including optional tags
+- Add support for syncing Amazon Bedrock AgentCore runtimes (`AWS::BedrockAgentCore::Runtime`), including optional tags and CloudTrail live events
 
 
 ## 3.5.9 (2026-11-24)

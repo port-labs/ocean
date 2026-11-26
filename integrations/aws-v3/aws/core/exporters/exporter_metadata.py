@@ -125,6 +125,9 @@ from aws.core.exporters.bedrock_agent_core import (
     BedrockAgentCoreRuntimeExporter,
     PaginatedBedrockAgentCoreRuntimeRequest,
 )
+from aws.core.exporters.bedrock_agent_core.runtime.live_events import (
+    BEDROCK_AGENT_CORE_RUNTIME_LIVE_EVENTS,
+)
 from aws.core.helpers.types import ObjectKind
 
 kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
@@ -276,6 +279,7 @@ kind_to_export_metadata: dict[ObjectKind, ExporterMetadata] = {
     ObjectKind.BEDROCK_AGENT_CORE_RUNTIME: ExporterMetadata(
         BedrockAgentCoreRuntimeExporter,
         PaginatedBedrockAgentCoreRuntimeRequest,
+        live_events=BEDROCK_AGENT_CORE_RUNTIME_LIVE_EVENTS,
     ),
 }
 

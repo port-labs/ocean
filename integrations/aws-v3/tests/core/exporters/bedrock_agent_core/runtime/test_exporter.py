@@ -3,6 +3,7 @@ from typing import AsyncGenerator, List, Dict, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.bedrock_agent_core.runtime.exporter import (
     BedrockAgentCoreRuntimeExporter,
@@ -76,8 +77,10 @@ class TestBedrockAgentCoreRuntimeExporter:
         assert isinstance(result, dict)
         assert result["agentRuntimeId"] == RUNTIME_ID
         assert result["agentRuntimeArn"] == RUNTIME_ARN
-        # No direct AWS call: the actions are seeded with only the ID and ARN.
-        mock_client.get_agent_runtime.assert_not_called()
+        # Existence check first, then the actions are seeded with only the ID and ARN.
+        mock_client.get_agent_runtime.assert_awaited_once_with(
+            agentRuntimeId=RUNTIME_ID
+        )
         mock_inspector.inspect.assert_awaited_once_with(
             [{"agentRuntimeId": RUNTIME_ID, "agentRuntimeArn": RUNTIME_ARN}],
             [],
@@ -201,12 +204,12 @@ class TestBedrockAgentCoreRuntimeExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.bedrock_agent_core.runtime.exporter.AioBaseClientProxy")
-    async def test_get_resource_end_to_end_makes_one_get_call(
+    async def test_get_resource_end_to_end(
         self,
         mock_proxy_class: MagicMock,
         exporter: BedrockAgentCoreRuntimeExporter,
     ) -> None:
-        """Real inspector: one GetAgentRuntime call, tags fetched by the seeded ARN."""
+        """Real inspector: existence check + details, tags fetched by the seeded ARN."""
         mock_proxy = AsyncMock()
         mock_proxy.client = AsyncMock()
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
@@ -227,7 +230,9 @@ class TestBedrockAgentCoreRuntimeExporter:
             )
         )
 
-        mock_proxy.client.get_agent_runtime.assert_awaited_once_with(
+        # Once for the existence check, once by GetAgentRuntimeAction.
+        assert mock_proxy.client.get_agent_runtime.await_count == 2
+        mock_proxy.client.get_agent_runtime.assert_awaited_with(
             agentRuntimeId=RUNTIME_ID
         )
         mock_proxy.client.list_tags_for_resource.assert_awaited_once_with(
@@ -236,6 +241,35 @@ class TestBedrockAgentCoreRuntimeExporter:
         assert result["Properties"]["AgentRuntimeArn"] == RUNTIME_ARN
         assert result["Properties"]["AgentRuntimeName"] == "my-runtime"
         assert result["Properties"]["Tags"] == {"Team": "commerce"}
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.bedrock_agent_core.runtime.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.bedrock_agent_core.runtime.exporter.ResourceInspector")
+    async def test_get_resource_not_found_raises(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: BedrockAgentCoreRuntimeExporter,
+    ) -> None:
+        """A deleted runtime raises, so a live event is treated as a delete."""
+        mock_proxy = AsyncMock()
+        mock_proxy.client = AsyncMock()
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+        mock_proxy.client.get_agent_runtime.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException", "Message": "gone"}},
+            "GetAgentRuntime",
+        )
+
+        with pytest.raises(ClientError):
+            await exporter.get_resource(
+                SingleBedrockAgentCoreRuntimeRequest(
+                    agent_runtime_id="missing",
+                    region="us-east-1",
+                    account_id="123456789012",
+                )
+            )
+
+        mock_inspector_class.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.bedrock_agent_core.runtime.exporter.AioBaseClientProxy")
