@@ -1,5 +1,7 @@
 """Tests for batched per-thread fetches using MockTransport seam."""
 
+import json
+import re
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -8,7 +10,7 @@ import httpx
 from port_ocean.context.resource import resource_context
 
 from plain.client import PlainClient
-from tests.kind_helpers import collect_pages
+from tests.kind_helpers import collect_pages, node_selection
 
 
 def _mock_client(handler: Any) -> PlainClient:
@@ -67,8 +69,6 @@ async def test_thread_messages_uses_list_thread_timelines_with_timeline_first() 
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = request.read().decode()
-        import json
-
         payload = json.loads(body)
         seen_requests.append(payload)
         # Return empty threads
@@ -121,8 +121,6 @@ async def test_thread_messages_nested_cursor_follow_up_carries_after() -> None:
     seen_requests: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        import json
-
         body = json.loads(request.read().decode())
         seen_requests.append(body)
         if body["operationName"] == "ListThreadTimelines":
@@ -179,8 +177,6 @@ async def test_thread_messages_two_page_follow_up_no_gaps_or_duplicates() -> Non
     seen_requests: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        import json
-
         body = json.loads(request.read().decode())
         seen_requests.append(body)
         if body["operationName"] == "ListThreadTimelines":
@@ -259,8 +255,6 @@ async def test_discussions_batches_thread_ids() -> None:
     seen_requests: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        import json
-
         body = json.loads(request.read().decode())
         seen_requests.append(body)
         if body["operationName"] == "ListThreadIds":
@@ -296,8 +290,6 @@ async def test_discussion_messages_thread_id_in_query_and_stamped() -> None:
     seen_requests: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        import json
-
         body = json.loads(request.read().decode())
         seen_requests.append(body)
         op = body["operationName"]
@@ -344,9 +336,11 @@ async def test_discussion_messages_thread_id_in_query_and_stamped() -> None:
     async with resource_context(_resource()):
         batches = await collect_pages(client.get_discussion_messages(None))
 
-    # Verify threadId is in THREAD_DISCUSSION_IDS query
+    # Verify threadId is in THREAD_DISCUSSION_IDS node selection
     disc_ids_request = seen_requests[1]
-    assert "threadId" in disc_ids_request["query"]
+    assert re.search(
+        r"^\s*threadId\s*$", node_selection(disc_ids_request["query"]), re.M
+    )
 
     # Verify each message has correct threadId
     all_messages = [msg for batch in batches for msg in batch]
@@ -360,8 +354,6 @@ async def test_thread_list_variables_empty_list_sends_no_filter() -> None:
     seen_requests: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        import json
-
         body = json.loads(request.read().decode())
         seen_requests.append(body)
         return _graphql_response({"threads": _page([], False, None)})

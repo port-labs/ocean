@@ -233,62 +233,6 @@ async def test_resync_thread_messages_reads_exclude_flag_without_local_config_cl
     assert seen["statuses"] == ["TODO", "SNOOZED"]
 
 
-async def test_get_thread_messages_batches_threads_by_page_size() -> None:
-    """With 250 threads and pageSize 100, paginate_connection yields 3 pages."""
-    client = make_client()
-    page_count = 0
-
-    async def paginate_connection(
-        query: str,
-        operation_name: str,
-        variables: dict[str, Any] | None,
-        connection_path: str,
-        *,
-        after: str | None = None,
-    ) -> Any:
-        nonlocal page_count
-        # Simulate 3 pages of 100, 100, 50 threads
-        yield [
-            {
-                "id": f"th_{i}",
-                "timelineEntries": {
-                    "pageInfo": {"hasNextPage": False, "endCursor": None},
-                    "edges": [],
-                },
-            }
-            for i in range(100)
-        ]
-        page_count += 1
-        yield [
-            {
-                "id": f"th_{i}",
-                "timelineEntries": {
-                    "pageInfo": {"hasNextPage": False, "endCursor": None},
-                    "edges": [],
-                },
-            }
-            for i in range(100, 200)
-        ]
-        page_count += 1
-        yield [
-            {
-                "id": f"th_{i}",
-                "timelineEntries": {
-                    "pageInfo": {"hasNextPage": False, "endCursor": None},
-                    "edges": [],
-                },
-            }
-            for i in range(200, 250)
-        ]
-        page_count += 1
-
-    async with resource_context(_message_resource(False)):
-        client.paginate_connection = paginate_connection  # type: ignore[method-assign]
-        await collect_pages(client.get_thread_messages(None))
-
-    assert page_count == 3
-
-
 async def test_get_thread_messages_follows_nested_pagination() -> None:
     """When nested hasNextPage is true, follows up with endCursor."""
     client = make_client()
