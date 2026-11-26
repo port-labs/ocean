@@ -134,6 +134,13 @@ class JiraPermissionProbe:
             )
             await self.context.update_progress()
             return
+        except ValueError as error:
+            check.status = ProbeCheckStatus.FAILURE
+            check.message = (
+                "Could not resolve Jira site ID required for Teams API: " f"{error}"
+            )
+            await self.context.update_progress()
+            return
 
         check.status = ProbeCheckStatus.SUCCESS
         check.message = "Atlassian Teams API access verified"
