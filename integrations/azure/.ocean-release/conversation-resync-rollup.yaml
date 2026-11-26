@@ -2,4 +2,3 @@ bump: patch
 changelog-type: improvement
 changelog:
   - Optional conversation selector rollupResponses (default false) overlays latest response id, status, and duration on conversation rows during resync. Invoke registers foundry-conversation and foundry-response on bind and terminal via register_raw with the same latest-response overlay.
-  - Default port-app-config maps foundry-agent and foundry-conversation to software-factory `_agent` and `_agent_session` with identifiers `azure:<id>`.
