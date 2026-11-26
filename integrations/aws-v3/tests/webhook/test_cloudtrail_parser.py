@@ -1966,3 +1966,117 @@ def test_parse_returns_none_when_codepipeline_pipeline_execution_identifiers_mis
         "StartPipelineExecution", pipeline_execution_id=None
     )
     assert parse_cloudtrail_event(payload) is None
+
+
+_AGENT_RUNTIME_ID = "hosted_agent-Ab1Cd2Ef3G"
+_AGENT_RUNTIME_ARN = (
+    f"arn:aws:bedrock-agentcore:us-east-1:111122223333:runtime/{_AGENT_RUNTIME_ID}"
+)
+
+
+def _bedrock_agentcore_runtime_eventbridge_envelope(
+    event_name: str,
+    request_parameters: dict[str, Any],
+    response_elements: dict[str, Any] | None = None,
+) -> EventBridgeCloudTrailPayload:
+    """Shaped like real AgentCore CloudTrail events (CreateAgentRuntime has the
+    ID only in responseElements; Update/Delete carry it in requestParameters)."""
+    detail: CloudTrailDetail = {
+        "eventName": event_name,
+        "eventSource": "bedrock-agentcore.amazonaws.com",
+        "awsRegion": "us-east-1",
+        "recipientAccountId": "111122223333",
+        "requestParameters": request_parameters,
+    }
+    if response_elements is not None:
+        detail["responseElements"] = response_elements
+    return cast(
+        EventBridgeCloudTrailPayload,
+        {
+            "version": "0",
+            "detail-type": "AWS API Call via CloudTrail",
+            "source": "aws.bedrock-agentcore",
+            "account": "111122223333",
+            "region": "us-east-1",
+            "detail": detail,
+        },
+    )
+
+
+def test_is_supported_cloudtrail_event_true_for_bedrock_agentcore_runtime_events() -> (
+    None
+):
+    for event_name in (
+        "CreateAgentRuntime",
+        "UpdateAgentRuntime",
+        "DeleteAgentRuntime",
+    ):
+        payload = _bedrock_agentcore_runtime_eventbridge_envelope(
+            event_name, {"agentRuntimeId": _AGENT_RUNTIME_ID}
+        )
+        assert is_supported_cloudtrail_event(payload) is True
+
+
+def test_parse_create_agent_runtime_event_reads_id_from_response() -> None:
+    payload = _bedrock_agentcore_runtime_eventbridge_envelope(
+        "CreateAgentRuntime",
+        {"agentRuntimeName": "hosted_agent", "platformVersion": "V1"},
+        {
+            "agentRuntimeArn": _AGENT_RUNTIME_ARN,
+            "agentRuntimeId": _AGENT_RUNTIME_ID,
+            "agentRuntimeVersion": "1",
+            "status": "CREATING",
+        },
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.BEDROCK_AGENT_CORE_RUNTIME
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == _AGENT_RUNTIME_ID
+    assert parsed.account_id == "111122223333"
+    assert parsed.region == "us-east-1"
+
+
+def test_parse_update_agent_runtime_event() -> None:
+    payload = _bedrock_agentcore_runtime_eventbridge_envelope(
+        "UpdateAgentRuntime",
+        {"agentRuntimeId": _AGENT_RUNTIME_ID},
+        {"agentRuntimeId": _AGENT_RUNTIME_ID, "agentRuntimeArn": _AGENT_RUNTIME_ARN},
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.BEDROCK_AGENT_CORE_RUNTIME
+    assert parsed.action == CloudTrailEventAction.UPSERT
+    assert parsed.identifier == _AGENT_RUNTIME_ID
+
+
+def test_parse_delete_agent_runtime_event() -> None:
+    payload = _bedrock_agentcore_runtime_eventbridge_envelope(
+        "DeleteAgentRuntime", {"agentRuntimeId": _AGENT_RUNTIME_ID}
+    )
+
+    parsed = parse_cloudtrail_event(payload)
+
+    assert parsed is not None
+    assert parsed.kind == ObjectKind.BEDROCK_AGENT_CORE_RUNTIME
+    assert parsed.action == CloudTrailEventAction.DELETE
+    assert parsed.identifier == _AGENT_RUNTIME_ID
+
+
+def test_parse_returns_none_when_agent_runtime_id_missing() -> None:
+    payload = _bedrock_agentcore_runtime_eventbridge_envelope(
+        "CreateAgentRuntime", {"agentRuntimeName": "hosted_agent"}, {}
+    )
+    assert parse_cloudtrail_event(payload) is None
+
+
+def test_agentcore_read_events_are_not_supported() -> None:
+    for event_name in ("GetAgentRuntime", "ListAgentRuntimes", "TagResource"):
+        payload = _bedrock_agentcore_runtime_eventbridge_envelope(
+            event_name, {"agentRuntimeId": _AGENT_RUNTIME_ID}
+        )
+        assert is_supported_cloudtrail_event(payload) is False
