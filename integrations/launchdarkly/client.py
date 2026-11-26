@@ -52,7 +52,11 @@ class LaunchDarklyClient:
         )
 
     async def get_paginated_resource(
-        self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
+        self,
+        kind: str,
+        resource_path: str | None = None,
+        page_size: int = PAGE_SIZE,
+        query_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch and paginate through resources from a LaunchDarkly API endpoint.
@@ -62,7 +66,7 @@ class LaunchDarklyClient:
 
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
-        params: Optional[dict[str, Any]] = {"limit": page_size}
+        params: Optional[dict[str, Any]] = {"limit": page_size, **(query_params or {})}
 
         while url:
             try:
@@ -204,9 +208,19 @@ class LaunchDarklyClient:
             yield updated_batch
 
     async def get_paginated_feature_flags(
-        self,
+        self, include_environment_config: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.get_paginated_projects():
+            if include_environment_config:
+                # With the full per-environment configuration every flag is much
+                # larger, so yield page by page instead of collecting whole projects.
+                for project in projects:
+                    async for flags_batch in self.stream_feature_flags_for_project(
+                        project, include_environment_config=True
+                    ):
+                        yield flags_batch
+                continue
+
             tasks = [
                 self.fetch_feature_flags_for_project(project) for project in projects
             ]
@@ -215,17 +229,63 @@ class LaunchDarklyClient:
             for feature_flags in feature_flags_batches:
                 yield feature_flags
 
-    async def fetch_feature_flags_for_project(
+    async def _get_environment_keys(self, project: dict[str, Any]) -> list[str]:
+        """Environment keys of a project, from the environments already fetched (cached) for the resync."""
+        environment_keys: list[str] = []
+        async for environments in self.get_paginated_environments():
+            environment_keys.extend(
+                environment["key"]
+                for environment in environments
+                if environment.get("__projectKey") == project["key"]
+            )
+        return environment_keys
+
+    async def _get_environment_config_params(
         self, project: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        feature_flags = []
+    ) -> dict[str, Any] | None:
+        """
+        Query parameters that make LaunchDarkly return the full per-environment
+        configuration (rules, targets, prerequisites, ...) of every flag.
+        Docs: https://launchdarkly.com/docs/api/feature-flags/list-feature-flags#parameter-summary
+        """
+        environment_keys = await self._get_environment_keys(project)
+        if not environment_keys:
+            logger.warning(
+                f"Project {project['key']} has no environments, "
+                "fetching its flags without environment configuration"
+            )
+            return None
+        logger.info(
+            f"Fetching flags of project {project['key']} with the configuration "
+            f"of {len(environment_keys)} environments"
+        )
+        # summary=0 (not False): LaunchDarkly expects the numeric form, and a list
+        # value is sent by httpx as repeated env=<key> parameters.
+        return {"summary": 0, "env": environment_keys}
+
+    async def stream_feature_flags_for_project(
+        self, project: dict[str, Any], include_environment_config: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        query_params = (
+            await self._get_environment_config_params(project)
+            if include_environment_config
+            else None
+        )
         async for flags_batch in self.get_paginated_resource(
-            ObjectKind.FEATURE_FLAG, resource_path=project["key"]
+            ObjectKind.FEATURE_FLAG,
+            resource_path=project["key"],
+            query_params=query_params,
         ):
-            updated_batch = [
-                {**flag, "__projectKey": project["key"]} for flag in flags_batch
-            ]
-            feature_flags.extend(updated_batch)
+            yield [{**flag, "__projectKey": project["key"]} for flag in flags_batch]
+
+    async def fetch_feature_flags_for_project(
+        self, project: dict[str, Any], include_environment_config: bool = False
+    ) -> list[dict[str, Any]]:
+        feature_flags: list[dict[str, Any]] = []
+        async for flags_batch in self.stream_feature_flags_for_project(
+            project, include_environment_config=include_environment_config
+        ):
+            feature_flags.extend(flags_batch)
         return feature_flags
 
     async def patch_webhook(self, webhook_id: str, webhook_secret: str) -> None:

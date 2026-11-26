@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added the `includeEnvironmentConfig` selector option to the `flag` kind (default false). When enabled, flags are fetched with `summary=0` and all project environments so per-environment targeting (on, rules, targets, contextTargets, prerequisites, fallthrough, offVariation) can be mapped
