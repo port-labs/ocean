@@ -63,7 +63,9 @@ def _build_mock_ocean(*, base_url: str | None = "https://cca.example.com") -> Ma
 
 def _patch_common(mock_ocean: MagicMock, *executor_modules: str) -> list[Any]:
     patches: list[Any] = [patch(module, mock_ocean) for module in executor_modules]
-    patches.append(patch("cursor_cloud_agents.actions.abstract_executor.ocean", mock_ocean))
+    patches.append(
+        patch("cursor_cloud_agents.actions.abstract_executor.ocean", mock_ocean)
+    )
     patches.append(patch("cursor_cloud_agents.actions.utils.ocean", mock_ocean))
     patches.append(patch("cursor_cloud_agents.core.webhook_signing.ocean", mock_ocean))
     return patches
@@ -769,7 +771,9 @@ async def test_trigger_agent_executor_uses_v1_by_default() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean"
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -816,7 +820,9 @@ async def test_trigger_agent_executor_tracked_agent_uses_v1_then_waits_for_webho
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.update_run_started = AsyncMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=MagicMock())
-    patches = _patch_common(mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean"
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -853,7 +859,9 @@ async def test_trigger_agent_executor_untracked_agent_completes_immediately() ->
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=None)
-    patches = _patch_common(mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean"
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -897,7 +905,9 @@ async def test_trigger_agent_executor_allows_prompt_in_config_only() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean"
+    )
     _apply(patches)
     try:
         await executor.execute(run)
@@ -951,7 +961,9 @@ async def test_trigger_agent_executor_allows_unknown_config_keys() -> None:
 
     mock_ocean = _build_mock_ocean()
     mock_ocean.port_client.report_run_completed = AsyncMock()
-    patches = _patch_common(mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean")
+    patches = _patch_common(
+        mock_ocean, "cursor_cloud_agents.actions.trigger_agent_executor.ocean"
+    )
     _apply(patches)
     try:
         await executor.execute(run)

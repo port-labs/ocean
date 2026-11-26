@@ -75,7 +75,10 @@ def _patch_handle_event(mock_ocean: MagicMock, client_mock: MagicMock) -> ExitSt
     mock_ocean.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     stack = ExitStack()
     stack.enter_context(
-        patch("cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor.ocean", mock_ocean)
+        patch(
+            "cursor_cloud_agents.webhook_processors.cursor_agent_webhook_processor.ocean",
+            mock_ocean,
+        )
     )
     stack.enter_context(
         patch(
