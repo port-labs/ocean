@@ -8,7 +8,9 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gitlab.clients.gitlab_client import GitLabClient
-from gitlab.helpers.skill_folder import attach_skill_folder_files
+from gitlab.helpers.skill_folder import (
+    attach_skill_folder_files,
+)
 from gitlab.helpers.skill_plugin import (
     PLUGIN_MANIFEST_PATHS,
     PluginProvider,
@@ -54,7 +56,7 @@ async def _resync_skills_via_tree(
     include_skill_folder: bool,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """One minimized tree-walk set per project, matching all applicable globs."""
-    patterns_by_repo, unrestricted_patterns = _partition_skill_patterns(path_entries)
+    patterns_by_repo, unrestricted_patterns = partition_skill_patterns(path_entries)
 
     # Common case: same globs for every project — concurrent tree walks.
     if unrestricted_patterns and not patterns_by_repo:
@@ -63,7 +65,7 @@ async def _resync_skills_via_tree(
             skip_parsing=True,
             params=project_params,
         ):
-            skills = await _build_skills(
+            skills = await build_skills(
                 client, files_batch, path_globs, emitted_keys, include_skill_folder
             )
             if skills:
@@ -71,7 +73,7 @@ async def _resync_skills_via_tree(
         return
 
     repos_scope = [] if unrestricted_patterns else list(patterns_by_repo.keys())
-    async for projects_batch in _iter_projects(client, repos_scope, project_params):
+    async for projects_batch in iter_projects(client, repos_scope, project_params):
         for project in projects_batch:
             repo = project["path_with_namespace"]
             patterns = list(
@@ -84,14 +86,14 @@ async def _resync_skills_via_tree(
                 skip_parsing=True,
                 repositories=[project],
             ):
-                skills = await _build_skills(
+                skills = await build_skills(
                     client, files_batch, path_globs, emitted_keys, include_skill_folder
                 )
                 if skills:
                     yield skills
 
 
-def _partition_skill_patterns(
+def partition_skill_patterns(
     path_entries: list[GitLabSkillPath],
 ) -> tuple[dict[str, list[str]], list[str]]:
     patterns_by_repo: dict[str, list[str]] = defaultdict(list)
@@ -105,7 +107,7 @@ def _partition_skill_patterns(
     return patterns_by_repo, unrestricted
 
 
-async def _build_skills(
+async def build_skills(
     client: GitLabClient,
     files_batch: list[dict[str, Any]],
     path_globs: list[str],
@@ -148,54 +150,56 @@ async def resync_plugins(
     selector: GitLabPluginSelector,
     project_params: dict[str, Any] | None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    providers = selector.providers
-    search_paths = plugin_search_paths(providers)
-
-    # A plugin aggregates manifests spread over several paths (e.g. claude's
-    # plugin.json and marketplace.json), so manifests are accumulated per
-    # project. Projects are processed one page at a time and dropped once
-    # yielded, instead of holding every project of the org until the last
-    # search path completes.
-    async for projects_batch in _iter_projects(client, selector.repos, project_params):
-        projects_by_id = {str(project["id"]): project for project in projects_batch}
-        accumulated: dict[str, dict[str, Any]] = {}
-
-        async for files_batch in client.search_files_matching_patterns(
-            search_paths,
-            skip_parsing=False,
-            repositories=projects_batch,
-        ):
-            for file_data in files_batch:
-                _accumulate_plugin_file(
-                    accumulated, projects_by_id, file_data, providers
-                )
-
-        batch: list[dict[str, Any]] = []
-        for entry in accumulated.values():
-            plugin = normalize_plugin(
-                repository=entry["repo"],
-                manifests=entry["manifests"],
-                providers=providers,
-                directory_supports=detect_directory_providers(
-                    entry["paths"], providers
-                ),
-            )
-            if not plugin:
-                continue
-            batch.append(
-                {
-                    "plugin": plugin,
-                    "repo": entry["repo"],
-                    "__branch": entry.get("branch")
-                    or entry["repo"].get("default_branch")
-                    or "main",
-                }
-            )
+    # Projects are processed one page at a time and dropped once yielded, instead
+    # of holding every project of the org until the last search path completes.
+    async for projects_batch in iter_projects(client, selector.repos, project_params):
+        batch = await plugins_for_projects(client, projects_batch, selector.providers)
         if batch:
             yield batch
 
 
-async def _iter_projects(
+async def plugins_for_projects(
+    client: GitLabClient,
+    projects: list[dict[str, Any]],
+    providers: list[PluginProvider],
+) -> list[dict[str, Any]]:
+    """Build one plugin per project from every manifest and directory marker it has."""
+    projects_by_id = {str(project["id"]): project for project in projects}
+    accumulated: dict[str, dict[str, Any]] = {}
+
+    # A plugin aggregates manifests spread over several paths (e.g. claude's
+    # plugin.json and marketplace.json), so manifests are accumulated per project.
+    async for files_batch in client.search_files_matching_patterns(
+        plugin_search_paths(providers),
+        skip_parsing=False,
+        repositories=projects,
+    ):
+        for file_data in files_batch:
+            _accumulate_plugin_file(accumulated, projects_by_id, file_data, providers)
+
+    batch: list[dict[str, Any]] = []
+    for entry in accumulated.values():
+        plugin = normalize_plugin(
+            repository=entry["repo"],
+            manifests=entry["manifests"],
+            providers=providers,
+            directory_supports=detect_directory_providers(entry["paths"], providers),
+        )
+        if not plugin:
+            continue
+        batch.append(
+            {
+                "plugin": plugin,
+                "repo": entry["repo"],
+                "__branch": entry.get("branch")
+                or entry["repo"].get("default_branch")
+                or "main",
+            }
+        )
+    return batch
+
+
+async def iter_projects(
     client: GitLabClient,
     repos: list[str],
     project_params: dict[str, Any] | None,

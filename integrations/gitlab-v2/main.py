@@ -1,3 +1,4 @@
+from datetime import datetime
 from itertools import batched
 from typing import cast, Any
 
@@ -31,6 +32,8 @@ from gitlab.helpers.incremental import (
     build_pipeline_params,
     build_project_list_params,
     resolve_effective_datetime,
+    resync_plugins_incremental,
+    resync_skills_incremental,
 )
 from gitlab.helpers.skill_plugin_resync import resync_plugins, resync_skills
 from integration import (
@@ -509,6 +512,7 @@ async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_T
             yield list(results)
 
 
+@ocean.on_incremental_resync(ObjectKind.FILE)
 @ocean.on_resync(ObjectKind.FILE)
 async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -521,6 +525,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     scope = "blobs"
     skip_parsing = selector.files.skip_parsing
     search_strategy = selector.files.search_strategy
+    sync_cursor = active_incremental_cursor()
 
     repositories = (
         selector.files.repos
@@ -545,8 +550,14 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 file_entity["__includedFiles"] = files_cache[repo_key]
         return enriched_batch
 
+    # groupSearch lists groups, which aren't filtered by the cursor.
     params = (
-        build_project_params(include_only_active_projects=include_only_active_groups)
+        build_incremental_project_params(
+            build_project_params(
+                include_only_active_projects=include_only_active_groups
+            ),
+            sync_cursor,
+        )
         if search_strategy in ("projectSearch", "repositoryTree")
         else build_group_params(include_only_active_groups=include_only_active_groups)
     )
@@ -558,10 +569,19 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repositories=repositories,
         params=params,
         strategy=search_strategy,
+        since=sync_cursor,
     ):
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
             yield enriched_batch
+
+
+def _required_incremental_cursor() -> datetime:
+    """The cursor of the running incremental resync; core binds one for every such run."""
+    sync_cursor = active_incremental_cursor()
+    if sync_cursor is None:
+        raise RuntimeError("Incremental resync handler ran without a sync cursor")
+    return sync_cursor
 
 
 @ocean.on_resync(ObjectKind.SKILL)
@@ -572,6 +592,24 @@ async def on_resync_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_only_active_projects=selector.include_only_active_groups
     )
     async for batch in resync_skills(client, selector, project_params):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.SKILL)
+async def resync_incremental_skills(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Rebuild only the skills whose files changed since the cursor."""
+    client = create_gitlab_client()
+    selector = cast(GitLabSkillResourceConfig, event.resource_config).selector
+    sync_cursor = _required_incremental_cursor()
+    project_params = build_incremental_project_params(
+        build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
+        ),
+        sync_cursor,
+    )
+    async for batch in resync_skills_incremental(
+        client, selector, project_params, sync_cursor
+    ):
         yield batch
 
 
@@ -586,6 +624,25 @@ async def on_resync_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_incremental_resync(ObjectKind.PLUGIN)
+async def resync_incremental_plugins(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Rebuild only the plugins of projects whose changes touch a plugin."""
+    client = create_gitlab_client()
+    selector = cast(GitLabPluginResourceConfig, event.resource_config).selector
+    sync_cursor = _required_incremental_cursor()
+    project_params = build_incremental_project_params(
+        build_project_params(
+            include_only_active_projects=selector.include_only_active_groups
+        ),
+        sync_cursor,
+    )
+    async for batch in resync_plugins_incremental(
+        client, selector, project_params, sync_cursor
+    ):
+        yield batch
+
+
+@ocean.on_incremental_resync(ObjectKind.FOLDER)
 @ocean.on_resync(ObjectKind.FOLDER)
 async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -593,8 +650,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     included_files = selector.included_files or []
 
     include_only_active_projects = selector.include_only_active_projects
-    projects_params = build_project_params(
-        include_only_active_projects=include_only_active_projects
+    sync_cursor = active_incremental_cursor()
+    projects_params = build_incremental_project_params(
+        build_project_params(include_only_active_projects=include_only_active_projects),
+        sync_cursor,
     )
     for folder_selector in selector.folders:
         path = folder_selector.path
@@ -615,7 +674,7 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     async for folders_batch in client.get_repository_folders(
                         path=path,
                         repository=project["path_with_namespace"],
-                        branch=None,
+                        since=sync_cursor,
                     ):
                         if folders_batch:
                             if included_files:
@@ -642,7 +701,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             # Process specific repos
             for repo in repos:
                 async for folders_batch in client.get_repository_folders(
-                    path=path, repository=repo.name, branch=repo.branch
+                    path=path,
+                    repository=repo.name,
+                    branch=repo.branch,
+                    since=sync_cursor,
                 ):
                     if included_files and folders_batch:
                         from gitlab.enrichments.included_files import (
