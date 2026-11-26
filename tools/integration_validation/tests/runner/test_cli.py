@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.integration_validation.mock_server.admin_schemas import JournalEntry
 from tools.integration_validation.runner.results import collect as collect_module
 from tools.integration_validation.runner import runner as runner_module
 from tools.integration_validation.runner.integration.process import IntegrationRunResult
@@ -61,8 +62,21 @@ def validation_integration(
 ) -> Path:
     integration_root = tmp_path / "sample"
     validation_root = integration_root / "validation"
-    mock_root = validation_root / "mock"
-    mock_root.mkdir(parents=True)
+    routes_root = validation_root / "mock" / "routes"
+    routes_root.mkdir(parents=True)
+    (routes_root / "team.yaml").write_text(
+        """
+routes:
+  - id: list-teams
+    request: {method: GET, path: /teams}
+    response: {status: 200, body: []}
+  - id: get-team
+    request: {method: GET, path: "/teams/{id}"}
+    response: {status: 200, body: {}}
+    verified: false
+""",
+        encoding="utf-8",
+    )
     (integration_root / ".port" / "resources").mkdir(parents=True)
     (integration_root / ".port" / "spec.json").write_text(
         json.dumps({"type": "sample"}), encoding="utf-8"
@@ -181,7 +195,8 @@ def test_validate_prepares_and_cleans_up_port_for_each_scenario(
 
     out = capsys.readouterr()
     assert "happy_path" in out.out
-    assert "Port resources cleaned up" in out.out
+    assert "PASS  happy_path" in out.out
+    assert "kept in Port" not in out.err
     (identifier, client), *_ = fake_port_clients.items()
     assert identifier == "validate-sample-happy-path"
     created = next(
@@ -212,7 +227,7 @@ def test_validate_skip_cleanup_keeps_port_resources_and_reports_them(
         )
     )
 
-    assert "Port resources kept" in capsys.readouterr().out
+    assert "kept in Port: validate-sample-happy-path" in capsys.readouterr().err
     (client,) = fake_port_clients.values()
     names = client.names()
     assert "delete_integration" not in names[names.index("mark_initialized") :]
@@ -295,7 +310,7 @@ def test_validate_with_mock_base_url_runs_sail_after_port_prep(
     main(_cli_args(validation_integration))
 
     assert sail_calls == ["validate-sample-happy-path"]
-    assert "All scenarios passed." in capsys.readouterr().err
+    assert "1 passed, 0 failed" in capsys.readouterr().out
 
 
 def test_validate_collects_entities_before_cleanup_and_reports_them(
@@ -323,7 +338,7 @@ def test_validate_collects_entities_before_cleanup_and_reports_them(
     assert names.index("search_entities") < names.index(
         "delete_integration", names.index("mark_initialized")
     )
-    assert "Entities: sampleTeam=1" in capsys.readouterr().out
+    assert "1 entities" in capsys.readouterr().out
     collection = json.loads(report_path.read_text())["scenarios"][0]["collection"]
     assert collection["resync_status"] == "completed"
     assert collection["entity_counts"] == {"sampleTeam": 1}
@@ -361,7 +376,7 @@ def test_validate_first_run_writes_expected_and_passes(
     assert json.loads(snapshot.read_text()) == [
         {"identifier": "platform", "properties": {"handle": "platform"}}
     ]
-    assert "Expected entities: matched" in capsys.readouterr().out
+    assert "expected entities matched" in capsys.readouterr().out
     report = json.loads(report_path.read_text())
     assert report["status"] == "passed"
     assert report["scenarios"][0]["comparison"]["status"] == "matched"
@@ -382,7 +397,8 @@ def test_validate_entity_diff_fails_and_reports_the_field(
 
     assert exc_info.value.code == 1
     out, err = capsys.readouterr()
-    assert "Expected entities: 1 difference(s) from" in out
+    assert "FAIL  happy_path" in out
+    assert "expected entities 1 difference(s) from" in out
     assert 'sampleTeam platform properties.handle: "platform" -> null' in err
     report = json.loads(report_path.read_text())
     assert report["status"] == "failed"
@@ -463,3 +479,99 @@ def test_validate_missing_integration_type_exits_2(
 
     assert exc_info.value.code == 2
     assert "OCEAN__INTEGRATION__TYPE" in capsys.readouterr().err
+
+
+def test_validate_report_has_verdict_totals_and_unverified_routes(
+    validation_integration: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    report_path = tmp_path / "report.json"
+
+    main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    assert "Unverified routes: get-team" in capsys.readouterr().out
+    report = json.loads(report_path.read_text())
+    assert report["totals"] == {"passed": 1, "failed": 0}
+    (scenario,) = report["scenarios"]
+    assert scenario["passed"] is True
+    assert scenario["unverified_routes"] == ["get-team"]
+
+
+def _unmatched_journal(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_fetch(mock_base_url: str) -> MockJournal:
+        return MockJournal(
+            requests=[
+                JournalEntry(
+                    method="GET",
+                    path="/teams/platform/members",
+                    query={},
+                    headers={},
+                    matched_route_id=None,
+                    response_status=599,
+                )
+            ],
+            route_call_counts={},
+        )
+
+    monkeypatch.setattr(collect_module, "fetch_mock_journal", fake_fetch)
+
+
+def test_validate_unmatched_request_fails_the_scenario(
+    validation_integration: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _unmatched_journal(monkeypatch)
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    assert exc_info.value.code == 1
+    assert "unmatched: GET /teams/platform/members" in capsys.readouterr().err
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "failed"
+    assert report["scenarios"][0]["passed"] is False
+
+
+def test_validate_scenario_can_allow_unmatched_requests(
+    validation_integration: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _unmatched_journal(monkeypatch)
+    scenarios_file = validation_integration / "validation" / "scenarios.yaml"
+    scenarios_file.write_text(
+        scenarios_file.read_text() + "    expect:\n      unmatched_requests: allow\n",
+        encoding="utf-8",
+    )
+
+    main(_cli_args(validation_integration))
+
+    assert "PASS  happy_path" in capsys.readouterr().out
+
+
+def test_validate_setup_error_still_writes_a_report(
+    validation_integration: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    for key in (
+        "OCEAN__PORT__CLIENT_ID",
+        "OCEAN__PORT__CLIENT_SECRET",
+        "OCEAN__PORT__BASE_URL",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    (validation_integration / ".env").unlink()
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    assert exc_info.value.code == 2
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "error"
+    assert report["error"].startswith("Setup error: Missing Port credentials")
+    assert report["scenarios"] == []

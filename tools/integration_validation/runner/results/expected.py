@@ -24,7 +24,7 @@ def resolve_expected_dir(
     paths: ValidationPaths, scenario_name: str, scenario: ScenarioDefinition
 ) -> Path:
     """``expect.entities`` relative to ``validation/``, else ``expected/<scenario>/``."""
-    configured = scenario.expect.entities if scenario.expect else None
+    configured = scenario.expect.entities
     if configured is None:
         return paths.validation_root / EXPECTED_DIRNAME / scenario_name
     return paths.validation_root / configured

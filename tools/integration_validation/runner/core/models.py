@@ -10,7 +10,8 @@ class ScenarioExpect(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     entities: str | None = None
-    unmatched_requests: Literal["none"] | None = None
+    # ``none`` fails the scenario on any request no mock route matched.
+    unmatched_requests: Literal["none", "allow"] = "none"
     resync_status: str | None = None
 
 
@@ -31,7 +32,7 @@ class ScenarioDefinition(BaseModel):
     blueprints: str | None = None
     integration_config: dict[str, Any] | None = None
     port_app_config_overrides: list[PortAppConfigOverride] | None = None
-    expect: ScenarioExpect | None = None
+    expect: ScenarioExpect = Field(default_factory=ScenarioExpect)
 
 
 class ScenariosDefaults(BaseModel):

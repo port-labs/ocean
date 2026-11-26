@@ -31,11 +31,13 @@ python -m tools.integration_validation.runner integrations/datadog \
   --report /tmp/validate-report.json
 ```
 
+Or from the integration directory: `make validate-mock` (mock on `PORT`, default 9000) and `make validate ARGS="--scenario happy_path"`. Both use the repo root venv.
+
 Options: `--scenario NAME` (repeatable), `--update-expected`, `--skip-cleanup`, `--report PATH`, `--mock-base-url URL` (default `http://127.0.0.1:9000`; the runner does not start the mock), `--integration-timeout SECONDS` (subprocess limit, default 180).
 
 The runner only reads the mock's admin API; it never loads or resets it. Load the scenario before each run and reset the mock between runs (`POST /__admin/reset`), otherwise the journal and call counts include earlier requests. Run one `--scenario` at a time, since every scenario hits whatever is loaded.
 
-Each scenario runs `ocean sail -O` as a subprocess with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
+Each scenario runs `ocean sail -O` as a subprocess (`OCEAN_CLI`, else `<integration>/.venv/bin/ocean`, else `ocean` on `PATH`) with `OCEAN__EVENT_LISTENER__TYPE=ONCE`, `OCEAN__INITIALIZE_PORT_RESOURCES=false`, the run's integration identifier, and `defaults.integration_config` (plus optional per-scenario `integration_config`) rendered with `{{mock_base_url}}`. `OCEAN__BASE_URL` is stripped so the subprocess stays address-less. Pass/fail for the integration step is the subprocess exit code (entity expectations are a follow-up step).
 
 ## Collected results
 
@@ -45,7 +47,13 @@ After the subprocess exits and before cleanup, each scenario collects:
 - every entity in each of the run's blueprints, searched by blueprint rather than datasource, so placeholders from `createMissingRelatedEntities` and unexpected entities are included;
 - the mock's journal: all requests, unmatched requests, unused routes and per-route call counts.
 
-The console prints a summary per scenario, and the report has a `collection` section with the resync status, entity counts per blueprint and the journal summary.
+A request no mock route matched fails the scenario, unless the scenario sets `expect.unmatched_requests: allow`.
+
+## Output
+
+The console prints one line per scenario (pass/fail, entity count, unmatched requests, expected-entities status). Only what needs attention is listed under it: an integration or resync failure, unmatched requests, entity differences, and Port resources the run left behind. A footer lists the unverified routes (`verified: false`) of the scenarios that ran, and the totals.
+
+`--report PATH` writes the same results as JSON: overall `status` (`passed`, `failed`, or `error`) and `totals`, and for each scenario `passed`, `unverified_routes`, the `integration` subprocess result with its log tails, the `collection` (resync status, entity counts per blueprint, mock journal summary) and the `comparison`. When a setup or Port error stops the run, the report is still written, with `status: error`, the message in `error` and no scenarios.
 
 ## Expected entities
 
@@ -66,4 +74,4 @@ Each scenario gets a comparison status, shown in the console and in the report's
 
 When no snapshots exist yet, or with `--update-expected`, the snapshots are first written from this run, so the scenario matches. Snapshots are never written from a failed resync. Review the written files before relying on them.
 
-Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, or entities differ from the snapshots), `2` setup/preflight error.
+Exit codes: `0` pass, `1` validation failed (the integration failed, Port rejected a blueprint or the mapping, unmatched requests, or entities differ from the snapshots), `2` setup/preflight error.

@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from tools.integration_validation.mock_server.exceptions import RouteFileLoadError
+from tools.integration_validation.mock_server.loader import load_route_files
 from tools.integration_validation.runner.core.errors import ValidationSetupError
 from tools.integration_validation.runner.core.models import (
     BlueprintsDocument,
@@ -122,6 +124,19 @@ def load_port_app_config_file(port_app_config_file: Path) -> PortAppConfigDocume
         raise ValidationSetupError(
             _format_pydantic_error(str(port_app_config_file), exc)
         ) from exc
+
+
+def load_unverified_route_ids(
+    validation_paths: ValidationPaths, scenario: ScenarioDefinition
+) -> list[str]:
+    """Routes of the scenario marked ``verified: false`` (not recorded from the vendor)."""
+    try:
+        routes = load_route_files(
+            validation_paths.mock_root / route for route in scenario.routes
+        )
+    except RouteFileLoadError as exc:
+        raise ValidationSetupError(str(exc)) from exc
+    return [route.id for route in routes if not route.verified]
 
 
 def _format_pydantic_error(prefix: str, exc: ValidationError) -> str:

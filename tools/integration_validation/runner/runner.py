@@ -21,16 +21,21 @@ from tools.integration_validation.runner.results.evaluate import (
     evaluate_scenario,
 )
 from tools.integration_validation.runner.results.expected import resolve_expected_dir
-from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.core.errors import (
+    ValidationCliError,
+    ValidationSetupError,
+)
 from tools.integration_validation.runner.scenarios.loader import (
     load_blueprints_file,
     load_port_app_config_file,
     load_scenarios_document,
+    load_unverified_route_ids,
     resolve_integration_resource_path,
     resolve_scenario_blueprints_path,
     resolve_validation_paths,
 )
 from tools.integration_validation.runner.core.models import (
+    ScenarioExpect,
     ScenariosDocument,
     ValidationPaths,
 )
@@ -78,6 +83,8 @@ class ValidateOptions:
 @dataclass(frozen=True)
 class ScenarioRun:
     plan: ScenarioPortPlan
+    expect: ScenarioExpect
+    unverified_route_ids: list[str]
     cleanup_leftovers: list[str]
     cleaned_up: bool
     integration: IntegrationRunResult
@@ -85,10 +92,17 @@ class ScenarioRun:
     comparison: ScenarioComparison
 
     @property
+    def unmatched_requests_failed(self) -> bool:
+        return self.expect.unmatched_requests == "none" and bool(
+            self.collection.mock.unmatched_requests
+        )
+
+    @property
     def passed(self) -> bool:
         return (
             self.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
             and self.comparison.passed
+            and not self.unmatched_requests_failed
         )
 
 
@@ -97,6 +111,12 @@ class ValidateResult:
     paths: ValidationPaths
     options: ValidateOptions
     scenario_runs: list[ScenarioRun]
+
+    @property
+    def passed(self) -> bool:
+        return bool(self.scenario_runs) and all(
+            run.passed for run in self.scenario_runs
+        )
 
 
 def run_validate(options: ValidateOptions) -> ValidateResult:
@@ -114,8 +134,22 @@ def run_validate(options: ValidateOptions) -> ValidateResult:
 
     result = ValidateResult(paths=paths, options=options, scenario_runs=scenario_runs)
     if options.report_path is not None:
-        _write_report(result, options.report_path)
+        _write_report(_report(result), options.report_path)
     return result
+
+
+def write_error_report(options: ValidateOptions, error: ValidationCliError) -> None:
+    """Report a setup or Port error that stopped the run, so it is never silent."""
+    if options.report_path is None:
+        return
+    report = {
+        "integration": options.integration_path.resolve().name,
+        "status": ValidationAggregateStatus.ERROR,
+        "error": f"{error.prefix}: {error.message}",
+        "scenarios": [],
+        "options": _options_report(options),
+    }
+    _write_report(report, options.report_path)
 
 
 def _plan_scenarios(
@@ -174,13 +208,14 @@ async def _run_scenario(
     integration_type: str,
     options: ValidateOptions,
 ) -> ScenarioRun:
+    scenario = scenarios.scenarios[plan.scenario_name]
+    unverified_route_ids = load_unverified_route_ids(paths, scenario)
     client = create_port_client(plan.integration_identifier, integration_type)
     logger.info(
         f"Preparing Port for scenario '{plan.scenario_name}' "
         f"(integration {plan.integration_identifier})"
     )
 
-    scenario = scenarios.scenarios[plan.scenario_name]
     leftovers: list[str] = []
     prepared = False
 
@@ -220,6 +255,8 @@ async def _run_scenario(
 
     return ScenarioRun(
         plan=plan,
+        expect=scenario.expect,
+        unverified_route_ids=unverified_route_ids,
         cleanup_leftovers=leftovers,
         cleaned_up=prepared and not options.skip_cleanup and not leftovers,
         integration=integration_result,
@@ -244,20 +281,32 @@ async def _teardown_scenario(
     return leftovers
 
 
-def _write_report(result: ValidateResult, report_path: Path) -> None:
-    # Placeholder report until full report.json schema is implemented.
-    payload = {
+def _report(result: ValidateResult) -> dict[str, Any]:
+    passed = sum(run.passed for run in result.scenario_runs)
+    return {
         "integration": result.paths.integration_name,
-        "status": _aggregate_status(result),
+        "status": (
+            ValidationAggregateStatus.PASSED
+            if result.passed
+            else ValidationAggregateStatus.FAILED
+        ),
+        "totals": {"passed": passed, "failed": len(result.scenario_runs) - passed},
         "scenarios": [_scenario_report(run) for run in result.scenario_runs],
-        "options": {
-            "update_expected": result.options.update_expected,
-            "skip_cleanup": result.options.skip_cleanup,
-        },
+        "options": _options_report(result.options),
     }
+
+
+def _options_report(options: ValidateOptions) -> dict[str, Any]:
+    return {
+        "update_expected": options.update_expected,
+        "skip_cleanup": options.skip_cleanup,
+    }
+
+
+def _write_report(report: dict[str, Any], report_path: Path) -> None:
     try:
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     except OSError as exc:
         raise ValidationSetupError(
             f"Could not write report to {report_path}: {exc}"
@@ -268,7 +317,9 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
     return {
         "name": run.plan.scenario_name,
         "status": run.integration.integration_status(),
+        "passed": run.passed,
         "kinds": run.plan.kinds,
+        "unverified_routes": run.unverified_route_ids,
         "port": {
             "integration_identifier": run.plan.integration_identifier,
             "blueprints": run.plan.blueprint_renames,
@@ -279,9 +330,3 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
         "collection": run.collection.to_dict(),
         "comparison": run.comparison.model_dump(mode="json"),
     }
-
-
-def _aggregate_status(result: ValidateResult) -> ValidationAggregateStatus:
-    if all(run.passed for run in result.scenario_runs):
-        return ValidationAggregateStatus.PASSED
-    return ValidationAggregateStatus.FAILED

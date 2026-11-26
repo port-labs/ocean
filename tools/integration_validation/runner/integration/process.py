@@ -43,12 +43,18 @@ class IntegrationRunResult:
         return ScenarioIntegrationStatus.COMPLETED
 
 
-def resolve_ocean_sail_command() -> list[str]:
-    ocean = os.environ.get("OCEAN_CLI") or shutil.which("ocean")
+def resolve_ocean_sail_command(integration_root: Path) -> list[str]:
+    """Prefer the integration's own venv: it has the integration's dependencies."""
+    integration_ocean = integration_root / ".venv" / "bin" / "ocean"
+    ocean = (
+        os.environ.get("OCEAN_CLI")
+        or (str(integration_ocean) if integration_ocean.is_file() else None)
+        or shutil.which("ocean")
+    )
     if not ocean:
         raise ValidationSetupError(
-            "Could not find the ocean CLI on PATH. Run `poetry install` from the "
-            "repo root or set OCEAN_CLI to the ocean executable."
+            "Could not find the ocean CLI. Run `make install` in the integration "
+            "folder or set OCEAN_CLI to the ocean executable."
         )
     return [ocean, "sail", "-O"]
 
@@ -66,7 +72,7 @@ def run_ocean_sail_once(
     The mock server must already be listening at ``mock_base_url`` with the
     scenario loaded; this module does not start it.
     """
-    command = resolve_ocean_sail_command()
+    command = resolve_ocean_sail_command(integration_root)
     env = build_sail_subprocess_env(
         integration_identifier=integration_identifier,
         integration_config=integration_config,
