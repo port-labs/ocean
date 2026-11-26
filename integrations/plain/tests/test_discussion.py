@@ -609,3 +609,103 @@ async def test_discussions_query_includes_sortby() -> None:
     assert "sortBy:" in THREAD_DISCUSSIONS
     assert "CREATED_AT" in THREAD_DISCUSSIONS
     assert "ASC" in THREAD_DISCUSSIONS
+
+
+async def test_get_discussions_parity_with_old_implementation() -> None:
+    """New batched implementation yields same discussions as old per-thread approach."""
+    client = make_client()
+
+    # Fixture: threads and their discussions
+    fixture_thread_ids: list[dict[str, Any]] = [{"id": "th_1"}, {"id": "th_2"}]
+    fixture_discussions: list[dict[str, Any]] = [
+        {"id": "disc_1", "threadId": "th_1", "title": "First"},
+        {
+            "id": "disc_ai",
+            "threadId": "th_1",
+            "channelDetails": {
+                "__typename": "ThreadDiscussionAgentSessionChannelDetails"
+            },
+        },
+        {"id": "disc_2", "threadId": "th_2", "title": "Second"},
+        {"id": "disc_other", "threadId": "th_other", "title": "Other"},
+    ]
+
+    # Simulate old per-thread implementation with exclude_ai
+    old_results: list[dict[str, Any]] = []
+    for thread in fixture_thread_ids:
+        thread_id = thread["id"]
+        for disc in fixture_discussions:
+            if disc.get("threadId") == thread_id:
+                # Apply exclude_ai filter
+                details = disc.get("channelDetails")
+                if isinstance(details, dict):
+                    typename = details.get("__typename", "")
+                else:
+                    typename = ""
+                is_ai = "Agent" in typename or "Cursor" in typename
+                if not is_ai:
+                    old_results.append(disc)
+
+    # Simulate new batched implementation
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield fixture_thread_ids
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        yield fixture_discussions
+
+    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    new_batches = await collect_pages(
+        client.get_discussions(None, exclude_ai_discussions=True)
+    )
+    new_results = [disc for batch in new_batches for disc in batch]
+
+    # Verify parity
+    assert len(old_results) == len(new_results)
+    assert [d["id"] for d in old_results] == [d["id"] for d in new_results]
+    # Verify threadId filtering worked (disc_other excluded)
+    assert "disc_other" not in [d["id"] for d in new_results]
+    # Verify exclude_ai worked (disc_ai excluded)
+    assert "disc_ai" not in [d["id"] for d in new_results]
+
+
+async def test_get_discussion_messages_parity_stamps_thread_id() -> None:
+    """New implementation stamps threadId from discussion response."""
+    client = make_client()
+
+    # Old implementation: fetched discussions per thread, got threadId from loop
+    old_thread_id = "th_1"
+    old_messages = [{"id": "dm_1", "text": "Hello", "threadId": old_thread_id}]
+
+    # New implementation: gets threadId from discussion response
+    async def get_thread_ids(statuses: list[str] | None = None) -> Any:
+        yield [{"id": "th_1"}]
+
+    async def paginate_connection(
+        query: str,
+        operation_name: str,
+        variables: dict[str, Any] | None,
+        connection_path: str,
+        *,
+        after: str | None = None,
+    ) -> Any:
+        if operation_name == "ThreadDiscussionIds":
+            yield [{"id": "disc_1", "threadId": "th_1"}]
+        else:
+            yield [{"id": "dm_1", "text": "Hello"}]
+
+    client.get_thread_ids = get_thread_ids  # type: ignore[method-assign]
+    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
+    new_batches = await collect_pages(client.get_discussion_messages(None))
+    new_messages = [msg for batch in new_batches for msg in batch]
+
+    # Verify parity: threadId stamping produces same result
+    assert len(old_messages) == len(new_messages)
+    assert new_messages[0]["threadId"] == old_thread_id
