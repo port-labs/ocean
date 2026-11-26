@@ -6,6 +6,7 @@ import httpx
 from github.core.exporters.repository_exporter import (
     ARCHIVED_QUALIFIER_PATTERN,
     ENRICHMENT_BATCH_SIZE,
+    SEARCH_QUERY_MAX_LENGTH,
     RestRepositoryExporter,
 )
 from pydantic.v1 import ValidationError
@@ -716,6 +717,71 @@ class TestRestRepositoryExporter:
             f"{rest_client.base_url}/search/repositories",
             {"q": "code in:name repo:test-org/matches repo:test-org/no-match"},
         )
+
+    async def test_repo_search_with_pushed_since_splits_long_queries_into_chunks(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        cursor = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+        pushed = [
+            {"name": f"repo-{i:03d}-{'x' * 20}", "pushed_at": "2026-06-02T00:00:00Z"}
+            for i in range(30)
+        ]
+        # Every third repository matches, spread across the chunks.
+        matching = {repo["name"] for repo in pushed[::3]}
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Any, None]:
+            if url.endswith("/search/repositories"):
+                queried = {
+                    q.split("/", 1)[1]
+                    for q in params["q"].split()
+                    if q.startswith("repo:")
+                }
+                yield {"items": [{"name": n} for n in queried & matching]}
+            else:
+                yield pushed
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type="all",
+                    search_params=RepoSearchParams(query="code in:name"),
+                    pushed_since=cursor,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        assert repos == [[repo for repo in pushed if repo["name"] in matching]]
+        search_queries = [
+            call.args[1]["q"]
+            for call in mock_request.call_args_list
+            if call.args[0].endswith("/search/repositories")
+        ]
+        assert len(search_queries) > 1
+        assert all(len(q) <= SEARCH_QUERY_MAX_LENGTH for q in search_queries)
+        # Every pushed repository is searched exactly once.
+        searched = [
+            token for q in search_queries for token in q.split() if "repo:" in token
+        ]
+        assert sorted(searched) == sorted(f"repo:test-org/{r['name']}" for r in pushed)
+
+    async def test_chunk_repo_qualifiers_keeps_oversized_qualifier_alone(self) -> None:
+        long_qualifier = "repo:org/" + "y" * (SEARCH_QUERY_MAX_LENGTH + 10)
+        chunks = RestRepositoryExporter._chunk_repo_qualifiers(
+            "q", ["repo:org/a", long_qualifier, "repo:org/b"]
+        )
+        assert chunks == ["repo:org/a", long_qualifier, "repo:org/b"]
+
+    async def test_chunk_repo_qualifiers_empty(self) -> None:
+        assert RestRepositoryExporter._chunk_repo_qualifiers("q", []) == []
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
