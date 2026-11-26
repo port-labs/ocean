@@ -609,7 +609,3 @@ async def test_discussions_query_includes_sortby() -> None:
     assert "sortBy:" in THREAD_DISCUSSIONS
     assert "CREATED_AT" in THREAD_DISCUSSIONS
     assert "ASC" in THREAD_DISCUSSIONS
-
-
-
-

@@ -399,5 +399,3 @@ async def test_get_thread_messages_passes_exclude_done_statuses() -> None:
         await collect_pages(client.get_thread_messages(["TODO", "SNOOZED"]))
 
     assert seen_variables["filters"]["statuses"] == ["TODO", "SNOOZED"]
-
-
