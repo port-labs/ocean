@@ -8,6 +8,7 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
+from rate_limit_wrapper import LaunchDarklyRateLimitWrapper, centralized_rate_limit_pool
 from rate_limiter import LaunchDarklyRateLimiter
 
 PAGE_SIZE = 100
@@ -27,13 +28,17 @@ class LaunchDarklyClient:
     ):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
-        retry_config = RetryConfig(
-            retry_after_headers=["X-Ratelimit-Reset", "Retry-After"],
+        self._rate_limiter = LaunchDarklyRateLimitWrapper(
+            LaunchDarklyRateLimiter(),
+            pool=centralized_rate_limit_pool(launchdarkly_url),
         )
-        self.http_client = OceanAsyncClient(retry_config=retry_config)
+        self._retry_config = RetryConfig(
+            retry_after_headers=["X-Ratelimit-Reset", "Retry-After"],
+            rate_limiter=self._rate_limiter,
+        )
+        self.http_client = OceanAsyncClient(retry_config=self._retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.webhook_secret = webhook_secret
-        self._rate_limiter = LaunchDarklyRateLimiter()
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -130,8 +135,13 @@ class LaunchDarklyClient:
             logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
         finally:
-            if "response" in locals() and response:
-                await self._rate_limiter.update_from_headers(response.headers)
+            # The retry transport records retryable methods on every attempt.
+            if (
+                "response" in locals()
+                and response
+                and method not in self._retry_config.retryable_methods
+            ):
+                await self._rate_limiter.record_rate_limit_response(response)
 
     @cache_iterator_result()
     async def get_paginated_projects(
