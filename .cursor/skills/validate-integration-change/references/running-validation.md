@@ -1,10 +1,8 @@
 # Running integration validation
 
-How to run an integration's validation scenarios end to end. Both
-`validate-integration-change` and `create-integration-validation` use this loop.
-
-`validate-integration-change` runs this loop only after `validation/` exists. If it does not,
-the agent bootstraps via `create-integration-validation` first (same session), then continues here.
+How to run an integration's validation scenarios end to end. This loop needs an existing
+`validation/`; if there isn't one, follow [bootstrapping-validation.md](bootstrapping-validation.md)
+first.
 
 Source of truth for formats and behavior:
 - `tools/integration_validation/runner/README.md` (scenarios, expected entities, report, exit codes)
