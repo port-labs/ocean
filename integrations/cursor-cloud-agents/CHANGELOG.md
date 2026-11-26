@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.50 (2026-11-26)
+
+
+### Improvements
+
+- Reorganize integration code under the cursor_cloud_agents package
+
+
 ## 0.2.49 (2026-11-26)
 
 
