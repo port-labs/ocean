@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from tools.integration_validation.runner.core.models import PortEntity
+from tools.integration_validation.runner.core.models import (
+    EntitiesByBlueprint,
+    PortEntity,
+)
 
 # Set by Port, not by the mapping. ``blueprint`` carries the run suffix; the
 # expected file name already records the real blueprint.
@@ -13,6 +16,15 @@ PORT_MANAGED_FIELDS = {"blueprint", "createdAt", "updatedAt", "createdBy", "upda
 # Sections whose null values are dropped so that null and missing compare equal;
 # a section left empty is dropped too.
 NULLABLE_SECTIONS = ("properties", "relations")
+
+
+def normalize_entities(
+    entities: EntitiesByBlueprint, ignore_fields: list[str]
+) -> EntitiesByBlueprint:
+    return {
+        blueprint: normalize_blueprint_entities(blueprint_entities, ignore_fields)
+        for blueprint, blueprint_entities in entities.items()
+    }
 
 
 def normalize_blueprint_entities(

@@ -36,10 +36,10 @@ def _evaluate(
     return evaluate_scenario(parsed, **options)
 
 
-def test_first_run_writes_normalized_snapshots_and_is_new(tmp_path: Path) -> None:
+def test_first_run_writes_normalized_snapshots_and_matches(tmp_path: Path) -> None:
     comparison = _evaluate(tmp_path, {"team": [TEAM]})
 
-    assert comparison.status == ComparisonStatus.NEW
+    assert comparison.status == ComparisonStatus.MATCHED
     assert comparison.passed
     assert json.loads((tmp_path / "team.json").read_text()) == [
         {"identifier": "platform", "properties": {"handle": "platform"}}
@@ -84,7 +84,7 @@ def test_update_expected_overwrites_snapshots(tmp_path: Path) -> None:
         tmp_path, {"team": [{**TEAM, "title": "Platform"}]}, update_expected=True
     )
 
-    assert comparison.status == ComparisonStatus.UPDATED
+    assert comparison.status == ComparisonStatus.MATCHED
     assert comparison.passed
     assert json.loads((tmp_path / "team.json").read_text())[0]["title"] == "Platform"
 
@@ -92,9 +92,24 @@ def test_update_expected_overwrites_snapshots(tmp_path: Path) -> None:
 def test_failed_resync_never_writes_snapshots(tmp_path: Path) -> None:
     comparison = _evaluate(tmp_path, {"team": [TEAM]}, resync_succeeded=False)
 
-    assert comparison.status == ComparisonStatus.SKIPPED
-    assert not comparison.passed
+    assert comparison.status == ComparisonStatus.DIFFERENT
+    assert comparison.entity_diff["team"].added == ["platform"]
     assert not tmp_path.exists() or not any(tmp_path.iterdir())
+
+
+def test_failed_resync_with_update_expected_keeps_old_snapshots(
+    tmp_path: Path,
+) -> None:
+    _evaluate(tmp_path, {"team": [TEAM]})
+    snapshot = (tmp_path / "team.json").read_text()
+
+    comparison = _evaluate(
+        tmp_path, {"team": []}, update_expected=True, resync_succeeded=False
+    )
+
+    assert comparison.status == ComparisonStatus.DIFFERENT
+    assert comparison.entity_diff["team"].removed == ["platform"]
+    assert (tmp_path / "team.json").read_text() == snapshot
 
 
 def test_hand_edited_snapshots_are_normalized_before_diffing(tmp_path: Path) -> None:
@@ -123,7 +138,7 @@ def test_all_empty_first_run_is_still_an_expectation(tmp_path: Path) -> None:
 
     later = _evaluate(tmp_path, {"team": [TEAM], "user": []})
 
-    assert first.status == ComparisonStatus.NEW
+    assert first.status == ComparisonStatus.MATCHED
     assert later.status == ComparisonStatus.DIFFERENT
     assert later.entity_diff["team"].added == ["platform"]
     assert json.loads((tmp_path / "team.json").read_text()) == []
