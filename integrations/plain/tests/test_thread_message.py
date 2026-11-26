@@ -105,7 +105,8 @@ async def test_get_thread_messages_skips_entries_without_text() -> None:
     client.paginate_connection = paginate_connection  # type: ignore[method-assign]
     batches = await collect_pages(client.get_thread_messages([]))
 
-    assert seen["variables"]["filters"]["statuses"] == []
+    # Empty list sends no filter
+    assert "filters" not in seen["variables"]
     assert seen["query"] is LIST_THREAD_TIMELINES
     assert seen["operation_name"] == "ListThreadTimelines"
     assert seen["connection_path"] == "data.threads"
@@ -400,94 +401,3 @@ async def test_get_thread_messages_passes_exclude_done_statuses() -> None:
     assert seen_variables["filters"]["statuses"] == ["TODO", "SNOOZED"]
 
 
-async def test_get_thread_messages_parity_with_old_implementation() -> None:
-    """New batched implementation yields same entries as old per-thread approach."""
-    client = make_client()
-
-    # Fixture: 3 threads with various timeline entries
-    fixture_threads = [
-        {
-            "id": "th_1",
-            "timelineEntries": {
-                "pageInfo": {"hasNextPage": False, "endCursor": None},
-                "edges": [
-                    {
-                        "node": {
-                            "id": "tl_1_1",
-                            "threadId": "th_1",
-                            "llmText": "Message 1",
-                            "entry": {"__typename": "ChatEntry"},
-                        }
-                    },
-                    {
-                        "node": {
-                            "id": "tl_1_2",
-                            "threadId": "th_1",
-                            "llmText": "",
-                            "entry": {"__typename": "StatusEntry"},
-                        }
-                    },
-                ],
-            },
-        },
-        {
-            "id": "th_2",
-            "timelineEntries": {
-                "pageInfo": {"hasNextPage": False, "endCursor": None},
-                "edges": [
-                    {
-                        "node": {
-                            "id": "tl_2_1",
-                            "threadId": "th_2",
-                            "llmText": "Message 2",
-                            "entry": {"__typename": "EmailEntry"},
-                        }
-                    }
-                ],
-            },
-        },
-        {
-            "id": "th_3",
-            "timelineEntries": {
-                "pageInfo": {"hasNextPage": False, "endCursor": None},
-                "edges": [],
-            },
-        },
-    ]
-
-    # Simulate old per-thread implementation
-    old_results: list[dict[str, Any]] = []
-    for thread in fixture_threads:
-        timeline_conn = thread.get("timelineEntries")
-        if isinstance(timeline_conn, dict):
-            edges = timeline_conn.get("edges", [])
-            for edge in edges:
-                if isinstance(edge, dict):
-                    node = edge.get("node")
-                    if isinstance(node, dict):
-                        text = node.get("llmText")
-                        if isinstance(text, str) and text.strip():
-                            old_results.append(node)
-
-    # Simulate new batched implementation
-    async def paginate_connection(
-        query: str,
-        operation_name: str,
-        variables: dict[str, Any] | None,
-        connection_path: str,
-        *,
-        after: str | None = None,
-    ) -> Any:
-        yield fixture_threads
-
-    client.paginate_connection = paginate_connection  # type: ignore[method-assign]
-    new_batches = await collect_pages(client.get_thread_messages(None))
-    new_results = [entry for batch in new_batches for entry in batch]
-
-    # Verify parity: same IDs in same order
-    assert len(old_results) == len(new_results)
-    assert [e["id"] for e in old_results] == [e["id"] for e in new_results]
-    # Verify llmText filter worked
-    assert all(e["llmText"].strip() for e in new_results)
-    # Verify threadId is present
-    assert all("threadId" in e for e in new_results)

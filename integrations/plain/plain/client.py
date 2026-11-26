@@ -299,43 +299,12 @@ class PlainClient:
                 if not isinstance(thread_id, str) or not thread_id:
                     continue
                 timeline_connection = thread.get("timelineEntries")
-                if not isinstance(timeline_connection, dict):
-                    raise PlainGraphQLError(
-                        [
-                            {
-                                "message": (
-                                    f"Plain thread '{thread_id}' missing timelineEntries"
-                                )
-                            }
-                        ]
-                    )
-                page_info = timeline_connection.get("pageInfo")
-                if not isinstance(page_info, dict):
-                    raise PlainGraphQLError(
-                        [
-                            {
-                                "message": (
-                                    f"Plain thread '{thread_id}' timelineEntries missing pageInfo"
-                                )
-                            }
-                        ]
-                    )
-                entries = edges_to_nodes(timeline_connection)
+                entries, next_cursor = self._nested_connection(
+                    thread_id, timeline_connection
+                )
                 filtered = [entry for entry in entries if _has_message_text(entry)]
-                if page_info.get("hasNextPage"):
-                    end_cursor = page_info.get("endCursor")
-                    if not isinstance(end_cursor, str) or not end_cursor:
-                        raise PlainGraphQLError(
-                            [
-                                {
-                                    "message": (
-                                        f"Plain thread '{thread_id}' reported nested "
-                                        "hasNextPage without endCursor"
-                                    )
-                                }
-                            ]
-                        )
-                    follow_up_queue.append((thread_id, end_cursor))
+                if next_cursor:
+                    follow_up_queue.append((thread_id, next_cursor))
                 if filtered:
                     yield filtered
         for thread_id, cursor in follow_up_queue:
@@ -388,8 +357,42 @@ class PlainClient:
                         if stamped:
                             yield stamped
 
+    def _nested_connection(
+        self, thread_id: str, connection: Any
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        """Extract nodes and next cursor from a nested connection, validating structure."""
+        if not isinstance(connection, dict):
+            raise PlainGraphQLError(
+                [{"message": f"Plain thread '{thread_id}' missing timelineEntries"}]
+            )
+        page_info = connection.get("pageInfo")
+        if not isinstance(page_info, dict):
+            raise PlainGraphQLError(
+                [
+                    {
+                        "message": f"Plain thread '{thread_id}' timelineEntries missing pageInfo"
+                    }
+                ]
+            )
+        nodes = edges_to_nodes(connection)
+        if page_info.get("hasNextPage"):
+            end_cursor = page_info.get("endCursor")
+            if not isinstance(end_cursor, str) or not end_cursor:
+                raise PlainGraphQLError(
+                    [
+                        {
+                            "message": (
+                                f"Plain thread '{thread_id}' reported nested "
+                                "hasNextPage without endCursor"
+                            )
+                        }
+                    ]
+                )
+            return nodes, end_cursor
+        return nodes, None
+
     def _thread_list_variables(self, statuses: list[str] | None) -> dict[str, Any]:
-        if statuses is None:
+        if not statuses:
             return {}
         return {"filters": {"statuses": statuses}}
 
