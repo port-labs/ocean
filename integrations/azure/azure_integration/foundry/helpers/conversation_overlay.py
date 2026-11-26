@@ -12,7 +12,6 @@ from azure_integration.foundry.clients.http.foundry_client import FoundryHttpCli
 from azure_integration.foundry.core.exporters.responses_exporter import ResponsesExporter
 from azure_integration.foundry.foundry_incremental import RESPONSE_INCREMENTAL
 from azure_integration.foundry.helpers.utils import effective_conversation_cutoff
-from azure_integration.foundry.kinds import ConversationSelector
 from azure_integration.foundry.models.responses import Response
 
 
@@ -84,15 +83,11 @@ async def _latest_keys_for_scope(
 async def enrich_conversation_pages(
     client: FoundryHttpClient,
     *,
-    selector: ConversationSelector,
+    since_days: int,
     pages: AsyncIterator[list[dict[str, Any]]],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if not selector.rollup_responses:
-        async for page in pages:
-            yield page
-        return
     cutoff = effective_conversation_cutoff(
-        active_incremental_cursor(), since_days=selector.since_days
+        active_incremental_cursor(), since_days=since_days
     )
     cache: dict[tuple[str, str, str | None], dict[str, dict[str, Any]]] = {}
     exporter = ResponsesExporter(client)

@@ -36,6 +36,7 @@ async def test_lists_conversations_per_agent_endpoint() -> None:
         side_effect=[
             _agen([{"id": "agent-a"}]),
             _agen([{"id": "conv-1", "created_at": _NOW}]),
+            _agen([]),
         ]
     )
 
@@ -60,7 +61,10 @@ async def test_lists_conversations_per_agent_endpoint() -> None:
 async def test_lists_conversations_project_scope_only() -> None:
     client = MagicMock()
     client.send_cursor_paginated_request = MagicMock(
-        side_effect=[_agen([{"id": "conv-p", "created_at": _NOW}])]
+        side_effect=[
+            _agen([{"id": "conv-p", "created_at": _NOW}]),
+            _agen([]),
+        ]
     )
 
     pages: list[list[dict[str, Any]]] = []
@@ -74,10 +78,13 @@ async def test_lists_conversations_project_scope_only() -> None:
     ):
         pages.append(page)
 
-    assert client.send_cursor_paginated_request.call_count == 1
-    assert client.send_cursor_paginated_request.call_args.args[1] == (
-        "openai/v1/conversations"
-    )
+    paths = [
+        call.args[1] for call in client.send_cursor_paginated_request.call_args_list
+    ]
+    assert paths == [
+        "openai/v1/conversations",
+        "openai/v1/responses",
+    ]
     assert pages[0][0]["id"] == "conv-p"
     assert "__foundryAgentId" not in pages[0][0]
 
@@ -89,7 +96,9 @@ async def test_lists_conversations_both_scopes_are_separate_stores() -> None:
         side_effect=[
             _agen([{"id": "agent-a"}]),
             _agen([{"id": "agent-conv", "created_at": _NOW}]),
+            _agen([]),
             _agen([{"id": "project-conv", "created_at": _NOW}]),
+            _agen([]),
         ]
     )
 
@@ -110,7 +119,9 @@ async def test_lists_conversations_both_scopes_are_separate_stores() -> None:
     assert paths == [
         "agents",
         "agents/agent-a/endpoint/protocols/openai/conversations",
+        "agents/agent-a/endpoint/protocols/openai/responses",
         "openai/v1/conversations",
+        "openai/v1/responses",
     ]
     assert pages[0][0]["id"] == "agent-conv"
     assert pages[0][0]["__foundryAgentId"] == "agent-a"

@@ -139,16 +139,6 @@ class FoundryEndpointScopedSelector(FoundrySelector):
 
 
 class ConversationSelector(FoundryEndpointScopedSelector):
-    rollup_responses: bool = Field(
-        default=False,
-        alias="rollupResponses",
-        title="Roll up responses",
-        description=(
-            "When true, conversation sync adds latest response id, status, and "
-            "duration from responses in the same project/agent scope (no token "
-            "totals). Extra response list API calls per scope; off by default."
-        ),
-    )
     since_days: int = Field(
         default=30,
         ge=1,
