@@ -27,12 +27,10 @@ from wcmatch import glob
 
 from github.core.options import (
     FileSearchOptions,
-    ListOrganizationOptions,
     ListFileSearchOptions,
 )
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import GithubClientType, matches_glob_pattern
-from github.helpers.repo_selectors import CompositeRepositorySelector
+from github.helpers.pattern_mapping_builder import PatternMappingBuilder
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -165,63 +163,38 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
     return False
 
 
-class FilePatternMappingBuilder:
-    def __init__(
+class FilePatternMappingBuilder(
+    PatternMappingBuilder[FileSearchOptions, ListFileSearchOptions]
+):
+    selector_kind = "file"
+
+    def _search_options(
         self,
-        org_exporter: AbstractGithubExporter[Any],
-        repo_exporter: AbstractGithubExporter[Any],
-        repo_type: str,
-    ):
-        self.org_exporter = org_exporter
-        self.repo_selector = CompositeRepositorySelector(repo_type)
-        self.repo_exporter = repo_exporter
+        selector: "GithubFilePattern",
+        org_login: str,
+        branch: str,
+        repo_obj: Dict[str, Any],
+    ) -> FileSearchOptions:
+        return FileSearchOptions(
+            organization=org_login,
+            path=selector.path,
+            skip_parsing=selector.skip_parsing,
+            branch=branch,
+        )
 
-    async def build(
+    def _list_options(
         self,
-        files: List["GithubFilePattern"],
-        changed_since: Optional[datetime] = None,
-    ) -> List[ListFileSearchOptions]:
-        """Group file patterns per repository.
-
-        With ``changed_since``, only repositories pushed since then are kept, and
-        each is limited to files changed since then.
-        """
-        repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
-
-        logger.info(f"Building path mapping for {len(files)} file selectors...")
-
-        for file_sel in files:
-            async for batch in self.org_exporter.get_paginated_resources(
-                ListOrganizationOptions(organization=file_sel.organization)
-            ):
-                for org in batch:
-                    org_login = org["login"]
-                    org_type = org["type"]
-                    async for repo_name, branch, _ in self.repo_selector.select_repos(
-                        file_sel,
-                        self.repo_exporter,
-                        org_login,
-                        org_type,
-                        pushed_since=changed_since,
-                    ):
-                        repo_map[(org_login, repo_name)].append(
-                            FileSearchOptions(
-                                organization=org_login,
-                                path=file_sel.path,
-                                skip_parsing=file_sel.skip_parsing,
-                                branch=branch,
-                            )
-                        )
-
-        return [
-            ListFileSearchOptions(
-                organization=org,
-                repo_name=repo,
-                files=items,
-                changed_since=changed_since,
-            )
-            for (org, repo), items in repo_map.items()
-        ]
+        org: str,
+        repo: str,
+        items: List[FileSearchOptions],
+        changed_since: Optional[datetime],
+    ) -> ListFileSearchOptions:
+        return ListFileSearchOptions(
+            organization=org,
+            repo_name=repo,
+            files=items,
+            changed_since=changed_since,
+        )
 
 
 def file_or_included_files_changed(
@@ -313,14 +286,17 @@ def build_batch_file_query(
     """
     Build a GraphQL query to fetch multiple files from a repository.
     """
-    objects = "\n".join(f"""
+    objects = "\n".join(
+        f"""
         file_{file_index}: object(expression: "{branch}:{path}") {{
             ... on Blob {{
                 text
                 byteSize
             }}
         }}
-        """ for file_index, path in enumerate(file_paths))
+        """
+        for file_index, path in enumerate(file_paths)
+    )
 
     query = f"""
     query {{
