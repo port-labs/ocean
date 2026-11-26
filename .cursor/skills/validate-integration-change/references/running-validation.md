@@ -174,7 +174,7 @@ The report is written on every exit, including setup errors.
 | `scenarios[].unverified_routes` | Routes marked `verified: false` |
 | `scenarios[].port.cleanup_leftovers` | Port resources the run could not delete |
 
-When `validation/expected/<scenario>/` is missing and the resync completes, the runner writes snapshots from the collected entities, then compares—so the first successful run usually shows `comparison.status: matched`, not a separate “new” status. Review those files before committing. With `--update-expected`, snapshots are overwritten the same way before the diff.
+When `validation/expected/<scenario>/` is missing and the resync completes, the runner writes snapshots from the collected entities, then compares—so the first successful run usually shows `comparison.status: matched`, not a separate “new” status. That is only acceptable right after bootstrapping; for regression checks the baseline must exist before the run, and for intended changes the agent writes it by hand ([expected-entities.md](expected-entities.md)). With `--update-expected`, snapshots are overwritten the same way before the diff.
 
 ## Known limits
 
@@ -182,5 +182,6 @@ When `validation/expected/<scenario>/` is missing and the resync completes, the 
   `{param}` path parameters in `body_file` names. An integration that follows absolute
   "next page" URLs from the response cannot be paginated against the mock yet. Say so
   instead of working around it.
-- `--update-expected` overwrites `validation/expected/<scenario>/`. Only run it after the
-  developer approved the diff.
+- `--update-expected` overwrites `validation/expected/<scenario>/` with what the run
+  produced, so it can't catch a wrong mapping. Only run it when the developer explicitly asks
+  for it, never as a way to make an intended change or a regression check pass.
