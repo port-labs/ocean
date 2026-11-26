@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "plain"
-version = "0.3.12-beta"
+version = "0.3.11-beta"
 description = "Plain integration for Port Ocean"
 authors = ["Haim Natan <haimn@port.io>"]
 
