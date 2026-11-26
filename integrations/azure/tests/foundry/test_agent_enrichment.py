@@ -1,7 +1,6 @@
 from azure_integration.foundry.helpers.agent_enrichment import (
     enrich_agent_row,
     foundry_portal_agent_url,
-    guid_to_base64url,
 )
 
 _ARM = (
@@ -28,12 +27,6 @@ def test_enrich_agent_row_adds_project_and_portal_url() -> None:
     assert row["__foundryProjectId"] == _ARM
     assert row["__foundryPortalAgentUrl"] is not None
     assert "/build/agents/MyAgent/build?version=3" in row["__foundryPortalAgentUrl"]
-
-
-def test_guid_to_base64url_matches_foundry_portal() -> None:
-    assert guid_to_base64url("11e43792-2b16-4f94-b5ea-de10eade3aef") == (
-        "EeQ3kisWT5S16t4Q6t467w"
-    )
 
 
 def test_foundry_portal_agent_url() -> None:

@@ -5,6 +5,9 @@ from typing import Any
 from urllib.parse import urljoin
 
 from port_ocean.utils.time import convert_str_to_utc_datetime
+from pydantic import ValidationError
+
+from azure_integration.foundry.models.agent import Agent, PromptAgentDefinition
 
 
 def projects_matching_regions(
@@ -23,6 +26,28 @@ def projects_matching_regions(
 def build_foundry_url(project_endpoint: str, path: str) -> str:
     base = project_endpoint.rstrip("/") + "/"
     return urljoin(base, path.lstrip("/"))
+
+
+def tools_from_agent_payload(agent: Any) -> list[Any]:
+    """Prompt-agent tools from a Foundry agent GET/list payload; empty otherwise."""
+    if not isinstance(agent, dict) or "versions" not in agent:
+        return []
+    try:
+        definition = Agent.model_validate(agent).latest_version.definition
+        return definition.tools if isinstance(definition, PromptAgentDefinition) else []
+    except ValidationError:
+        pass
+    versions = agent.get("versions")
+    if not isinstance(versions, dict):
+        return []
+    latest = versions.get("latest")
+    if not isinstance(latest, dict):
+        return []
+    definition = latest.get("definition")
+    if not isinstance(definition, dict):
+        return []
+    tools = definition.get("tools")
+    return tools if isinstance(tools, list) else []
 
 
 def agent_openai_protocol_path(agent_id: str, resource: str) -> str:

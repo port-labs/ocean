@@ -1,5 +1,5 @@
 bump: patch
 changelog-type: improvement
 changelog:
-  - Optional foundry-agent selector enrichToolbox (default false) loads toolbox skills and MCP server URLs onto agent rows; agent rows include __foundryPortalAgentUrl for the Foundry portal build UI.
+  - Optional foundry-agent selector enrichToolbox (default false) copies toolbox extra fields (__skillNames, __mcpUrls, __a2aSubagents) onto agent rows; agent rows include __foundryPortalAgentUrl for the Foundry portal build UI.
   - cancel_response requires agentId and accepts conversationId or responseId; when conversationId is set, every non-terminal response in that session is cancelled on the agent OpenAI protocol endpoint (responseId still cancels a single run when provided).

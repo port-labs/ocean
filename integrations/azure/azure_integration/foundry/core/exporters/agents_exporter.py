@@ -62,17 +62,6 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
         enrich_toolbox = options.enrich_toolbox
         cursor = active_incremental_cursor()
 
-        async def fetch_agent_summary(
-            endpoint: str, agent_id: str
-        ) -> dict[str, Any] | None:
-            return await self.get_resource(
-                SingleAgentOptions(
-                    project_endpoint=endpoint,
-                    project_id="",
-                    agent_id=agent_id,
-                )
-            )
-
         async for page in paginate_with_strategy(
             self.iter_agent_pages(project_endpoint),
             cursor=cursor,
@@ -99,10 +88,10 @@ class AgentsExporter(FoundryExporter[ListAgentsOptions, SingleAgentOptions]):
                 await self._attach_versions(project_endpoint, batch)
             if enrich_toolbox and batch:
                 await enrich_agents_from_toolbox(
-                    client=self.client,
-                    project_endpoint=project_endpoint,
-                    agents=batch,
-                    fetch_agent_if_needed=fetch_agent_summary,
+                    self.client,
+                    project_endpoint,
+                    project_id,
+                    batch,
                 )
             yield batch
 

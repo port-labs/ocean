@@ -5,25 +5,21 @@ import uuid
 from typing import Any
 from urllib.parse import quote
 
-from pydantic import ValidationError
-
 from azure_integration.foundry.clients.http.foundry_client import FoundryHttpClient
 from azure_integration.foundry.core.exporters.project_exporter import (
     foundry_project_from_arm_id,
 )
-from azure_integration.foundry.core.exporters.toolboxes_exporter import (
-    ToolboxPayload,
-    ToolboxesExporter,
-)
-from azure_integration.foundry.core.options import SingleToolboxOptions
-from azure_integration.foundry.helpers.a2a import skill_names_from_refs
+from azure_integration.foundry.core.exporters.toolboxes_exporter import ToolboxesExporter
+from azure_integration.foundry.core.options import ListToolboxesOptions
 from azure_integration.foundry.helpers.toolbox import toolbox_name_from_agent_tools
-from azure_integration.foundry.helpers.utils import enrich_with_project
-from azure_integration.foundry.models.toolbox import TOOLBOX_SERVER_LABEL, Tool
+from azure_integration.foundry.helpers.utils import (
+    enrich_with_project,
+    tools_from_agent_payload,
+)
+from port_ocean.utils.cache import cache_coroutine_result
 
 
-def guid_to_base64url(guid: str) -> str:
-    """Foundry portal route segment for a subscription GUID (base64url, no padding)."""
+def _guid_to_base64url(guid: str) -> str:
     try:
         raw = uuid.UUID(guid).bytes
     except ValueError:
@@ -41,7 +37,7 @@ def foundry_portal_agent_url(
     project = foundry_project_from_arm_id(project_arm_id)
     if project is None or not agent_name.strip():
         return None
-    encoded_sub = guid_to_base64url(project.subscription_id)
+    encoded_sub = _guid_to_base64url(project.subscription_id)
     route = (
         f"{encoded_sub},{project.resource_group_name},,"
         f"{project.account_name},{project.project_name}"
@@ -80,7 +76,9 @@ def enrich_agent_row(
 
 
 async def resolve_project_arm_id(project_endpoint: str) -> str | None:
-    from azure_integration.foundry.core.exporters.project_exporter import ProjectExporter
+    from azure_integration.foundry.core.exporters.project_exporter import (
+        ProjectExporter,
+    )
 
     try:
         project = await ProjectExporter().find_by_endpoint(project_endpoint)
@@ -104,90 +102,39 @@ async def prepare_agent_for_catalog(
     )
 
 
-def _definition_tools(agent: dict[str, Any]) -> list[Any]:
-    versions = agent.get("versions")
-    if not isinstance(versions, dict):
-        return []
-    latest = versions.get("latest")
-    if not isinstance(latest, dict):
-        return []
-    definition = latest.get("definition")
-    if not isinstance(definition, dict):
-        return []
-    tools = definition.get("tools")
-    return tools if isinstance(tools, list) else []
-
-
-def mcp_servers_from_tools(tools: list[Any]) -> list[str]:
-    """MCP endpoints from toolbox tools: server_url when set, else label (never the toolbox gateway)."""
-    servers: list[str] = []
-    for raw in tools:
-        if not isinstance(raw, dict) or raw.get("type") != "mcp":
-            continue
-        try:
-            tool = Tool.model_validate(raw)
-        except Exception:
-            continue
-        if tool.toolbox_name is not None:
-            continue
-        if tool.server_url and tool.server_url.strip():
-            servers.append(tool.server_url.strip())
-            continue
-        label = tool.server_label or raw.get("name")
-        if label and str(label) != TOOLBOX_SERVER_LABEL:
-            servers.append(str(label))
-    return servers
-
-
-def _enrichment_from_toolbox_payload(
-    toolbox: dict[str, Any],
-) -> tuple[list[str], list[str]]:
-    try:
-        parsed = ToolboxPayload.model_validate(toolbox)
-    except ValidationError:
-        return [], []
-    latest = parsed.versions.latest if parsed.versions else None
-    if latest is None:
-        return [], []
-    return skill_names_from_refs(latest.skills), mcp_servers_from_tools(latest.tools)
+@cache_coroutine_result()
+async def _build_toolbox_map(
+    client: FoundryHttpClient, project_endpoint: str, project_id: str
+) -> dict[str, dict[str, Any]]:
+    exporter = ToolboxesExporter(client)
+    toolbox_map: dict[str, dict[str, Any]] = {}
+    async for page in exporter.get_paginated_resources(
+        ListToolboxesOptions(project_endpoint=project_endpoint, project_id=project_id)
+    ):
+        for item in page:
+            key = item.get("name") or item.get("id")
+            if not key:
+                continue
+            toolbox_map[str(key)] = item
+    return toolbox_map
 
 
 async def enrich_agents_from_toolbox(
-    *,
     client: FoundryHttpClient,
     project_endpoint: str,
+    project_id: str,
     agents: list[dict[str, Any]],
-    fetch_agent_if_needed: Any | None,
 ) -> None:
-    """Set __toolboxSkillNames and __toolboxMcpServers when the agent pins a toolbox MCP."""
-    exporter = ToolboxesExporter(client)
-    by_name: dict[str, tuple[list[str], list[str]]] = {}
-
-    async def enrichment_for(toolbox_name: str) -> tuple[list[str], list[str]]:
-        if toolbox_name in by_name:
-            return by_name[toolbox_name]
-        loaded = await exporter.get_resource(
-            SingleToolboxOptions(
-                project_endpoint=project_endpoint,
-                project_id="",
-                toolbox_name=toolbox_name,
-            )
-        )
-        by_name[toolbox_name] = _enrichment_from_toolbox_payload(loaded or {})
-        return by_name[toolbox_name]
-
+    """Copy toolbox extra raw fields (`__skillNames`, `__mcpUrls`, `__a2aSubagents`, …)."""
+    toolbox_map = await _build_toolbox_map(client, project_endpoint, project_id)
     for agent in agents:
-        tools = _definition_tools(agent)
-        if not tools and fetch_agent_if_needed is not None:
-            detail = await fetch_agent_if_needed(project_endpoint, str(agent.get("id")))
-            if isinstance(detail, dict):
-                agent.setdefault("versions", detail.get("versions"))
-                tools = _definition_tools(agent)
-        toolbox_name = toolbox_name_from_agent_tools(tools)
+        toolbox_name = toolbox_name_from_agent_tools(tools_from_agent_payload(agent))
         if not toolbox_name:
-            agent["__toolboxSkillNames"] = []
-            agent["__toolboxMcpServers"] = []
             continue
-        skills, mcp_servers = await enrichment_for(toolbox_name)
-        agent["__toolboxSkillNames"] = list(skills)
-        agent["__toolboxMcpServers"] = list(mcp_servers)
+        toolbox = toolbox_map.get(toolbox_name)
+        if toolbox is None:
+            continue
+        for key, value in toolbox.items():
+            if not key.startswith("__") or key.startswith("__foundry"):
+                continue
+            agent[key] = list(value) if isinstance(value, list) else value

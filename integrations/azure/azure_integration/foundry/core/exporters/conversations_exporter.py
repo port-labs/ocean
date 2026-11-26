@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
 from azure_integration.foundry.core.exporters.endpoint_scoped_exporter import (
     EndpointScopedExporter,
 )
@@ -19,11 +17,3 @@ class ConversationsExporter(
 
     resource = "conversations"
     strategy = CONVERSATION_INCREMENTAL
-
-    async def get_paginated_resources(
-        self, options: ListConversationsOptions
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for page in EndpointScopedExporter.get_paginated_resources(
-            self, options
-        ):
-            yield page

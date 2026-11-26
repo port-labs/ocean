@@ -43,6 +43,9 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
     async def cursor_paginated(
         _endpoint: str, resource: str, **_kwargs: Any
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        if resource == "toolboxes":
+            yield [{"name": "my-tb"}]
+            return
         assert resource == "agents"
         yield [
             {
@@ -98,5 +101,6 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
     ):
         pages.append(page)
 
-    assert pages[0][0]["__toolboxSkillNames"] == ["skill-a"]
-    assert pages[0][0]["__toolboxMcpServers"] == ["https://mcp.example/github"]
+    assert pages[0][0]["__skillNames"] == ["skill-a"]
+    assert pages[0][0]["__mcpUrls"] == ["https://mcp.example/github"]
+    assert pages[0][0]["__a2aSubagents"] == []

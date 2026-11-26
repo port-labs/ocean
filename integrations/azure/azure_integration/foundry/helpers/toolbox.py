@@ -25,6 +25,21 @@ def toolbox_name_from_agent_tools(tools: list[Any]) -> str | None:
     return None
 
 
+def mcp_urls_from_tools(tools: list[Any]) -> list[str]:
+    """MCP endpoints: server_url when set, else label (never the toolbox gateway)."""
+    urls: list[str] = []
+    for tool in _tools(tools):
+        if tool.type != "mcp" or tool.toolbox_name is not None:
+            continue
+        if tool.server_url and tool.server_url.strip():
+            urls.append(tool.server_url.strip())
+            continue
+        label = tool.server_label
+        if label and label != TOOLBOX_SERVER_LABEL:
+            urls.append(label)
+    return urls
+
+
 def merge_toolbox_into_tools(tools: list[Any], *, toolbox_url: str | None) -> list[Any]:
     others = [t.model_dump() for t in _tools(tools) if not t.is_managed]
     if not toolbox_url:

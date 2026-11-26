@@ -61,6 +61,7 @@ async def test_toolboxes_exporter_enriches_skills_and_a2a() -> None:
 
     toolbox = batches[0]
     assert toolbox["__skillNames"] == ["skill-a", "skill-b"]
+    assert toolbox["__mcpUrls"] == []
     assert toolbox["__a2aSubagents"] == [
         {
             "connectionName": "to-sub-agent",

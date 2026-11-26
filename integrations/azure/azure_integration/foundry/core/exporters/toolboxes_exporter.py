@@ -17,12 +17,13 @@ from azure_integration.foundry.helpers.a2a import (
     parse_foundry_a2a_url,
     skill_names_from_refs,
 )
+from azure_integration.foundry.helpers.toolbox import mcp_urls_from_tools
 from azure_integration.foundry.helpers.utils import (
     build_foundry_url,
     enrich_with_project,
 )
 
-_TOOLBOXES_HEADERS = {"Foundry-Features": "Toolboxes=V1Preview"}
+TOOLBOXES_HEADERS = {"Foundry-Features": "Toolboxes=V1Preview"}
 
 
 class ToolboxLatestVersion(BaseModel):
@@ -69,13 +70,12 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptio
     async def get_resource(
         self, options: SingleToolboxOptions
     ) -> dict[str, Any] | None:
-        name = options.toolbox_name.strip()
-        if not name:
-            return None
         try:
             detail = await self.client.send_api_request(
-                build_foundry_url(options.project_endpoint, f"toolboxes/{name}"),
-                extra_headers=_TOOLBOXES_HEADERS,
+                build_foundry_url(
+                    options.project_endpoint, f"toolboxes/{options.toolbox_name}"
+                ),
+                extra_headers=TOOLBOXES_HEADERS,
             )
         except FoundryApiError as error:
             if error.status_code == 404:
@@ -97,7 +97,7 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptio
                 project_endpoint,
                 "toolboxes",
                 params=params,
-                extra_headers=_TOOLBOXES_HEADERS,
+                extra_headers=TOOLBOXES_HEADERS,
             ),
             cursor=cursor,
             strategy=TOOLBOX_INCREMENTAL,
@@ -138,13 +138,24 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptio
         try:
             parsed = ToolboxPayload.model_validate(toolbox)
         except ValidationError:
-            return {**enriched, "__skillNames": [], "__a2aSubagents": []}
+            return {
+                **enriched,
+                "__skillNames": [],
+                "__mcpUrls": [],
+                "__a2aSubagents": [],
+            }
 
         latest = parsed.versions.latest if parsed.versions else None
         if latest is None:
-            return {**enriched, "__skillNames": [], "__a2aSubagents": []}
+            return {
+                **enriched,
+                "__skillNames": [],
+                "__mcpUrls": [],
+                "__a2aSubagents": [],
+            }
 
         enriched["__skillNames"] = skill_names_from_refs(latest.skills)
+        enriched["__mcpUrls"] = mcp_urls_from_tools(latest.tools)
         enriched["__a2aSubagents"] = await self._a2a_subagents(
             project_endpoint, latest.tools
         )
@@ -160,7 +171,7 @@ class ToolboxesExporter(FoundryExporter[ListToolboxesOptions, SingleToolboxOptio
             try:
                 payload = await self.client.send_api_request(
                     build_foundry_url(project_endpoint, f"connections/{conn_name}"),
-                    extra_headers=_TOOLBOXES_HEADERS,
+                    extra_headers=TOOLBOXES_HEADERS,
                 )
             except FoundryApiError as error:
                 if error.status_code == 404:

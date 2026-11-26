@@ -95,8 +95,7 @@ class AgentSelector(FoundrySelector):
         title="Enrich from toolbox",
         description=(
             "When true, agents whose MCP tools reference a Foundry toolbox get "
-            "__toolboxSkillNames and __toolboxMcpServers from the pinned toolbox "
-            "(lists toolboxes once per project, then one detail call per toolbox). "
+            "that toolbox's extra fields (__skillNames, __mcpUrls, __a2aSubagents). "
             "Off by default."
         ),
     )
