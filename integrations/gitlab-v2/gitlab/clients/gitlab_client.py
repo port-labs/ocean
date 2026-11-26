@@ -40,10 +40,6 @@ class AwardEmoji(BaseModel):
     name: str
 
 
-# Same batch size as a full resync, whose repository tree pages use the default page size.
-CHANGED_FILES_BATCH_SIZE = RestClient.DEFAULT_PAGE_SIZE
-GIT_NULL_SHA = "0" * 40
-
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 _MR_ENRICHMENT_FIELDS = {
     "commits": "__commits",
@@ -229,8 +225,9 @@ class GitLabClient:
         self, project_path: str, push: dict[str, Any], ref: str
     ) -> str | None:
         """The commit the branch had before ``push``, or None when it cannot be a diff base."""
-        base_sha = push["push_data"].get("commit_from")
-        if not base_sha or base_sha == GIT_NULL_SHA:
+        push_data = push["push_data"]
+        base_sha = push_data.get("commit_from")
+        if push_data.get("action") == "created" or not base_sha:
             logger.info(
                 f"Branch '{ref}' in {project_path} was created after the compared time, full listing needed"
             )
@@ -1552,7 +1549,7 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch *file_paths* from *branch*, in batches."""
         repository = project["path_with_namespace"]
-        for paths_batch in batched(file_paths, CHANGED_FILES_BATCH_SIZE):
+        for paths_batch in batched(file_paths, RestClient.DEFAULT_PAGE_SIZE):
             files_batch = [
                 {"path": path, "ref": branch, "project_id": project["id"]}
                 for path in paths_batch

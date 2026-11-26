@@ -221,7 +221,9 @@ async def test_no_push_after_cursor_is_unchanged(client: GitLabClient) -> None:
 async def test_branch_created_after_cursor_needs_full_listing(
     client: GitLabClient,
 ) -> None:
-    _mock_rest(client, [_push("2026-10-18T10:00:00Z", None)], {})
+    push = _push("2026-10-18T10:00:00Z", None)
+    push["push_data"]["action"] = "created"
+    _mock_rest(client, [push], {})
     client.compare_repository = AsyncMock()  # type: ignore[method-assign]
 
     assert (
