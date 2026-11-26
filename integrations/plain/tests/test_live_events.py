@@ -27,6 +27,10 @@ def test_spec_accepts_webhook_secret() -> None:
     for kind in ALL_KINDS:
         assert kind in kinds
 
+    assert spec.get("recommendedInstallationMethod") == "Saas"
+    assert spec.get("saas", {}).get("enabled") is True
+    assert spec.get("saas", {}).get("liveEvents", {}).get("enabled") is True
+
     config_names = {item["name"] for item in spec["configurations"]}
     assert "enableLiveEvents" not in config_names
     assert "pageSize" not in config_names
