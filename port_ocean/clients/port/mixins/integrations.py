@@ -514,6 +514,8 @@ class IntegrationClientMixin:
             body["resyncStartTime"] = event["resync_start_time"].isoformat()
         if event["event_id"]:
             body["eventId"] = event["event_id"]
+        if "extract_duration_ms" in event:
+            body["extractDurationMs"] = event["extract_duration_ms"]
 
         # Kind stays in the JSON body only — putting it in the path breaks kinds with
         # "?" (ingest edge rejects encoded %3F in the URL path).
