@@ -115,6 +115,10 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
         patch(
             "azure_integration.foundry.stream_manager.get_stream_manager"
         ) as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.sync_invoke_catalog_for_run",
+            AsyncMock(),
+        ),
     ):
         exporter_cls.return_value.get_resource = get_resource
         mock_manager.return_value.untrack_for_run = AsyncMock()
@@ -154,6 +158,10 @@ async def test_webhook_answer_and_arm_id_endpoint() -> None:
         patch(
             "azure_integration.foundry.stream_manager.get_stream_manager"
         ) as mock_manager,
+        patch(
+            "azure_integration.foundry.helpers.invoke_completion.sync_invoke_catalog_for_run",
+            AsyncMock(),
+        ),
     ):
         exporter_cls.return_value.get_resource = get_resource
         mock_manager.return_value.untrack_for_run = AsyncMock()

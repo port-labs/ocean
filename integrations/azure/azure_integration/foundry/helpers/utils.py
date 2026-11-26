@@ -110,6 +110,36 @@ def _coerce_created_at(item: dict[str, Any]) -> None:
         item["created_at"] = iso
 
 
+def invoke_scope_from_run(run: Any) -> tuple[str, str, str | None] | None:
+    """Project endpoint, project id, and optional agent id for Foundry invoke runs."""
+    from port_ocean.core.models import IntegrationRun, WorkflowNodeRun
+
+    from azure_integration.foundry.core.exporters.project_exporter import (
+        foundry_project_from_arm_id,
+    )
+
+    if not isinstance(run, IntegrationRun):
+        return None
+    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
+    arm_id = props.get("projectArmId")
+    project = foundry_project_from_arm_id(arm_id) if isinstance(arm_id, str) else None
+    project_endpoint = (
+        (project.endpoint if project else None)
+        or props.get("projectEndpoint")
+        or run.execution_properties.get("projectEndpoint")
+    )
+    if not isinstance(project_endpoint, str) or not project_endpoint.strip():
+        return None
+    agent_id = run.execution_properties.get("agentId")
+    if agent_id is not None:
+        agent_id = str(agent_id).strip() or None
+    return (
+        project_endpoint.strip(),
+        project_name_from_endpoint(project_endpoint),
+        agent_id,
+    )
+
+
 def effective_conversation_cutoff(
     incremental_cursor: datetime | None,
     *,

@@ -27,6 +27,7 @@ from azure_integration.foundry.core.exporters.skills_exporter import SkillsExpor
 from azure_integration.foundry.core.exporters.toolboxes_exporter import (
     ToolboxesExporter,
 )
+from azure_integration.foundry.helpers.conversation_overlay import enrich_conversation_pages
 from azure_integration.foundry.core.options import (
     ListAgentsOptions,
     ListConversationsOptions,
@@ -102,8 +103,9 @@ async def resync_foundry_model_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_
 async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     del kind
     selector = cast(ConversationResourceConfig, event.resource_config).selector
-    exporter = ConversationsExporter(create_foundry_client(selector.api_version))
-    async for page in exporter.get_paginated_resources_across_projects(
+    client = create_foundry_client(selector.api_version)
+    exporter = ConversationsExporter(client)
+    pages = exporter.get_paginated_resources_across_projects(
         resource_label="conversations",
         project_api_version=selector.project.api_version,
         regions=list(selector.project.regions),
@@ -113,6 +115,9 @@ async def resync_foundry_conversations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
             since_days=selector.since_days,
             endpoint_scopes=list(selector.endpoint_scopes),
         ),
+    )
+    async for page in enrich_conversation_pages(
+        client, selector=selector, pages=pages
     ):
         yield page
 

@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 
 from loguru import logger
+from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     IntegrationRun,
@@ -11,23 +12,102 @@ from port_ocean.core.models import (
 )
 
 from azure_integration.foundry.clients.http.foundry_client import create_foundry_client
-from azure_integration.foundry.core.exporters.project_exporter import (
-    foundry_project_from_arm_id,
+from azure_integration.foundry.core.exporters.conversations_exporter import (
+    ConversationsExporter,
 )
 from azure_integration.foundry.core.exporters.responses_exporter import (
     ResponsesExporter,
 )
-from azure_integration.foundry.core.options import EndpointScope, SingleResponseOptions
-from azure_integration.foundry.helpers.utils import project_name_from_endpoint
+from azure_integration.foundry.core.options import (
+    EndpointScope,
+    SingleConversationOptions,
+    SingleResponseOptions,
+)
+from azure_integration.foundry.helpers.conversation_overlay import (
+    conversation_latest_keys,
+    merge_overlay,
+)
+from azure_integration.foundry.helpers.utils import enrich_with_project, invoke_scope_from_run
 from azure_integration.foundry.models.responses import (
     TERMINAL_EVENTS,
     Response,
     ResponsesSseEvent,
 )
+from azure_integration.utils import ResourceKindsWithSpecialHandling
 
 COMPLETED_STATUS_LABEL = "Response completed"
 FAILED_STATUS_LABEL = "Response failed"
 INVOCATION_SUBMITTED_STATUS_LABEL = "Invoke submitted"
+
+
+async def sync_invoke_catalog_for_run(
+    run: IntegrationRun,
+    *,
+    response_id: str,
+    response_body: dict[str, Any] | None,
+) -> None:
+    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
+    conversation_id = props.get("conversationId")
+    if not isinstance(conversation_id, str) or not conversation_id.strip():
+        return
+    scope = invoke_scope_from_run(run)
+    if scope is None:
+        return
+    project_endpoint, project_id, agent_id = scope
+    kinds = {
+        r.kind for r in (await ocean.integration.port_app_config_handler.get_port_app_config()).resources
+    }
+    conv_kind, res_kind = (
+        ResourceKindsWithSpecialHandling.FOUNDRY_CONVERSATION,
+        ResourceKindsWithSpecialHandling.FOUNDRY_RESPONSE,
+    )
+    if conv_kind not in kinds and res_kind not in kinds:
+        return
+    response = Response.model_validate(
+        response_body or {"id": response_id, "status": "in_progress"}
+    )
+    response = response.model_copy(
+        update={"id": response.id or response_id, "status": response.status or "in_progress"}
+    )
+    client = create_foundry_client()
+    try:
+        await ocean.integration.port_app_config_handler.get_port_app_config(use_cache=False)
+        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
+            if conv_kind in kinds:
+                body = await ConversationsExporter(client).get_resource(
+                    SingleConversationOptions(
+                        project_endpoint=project_endpoint,
+                        project_id=project_id,
+                        resource_id=conversation_id.strip(),
+                        endpoint_scope=EndpointScope.AGENT if agent_id else EndpointScope.PROJECT,
+                        agent_id=agent_id,
+                    )
+                )
+                conv = merge_overlay(
+                    enrich_with_project(
+                        body if isinstance(body, dict) else {"id": conversation_id},
+                        project_endpoint=project_endpoint,
+                        project_id=project_id,
+                    ),
+                    conversation_latest_keys(response),
+                )
+                await ocean.register_raw(conv_kind, [conv])
+            if res_kind in kinds and response_id:
+                res = enrich_with_project(
+                    dict(response_body) if isinstance(response_body, dict) else {"id": response_id},
+                    project_endpoint=project_endpoint,
+                    project_id=project_id,
+                )
+                res.setdefault("id", response_id)
+                await ocean.register_raw(res_kind, [res])
+    except Exception as error:
+        logger.warning(f"Foundry invoke catalog sync failed: {error}")
+        await ocean.port_client.post_run_log(
+            run,
+            f"Catalog sync failed (continuing): {error}",
+            level="WARNING",
+            should_raise=False,
+        )
 
 
 async def complete_invoke_run_for_response(
@@ -38,6 +118,7 @@ async def complete_invoke_run_for_response(
     success: bool,
     source: str,
     status_label: str | None = None,
+    message: str | None = None,
     keep_stream: bool = False,
 ) -> bool:
     """Attach usage/output and close the wf run. Returns False if already terminal."""
@@ -57,6 +138,10 @@ async def complete_invoke_run_for_response(
 
         await get_stream_manager().untrack_for_run(run.id)
 
+    await sync_invoke_catalog_for_run(
+        run, response_id=response_id, response_body=response_body
+    )
+
     logger.info(
         f"Completing run {run.id} from {source} "
         f"(response {response_id}, success={success})"
@@ -66,6 +151,7 @@ async def complete_invoke_run_for_response(
         success,
         status_label=status_label
         or (COMPLETED_STATUS_LABEL if success else FAILED_STATUS_LABEL),
+        message=message,
         should_raise=False,
         should_log=False,
     )
@@ -75,37 +161,26 @@ async def complete_invoke_run_for_response(
 async def complete_invoke_run_from_webhook(
     run: IntegrationRun, *, event_type: str, response_id: str
 ) -> bool:
-    # Let in-flight SSE log flushes reach Port before we mark the run terminal.
     await asyncio.sleep(3)
-
-    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
-    arm_id = props.get("projectArmId")
-    project = foundry_project_from_arm_id(arm_id) if isinstance(arm_id, str) else None
-    project_endpoint = (
-        (project.endpoint if project else None)
-        or props.get("projectEndpoint")
-        or run.execution_properties.get("projectEndpoint")
-    )
-    if not project_endpoint:
+    scope = invoke_scope_from_run(run)
+    if scope is None:
         logger.error(
             f"Cannot complete invoke run {run.id}: projectEndpoint unresolved "
             f"(response {response_id})"
         )
         await ocean.port_client.report_run_completed(
-            run,
-            False,
-            status_label=FAILED_STATUS_LABEL,
-            should_log=False,
+            run, False, status_label=FAILED_STATUS_LABEL, should_log=False
         )
         return False
 
+    project_endpoint, project_id, agent_id = scope
     body = await ResponsesExporter(create_foundry_client()).get_resource(
         SingleResponseOptions(
             project_endpoint=project_endpoint,
-            project_id=project_name_from_endpoint(project_endpoint),
+            project_id=project_id,
             resource_id=response_id,
             endpoint_scope=EndpointScope.AGENT,
-            agent_id=run.execution_properties.get("agentId"),
+            agent_id=agent_id,
         )
     )
     if body is None:
@@ -113,7 +188,6 @@ async def complete_invoke_run_from_webhook(
             f"Foundry GET returned no body for response {response_id} "
             f"(run {run.id}); completing without answer/usage"
         )
-
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
@@ -140,5 +214,6 @@ async def complete_invoke_run_from_sse(
             parsed.response.model_dump() if parsed.response is not None else None
         ),
         success=success,
+        message=parsed.error_message if not success else None,
         source=f"Responses SSE {parsed.type}",
     )
