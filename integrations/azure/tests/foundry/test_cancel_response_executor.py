@@ -116,7 +116,7 @@ async def test_cancel_response_cancels_all_in_flight_for_conversation() -> None:
             },
         ]
 
-    client_mock.send_cursor_paginated_request = MagicMock(return_value=_pages())
+    client_mock.send_cursor_paginated_request = MagicMock(side_effect=_pages)
     client_mock.send_api_request = AsyncMock(
         return_value={"status": "cancelled"}
     )
@@ -138,6 +138,10 @@ async def test_cancel_response_cancels_all_in_flight_for_conversation() -> None:
     ):
         await executor.execute(run)
 
+    list_call = client_mock.send_cursor_paginated_request.call_args
+    assert list_call is not None
+    assert "conversation_id" in list_call.kwargs.get("params", {})
+    assert list_call.kwargs["params"]["conversation_id"] == "conv_1"
     assert client_mock.send_api_request.await_count == 2
     urls = [c.args[0] for c in client_mock.send_api_request.await_args_list]
     agent_prefix = "agents/agent-1/endpoint/protocols/openai/responses/"

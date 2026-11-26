@@ -17,6 +17,10 @@ TERMINAL_EVENTS: dict[str, bool] = {
     "response.incomplete": False,
 }
 
+_TERMINAL_STATUSES = frozenset(
+    {"completed", "failed", "cancelled", "incomplete", "canceled"}
+)
+
 
 class ResponseConversationRef(FoundryModel):
     """Nested ``conversation`` on Responses list/get rows."""
@@ -46,6 +50,11 @@ class Response(FoundryModel):
     conversation_id: str | None = Field(default=None, alias="conversationId")
     output: Any = None
     error: Any = None
+
+    def is_in_progress(self) -> bool:
+        if not self.status:
+            return True
+        return self.status.casefold() not in _TERMINAL_STATUSES
 
     def resolved_conversation_id(self) -> str | None:
         conv = self.conversation

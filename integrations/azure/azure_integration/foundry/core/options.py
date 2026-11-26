@@ -44,7 +44,8 @@ class ListConversationsOptions(EndpointScopedOptions):
 
 
 class ListResponsesOptions(EndpointScopedOptions):
-    pass
+    conversation_id: str | None = None
+    agent_id: str | None = None
 
 
 class SingleEndpointScopedOptions(ProjectIdentifier):

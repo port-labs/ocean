@@ -72,7 +72,13 @@ class EndpointScopedExporter[
         cutoff = effective_conversation_cutoff(
             active_incremental_cursor(), since_days=options.since_days
         )
-        params = self.strategy.merge_params({}, cutoff)
+        params = {
+            **self.strategy.merge_params({}, cutoff),
+            **options.model_dump(
+                exclude=set(EndpointScopedOptions.model_fields),
+                exclude_none=True,
+            ),
+        }
 
         scope_iters = {
             EndpointScope.AGENT: self._iter_agent_scoped,
@@ -96,6 +102,20 @@ class EndpointScopedExporter[
         params: dict[str, Any],
         cutoff: datetime | None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        params = dict(params)
+        agent_id = params.pop("agent_id", None)
+        if agent_id:
+            async for page in self._iter_agent_resource(
+                project_endpoint=project_endpoint,
+                project_id=project_id,
+                agent_id=str(agent_id),
+                params=params,
+                cutoff=cutoff,
+            ):
+                if page:
+                    yield page
+            return
+
         agents = AgentsExporter(self.client)
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_AGENTS)
         context = f"Foundry {self.resource}"

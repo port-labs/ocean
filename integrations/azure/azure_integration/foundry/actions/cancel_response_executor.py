@@ -10,10 +10,12 @@ from azure_integration.foundry.actions.abstract_action_input import (
     AbstractFoundryInvokeInput,
 )
 from azure_integration.foundry.actions.abstract_executor import AbstractFoundryExecutor
-from azure_integration.foundry.helpers.cancel_response import (
-    in_progress_response_ids_for_conversation,
+from azure_integration.foundry.core.exporters.responses_exporter import ResponsesExporter
+from azure_integration.foundry.core.options import ListResponsesOptions
+from azure_integration.foundry.helpers.utils import (
+    agent_openai_protocol_path,
+    project_name_from_endpoint,
 )
-from azure_integration.foundry.helpers.utils import agent_openai_protocol_path
 
 CANCELLING_STATUS_LABEL = "Cancelling response"
 CANCEL_FAILED_STATUS_LABEL = "Cancel failed"
@@ -48,12 +50,18 @@ class CancelResponseExecutor(AbstractFoundryExecutor):
         )
         response_ids: list[str] = []
         if inputs.conversationId:
-            response_ids = await in_progress_response_ids_for_conversation(
-                self.client,
-                project_endpoint=inputs.project_endpoint,
-                conversation_id=inputs.conversationId,
-                agent_id=inputs.agentId,
-            )
+            response_ids = [
+                str(item["id"])
+                for item in await ResponsesExporter(self.client).in_progress(
+                    ListResponsesOptions(
+                        project_endpoint=inputs.project_endpoint,
+                        project_id=project_name_from_endpoint(inputs.project_endpoint),
+                        agent_id=inputs.agentId,
+                        conversation_id=inputs.conversationId,
+                    )
+                )
+                if item.get("id")
+            ]
         elif inputs.responseId:
             response_ids.append(inputs.responseId)
 
