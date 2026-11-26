@@ -1,3 +1,0 @@
-bump: patch
-changelog-type: improvement
-changelog: Declare Hosted-by-Port SaaS live events in the integration spec so the live events control appears in integration settings.
