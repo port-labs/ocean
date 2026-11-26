@@ -1,13 +1,14 @@
 import pytest
 
 from tools.integration_validation.mock_server.admin_schemas import JournalEntry
-from tools.integration_validation.runner import collect as collect_module
-from tools.integration_validation.runner.collect import collect_scenario
-from tools.integration_validation.runner.errors import ValidationFailedError
-from tools.integration_validation.runner.mock_journal import MockJournal
-from tools.integration_validation.runner.port_setup import ScenarioPortPlan
-from tools.integration_validation.runner.statuses import ResyncStatus
-from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
+from tools.integration_validation.runner.results import collect as collect_module
+from tools.integration_validation.runner.results.collect import collect_scenario
+from tools.integration_validation.runner.core.errors import ValidationFailedError
+from tools.integration_validation.runner.core.models import PortEntity
+from tools.integration_validation.runner.results.mock_journal import MockJournal
+from tools.integration_validation.runner.port.client import ScenarioPortPlan
+from tools.integration_validation.runner.core.statuses import ResyncStatus
+from tools.integration_validation.tests.runner.test_port_client import FakePortClient
 
 MOCK_BASE_URL = "http://127.0.0.1:9000"
 
@@ -59,9 +60,12 @@ async def test_collects_resync_status_entities_by_blueprint_and_journal(
     collection = await collect_scenario(client, plan, mock_base_url=MOCK_BASE_URL)
 
     assert collection.resync_status == ResyncStatus.FAILED
-    assert collection.entities == {"user": [], "team": [team]}
+    assert collection.entities == {
+        "user": [],
+        "team": [PortEntity.model_validate(team)],
+    }
     assert collection.mock is journal
-    assert collection.report_dict() == {
+    assert collection.to_dict() == {
         "resync_status": "failed",
         "entity_counts": {"user": 0, "team": 1},
         "mock": {

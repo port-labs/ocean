@@ -8,16 +8,21 @@ from typing import Any
 
 from loguru import logger
 
-from tools.integration_validation.runner.blueprint_rewrite import (
+from tools.integration_validation.runner.port.blueprints import (
     rewrite_mapping_blueprints,
     suffix_blueprints,
 )
-from tools.integration_validation.runner.collect import (
+from tools.integration_validation.runner.results.collect import (
     ScenarioCollection,
     collect_scenario,
 )
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import (
+from tools.integration_validation.runner.results.evaluate import (
+    ScenarioComparison,
+    evaluate_scenario,
+)
+from tools.integration_validation.runner.results.expected import resolve_expected_dir
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.scenarios.loader import (
     load_blueprints_file,
     load_port_app_config_file,
     load_scenarios_document,
@@ -25,34 +30,35 @@ from tools.integration_validation.runner.loader import (
     resolve_scenario_blueprints_path,
     resolve_validation_paths,
 )
-from tools.integration_validation.runner.models import (
+from tools.integration_validation.runner.core.models import (
     ScenariosDocument,
     ValidationPaths,
 )
-from tools.integration_validation.runner.naming import build_integration_identifier
-from tools.integration_validation.runner.port_app_config import (
+from tools.integration_validation.runner.core.naming import build_integration_identifier
+from tools.integration_validation.runner.port.app_config import (
     build_scenario_port_app_config,
 )
-from tools.integration_validation.runner.port_setup import (
+from tools.integration_validation.runner.port.client import (
     ScenarioPortPlan,
     ValidationPortClient,
     create_port_client,
     prepare_scenario_port,
     teardown_scenario_port,
 )
-from tools.integration_validation.runner.integration_config_env import (
+from tools.integration_validation.runner.integration.config_env import (
     merge_scenario_integration_config,
 )
-from tools.integration_validation.runner.integration_process import (
+from tools.integration_validation.runner.integration.process import (
     IntegrationRunResult,
     run_ocean_sail_once,
 )
-from tools.integration_validation.runner.preflight import (
+from tools.integration_validation.runner.scenarios.preflight import (
     load_integration_type,
     run_preflight,
     select_scenario_names,
 )
-from tools.integration_validation.runner.statuses import (
+from tools.integration_validation.runner.core.statuses import (
+    ResyncStatus,
     ScenarioIntegrationStatus,
     ValidationAggregateStatus,
 )
@@ -76,6 +82,14 @@ class ScenarioRun:
     cleaned_up: bool
     integration: IntegrationRunResult
     collection: ScenarioCollection
+    comparison: ScenarioComparison
+
+    @property
+    def passed(self) -> bool:
+        return (
+            self.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
+            and self.comparison.passed
+        )
 
 
 @dataclass(frozen=True)
@@ -166,6 +180,7 @@ async def _run_scenario(
         f"(integration {plan.integration_identifier})"
     )
 
+    scenario = scenarios.scenarios[plan.scenario_name]
     leftovers: list[str] = []
     prepared = False
 
@@ -173,7 +188,6 @@ async def _run_scenario(
         await prepare_scenario_port(client, plan)
         prepared = True
 
-        scenario = scenarios.scenarios[plan.scenario_name]
         integration_config = merge_scenario_integration_config(
             scenarios.defaults.integration_config,
             scenario.integration_config,
@@ -192,12 +206,25 @@ async def _run_scenario(
         if prepared:
             leftovers = await _teardown_scenario(client, plan, options)
 
+    comparison = evaluate_scenario(
+        collection.entities,
+        expected_dir=resolve_expected_dir(paths, plan.scenario_name, scenario),
+        ignore_fields=scenarios.defaults.ignore_fields,
+        update_expected=options.update_expected,
+        resync_succeeded=(
+            integration_result.integration_status()
+            == ScenarioIntegrationStatus.COMPLETED
+            and collection.resync_status == ResyncStatus.COMPLETED
+        ),
+    )
+
     return ScenarioRun(
         plan=plan,
         cleanup_leftovers=leftovers,
         cleaned_up=prepared and not options.skip_cleanup and not leftovers,
         integration=integration_result,
         collection=collection,
+        comparison=comparison,
     )
 
 
@@ -249,14 +276,12 @@ def _scenario_report(run: ScenarioRun) -> dict[str, Any]:
             "cleanup_leftovers": run.cleanup_leftovers,
         },
         "integration": run.integration.report_dict(),
-        "collection": run.collection.report_dict(),
+        "collection": run.collection.to_dict(),
+        "comparison": run.comparison.model_dump(mode="json"),
     }
 
 
 def _aggregate_status(result: ValidateResult) -> ValidationAggregateStatus:
-    if all(
-        run.integration.integration_status() == ScenarioIntegrationStatus.COMPLETED
-        for run in result.scenario_runs
-    ):
+    if all(run.passed for run in result.scenario_runs):
         return ValidationAggregateStatus.PASSED
     return ValidationAggregateStatus.FAILED

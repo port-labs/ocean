@@ -2,9 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.loader import load_port_app_config_file
-from tools.integration_validation.runner.models import PortAppConfigDocument
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.scenarios.loader import (
+    load_port_app_config_file,
+)
+from tools.integration_validation.runner.core.models import PortAppConfigDocument
 
 
 def test_load_port_app_config_file_parses_valid_yaml(tmp_path: Path) -> None:

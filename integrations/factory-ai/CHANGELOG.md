@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.3 (2026-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.63.1
+
+
+## 0.2.2 (2026-11-25)
+
+
+### Bug Fixes
+
+- >-
+    execute_droid now publishes sessionId on the workflow node output immediately
+    after Factory accepts the turn, before catalog session reflection, so the
+    software factory can continue the same session on retry without dropping on a race condition.
+
+
+## 0.2.1 (2026-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.63.0
+
+
+## 0.2.0 (2026-11-25)
+
+
+### Features
+
+- Add interrupt_session action to stop a running Factory Droid session via the Sessions interrupt API
+
+
 ## 0.1.4 (2026-11-24)
 
 

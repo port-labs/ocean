@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.63.1 (2026-11-26)
+
+
+### Bug Fixes
+
+- On kind fetch failure in DSP mode, emit an ERROR extract Event Log so sync status can show the real fetch error.
+
+
+## 0.63.0 (2026-11-25)
+
+
+### Features
+
+- Ask Port for the executor view of the config (resourcesView=executor) and read the optional resourceId on each resource. In DSP mode, blocks sharing a resourceId (same kind and selector) are fetched once under the first block's kind slot and the raw data carries the resourceId so DSP maps it through every block; blocks whose itemsToParse settings differ are fetched separately. resourceId is never sent back to Port in config writes. Without resourceIds, behaviour is unchanged
+
+
 ## 0.62.4 (2026-11-24)
 
 

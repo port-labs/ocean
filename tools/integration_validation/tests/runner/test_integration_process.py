@@ -5,11 +5,11 @@ from typing import Any
 
 import pytest
 
-from tools.integration_validation.runner.integration_process import (
+from tools.integration_validation.runner.integration.process import (
     IntegrationRunResult,
     run_ocean_sail_once,
 )
-from tools.integration_validation.runner.statuses import ScenarioIntegrationStatus
+from tools.integration_validation.runner.core.statuses import ScenarioIntegrationStatus
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ def test_run_ocean_sail_once_invokes_subprocess_with_integration_root(
 
     monkeypatch.setenv("OCEAN_CLI", "/fake/ocean")
     monkeypatch.setattr(
-        "tools.integration_validation.runner.integration_process.subprocess.run",
+        "tools.integration_validation.runner.integration.process.subprocess.run",
         fake_run,
     )
 

@@ -4,8 +4,8 @@ import httpx
 import pytest
 
 from tools.integration_validation.mock_server.app import create_mock_server_app
-from tools.integration_validation.runner.errors import ValidationSetupError
-from tools.integration_validation.runner.mock_journal import fetch_mock_journal
+from tools.integration_validation.runner.core.errors import ValidationSetupError
+from tools.integration_validation.runner.results.mock_journal import fetch_mock_journal
 from tools.integration_validation.tests.mock_server.test_server import _write_routes
 
 MOCK_BASE_URL = "http://mock.test"
@@ -29,7 +29,7 @@ async def test_fetch_mock_journal_reads_requests_unmatched_and_unused(
     assert journal.route_call_counts["list-teams"] == 1
     assert [entry.path for entry in journal.unmatched_requests] == ["/api/v2/users"]
     assert journal.unused_route_ids == ["create-team", "unused-route", "rate-limited"]
-    assert journal.report_dict()["unmatched_requests"] == [
+    assert journal.to_dict()["unmatched_requests"] == [
         {"method": "GET", "path": "/api/v2/users", "query": {}}
     ]
 

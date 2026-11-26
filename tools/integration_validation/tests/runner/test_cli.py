@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.integration_validation.runner import collect as collect_module
+from tools.integration_validation.runner.results import collect as collect_module
 from tools.integration_validation.runner import runner as runner_module
-from tools.integration_validation.runner.integration_process import IntegrationRunResult
+from tools.integration_validation.runner.integration.process import IntegrationRunResult
 from tools.integration_validation.runner.main import main
-from tools.integration_validation.runner.mock_journal import MockJournal
-from tools.integration_validation.tests.runner.test_port_setup import FakePortClient
+from tools.integration_validation.runner.results.mock_journal import MockJournal
+from tools.integration_validation.tests.runner.test_port_client import FakePortClient
 
 MOCK_BASE_URL = "http://127.0.0.1:9000"
 
@@ -295,7 +295,7 @@ def test_validate_with_mock_base_url_runs_sail_after_port_prep(
     main(_cli_args(validation_integration))
 
     assert sail_calls == ["validate-sample-happy-path"]
-    assert "All scenarios completed integration subprocess." in capsys.readouterr().err
+    assert "All scenarios passed." in capsys.readouterr().err
 
 
 def test_validate_collects_entities_before_cleanup_and_reports_them(
@@ -327,6 +327,98 @@ def test_validate_collects_entities_before_cleanup_and_reports_them(
     collection = json.loads(report_path.read_text())["scenarios"][0]["collection"]
     assert collection["resync_status"] == "completed"
     assert collection["entity_counts"] == {"sampleTeam": 1}
+
+
+@pytest.fixture
+def team_entities(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+    """Entities the fake Port returns for the run's team blueprint; edit to change them."""
+    entities: list[dict[str, object]] = [
+        {
+            "identifier": "platform",
+            "blueprint": "sampleTeam-happy-path",
+            "properties": {"handle": "platform"},
+        }
+    ]
+
+    def factory(integration_identifier: str, integration_type: str) -> FakePortClient:
+        return FakePortClient(entities={"sampleTeam-happy-path": entities})
+
+    monkeypatch.setattr(runner_module, "create_port_client", factory)
+    return entities
+
+
+def test_validate_first_run_writes_expected_and_passes(
+    validation_integration: Path,
+    team_entities: list[dict[str, object]],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    report_path = tmp_path / "report.json"
+
+    main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    snapshot = validation_integration / "validation/expected/happy_path/sampleTeam.json"
+    assert json.loads(snapshot.read_text()) == [
+        {"identifier": "platform", "properties": {"handle": "platform"}}
+    ]
+    assert "Expected entities: matched" in capsys.readouterr().out
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "passed"
+    assert report["scenarios"][0]["comparison"]["status"] == "matched"
+
+
+def test_validate_entity_diff_fails_and_reports_the_field(
+    validation_integration: Path,
+    team_entities: list[dict[str, object]],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(_cli_args(validation_integration))
+    team_entities[0]["properties"] = {"handle": None}
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(_cli_args(validation_integration, "--report", str(report_path)))
+
+    assert exc_info.value.code == 1
+    out, err = capsys.readouterr()
+    assert "Expected entities: 1 difference(s) from" in out
+    assert 'sampleTeam platform properties.handle: "platform" -> null' in err
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "failed"
+    assert report["scenarios"][0]["comparison"]["entity_diff"] == {
+        "sampleTeam": {
+            "added": [],
+            "removed": [],
+            "changed": [
+                {
+                    "identifier": "platform",
+                    "field": "properties.handle",
+                    "expected": "platform",
+                    "actual": None,
+                }
+            ],
+        }
+    }
+
+
+def test_validate_update_expected_accepts_the_new_result(
+    validation_integration: Path,
+    team_entities: list[dict[str, object]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(_cli_args(validation_integration))
+    team_entities.append({"identifier": "infra", "blueprint": "sampleTeam-happy-path"})
+
+    main(_cli_args(validation_integration, "--update-expected"))
+    main(_cli_args(validation_integration))
+
+    snapshot = validation_integration / "validation/expected/happy_path/sampleTeam.json"
+    assert [entity["identifier"] for entity in json.loads(snapshot.read_text())] == [
+        "infra",
+        "platform",
+    ]
+    assert "difference(s)" not in capsys.readouterr().out
 
 
 def test_validate_missing_port_credentials_exits_2(
