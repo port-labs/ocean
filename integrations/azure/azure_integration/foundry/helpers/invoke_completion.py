@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 
 from loguru import logger
+from pydantic import ValidationError
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     IntegrationRun,
@@ -51,11 +52,14 @@ async def sync_invoke_catalog_for_run(
     client = create_foundry_client()
 
     async def _upsert(kind: str, raw: dict[str, Any]) -> None:
+        row = dict(raw)
+        if agent_id:
+            row["__foundryAgentId"] = agent_id
         await ocean.register_raw(
             kind,
             [
                 enrich_with_project(
-                    raw, project_endpoint=project_endpoint, project_id=project_id
+                    row, project_endpoint=project_endpoint, project_id=project_id
                 )
             ],
         )
@@ -73,10 +77,8 @@ async def sync_invoke_catalog_for_run(
                     agent_id=agent_id,
                 )
             )
-            await _upsert(
-                ObjectKind.FOUNDRY_CONVERSATION,
-                body if isinstance(body, dict) else {"id": conversation_id},
-            )
+            if isinstance(body, dict):
+                await _upsert(ObjectKind.FOUNDRY_CONVERSATION, body)
         if response_id:
             raw = (
                 dict(response_body)
@@ -111,12 +113,13 @@ async def complete_invoke_run_for_response(
         return False
 
     if isinstance(run, WorkflowNodeRun):
-        run.output = {
-            **run.output,
-            **Response.model_validate(response_body or {}).run_output(
+        try:
+            run_payload = Response.model_validate(response_body or {}).run_output(
                 response_id=response_id
-            ),
-        }
+            )
+        except ValidationError:
+            run_payload = {"responseId": response_id}
+        run.output = {**run.output, **run_payload}
 
     if not keep_stream:
         from azure_integration.foundry.stream_manager import get_stream_manager
@@ -173,11 +176,16 @@ async def complete_invoke_run_from_webhook(
             f"Foundry GET returned no body for response {response_id} "
             f"(run {run.id}); completing without answer/usage"
         )
+    success = TERMINAL_EVENTS.get(event_type, False)
+    failure_message: str | None = None
+    if not success and isinstance(body, dict):
+        failure_message = Response.model_validate(body).failure_message()
     return await complete_invoke_run_for_response(
         run,
         response_id=response_id,
         response_body=body,
-        success=TERMINAL_EVENTS.get(event_type, False),
+        success=success,
+        message=failure_message,
         source=f"Foundry webhook {event_type}",
     )
 

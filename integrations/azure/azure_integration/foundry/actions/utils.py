@@ -15,7 +15,9 @@ def invoke_scope_from_run(run: Any) -> tuple[str, str, str | None] | None:
     if not isinstance(run, IntegrationRun):
         return None
     props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
-    project = foundry_project_from_arm_id(str(props.get("projectArmId") or ""))
+    arm_raw = props.get("projectArmId") or run.execution_properties.get("projectArmId")
+    arm_id = str(arm_raw).strip() if arm_raw else ""
+    project = foundry_project_from_arm_id(arm_id) if arm_id else None
     endpoint = (
         (project.endpoint if project else None)
         or props.get("projectEndpoint")
@@ -24,4 +26,10 @@ def invoke_scope_from_run(run: Any) -> tuple[str, str, str | None] | None:
     if not isinstance(endpoint, str) or not endpoint.strip():
         return None
     agent_id = str(run.execution_properties.get("agentId") or "").strip() or None
-    return endpoint.strip(), project_name_from_endpoint(endpoint), agent_id
+    if arm_id:
+        project_id = arm_id
+    elif project is not None:
+        project_id = project.project_arm_id
+    else:
+        project_id = project_name_from_endpoint(endpoint)
+    return endpoint.strip(), project_id, agent_id

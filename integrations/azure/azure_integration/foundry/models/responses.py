@@ -80,6 +80,14 @@ class Response(FoundryModel):
     def created_at_datetime(self) -> datetime | None:
         return parse_foundry_timestamp(self.created_at)
 
+    def failure_message(self) -> str | None:
+        if isinstance(self.error, dict):
+            message = self.error.get("message") or self.error.get("code")
+            return str(message) if message else None
+        if self.error is not None:
+            return str(self.error)
+        return None
+
     def run_output(self, *, response_id: str) -> dict[str, Any]:
         result: dict[str, Any] = {"responseId": response_id}
         if self.conversation_id:
