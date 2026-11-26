@@ -75,6 +75,7 @@ async def test_enrich_toolbox_adds_skills_and_mcp_labels() -> None:
                 "versions": {
                     "latest": {
                         "definition": {
+                            "kind": "prompt",
                             "tools": [
                                 {
                                     "type": "mcp",
