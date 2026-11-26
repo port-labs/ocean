@@ -4,7 +4,6 @@ import asyncio
 from typing import Any
 
 from loguru import logger
-from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     IntegrationRun,
@@ -23,13 +22,16 @@ from azure_integration.foundry.core.options import (
     SingleConversationOptions,
     SingleResponseOptions,
 )
-from azure_integration.foundry.helpers.utils import enrich_with_project, invoke_scope_from_run
+from azure_integration.foundry.helpers.utils import (
+    enrich_with_project,
+    invoke_scope_from_run,
+)
+from azure_integration.foundry.kinds import ObjectKind
 from azure_integration.foundry.models.responses import (
     TERMINAL_EVENTS,
     Response,
     ResponsesSseEvent,
 )
-from azure_integration.utils import ResourceKindsWithSpecialHandling
 
 COMPLETED_STATUS_LABEL = "Response completed"
 FAILED_STATUS_LABEL = "Response failed"
@@ -42,57 +44,49 @@ async def sync_invoke_catalog_for_run(
     response_id: str,
     response_body: dict[str, Any] | None,
 ) -> None:
-    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
-    conversation_id = props.get("conversationId")
-    if not isinstance(conversation_id, str) or not conversation_id.strip():
-        return
     scope = invoke_scope_from_run(run)
     if scope is None:
         return
     project_endpoint, project_id, agent_id = scope
-    kinds = {
-        r.kind for r in (await ocean.integration.port_app_config_handler.get_port_app_config()).resources
-    }
-    conv_kind, res_kind = (
-        ResourceKindsWithSpecialHandling.FOUNDRY_CONVERSATION,
-        ResourceKindsWithSpecialHandling.FOUNDRY_RESPONSE,
-    )
-    if conv_kind not in kinds and res_kind not in kinds:
-        return
-    response = Response.model_validate(
-        response_body or {"id": response_id, "status": "in_progress"}
-    )
-    response = response.model_copy(
-        update={"id": response.id or response_id, "status": response.status or "in_progress"}
-    )
+    props = run.output if isinstance(run, WorkflowNodeRun) else run.execution_properties
+    conversation_id = str(props.get("conversationId") or "").strip()
     client = create_foundry_client()
+
+    async def _upsert(kind: str, raw: dict[str, Any]) -> None:
+        await ocean.register_raw(
+            kind,
+            [
+                enrich_with_project(
+                    raw, project_endpoint=project_endpoint, project_id=project_id
+                )
+            ],
+        )
+
     try:
-        await ocean.integration.port_app_config_handler.get_port_app_config(use_cache=False)
-        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-            if conv_kind in kinds:
-                body = await ConversationsExporter(client).get_resource(
-                    SingleConversationOptions(
-                        project_endpoint=project_endpoint,
-                        project_id=project_id,
-                        resource_id=conversation_id.strip(),
-                        endpoint_scope=EndpointScope.AGENT if agent_id else EndpointScope.PROJECT,
-                        agent_id=agent_id,
-                    )
-                )
-                conv = enrich_with_project(
-                    body if isinstance(body, dict) else {"id": conversation_id},
+        if conversation_id:
+            body = await ConversationsExporter(client).get_resource(
+                SingleConversationOptions(
                     project_endpoint=project_endpoint,
                     project_id=project_id,
+                    resource_id=conversation_id,
+                    endpoint_scope=(
+                        EndpointScope.AGENT if agent_id else EndpointScope.PROJECT
+                    ),
+                    agent_id=agent_id,
                 )
-                await ocean.register_raw(conv_kind, [conv])
-            if res_kind in kinds and response_id:
-                res = enrich_with_project(
-                    dict(response_body) if isinstance(response_body, dict) else {"id": response_id},
-                    project_endpoint=project_endpoint,
-                    project_id=project_id,
-                )
-                res.setdefault("id", response_id)
-                await ocean.register_raw(res_kind, [res])
+            )
+            await _upsert(
+                ObjectKind.FOUNDRY_CONVERSATION,
+                body if isinstance(body, dict) else {"id": conversation_id},
+            )
+        if response_id:
+            raw = (
+                dict(response_body)
+                if isinstance(response_body, dict)
+                else {"id": response_id}
+            )
+            raw.setdefault("id", response_id)
+            await _upsert(ObjectKind.FOUNDRY_RESPONSE, raw)
     except Exception as error:
         logger.warning(f"Foundry invoke catalog sync failed: {error}")
         await ocean.port_client.post_run_log(
