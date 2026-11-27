@@ -88,7 +88,7 @@ async def test_acquire_calls_centralized_admission() -> None:
 
 
 @pytest.mark.asyncio
-async def test_skips_local_acquire_when_centralized_active() -> None:
+async def test_centralized_entry_does_not_run_local_quota_pacing() -> None:
     wrapper = _StubWrapper()
     with patch(
         "port_ocean.rate_limiting.rate_limit_wrapper.ocean",

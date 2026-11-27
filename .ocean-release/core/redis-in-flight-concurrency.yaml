@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Stop the Redis rate-limit path from also running local quota sleeps. Integrations opt in to the in-flight cap with a semaphore-only hook.
