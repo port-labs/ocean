@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Restore the REST and GraphQL in-flight caps while the Redis rate limiter is on.
