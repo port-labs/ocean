@@ -120,6 +120,25 @@ async def test_centralized_acquire_waits_on_the_organization_pool() -> None:
 
 
 @pytest.mark.asyncio
+async def test_redis_enter_takes_the_in_flight_slot_without_quota_sleep() -> None:
+    limiter = SentryRateLimiter(max_concurrent=2, minimum_limit_remaining=1)
+    limiter._remaining = 0
+    limiter._reset_time = NOW + 30
+    wrapper = SentryRateLimitWrapper(limiter, pool=POOL)
+    with (
+        patch(
+            "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+            SimpleNamespace(centralized_rate_limiter=object()),
+        ),
+        patch("clients.rate_limiter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        async with wrapper:
+            assert limiter._semaphore._value == 1
+        assert limiter._semaphore._value == 2
+    sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_local_mode_feeds_the_sentry_limiter() -> None:
     wrapper = SentryRateLimitWrapper(SentryRateLimiter(), pool=POOL)
     async with wrapper:

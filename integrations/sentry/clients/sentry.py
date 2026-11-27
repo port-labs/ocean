@@ -1,4 +1,3 @@
-import asyncio
 from itertools import chain
 from typing import Any, AsyncGenerator, AsyncIterator, Optional, List
 
@@ -45,9 +44,6 @@ class SentryClient:
             SentryRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS),
             pool=centralized_rate_limit_pool(sentry_base_url, sentry_organization),
         )
-        # Sentry also rejects too many concurrent requests, and Redis mode skips
-        # the limiter's semaphore.
-        self._concurrency = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
         retry_config = RetryConfig(
             retry_after_headers=["X-Sentry-Rate-Limit-Reset", "Retry-After"],
             max_attempts=5,
@@ -117,7 +113,7 @@ class SentryClient:
             httpx.HTTPStatusError: For any other non-2xx status codes
                                    (except 401, 403, and 404).
         """
-        async with self._concurrency, self._rate_limiter:
+        async with self._rate_limiter:
             full_url = (
                 url if url.startswith("http") else f"{self.api_url}/{url.lstrip('/')}"
             )

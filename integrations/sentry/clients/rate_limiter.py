@@ -68,6 +68,12 @@ class SentryRateLimiter:
         logger.debug("Rate limit reset time is not set")
         return 0.0
 
+    async def acquire_concurrency_slot(self) -> None:
+        await self._semaphore.acquire()
+
+    def release_concurrency_slot(self) -> None:
+        self._semaphore.release()
+
     @property
     def is_limit_reached(self) -> bool:
         return (
@@ -77,7 +83,7 @@ class SentryRateLimiter:
 
     async def __aenter__(self) -> "SentryRateLimiter":
         """Acquires semaphore and proactively sleeps if the rate limit is low."""
-        await self._semaphore.acquire()
+        await self.acquire_concurrency_slot()
 
         async with self._lock:
             if self._remaining and self._remaining <= self._minimum_limit_remaining:
@@ -100,7 +106,7 @@ class SentryRateLimiter:
         """
         Ensuring the semaphore is always released
         """
-        self._semaphore.release()
+        self.release_concurrency_slot()
 
     async def update_from_headers(self, headers: httpx.Headers) -> None:
         """

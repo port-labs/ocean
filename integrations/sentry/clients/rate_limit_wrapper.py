@@ -2,7 +2,7 @@
 
 import time
 from types import TracebackType
-from typing import Optional
+from typing import Optional, Self
 from urllib.parse import urlparse
 
 import httpx
@@ -59,8 +59,30 @@ class SentryRateLimitWrapper(RateLimitWrapper):
 
     # Local limiter
 
+    async def __aenter__(self) -> Self:
+        """Redis takes the in-flight slot only. Local mode also paces on quota."""
+        if self._redis_admission_enabled():
+            await self._local_acquire_concurrency()
+            return self
+        entered = await super().__aenter__()
+        return entered
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        if self._redis_admission_enabled():
+            await self._local_release_concurrency(exc_type, exc_val, exc_tb)
+            return
+        await super().__aexit__(exc_type, exc_val, exc_tb)
+
     async def _local_acquire(self) -> None:
         await self._limiter.__aenter__()
+
+    async def _local_acquire_concurrency(self) -> None:
+        await self._limiter.acquire_concurrency_slot()
 
     async def _local_release(
         self,
@@ -69,6 +91,15 @@ class SentryRateLimitWrapper(RateLimitWrapper):
         exc_tb: Optional[TracebackType],
     ) -> None:
         await self._limiter.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def _local_release_concurrency(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        del exc_type, exc_val, exc_tb
+        self._limiter.release_concurrency_slot()
 
     async def _local_ingest_response(
         self, response: httpx.Response, context: str
