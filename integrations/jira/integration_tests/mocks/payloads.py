@@ -42,7 +42,6 @@ def projects_page_response() -> dict[str, Any]:
     }
 
 
-
 def issue_response(idx: int) -> dict[str, Any]:
     key = f"PORT-{idx}"
     return {
@@ -93,7 +92,6 @@ def user_response(idx: int) -> dict[str, Any]:
 
 def users_page_response() -> list[dict[str, Any]]:
     return [user_response(i) for i in range(1, USER_COUNT + 1)]
-
 
 
 def team_id(idx: int) -> str:
