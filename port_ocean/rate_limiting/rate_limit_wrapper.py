@@ -1,8 +1,10 @@
 """Rate limit facade: local integration limiter vs cross-pod Redis.
 
-The HTTP client holds one wrapper. ``async with`` still guards the local
-semaphore. When the centralized limiter is installed, enter and exit do
-nothing and ``RetryTransport`` calls ``acquire`` before each attempt.
+The HTTP client holds one wrapper. ``async with`` guards the in-process
+concurrency slot for the full outbound call, including retries. When the
+centralized limiter is installed, ``acquire`` handles cross-pod quota;
+``__aenter__`` / ``__aexit__`` still take only the local concurrency slot
+(see ``_local_acquire_concurrency``), not local quota sleeps.
 """
 
 from __future__ import annotations
@@ -24,9 +26,10 @@ from port_ocean.rate_limiting.utils import (
 class RateLimitWrapper(ABC):
     """Integration subclass; each call site picks Redis or the local limiter.
 
-    Redis on means the shared pool already waited. The local semaphore, the
-    local header update, and the action-executor pause stay off so the same
-    request is not delayed twice.
+    Redis on means the shared pool already waited on ``acquire``. The local
+    quota ingest, transport-notify path, and action-executor pause stay off so
+    quota is not enforced twice; the process-wide concurrency slot is still
+    taken in ``__aenter__`` when Redis is on.
     """
 
     def __init__(self, pool: str, *, redis_enabled: bool = True) -> None:
@@ -43,14 +46,11 @@ class RateLimitWrapper(ABC):
         return self._redis_enabled and ocean.centralized_rate_limiter is not None
 
     async def __aenter__(self) -> Self:
-        """Take the local semaphore for the ``async with`` body.
-
-        With Redis on this is a no-op. The wait happens in ``acquire``, once
-        per attempt, instead of holding a process-local slot across retries.
-        """
+        """Hold an in-flight slot for the ``async with`` body (including retries)."""
         if self._redis_admission_enabled():
-            return self
-        await self._local_acquire()
+            await self._local_acquire_concurrency()
+        else:
+            await self._local_acquire()
         return self
 
     async def acquire(self) -> None:
@@ -93,8 +93,9 @@ class RateLimitWrapper(ABC):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        """Release the local semaphore. Redis holds nothing for this request."""
-        if not self._redis_admission_enabled():
+        if self._redis_admission_enabled():
+            await self._local_release_concurrency(exc_type, exc_val, exc_tb)
+        else:
             await self._local_release(exc_type, exc_val, exc_tb)
 
     def is_close_to_rate_limit(self) -> bool:
@@ -124,7 +125,11 @@ class RateLimitWrapper(ABC):
 
     @abstractmethod
     async def _local_acquire(self) -> None:
-        """Take the integration's in-process semaphore."""
+        """Full local admission: concurrency and integration quota pacing."""
+
+    async def _local_acquire_concurrency(self) -> None:
+        """Concurrency slot only when Redis owns cross-pod quota."""
+        await self._local_acquire()
 
     @abstractmethod
     async def _notify_transport_rate_limit_retry(
@@ -139,7 +144,16 @@ class RateLimitWrapper(ABC):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        """Release the in-process semaphore, including when the body raised."""
+        """Release after full local admission."""
+
+    async def _local_release_concurrency(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        """Release concurrency slot only when Redis owns cross-pod quota."""
+        await self._local_release(exc_type, exc_val, exc_tb)
 
     @abstractmethod
     async def _local_ingest_response(
