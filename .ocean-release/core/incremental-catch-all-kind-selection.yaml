@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: bugfix
+changelog: Fix incremental sync doing nothing for integrations whose kinds come from the customer's mapping, so those integrations now sync on the incremental interval.

@@ -601,3 +601,37 @@ class TestSyncIncrementalResourceGrouping:
             (0, {"grouped": False}),
             (1, {"grouped": False}),
         ]
+
+
+class TestSyncIncrementalCatchAllHandler:
+    async def test_catch_all_handler_selects_every_mapped_kind(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        """An integration whose kinds come from the customer's mapping registers
+        `on_incremental_resync()` with no kind, so selection has to consult the
+        catch-all registration as the two steps either side of it already do."""
+        configure_app_config(mock_mixin, ["issue", "pull-request"])
+        register_incremental_handler(mock_mixin, kind=None)
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            _configure_ocean_for_incremental(mock_ocean, mock_port_client)
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        process_calls = mock_mixin.process_resource.await_args_list  # type: ignore[attr-defined]
+        assert [call.args[0].kind for call in process_calls] == [
+            "issue",
+            "pull-request",
+        ]
+
+    async def test_kind_specific_handler_is_not_shadowed_by_the_catch_all_check(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        configure_app_config(mock_mixin, ["issue", "pull-request"])
+        register_incremental_handler(mock_mixin, kind="issue")
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            _configure_ocean_for_incremental(mock_ocean, mock_port_client)
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        process_calls = mock_mixin.process_resource.await_args_list  # type: ignore[attr-defined]
+        assert [call.args[0].kind for call in process_calls] == ["issue"]
