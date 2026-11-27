@@ -1,0 +1,3 @@
+bump: minor
+changelog-type: feature
+changelog: Added incremental sync, which asks Cloud Audit Logs which projects changed since the last run and re-reads only those projects, so changes reach Port within the incremental interval instead of at the next full resync.

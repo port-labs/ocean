@@ -354,16 +354,27 @@ async def list_all_subscriptions_per_project(
         )
 
 
-@cache_iterator_result()
-async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info("Searching projects")
+async def search_projects(query: str | None = None) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Every project the caller has `resourcemanager.projects.get` on.
+
+    `query` is the server-side filter documented for `searchProjects`, e.g.
+    `state:ACTIVE`: https://cloud.google.com/resource-manager/reference/rest/v3/projects/search
+    """
+    logger.info(f"Searching projects with query {query!r}")
     projects_client = get_projects_client()
+    request: dict[str, Any] = {"query": query} if query else {}
     async for projects in paginated_query(
         projects_client,
         "search_projects",
-        {},
+        request,
         lambda response: parse_protobuf_messages(response.projects),
     ):
+        yield projects
+
+
+@cache_iterator_result()
+async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for projects in search_projects():
         yield projects
 
 
