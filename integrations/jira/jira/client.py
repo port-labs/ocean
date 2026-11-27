@@ -25,6 +25,9 @@ from .retry_transport import JiraRetryTransport
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
+ATLASSIAN_GATEWAY_URL_PATTERN = re.compile(
+    r"https://api\.atlassian\.com/ex/jira/([^/]+)"
+)
 
 WORKLOG_WEBHOOK_EVENTS = [
     "worklog_created",
@@ -133,6 +136,7 @@ class JiraClient(OAuthClient):
         self._software_api_url: str | None = (
             None if self.is_oauth_enabled() else f"{self.jira_rest_url}/software/1.0"
         )
+        self._cached_cloud_id: str | None = None
 
         self._rate_limiter = JiraRateLimitWrapper(
             JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS),
@@ -194,20 +198,54 @@ class JiraClient(OAuthClient):
 
     async def _get_cloud_id(self) -> str:
         """
-        Resolve the Atlassian cloud ID for the configured Jira site from jira_url when OAuth gateway format is used,
-        otherwise resolve via accessible-resources endpoint.
+        Resolve the Atlassian cloud ID (also called site ID) for the configured Jira site.
+
+        Resolution order: OAuth gateway URL, the site's tenant_info endpoint,
+        then the OAuth accessible-resources endpoint. The result is cached.
 
         See: https://developer.atlassian.com/cloud/oauth/getting-started/making-calls-to-api/#cloud-id
         """
-        _ATLASSIAN_GATEWAY_PATTERN = re.compile(
-            r"https://api\.atlassian\.com/ex/jira/([^/]+)"
-        )
-        pattern_match = _ATLASSIAN_GATEWAY_PATTERN.match(self.jira_url.rstrip("/"))
-        if pattern_match:
-            cloud_id = pattern_match.group(1)
-            logger.debug(f"Extracted cloud ID {cloud_id} from jira_url")
-            return cloud_id
+        if self._cached_cloud_id is None:
+            self._cached_cloud_id = (
+                self._extract_cloud_id_from_gateway_url()
+                or await self._fetch_cloud_id_from_tenant_info()
+                or await self._fetch_cloud_id_from_accessible_resources()
+            )
+        return self._cached_cloud_id
 
+    def _extract_cloud_id_from_gateway_url(self) -> str | None:
+        match = ATLASSIAN_GATEWAY_URL_PATTERN.match(self.jira_url.rstrip("/"))
+        if not match:
+            return None
+        cloud_id = match.group(1)
+        logger.debug(f"Extracted cloud ID {cloud_id} from jira_url")
+        return cloud_id
+
+    async def _fetch_cloud_id_from_tenant_info(self) -> str | None:
+        """
+        Read the cloud ID from the site's public tenant_info endpoint.
+        The endpoint needs no credentials, so none are sent.
+
+        See: https://support.atlassian.com/jira/kb/retrieve-my-atlassian-sites-cloud-id/
+        """
+        url = f"{self.jira_url.rstrip('/')}/_edge/tenant_info"
+        try:
+            response = await self.client.get(url, auth=None)
+            response.raise_for_status()
+            payload = response.json()
+        except (httpx.HTTPError, ValueError) as error:
+            logger.warning(f"Could not resolve cloud ID from {url}: {error}")
+            return None
+
+        cloud_id = payload.get("cloudId") if isinstance(payload, dict) else None
+        if not cloud_id:
+            logger.warning(f"No cloud ID found in the response from {url}")
+            return None
+
+        logger.debug(f"Resolved cloud ID {cloud_id} from tenant_info")
+        return str(cloud_id)
+
+    async def _fetch_cloud_id_from_accessible_resources(self) -> str:
         resources = await self._send_api_request(
             "GET",
             "https://api.atlassian.com/oauth/token/accessible-resources",
@@ -276,7 +314,7 @@ class JiraClient(OAuthClient):
                 url=url,
                 is_rate_limit=is_rate_limit,
             ).error(
-                f"Jira API request failed with status {response.status_code}: {method} {url}"
+                f"Jira API request failed with status {response.status_code}: {method} {url} - response body: {response.text[:500]}"
             )
             raise
         except httpx.RequestError as e:
@@ -506,9 +544,11 @@ class JiraClient(OAuthClient):
         }
 
     async def verify_teams_access(self, org_id: str) -> None:
+        site_id = await self._get_cloud_id()
         await self._send_api_request(
             "GET",
             f"{self.teams_base_url}/{org_id}/teams",
+            params={"siteId": site_id},
             skip_retry=True,
         )
 
@@ -768,23 +808,29 @@ class JiraClient(OAuthClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
+        site_id = await self._get_cloud_id()
         base_url = f"{self.teams_base_url}/{org_id}/teams"
 
         async for teams in self._get_cursor_paginated_data(
-            url=base_url, method="GET", extract_key="entities", cursor_param="cursor"
+            url=base_url,
+            method="GET",
+            extract_key="entities",
+            cursor_param="cursor",
+            initial_params={"siteId": site_id},
         ):
             yield teams
 
     async def get_paginated_team_members(
         self, team_id: str, org_id: str, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        site_id = await self._get_cloud_id()
         url = f"{self.teams_base_url}/{org_id}/teams/{team_id}/members"
 
         async for members in self._get_cursor_paginated_data(
             url,
             method="POST",
             extract_key="results",
-            initial_params={"first": page_size},
+            initial_params={"siteId": site_id, "first": page_size},
             cursor_param="after",
         ):
             yield members

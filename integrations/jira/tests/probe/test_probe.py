@@ -243,6 +243,28 @@ async def test_team_probe_reports_teams_api_failures(
 
 
 @pytest.mark.asyncio
+async def test_team_probe_reports_site_id_resolution_failure(
+    mock_jira_probe: MockJiraProbe,
+    probe_context: ProbeContext,
+) -> None:
+    mock_jira_probe.configure_ocean({"atlassian_organization_id": "test-org-id"})
+    mock_jira_probe.configure_client(
+        verify_teams_access=AsyncMock(
+            side_effect=ValueError("Could not resolve cloud ID for Jira site")
+        ),
+    )
+    probe_context.available_kinds = [Kinds.TEAM]
+
+    await JiraPermissionProbe(probe_context).run()
+
+    assert probe_context.checks[0].status is ProbeCheckStatus.FAILURE
+    assert probe_context.checks[0].message == (
+        "Could not resolve Jira site ID required for Teams API: "
+        "Could not resolve cloud ID for Jira site"
+    )
+
+
+@pytest.mark.asyncio
 async def test_team_probe_reports_teams_api_connection_failure(
     mock_jira_probe: MockJiraProbe,
     probe_context: ProbeContext,

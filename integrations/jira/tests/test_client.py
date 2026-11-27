@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Generator, cast
 from jira.overrides import JiraEpicAPIQueryParams
 
 from jira.overrides import JiraWorklogAPIQueryParams
@@ -499,9 +499,17 @@ async def test_get_current_user_permissions_fetches_and_parses_permissions(
 
 @pytest.mark.asyncio
 async def test_verify_teams_access(mock_jira_client: JiraClient) -> None:
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client,
+            "_get_cloud_id",
+            new_callable=AsyncMock,
+            return_value="test-site-id",
+        ),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
         mock_request.return_value = {"entities": []}
 
         await mock_jira_client.verify_teams_access("test_org_id")
@@ -509,6 +517,7 @@ async def test_verify_teams_access(mock_jira_client: JiraClient) -> None:
     mock_request.assert_awaited_once_with(
         "GET",
         f"{mock_jira_client.teams_base_url}/test_org_id/teams",
+        params={"siteId": "test-site-id"},
         skip_retry=True,
     )
 
@@ -902,9 +911,17 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
         "cursor": None,
     }
 
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client,
+            "_get_cloud_id",
+            new_callable=AsyncMock,
+            return_value="test-site-id",
+        ),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
         mock_request.side_effect = [
             teams_data,
             {"entities": []},  # Empty response to end pagination
@@ -916,6 +933,7 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
 
         assert len(teams) == 2
         assert teams == teams_data["entities"]
+        assert mock_request.call_args_list[0][1]["params"]["siteId"] == "test-site-id"
 
 
 @pytest.mark.asyncio
@@ -938,9 +956,17 @@ async def test_get_paginated_teams_multiple_pages(mock_jira_client: JiraClient) 
         "cursor": None,
     }
 
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client,
+            "_get_cloud_id",
+            new_callable=AsyncMock,
+            return_value="test-site-id",
+        ),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
         mock_request.side_effect = [page1_response, page2_response]
 
         teams: list[dict[str, Any]] = []
@@ -955,6 +981,7 @@ async def test_get_paginated_teams_multiple_pages(mock_jira_client: JiraClient) 
         # Verify the second call includes the cursor
         second_call = mock_request.call_args_list[1]
         assert second_call[1]["params"]["cursor"] == "next_page_cursor"
+        assert second_call[1]["params"]["siteId"] == "test-site-id"
 
 
 @pytest.mark.asyncio
@@ -969,9 +996,17 @@ async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
         "pageInfo": {"endCursor": "cursor2", "hasNextPage": False},
     }
 
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client,
+            "_get_cloud_id",
+            new_callable=AsyncMock,
+            return_value="test-site-id",
+        ),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
         mock_request.side_effect = [page1_response, page2_response]
 
         members: list[dict[str, Any]] = []
@@ -981,6 +1016,7 @@ async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
             members.extend(member_batch)
 
         assert len(members) == 3
+        assert mock_request.call_args_list[0][1]["params"]["siteId"] == "test-site-id"
 
 
 @pytest.mark.asyncio
@@ -1546,9 +1582,24 @@ async def test_successfully_resolves_agile_url_for_oauth_uses_cache_on_subsequen
     mock_get_cloud_id.assert_called_once()
 
 
+@pytest.fixture
+def tenant_info_unavailable(
+    mock_jira_client: JiraClient,
+) -> Generator[None, None, None]:
+    """Make the tenant_info lookup find nothing so accessible-resources is used."""
+    with patch.object(
+        mock_jira_client,
+        "_fetch_cloud_id_from_tenant_info",
+        new_callable=AsyncMock,
+        return_value=None,
+    ):
+        yield
+
+
 @pytest.mark.asyncio
 async def test_can_successfully_get_cloud_id_for_oauth(
     mock_jira_client: JiraClient,
+    tenant_info_unavailable: None,
 ) -> None:
     mock_resources = [
         {
@@ -1577,6 +1628,7 @@ async def test_can_successfully_get_cloud_id_for_oauth(
 @pytest.mark.asyncio
 async def test_get_cloud_id_raises_value_error_when_jira_url_not_in_accessible_resources(
     mock_jira_client: JiraClient,
+    tenant_info_unavailable: None,
 ) -> None:
     """_get_cloud_id must raise ValueError if none of the accessible resources
     match the configured jira_url — prevents silent misconfiguration."""
@@ -1602,6 +1654,7 @@ async def test_get_cloud_id_raises_value_error_when_jira_url_not_in_accessible_r
 @pytest.mark.asyncio
 async def test_get_cloud_id_handles_trailing_slash_in_jira_url(
     mock_jira_client: JiraClient,
+    tenant_info_unavailable: None,
 ) -> None:
     """URL comparison must be slash-normalized — trailing slashes must not cause a mismatch."""
     mock_resources = [
@@ -1627,6 +1680,7 @@ async def test_get_cloud_id_handles_trailing_slash_in_jira_url(
 @pytest.mark.asyncio
 async def test_get_cloud_id_raises_when_accessible_resources_returns_empty_list(
     mock_jira_client: JiraClient,
+    tenant_info_unavailable: None,
 ) -> None:
     """Empty accessible-resources response must raise ValueError, not IndexError."""
     with patch.object(
@@ -1675,12 +1729,45 @@ async def test_get_cloud_id_extracts_from_gateway_url_with_trailing_slash(
     mock_request.assert_not_called()
 
 
+TENANT_INFO_URL = "https://example.atlassian.net/_edge/tenant_info"
+
+
+def _tenant_info_response(status_code: int, body: Any) -> Response:
+    return Response(status_code, json=body, request=Request("GET", TENANT_INFO_URL))
+
+
 @pytest.mark.asyncio
-async def test_get_cloud_id_falls_back_to_accessible_resources_for_non_gateway_url(
+async def test_get_cloud_id_resolves_from_tenant_info_without_credentials(
     mock_jira_client: JiraClient,
 ) -> None:
-    """When jira_url is a direct site URL, cloud ID must be resolved
-    via the accessible-resources endpoint."""
+    """tenant_info is public: the cloud ID is read from it with no auth, then cached."""
+    with patch.object(
+        mock_jira_client.client,
+        "get",
+        new_callable=AsyncMock,
+        return_value=_tenant_info_response(
+            200, {"cloudId": "33f08530-afd8-42fd-82cc-1dd5ebfeece8"}
+        ),
+    ) as mock_get:
+        cloud_id = await mock_jira_client._get_cloud_id()
+        cached_cloud_id = await mock_jira_client._get_cloud_id()
+
+    assert cloud_id == cached_cloud_id == "33f08530-afd8-42fd-82cc-1dd5ebfeece8"
+    mock_get.assert_awaited_once_with(TENANT_INFO_URL, auth=None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        _tenant_info_response(404, {}),
+        _tenant_info_response(200, {}),
+        _tenant_info_response(200, ["not", "a", "dict"]),
+    ],
+)
+async def test_get_cloud_id_falls_back_to_accessible_resources_when_tenant_info_unusable(
+    mock_jira_client: JiraClient, response: Response
+) -> None:
     mock_resources = [
         {
             "id": "33f08530-afd8-42fd-82cc-1dd5ebfeece8",
@@ -1691,17 +1778,55 @@ async def test_get_cloud_id_falls_back_to_accessible_resources_for_non_gateway_u
         }
     ]
 
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
+    with (
+        patch.object(
+            mock_jira_client.client,
+            "get",
+            new_callable=AsyncMock,
+            return_value=response,
+        ),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
         mock_request.return_value = mock_resources
         cloud_id = await mock_jira_client._get_cloud_id()
 
     assert cloud_id == "33f08530-afd8-42fd-82cc-1dd5ebfeece8"
-    mock_request.assert_called_once_with(
+    mock_request.assert_awaited_once_with(
         "GET",
         "https://api.atlassian.com/oauth/token/accessible-resources",
     )
+
+
+@pytest.mark.asyncio
+async def test_get_cloud_id_falls_back_to_accessible_resources_when_tenant_info_unreachable(
+    mock_jira_client: JiraClient,
+) -> None:
+    mock_resources = [
+        {
+            "id": "33f08530-afd8-42fd-82cc-1dd5ebfeece8",
+            "url": "https://example.atlassian.net",
+        }
+    ]
+
+    with (
+        patch.object(
+            mock_jira_client.client,
+            "get",
+            new_callable=AsyncMock,
+            side_effect=httpx.ConnectError("unreachable"),
+        ),
+        patch.object(
+            mock_jira_client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            return_value=mock_resources,
+        ),
+    ):
+        cloud_id = await mock_jira_client._get_cloud_id()
+
+    assert cloud_id == "33f08530-afd8-42fd-82cc-1dd5ebfeece8"
 
 
 @pytest.mark.asyncio
