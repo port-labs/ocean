@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Sequence
 
 from tools.integration_validation.runner.results.collect import ScenarioCollection
+from tools.integration_validation.runner.results.evaluate import ScenarioComparison
 from tools.integration_validation.runner.core.errors import ValidationCliError
+from tools.integration_validation.runner.core.statuses import ComparisonStatus
 from tools.integration_validation.runner.integration.process import (
     DEFAULT_INTEGRATION_TIMEOUT_SECONDS,
     DEFAULT_MOCK_BASE_URL,
@@ -109,6 +112,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         else:
             print("    Integration subprocess completed")
         _print_collection(run.collection)
+        _print_comparison(run.comparison)
         if run.cleaned_up:
             print("    Port resources cleaned up")
         elif run.cleanup_leftovers:
@@ -119,11 +123,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         else:
             print("    Port resources kept (--skip-cleanup)")
 
-    if result.scenario_runs and all(
-        not run.integration.timed_out and run.integration.returncode == 0
-        for run in result.scenario_runs
-    ):
-        print("All scenarios completed integration subprocess.", file=sys.stderr)
+    if result.scenario_runs and all(run.passed for run in result.scenario_runs):
+        print("All scenarios passed.", file=sys.stderr)
     else:
         raise SystemExit(1)
 
@@ -143,3 +144,31 @@ def _print_collection(collection: ScenarioCollection) -> None:
     )
     for entry in unmatched:
         print(f"      unmatched: {entry.method} {entry.path}", file=sys.stderr)
+
+
+def _print_comparison(comparison: ScenarioComparison) -> None:
+    print(f"    Expected entities: {_comparison_label(comparison)}")
+    for blueprint, diff in comparison.entity_diff.items():
+        for identifier in diff.added:
+            print(f"      {blueprint} + {identifier} (unexpected)", file=sys.stderr)
+        for identifier in diff.removed:
+            print(f"      {blueprint} - {identifier} (missing)", file=sys.stderr)
+        for change in diff.changed:
+            print(
+                f"      {blueprint} {change.identifier} {change.field}: "
+                f"{json.dumps(change.expected)} -> {json.dumps(change.actual)}",
+                file=sys.stderr,
+            )
+
+
+COMPARISON_LABELS: dict[ComparisonStatus, str] = {
+    ComparisonStatus.MATCHED: "matched",
+    ComparisonStatus.DIFFERENT: "{differences} difference(s) from {location}",
+}
+
+
+def _comparison_label(comparison: ScenarioComparison) -> str:
+    return COMPARISON_LABELS[comparison.status].format(
+        differences=comparison.difference_count,
+        location=comparison.expected_dir,
+    )

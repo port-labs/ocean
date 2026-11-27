@@ -20,6 +20,13 @@ ALL_KINDS = (
 )
 
 
+def test_spec_enables_saas_live_events() -> None:
+    spec = json.loads(Path(".port/spec.json").read_text())
+    assert spec.get("recommendedInstallationMethod") == "Saas"
+    assert spec.get("saas", {}).get("enabled") is True
+    assert spec.get("saas", {}).get("liveEvents", {}).get("enabled") is True
+
+
 def test_spec_accepts_webhook_secret() -> None:
     spec = json.loads(Path(".port/spec.json").read_text())
     resources = spec["features"][0]["resources"]

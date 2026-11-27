@@ -1,4 +1,4 @@
-from core.catalog import (
+from cursor_cloud_agents.core.catalog import (
     enrich_v0_agent_raw_for_catalog,
     normalize_agent_raw_for_catalog,
 )

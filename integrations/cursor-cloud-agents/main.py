@@ -5,10 +5,17 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from actions.registry import register_action_executors
-from core.options import ListAgentOptions, ListRunOptions
-from exporter_factory import create_agents_exporter, create_runs_exporter
-from integration import AgentResourceConfig, ObjectKind, RunResourceConfig
+from cursor_cloud_agents.actions.registry import register_action_executors
+from cursor_cloud_agents.core.options import ListAgentOptions, ListRunOptions
+from cursor_cloud_agents.exporter_factory import (
+    create_agents_exporter,
+    create_runs_exporter,
+)
+from cursor_cloud_agents.integration import (
+    AgentResourceConfig,
+    ObjectKind,
+    RunResourceConfig,
+)
 
 
 @ocean.on_resync(ObjectKind.AGENT)
