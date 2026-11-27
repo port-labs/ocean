@@ -22,11 +22,6 @@ TEAMS_API_PATH = f"/gateway/api/public/teams/v1/org/{ORG_ID}/teams"
 TENANT_INFO_URL = f"{JIRA_HOST}/_edge/tenant_info"
 
 
-# ---------------------------------------------------------------------------
-# Projects
-# ---------------------------------------------------------------------------
-
-
 def project_response(key: str, idx: int) -> dict[str, Any]:
     return {
         "key": key,
@@ -46,10 +41,6 @@ def projects_page_response() -> dict[str, Any]:
         "maxResults": 50,
     }
 
-
-# ---------------------------------------------------------------------------
-# Issues
-# ---------------------------------------------------------------------------
 
 
 def issue_response(idx: int) -> dict[str, Any]:
@@ -85,11 +76,6 @@ def issues_page_response() -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Users
-# ---------------------------------------------------------------------------
-
-
 def user_response(idx: int) -> dict[str, Any]:
     return {
         "accountId": f"user-account-{idx}",
@@ -108,10 +94,6 @@ def user_response(idx: int) -> dict[str, Any]:
 def users_page_response() -> list[dict[str, Any]]:
     return [user_response(i) for i in range(1, USER_COUNT + 1)]
 
-
-# ---------------------------------------------------------------------------
-# Teams
-# ---------------------------------------------------------------------------
 
 
 def team_id(idx: int) -> str:
