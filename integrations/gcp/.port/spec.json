@@ -10,7 +10,10 @@
     }
   ],
   "saas": {
-    "enabled": false
+    "enabled": false,
+    "incrementalSync": {
+      "enabled": true
+    }
   },
   "configurations": [
     {
