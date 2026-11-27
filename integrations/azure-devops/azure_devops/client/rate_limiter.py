@@ -134,12 +134,18 @@ class AzureDevOpsRateLimiter:
                 )
             self._throttle_until = None
 
+    async def acquire_concurrency_slot(self) -> None:
+        await self._semaphore.acquire()
+
+    def release_concurrency_slot(self) -> None:
+        self._semaphore.release()
+
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
         """Enter the async context manager.
 
         Acquires semaphore and handles rate limiting logic before allowing request.
         """
-        await self._semaphore.acquire()
+        await self.acquire_concurrency_slot()
         await self.wait_out_throttle()
 
         async with self._lock:
@@ -186,7 +192,7 @@ class AzureDevOpsRateLimiter:
 
         Releases the semaphore to allow other requests to proceed.
         """
-        self._semaphore.release()
+        self.release_concurrency_slot()
 
     def _reset_rate_limit_state(self) -> None:
         """Reset all rate limit state variables."""
