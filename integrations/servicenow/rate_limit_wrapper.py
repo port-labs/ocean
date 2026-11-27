@@ -2,7 +2,7 @@
 
 import time
 from types import TracebackType
-from typing import Optional
+from typing import Optional, Self
 from urllib.parse import urlparse
 
 import httpx
@@ -61,8 +61,30 @@ class ServiceNowRateLimitWrapper(RateLimitWrapper):
 
     # Local limiter
 
+    async def __aenter__(self) -> Self:
+        """Redis skips local quota accounting. ServiceNow has no in-flight cap."""
+        if self._redis_admission_enabled():
+            await self._local_acquire_concurrency()
+            return self
+        entered = await super().__aenter__()
+        return entered
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        if self._redis_admission_enabled():
+            await self._local_release_concurrency(exc_type, exc_val, exc_tb)
+            return
+        await super().__aexit__(exc_type, exc_val, exc_tb)
+
     async def _local_acquire(self) -> None:
         await self._limiter.__aenter__()
+
+    async def _local_acquire_concurrency(self) -> None:
+        return None
 
     async def _local_release(
         self,
@@ -71,6 +93,14 @@ class ServiceNowRateLimitWrapper(RateLimitWrapper):
         exc_tb: Optional[TracebackType],
     ) -> None:
         await self._limiter.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def _local_release_concurrency(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        del exc_type, exc_val, exc_tb
 
     async def _local_ingest_response(
         self, response: httpx.Response, context: str

@@ -145,6 +145,19 @@ async def test_centralized_acquire_waits_on_the_instance_pool() -> None:
 
 
 @pytest.mark.asyncio
+async def test_redis_enter_does_not_consume_the_local_quota() -> None:
+    limiter = ServiceNowRateLimiter()
+    wrapper = ServiceNowRateLimitWrapper(limiter, pool="example.service-now.com")
+    with patch(
+        "port_ocean.rate_limiting.rate_limit_wrapper.ocean",
+        SimpleNamespace(centralized_rate_limiter=object()),
+    ):
+        async with wrapper:
+            pass
+    assert limiter._request_count == 0
+
+
+@pytest.mark.asyncio
 async def test_local_mode_feeds_the_servicenow_limiter() -> None:
     limiter = ServiceNowRateLimiter()
     wrapper = ServiceNowRateLimitWrapper(limiter, pool="example.service-now.com")
