@@ -1311,6 +1311,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         app_config.resources, dsp_enabled
                     )
                     if self.event_strategy.incremental.get(unit.resource.kind)
+                    or self.event_strategy.incremental.get(None)
                 ]
 
                 if not incremental_units:
