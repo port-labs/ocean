@@ -7,6 +7,7 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
+from rate_limit_wrapper import ServiceNowRateLimitWrapper, centralized_rate_limit_pool
 from rate_limiter import LIMIT_RESET_HEADER, RETRY_AFTER_HEADER, ServiceNowRateLimiter
 from retry_transport import ServiceNowRetryTransport
 
@@ -24,17 +25,22 @@ class ServicenowClient:
         self.servicenow_url = servicenow_url
         self.table_base_url = f"{self.servicenow_url}/api/now/table"
         self.authenticator = authenticator
+        self._rate_limiter = ServiceNowRateLimitWrapper(
+            ServiceNowRateLimiter(),
+            pool=centralized_rate_limit_pool(servicenow_url),
+        )
+        self._retry_config = RetryConfig(
+            retry_after_headers=[RETRY_AFTER_HEADER, LIMIT_RESET_HEADER],
+            max_backoff_wait=SERVICE_NOW_RETRY_MAX_BACKOFF_SECONDS,
+            base_delay=SERVICE_NOW_RETRY_BASE_DELAY_SECONDS,
+            rate_limiter=self._rate_limiter,
+        )
         self.http_client = OceanAsyncClient(
             transport_class=ServiceNowRetryTransport,
             transport_kwargs={"auth_header_refresher": self.authenticator.get_headers},
-            retry_config=RetryConfig(
-                retry_after_headers=[RETRY_AFTER_HEADER, LIMIT_RESET_HEADER],
-                max_backoff_wait=SERVICE_NOW_RETRY_MAX_BACKOFF_SECONDS,
-                base_delay=SERVICE_NOW_RETRY_BASE_DELAY_SECONDS,
-            ),
+            retry_config=self._retry_config,
             timeout=ocean.config.client_timeout,
         )
-        self._rate_limiter = ServiceNowRateLimiter()
 
     async def _ensure_auth_headers(self) -> None:
         """Update HTTP client headers with current authentication."""
@@ -74,8 +80,12 @@ class ServicenowClient:
             )
             raise
         finally:
-            if response is not None:
-                await self._rate_limiter.update_from_response(response)
+            # The retry transport records retryable methods on every attempt.
+            if (
+                response is not None
+                and method not in self._retry_config.retryable_methods
+            ):
+                await self._rate_limiter.record_rate_limit_response(response)
 
     async def get_record_by_sys_id(
         self, table_name: str, sys_id: str
