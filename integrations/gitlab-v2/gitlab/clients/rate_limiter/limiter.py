@@ -16,8 +16,14 @@ class GitLabRateLimiter:
         self.rate_limit_info: Optional[RateLimitInfo] = None
         self._block_lock = asyncio.Lock()
 
-    async def __aenter__(self) -> "GitLabRateLimiter":
+    async def acquire_concurrency_slot(self) -> None:
         await self._semaphore.acquire()
+
+    def release_concurrency_slot(self) -> None:
+        self._semaphore.release()
+
+    async def __aenter__(self) -> "GitLabRateLimiter":
+        await self.acquire_concurrency_slot()
 
         async with self._block_lock:
             # Pause when remaining requests <= max concurrent to account for in-flight requests
@@ -41,7 +47,7 @@ class GitLabRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        self._semaphore.release()
+        self.release_concurrency_slot()
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders
