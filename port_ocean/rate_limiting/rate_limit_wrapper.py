@@ -28,8 +28,9 @@ class RateLimitWrapper(ABC):
 
     Redis on means the shared pool already waited on ``acquire``. The local
     quota ingest, transport-notify path, and action-executor pause stay off so
-    quota is not enforced twice; the process-wide concurrency slot is still
-    taken in ``__aenter__`` when Redis is on.
+    quota is not enforced twice. ``__aenter__`` calls
+    ``_local_acquire_concurrency``, which subclasses override with a semaphore
+    only; the base implementation does not run local quota pacing.
     """
 
     def __init__(self, pool: str, *, redis_enabled: bool = True) -> None:
@@ -128,8 +129,12 @@ class RateLimitWrapper(ABC):
         """Full local admission: concurrency and integration quota pacing."""
 
     async def _local_acquire_concurrency(self) -> None:
-        """Concurrency slot only when Redis owns cross-pod quota."""
-        await self._local_acquire()
+        """In-flight slot only. Override with the limiter semaphore.
+
+        The default is a no-op. Calling ``_local_acquire`` here would also run
+        local quota sleeps, then Redis ``acquire`` would wait again.
+        """
+        return None
 
     @abstractmethod
     async def _notify_transport_rate_limit_retry(
@@ -152,8 +157,11 @@ class RateLimitWrapper(ABC):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        """Release concurrency slot only when Redis owns cross-pod quota."""
-        await self._local_release(exc_type, exc_val, exc_tb)
+        """Release the in-flight slot. Override alongside acquire.
+
+        The default is a no-op so Redis mode does not run ``_local_release``.
+        """
+        del exc_type, exc_val, exc_tb
 
     @abstractmethod
     async def _local_ingest_response(
