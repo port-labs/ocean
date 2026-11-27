@@ -76,8 +76,14 @@ class PagerDutyRateLimiter:
         self.rate_limit_info: Optional[RateLimitInfo] = None
         self.daily_rate_limit_info: Optional[RateLimitInfo] = None
 
-    async def __aenter__(self) -> "PagerDutyRateLimiter":
+    async def acquire_concurrency_slot(self) -> None:
         await self._semaphore.acquire()
+
+    def release_concurrency_slot(self) -> None:
+        self._semaphore.release()
+
+    async def __aenter__(self) -> "PagerDutyRateLimiter":
+        await self.acquire_concurrency_slot()
         async with self._lock:
             # Sleep when rate limit is 90% used
             if (
@@ -100,7 +106,7 @@ class PagerDutyRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        self._semaphore.release()
+        self.release_concurrency_slot()
 
     def _parse_per_minute_headers(
         self, headers: RateLimiterRequiredHeaders
