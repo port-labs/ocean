@@ -26,12 +26,18 @@ class GitHubRateLimiter:
         self._lock = asyncio.Lock()
         self._initialized: bool = False
 
+    async def acquire_concurrency_slot(self) -> None:
+        await self._semaphore.acquire()
+
+    def release_concurrency_slot(self) -> None:
+        self._semaphore.release()
+
     async def __aenter__(self) -> "GitHubRateLimiter":
         # Enforce rate limit BEFORE acquiring semaphore so sleep doesn't hold up the permit
         async with self._lock:
             await self._enforce_rate_limit()
 
-        await self._semaphore.acquire()
+        await self.acquire_concurrency_slot()
         return self
 
     async def __aexit__(
@@ -40,7 +46,7 @@ class GitHubRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        self._semaphore.release()
+        self.release_concurrency_slot()
 
     async def _enforce_rate_limit(self) -> None:
         if not self._initialized or self.rate_limit_info is None:

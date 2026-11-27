@@ -52,6 +52,9 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
     async def _local_acquire(self) -> None:
         await self._limiter.__aenter__()
 
+    async def _local_acquire_concurrency(self) -> None:
+        await self._limiter.acquire_concurrency_slot()
+
     async def _local_release(
         self,
         exc_type: Optional[type[BaseException]],
@@ -59,6 +62,14 @@ class GitHubRateLimitWrapper(RateLimitWrapper):
         exc_tb: Optional[TracebackType],
     ) -> None:
         await self._limiter.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def _local_release_concurrency(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        self._limiter.release_concurrency_slot()
 
     async def _local_ingest_response(
         self, response: httpx.Response, context: str
