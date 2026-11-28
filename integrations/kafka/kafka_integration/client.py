@@ -11,8 +11,15 @@ from confluent_kafka.admin import (  # type: ignore[attr-defined]
     ConfigResource,
 )
 from loguru import logger
+from pydantic import BaseModel
 
 DEFAULT_BATCH_SIZE = 50
+
+
+class TopicPartitionOffset(BaseModel):
+    topic: str
+    partition: int
+    offset: int
 
 
 class KafkaClient:
@@ -178,8 +185,8 @@ class KafkaClient:
 
     async def _get_consumer_group_offsets(
         self, group_id: str
-    ) -> dict[str, dict[str, int]]:
-        """Fetch committed offsets for a consumer group, keyed by topic and partition."""
+    ) -> list[TopicPartitionOffset]:
+        """Fetch committed offsets for a consumer group."""
         try:
             offsets_futures = await to_thread.run_sync(
                 self.kafka_admin_client.list_consumer_group_offsets,
@@ -187,10 +194,10 @@ class KafkaClient:
             )
             future = offsets_futures.get(group_id)
             if future is None:
-                return {}
+                return []
 
             offsets_result = await to_thread.run_sync(future.result)
-            offsets: dict[str, dict[str, int]] = {}
+            offsets: list[TopicPartitionOffset] = []
             for tp in offsets_result.topic_partitions or []:
                 if tp.error is not None:
                     logger.warning(
@@ -199,13 +206,19 @@ class KafkaClient:
                     )
                     continue
                 if tp.offset is not None and tp.offset >= 0 and tp.topic is not None:
-                    offsets.setdefault(tp.topic, {})[str(tp.partition)] = tp.offset
+                    offsets.append(
+                        TopicPartitionOffset(
+                            topic=tp.topic,
+                            partition=tp.partition,
+                            offset=tp.offset,
+                        )
+                    )
             return offsets
         except Exception as e:
             logger.warning(
                 f"Failed to fetch committed offsets for consumer group {group_id}: {e}"
             )
-            return {}
+            return []
 
     async def _process_consumer_group(
         self, group_id: str, future: Any
@@ -227,7 +240,12 @@ class KafkaClient:
                 }
                 for member in group_info.members
             ]
-            offsets = await self._get_consumer_group_offsets(group_id)
+            partition_offsets = await self._get_consumer_group_offsets(group_id)
+            offsets: dict[str, dict[str, int]] = {}
+            for partition_offset in partition_offsets:
+                offsets.setdefault(partition_offset.topic, {})[
+                    str(partition_offset.partition)
+                ] = partition_offset.offset
 
             return {
                 "group_id": group_id,

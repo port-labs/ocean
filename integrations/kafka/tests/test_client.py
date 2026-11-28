@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from confluent_kafka import ConsumerGroupTopicPartitions, TopicPartition
 
-from kafka_integration.client import KafkaClient
+from kafka_integration.client import KafkaClient, TopicPartitionOffset
 
 
 def _make_future(value: Any = None, exc: Exception | None = None) -> Future[Any]:
@@ -159,3 +159,25 @@ async def test_describe_consumer_groups_returns_empty_offsets_on_offset_fetch_er
     assert len(batches) == 1
     assert batches[0][0]["group_id"] == "cg-error"
     assert batches[0][0]["offsets"] == {}
+
+
+@pytest.mark.asyncio
+async def test_get_consumer_group_offsets_returns_pydantic_models() -> None:
+    mock_admin = MagicMock()
+    mock_admin.list_topics.return_value = MagicMock(
+        controller_id=1, brokers={}, topics={}
+    )
+    offsets_result = ConsumerGroupTopicPartitions(
+        "cg-models",
+        [TopicPartition("orders-topic", 1, 512)],
+    )
+    mock_admin.list_consumer_group_offsets.return_value = {
+        "cg-models": _make_future(offsets_result)
+    }
+
+    client = _make_client(mock_admin)
+    result = await client._get_consumer_group_offsets("cg-models")
+
+    assert result == [
+        TopicPartitionOffset(topic="orders-topic", partition=1, offset=512)
+    ]

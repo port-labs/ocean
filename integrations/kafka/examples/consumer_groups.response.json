@@ -20,5 +20,10 @@
     "coordinator": 0,
     "partition_assignor": "range",
     "is_simple_consumer_group": false,
-    "authorized_operations": null
+    "authorized_operations": null,
+    "offsets": {
+        "_conduktor_gateway_license": {
+            "0": 0
+        }
+    }
 }
