@@ -3,6 +3,7 @@ from itertools import islice
 import asyncio
 from anyio import to_thread
 
+from confluent_kafka import ConsumerGroupTopicPartitions
 from confluent_kafka.admin import (  # type: ignore[attr-defined]
     RESOURCE_BROKER,
     RESOURCE_TOPIC,
@@ -10,8 +11,15 @@ from confluent_kafka.admin import (  # type: ignore[attr-defined]
     ConfigResource,
 )
 from loguru import logger
+from pydantic import BaseModel
 
 DEFAULT_BATCH_SIZE = 50
+
+
+class TopicPartitionOffset(BaseModel):
+    topic: str
+    partition: int
+    offset: int
 
 
 class KafkaClient:
@@ -175,6 +183,43 @@ class KafkaClient:
                 logger.error(f"Failed to process batch of consumer groups: {e}")
                 raise e
 
+    async def _get_consumer_group_offsets(
+        self, group_id: str
+    ) -> list[TopicPartitionOffset]:
+        """Fetch committed offsets for a consumer group."""
+        try:
+            offsets_futures = await to_thread.run_sync(
+                self.kafka_admin_client.list_consumer_group_offsets,
+                [ConsumerGroupTopicPartitions(group_id)],
+            )
+            future = offsets_futures.get(group_id)
+            if future is None:
+                return []
+
+            offsets_result = await to_thread.run_sync(future.result)
+            offsets: list[TopicPartitionOffset] = []
+            for tp in offsets_result.topic_partitions or []:
+                if tp.error is not None:
+                    logger.warning(
+                        f"Failed to fetch offset for consumer group {group_id} "
+                        f"topic {tp.topic} partition {tp.partition}: {tp.error}"
+                    )
+                    continue
+                if tp.offset is not None and tp.offset >= 0 and tp.topic is not None:
+                    offsets.append(
+                        TopicPartitionOffset(
+                            topic=tp.topic,
+                            partition=tp.partition,
+                            offset=tp.offset,
+                        )
+                    )
+            return offsets
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch committed offsets for consumer group {group_id}: {e}"
+            )
+            return []
+
     async def _process_consumer_group(
         self, group_id: str, future: Any
     ) -> dict[str, Any] | None:
@@ -195,6 +240,12 @@ class KafkaClient:
                 }
                 for member in group_info.members
             ]
+            partition_offsets = await self._get_consumer_group_offsets(group_id)
+            offsets: dict[str, dict[str, int]] = {}
+            for partition_offset in partition_offsets:
+                offsets.setdefault(partition_offset.topic, {})[
+                    str(partition_offset.partition)
+                ] = partition_offset.offset
 
             return {
                 "group_id": group_id,
@@ -205,6 +256,7 @@ class KafkaClient:
                 "partition_assignor": group_info.partition_assignor,
                 "is_simple_consumer_group": group_info.is_simple_consumer_group,
                 "authorized_operations": group_info.authorized_operations,
+                "offsets": offsets,
             }
         except Exception as e:
             logger.error(f"Failed to describe consumer group {group_id}: {e}")

@@ -1,0 +1,3 @@
+bump: patch
+changelog-type: improvement
+changelog: Include committed offset data in consumer_group raw payload
