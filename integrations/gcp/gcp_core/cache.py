@@ -14,7 +14,9 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     fetches the result, caches it, and returns the cached value.
 
     The cache is stored in the scope of the running event and is
-    removed when the event is finished.
+    removed when the event is finished. Membership decides a hit, not truthiness, so a
+    coroutine whose legitimate answer is empty is cached once rather than re-run for
+    every caller.
 
     Usage:
     ```python
@@ -29,8 +31,8 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = hash_func(func, *args, **kwargs)
 
-            if cache := event.attributes.get(cache_key):
-                return cache
+            if cache_key in event.attributes:
+                return event.attributes[cache_key]
 
             result = await func(*args, **kwargs)
             event.attributes[cache_key] = result

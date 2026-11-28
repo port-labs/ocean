@@ -241,3 +241,41 @@ async def test_kwargs_passed_through_to_callable() -> None:
 
     assert received_kwargs["asset_type"] == "compute.googleapis.com/Instance"
     assert "max_concurrent_projects" not in received_kwargs
+
+
+@pytest.mark.asyncio
+async def test_given_projects_replace_the_listing_and_are_not_forwarded() -> None:
+    """`projects` is a declared parameter rather than one of `kwargs`, because `kwargs`
+    reaches the per-project callable verbatim."""
+    from gcp_core.search.iterators import iterate_per_available_project
+
+    received_kwargs: dict[str, Any] = {}
+    searched = False
+
+    async def mock_callable(
+        project: dict[str, Any], **kwargs: Any
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        received_kwargs.update(kwargs)
+        yield [project]
+
+    async def mock_search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        nonlocal searched
+        searched = True
+        yield [{"name": "projects/every-project"}]
+
+    changed = [{"name": "projects/385573848890", "project_id": "sendbox-go"}]
+    batches = []
+    with patch(
+        "gcp_core.search.iterators.search_all_projects",
+        new=mock_search_all_projects,
+    ):
+        async for batch in iterate_per_available_project(
+            mock_callable,
+            asset_type="compute.googleapis.com/Instance",
+            projects=changed,
+        ):
+            batches.append(batch)
+
+    assert batches == [changed]
+    assert searched is False
+    assert "projects" not in received_kwargs

@@ -21,6 +21,9 @@ An integration used to import gcp resources into Port.
 - resourcemanager.projects.list
 - resourcemanager.folders.get
 - resourcemanager.folders.list
+- logging.logEntries.list (incremental sync only)
+
+An incremental resync asks Cloud Audit Logs which projects had activity since the cursor and re-reads those projects through each kind's normal resync path, so a project with any admin activity re-reads every kind mapped against it. The folder, organization and cloud function kinds refresh on the full resync. Nothing is deleted on an incremental run.
 
 The `iamPolicy` kind is the only kind that needs `cloudasset.assets.searchAllIamPolicies`, and it needs it on every project in scope.
 Its live events additionally need `cloudasset.assets.searchAllResources`, which every other kind already requires: a feed event can name an asset by an alias (a service account arrives as its numeric ID, not its email) and the integration translates that back to the name the resync uses. Without it a live event fails and is logged as an error; the kind still resyncs normally.
